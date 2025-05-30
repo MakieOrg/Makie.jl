@@ -22707,6 +22707,7 @@ class MakieCamera {
         this.eyeposition = new Wh(new w());
         this.preprojections = {};
         this.light_direction = new Wh(new w(-1, -1, -1).normalize());
+        this.on_update = new Map();
     }
     calculate_matrices() {
         const [w, h] = this.resolution.value;
@@ -22727,7 +22728,13 @@ class MakieCamera {
         this.resolution.value.fromArray(resolution);
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
-        return;
+        this.on_update.values().forEach((func)=>{
+            try {
+                func(this);
+            } catch (e) {
+                console.error("Error during camera update callback:", e);
+            }
+        });
     }
     update_light_dir(light_dir) {
         const T = new Gt().setFromMatrix4(this.view.value).invert();
@@ -24264,13 +24271,39 @@ function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
     }
     return output;
 }
+function get_projectionview(cam, plot) {
+    const space = plot.plot_data.cam_space;
+    const identity = new THREE.Uniform(new THREE.Matrix4());
+    if (space == "data") {
+        return cam.projectionview;
+    } else if (space == "pixel") {
+        return cam.pixel_space;
+    } else if (space == "relative") {
+        return cam.relative_space;
+    } else if (space == "clip") {
+        return identity;
+    } else {
+        throw new Error(`Space ${space} not supported!`);
+    }
+}
 function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
     const is_lines = !plot.is_segments;
-    const pvm = cam.projectionview.value;
-    const res = cam.resolution.value;
+    const pvm = get_projectionview(cam, plot);
+    const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
-    return compute_lastlen(points, point_ndim, pvm, res, is_lines);
+    const space = plot.plot_data.cam_space;
+    const static_space = space === "clip" || space === "relative";
+    if (!cam.on_update.has(plot.uuid) && !static_space) {
+        cam.on_update[plot.uuid] = (x1)=>{
+            const geom = plot.mesh.geometry;
+            const ia = geom.interleaved_attributes;
+            const new_points = ia.positions_transformed_f32c.array;
+            const lastlen = compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines);
+            plot.update_buffer("lastlen", lastlen);
+        };
+    }
+    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines);
 }
 function add_line_attributes(plot, attributes) {
     const new_data = {};
@@ -24342,6 +24375,10 @@ class Lines extends Plot {
         const dict = Object.fromEntries(data_key_value_array);
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
+    }
+    dispose() {
+        this.scene.wgl_camera.on_update.delete(this.uuid);
+        super.dispose();
     }
 }
 class Mesh extends Plot {
@@ -24442,35 +24479,35 @@ class Scatter extends Plot {
 }
 function nan_free_points_indices(points, ndim) {
     const indices = [];
-    let was_nan = true;
-    let loop_start = -1;
     const npoints = points.length / ndim;
+    let was_nan = true;
+    let loop_start_idx = -1;
     for(let i = 0; i < npoints; i++){
-        let p = get_point(points, i, ndim);
+        const p = get_point(points, i, ndim);
         if (point_isnan(p)) {
             if (!was_nan) {
-                if (loop_start != -1 && loop_start + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start], ndim), get_point(points, i - 1))) {
-                    indices.push(indices[loop_start + 1]);
-                    indices[loop_start - 1] = i - 2;
+                if (loop_start_idx !== -1 && loop_start_idx + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start_idx], ndim), get_point(points, i - 1, ndim))) {
+                    indices.push(indices[loop_start_idx + 1]);
+                    indices[loop_start_idx - 1] = i - 2;
                 } else {
                     indices.push(i - 1);
                 }
             }
-            loop_start = -1;
+            loop_start_idx = -1;
             was_nan = true;
         } else {
             if (was_nan) {
                 indices.push(i);
-                loop_start = indices.length;
+                loop_start_idx = indices.length;
             }
             was_nan = false;
         }
         indices.push(i);
     }
     if (!was_nan) {
-        if (loop_start != -1 && loop_start + 2 < indices.length - 1 && points_approx_equal(get_point(points, indices[loop_start], ndim), get_point(points, npoints - 1, ndim))) {
-            indices.push(indices[loop_start + 1]);
-            indices[loop_start - 1] = npoints - 2;
+        if (loop_start_idx !== -1 && loop_start_idx + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start_idx], ndim), get_point(points, npoints - 1, ndim))) {
+            indices.push(indices[loop_start_idx + 1]);
+            indices[loop_start_idx - 1] = npoints - 2;
         } else {
             indices.push(npoints - 1);
         }

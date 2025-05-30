@@ -10,6 +10,9 @@ import {
 import { deserialize_uniforms, plot_cache } from "./Serialization.js";
 import { get_texture_atlas } from "./TextureAtlas.js";
 
+
+
+
 /**
  * Connects a plot to a scene by setting up the necessary camera uniforms.
  *
@@ -239,6 +242,10 @@ export class Lines extends Plot {
         const dict = Object.fromEntries(data_key_value_array);
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
+    }
+    dispose() {
+        this.scene.wgl_camera.on_update.delete(this.uuid);
+        super.dispose();
     }
 }
 

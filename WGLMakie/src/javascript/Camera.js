@@ -180,6 +180,8 @@ export class MakieCamera {
         this.light_direction = new THREE.Uniform(
             new THREE.Vector3(-1, -1, -1).normalize()
         );
+
+        this.on_update = new Map();
     }
 
     calculate_matrices() {
@@ -212,7 +214,13 @@ export class MakieCamera {
         this.resolution.value.fromArray(resolution);
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
-        return;
+        this.on_update.values().forEach((func) => {
+            try {
+                func(this);
+            } catch (e) {
+                console.error("Error during camera update callback:", e);
+            }
+        })
     }
 
     update_light_dir(light_dir) {

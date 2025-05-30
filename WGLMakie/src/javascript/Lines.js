@@ -1139,6 +1139,7 @@ function unpack_array(array) {
     }
     return array;
 }
+
 function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
     if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
     if (points.length === 0) return new Float32Array(0);
@@ -1209,13 +1210,46 @@ function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
     return output;
 }
 
-function get_last_len( plot, points) {
+function get_projectionview(cam, plot) {
+    const space = plot.plot_data.cam_space;
+    const identity = new THREE.Uniform(new THREE.Matrix4());
+    if (space == "data") {
+        return cam.projectionview;
+    } else if (space == "pixel") {
+        return cam.pixel_space;
+    } else if (space == "relative") {
+        return cam.relative_space;
+    } else if (space == "clip") {
+        return identity;
+    } else {
+        throw new Error(`Space ${space} not supported!`);
+    }
+}
+
+function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
     const is_lines = !plot.is_segments;
-    const pvm = cam.projectionview.value;
-    const res = cam.resolution.value;
+    const pvm = get_projectionview(cam, plot);
+    const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
-    return compute_lastlen(points, point_ndim, pvm, res, is_lines);
+    const space = plot.plot_data.cam_space;
+    const static_space = space === "clip" || space === "relative";
+    if (!cam.on_update.has(plot.uuid) && !static_space) {
+        cam.on_update[plot.uuid] = (x) => {
+            const geom = plot.mesh.geometry;
+            const ia = geom.interleaved_attributes;
+            const new_points = ia.positions_transformed_f32c.array;
+            const lastlen = compute_lastlen(
+                new_points,
+                point_ndim,
+                pvm.value,
+                res.value,
+                is_lines
+            );
+            plot.update_buffer("lastlen", lastlen);
+        };
+    }
+    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines);
 }
 
 export function add_line_attributes(plot, attributes) {
@@ -1302,58 +1336,72 @@ export function create_line(plot_object) {
     return mesh;
 }
 
-
 function nan_free_points_indices(points, ndim) {
     const indices = [];
-    let was_nan = true;
-    let loop_start = -1;
     const npoints = points.length / ndim;
+
+    let was_nan = true;
+    let loop_start_idx = -1;
+
     for (let i = 0; i < npoints; i++) {
-        let p = get_point(points, i, ndim);
+        const p = get_point(points, i, ndim);
+
         if (point_isnan(p)) {
-            // Check if any coordinate is NaN
+            // line section end (last was value, now nan)
             if (!was_nan) {
+                // does previous point close loop?
+                // loop started && 3+ segments && start == end
                 if (
-                    loop_start != -1 &&
-                    loop_start + 2 < indices.length &&
+                    loop_start_idx !== -1 &&
+                    loop_start_idx + 2 < indices.length &&
                     points_approx_equal(
-                        get_point(points, indices[loop_start], ndim),
-                        get_point(points, i-1)
+                        get_point(points, indices[loop_start_idx], ndim),
+                        get_point(points, i - 1, ndim)
                     )
                 ) {
-                    indices.push(indices[loop_start + 1]);
-                    indices[loop_start - 1] = i - 2;
+                    // Loop case: add ghost vertex and adjust
+                    indices.push(indices[loop_start_idx + 1]);
+                    indices[loop_start_idx - 1] = i - 2;
                 } else {
+                    // no loop, duplicate end point
                     indices.push(i - 1);
                 }
             }
-            loop_start = -1;
+            loop_start_idx = -1;
             was_nan = true;
         } else {
             if (was_nan) {
+                // line section start - duplicate point
                 indices.push(i);
-                loop_start = indices.length;
+                // first point in a potential loop
+                loop_start_idx = indices.length; // Will be index of next push
             }
             was_nan = false;
         }
+
+        // push normal line point (including nan)
         indices.push(i);
     }
 
+    // Finish line (insert duplicate end point or close loop)
     if (!was_nan) {
         if (
-            loop_start != -1 &&
-            loop_start + 2 < indices.length - 1 &&
+            loop_start_idx !== -1 &&
+            loop_start_idx + 2 < indices.length &&
             points_approx_equal(
-                get_point(points, indices[loop_start], ndim),
+                get_point(points, indices[loop_start_idx], ndim),
                 get_point(points, npoints - 1, ndim)
             )
         ) {
-            indices.push(indices[loop_start + 1]);
-            indices[loop_start - 1] = npoints - 2;
+            // Loop at end
+            indices.push(indices[loop_start_idx + 1]);
+            indices[loop_start_idx - 1] = npoints - 2;
         } else {
+            // No loop at end
             indices.push(npoints - 1);
         }
     }
+
     return new Uint32Array(indices);
 }
 

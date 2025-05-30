@@ -35,46 +35,6 @@ function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_
 end
 
 
-function get_lastlen(points::Vector{Point2f}, pvm::Mat4, res::Vec2f, islines::Bool)
-    !islines && zeros(Float32, length(points))
-    isempty(points) && return Float32[]
-    output = Vector{Float32}(undef, length(points))
-    # clip -> pixel, but we can skip scene offset
-    scale = Vec2f(0.5 * res[1], 0.5 * res[2])
-    # position of start of first drawn line segment (TODO: deal with multiple nans at start)
-    clip = pvm * to_ndim(Point4f, to_ndim(Point3f, points[2], 0.0f0), 1.0f0)
-    prev = scale .* Point2f(clip) ./ clip[4]
-
-    # calculate cumulative pixel scale length
-    output[1] = 0.0f0   # duplicated point
-    output[2] = 0.0f0   # start of first line segment
-    output[end] = 0.0f0 # duplicated end point
-    i = 3           # end of first line segment, start of second
-    while i < length(points)
-        if isfinite(points[i])
-            clip = pvm * to_ndim(Point4f, to_ndim(Point3f, points[i], 0.0f0), 1.0f0)
-            current = scale .* Point2f(clip) ./ clip[4]
-            l = norm(current - prev)
-            output[i] = output[i - 1] + l
-            prev = current
-            i += 1
-        else
-            # a vertex section (NaN, A, B, C) does not draw, so
-            # norm(B - A) should not contribute to line length.
-            # (norm(B - A) is 0 for capped lines but not for loops)
-            output[i] = 0.0f0
-            output[i + 1] = 0.0f0
-            if i + 2 <= length(points)
-                output[min(end, i + 2)] = 0.0f0
-                clip = pvm * to_ndim(Point4f, to_ndim(Point3f, points[i + 2], 0.0f0), 1.0f0)
-                prev = scale .* Point2f(clip) ./ clip[4]
-            end
-            i += 3
-        end
-    end
-    return output
-end
-
 _xy_convert(x::AbstractArray, n) = copy(x)
 _xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
