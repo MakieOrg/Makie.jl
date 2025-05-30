@@ -24225,6 +24225,53 @@ function unpack_array(array) {
     }
     return array;
 }
+function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
+    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+    if (points.length === 0) return new Float32Array(0);
+    const num_points = points.length / point_ndim;
+    const output = new Float32Array(num_points);
+    const scale = new THREE.Vector2(0.5 * res.x, 0.5 * res.y);
+    const second_point_idx = 1 * point_ndim;
+    let clip = new THREE.Vector4(points[second_point_idx], points[second_point_idx + 1], point_ndim === 3 ? points[second_point_idx + 2] : 0, 1).applyMatrix4(pvm);
+    let prev = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+    output[0] = 0.0;
+    output[1] = 0.0;
+    output[output.length - 1] = 0.0;
+    let point_i = 2;
+    while(point_i < num_points){
+        const array_idx = point_i * point_ndim;
+        const x1 = points[array_idx];
+        const y1 = points[array_idx + 1];
+        const z = point_ndim === 3 ? points[array_idx + 2] : 0;
+        if (Number.isFinite(x1) && Number.isFinite(y1) && (point_ndim === 2 || Number.isFinite(z))) {
+            clip = new THREE.Vector4(x1, y1, z, 1).applyMatrix4(pvm);
+            const current = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+            const length = current.distanceTo(prev);
+            output[point_i] = output[point_i - 1] + length;
+            prev = current;
+            point_i += 1;
+        } else {
+            output[point_i] = 0.0;
+            output[point_i + 1] = 0.0;
+            if (point_i + 2 < num_points) {
+                output[Math.min(output.length - 1, point_i + 2)] = 0.0;
+                const next_point_idx = (point_i + 2) * point_ndim;
+                clip = new THREE.Vector4(points[next_point_idx], points[next_point_idx + 1], point_ndim === 3 ? points[next_point_idx + 2] : 0, 1).applyMatrix4(pvm);
+                prev = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+            }
+            point_i += 3;
+        }
+    }
+    return output;
+}
+function get_last_len(plot, points) {
+    const cam = plot.scene.wgl_camera;
+    const is_lines = !plot.is_segments;
+    const pvm = cam.projectionview.value;
+    const res = cam.resolution.value;
+    const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
+    return compute_lastlen(points, point_ndim, pvm, res, is_lines);
+}
 function add_line_attributes(plot, attributes) {
     const new_data = {};
     let { lineindex  } = plot;
@@ -24239,14 +24286,17 @@ function add_line_attributes(plot, attributes) {
         const points = get_points_view(val, lineindex, plot.ndims["positions_transformed_f32c"]);
         new_data["positions_transformed_f32c"] = pack_array(positions_transformed_f32c, points);
         new_data["lineindex"] = pack_array(positions_transformed_f32c, lineindex, 1);
-        new_data["lastlen"] = pack_array(positions_transformed_f32c, new Float32Array(points.length / 2).fill(0), 1);
+        new_data["lastlen"] = pack_array(positions_transformed_f32c, get_last_len(plot, points), 1);
+    }
+    function is_uniform(key) {
+        return key in plot.deserialized_uniforms;
     }
     for (const [key, value] of Object.entries(attributes)){
         const val = unpack_array(value);
         if (key === "positions_transformed_f32c") {
             continue;
         }
-        if ((key === "line_color" || key === "uniform_linewidth") && !is_typed_array(val)) {
+        if ((key === "line_color" || key === "uniform_linewidth") && is_uniform(key)) {
             new_data[key + "_start"] = value;
             new_data[key + "_end"] = value;
         } else if (is_typed_array(val) && (key === "line_color" || key === "uniform_linewidth")) {
@@ -24284,6 +24334,7 @@ class Lines extends Plot {
         this.is_segments = data.is_segments === true;
         this.is_instanced = true;
         this.ndims = {};
+        this.scene = scene;
         this.mesh = create_line(this);
         this.init_mesh();
     }

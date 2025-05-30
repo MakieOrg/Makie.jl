@@ -1014,73 +1014,6 @@ function lines_fragment_shader(uniforms, attributes) {
     `;
 }
 
-function get_last_len(points, point_ndim, pvm, res, is_lines) {
-    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
-    if (points.length === 0) return new Float32Array(0);
-
-    const num_points = points.length / point_ndim;
-    const output = new Float32Array(num_points);
-    const scale = new THREE.Vector2(0.5 * res.x, 0.5 * res.y);
-
-    // Initial clip and prev calculation (scene offset skipped)
-    let clip = new THREE.Vector4(
-        points[point_ndim],
-        points[point_ndim + 1],
-        point_ndim === 3 ? points[point_ndim + 2] : 0,
-        1
-    ).applyMatrix4(pvm);
-    let prev = new THREE.Vector2(clip.x, clip.y)
-        .multiply(scale)
-        .divideScalar(clip.w);
-
-    // Initialize cumulative pixel scale length
-    output[0] = 0.0; // duplicated point
-    output[1] = 0.0; // start of first line segment
-    output[output.length - 1] = 0.0; // duplicated end point
-
-    let i = 2 * point_ndim; // start of first line segment
-    while (i < points.length) {
-        const x = points[i];
-        const y = points[i + 1];
-        const z = point_ndim === 3 ? points[i + 2] : 0;
-
-        if (
-            Number.isFinite(x) &&
-            Number.isFinite(y) &&
-            (point_ndim === 2 || Number.isFinite(z))
-        ) {
-            clip = new THREE.Vector4(x, y, z, 1).applyMatrix4(pvm);
-            const current = new THREE.Vector2(clip.x, clip.y)
-                .multiply(scale)
-                .divideScalar(clip.w);
-            const length = current.distanceTo(prev);
-            const point_index = i / point_ndim;
-            output[point_index] = output[point_index - 1] + length;
-            prev = current;
-            i += point_ndim;
-        } else {
-            // Handle NaN vertex section (NaN, A, B, C) does not contribute to line length
-            const point_index = i / point_ndim;
-            output[point_index] = 0.0;
-            output[point_index + 1] = 0.0;
-            if (i + 2 * point_ndim < points.length) {
-                output[Math.min(output.length - 1, point_index + 2)] = 0.0;
-                clip = new THREE.Vector4(
-                    points[i + 2 * point_ndim],
-                    points[i + 2 * point_ndim + 1],
-                    point_ndim === 3 ? points[i + 2 * point_ndim + 2] : 0,
-                    1
-                ).applyMatrix4(pvm);
-                prev = new THREE.Vector2(clip.x, clip.y)
-                    .multiply(scale)
-                    .divideScalar(clip.w);
-            }
-            i += 3 * point_ndim;
-        }
-    }
-
-    return output;
-}
 
 function create_line_material(uniforms_des, attributes, is_linesegments) {
     const mat = new THREE.RawShaderMaterial({
@@ -1206,7 +1139,84 @@ function unpack_array(array) {
     }
     return array;
 }
+function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
+    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+    if (points.length === 0) return new Float32Array(0);
 
+    const num_points = points.length / point_ndim;
+    const output = new Float32Array(num_points);
+    const scale = new THREE.Vector2(0.5 * res.x, 0.5 * res.y);
+
+    // Get the second point (index 1 in Julia's 1-based indexing = index 1 in our 0-based indexing)
+    const second_point_idx = 1 * point_ndim;
+    let clip = new THREE.Vector4(
+        points[second_point_idx],
+        points[second_point_idx + 1],
+        point_ndim === 3 ? points[second_point_idx + 2] : 0,
+        1
+    ).applyMatrix4(pvm);
+    let prev = new THREE.Vector2(clip.x, clip.y)
+        .multiply(scale)
+        .divideScalar(clip.w);
+
+    // Initialize cumulative pixel scale length
+    output[0] = 0.0; // duplicated point (Julia's output[1])
+    output[1] = 0.0; // start of first line segment (Julia's output[2])
+    output[output.length - 1] = 0.0; // duplicated end point (Julia's output[end])
+
+    // Start from point index 2 (Julia's i = 3, but 0-based)
+    let point_i = 2;
+    while (point_i < num_points) {
+        const array_idx = point_i * point_ndim;
+        const x = points[array_idx];
+        const y = points[array_idx + 1];
+        const z = point_ndim === 3 ? points[array_idx + 2] : 0;
+
+        if (
+            Number.isFinite(x) &&
+            Number.isFinite(y) &&
+            (point_ndim === 2 || Number.isFinite(z))
+        ) {
+            clip = new THREE.Vector4(x, y, z, 1).applyMatrix4(pvm);
+            const current = new THREE.Vector2(clip.x, clip.y)
+                .multiply(scale)
+                .divideScalar(clip.w);
+            const length = current.distanceTo(prev);
+            output[point_i] = output[point_i - 1] + length;
+            prev = current;
+            point_i += 1;
+        } else {
+            // Handle NaN vertex section (NaN, A, B, C) does not contribute to line length
+            output[point_i] = 0.0;
+            output[point_i + 1] = 0.0;
+            if (point_i + 2 < num_points) {
+                output[Math.min(output.length - 1, point_i + 2)] = 0.0;
+                const next_point_idx = (point_i + 2) * point_ndim;
+                clip = new THREE.Vector4(
+                    points[next_point_idx],
+                    points[next_point_idx + 1],
+                    point_ndim === 3 ? points[next_point_idx + 2] : 0,
+                    1
+                ).applyMatrix4(pvm);
+                prev = new THREE.Vector2(clip.x, clip.y)
+                    .multiply(scale)
+                    .divideScalar(clip.w);
+            }
+            point_i += 3;
+        }
+    }
+
+    return output;
+}
+
+function get_last_len( plot, points) {
+    const cam = plot.scene.wgl_camera;
+    const is_lines = !plot.is_segments;
+    const pvm = cam.projectionview.value;
+    const res = cam.resolution.value;
+    const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
+    return compute_lastlen(points, point_ndim, pvm, res, is_lines);
+}
 
 export function add_line_attributes(plot, attributes) {
     const new_data = {};
@@ -1223,7 +1233,15 @@ export function add_line_attributes(plot, attributes) {
         const points = get_points_view(val, lineindex, plot.ndims["positions_transformed_f32c"]);
         new_data["positions_transformed_f32c"] = pack_array(positions_transformed_f32c, points);
         new_data["lineindex"] = pack_array(positions_transformed_f32c, lineindex, 1);
-        new_data["lastlen"] = pack_array(positions_transformed_f32c, new Float32Array(points.length / 2).fill(0), 1);
+        new_data["lastlen"] = pack_array(
+            positions_transformed_f32c,
+            get_last_len(plot, points),
+            1
+        );
+    }
+
+    function is_uniform(key) {
+        return key in plot.deserialized_uniforms;
     }
 
     for (const [key, value] of Object.entries(attributes)) {
@@ -1232,8 +1250,7 @@ export function add_line_attributes(plot, attributes) {
             continue;
         }
         if (
-            (key === "line_color" || key === "uniform_linewidth") &&
-            !is_typed_array(val) // uniforms
+            (key === "line_color" || key === "uniform_linewidth") && is_uniform(key) // uniforms
         ) {
             new_data[key + "_start"] = value;
             new_data[key + "_end"] = value;
@@ -1267,7 +1284,10 @@ export function create_line(plot_object) {
         plot_object.is_segments
     );
     const material = create_line_material(
-        add_line_attributes(plot_object, plot_object.deserialized_uniforms),
+        add_line_attributes(
+            plot_object,
+            plot_object.deserialized_uniforms
+        ),
         geometry.attributes,
         plot_object.is_segments
     );

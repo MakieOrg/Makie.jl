@@ -372,6 +372,7 @@ end
 function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
     return nothing
 end
+
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes

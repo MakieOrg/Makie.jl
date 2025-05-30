@@ -125,6 +125,7 @@ export class Plot {
         const { geometry } = mesh;
         const { attributes, interleaved_attributes } = geometry;
         const { uniforms } = mesh.material;
+
         data.forEach(([key, value]) => {
             if (key in uniforms) {
                 this.update_uniform(key, value);
@@ -229,6 +230,7 @@ export class Lines extends Plot {
         this.is_instanced = true;
         // this will be filled with the ndims of the arrays in create_line (more specifically add_line_attributes)
         this.ndims = {};
+        this.scene = scene;
         this.mesh = create_line(this);
         this.init_mesh();
     }
