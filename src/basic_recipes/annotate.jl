@@ -154,6 +154,7 @@ be very close to their associated data points so connection plots are typically 
     labelspace = :relative_pixel
     linewidth = 1.0
     arrowsize = 8
+    algorithm = automatic
 end
 
 function closest_point_on_rectangle(r::Rect2, p)
@@ -216,8 +217,9 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
         [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
     end
 
-    onany(text_bbs, p.maxiter, p.labelspace; update = true) do text_bbs, maxiter, labelspace
+    onany(text_bbs, p.algorithm, p.maxiter, p.labelspace; update = true) do text_bbs, algorithm, maxiter, labelspace
         calculate_best_offsets!(
+            algorithm,
             txt.offset[],
             screenpoints_target[],
             screenpoints_label[],
@@ -235,6 +237,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
 
     on(p.__advance_optimization) do advance_optimization
         calculate_best_offsets!(
+            p.algorithm[],
             txt.offset[],
             screenpoints_target[],
             screenpoints_label[],
@@ -339,9 +342,21 @@ function distance_point_inside_rect(p::Point2, rect::Rect2)
     end
 end
 
-function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        repel_strength=0.1,
-        attract_strength=0.1,
+Base.@kwdef struct LabelRepel
+    repel::Float64 = 0.1
+    attract::Float64 = 0.1
+    padding::Vec2d = Vec2d(6, 5)
+end
+
+function calculate_best_offsets!(::Automatic, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+    maxiter::Int,
+    reset::Bool,
+    labelspace::Symbol,
+)
+    calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, reset, labelspace)
+end
+
+function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
         maxiter::Int,
         reset::Bool,
         labelspace::Symbol,
@@ -358,7 +373,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
     # TODO: make it so some positions can be fixed and others are not (NaNs)
 
     padding = Vec2d(6, 5)
-    # padding = Vec2d(0, 0)
+
     padded_bbs = map(text_bbs) do bb
         Rect2(bb.origin .- padding, bb.widths .+ 2padding)
     end
@@ -372,7 +387,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
             for j in i+1:length(offset_bbs)
                 bb1 = offset_bbs[i]
                 bb2 = offset_bbs[j]
-                overlap = repel_strength * rect_overlap(bb1, bb2)
+                overlap = algorithm.repel * rect_overlap(bb1, bb2)
                 offsets[i] -= overlap
                 offsets[j] += overlap
             end
@@ -383,7 +398,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
             bb = offset_bbs[i]
             target_pos = textpositions[i]
             diff = distance_point_outside_rect(target_pos, bb)
-            offsets[i] += attract_strength * diff
+            offsets[i] += algorithm.attract * diff
         end
 
         # Compute repulsive forces from all text positions
@@ -392,7 +407,7 @@ function calculate_best_offsets!(offsets::Vector{<:Vec2}, textpositions::Vector{
                 bb = offset_bbs[i]
                 target_pos = textpositions[j]
                 diff = distance_point_inside_rect(target_pos, bb)
-                offsets[i] += repel_strength * diff
+                offsets[i] += algorithm.repel * diff
             end
         end
        
