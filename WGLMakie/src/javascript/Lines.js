@@ -300,9 +300,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[0]) {
                     float offset = abs(extrusion[0]);
-                    left   = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start - offset), 0.0)).x;
-                    center = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start         ), 0.0)).x;
-                    right  = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start + offset), 0.0)).x;
+                    left   = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start - offset), 0.0)).x;
+                    center = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start         ), 0.0)).x;
+                    right  = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + offset), 0.0)).x;
 
                     // cases:
                     // ++-, +--, +-+ => elongate backwards
@@ -312,7 +312,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
                         // overwrite until one AA gap past the corner/joint
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (px_per_unit * lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         // using the sign of the center to decide between drawing or not drawing
                         f_pattern_overwrite.y = sign(center);
                     } else if (left > 0.0) {
@@ -323,7 +323,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.x = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (px_per_unit * lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         f_pattern_overwrite.y = sign(center);
                     }
 
@@ -331,13 +331,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[3]) {
                     float offset = abs(extrusion[1]);
-                    left   = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start + segment_length - offset), 0.0)).x;
-                    center = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start + segment_length         ), 0.0)).x;
-                    right  = width * texture(uniform_pattern, vec2(uv_scale * (lastlen_start + segment_length + offset), 0.0)).x;
+                    left   = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length - offset), 0.0)).x;
+                    center = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length         ), 0.0)).x;
+                    right  = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length + offset), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
-                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (px_per_unit * lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     } else if (left > 0.0) {
                         // shrink backwards
@@ -347,7 +347,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.y = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (px_per_unit * lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     }
                 }
@@ -641,7 +641,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 f_instance_id = lineindex_start + uint(1);
 
-                f_cumulative_length = lastlen_start;
+                f_cumulative_length = px_per_unit * lastlen_start;
 
                 // linecap + joinstyle
                 f_capmode = ivec2(
