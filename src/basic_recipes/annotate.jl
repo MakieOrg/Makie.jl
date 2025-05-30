@@ -154,6 +154,9 @@ be very close to their associated data points so connection plots are typically 
     labelspace = :relative_pixel
     linewidth = 1.0
     arrowsize = 8
+    """
+    The algorithm used to automatically place labels with reduced overlaps.
+    """
     algorithm = automatic
 end
 
@@ -962,7 +965,7 @@ function attribute_examples(::Type{Annotate})
             Example(
                 code = raw"""
                     fig = Figure()
-                    ax = Axis(fig[1, 1])
+                    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false)
                     shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
                     for (i, shrink) in enumerate(shrinks)
                         annotate!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
@@ -976,11 +979,11 @@ function attribute_examples(::Type{Annotate})
             Example(
                 code = raw"""
                     fig = Figure()
-                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3))
+                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
                     annotate!(-200, 0, 0, 0, style = Ann.Styles.Line())
-                    annotate!(-200, 0, 0, 1, style = Ann.Styles.LineArrow())
-                    annotate!(-200, 0, 0, 2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
-                    annotate!(-200, 0, 0, 3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line()))
+                    annotate!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
+                    annotate!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
+                    annotate!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
                     fig
                     """
             )
@@ -989,11 +992,12 @@ function attribute_examples(::Type{Annotate})
             Example(
                 code = raw"""
                     fig = Figure()
-                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3))
-                    annotate!(-200, 0, 0, 0, path = Ann.Paths.Line())
-                    annotate!(-200, 0, 0, 1, path = Ann.Paths.Arc(0.1))
-                    annotate!(-200, 0, 0, 2, path = Ann.Paths.Arc(0.3))
-                    annotate!(-200, -30, 0, 3, path = Ann.Paths.Corner())
+                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
+                    scatter!(ax, fill(0, 4), 0:-1:-3)
+                    annotate!(-200, 0, 0, 0, path = Ann.Paths.Line(), text = "Line()")
+                    annotate!(-200, 0, 0, -1, path = Ann.Paths.Arc(height = 0.1), text = "Arc(height = 0.1)")
+                    annotate!(-200, 0, 0, -2, path = Ann.Paths.Arc(height = 0.3), text = "Arc(height = 0.3)")
+                    annotate!(-200, 30, 0, -3, path = Ann.Paths.Corner(), text = "Corner()")
                     fig
                     """
             )
