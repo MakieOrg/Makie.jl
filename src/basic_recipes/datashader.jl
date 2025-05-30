@@ -470,8 +470,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     return p
 end
 
-data_limits(p::DataShader) = p.data_limits[]
-boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p.data_limits[])
+data_limits(p::DataShader)::Rect3d = p.data_limits[]
+boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
@@ -592,7 +592,7 @@ function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderCo
 end
 
 function data_limits(p::HeatmapShader)
-    return Rect3f(p.data_limits[])
+    return Rect3d(p.data_limits[])
 end
 
 function boundingbox(p::HeatmapShader, space::Symbol=:data)

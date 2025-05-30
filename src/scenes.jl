@@ -703,6 +703,7 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
+# Text is special, since it contains lines for latexstrings, but is still atomic itself
 is_atomic_plot(plot::Text) = true
 
 """

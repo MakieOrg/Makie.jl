@@ -1,5 +1,6 @@
 using Makie: register_computation!
 
+# Javascipt Plot type (there are only three right now)
 js_plot_type(plot::Makie.AbstractPlot) = "Mesh"
 js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
@@ -15,6 +16,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
 
     mesh[:overdraw] = plot.overdraw[]
     mesh[:transparency] = plot.transparency[]
+    mesh[:zvalue] = Makie.zvalue2d(plot)
     mesh[:space] = plot.space[]
 
     if haskey(plot, :markerspace)
@@ -115,17 +117,6 @@ function create_wgl_renderobject(callback, attr, inputs)
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
         end
-    end
-    listener = nothing
-    listener = on(attr.onchange) do _
-        if haskey(attr, :wgl_renderobject)
-            attr[:wgl_renderobject][]
-        else
-            if !isnothing(listener)
-                Observables.off(listener)
-            end
-        end
-        return nothing
     end
     return attr[:wgl_renderobject][]
 end
@@ -711,8 +702,6 @@ function create_lines_data(islines, attr)
         :uniforms => serialize_uniforms(uniforms),
         :attributes => attributes,
         :transparency => attr.transparency,
-        :overdraw => false, # TODO
-        :zvalue => 0,
     )
 end
 
@@ -751,5 +740,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     dict[:updater] = attr[:wgl_update_obs][]
     dict[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
     dict[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
+    dict[:overdraw] = plot.overdraw[]
+    dict[:zvalue] = Makie.zvalue2d(plot)
     return dict
 end

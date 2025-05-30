@@ -23000,7 +23000,7 @@ function deserialize_scene_recursive(data, screen) {
     update_cam(data.camera.value, true);
     camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
-    if (data.camera_relative_light) {
+    if (data.camera_relative_light.value) {
         scene.light_direction = camera.light_direction;
     } else {
         const light_dir = new mod.Vector3().fromArray(data.light_direction.value);

@@ -83,7 +83,7 @@ function boundingbox(plot::Scatter)
         clip_planes = plot.clip_planes[]
 
         bb = Rect3d()
-        for (i, p) in enumerate(point_iterator(plot))
+        for (i, p) in enumerate(plot.positions[])
             marker_pos = apply_transform_and_model(plot, p)
             if is_clipped(clip_planes, marker_pos)
                 continue
@@ -121,11 +121,17 @@ function boundingbox(plot::Scatter)
 end
 
 
-
 ################################################################################
-### transformed point iterator
+### point iterator
 ################################################################################
 
+function point_iterator(plot::AbstractPlot)
+    if haskey(plot, :positions)
+        return plot.positions[]
+    else
+        error("Generic point_iterator has been deprecated, now only plots with `plot.positions` defined implement it.")
+    end
+end
 
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 

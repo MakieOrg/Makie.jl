@@ -18,7 +18,7 @@ function Base.setindex!(plot::Plot, val, key::Int)
 end
 
 
-function data_limits(plot::Plot)
+function data_limits(plot::Plot)::Rect3d
     if haskey(plot, :data_limits)
         return plot.data_limits[]
     end
@@ -415,7 +415,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         asc = attrsyms(cycle)
         ps = palettesyms(cycle)
         # flatten to attribute -> palette
-        lookup = Dict([b for syms in asc for b in zip(syms, ps)])
+        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
         add_input!(attr, :palette_lookup, lookup)
         for (k, p) in lookup
             # If user explicitely passes values, we should not do anything
@@ -522,6 +522,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 
     attr = ComputeGraph()
     add_attributes!(P, attr, user_attributes)
+
     register_arguments!(P, attr, user_attributes, user_args)
     converted = attr[:converted][]
     ArgTyp = typeof(converted)

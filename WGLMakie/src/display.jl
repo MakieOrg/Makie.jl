@@ -81,6 +81,24 @@ function scene_already_displayed(screen::Screen, scene=screen.scene)
            js_uuid(screen.scene) in screen.displayed_scenes
 end
 
+function poll_all_plots(scene)
+    Makie.for_each_atomic_plot(scene) do p
+        try
+            haskey(p, :wgl_renderobject) &&p[:wgl_renderobject][]
+            yield()
+        catch e
+            @warn "Error accessing render object for plot $(typeof(p))" exception=(e, Base.catch_backtrace())
+        end
+    end
+end
+
+function start_polling_loop!(scene)
+    @async while !Makie.isclosed(scene)
+        poll_all_plots(scene)
+        sleep(1/100)
+    end
+end
+
 function render_with_init(screen::Screen, session::Session, scene::Scene)
     # Reference to three object which gets set once we serve this to a browser
     # Make sure it's a new Channel, since we may reuse the screen.
@@ -99,6 +117,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             if initialized == true
                 put!(screen.plot_initialized, true)
                 mark_as_displayed!(screen, scene)
+                start_polling_loop!(scene)
                 connect_post_init_events(screen, scene)
             else
                 # Will be an error from WGLMakie.js
@@ -327,6 +346,7 @@ function Makie.colorbuffer(screen::Screen)
         Base.display(screen, screen.scene)
     end
     session = get_screen_session(screen; error="Not able to show scene in a browser")
+    poll_all_plots(screen.scene)
     return session2image(session, screen.scene)
 end
 

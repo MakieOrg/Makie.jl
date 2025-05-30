@@ -8,7 +8,7 @@ Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text la
 
 By default each label is rotated parallel to the line between the bracket points.
 """
-@recipe Bracket begin
+@recipe Bracket (positions,) begin
     "The offset of the bracket perpendicular to the line from start to end point in screen units.
     The direction depends on the `orientation` attribute."
     offset = 0
@@ -122,7 +122,7 @@ function plot!(pl::Bracket)
     pl
 end
 
-data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl[1][])
+data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl.positions[])
 boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)

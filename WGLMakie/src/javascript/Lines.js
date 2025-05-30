@@ -1325,7 +1325,6 @@ export function create_line(plot_object) {
         geometry.attributes,
         plot_object.is_segments
     );
-
     material.depthTest = !plot_data.overdraw;
     material.depthWrite = !plot_data.transparency;
 

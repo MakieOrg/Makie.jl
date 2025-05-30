@@ -320,7 +320,11 @@ function add_computation!(attr, ::Val{:uniform_clip_planes}, target_space::Symbo
     target_space == :clip && push!(inputs, :projectionview)
 
     register_computation!(attr, inputs, [:uniform_clip_planes, :uniform_num_clip_planes]) do input, changed, last
-        output = isnothing(last) ? Vector{Vec4f}(undef, 8) : last.uniform_clip_planes
+        # TODO
+        # If we want to remove allocations
+        # we need to check what has changed manually, since is_same(input, last) will always return false
+        # So clip would be updated on any input change
+        output = zeros(Vec4f, 8)
         planes = input.clip_planes
         if target_space === :world
             return generate_clip_planes(planes, input.space, output)

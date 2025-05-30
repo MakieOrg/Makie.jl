@@ -47,31 +47,6 @@ function limits_with_marker_transforms(positions, scales, rotation, element_bbox
     return full_bbox[]
 end
 
-
-################################################################################
-### point_iterator
-################################################################################
-
-
-function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
-    return plot.positions[]
-end
-
-point_iterator(plot::Text) = point_iterator(plot.plots[1])
-function point_iterator(plot::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
-    return plot.position[]
-end
-
-point_iterator(mesh::GeometryBasics.AbstractMesh) = decompose(Point, mesh)
-point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
-
-# Fallback for other primitive plots, used in boundingbox
-point_iterator(plot::AbstractPlot) = point_iterator(data_limits(plot))
-
-# For generic usage
-point_iterator(bbox::Rect) = unique(decompose(Point3d, bbox))
-
-
 ################################################################################
 ### Utilities
 ################################################################################
@@ -156,17 +131,39 @@ function update_boundingbox(a::Rect{N}, b::Rect{N}) where N
     return Rect{N}(mini, maxi - mini)
 end
 
-@deprecate _update_rect(rect, point) update_boundingbox(rect, point) false
-
-
 foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
 # foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 # foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
+
 function foreach_plot(f, plot::Plot)
     if isempty(plot.plots)
         f(plot)
     else
         foreach_plot(f, plot.plots)
+    end
+end
+
+function for_each_atomic_plot(f, plot::Text)
+    f(plot)
+    f(plot.plots[1]) # linesegments for latex
+end
+
+function for_each_atomic_plot(f, plot::Plot)
+    if is_atomic_plot(plot)
+        f(plot)
+    else
+        for child in plot.plots
+            for_each_atomic_plot(f, child)
+        end
+    end
+end
+
+function for_each_atomic_plot(f, scene::Scene)
+    for child in scene.plots
+        for_each_atomic_plot(f, child)
+    end
+    for child in scene.children
+        for_each_atomic_plot(f, child)
     end
 end
