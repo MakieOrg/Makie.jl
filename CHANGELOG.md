@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Added new `annotate` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
+
 ## [0.22.7] - 2025-05-23
 
 - Fixed regression in the updating logic of `Legend` [#4979](https://github.com/MakieOrg/Makie.jl/pull/4979).
