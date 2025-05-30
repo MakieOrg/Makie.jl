@@ -19,9 +19,6 @@ using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
 using Markdown
 
-include("buildutils/deploydocs.jl")
-include("buildutils/redirect_generation.jl")
-
 # remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
 # is called somewhere, it's reactivated and slows down CI needlessly
 function GLMakie.renderloop(screen)
@@ -32,21 +29,6 @@ include("figure_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
 include("fake_interaction.jl")
-
-docs_url = "docs.makie.org"
-repo = "github.com/MakieOrg/Makie.jl.git"
-push_preview = true
-devbranch = "master"
-devurl = "dev"
-
-params = deployparameters(; repo, devbranch, devurl, push_preview)
-deploy_decision = Documenter.DeployDecision(;
-    params.all_ok,
-    params.branch,
-    params.is_preview,
-    params.repo,
-    params.subfolder,
-)
 
 function nested_filter(x, regex)
     _match(x::String) = match(regex, x) !== nothing
@@ -217,7 +199,6 @@ function make_docs(; pages)
             devbranch = "master",
             deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
             description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
-            deploy_decision,
         ),
         pages,
         expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
@@ -233,8 +214,7 @@ make_docs(;
 
 ##
 
-# DocumenterVitepress moves rendered files from `build/final_site` into `build` on CI by default, but not when running locally
-
+include("buildutils/redirect_generation.jl")
 generate_redirects([
     r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
     r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
@@ -249,4 +229,9 @@ generate_redirects([
     "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
 ], dry_run = false)
 
-deploy(params; target = "build")
+DocumenterVitepress.deploydocs(
+    repo = "github.com/MakieOrg/Makie.jl.git",
+    push_preview = true,
+    devbranch = "master",
+    devurl = "dev",
+)
