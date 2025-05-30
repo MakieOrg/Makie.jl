@@ -144,7 +144,7 @@ be very close to their associated data points so connection plots are typically 
     """
     The maximum number of iterations that the label placement algorithm is allowed to run.
     """
-    maxiter = 200
+    maxiter = automatic
     """
     The space in which the label positions are given. Can be `:relative_pixel` (the positions are given in
     screen space relative to the target data positions) or `:data`. If a text label should be positioned
@@ -189,6 +189,10 @@ end
 
 function Makie.convert_arguments(::Type{<:Annotate}, v::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
+end
+
+function Makie.convert_arguments(::Type{<:Annotate}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
+    return (Vec4d.(v1, v2, v3, v4),)
 end
 
 function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
@@ -349,18 +353,19 @@ Base.@kwdef struct LabelRepel
 end
 
 function calculate_best_offsets!(::Automatic, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-    maxiter::Int,
+    maxiter::Union{Automatic,Int},
     reset::Bool,
     labelspace::Symbol,
 )
-    calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, reset, labelspace)
-end
-
-function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        maxiter::Int,
-        reset::Bool,
-        labelspace::Symbol,
-    )
+    if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
+        error("""
+        Mismatching array sizes:
+            - offsets: $(length(offsets))
+            - textpositions: $(length(textpositions))
+            - textpositions_offset: $(length(textpositions_offset))
+            - text_bbs: $(length(text_bbs))
+        """)
+    end
 
     if reset
         offsets .= zero.(eltype(offsets))
@@ -371,11 +376,21 @@ function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2},
         return
     end
     # TODO: make it so some positions can be fixed and others are not (NaNs)
+    # giving one component of the position could be cool, like only x in data space, but this
+    # doesn't really work because projection into screen space needs x and y together
 
-    padding = Vec2d(6, 5)
+    calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, labelspace)
+end
+
+function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+        maxiter::Union{Automatic,Int},
+        labelspace::Symbol,
+    )
+
+    maxiter = maxiter === automatic ? 200 : maxiter
 
     padded_bbs = map(text_bbs) do bb
-        Rect2(bb.origin .- padding, bb.widths .+ 2padding)
+        Rect2(bb.origin .- algorithm.padding, bb.widths .+ 2 * algorithm.padding)
     end
     offset_bbs = copy(padded_bbs)
 
