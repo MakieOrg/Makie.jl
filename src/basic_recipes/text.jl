@@ -118,7 +118,7 @@ end
 function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
     isscalar(arg) && return fill(arg, last(last(glyphs)))
     result = Typ[]
-    per_glyph_attributes(glyphs, text_blocks, (arg,)) do g, a
+    per_glyph_attributes(text_blocks, (arg,)) do a
         push!(result, a)
     end
     return result
