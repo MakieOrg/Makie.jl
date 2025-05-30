@@ -63,13 +63,14 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
 end
 
 
-function per_glyph_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
+function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
     if isscalar(x)
         return x
     elseif isa(x, AbstractVector)
-        if length(x) == length(glyphs)
+        N_strings = length(text_blocks)
+        if (N_strings > 0) && (length(x) == last(last(text_blocks)))
             return x[gi] # use per glyph index
-        elseif length(x) == length(text_blocks)
+        elseif length(x) == N_strings
             return x[bi] # use per text block index
         else
             error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
@@ -79,14 +80,14 @@ function per_glyph_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitR
     end
 end
 
-function per_text_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, bi::Int)
+function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
     if isscalar(x)
         return x
     elseif isa(x, AbstractVector)
-        # data is per glyph
-        if length(x) == length(glyphs)
+        N_strings = length(text_blocks)
+        if (N_strings > 0) && (length(x) == last(last(text_blocks))) # data is per glyph
             return view(x, text_blocks[bi]) # use per glyph index
-        elseif length(x) == length(text_blocks)
+        elseif length(x) == N_strings
             return x[bi] # use per text block index
         else
             error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
@@ -96,29 +97,28 @@ function per_text_getindex(x, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRa
     end
 end
 
-function per_text_block(f, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, bi) = per_text_getindex(x, glyphs, text_blocks, bi)
+function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+    _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
     for block_idx in eachindex(text_blocks)
-        block = text_blocks[block_idx]
-        f(view(glyphs, block), _getindex.(args, block_idx)...)
+        f(_getindex.(args, block_idx)...)
     end
 end
 
-function per_glyph_attributes(f, glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, gi, bi) = per_glyph_getindex(x, glyphs, text_blocks, gi, bi)
+function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+    _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
     glyph_idx = 1
     for block_idx in eachindex(text_blocks)
         for _ in text_blocks[block_idx]
-            f(glyphs[glyph_idx], _getindex.(args, glyph_idx, block_idx)...)
+            f(_getindex.(args, glyph_idx, block_idx)...)
             glyph_idx += 1
         end
     end
 end
 
-function map_per_glyph(glyphs::Vector{UInt64}, text_blocks::Vector{UnitRange{Int}}, Typ, arg)
-    isscalar(arg) && return fill(arg, length(glyphs))
+function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
+    isscalar(arg) && return fill(arg, last(last(glyphs)))
     result = Typ[]
-    per_glyph_attributes(glyphs, text_blocks, (arg,)) do g, a
+    per_glyph_attributes(text_blocks, (arg,)) do a
         push!(result, a)
     end
     return result
@@ -377,7 +377,7 @@ function register_text_computations!(attr::ComputeGraph)
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
         pad = atlas.glyph_padding / atlas.pix_per_glyph
-        per_glyph_attributes(gi, text_blocks, (fonts, fontsize)) do g, f, fs
+        per_glyph_attributes(text_blocks, (gi, fonts, fontsize)) do g, f, fs
             bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
             quad_offset = Vec2f(minimum(bb) .- fs .* pad)
             quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
@@ -410,17 +410,19 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     register_colormapping!(attr)
     register_text_computations!(attr)
 
+    # glyphs scaled to fontsize with not string layouting
+    map!(gl_bboxes, attr, [:glyphindices, :text_scales, :glyph_extents], :gl_bboxes)
 
-    # TODO: naming...?
-    # markerspace bounding boxes of elements (i.e. each string passed to text)
-    register_computation!(attr, [:glyphindices, :text_blocks, :glyph_origins, :text_scales, :glyph_extents, :rotation], [:per_string_bb]) do args, changed, last
-        b_args = (args.glyph_origins, args.text_scales, args.glyph_extents, args.rotation)
+    # string bboxes with glyph layouting + rotation
+    register_computation!(attr, [:gl_bboxes, :text_blocks, :glyph_origins, :rotation], [:per_string_bb]) do args, changed, last
+        b_args = (args.gl_bboxes, args.glyph_origins, args.rotation)
         result = Rect3d[]
-        per_text_block(args.glyphindices, args.text_blocks, b_args) do glyphs, origins, fontsizes, extents, rotation # per text
-            push!(result, unchecked_boundingbox(glyphs, origins, fontsizes, extents, rotation))
+        per_text_block(args.text_blocks, b_args) do glyph_bbs, origins, rotation # per text
+            push!(result, unchecked_boundingbox(glyph_bbs, origins, rotation))
         end
         return (result,)
     end
+
     tex_linesegments!(plot)
 
     # TODO: There is a :position attribute and a :positions Computed (after dim converts)
@@ -493,18 +495,39 @@ end
     string_widths(plot::Text)
 
 Returns the markerspace size for each text element drawn by the given text plot.
-This is the width and height of the bounding box each individual glyph collection,
-in markerspace.
+This is the width and height of the bounding boxes of each individual glyph
+collection, with rotation.
 """
 string_widths(plot) = widths.(plot.per_string_bb[]) # These do not include positions
+
+"""
+    raw_string_widths(plot::Text)
+
+Returns the markerspace size for each text element drawn by the given text plot.
+This is the width and height of the bounding boxes of each individual glyph
+collection, without rotation.
+"""
+function raw_string_widths(plot)
+    register_computation!(plot.attributes, [:gl_bboxes, :text_blocks, :glyph_origins],
+            [:raw_per_string_bb]) do args, changed, last
+        b_args = (args.gl_bboxes, args.glyph_origins)
+        result = Rect3d[]
+        per_text_block(args.text_blocks, b_args) do glyph_bbs, origins
+            push!(result, unchecked_boundingbox(glyph_bbs, origins, Quaternionf(0,0,0,1)))
+        end
+        return (result,)
+    end
+
+    widths.(plot.raw_per_string_bb[])
+end
 
 """
     maximum_string_widths(plot::Text)
 
 Returns the maximum width, height and depth of each text element drawn by the
-given text plot.
+given text plot. This includes fontsize scaling but not text rotations.
 """
-maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), string_widths(plot), init = Vec3d(0))
+maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), raw_string_widths(plot), init = Vec3d(0))
 
 function register_per_string_boundingboxes!(plot::Text)
     register_computation!(
