@@ -30,8 +30,10 @@ end
     st = Stepper(fig)
     Makie.step!(st)
     on(points) do pts
-        pl[1].val = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[])
-        pl.color.val = map(p->RGBf(normalize(p)...), points[])
+        Makie.update!(pl,
+            arg1 = map(p->Makie.normal_mesh(Sphere(p, 0.2)), points[]),
+            color = map(p->RGBf(normalize(p)...), points[])
+        )
         notify(pl[1])
     end
 
@@ -201,12 +203,15 @@ end
     f
     img1 = copy(colorbuffer(f; px_per_unit=1))
     plots = [pl1, pl2, pl3, pl4]
-    get_listener_lengths() = map(plots) do x
-        arg_l = length(x[1].listeners)
-        attr_l = length(x.color.listeners)
-        return [arg_l, attr_l]
-    end
-    listener_lengths_1 = get_listener_lengths()
+
+    # TODO what memory leak to check here?
+
+    # get_listener_lengths() = map(plots) do x
+    #     arg_l = length(x[1].listeners)
+    #     attr_l = length(x.color.listeners)
+    #     return [arg_l, attr_l]
+    # end
+    # listener_lengths_1 = get_listener_lengths()
 
     ax2 = Axis(f[1, 2]; title="Axis 2")
     ls = LScene(f[2, :]; show_axis=false)
@@ -220,7 +225,7 @@ end
     pl3.colormap = :inferno
     pl3.markersize = 1
 
-    @test listener_lengths_1 == get_listener_lengths()
+    # @test listener_lengths_1 == get_listener_lengths()
 
     img2 = copy(colorbuffer(f; px_per_unit=1))
     @test length(ax.scene.plots) == 1
@@ -246,7 +251,7 @@ end
 
     img3 = copy(colorbuffer(f; px_per_unit=1))
 
-    @test listener_lengths_1 == get_listener_lengths()
+    # @test listener_lengths_1 == get_listener_lengths()
 
     imgs = hcat(rotr90.((img1, img2, img3))...)
     s = Scene(; size=size(imgs))
@@ -265,16 +270,19 @@ end
 	surface(f[1, 3],
         map((X, Y) -> [x for x in X, y in Y], X, Y),
         map((X, Y) -> [y for x in X, y in Y], X, Y), Z)
+    f
     st = Stepper(f)
     Makie.step!(st)
 
     X.val = -5:0
     Z.val = Z.val[1:6, :]
+    notify(X)
     notify(Z)
     Makie.step!(st)
 
     X.val = -5:5
     Z.val = [0.01 * x*x * y*y for x in X.val, y in Y.val]
+    notify(X)
     notify(Z)
     Makie.step!(st)
 end

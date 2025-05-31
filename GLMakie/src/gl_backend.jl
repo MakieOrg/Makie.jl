@@ -50,10 +50,9 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         function callback(distance_field, rectangle)
             ctx = tex.context
             if GLAbstraction.context_alive(ctx)
-                prev_ctx = GLAbstraction.current_context()
-                ShaderAbstractions.switch_context!(ctx)
-                tex[rectangle] = distance_field
-                ShaderAbstractions.switch_context!(prev_ctx)
+                GLAbstraction.with_context(ctx) do
+                    tex[rectangle] = distance_field
+                end
             end
         end
         Makie.font_render_callback!(callback, atlas)
@@ -77,4 +76,5 @@ include("picking.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
+include("new-primitives.jl")
 include("display.jl")

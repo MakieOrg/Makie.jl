@@ -122,7 +122,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (colormap, levels, linewidth, alpha)
     valuerange = lift(nan_extrema, plot, volume)
-    cliprange = replace_automatic!(()-> valuerange, plot, :colorrange)
+    cliprange = map((v, default) -> ifelse(v === automatic, default, v), plot, plot.colorrange, valuerange)
     cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
@@ -148,27 +148,10 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-    attr = copy(Attributes(plot))
-
-    attr[:colorrange] = cliprange
-    attr[:colormap] = cmap
-    attr[:algorithm] = 7
-    pop!(attr, :levels)
-    pop!(attr, :alpha) # don't apply alpha 2 times
-
-    # unused attributes
-    pop!(attr, :labels)
-    pop!(attr, :labelfont)
-    pop!(attr, :labelsize)
-    pop!(attr, :labelcolor)
-    pop!(attr, :labelformatter)
-    pop!(attr, :color)
-    pop!(attr, :linestyle)
-    pop!(attr, :linewidth)
-    pop!(attr, :linecap)
-    pop!(attr, :joinstyle)
-    pop!(attr, :miter_limit)
-    volume!(plot, attr, x, y, z, volume)
+    volume!(
+        plot, Attributes(plot), x, y, z, volume, alpha = 1.0, # don't apply alpha 2 times
+        algorithm = 7, colorrange = cliprange, colormap = cmap
+    )
 end
 
 color_per_level(color, args...) = color_per_level(to_color(color), args...)
@@ -193,7 +176,6 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
         RGBAf(color(c), alpha(c) * a)
     end
 end
-
 
 function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
     # Compute contours
@@ -229,14 +211,20 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-
-    replace_automatic!(()-> zrange, plot, :colorrange)
+    colorrange = lift(plot.colorrange, zrange) do crange, zrange
+        if crange === automatic
+            return zrange
+        else
+            return crange
+        end
+    end
 
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
-    args = @extract plot (color, colormap, colorscale, colorrange, alpha)
-    level_colors = lift(color_per_level, plot, args..., levels)
+    args = @extract plot (color, colormap, colorscale)
+    level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
+
     old_values = map(copy, arg_values)
     points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values=true)
     onany(plot, args...) do args...
@@ -254,10 +242,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     texts = text!(
         plot,
-        Observable(P[]);
-        color = Observable(RGBA{Float32}[]),
-        rotation = Observable(Float32[]),
-        text = Observable(String[]),
+        P[];
+        color = RGBA{Float32}[],
+        rotation = Float32[],
+        text = String[],
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
@@ -268,10 +256,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions[]; empty!(pos)
-        rot = texts.rotation[]; empty!(rot)
-        col = texts.color[]; empty!(col)
-        lbl = texts.text[]; empty!(lbl)
+        pos = P[]
+        rot = Quaternionf[]
+        col = RGBAf[]
+        lbl = String[]
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
@@ -284,41 +272,31 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
                 rot_from_horz
             end
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
-            push!(rot, rot_from_vert)
+            push!(rot, to_rotation(rot_from_vert))
             push!(lbl, labelformatter(lev))
             p = p2  # try to position label around center
             isnan(p) && (p = p1)
             isnan(p) && (p = p3)
             push!(pos, p)
         end
-        notify(texts.text)
+        update!(texts, arg1 = pos, rotation = rot, color = col, text = lbl)
         return
     end
 
-    bboxes = lift(plot, labels, texts.text; ignore_equal_values=true) do labels, _
-        labels || return
-        return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
-            # drop the depth component of the bounding box for 3D
-            px_pos = project(scene, apply_transform(transform_func(plot), pt))
-            bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
-            isfinite_rect(bb) || return Rect2f()
-            Rect2f(bb)
-        end
-    end
+    bboxes = per_string_boundingboxes_obs(texts)
 
     masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
         n = 1
-        bb = bboxes[n]
+        bb = Rect2(bboxes[n])
         nlab = length(bboxes)
         masked = copy(segments)
         nan = P(NaN32)
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
-                bb = bboxes[n += 1]  # next segment is materialized by a NaN, thus consider next label
-                # wireframe!(plot, bb, space = :pixel)  # toggle to debug labels
+                bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
             elseif project(scene, apply_transform(transform_func(plot), p)) in bb
                 masked[i] = nan
                 for dir in (-1, +1)
@@ -350,6 +328,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         depth_shift=plot.depth_shift,
         space=plot.space
     )
+
+    # toggle to debug labels
+    # wireframe!(plot, map(bbs -> merge(map(GeometryBasics.mesh, bbs)), bboxes), space = :pixel)
+
     plot
 end
 
@@ -359,10 +341,8 @@ function data_limits(plot::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     maxi = Vec3d(last.(mini_maxi)..., 0)
     return Rect3d(mini, maxi .- mini)
 end
-function boundingbox(plot::Contour{<: Tuple{X, Y, Z}}, space::Symbol = :data) where {X, Y, Z}
+
+function boundingbox(plot::Union{Contour, Contour3d}, space::Symbol = :data)
     return apply_transform_and_model(plot, data_limits(plot))
 end
-# TODO: should this have a data_limits overload?
-function boundingbox(plot::Contour3d, space::Symbol = :data)
-    return apply_transform_and_model(plot, data_limits(plot))
-end
+

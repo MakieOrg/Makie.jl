@@ -59,7 +59,7 @@ using MakieCore: should_dim_convert
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-MakieCore.should_dim_convert(::Type{<:Real}) = true
+MakieCore.should_dim_convert(::Type{<:Real}) = false
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
@@ -86,6 +86,7 @@ function get_conversions(ax::AbstractAxis)
         return nothing
     end
 end
+
 function get_conversions(plot::Plot)
     if haskey(plot.kw, :dim_conversions)
         return to_value(plot.kw[:dim_conversions])
@@ -172,6 +173,17 @@ function needs_tick_update_observable(conversion::Observable)
     else
         return needs_tick_update_observable(conversion[])
     end
+end
+
+convert_dim_value(conv, attr, value, last_value) = value
+
+function update_dim_conversion!(conversions::DimConversions, dim, value)
+    conversion = conversions[dim]
+    if !(conversion isa Union{Nothing,NoDimConversion})
+        return
+    end
+    c = dim_conversion_from_args(value)
+    conversions[dim] = c
 end
 
 function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)

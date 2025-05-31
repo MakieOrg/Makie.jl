@@ -14,7 +14,7 @@ To see what parameters are applicable, have a look at the [scene docs](@ref Scen
 ```@figure backend=GLMakie
 
 fig = Figure()
-pl = PointLight(Point3f(0), RGBf(20, 20, 20))
+pl = PointLight(RGBf(20, 20, 20), Point3f(0))
 al = AmbientLight(RGBf(0.2, 0.2, 0.2))
 lscene = LScene(fig[1, 1], show_axis=false, scenekw = (lights = [pl, al], backgroundcolor=:black, clear=true))
 # now you can plot into lscene like you're used to

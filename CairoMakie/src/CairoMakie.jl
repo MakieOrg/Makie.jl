@@ -13,6 +13,8 @@ using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: numbers_to_colors
 using Makie: Mat3f, Mat4f, Mat3d, Mat4d
+using Makie: sv_getindex
+using Makie: compute_colors
 
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
@@ -28,6 +30,7 @@ include("display.jl")
 include("infrastructure.jl")
 include("utils.jl")
 include("primitives.jl")
+include("new_primitives.jl")
 include("overrides.jl")
 
 function __init__()

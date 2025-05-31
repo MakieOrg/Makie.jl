@@ -18,8 +18,11 @@ flat in int plane_dim;
 flat in int plane_front;
 #endif
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec4 uniform_clip_planes[8];
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 vec4 debug_color(uint id) {
     return vec4(
@@ -50,7 +53,7 @@ mat3x2 get_uv_transform_mat(sampler3D uv_transform, int id, int side) {
 
 
 vec4 get_color_from_texture(sampler2D color, int id) {
-    mat3x2 uvt = get_uv_transform_mat(uv_transform, id, o_side);
+    mat3x2 uvt = get_uv_transform_mat(wgl_uv_transform, id, o_side);
     // compute uv normalized to voxel
     // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
     vec2 voxel_uv = mod(o_tex_uv, 1.0);
@@ -105,7 +108,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -117,9 +120,9 @@ bool is_clipped()
     // get center pos of this voxel
     vec3 size = vec3(textureSize(voxel_id, 0).xyz);
     vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance between clip plane and voxel center
-        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d = dot(xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
         if (d < 0.0)
             return true;
     }
@@ -161,7 +164,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(color, color_map, uv_transform, id);
+    vec4 voxel_color = get_color(wgl_color, wgl_colormap, wgl_uv_transform, id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)
@@ -170,9 +173,9 @@ void main()
 #endif
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 light = blinnphong(o_normal, normalize(o_camdir), L, voxel_color.rgb);
-        voxel_color.rgb = get_ambient() * voxel_color.rgb + light;
+        voxel_color.rgb = ambient * voxel_color.rgb + light;
     }
 
     if (picking) {

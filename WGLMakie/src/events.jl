@@ -131,9 +131,7 @@ function connect_post_init_events(screen, scene)
     Makie.start!(screen.tick_clock) do timer
         if !Makie.isclosed(scene)
             tick_callback(Makie.RegularRenderTick)
-            # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
-            # @info "stopping $key"
             Makie.stop!(timer)
             e.window_open[] = false
         end

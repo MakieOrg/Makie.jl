@@ -177,11 +177,11 @@ Instead you need to index into `p.args`.
 
 ```@figure backend=GLMakie
 f, a, p = voxels(ones(8,8,8), colorrange = (0, 1))
-p.args[end][] = rand(8,8,8)
+p.arg1 = rand(8,8,8)
 f
 ```
 
-Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.converted[4]`) and the texture on gpu.
+Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.converted[][4]`) and the texture on gpu.
 This can be quite slow and wasteful if you only want to update a small section of a large chunk.
 In that case you should instead update your input data without triggering an update (using `obs.val`) and then call `local_update(plot, is, js, ks)` to process the update:
 
@@ -189,7 +189,8 @@ In that case you should instead update your input data without triggering an upd
 chunk = Observable(rand(64, 64, 64))
 f, a, p = voxels(chunk, colorrange = (0, 1))
 chunk.val[30:34, :, :] .= NaN # or p.args[end].val
-Makie.local_update(p, 30:34, :, :)
+# TODO bring back
+# Makie.local_update(p, 30:34, :, :)
 f
 ```
 

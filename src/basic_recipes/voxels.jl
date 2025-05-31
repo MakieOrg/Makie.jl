@@ -1,117 +1,122 @@
-function Makie.convert_arguments(T::Type{<:Voxels}, chunk::Array{<: Real, 3})
-    X, Y, Z = map(x-> (-0.5*x, 0.5*x), size(chunk))
-    return convert_arguments(T, X, Y, Z, chunk)
+#=
+Backend Implementation Notes
+- lowclip, highclip are built into colormap
+- colorrange should not be fetched, use static (1, 255)
+- voxel_colormap is only defined if colormapping is used
+- colors is only define dif 1:1 mapping is used
+
+- x, y, z, chunk_u8 is output data
+
+renamed _limtis -> value_limits
+=#
+
+# TODO: Bad workaround for now
+MakieCore.argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
+conversion_trait(::Type{Voxels}, args...) = Voxels
+
+function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
+    X, Y, Z = map(x -> EndPoints(-0.5*x, 0.5*x), size(chunk))
+    return (X, Y, Z, chunk)
 end
 
-function convert_arguments(T::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
+function convert_arguments(::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
     xi = Float32.(to_endpoints(xs, "x", Voxels))
     yi = Float32.(to_endpoints(ys, "y", Voxels))
     zi = Float32.(to_endpoints(zs, "z", Voxels))
-    return convert_arguments(T, xi, yi, zi, chunk)
-end
-
-function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints, zs::EndPoints,
-                           chunk::Array{<:Real,3})
-    return (xs, ys, zs, Array{UInt8, 3}(undef, to_ndim(Vec3{Int}, size(chunk), 1)...))
+    return (xi, yi, zi, chunk)
 end
 
 function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
-                           zs::EndPoints, chunk::Array{UInt8,3})
+                           zs::EndPoints, chunk::Array{<: Real,3})
     return (xs, ys, zs, chunk)
 end
 
-function calculated_attributes!(::Type{<:Voxels}, plot)
-    if !isnothing(plot.color[])
-        cc = lift(plot, plot.color, plot.alpha) do color, a
-            if color isa AbstractVector
+function register_voxel_conversions!(attr)
+
+    register_computation!(attr, [:chunk, :colorrange, :is_air], [:value_limits]) do (chunk, colorrange, is_air), changed, cached
+        colorrange !== automatic && return (colorrange,)
+
+        mini, maxi = (Inf, -Inf)
+        for elem in chunk
+            is_air(elem) && continue
+            mini = min(mini, elem)
+            maxi = max(maxi, elem)
+        end
+        if !(isfinite(mini) && isfinite(maxi) && isa(mini, Real))
+            throw(ArgumentError("Voxel Chunk contains invalid data, resulting in invalid limits ($mini, $maxi)."))
+        end
+        return ((mini, maxi),)
+    end
+
+    register_computation!(attr, [:value_limits, :is_air, :colorscale, :chunk],
+            [:chunk_u8]) do (lims, is_air, scale, chunk), changed, last
+
+        # No conversions necessary so no new array necessary. Should still
+        # propagate updates though
+        chunk isa Array{UInt8, 3} && return (chunk, )
+
+        chunk_u8 = isnothing(last) ? Array{UInt8, 3}(undef, size(chunk)) : last.chunk_u8
+
+        mini, maxi = apply_scale(scale, lims)
+        maxi = max(mini + 10eps(float(mini)), maxi)
+        @inbounds for i in eachindex(chunk)
+            _update_voxel(chunk_u8, chunk, i, is_air, scale, mini, maxi)
+        end
+
+        return (chunk_u8,)
+    end
+end
+
+# TODO: Does have some overlap with the normal version...
+function register_voxel_colormapping!(attr)
+    # TODO: Is resolving this immediately fine?
+    if isnothing(attr[:color][])
+        register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
+            N = 253 + (lowclip === automatic) + (highclip === automatic)
+            cm = add_alpha.(resample_cmap(cmap, N), alpha)
+            if lowclip !== automatic
+                cm = [to_color(lowclip); cm]
+            end
+            if highclip !== automatic
+                cm = [cm; to_color(highclip)]
+            end
+            return (cm,)
+        end
+    else
+        register_computation!(attr, [:color, :alpha], [:voxel_color]) do (color, alpha), changed, cached
+            if color isa AbstractVector # one color per id
                 output = Vector{RGBAf}(undef, 255)
                 @inbounds for i in 1:min(255, length(color))
-                    c = to_color(color[i])
-                    output[i] = RGBAf(Colors.color(c), Colors.alpha(c) * a)
+                    output[i] = add_alpha(to_color(color[i]), alpha)
                 end
                 for i in min(255, length(color))+1 : 255
                     output[i] = RGBAf(0,0,0,0)
                 end
-            elseif color isa AbstractArray
-                output = similar(color, RGBAf)
-                @inbounds for i in eachindex(color)
-                    c = to_color(color[i])
-                    output[i] = RGBAf(Colors.color(c), Colors.alpha(c) * a)
-                end
+                return (output,)
+            elseif color isa AbstractArray # image/texture
+                output = add_alpha.(to_color.(color), alpha)
+                return (output,)
+            elseif color isa Colorant # static
+                c = add_alpha(to_color(color), alpha)
+                output = [c for _ in 1:255]
+                return (output,)
             else
-                c = to_color(color)
-                output = [RGBAf(Colors.color(c), Colors.alpha(c) * a) for _ in 1:255]
+                error("Invalid color type $(typeof(color))")
             end
-            return output
         end
-        attributes(plot.attributes)[:calculated_colors] = cc
-
-    else
-
-        # ...
-        dummy_data = Observable(UInt8[1, 255])
-
-        # Always sample N colors
-        cmap = lift(plot, plot.colormap, plot.lowclip, plot.highclip) do cmap, lowclip, highclip
-            cm = if cmap isa Vector && length(cmap) != 255
-                resample_cmap(cmap, 253)
-            else
-                categorical_colors(cmap, 253)
-            end
-            lc = lowclip === automatic ? first(cm) : to_color(lowclip)
-            hc = highclip === automatic ? last(cm) : to_color(highclip)
-            return [lc; cm; hc]
-        end
-
-        # always use 1..N
-        colorrange = Observable(Vec2f(1, 255))
-
-        # Needs to happen in voxel id generation
-        colorscale = Observable(identity)
-
-        # We always treat nan as air, invalid
-        nan_color = Observable(:transparent)
-
-        # TODO: categorical?
-        attributes(plot.attributes)[:calculated_colors] = ColorMapping(
-            dummy_data[], dummy_data, cmap, colorrange, colorscale,
-            plot.alpha, plot.lowclip, plot.highclip, nan_color
-        )
 
     end
-
-    return nothing
 end
 
-"""
-    local_update(p::Voxels, i, j, k)
-
-Updates a section of the Voxel plot given by indices i, j, k (Integer, UnitRange
-or Colon()) according to the data present in `p.args[end]`.
-
-This is used to avoid updating the whole chunk with a pattern such as
-```
-p.args[end].val[20:30, 7:10, 8] = new_data
-local_update(plot, 20:30, 7:10, 8)
-```
-"""
-function local_update(plot::Voxels, is, js, ks)
-    to_range(N, i::Integer) = i:i
-    to_range(N, r::UnitRange) = r
-    to_range(N, ::Colon) = 1:N
-    to_range(N, x::Any) = throw(ArgumentError("Indices can't be converted to a range representation ($x)"))
-
-    _size = size(plot.converted[end].val)
-    is, js, ks = to_range.(_size, (is, js, ks))
-
-    mini, maxi = apply_scale(plot.colorscale[], plot._limits[])
-    input = plot.args[end][]
-    for k in ks, j in js, i in is
-        idx = i + _size[1] * ((j-1) + _size[2] * (k-1))
-        _update_voxel(plot.converted[end].val, input, idx, plot.is_air[], plot.colorscale[], mini, maxi)
+function calculated_attributes!(::Type{Voxels}, plot::Plot)
+    attr = plot.attributes
+    register_voxel_conversions!(attr)
+    register_voxel_colormapping!(attr)
+    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+        mini, maxi = Vec3.(x, y, z)
+        return (Rect3d(mini, maxi .- mini),)
     end
-    plot._local_update[] = (is, js, ks)
-    return nothing
+    return
 end
 
 Base.@propagate_inbounds function _update_voxel(
@@ -139,72 +144,6 @@ Base.@propagate_inbounds function _update_voxel(
         is_air::Function, scale, mini::Real, maxi::Real
     )
     return nothing
-end
-
-function plot!(plot::Voxels)
-    # Internal attribute for keeping track of `extrema(chunk)`.
-    plot.attributes[:_limits] = Observable((0.0, 1.0))
-    # Internal attribute for communicating updates to the backend.
-    plot.attributes[:_local_update] = Observable((0:0, 0:0, 0:0))
-
-    # If a UInt8 Array is passed we don't do any mapping between plot.args and
-    # plot.converted. Instead we just set plot.converted = plot.args in
-    # convert_arguments
-    if eltype(plot.args[end][]) == UInt8
-        plot._limits[] = (1, 255)
-        return
-    else
-        # Disconnect automatic mapping
-        # I want to avoid recalculating limits every time the input is updated.
-        # Maybe this can be done with conversion kwargs...?
-        off(plot.args[end], plot.args[end].listeners[1][2])
-    end
-
-
-    # Use new mapping that doesn't recalculate limits
-    onany(plot, plot._limits, plot.is_air, plot.colorscale) do lims, is_air, scale
-        # _limits always triggers after plot.args[1]
-        chunk = plot.args[end][]
-        output = plot.converted[end]
-
-        # TODO: Julia doesn't allow this
-        # maybe resize
-        # if size(chunk) != size(output.val)
-        #     resize!(output.val, size(chunk))
-        # end
-
-        # update voxel ids
-        mini, maxi = apply_scale(scale, lims)
-        maxi = max(mini + 10eps(float(mini)), maxi)
-        @inbounds for i in eachindex(chunk)
-            _update_voxel(output.val, chunk, i, is_air, scale, mini, maxi)
-        end
-
-        # trigger converted
-        notify(output)
-
-        return
-    end
-
-    # Initial limits
-    lift!(plot, plot._limits, plot.args[end], plot.colorrange) do data, colorrange
-        if colorrange !== automatic
-            return colorrange
-        end
-
-        mini, maxi = (Inf, -Inf)
-        for elem in data
-            plot.is_air[](elem) && continue
-            mini = min(mini, elem)
-            maxi = max(maxi, elem)
-        end
-        if !(isfinite(mini) && isfinite(maxi) && isa(mini, Real))
-            throw(ArgumentError("Voxel Chunk contains invalid data, resulting in invalid limits ($mini, $maxi)."))
-        end
-        return (mini, maxi)
-    end
-
-    return
 end
 
 pack_voxel_uv_transform(uv_transform::Nothing) = nothing
@@ -239,19 +178,17 @@ function uvmap_to_uv_transform(uvmap::Array)
     end
 end
 
-
+# TODO: for CairoMakie
 
 function voxel_size(p::Voxels)
-    mini = minimum.(to_value.(p.converted[1:3]))
-    maxi = maximum.(to_value.(p.converted[1:3]))
-    _size = size(p.converted[4][])
-    return Vec3f((maxi .- mini) ./ _size .- convert_attribute(p.gap[], key"gap"(), key"voxels"()))
+    mini, maxi = extrema(data_limits(p))
+    _size = size(p.chunk[])
+    return Vec3f((maxi .- mini) ./ _size .- p.gap[])
 end
 
 function voxel_positions(p::Voxels)
-    mini = minimum.(to_value.(p.converted[1:3]))
-    maxi = maximum.(to_value.(p.converted[1:3]))
-    voxel_id = p.converted[4][]
+    mini, maxi = extrema(data_limits(p))
+    voxel_id = p.chunk_u8[]
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
@@ -262,15 +199,14 @@ function voxel_positions(p::Voxels)
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.converted[4][]
-    colormapping = p.calculated_colors[]
+    voxel_id = p.chunk_u8[]
     uv_map = p.uvmap[]
     if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"
-    elseif colormapping isa ColorMapping
-        color = colormapping.colormap[]
+    elseif haskey(p, :voxel_colormap)
+        color = p.voxel_colormap[]
     else
-        color = colormapping
+        color = p.voxel_color[]
     end
 
     return [color[id] for id in voxel_id if id !== 0x00]

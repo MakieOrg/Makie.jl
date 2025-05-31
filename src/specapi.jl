@@ -9,6 +9,9 @@ function symbol_to_specable(sym::Symbol)
     return MakieCore.symbol_to_plot(sym)
 end
 
+deref(x) = x
+deref(x::Base.RefValue) = x[]
+
 """
     PlotSpec(plottype, args...; kwargs...)
 
@@ -48,7 +51,7 @@ struct PlotSpec
                     # So on error we don't convert for now via try catch
                     # Since we also dont have an API to figure out if a convert is defined correctly
                     # TODO, I think we can do this more elegantly but will need a bit of a convert_attribute refactor
-                    kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+                    kw[k] = deref(convert_attribute(v, Key{k}(), Key{type}()))
                 catch e
                     kw[k] = v
                 end
@@ -420,16 +423,15 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
+    updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        arg_obs = plot.args[i]
         prev_val = oldspec.args[i]
         if is_different(prev_val, spec.args[i]) # only update if different
-            arg_obs.val = spec.args[i]
-            push!(obs_to_notify, arg_obs)
+            updates[Symbol(:arg, i)] = spec.args[i]
         end
     end
     scene = parent_scene(plot)
@@ -438,13 +440,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         old_attr = plot[attribute]
         # only update if different
         if is_different(old_attr[], new_value)
-            if new_value isa Cycled
-                old_attr.val = to_color(scene, attribute, new_value)
-            else
-                @debug("updating kw $attribute")
-                old_attr.val = new_value
-            end
-            push!(obs_to_notify, old_attr)
+            updates[attribute] = new_value
         end
     end
 
@@ -452,40 +448,17 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
     filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
     if !isempty(reset_to_default)
         for k in reset_to_default
-            old_attr = plot[k]
+            old_attr = plot[k][]
             new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
             # In case of e.g. dim_conversions
             isnothing(new_value) && continue
             # only update if different
-            if is_different(old_attr[], new_value)
-                old_attr.val = new_value
-                push!(obs_to_notify, old_attr)
+            if is_different(old_attr, new_value)
+                updates[k] = new_value
             end
         end
     end
-    # Cycling needs to be handled separately sadly,
-    # since they're implicitly mutating attributes, e.g. if I reuse a plot
-    # that has been on cycling position 2, and now I reuse it for the first plot in the list
-    # it will need to change to the color of cycling position 1
-    if haskey(plot, :cycle)
-        cycle = get_cycle_for_plottype(plot.cycle[])
-        uncycled = Set{Symbol}()
-        for (attr_vec, _) in cycle.cycle
-            for attr in attr_vec
-                if !haskey(spec.kwargs, attr)
-                    push!(uncycled, attr)
-                end
-            end
-        end
-        if !isempty(uncycled)
-            # remove all attributes that don't need cycling
-            for (attr_vec, _) in cycle.cycle
-                filter!(x -> x in uncycled, attr_vec)
-            end
-            add_cycle_attribute!(plot, scene, cycle)
-            append!(obs_to_notify, (plot[k] for k in uncycled))
-        end
-    end
+    update!(plot, updates)
     return
 end
 
@@ -580,19 +553,28 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
+
+function get_plot_position(specs, spec::PlotSpec)
+    pos = 1
+    for p in specs
+        p == spec && return pos
+        if p.type === spec.type
+            pos += 1
+        end
+    end
+    return pos + 1
+end
+
 function diff_plotlist!(
         scene::Scene, plotspecs::Vector{PlotSpec},
-        obs_to_notify,
         plotlist::Union{Nothing,PlotList}=nothing,
         reusable_plots = IdDict{PlotSpec, Plot}(),
         new_plots = IdDict{PlotSpec,Plot}())
-     # needed to be mutated
-    empty!(scene.cycler.counters)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
-    for plotspec in plotspecs
+    for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
         # Forward kw arguments from Plotlist
@@ -621,7 +603,9 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
-            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+            # Update the position of the plot!
+            reused_plot.plot_position = get_plot_position(plotspecs, plotspec)
+            update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
         end
@@ -640,16 +624,14 @@ function update_plotspecs!(
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    obs_to_notify = Observable[]
     update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
-        empty!(scene.cycler.counters) # Reset Cycler
         # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
-        diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
+        diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
         if own_plots
@@ -664,10 +646,7 @@ function update_plotspecs!(
             empty!(unused_plots)
             merge!(unused_plots, new_plots)
             empty!(new_plots)
-            # finally, notify all changes at once
         end
-        foreach(notify, obs_to_notify)
-        empty!(obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
@@ -682,7 +661,8 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
-    update_plotspecs!(scene, p[1], p)
+    obs = map(first, ComputePipeline.get_observable!(p.converted))
+    update_plotspecs!(scene, obs, p)
     return p
 end
 
@@ -807,10 +787,6 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         if is_different(val, prev_val)
             setproperty!(block, key, val)
         end
-    end
-    # Reset the cycler
-    if hasproperty(block, :scene)
-        empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots
@@ -1045,6 +1021,7 @@ plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
-    update_fig!(fig, plot.converted[1])
+    grid = map(first, plot.converted)
+    update_fig!(fig, grid)
     return fig
 end

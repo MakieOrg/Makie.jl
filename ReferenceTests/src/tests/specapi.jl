@@ -17,11 +17,10 @@ end
     f, _, pl = plot(S.GridLayout())
     st = Makie.Stepper(f)
     sync_step!(st)
-    obs = pl[1]
-    obs[] = S.GridLayout([S.Axis(; plots=[S.Lines(1:4; color=:black, linewidth=5), S.Scatter(1:4; markersize=20)])
+    pl[1] = S.GridLayout([S.Axis(; plots=[S.Lines(1:4; color=:black, linewidth=5), S.Scatter(1:4; markersize=20)])
                      S.Axis3(; plots=[S.Scatter(Rect3f(Vec3f(0), Vec3f(1)); color=:red, markersize=50)])])
     sync_step!(st)
-    obs[] = begin
+    pl[1] = begin
         ax = S.Axis(; plots=[S.Scatter(1:4)])
         ax2 = S.Axis3(; title="Title 0", plots=[S.Scatter(1:4; color=1:4, markersize=20)])
         c = S.Colorbar(; limits=(0, 1), colormap=:heat)
@@ -29,7 +28,7 @@ end
     end
     sync_step!(st)
 
-    obs[] = begin
+    pl[1] = begin
         p1 = S.Scatter(1:4; markersize=50)
         ax = S.Axis(; plots=[p1], title="Title 1")
         p2 = S.Scatter(2:4; color=1:3, markersize=30)
@@ -40,7 +39,7 @@ end
     sync_step!(st)
     ax1 = S.Axis(; plots=[S.Scatter(1:4; markersize=20), S.Lines(1:4; color=:darkred, linewidth=6)])
     ax2 = S.Axis3(; plots=[S.Scatter(Rect3f(Vec3f(0), Vec3f(1)); color=(:red, 0.5), markersize=30)])
-    obs[] = S.GridLayout([ax1 ax2])
+    pl[1] = S.GridLayout([ax1 ax2])
     sync_step!(st)
 
     elem_1 = [LineElement(; color=:red, linestyle=nothing),
@@ -53,18 +52,18 @@ end
     elem_3 = LineElement(; color=:green, linestyle=nothing,
                          points=Point2f[(0, 0), (0, 1), (1, 0), (1, 1)])
 
-    obs[] = begin
+    pl[1] = begin
         S.GridLayout(S.Legend([elem_1, elem_2, elem_3], ["elem 1", "elem 2", "elem 3"], "Legend Title"))
     end
     sync_step!(st)
 
-    obs[] = begin
+    pl[1] = begin
         l = S.Legend([elem_1, elem_2], ["elem 1", "elem 2"], "New Title")
         S.GridLayout(l)
     end
     sync_step!(st)
 
-    obs[] = S.GridLayout()
+    pl[1] = S.GridLayout()
     sync_step!(st)
 
     st

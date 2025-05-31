@@ -118,13 +118,14 @@ function project_position(@nospecialize(scenelike), space, point, model, yflip::
     project_position(scene, Makie.transform_func(scenelike), space, point, model, yflip)
 end
 
-function project_marker(scene, markerspace, origin, scale, rotation, model, billboard = false)
-    scale3 = to_ndim(Vec2d, scale, first(scale))
+function project_marker(scene, markerspace::Symbol, origin, scale::Vec, rotation, model::Mat4, billboard::Bool = false)
+    scale2 = to_ndim(Vec2d, scale, first(scale))
     model33 = model[Vec(1,2,3), Vec(1,2,3)]
     origin3 = to_ndim(Point3d, origin, 0)
-    return project_marker(scene, markerspace, origin3, scale3, rotation, model33, billboard)
+    return project_marker(scene, markerspace, origin3, scale2, rotation, model33, billboard)
 end
-function project_marker(scene, markerspace, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
+
+function project_marker(scene, markerspace::Symbol, origin::Point3, scale::Vec, rotation, model33::Mat3, billboard = false)
     # the CairoMatrix is found by transforming the right and up vector
     # of the marker into screen space and then subtracting the projected
     # origin. The resulting vectors give the directions in which the character
@@ -237,10 +238,7 @@ function clip2screen(p, res)
     return res .* s
 end
 
-
-
 function project_line_points(scene, plot::T, positions::AbstractArray{<: Makie.VecTypes{N, FT}}, colors, linewidths) where {T <: Union{Lines, LineSegments}, N, FT <: Real}
-
     # Standard transform from input space to clip space
     # Note that this is type unstable, so there is a function barrier in place.
     space = (plot.space[])::Symbol
@@ -253,25 +251,36 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
     # Note that here, `points` has already had `transform_func` applied.
     # If colors are defined per point they need to be interpolated like positions
     # at clip planes
-    per_point_colors = colors isa AbstractArray
-    per_point_linewidths = (T <: Lines) && (linewidths isa AbstractArray)
+    is_lines_plot = T <: Lines
 
     space = (plot.space[])::Symbol
     model = (plot.model[])::Mat4d
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    transform = Makie.space_to_clip(scene.camera, space) * f32convert * model
-    clip_points = map(points) do point
-        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
-    end
-
-    # yflip and clip -> screen/pixel coords
-    res = scene.camera.resolution[]
-
+    transform = Makie.space_to_clip(scene.camera, space) * model * f32convert
     # clip planes in clip space
     clip_planes = if Makie.is_data_space(space)
         Makie.to_clip_space(scene.camera.projectionview[], plot.clip_planes[])::Vector{Plane3f}
     else
         Makie.Plane3f[]
+    end
+
+    # yflip and clip -> screen/pixel coords
+    res = scene.camera.resolution[]
+
+    return project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+end
+
+
+function project_line_points(points, colors, linewidths, is_lines_plot, transform, clip_planes, res)
+    # If colors are defined per point they need to be interpolated like positions
+    # at clip planes
+    per_point_colors = colors isa AbstractArray
+    per_point_linewidths = is_lines_plot && (linewidths isa AbstractArray)
+
+    # Standard transform from input space to clip space
+
+    clip_points = map(points) do point
+        return transform * to_ndim(Vec4d, to_ndim(Vec3d, point, 0), 1)
     end
 
     # Fix lines with points far outside the clipped region not drawing at all
@@ -282,7 +291,6 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
         Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
     )
 
-
     # outputs
     screen_points = sizehint!(Vec2f[], length(clip_points))
     color_output = sizehint!(eltype(colors)[], length(clip_points))
@@ -290,7 +298,7 @@ function project_transformed_line_points(scene, plot::T, points::AbstractArray{<
     linewidth_output = sizehint!(eltype(linewidths)[], length(clip_points))
 
     # Handling one segment per iteration
-    if plot isa Lines
+    if is_lines_plot
 
         last_is_nan = true
         for i in 1:length(clip_points)-1
@@ -523,6 +531,11 @@ function rgbatuple(c)
     return rgbatuple(colorant)
 end
 
+premultiplied_rgba(a::AbstractArray{<:ColorAlpha}) = map(premultiplied_rgba, a)
+premultiplied_rgba(a::AbstractArray{<:Color}) = RGBA.(a)
+premultiplied_rgba(r::RGBA) = RGBA(r.r * r.alpha, r.g * r.alpha, r.b * r.alpha, r.alpha)
+premultiplied_rgba(c::Colorant) = premultiplied_rgba(RGBA(c))
+
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, premultiplied_rgba(c)))
 
 # handle patterns
@@ -655,6 +668,9 @@ function per_face_colors(_color, matcap, faces, normals, uv)
         return FaceIterator{:PerVert}(color, faces)
     elseif color isa Makie.AbstractPattern
         return Cairo.CairoPattern(color)
+    elseif color isa Makie.ShaderAbstractions.Sampler # currently target for AbstractPattern
+        @assert color.repeat === (:repeat, :repeat)
+        return Cairo.CairoPattern(Makie.ImagePattern(color.data))
     elseif color isa AbstractMatrix{<: Colorant} && !isnothing(uv)
         wsize = size(color)
         wh = wsize .- 1

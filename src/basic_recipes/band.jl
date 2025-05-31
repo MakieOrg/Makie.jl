@@ -50,10 +50,7 @@ function Makie.plot!(plot::Band)
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
-    attr = copy(Attributes(plot))
-    pop!(attr, :direction)
-
-    attr[:color] = lift(plot, plot.color) do c
+    color = lift(plot, plot.color) do c
         if c isa AbstractVector
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other
@@ -71,7 +68,7 @@ function Makie.plot!(plot::Band)
         end
     end
 
-    mesh!(plot, attr, coordinates, connectivity)
+    mesh!(plot, Attributes(plot), coordinates, connectivity, color = color)
 end
 
 function fill_view(x, y1, y2, where::Nothing)

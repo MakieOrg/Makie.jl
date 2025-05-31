@@ -18,7 +18,7 @@ end
 @reference_test "Don'some_time allow mixing units incorrectly" begin
     date_time_range = range(date_time, step=Second(5), length=10)
     f, ax, pl = scatter(date_time_range, 1:10)
-    @test_throws ErrorException scatter!(time_range, 1:10)
+    @test_throws Makie.ComputePipeline.ResolveException{ErrorException} scatter!(time_range, 1:10)
     f
 end
 

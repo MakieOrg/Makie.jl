@@ -45,6 +45,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 using Dates
+using ComputePipeline
 
 import Unitful
 import UnicodeFun
@@ -145,6 +146,7 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
+include("compute-plots.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -239,6 +241,7 @@ include("display.jl")
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
+include("backend-functionality.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
@@ -404,6 +407,7 @@ export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatte
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export update!
 
 include("precompiles.jl")
 

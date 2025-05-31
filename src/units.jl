@@ -141,10 +141,10 @@ As such `:data` space does not correspond to the data passed to a plot, but the 
 """
 spaces() = (:data, :pixel, :relative, :clip)
 
-is_data_space(p::Plot) = is_data_space(get(p, :space, :data))
-is_pixel_space(p::Plot) = is_pixel_space(get(p, :space, :data))
-is_relative_space(p::Plot) = is_relative_space(get(p, :space, :data))
-is_clip_space(p::Plot) = is_clip_space(get(p, :space, :data))
+is_data_space(p::Plot) = is_data_space(to_value(get(p, :space, :data)))
+is_pixel_space(p::Plot) = is_pixel_space(to_value(get(p, :space, :data)))
+is_relative_space(p::Plot) = is_relative_space(to_value(get(p, :space, :data)))
+is_clip_space(p::Plot) = is_clip_space(to_value(get(p, :space, :data)))
 
 is_data_space(space::Observable) = is_data_space(space[])
 is_pixel_space(space::Observable) = is_pixel_space(space[])

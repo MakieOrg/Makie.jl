@@ -176,16 +176,13 @@ Makie.convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBase
 Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 
 function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
-    attr = copy(p.attributes)
-
     # Handle transform_func early so tessellation is in cartesian space.
     tri = map(p, p.transformation.transform_func, p[1]) do tf, ps
         transformed = Makie.apply_transform(tf, ps)
         return DelTri.triangulate(transformed, randomise = false)
     end
 
-    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
-    triplot!(p, attr, tri)
+    triplot!(p, Attributes(p), tri, transformation = :inherit_model)
     return
 end
 
@@ -241,7 +238,7 @@ function data_limits(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
-        return Rect3d(p.converted[1][])
+        return Rect3d(p[1][])
     else
         # First component is either another Triplot or a poly plot. Both
         # cases span the full limits of the plot

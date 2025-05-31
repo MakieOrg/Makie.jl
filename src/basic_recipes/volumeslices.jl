@@ -12,15 +12,10 @@ end
 
 function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
-    replace_automatic!(plot, :colorrange) do
-        lift(extrema, plot, volume)
-    end
 
-    # heatmap will fail if we don't keep its attributes clean
-    attr = copy(Attributes(plot))
-    bbox_color = pop!(attr, :bbox_color)
-    bbox_visible = pop!(attr, :bbox_visible)
-    pop!(attr, :model) # stops `transform!()` from working
+    map!(plot.attributes, [:colorrange, :volume], :computed_colorrange) do colorrange, volume
+        return colorrange === automatic ? extrema(volume) : colorrange
+    end
 
     bbox = lift(plot, x, y, z) do x, y, z
         mx, Mx = extrema(x)
@@ -30,21 +25,25 @@ function Makie.plot!(plot::VolumeSlices)
     end
 
     axes = :x, :y, :z
+    parent_vis = ComputePipeline.get_observable!(plot.visible)
     for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
-        plot[Symbol(:heatmap_, p)] = hmap = heatmap!(
-            plot, attr, X, Y, zeros(length(X[]), length(Y[]))
+        hmap = heatmap!(
+            plot, Attributes(plot), X, Y, zeros(length(X[]), length(Y[])),
+            colorrange = plot.computed_colorrange, visible=parent_vis
         )
-        plot[Symbol(:update_, p)] = update = i -> begin
+        update = i -> begin
             transform!(hmap, (p, r[][i]))
             indices = ntuple(Val(3)) do j
                 axes[j] == ax ? i : (:)
             end
-            hmap[3][] = view(volume[], indices...)
+            update!(hmap, arg3 = view(volume[], indices...))
         end
         update(1) # trigger once to place heatmaps correctly
+        add_input!(plot.attributes, Symbol(:update_, p), update)
+        add_input!(plot.attributes, Symbol(:heatmap_, p), hmap)
     end
 
-    linesegments!(plot, bbox, color = bbox_color, visible = bbox_visible, inspectable = false)
+    linesegments!(plot, bbox, color = plot.bbox_color, visible = plot.bbox_visible, inspectable = false)
 
     plot
 end
