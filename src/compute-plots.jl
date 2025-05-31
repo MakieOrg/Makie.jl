@@ -92,11 +92,11 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
 end
 
 # TODO: is this data_limits or boundingbox()?
-function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation)
+function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
     if space === markerspace
         bb = Rect3d()
         for (i, p) in enumerate(positions)
-            marker_pos = to_ndim(Point3d, p, 0)
+            marker_pos = to_ndim(Point3d, p, 0) + sv_getindex(marker_offset, i)
             quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
             quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotation, i)
@@ -726,7 +726,7 @@ function calculated_attributes!(::Type{Scatter}, plot::Plot)
     register_computation!(attr, [:rotation], [:converted_rotation, :billboard]) do (rotation,), changed, cached
         return (convert_attribute(rotation, key"rotation"()), rotation isa Billboard)
     end
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation],
+    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation, :marker_offset],
                           [:data_limits]) do args, changed, last
         return (scatter_limits(args...),)
     end
