@@ -587,7 +587,10 @@ function create_shader(scene::Scene, plot::Surface)
     Makie.add_computation!(attr, Val(:surface_as_mesh))
     Makie.register_world_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
-    map!(attr, [:pattern_uv_transform, :z], :wgl_uv_transform) do uvt, zs
+    backend_colors!(attr)
+
+    map!(attr, [:pattern_uv_transform, :z, :pattern], :wgl_uv_transform) do uvt, zs, is_pattern
+        is_pattern && return to_3x3(uvt) # no rescaling, just shifting
         # Rescale and shift uvs so that vertices map to pixel centers in the texture
         # if the texture size and grid size match (i.e. no explicit `color = tex`)
         s = size(zs)
@@ -596,7 +599,6 @@ function create_shader(scene::Scene, plot::Surface)
         # order matters, e.g. for :rotr90
         return to_3x3(uvt) * Makie.uv_transform(trans, scale)
     end
-    backend_colors!(attr)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     add_primitive_shading!(scene, attr)
     inputs = [
