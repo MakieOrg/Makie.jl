@@ -48,9 +48,6 @@ function with_context(f, context)
     if !ShaderAbstractions.context_alive(context)
         error("Context ist not alive anymore!")
     end
-    if ShaderAbstractions.is_current_context(context)
-        return f()  # No need to switch context, already active
-    end
     old_ctx = nothing
     lock(CONTEXT_LOCK1) do
         CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
