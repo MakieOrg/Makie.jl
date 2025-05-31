@@ -22706,6 +22706,11 @@ class MakieCamera {
         this.resolution = new Wh(new T());
         this.eyeposition = new Wh(new w());
         this.preprojections = {};
+        this.original_light_direction = [
+            -1,
+            -1,
+            -1
+        ];
         this.light_direction = new Wh(new w(-1, -1, -1).normalize());
         this.on_update = new Map();
     }
@@ -22728,6 +22733,7 @@ class MakieCamera {
         this.resolution.value.fromArray(resolution);
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
+        this.recalculate_light_dir();
         this.on_update.values().forEach((func)=>{
             try {
                 func(this);
@@ -22736,7 +22742,12 @@ class MakieCamera {
             }
         });
     }
+    recalculate_light_dir() {
+        const light_dir = this.original_light_direction;
+        this.update_light_dir(light_dir);
+    }
     update_light_dir(light_dir) {
+        this.original_light_direction = light_dir;
         const T = new Gt().setFromMatrix4(this.view.value).invert();
         const new_dir = new w().fromArray(light_dir);
         new_dir.applyMatrix3(T).normalize();
@@ -22998,10 +23009,13 @@ function deserialize_scene_recursive(data, screen) {
         attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
     }
     update_cam(data.camera.value, true);
-    camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
     if (data.camera_relative_light.value) {
+        camera.update_light_dir(data.light_direction.value);
         scene.light_direction = camera.light_direction;
+        data.light_direction.on((value)=>{
+            camera.update_light_dir(value);
+        });
     } else {
         const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
         scene.light_direction = new mod.Uniform(light_dir);

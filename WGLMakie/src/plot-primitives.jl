@@ -509,9 +509,9 @@ function mesh_program(attr)
         uniforms[:normals] = Vec3f(0)
     end
     if !isnothing(attr.texturecoordinates)
-        buffers[:uv] = attr.texturecoordinates
+        buffers[:texturecoordinates] = attr.texturecoordinates
     else
-        uniforms[:uv] = Vec2f(0)
+        uniforms[:texturecoordinates] = Vec2f(0)
     end
     buffers[:positions_transformed_f32c] = attr.positions_transformed_f32c
     buffers[:faces] = attr.faces

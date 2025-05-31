@@ -177,6 +177,7 @@ export class MakieCamera {
 
         // For camera-relative light directions
         // TODO: intial position wrong...
+        this.original_light_direction = [-1, -1, -1];
         this.light_direction = new THREE.Uniform(
             new THREE.Vector3(-1, -1, -1).normalize()
         );
@@ -214,16 +215,23 @@ export class MakieCamera {
         this.resolution.value.fromArray(resolution);
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
+        this.recalculate_light_dir();
         this.on_update.values().forEach((func) => {
             try {
                 func(this);
             } catch (e) {
                 console.error("Error during camera update callback:", e);
             }
-        })
+        });
+    }
+
+    recalculate_light_dir() {
+        const light_dir = this.original_light_direction;
+        this.update_light_dir(light_dir);
     }
 
     update_light_dir(light_dir) {
+        this.original_light_direction = light_dir;
         const T = new THREE.Matrix3().setFromMatrix4(this.view.value).invert();
         const new_dir = new THREE.Vector3().fromArray(light_dir);
         new_dir.applyMatrix3(T).normalize();

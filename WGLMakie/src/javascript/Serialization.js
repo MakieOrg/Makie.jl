@@ -214,11 +214,14 @@ export function deserialize_scene_recursive(data, screen) {
 
     update_cam(data.camera.value, true); // force update on first call
 
-    camera.update_light_dir(data.light_direction.value);
     data.camera.on(update_cam);
 
     if (data.camera_relative_light.value) {
+        camera.update_light_dir(data.light_direction.value);
         scene.light_direction = camera.light_direction;
+        data.light_direction.on((value) => {
+            camera.update_light_dir(value);
+        });
     } else {
         const light_dir = new THREE.Vector3().fromArray(
             data.light_direction.value

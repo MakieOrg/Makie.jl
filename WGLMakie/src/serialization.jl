@@ -251,16 +251,16 @@ function serialize_camera(scene::Scene)
     last_view = Base.RefValue(Mat4d(I))
     last_proj = Base.RefValue(Mat4d(I))
     last_res = Base.RefValue(Vec2f(0))
+    last_eyepos = Base.RefValue(Vec3f(0))
     obs = Observable([Float32[], Float32[], Int32[], Float32[]])
 
-    onany(scene, cam.view, cam.projection, cam.resolution; update=true) do view, proj, res
+    onany(scene, cam.view, cam.projection, cam.resolution, cam.eyeposition; update=true) do view, proj, res, ep
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
-        if !(view ≈ last_view[] && proj ≈ last_proj[] && res ≈ last_res[])
-            ep = cam.eyeposition[]
+        if !(view ≈ last_view[] && proj ≈ last_proj[] && res ≈ last_res[] && ep ≈ last_eyepos[])
             obs[] = [flat_m4f(view), flat_m4f(proj), Int32[res...], Float32[ep...]]
         end
-
+        last_eyepos[] = ep
         last_view[] = view
         last_proj[] = proj
         last_res[] = res

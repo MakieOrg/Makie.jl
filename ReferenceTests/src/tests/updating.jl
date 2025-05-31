@@ -270,6 +270,7 @@ end
 	surface(f[1, 3],
         map((X, Y) -> [x for x in X, y in Y], X, Y),
         map((X, Y) -> [y for x in X, y in Y], X, Y), Z)
+    f
     st = Stepper(f)
     Makie.step!(st)
 
