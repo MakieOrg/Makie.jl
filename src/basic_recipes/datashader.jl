@@ -500,7 +500,7 @@ end
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?
 function extract_colormap(plot::DataShader)
-    color = lift(x -> x.aggbuffer, plot, plot.canvas)
+    color = lift(x -> x.pixelbuffer, plot, plot.canvas)
     attributes = [:colormap, :raw_colorrange, :colorscale, :alpha, :highclip, :lowclip, :nan_color]
     return ColorMapping(color[], color, map(k -> getindex(plot, k), attributes)...)
 end

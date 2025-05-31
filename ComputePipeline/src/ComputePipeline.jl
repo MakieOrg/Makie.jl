@@ -217,6 +217,7 @@ struct ComputeGraph
     observables::Dict{Symbol,Observable}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
+    lock::ReentrantLock
 end
 
 function get_observable!(attr::ComputeGraph, key::Symbol)
@@ -280,7 +281,7 @@ function ComputeGraph()
     on(empty!, onchange, priority = typemin(Int)) # clear changeset after processing observables
     return ComputeGraph(
         Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), onchange,
-        Dict{Symbol,Observable}(), Observables.ObserverFunction[], Observable[])
+        Dict{Symbol,Observable}(), Observables.ObserverFunction[], Observable[], Base.ReentrantLock())
 end
 
 _first_arg(args, changed, last) = (args[1],)
@@ -394,9 +395,11 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
-    _setproperty!(attr, key, value)
-    foreach(notify, attr.obs_to_update)
-    return value
+    lock(attr.lock) do
+        _setproperty!(attr, key, value)
+        foreach(notify, attr.obs_to_update)
+        return value
+    end
 end
 
 """
@@ -419,27 +422,31 @@ update!(graph, :first_node => 2)
 update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
 
 function update!(attr::ComputeGraph, dict::Dict{Symbol})
-    for (key, value) in dict
-        if haskey(attr.inputs, key)
-            _setproperty!(attr, key, value)
-        else
-            error("Attribute $key not found in ComputeGraph")
+    lock(attr.lock) do
+        for (key, value) in dict
+            if haskey(attr.inputs, key)
+                _setproperty!(attr, key, value)
+            else
+                error("Attribute $key not found in ComputeGraph")
+            end
         end
+        update_observables!(attr)
+        return attr
     end
-    update_observables!(attr)
-    return attr
 end
 
 function update!(attr::ComputeGraph, pairs...)
-    for (key, value) in pairs
-        if haskey(attr.inputs, key)
-            _setproperty!(attr, key, value)
-        else
-            error("Attribute $key not found in ComputeGraph")
+    lock(attr.lock) do
+        for (key, value) in pairs
+            if haskey(attr.inputs, key)
+                _setproperty!(attr, key, value)
+            else
+                error("Attribute $key not found in ComputeGraph")
+            end
         end
+        update_observables!(attr)
+        return attr
     end
-    update_observables!(attr)
-    return attr
 end
 
 # TODO: should this check inputs, outputs, both?
@@ -455,6 +462,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :observables && return getfield(attr, :observables)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
     key === :obs_to_update && return getfield(attr, :obs_to_update)
+    key === :lock && return getfield(attr, :lock)
     return attr.outputs[key]
 end
 
@@ -559,23 +567,25 @@ end
 function resolve!(edge::ComputeEdge)
     edge.got_resolved[] && return false
     isdirty(edge) || return false
-    # Resolve inputs first
-    foreach(_resolve!, edge.inputs)
-    # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
-    # TODO, can/should we store this tuple?
-    if !isassigned(edge.typed_edge)
-        # constructor does first resolve to determine fully typed outputs
-        edge.typed_edge[] = TypedEdge(edge)
-    else
-        resolve!(edge.typed_edge[])
+    lock(edge.graph.lock) do
+        # Resolve inputs first
+        foreach(_resolve!, edge.inputs)
+        # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
+        # TODO, can/should we store this tuple?
+        if !isassigned(edge.typed_edge)
+            # constructor does first resolve to determine fully typed outputs
+            edge.typed_edge[] = TypedEdge(edge)
+        else
+            resolve!(edge.typed_edge[])
+        end
+        edge.got_resolved[] = true
+        fill!(edge.inputs_dirty, false)
+        for dep in edge.dependents
+            mark_input_dirty!(edge, dep)
+        end
+        foreach(comp -> comp.dirty = false, edge.outputs)
+        return true
     end
-    edge.got_resolved[] = true
-    fill!(edge.inputs_dirty, false)
-    for dep in edge.dependents
-        mark_input_dirty!(edge, dep)
-    end
-    foreach(comp -> comp.dirty = false, edge.outputs)
-    return true
 end
 
 
