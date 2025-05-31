@@ -4,35 +4,28 @@
 Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene` with 2D projection at its current limits.
 You can pass one or multiple intercepts or slopes.
 """
-@recipe ABLines begin
+@recipe ABLines (intercept, slope) begin
     MakieCore.documented_attributes(LineSegments)...
 end
 
 function Makie.plot!(p::ABLines)
     scene = Makie.parent_scene(p)
     transf = transform_func(scene)
-
     is_identity_transform(transf) || throw(ArgumentError("ABLines is only defined for the identity transform, not $(typeof(transf))."))
 
-    limits = projview_to_2d_limits(p)
+    add_axis_limits!(p)
 
-    points = Observable(Point2d[])
-
-    onany(p, limits, p[1], p[2]) do lims, intercept, slope
-        empty!(points[])
-        f(x) = x * b + a
+    map!(p.attributes, [:axis_limits, :intercept, :slope], :points) do lims, intercept, slope
+        points = Point2d[]
         broadcast_foreach(intercept, slope) do intercept, slope
             f(x) = intercept + slope * x
             xmin, xmax = first.(extrema(lims))
-            push!(points[], Point2d(xmin, f(xmin)))
-            push!(points[], Point2d(xmax, f(xmax)))
+            push!(points, Point2d(xmin, intercept + slope * xmin))
+            push!(points, Point2d(xmax, intercept + slope * xmax))
         end
-        notify(points)
+        return points
     end
-
-    notify(limits)
-
-    linesegments!(p, p.attributes, points)
+    linesegments!(p, Attributes(p), p.points)
     p
 end
 

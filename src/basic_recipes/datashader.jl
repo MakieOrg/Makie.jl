@@ -385,9 +385,7 @@ end
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
-    # TODO, switch projview_to_2d_limits to use a clean computation!
-    limits = projview_to_2d_limits(p)
-    add_input!(p.attributes, :axis_limits, limits)
+    add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
 
@@ -436,8 +434,7 @@ end
 
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
-    limits = projview_to_2d_limits(p)
-    add_input!(p.attributes, :axis_limits, limits)
+    add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
     canvas_computation!(p)
     register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
