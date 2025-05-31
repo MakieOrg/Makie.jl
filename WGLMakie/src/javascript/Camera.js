@@ -216,13 +216,13 @@ export class MakieCamera {
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
         this.recalculate_light_dir();
-        this.on_update.values().forEach((func) => {
+        for (const func of this.on_update.values()) {
             try {
                 func(this);
             } catch (e) {
                 console.error("Error during camera update callback:", e);
             }
-        });
+        }
     }
 
     recalculate_light_dir() {

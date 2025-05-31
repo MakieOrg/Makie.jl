@@ -671,7 +671,7 @@ function register_pattern_uv_transform!(attr; modelname = :model_f32c, colorname
                 # This changes what `automatic` converts to
                 input_uvt = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : uvt
                 new_uvt = pattern_uv_transform(input_uvt, pv * model, widths(vp), pattern)
-                return (new_uvt, )
+                return (new_uvt,)
             else
                 return (uvt,)
             end
