@@ -91,6 +91,7 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     return result
 end
 
+# TODO: is this data_limits or boundingbox()?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
     if space === markerspace
         bb = Rect3d()

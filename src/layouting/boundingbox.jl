@@ -66,21 +66,19 @@ function limits_with_marker_transforms(positions, scales, rotation, model, eleme
     return full_bbox[]
 end
 
+# Without the extra arg this isn't used in Scene limits
+# function boundingbox(plot::Scatter, space::Symbol = plot.space[])
 function boundingbox(plot::Scatter)
-    if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot
-        )
-        rotations = plot.rotation
+    space = plot.space[]
+    if space == plot.markerspace[]
+        scale = plot.quad_scale[]
+        offset = plot.quad_offset[]
+        rotations = plot.converted_rotation[]
         marker_offsets = plot.marker_offset[]
-        model = plot.model[]
+        model = plot.model[]::Mat4d
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
-        transform_marker = plot.transform_marker[]
-        clip_planes = plot.clip_planes[]
+        transform_marker = plot.transform_marker[]::Bool
+        clip_planes = plot.clip_planes[]::Vector{Plane3f}
 
         bb = Rect3d()
         for (i, p) in enumerate(plot.positions[])
@@ -90,8 +88,8 @@ function boundingbox(plot::Scatter)
             end
 
             marker_offset = sv_getindex(marker_offsets, i)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
+            quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotations, i)
 
             if transform_marker
