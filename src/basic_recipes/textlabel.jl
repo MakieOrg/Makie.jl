@@ -178,7 +178,7 @@ end
 function text_boundingbox_transforms(string_bbs::Vector, limits, padding, keep_aspect)
     (l, r, b, t) = padding
     transformations = map(string_bbs) do bbox
-        z = minimum(bbox)[3]
+        z = Float64(minimum(bbox)[3])
         bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
         scale = widths(bbox) ./ widths(limits)
         if keep_aspect
@@ -309,19 +309,19 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         return Consume(false)
     end
 
-    string_bbs = map(identity, tp.per_string_bb, ignore_equal_values = true)
-
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, string_bbs, tp.offset,
+            pixel_pos, fast_string_boundingboxes_obs(tp),
             # these are difficult because they are not in markerspace but always pixel space...
             tp.strokewidth, tp.glowwidth
-        ) do limits, padding, keep_aspect, positions, bbs, offset, sw, gw
+        ) do limits, padding, keep_aspect, positions, bbs, sw, gw
 
-        pos = [p + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
+        # fast_string_boundingboxes() skips positions which we add here manually
+        # without the z translation so that we can translate!() the plot instead
+        # to make CairoMakie depth-sort the way we want.
         padding = to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw)
-        return text_boundingbox_transforms(bbs .+ pos, limits, padding, keep_aspect)
+        return text_boundingbox_transforms(bbs .+ positions, limits, padding, keep_aspect)
     end
 
     map!(
