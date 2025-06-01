@@ -799,12 +799,12 @@ function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
         angle1, angle2 = comm.a1, comm.a2
 
         # Define the four edges of the bounding box
-        edges = [
+        edges = (
             (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2])),           # Bottom edge
             (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2])),           # Left edge
             (Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2])), # Right edge
             (Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2]))  # Top edge
-        ]
+        )
 
         for (p1, p2) in edges
             # Find intersection of the circle with the line segment
@@ -860,12 +860,12 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     (rw, rh) = rect.widths
     
     # List of rectangle edges (each edge is represented as a pair of points)
-    edges = [
+    edges = (
         (Point2d(rx, ry), Point2d(rx + rw, ry)),           # Bottom edge
         (Point2d(rx, ry), Point2d(rx, ry + rh)),           # Left edge
         (Point2d(rx + rw, ry), Point2d(rx + rw, ry + rh)), # Right edge
         (Point2d(rx, ry + rh), Point2d(rx + rw, ry + rh))  # Top edge
-    ]
+    )
     
     # Helper function to find intersection of two line segments
     function segment_intersection(p1::Point2, p2::Point2, q1::Point2, q2::Point2)
