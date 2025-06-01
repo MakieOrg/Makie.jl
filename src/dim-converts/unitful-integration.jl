@@ -193,6 +193,10 @@ function update_extrema!(conversion::UnitfulConversion, id::String, vals)
     end
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
+        # TODO, somehow we need another notify to update the axis label
+        # The interactions in Lineaxis are too complex to debug this in a sane amount of time
+        # So, I think we should just revisit this once we move lineaxis to use compute graph
+        notify(conversion.unit)
     end
 end
 
