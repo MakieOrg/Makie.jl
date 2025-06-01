@@ -1391,7 +1391,7 @@ function get_plots(le::LegendElement)
     if hasfield(typeof(le), :plots)
         return le.plots
     else
-        @warn """LegendElements should now keep track of the plots they respresent in a `plots` field.
+        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
         This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
         toggle visibility of the associated plots. The `plots` field is missing in: $(le)
         """
