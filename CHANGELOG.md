@@ -1,7 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-
+- Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
 
 ## [0.22.7] - 2025-05-23
