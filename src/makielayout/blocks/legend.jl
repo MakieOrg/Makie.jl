@@ -305,7 +305,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 # TODO: Should this be connected to scene/blockscene for cleanup?
                 # Probably not plots since plot deletion needs to trigger relayout anyway
 
-                # listen to visibilty attributes of plot elements to toggle shades below
+                # listen to visibility attributes of plot elements to toggle shades below
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
                 halfshade_visible = Observable{Bool}(false)
