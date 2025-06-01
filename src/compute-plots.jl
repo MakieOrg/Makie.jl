@@ -290,7 +290,9 @@ end
 # Julia 1.10 compat
 function _filter(f, xs::NamedTuple)
     isempty(xs) && return xs
-    return xs[filter(k -> f(xs[k]), keys(xs))]
+    fkeys = filter(k -> f(xs[k]), keys(xs))
+    vals = map(k -> xs[k], fkeys)
+    return NamedTuple{fkeys}(map(k -> xs[k], fkeys))
 end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
