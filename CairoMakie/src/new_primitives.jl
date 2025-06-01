@@ -365,14 +365,6 @@ end
 #                                Heatmap, Image                                #
 ################################################################################
 
-#=
-Image:
-- positions_transformed_f32c are rect vertices
-Heatmap:
-- nope
-- heatmap transform adds x_transformed_f32c, y_transformed_f32c
-=#
-
 function image_grid(@nospecialize(primitive::Heatmap))
     Makie.add_computation!(primitive.attributes, nothing, Val(:heatmap_transform))
     xs = regularly_spaced_array_to_range(primitive.x_transformed_f32c[])
