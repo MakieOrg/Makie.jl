@@ -421,3 +421,47 @@ end
         axis = (; aspect = DataAspect())
     )
 end
+
+@reference_test "new text bounding boxes" begin
+    strs = Any[
+        "1", "", "test", "line\nline2\n\nline4", "line\n \nline3",
+        L"\frac{1}{2}", L"\frac{\sin(x^2)}{\cos(\sqrt{x}) + 2}",
+        rich(left_subsup("92", "238"), "U or PO", subsup("4", "3−"))
+    ]
+    x = [0.0, 0.2, 0.4, 0.6, 0.8, 0.3, 0.7, 0.2]
+    y = [0.8, 0.8, 0.8, 0.6, 0.6, 0.3, 0.3, 0.1]
+    f,a,p = text(x, y, text = strs, fontsize = 30)
+    xlims!(a, -0.1, 1.1); ylims!(a, -0.1, 1.1)
+
+    merged_bb1 = map(bbs -> Makie.to_lines(Rect2f.(bbs)), Makie.glyph_boundingboxes_obs(p))
+    l1 = lines!(a, merged_bb1, space = :pixel, color = :cyan, linewidth = 2)
+    merged_bb2 = map(bbs -> Makie.to_lines(Rect2f.(bbs)), Makie.string_boundingboxes_obs(p))
+    l2 = lines!(a, merged_bb2, space = :pixel, color = :black, alpha = 0.75, linewidth = 2)
+    l3 = lines!(a, map(Rect2f, Makie.full_boundingbox_obs(p, :data)), color = :red, linewidth = 2)
+    f
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    # Still correct after changing related attributes
+    p.fontsize = 25
+    p.align = (:center, :center)
+    p.offset = (20, 20)
+    p.rotation = -pi/6
+    Makie.step!(st)
+
+    # And under position, transform changes
+    Makie.update!(p, arg1 = x .+ 1.1, arg2 = y .+ 1.1)
+    translate!(p, -2, -2, 0)
+    rotate!(p, pi/2)
+    scale!(p, 2,2,1)
+    xlims!(a, -6, -3.5); ylims!(a, 0, 2.5)
+
+    Makie.step!(st)
+
+    # And with clip planes
+    p.rotation = 0.0
+    p.clip_planes = [Plane3f(Vec3f(0,1,0), 1.2)]
+    Makie.step!(st)
+    st
+end
