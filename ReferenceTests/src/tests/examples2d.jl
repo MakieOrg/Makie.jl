@@ -2024,9 +2024,9 @@ end
     img[1:8, 1:8] .= RGBf(1,0,0)
     img[12:16, 1:8] .= RGBf(0,1,0)
     img[1:8, 12:16] .= RGBf(0,0,1)
-    f,a, p = mesh(Rect2f(0,0,1,1), color = Makie.ImagePattern(img))
-    surface(f[1,2], -1..1, -1..1, zeros(4,4), color = Makie.ImagePattern(img))
-    meshscatter(f[2, 1:2], [1,2,3], [1,1,1], marker = Rect2f(0,0,1,1), markersize = 0.5, color = Makie.ImagePattern(img))
+    f,a, p = mesh(Rect2f(0,0,1,1), color = Makie.ImagePattern(img), shading = false)
+    surface(f[1,2], -1..1, -1..1, zeros(4,4), color = Makie.ImagePattern(img), shading = false)
+    meshscatter(f[2, 1:2], [1,2,3], [1,1,1], marker = Rect2f(0,0,1,1), markersize = 0.5, color = Makie.ImagePattern(img), shading = false)
     f
 end
 
