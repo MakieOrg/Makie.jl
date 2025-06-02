@@ -65,7 +65,7 @@ If no label positions are given, they will be determined automatically such
 that overlaps between labels and data points are reduced. In this mode, the labels should
 be very close to their associated data points so connection plots are typically not visible.
 """
-@recipe Annotate begin
+@recipe Annotation begin
     """
     The color of the text labels.
     """
