@@ -2,6 +2,10 @@
     annotations(strings::Vector{String}, positions::Vector{Point})
 
 Plots an array of texts at each position in `positions`.
+
+!!! warning
+
+    `annotations` is deprecated and will be removed in a future Makie version. Use `text` instead.
 """
 @recipe Annotations (text, position) begin
     MakieCore.documented_attributes(Text)...
