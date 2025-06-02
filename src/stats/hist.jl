@@ -148,7 +148,7 @@ end
 
 function pick_hist_edges(vals, bins)
     if bins isa Int
-        mi, ma = float.(extrema(vals))
+        mi, ma = float.(extrema(vals; init = (0.0, 0.0)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end

@@ -1,3 +1,6 @@
+using Test
+using Makie
+
 @testset "Histogram plotting" begin
     unequal_vec = [1; rand(2:9, rand(1:9))]
     allequal_vec = fill(rand(1:9), rand(1:9))
@@ -13,4 +16,14 @@
     @test_nowarn hist(v)
     # change to unequal vector
     @test_nowarn v[] = unequal_vec
+end
+
+@testset "Empty histogram" begin
+    arg = Observable(Float64[])
+    f, a, p = @test_nowarn hist(arg)
+    Makie.update_state_before_display!(f)
+    @test all(iszero, p.plots[1][1][])
+    push!(arg[], 0.1)
+    notify(arg)
+    @test !all(iszero, p.plots[1][1][])
 end
