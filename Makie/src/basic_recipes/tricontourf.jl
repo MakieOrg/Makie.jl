@@ -22,12 +22,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
     """
     mode = :normal
-    "Sets the colormap from which the band colors are sampled."
-    colormap = @inherit colormap
-    "Color transform function"
-    colorscale = identity
-    "The alpha value of the colormap or color attribute."
-    alpha = 1.0
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
