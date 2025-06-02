@@ -453,7 +453,7 @@ end
     # And under position, transform changes
     Makie.update!(p, arg1 = x .+ 1.1, arg2 = y .+ 1.1)
     translate!(p, -2, -2, 0)
-    rotate!(p, pi/2)
+    Makie.rotate!(p, pi/2)
     scale!(p, 2,2,1)
     xlims!(a, -6, -3.5); ylims!(a, 0, 2.5)
 
