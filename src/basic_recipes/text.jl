@@ -263,13 +263,16 @@ function convert_text_string!(
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
     # args = fontsize, rotation, color
-    append_tex_linesegment_data!(outputs, curr+1, tex_offsets, tex_elements, args[1], args[3], args[4], offset)
+    append_tex_linesegment_data!(outputs, tex_offsets, tex_elements, args[1], args[3], args[4], offset)
 
     return
 end
 
 function append_tex_linesegment_data!(outputs::NamedTuple,
-        index::Integer, tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3})
+        tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3})
+
+    block_idx = length(outputs.text_blocks)
+    pos_idx = first(last(outputs.text_blocks))
 
     for (element, position, _) in tex_elements
         if element isa MathTeXEngine.HLine
@@ -280,7 +283,7 @@ function append_tex_linesegment_data!(outputs::NamedTuple,
             push!(outputs.linesegments, p0, p1)
             push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
             push!(outputs.linecolors, color, color)
-            push!(outputs.lineindices, index, index)
+            push!(outputs.lineindices, block_idx => pos_idx, block_idx => pos_idx)
         end
     end
     return nothing
@@ -328,7 +331,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
                 linesegments = Point3f[],
                 linewidths = Float32[],
                 linecolors = RGBAf[],
-                lineindices = Int[]
+                lineindices = Pair{Int, Int}[]
             )
         else
             foreach(empty!, values(cached))
@@ -422,20 +425,32 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     tex_linesegments!(plot)
 end
 
+function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
+    planes = to_model_space(model, clip_planes)
+    projected_pos = _project(preprojection * model, positions)
+    nan_point = eltype(projected_pos)(NaN)
+    for i in eachindex(projected_pos)
+        projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
+    end
+    return projected_pos
+end
+
 function tex_linesegments!(plot)
     # Don't user register_markerspace_position() here so we skip calculating them
     # if no linesegments are needed
-    map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c],
-            :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions
+    map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+            :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
 
         isempty(linesegments) && return Point3f[]
-        markerspace_positions = _project(preprojection * model_f32c, positions)
-        return map(linesegments, indices) do seg, index
-            return seg + markerspace_positions[index]
+        markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
+        # TODO: avoid repeated apply_transform and use block_idx?
+        return map(linesegments, indices) do seg, (block_idx, glyph_idx)
+            return seg + markerspace_positions[glyph_idx]
         end
     end
 
-    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths, color = plot.linecolors, space = :pixel)
+    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths,
+        color = plot.linecolors, space = plot.markerspace)
 end
 
 ################################################################################
@@ -455,17 +470,9 @@ end
 
 function register_markerspace_position!(plot)
     if !haskey(plot.attributes, :markerspace_positions)
-        map!(plot.attributes, [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-                :markerspace_positions) do pv, model, positions, clip_planes
-
-            planes = to_model_space(model, clip_planes)
-            projected_pos = _project(pv * model, positions)
-            nan_point = eltype(projected_pos)(NaN)
-            for i in eachindex(projected_pos)
-                projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
-            end
-            return projected_pos
-        end
+        map!(project_text_positions_to_markerspace, plot.attributes,
+            [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+            :markerspace_positions)
     end
     return plot.markerspace_positions
 end
