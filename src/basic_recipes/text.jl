@@ -262,8 +262,9 @@ function convert_text_string!(
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
+    append_tex_linesegment_data!(outputs, tex_offsets, tex_elements,
+            args[1], args[3], args[4], sv_getindex(offset, i))
     # args = fontsize, rotation, color
-    append_tex_linesegment_data!(outputs, tex_offsets, tex_elements, args[1], args[3], args[4], offset)
 
     return
 end
