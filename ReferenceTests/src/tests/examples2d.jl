@@ -2040,7 +2040,7 @@ end
     st
 end
 
-@reference_test "annotate pointcloud" begin
+@reference_test "annotation pointcloud" begin
     f = Figure(size = (350, 350))
     
     points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
@@ -2051,28 +2051,28 @@ end
     ax = Axis(f[1, 1])
     
     scatter!(ax, points)
-    annotate!(ax, points, text = fruit)
+    annotation!(ax, points, text = fruit)
     
     hidedecorations!(ax)
     
     f
 end
 
-@reference_test "annotate manual" begin
+@reference_test "annotation manual" begin
     f, ax, _ = lines(0..10, sin, figure = (; size = (600, 450)))
 
-    annotate!(ax, 0, -100, pi/2, 1.0,
+    annotation!(ax, 0, -100, pi/2, 1.0,
         text = "Peak", style = Ann.Styles.LineArrow(), color = :red,
         textcolor = :orange, align = (:right, :top))
-    annotate!(ax, 0, 100, 3pi/2, -1.0,
+    annotation!(ax, 0, 100, 3pi/2, -1.0,
         text = "Trough", style = Ann.Styles.LineArrow(), font = :bold)
-    annotate!(ax, -100, 0, 5pi/2, 1.0,
+    annotation!(ax, -100, 0, 5pi/2, 1.0,
         text = "Second\nPeak",
         style = Ann.Styles.LineArrow(head = Ann.Arrows.Head(),
         tail = Ann.Arrows.Head(length = 20, color = :cyan, notch = 0.3)),
         path = Ann.Paths.Arc(-0.3), justification = :right,
     )
-    annotate!(ax, 7, -0.5, 3pi/2, -1.0,
+    annotation!(ax, 7, -0.5, 3pi/2, -1.0,
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30))
 
