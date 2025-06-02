@@ -95,26 +95,6 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     return cm
 end
 
-function compute_lowcolor(el, cmap)
-    if isnothing(el)
-        return RGBAf(0, 0, 0, 0)
-    elseif el === automatic || el === :auto
-        return RGBAf(to_colormap(cmap)[begin])
-    else
-        return to_color(el)::RGBAf
-    end
-end
-
-function compute_highcolor(eh, cmap)
-    if isnothing(eh)
-        return RGBAf(0, 0, 0, 0)
-    elseif eh === automatic || eh === :auto
-        return RGBAf(to_colormap(cmap)[end])
-    else
-        return to_color(eh)::RGBAf
-    end
-end
-
 function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
 
