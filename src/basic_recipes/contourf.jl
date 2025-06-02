@@ -27,8 +27,6 @@ similar to how [`surface`](@ref) works.
     This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
     """
     mode = :normal
-    colormap = @inherit colormap
-    colorscale = identity
     """
     In `:normal` mode, if you want to show a band from `-Inf` to the low edge,
     set `extendlow` to `:auto` to give the extension the same color as the first level,
@@ -42,7 +40,7 @@ similar to how [`surface`](@ref) works.
     """
     extendhigh = nothing
     # TODO, Isoband doesn't seem to support nans?
-    nan_color = :transparent
+    MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
 end
 
@@ -171,21 +169,14 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(c, c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
-    lowcolor = Observable{RGBAf}()
-    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
-    c.attributes[:_computed_extendlow] = lowcolor
+    c.attributes[:_computed_extendlow] = c.lowclip
     is_extended_low = lift(!isnothing, c, c.extendlow)
 
-    highcolor = Observable{RGBAf}()
-    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
-    c.attributes[:_computed_extendhigh] = highcolor
+    c.attributes[:_computed_extendhigh] = c.highclip
     is_extended_high = lift(!isnothing, c, c.extendhigh)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -213,9 +204,11 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
     poly!(c,
         polys,
         colormap = c._computed_colormap,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
+        colorscale = c.colorscale,
+        colorrange = c.colorrange,
+        alpha = c.alpha,
+        lowclip = c.lowclip,
+        highclip = c.highclip,
         nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,
