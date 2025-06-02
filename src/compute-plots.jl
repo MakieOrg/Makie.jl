@@ -606,7 +606,6 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
         [attribute, :positions],
         [output_name],
     ) do (vec, positions), changed, last
-        any(changed) || return nothing
         if !(vec isa AbstractVector)
             !isnothing(last) && vec == last[1] && return nothing
             return (vec,)

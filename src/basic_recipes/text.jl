@@ -246,11 +246,10 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, gc, offsets = texelems_and_glyph_collection(input_text, args...)
+    tex_elements, gc, tex_offsets = texelems_and_glyph_collection(input_text, args...)
     curr = length(outputs.glyphindices)
     n = length(gc.glyphs)
-    push!(outputs.tex_offsets, offsets)
-    push!(outputs.tex_elements, tex_elements)
+
     push!(outputs.glyphcollections, gc)
     push!(outputs.text_blocks, (curr+1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
@@ -263,9 +262,29 @@ function convert_text_string!(
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
+    # args = fontsize, rotation, color
+    append_tex_linesegment_data!(outputs, curr+1, tex_offsets, tex_elements, args[1], args[3], args[4], offset)
+
     return
 end
 
+function append_tex_linesegment_data!(outputs::NamedTuple,
+        index::Integer, tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3})
+
+    for (element, position, _) in tex_elements
+        if element isa MathTeXEngine.HLine
+            h = element
+            x, y = position
+            p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
+            p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
+            push!(outputs.linesegments, p0, p1)
+            push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
+            push!(outputs.linecolors, color, color)
+            push!(outputs.lineindices, index, index)
+        end
+    end
+    return nothing
+end
 
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
@@ -284,25 +303,17 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokewidth
     ]
     outputs = [
-        :tex_offsets,
-        :tex_elements,
-        :glyphcollections,
-        :glyphindices,
+        :glyphcollections, :glyphindices,
         :font_per_char,
-        :glyph_origins,
-        :glyph_extents,
+        :glyph_origins, :glyph_extents,
         :text_blocks,
-        :text_color,
-        :text_rotation,
-        :text_scales,
-        :text_strokewidth,
-        :text_strokecolor,
+        :text_color, :text_rotation, :text_scales,
+        :text_strokewidth, :text_strokecolor,
+        :linesegments, :linewidths, :linecolors, :lineindices
     ]
     register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         if isnothing(cached)
             _outputs = (
-                tex_offsets = [], # TODO, type?
-                tex_elements = [],
                 glyphcollections = GlyphCollection[],
                 glyphindices = UInt64[],
                 font_per_char = NativeFont[],
@@ -313,7 +324,11 @@ function compute_glyph_collections!(attr::ComputeGraph)
                 text_rotation = Quaternionf[],
                 text_scales = Vec2f[],
                 text_strokewidth = Float32[],
-                text_strokecolor = RGBAf[]
+                text_strokecolor = RGBAf[],
+                linesegments = Point3f[],
+                linewidths = Float32[],
+                linecolors = RGBAf[],
+                lineindices = Int[]
             )
         else
             foreach(empty!, values(cached))
@@ -407,43 +422,17 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     tex_linesegments!(plot)
 end
 
-
-function tex_linesegments(offsets, tex_elements, ts, rotation, color, offs)
-    linesegs = Point2f[]
-    linewidths = Float32[]
-    linecolors = RGBAf[]
-    lineindices = Int[]
-    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
-    for (index, (elements, offset)) in enumerate(zip(tex_elements, offsets))
-        for (element, position, _) in elements
-            if element isa MathTeXEngine.HLine
-                h = element
-                x, y = position
-                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x, y) .- offset) .+ Point2f(offs))
-                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x + h.width, y) .- offset) .+ Point2f(offs))
-                push!(linewidths, ts * h.thickness)
-                push!(linewidths, ts * h.thickness)
-                push!(linecolors, color) # TODO how to specify color better?
-                push!(linecolors, color)
-                push!(lineindices, index)
-                push!(lineindices, index)
-            end
-        end
-    end
-    return linesegs, linewidths, linecolors, lineindices
-end
-
 function tex_linesegments!(plot)
-    register_computation!(plot, [:tex_offsets, :tex_elements, :fontsize, :rotation, :color, :offset], [:linesegments, :linewidths, :linecolors, :lineindices]) do args, _, _
-        return tex_linesegments(args...)
-    end
-    register_computation!(plot, [:linesegments, :positions, :projectionview, :viewport, :transform_func, :space, :lineindices], [:linesgments_shifted]) do (args), _, _
-        isempty(args.linesegments) && return (Point2f[],)
-        pos_transf = plot_to_screen(plot, args.positions)
-        linesegs_shifted = map(args.linesegments, args.lineindices) do seg, index
-            return Point2f(seg + attr_broadcast_getindex(pos_transf, index))
+    # Don't user register_markerspace_position() here so we skip calculating them
+    # if no linesegments are needed
+    map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c],
+            :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions
+
+        isempty(linesegments) && return Point3f[]
+        markerspace_positions = _project(preprojection * model_f32c, positions)
+        return map(linesegments, indices) do seg, index
+            return seg + markerspace_positions[index]
         end
-        return (linesegs_shifted,)
     end
 
     linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths, color = plot.linecolors, space = :pixel)
