@@ -38,5 +38,5 @@ f
 ## Attributes
 
 ```@attrdocs
-Annotate
+Annotation
 ```

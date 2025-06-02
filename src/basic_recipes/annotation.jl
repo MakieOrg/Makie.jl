@@ -162,23 +162,23 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real)
+function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotate}, x::Real, y::Real, x2::Real, y2::Real)
+function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
     return ([Vec4d(x, y, x2, y2)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotate}, v::AbstractVector{<:VecTypes{2}})
+function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotate}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
+function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
     return (Vec4d.(v1, v2, v3, v4),)
 end
 
-function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
+function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     scene = Makie.get_scene(p)
 
     textpositions = lift(p[1]) do vecs
@@ -290,7 +290,7 @@ function Makie.plot!(p::Annotate{<:Tuple{<:AbstractVector{<:Vec4}}})
     return p
 end
 
-function advance_optimization!(p::Annotate, n::Int = 1)
+function advance_optimization!(p::Annotation, n::Int = 1)
     @assert n > 0
     p.__advance_optimization = n
     return
@@ -498,8 +498,8 @@ function startpoint(::Ann.Paths.Corner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotate) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
-Makie.boundingbox(p::Annotate, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
+Makie.data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
+Makie.boundingbox(p::Annotation, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
     BezierPath([
@@ -990,7 +990,7 @@ function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
     ]
 end
 
-function attribute_examples(::Type{Annotate})
+function attribute_examples(::Type{Annotation})
     Dict(
         :shrink => [
             Example(
