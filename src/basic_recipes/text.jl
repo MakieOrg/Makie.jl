@@ -465,22 +465,26 @@ end
 # TODO: anything per-string should include lines?
 
 function register_markerspace_position!(plot)
-    map!(plot.attributes, [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :markerspace_positions) do pv, model, positions, clip_planes
+    if !haskey(plot.attributes, :markerspace_positions)
+        map!(plot.attributes, [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+                :markerspace_positions) do pv, model, positions, clip_planes
 
-        planes = to_model_space(model, clip_planes)
-        projected_pos = _project(pv * model, positions)
-        nan_point = eltype(projected_pos)(NaN)
-        for i in eachindex(projected_pos)
-            projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
+            planes = to_model_space(model, clip_planes)
+            projected_pos = _project(pv * model, positions)
+            nan_point = eltype(projected_pos)(NaN)
+            for i in eachindex(projected_pos)
+                projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
+            end
+            return projected_pos
         end
-        return projected_pos
     end
     return plot.markerspace_positions
 end
 
 function register_raw_glyph_boundingboxes!(plot)
-    map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+    if !haskey(plot.attributes, :raw_glyph_boundingboxes)
+        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+    end
     return plot.raw_glyph_boundingboxes
 end
 
@@ -496,15 +500,17 @@ raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_glyph_boundingboxes!(plot)
-    register_raw_glyph_boundingboxes!(plot)
-    # To consider newlines (and word_wrap_width) we need to include origins.
-    # To not include rotation we need to strip it from origins
-    map!(plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
-            :fast_glyph_boundingboxes) do bbs, origins, rotations
+    if !haskey(plot.attributes, :fast_glyph_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+                :fast_glyph_boundingboxes) do bbs, origins, rotations
 
-        return map(bbs, origins, rotations) do bb, o, rot
-            glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
-            return rotate_bbox(glyphbb3, rot) + o
+            return map(bbs, origins, rotations) do bb, o, rot
+                glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
+                return rotate_bbox(glyphbb3, rot) + o
+            end
         end
     end
     return plot.fast_glyph_boundingboxes
@@ -522,16 +528,18 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 
 # target: Menu? charbbs() replacement with more safety
 function register_glyph_boundingboxes!(plot)
-    register_raw_glyph_boundingboxes!(plot)
-    register_markerspace_position!(plot)
-    map!(plot.attributes,
-            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
-            :glyph_boundingboxes
-        ) do bbs, origins, rotations, positions
+    if !haskey(plot.attributes, :glyph_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        register_markerspace_position!(plot)
+        map!(plot.attributes,
+                [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
+                :glyph_boundingboxes
+            ) do bbs, origins, rotations, positions
 
-        return map(bbs, origins, rotations, positions) do bb, o, rotation, position
-            glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
-            return rotate_bbox(glyphbb3, rotation) + o + position
+            return map(bbs, origins, rotations, positions) do bb, o, rotation, position
+                glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
+                return rotate_bbox(glyphbb3, rotation) + o + position
+            end
         end
     end
     return plot.glyph_boundingboxes
@@ -553,20 +561,22 @@ glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_b
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_string_boundingboxes!(plot)
-    register_raw_glyph_boundingboxes!(plot)
-    # To consider newlines (and word_wrap_width) we need to include origins.
-    # To not include rotation we need to strip it from origins
-    map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation],
-            :fast_string_boundingboxes) do blocks, bbs, origins, rotation
-        return map(blocks) do idxs
-            output = Rect3f()
-            for i in idxs
-                glyphbb = bbs[i]
-                glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
-                ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
-                output = update_boundingbox(output, ms_bb)
+    if !haskey(plot.attributes, :fast_string_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+                :fast_string_boundingboxes) do blocks, bbs, origins, rotation
+            return map(blocks) do idxs
+                output = Rect3f()
+                for i in idxs
+                    glyphbb = bbs[i]
+                    glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    output = update_boundingbox(output, ms_bb)
+                end
+                return output
             end
-            return output
         end
     end
     return plot.fast_string_boundingboxes
@@ -585,19 +595,21 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 
 # target: contour, textlabel
 function register_string_boundingboxes!(plot)
-    register_fast_string_boundingboxes!(plot)
-    register_markerspace_position!(plot)
-    # project positions to markerspace, add them
-    map!(plot.attributes,
-            [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
-            :string_boundingboxes
-        ) do text_blocks, bbs, positions
+    if !haskey(plot.attributes, :string_boundingboxes)
+        register_fast_string_boundingboxes!(plot)
+        register_markerspace_position!(plot)
+        # project positions to markerspace, add them
+        map!(plot.attributes,
+                [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
+                :string_boundingboxes
+            ) do text_blocks, bbs, positions
 
-        return map(enumerate(text_blocks)) do (i, idxs)
-            if isempty(idxs)
-                return Rect3d(Point3d(NaN), Vec3d(0))
-            else
-                return bbs[i] + positions[first(idxs)]
+            return map(enumerate(text_blocks)) do (i, idxs)
+                if isempty(idxs)
+                    return Rect3d(Point3d(NaN), Vec3d(0))
+                else
+                    return bbs[i] + positions[first(idxs)]
+                end
             end
         end
     end
@@ -620,24 +632,23 @@ string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_string
 # This can not be used as `boundingbox()` for Axis/camera limits due to it
 # changing with camera updates
 function register_boundingbox!(plot, target_space::Symbol)
-    register_string_boundingboxes!(plot)
-    scene_graph = parent_scene(plot).compute
-    map!(plot.attributes,
-            [:markerspace, :string_boundingboxes],
-            Symbol(target_space, :_boundingbox)
-        ) do markerspace, bbs
-
-        if markerspace === target_space
-            return reduce(update_boundingbox, bbs, init = Rect3d())
-        else
-            proj = get_space_to_space_matrix(scene_graph, markerspace, target_space)
-            bb = mapreduce(update_boundingbox, bbs, init = Rect3d()) do bb
-                return Rect3d(_project(proj, coordinates(bb)))
+    bbox_name = Symbol(target_space, :_boundingbox)
+    if !haskey(plot.attributes, bbox_name)
+        register_string_boundingboxes!(plot)
+        scene_graph = parent_scene(plot).compute
+        map!(plot.attributes, [:markerspace, :string_boundingboxes], bbox_name) do markerspace, bbs
+            if markerspace === target_space
+                return reduce(update_boundingbox, bbs, init = Rect3d())
+            else
+                proj = get_space_to_space_matrix(scene_graph, markerspace, target_space)
+                bb = mapreduce(update_boundingbox, bbs, init = Rect3d()) do bb
+                    return Rect3d(_project(proj, coordinates(bb)))
+                end
+                return bb
             end
-            return bb
         end
     end
-    return getproperty(plot, Symbol(target_space, :_boundingbox))
+    return getproperty(plot, bbox_name)
 end
 
 """
@@ -659,16 +670,18 @@ end
 
 # target: data_limits()
 function register_data_limits!(plot)
-    register_string_boundingboxes!(plot)
-    map!(plot.attributes,
-            [:markerspace, :space, :string_boundingboxes, :positions],
-            :data_limits
-        ) do markerspace, space, bbs, positions
+    if !haskey(plot.attributes, :data_limits)
+        register_string_boundingboxes!(plot)
+        map!(plot.attributes,
+                [:markerspace, :space, :string_boundingboxes, :positions],
+                :data_limits
+            ) do markerspace, space, bbs, positions
 
-        if markerspace === space
-            return reduce(update_boundingbox, bbs, init = Rect3d())
-        else
-            return Rect3d(positions)
+            if markerspace === space
+                return reduce(update_boundingbox, bbs, init = Rect3d())
+            else
+                return Rect3d(positions)
+            end
         end
     end
     return plot.data_limits
