@@ -489,7 +489,7 @@ end
 
 Returns the raw glyph bounding boxes of the text plot. These only include scaling
 from fontsize. String layouting and application of rotation, offset and position
-attributes is not included
+attributes is not included. Lines from LaTeXStrings are not included.
 """
 raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes!(plot)[]
 raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_glyph_boundingboxes!(plot))
@@ -516,7 +516,7 @@ end
     fast_glyph_boundingboxes(plot::Text)
 
 Returns the markerspace glyph boundingboxes without including `positions`.
-Rotation and offset are included.
+Rotation and offset are included. Lines from LaTeXStrings are not included.
 """
 fast_glyph_boundingboxes(plot) = register_fast_glyph_boundingboxes!(plot)[]
 fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_glyph_boundingboxes!(plot))
@@ -546,7 +546,7 @@ end
 
 Returns the final markerspace boundingbox of each glyph in the plot. This includes
 all relevant attributes (glyphs, fontsize, string layouting, rotation, offset and
-position).
+position). Lines from LaTeXStrings are not included.
 
 Note that this bounding box is is reliant on the camera due to including positions
 which need to be transformed to `markerspace`.
@@ -561,9 +561,10 @@ function register_fast_string_boundingboxes!(plot)
         register_raw_glyph_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
-        map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation],
-                :fast_string_boundingboxes) do blocks, bbs, origins, rotation
-            return map(blocks) do idxs
+        map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+                :fast_string_boundingboxes) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+
+            text_bbs = map(blocks) do idxs
                 output = Rect3f()
                 for i in idxs
                     glyphbb = bbs[i]
@@ -573,6 +574,13 @@ function register_fast_string_boundingboxes!(plot)
                 end
                 return output
             end
+
+            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
+                bb = Rect3f(to_ndim(Point3f, pos, 0) .- 0.5lw, Vec3f(lw))
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            return text_bbs
         end
     end
     return plot.fast_string_boundingboxes
@@ -582,7 +590,7 @@ end
     fast_string_boundingboxes(plot::Text)
 
 Returns the markerspace string boundingboxes without including `positions`.
-Rotation and offset are included.
+Rotation and offset are included. Lines from LaTeXStrings are included.
 """
 fast_string_boundingboxes(plot) = register_fast_string_boundingboxes!(plot)[]
 fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_string_boundingboxes!(plot))
@@ -617,7 +625,7 @@ end
 
 Returns the final markerspace boundingbox of each string in the plot. This includes
 all relevant attributes (glyphs, fontsize, string layouting, rotation, offset and
-position).
+position). Lines from LaTeXStrings are included.
 
 Note that this bounding box is is reliant on the camera due to including positions
 which need to be transformed to `markerspace`.
@@ -652,7 +660,7 @@ end
 
 Returns the boundingbox of the full plot including all relevant text attributes
 transformed to `target_space`. This include fontsize, string layouting, rotation,
-offsets and positions.
+offsets and positions. Lines from LaTeXStrings are included.
 
 Note that this bounding box is is reliant on the camera due to including positions
 which need to be transformed to `markerspace`.
