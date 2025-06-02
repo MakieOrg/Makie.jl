@@ -56,8 +56,7 @@ function TextBuffer(
         kw_args...
     ) where N
     text!(
-        scene, [Point{N, Float32}(0)];
-        text = String[" "],
+        scene, tuple.(String[" "], [Point{N, Float32}(0)]);
         rotation = rotation,
         color = color,
         fontsize = fontsize,
@@ -67,15 +66,14 @@ function TextBuffer(
     )
 end
 
-function start!(tb::Text)
-    attr = tb.attributes
-    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+function start!(tb::Makie.Text)
+    for key in (:arg1, :color, :rotation, :fontsize, :font, :align)
         empty!(attr.inputs[key].value)
     end
     return
 end
 
-function finish!(tb::Text)
+function finish!(tb::Makie.Text)
     attr = tb.attributes
     # now update all callbacks
     if length(attr.inputs[:arg1].value) != length(attr.inputs[:fontsize].value)
@@ -88,17 +86,19 @@ function finish!(tb::Text)
     return
 end
 
-function push!(tb::Text, text::String, position::VecTypes{N}; kw_args...) where N
-    append!(tb, [text], [position]; kw_args...)
+function push!(tb::Makie.Text, text::String, position::VecTypes{N}; kw_args...) where N
+    append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
 end
 
-function append!(tb::Text, text::Vector{String}, positions::Vector{<: VecTypes{N}}; kw_args...) where N
+function append!(tb::Makie.Text, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
+    text_positions = convert_arguments(Makie.Text, tuple.(text, positions))[1]
+    append!(tb, text_positions; kw_args...)
+    return
+end
+
+function append!(tb::Makie.Text, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
     attr = tb.attributes
-
-    textv = same_length_array(positions, text)
-    append!(attr.inputs[:text].value, textv)
-    append!(attr.inputs[:arg1].value, positions)
-
+    append!(attr.inputs[:arg1].value, text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
