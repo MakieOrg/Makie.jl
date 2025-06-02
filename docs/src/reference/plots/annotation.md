@@ -1,14 +1,14 @@
-# annotate
+# annotation
 
 ```@shortdocs; canonical=false
-annotate
+annotation
 ```
 
 ### Automatic label placement
 
 If only target points are specified, text label offsets are automatically optimized for less overlap with their data points, each other and the axis boundary.
 
-In this example, you can see how the `text` recipe results in an unreadable overlap for some labels, while `annotate` pushes labels apart.
+In this example, you can see how the `text` recipe results in an unreadable overlap for some labels, while `annotation` pushes labels apart.
 
 ```@figure
 f = Figure()
@@ -25,10 +25,10 @@ ax1 = Axis(f[1, 1]; limits, title = "text")
 scatter!(ax1, points)
 text!(ax1, points, text = fruit)
 
-ax2 = Axis(f[1, 2]; limits, title = "annotate")
+ax2 = Axis(f[1, 2]; limits, title = "annotation")
 
 scatter!(ax2, points)
-annotate!(ax2, points, text = fruit)
+annotation!(ax2, points, text = fruit)
 
 hidedecorations!.([ax1, ax2])
 

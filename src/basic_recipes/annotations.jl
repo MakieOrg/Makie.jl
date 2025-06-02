@@ -16,6 +16,7 @@ function convert_arguments(::Type{<: Annotations},
 end
 
 function plot!(plot::Annotations)
+    Base.depwarn("The `annotations` recipe is deprecated and will be removed in a future Makie version. Use `text` instead.", :annotations, force = true)
     # annotations are not necessary anymore with the different text behavior
     text!(plot, plot[1]; plot.attributes...)
     plot
