@@ -5,6 +5,7 @@
 - Added new `annotate` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
 - Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
+- Fixed `hist` erroring if it was passed an empty vector, it now defaults to an interval of `0..10` in the absence of any input.  [#5022](https://github.com/MakieOrg/Makie.jl/pull/5022)
 
 ## [0.22.7] - 2025-05-23
 
