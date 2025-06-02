@@ -1,5 +1,6 @@
 module CairoMakie
 
+using Makie.ComputePipeline
 using Makie, LinearAlgebra
 using Colors, GeometryBasics, FileIO
 import CRC32c
@@ -30,7 +31,7 @@ include("display.jl")
 include("infrastructure.jl")
 include("utils.jl")
 include("primitives.jl")
-include("new_primitives.jl")
+include("plot-primitives.jl")
 include("overrides.jl")
 
 function __init__()
