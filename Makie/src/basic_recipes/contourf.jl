@@ -41,7 +41,7 @@ similar to how [`surface`](@ref) works.
     extendhigh = nothing
     mixin_generic_plot_attributes()...
     # TODO, Isoband doesn't seem to support nans?
-    mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
+    mixin_colormap_attributes(allow = (:alpha, :colormap, :colorscale, :nan_color))...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.
@@ -250,7 +250,9 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         c,
         c.polys,
         colormap = c.computed_colormap,
+        colorscale = c.colorscale,
         colorrange = c.computed_colorrange,
+        alpha = c.alpha,
         highclip = c.computed_highcolor,
         lowclip = c.computed_lowcolor,
         nan_color = c.nan_color,
