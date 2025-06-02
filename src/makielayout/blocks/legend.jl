@@ -211,7 +211,7 @@ function initialize_block!(leg::Legend; entrygroups)
     shade_color = RGBAf(0.9,0.9,0.9,0.65)
     hatch_width = leg.labelsize[]
     halfshade_color = LinePattern(direction=Vec2f(1), width=hatch_width/2,
-            tilesize=(hatch_width,hatch_width), linecolor=shade_color)
+            tilesize=round.(Int,(hatch_width,hatch_width)), linecolor=shade_color)
 
     # For cleaning up visible listeners on relayouting
     entry_observer_funcs = ObserverFunction[]
