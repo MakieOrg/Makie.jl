@@ -183,17 +183,11 @@ function closest_index(sliderrange, value)
     closest_index_inexact(sliderrange, value)
 end
 
-function closest_index_inexact(sliderrange, value)
-    distance = Inf
-    selected_i = 0
-    for (i, val) in enumerate(sliderrange)
-        newdist = abs(val - value)
-        if newdist < distance
-            distance = newdist
-            selected_i = i
-        end
-    end
-    selected_i
+function closest_index_inexact(sliderrange, value::Number)
+	_, selected_i = findmin(sliderrange) do val
+		abs(val - value)
+	end
+    return selected_i
 end
 
 """
