@@ -46,6 +46,9 @@ function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     return bb_ref[]
 end
 
+# TODO: implement space
+boundingbox(plot::MeshScatter, space::Symbol = :data) = plot.boundingbox[]
+
 
 function limits_with_marker_transforms(positions, scales, rotation, model, element_bbox)
     isempty(positions) && return Rect3d()
