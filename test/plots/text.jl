@@ -27,7 +27,6 @@ end
     scene = Scene()
     campixel!(scene)
     p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline), fontsize = 20)
-    glyph_collection = p.plots[1][1][][]
 
     # This doesn't work well because FreeTypeAbstraction doesn't quite scale
     # linearly
@@ -57,30 +56,28 @@ end
         unit_extents[3].advance[1]
     ])
 
-    @test glyph_collection isa Makie.GlyphCollection
-    @test glyph_collection.glyphs == FreeTypeAbstraction.glyph_index.(font, chars)
-    @test glyph_collection.fonts.sv == [font for _ in 1:4]
-    @test all(isapprox.(glyph_collection.origins, [Point3f(x, 0, 0) for x in origins], atol=1e-10))
-    @test glyph_collection.scales.sv == Vec2f(p.fontsize[])
-    @test glyph_collection.rotations.sv == Quaternionf(0, 0, 0, 1)
-    @test glyph_collection.colors.sv == RGBAf(0, 0, 0, 1)
-    @test glyph_collection.strokecolors.sv == RGBAf(0, 0, 0, 0)
-    @test glyph_collection.strokewidths.sv == 0
+    @test p.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, chars)
+    @test p.font_per_char[] == [font for _ in 1:4]
+    @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol=1e-10))
+    @test all(s -> s == Vec2f(p.fontsize[]), p.text_scales[])
+    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.text_rotation[])
+    @test all(c -> c == RGBAf(0, 0, 0, 1), p.text_color[])
+    @test all(x -> x == RGBAf(0, 0, 0, 0), p.text_strokecolor[])
+    @test all(x -> x == 0, p.text_strokewidth[])
 
-    makie_hi_bb = Makie.height_insensitive_boundingbox.(glyph_collection.extents)
-    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(glyph_collection.extents)
+    makie_hi_bb = Makie.height_insensitive_boundingbox.(p.glyph_extents[])
+    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(p.glyph_extents[])
     fta_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox.(unit_extents, Ref(font))
     fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
     @test makie_hi_bb == fta_hi_bb
     @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
     atlas = Makie.get_texture_atlas()
     # Test quad data
-    transformed = Makie.apply_transform_and_f32_conversion(
-        nothing, Makie.transform_func(p), p.model[], p.position[], :data
-    )
-    positions, char_offsets, quad_offsets, uvs, scales = Makie.text_quads(
-        atlas, transformed, glyph_collection, Vec2f(0)
-    )
+    positions = p.positions_transformed_f32c[]
+    char_offsets = p.marker_offset[]
+    quad_offsets = p.quad_offset[]
+    uvs = p.sdf_uv[]
+    scales = p.quad_scale[]
 
     # Also doesn't work
     # fta_offsets = map(fta_glyphs) do (img, extent)
@@ -102,8 +99,8 @@ end
         Vec2f(mini .+ 2 * atlas.glyph_padding * 20.0 / atlas.pix_per_glyph)
     end
 
-    @test all(isequal(to_ndim(Point3f, p.position[], 0f0)), positions)
-    @test char_offsets == glyph_collection.origins
+    @test all(pos -> pos == p.arg1[], positions)
+    @test char_offsets == p.glyph_origins[]
     @test quad_offsets == fta_quad_offsets
     @test scales  == fta_scales
 end
