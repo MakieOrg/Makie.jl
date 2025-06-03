@@ -69,9 +69,11 @@ function initialize_block!(tbox::Textbox)
         fontsize = tbox.fontsize, padding = tbox.textpadding)
 
     textplot = t.blockscene.plots[1]
-    _tight_character_boundingboxes(textplot) # create computation
-    # generate obs and throw away equal values to not trigger stackoverflow from translate!()
-    displayed_charbbs = map(identity, textplot.tight_character_boundingboxes, ignore_equal_values = true)
+    # Manually add positions without considering transformations to prevent
+    # infinite loop from translate!() in on(cursorpoints)
+    displayed_charbbs = map(textplot.positions, fast_glyph_boundingboxes_obs(textplot)) do pos, bbs
+        return [Rect2f(bb) + Point2f(pos[1]) for bb in bbs]
+    end
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
