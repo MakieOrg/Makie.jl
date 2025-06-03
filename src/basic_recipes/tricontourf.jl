@@ -102,6 +102,11 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
+    if c.colorrange[] isa MakieCore.Automatic
+        c.colorrange = lift(c, c._computed_levels) do levels
+            minimum(levels), maximum(levels)
+        end
+    end
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
