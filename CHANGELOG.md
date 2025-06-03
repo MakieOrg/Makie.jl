@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+## [0.22.9] - 2025-06-03
+
+- Added conversion method for `annotation` to make it compatible with AlgebraOfGraphics [#5029](https://github.com/MakieOrg/Makie.jl/pull/5029).
+
 ## [0.22.8] - 2025-06-03
 
 - Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
