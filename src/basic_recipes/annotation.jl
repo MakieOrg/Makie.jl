@@ -158,7 +158,7 @@ function closest_point_on_rectangle(r::Rect2, p)
         Point2(x1, clamped_y),
         Point2(x2, clamped_y)
     ]
-    
+
     return argmin(c -> norm(c - p), candidates)
 end
 
@@ -342,7 +342,7 @@ function distance_point_inside_rect(p::Point2, rect::Rect2)
     else
         argmin(abs, (py - rb, py - rt))
     end
-    
+
     # keep only the smaller one because it's faster
     # to move the rect away from the point that way
     return if abs(dx) < abs(dy)
@@ -431,7 +431,7 @@ function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2},
                 offsets[i] += algorithm.repel * diff
             end
         end
-       
+
         # Keep text boundingboxes inside the axis boundingbox
         let
             ((l, b), (r, t)) = extrema(bbox)
@@ -474,7 +474,7 @@ end
 function rect_overlap(r1, r2)
     (r1l, r1b), (r1r, r1t) = extrema(r1)
     (r2l, r2b), (r2r, r2t) = extrema(r2)
-    
+
     x = interval_overlap(r1l, r1r, r2l, r2r)
     y = interval_overlap(r1b, r1t, r2b, r2t)
 
@@ -652,32 +652,32 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
     x1, y1 = p1
     x2, y2 = p2
     cx, cy = center
-    
+
     # Translate points so the circle center is at the origin
     x1 -= cx; y1 -= cy
     x2 -= cx; y2 -= cy
-    
+
     # Line direction
     dx = x2 - x1
     dy = y2 - y1
-    
+
     # Quadratic equation coefficients
     a = dx^2 + dy^2
     b = 2 * (x1 * dx + y1 * dy)
     c = x1^2 + y1^2 - r^2
-    
+
     # Discriminant
     discriminant = b^2 - 4*a*c
-    
+
     if discriminant < 0
         return false, nothing, nothing
     end
-    
+
     # Two solutions for t
     sqrt_discriminant = sqrt(discriminant)
     t1 = (-b - sqrt_discriminant) / (2*a)
     t2 = (-b + sqrt_discriminant) / (2*a)
-    
+
     # Check if the solutions are within the segment
     t = if 0 <= t2 <= 1
         t2
@@ -686,15 +686,15 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
     else
         return false, nothing, nothing
     end
-    
+
     # Intersection point in translated coordinates
     ix = x1 + t * dx
     iy = y1 + t * dy
-    
+
     # Translate back to original coordinates
     ix += cx
     iy += cy
-    
+
     return true, MoveTo(Point2d(ix, iy)), command
 end
 
@@ -757,7 +757,7 @@ function is_between(x, a, b)
 end
 
 function clip_path_from_start(path::BezierPath, bbox::Rect2)
-    
+
     if length(path.commands) < 2
         return path
     end
@@ -776,7 +776,7 @@ function clip_path_from_start(path::BezierPath, bbox::Rect2)
             break
         end
     end
-    
+
     return path
 end
 
@@ -866,7 +866,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     x2, y2 = p2
     (rx, ry) = rect.origin
     (rw, rh) = rect.widths
-    
+
     # List of rectangle edges (each edge is represented as a pair of points)
     edges = (
         (Point2d(rx, ry), Point2d(rx + rw, ry)),           # Bottom edge
@@ -874,22 +874,22 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
         (Point2d(rx + rw, ry), Point2d(rx + rw, ry + rh)), # Right edge
         (Point2d(rx, ry + rh), Point2d(rx + rw, ry + rh))  # Top edge
     )
-    
+
     # Helper function to find intersection of two line segments
     function segment_intersection(p1::Point2, p2::Point2, q1::Point2, q2::Point2)
         x1, y1 = p1
         x2, y2 = p2
         x3, y3 = q1
         x4, y4 = q2
-        
+
         denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1)
         if denom == 0.0
             return (false, nothing)  # Parallel lines
         end
-        
+
         ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom
         ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom
-        
+
         if 0.0 <= ua <= 1.0 && 0.0 <= ub <= 1.0
             ix = x1 + ua * (x2 - x1)
             iy = y1 + ua * (y2 - y1)
@@ -898,10 +898,10 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
             return (false, nothing)  # Intersection not within the segments
         end
     end
-    
+
     closest_intersection = nothing
     min_distance = Inf
-    
+
     # Check intersection with each edge
     for (q1, q2) in edges
         intersects, point = segment_intersection(p1, p2, q1, q2)
@@ -914,7 +914,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
             end
         end
     end
-    
+
     if isnothing(closest_intersection)
         return (false, nothing)
     else
@@ -1068,4 +1068,4 @@ function attribute_examples(::Type{Annotation})
             )
         ],
     )
-end 
+end
