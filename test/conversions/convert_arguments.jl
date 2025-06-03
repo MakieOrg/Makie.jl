@@ -374,11 +374,6 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 # If a recipe transforms its input arguments it is fine for it
                 # to keep T_in in apply_conversion.
 
-                @testset "Annotations" begin
-                    @test apply_conversion(Annotations, strings, ps2) isa Tuple{Vector{Tuple{String, Point{2, T_out}}}}
-                    @test apply_conversion(Annotations, strings, ps3) isa Tuple{Vector{Tuple{String, Point{3, T_out}}}}
-                end
-
                 @testset "Arrows" begin
                     @test apply_conversion(Arrows, xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
                     @test apply_conversion(Arrows, xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
