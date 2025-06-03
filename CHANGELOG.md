@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.22.8] - 2025-06-03
+
 - Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
 - Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
@@ -812,7 +814,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.8...HEAD
+[0.22.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...v0.22.8
 [0.22.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...v0.22.7
 [0.22.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6
 [0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
