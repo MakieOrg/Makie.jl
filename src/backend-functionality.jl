@@ -361,7 +361,11 @@ function add_computation!(attr, ::Val{:surface_as_mesh})
     register_position_transforms!(attr)
 end
 
-function compute_colors(@nospecialize(plot), color_name = :scaled_color)
-    Makie.add_computation!(plot.attributes, Val(:computed_color), color_name)
-    return plot.computed_color[]
+function compute_colors!(attributes, color_name = :scaled_color)
+    Makie.add_computation!(attributes, Val(:computed_color), color_name)
+end
+
+function compute_colors(attributes, color_name = :scaled_color)
+    compute_colors!(attributes, color_name)
+    return attributes.computed_color[]
 end

@@ -63,6 +63,7 @@ pages = [
         "Plots" => [
             "reference/plots/overview.md",
             "reference/plots/ablines.md",
+            "reference/plots/annotation.md",
             "reference/plots/arc.md",
             "reference/plots/arrows.md",
             "reference/plots/band.md",
