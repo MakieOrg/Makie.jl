@@ -222,6 +222,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
     args = @extract plot (color, colormap, colorscale)
     level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
+
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
 
@@ -239,6 +240,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 
     P = T <: Contour ? Point2f : Point3f
     scene = parent_scene(plot)
+
+    lab_pos, lab_rot, lab_col, lab_str = P[], Float32[], RGBA{Float32}[], String[]
 
     texts = text!(
         plot,
@@ -260,6 +263,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         rot = Quaternionf[]
         col = RGBAf[]
         lbl = String[]
+
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
@@ -274,10 +278,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             push!(col, labelcolor === nothing ? color : to_color(labelcolor))
             push!(rot, to_rotation(rot_from_vert))
             push!(lbl, labelformatter(lev))
+
             p = p2  # try to position label around center
             isnan(p) && (p = p1)
             isnan(p) && (p = p3)
             push!(pos, p)
+
         end
         update!(texts, arg1 = pos, rotation = rot, color = col, text = lbl)
         return
@@ -321,12 +327,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         linecap = plot.linecap,
         joinstyle = plot.joinstyle,
         miter_limit = plot.miter_limit,
-        visible=plot.visible,
-        transparency=plot.transparency,
-        overdraw=plot.overdraw,
-        inspectable=plot.inspectable,
-        depth_shift=plot.depth_shift,
-        space=plot.space
+        visible = plot.visible,
+        transparency = plot.transparency,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        depth_shift = plot.depth_shift,
+        space = plot.space,
     )
 
     # toggle to debug labels
