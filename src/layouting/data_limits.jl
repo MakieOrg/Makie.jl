@@ -131,6 +131,10 @@ function update_boundingbox(a::Rect{N}, b::Rect{N}) where N
     return Rect{N}(mini, maxi - mini)
 end
 
+function maximum_widths(bounding_boxes::AbstractArray{<: Rect{N, T}}) where {N, T}
+    return mapreduce(widths, (a,b) -> max.(a, b), bounding_boxes, init = Vec{N, T}(0))
+end
+
 foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
 # foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 # foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)

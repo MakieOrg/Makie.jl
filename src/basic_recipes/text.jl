@@ -246,11 +246,10 @@ function convert_text_string!(
     )
 
     args = sv_getindex.((fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width), i)
-    tex_elements, gc, offsets = texelems_and_glyph_collection(input_text, args...)
+    tex_elements, gc, tex_offsets = texelems_and_glyph_collection(input_text, args...)
     curr = length(outputs.glyphindices)
     n = length(gc.glyphs)
-    push!(outputs.tex_offsets, offsets)
-    push!(outputs.tex_elements, tex_elements)
+
     push!(outputs.glyphcollections, gc)
     push!(outputs.text_blocks, (curr+1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
@@ -263,9 +262,33 @@ function convert_text_string!(
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
+    append_tex_linesegment_data!(outputs, tex_offsets, tex_elements,
+            args[1], args[3], args[4], sv_getindex(offset, i))
+    # args = fontsize, rotation, color
+
     return
 end
 
+function append_tex_linesegment_data!(outputs::NamedTuple,
+        tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3})
+
+    block_idx = length(outputs.text_blocks)
+    pos_idx = first(last(outputs.text_blocks))
+
+    for (element, position, _) in tex_elements
+        if element isa MathTeXEngine.HLine
+            h = element
+            x, y = position
+            p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
+            p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
+            push!(outputs.linesegments, p0, p1)
+            push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
+            push!(outputs.linecolors, color, color)
+            push!(outputs.lineindices, block_idx => pos_idx, block_idx => pos_idx)
+        end
+    end
+    return nothing
+end
 
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
@@ -284,25 +307,17 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :strokewidth
     ]
     outputs = [
-        :tex_offsets,
-        :tex_elements,
-        :glyphcollections,
-        :glyphindices,
+        :glyphcollections, :glyphindices,
         :font_per_char,
-        :glyph_origins,
-        :glyph_extents,
+        :glyph_origins, :glyph_extents,
         :text_blocks,
-        :text_color,
-        :text_rotation,
-        :text_scales,
-        :text_strokewidth,
-        :text_strokecolor,
+        :text_color, :text_rotation, :text_scales,
+        :text_strokewidth, :text_strokecolor,
+        :linesegments, :linewidths, :linecolors, :lineindices
     ]
     register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         if isnothing(cached)
             _outputs = (
-                tex_offsets = [], # TODO, type?
-                tex_elements = [],
                 glyphcollections = GlyphCollection[],
                 glyphindices = UInt64[],
                 font_per_char = NativeFont[],
@@ -313,7 +328,11 @@ function compute_glyph_collections!(attr::ComputeGraph)
                 text_rotation = Quaternionf[],
                 text_scales = Vec2f[],
                 text_strokewidth = Float32[],
-                text_strokecolor = RGBAf[]
+                text_strokecolor = RGBAf[],
+                linesegments = Point3f[],
+                linewidths = Float32[],
+                linecolors = RGBAf[],
+                lineindices = Pair{Int, Int}[]
             )
         else
             foreach(empty!, values(cached))
@@ -365,27 +384,22 @@ function register_text_computations!(attr::ComputeGraph)
         return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r], )
     end
 
-    # glyph_boundingboxes are not tight to the character.
-    # Vertically they fill the full space the character may occupy.
-    # (I.e. a and g have the same y min and max)
-    # Horizontally they fill the include the spacing between characters.
-    # (I.e. boundingboxes of consecutive characters touch)
     register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
-            [:glyph_boundingboxes, :quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+            [:quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
 
-        glyph_boundingboxes = Rect2d[]
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
         pad = atlas.glyph_padding / atlas.pix_per_glyph
         per_glyph_attributes(text_blocks, (gi, fonts, fontsize)) do g, f, fs
+            # These are tight to the glyph. They do not fill the full space
+            # a glyph takes within a string/layout.
             bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
             quad_offset = Vec2f(minimum(bb) .- fs .* pad)
             quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
-            push!(glyph_boundingboxes, bb)
             push!(quad_offsets, quad_offset)
             push!(quad_scales, quad_scale)
         end
-        return (glyph_boundingboxes, quad_offsets, quad_scales)
+        return (quad_offsets, quad_scales)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
@@ -409,195 +423,280 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-
-    # glyphs scaled to fontsize with not string layouting
-    map!(gl_bboxes, attr, [:glyphindices, :text_scales, :glyph_extents], :gl_bboxes)
-
-    # string bboxes with glyph layouting + rotation
-    register_computation!(attr, [:gl_bboxes, :text_blocks, :glyph_origins, :rotation], [:per_string_bb]) do args, changed, last
-        b_args = (args.gl_bboxes, args.glyph_origins, args.rotation)
-        result = Rect3d[]
-        per_text_block(args.text_blocks, b_args) do glyph_bbs, origins, rotation # per text
-            push!(result, unchecked_boundingbox(glyph_bbs, origins, rotation))
-        end
-        return (result,)
-    end
-
     tex_linesegments!(plot)
-
-    # TODO: There is a :position attribute and a :positions Computed (after dim converts)
-    #       This seems quite error prone...
-    # data_limits()
-    register_computation!(attr, [:per_string_bb, :positions, :space, :markerspace], [:data_limits]) do inputs, changed, last
-        bbs, pos, space, markerspace = inputs
-        # TODO: technically this should also verify transform_func === identity
-        # TODO: technically this should consider scene space if space == :data
-        if space === markerspace
-            total_bb = Rect3d()
-            for (bb, p) in zip(bbs, pos)
-                total_bb = update_boundingbox(total_bb, bb + to_ndim(Point3d, p, 0))
-            end
-            return (total_bb,)
-        elseif changed.positions
-            return (Rect3d(pos),)
-        else
-            return nothing
-        end
-        return (Rect3d(inputs.positions),)
-    end
 end
 
-
-function tex_linesegments(offsets, tex_elements, ts, rotation, color, offs)
-    linesegs = Point2f[]
-    linewidths = Float32[]
-    linecolors = RGBAf[]
-    lineindices = Int[]
-    rotate_2d(quat, point2) = Point2f(quat * to_ndim(Point3f, point2, 0))
-    for (index, (elements, offset)) in enumerate(zip(tex_elements, offsets))
-        for (element, position, _) in elements
-            if element isa MathTeXEngine.HLine
-                h = element
-                x, y = position
-                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x, y) .- offset) .+ Point2f(offs))
-                push!(linesegs, rotate_2d(rotation, ts .* Point2f(x + h.width, y) .- offset) .+ Point2f(offs))
-                push!(linewidths, ts * h.thickness)
-                push!(linewidths, ts * h.thickness)
-                push!(linecolors, color) # TODO how to specify color better?
-                push!(linecolors, color)
-                push!(lineindices, index)
-                push!(lineindices, index)
-            end
-        end
+function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
+    planes = to_model_space(model, clip_planes)
+    projected_pos = _project(preprojection * model, positions)
+    nan_point = eltype(projected_pos)(NaN)
+    for i in eachindex(projected_pos)
+        projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
     end
-    return linesegs, linewidths, linecolors, lineindices
+    return projected_pos
 end
 
 function tex_linesegments!(plot)
-    register_computation!(plot, [:tex_offsets, :tex_elements, :fontsize, :rotation, :color, :offset], [:linesegments, :linewidths, :linecolors, :lineindices]) do args, _, _
-        return tex_linesegments(args...)
-    end
-    register_computation!(plot, [:linesegments, :positions, :projectionview, :viewport, :transform_func, :space, :lineindices], [:linesgments_shifted]) do (args), _, _
-        isempty(args.linesegments) && return (Point2f[],)
-        pos_transf = plot_to_screen(plot, args.positions)
-        linesegs_shifted = map(args.linesegments, args.lineindices) do seg, index
-            return Point2f(seg + attr_broadcast_getindex(pos_transf, index))
+    # Don't user register_markerspace_position() here so we skip calculating them
+    # if no linesegments are needed
+    map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+            :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
+
+        isempty(linesegments) && return Point3f[]
+        markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
+        # TODO: avoid repeated apply_transform and use block_idx?
+        return map(linesegments, indices) do seg, (block_idx, glyph_idx)
+            return seg + markerspace_positions[glyph_idx]
         end
-        return (linesegs_shifted,)
     end
 
-    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths, color = plot.linecolors, space = :pixel)
+    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths,
+        color = plot.linecolors, space = plot.markerspace)
 end
 
+################################################################################
+### Bounding Boxes
+################################################################################
 
-# TODO: Naming?
-"""
-    string_widths(plot::Text)
+# Notes:
+# - metrics_bb(): bounding box tightly around glyphs, not used outside of gl backends
+# - height_insensitive_boundingbox_with_advance(): bounding box of glyphs as part
+#   of a string layout at unit scale
+# - rotation is already applied to glyph_origins, so applying origins without
+#   rotation doesn't make sense / is wrong
+# - offset always applies in markerspace w/o rotation. Excluding it when positions
+#   are included makes little sense
 
-Returns the markerspace size for each text element drawn by the given text plot.
-This is the width and height of the bounding boxes of each individual glyph
-collection, with rotation.
-"""
-string_widths(plot) = widths.(plot.per_string_bb[]) # These do not include positions
+# TODO: anything per-string should include lines?
 
-"""
-    raw_string_widths(plot::Text)
-
-Returns the markerspace size for each text element drawn by the given text plot.
-This is the width and height of the bounding boxes of each individual glyph
-collection, without rotation.
-"""
-function raw_string_widths(plot)
-    register_computation!(plot.attributes, [:gl_bboxes, :text_blocks, :glyph_origins],
-            [:raw_per_string_bb]) do args, changed, last
-        b_args = (args.gl_bboxes, args.glyph_origins)
-        result = Rect3d[]
-        per_text_block(args.text_blocks, b_args) do glyph_bbs, origins
-            push!(result, unchecked_boundingbox(glyph_bbs, origins, Quaternionf(0,0,0,1)))
-        end
-        return (result,)
+function register_markerspace_position!(plot)
+    if !haskey(plot.attributes, :markerspace_positions)
+        map!(project_text_positions_to_markerspace, plot.attributes,
+            [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+            :markerspace_positions)
     end
+    return plot.markerspace_positions
+end
 
-    widths.(plot.raw_per_string_bb[])
+function register_raw_glyph_boundingboxes!(plot)
+    if !haskey(plot.attributes, :raw_glyph_boundingboxes)
+        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+    end
+    return plot.raw_glyph_boundingboxes
 end
 
 """
-    maximum_string_widths(plot::Text)
+    raw_glyph_boundingboxes(plot::Text)
 
-Returns the maximum width, height and depth of each text element drawn by the
-given text plot. This includes fontsize scaling but not text rotations.
+Returns the raw glyph bounding boxes of the text plot. These only include scaling
+from fontsize. String layouting and application of rotation, offset and position
+attributes is not included. Lines from LaTeXStrings are not included.
 """
-maximum_string_widths(plot) = reduce((a,b) -> max.(a, b), raw_string_widths(plot), init = Vec3d(0))
+raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes!(plot)[]
+raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_glyph_boundingboxes!(plot))
 
-function register_per_string_boundingboxes!(plot::Text)
-    register_computation!(
-        plot.attributes,
-        [:positions_transformed_f32c, :model_f32c, :preprojection, :per_string_bb, :text_blocks],
-        [:markerspace_boundingboxes]
-    ) do (positions, model, preprojection, per_string_bb, blocks), changed, cached
-        # preprojection in plot is space -> markerspace
-        # Could skip this if the matrix == I
-        pos = _project(preprojection * model, positions[first.(blocks)])
-        bbs = [bb + to_ndim(Point3d, p, 0) for (bb, p) in zip(per_string_bb, pos)]
-        return (bbs,)
-    end
-    return
-end
+# target: rotation aware layouting, e.g. Axis ticks, Menu, ...
+function register_fast_glyph_boundingboxes!(plot)
+    if !haskey(plot.attributes, :fast_glyph_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+                :fast_glyph_boundingboxes) do bbs, origins, rotations
 
-function per_string_boundingboxes(plot::Text)
-    register_per_string_boundingboxes!(plot)
-    return plot.markerspace_boundingboxes[]
-end
-
-function per_string_boundingboxes_obs(plot::Text)
-    register_per_string_boundingboxes!(plot)
-    return ComputePipeline.get_observable!(plot.markerspace_boundingboxes)
-end
-
-function register_string_boundingbox!(plot::Text)
-    register_per_string_boundingboxes!(plot)
-    map!(plot.attributes, :markerspace_boundingboxes, :markerspace_boundingbox) do bbs
-        return reduce(update_boundingbox, bbs, init = Rect3d())
-    end
-    return
-end
-
-function string_boundingbox(plot::Text)
-    register_string_boundingbox!(plot)
-    return plot.markerspace_boundingbox[]
-end
-
-function string_boundingbox_obs(plot::Text)
-    register_string_boundingbox!(plot)
-    return ComputePipeline.get_observable!(plot.markerspace_boundingbox)
-end
-
-# replacement for charbbs()
-# TODO: Maybe generalize this? I.e. for multiple text blocks, markerpace != space, transformations, etc
-function _tight_character_boundingboxes(plot::Text)
-    register_computation!(plot.attributes,
-            [:text_positions, :glyph_extents, :text_scales, :glyph_origins],
-            [:tight_character_boundingboxes]
-        ) do inputs, changed, cached
-
-        positions, extents, scales, origins = inputs
-        if all(x -> length(x) == length(positions) || length(x) == 1, inputs)
-            bbs = Rect2f[]
-            broadcast_foreach(positions, extents, scales, origins) do pos, ext, sc, ori
-                bb = Makie.height_insensitive_boundingbox_with_advance(ext)
-                bb2 = Rect2f(bb * sc) + Point2f(ori) + Point2f(pos)
-                push!(bbs, bb2)
+            return map(bbs, origins, rotations) do bb, o, rot
+                glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
+                return rotate_bbox(glyphbb3, rot) + o
             end
-            return (bbs,)
-        elseif isnothing(cached)
-            return (Rect2f[],)
-        else
-            return nothing
         end
     end
-
-    return plot.tight_character_boundingboxes[]
+    return plot.fast_glyph_boundingboxes
 end
+
+"""
+    fast_glyph_boundingboxes(plot::Text)
+
+Returns the markerspace glyph boundingboxes without including `positions`.
+Rotation and offset are included. Lines from LaTeXStrings are not included.
+"""
+fast_glyph_boundingboxes(plot) = register_fast_glyph_boundingboxes!(plot)[]
+fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_glyph_boundingboxes!(plot))
+
+
+# target: Menu? charbbs() replacement with more safety
+function register_glyph_boundingboxes!(plot)
+    if !haskey(plot.attributes, :glyph_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        register_markerspace_position!(plot)
+        map!(plot.attributes,
+                [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
+                :glyph_boundingboxes
+            ) do bbs, origins, rotations, positions
+
+            return map(bbs, origins, rotations, positions) do bb, o, rotation, position
+                glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
+                return rotate_bbox(glyphbb3, rotation) + o + position
+            end
+        end
+    end
+    return plot.glyph_boundingboxes
+end
+
+"""
+    glyph_boundingboxes(plot)
+
+Returns the final markerspace boundingbox of each glyph in the plot. This includes
+all relevant attributes (glyphs, fontsize, string layouting, rotation, offset and
+position). Lines from LaTeXStrings are not included.
+
+Note that this bounding box is is reliant on the camera due to including positions
+which need to be transformed to `markerspace`.
+"""
+glyph_boundingboxes(plot) = register_glyph_boundingboxes!(plot)[]
+glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_boundingboxes!(plot))
+
+
+# target: rotation aware layouting, e.g. Axis ticks, Menu, ...
+function register_fast_string_boundingboxes!(plot)
+    if !haskey(plot.attributes, :fast_string_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+                :fast_string_boundingboxes) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+
+            text_bbs = map(blocks) do idxs
+                output = Rect3f()
+                for i in idxs
+                    glyphbb = bbs[i]
+                    glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    output = update_boundingbox(output, ms_bb)
+                end
+                return output
+            end
+
+            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
+                bb = Rect3f(to_ndim(Point3f, pos, 0) .- 0.5lw, Vec3f(lw))
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            return text_bbs
+        end
+    end
+    return plot.fast_string_boundingboxes
+end
+
+"""
+    fast_string_boundingboxes(plot::Text)
+
+Returns the markerspace string boundingboxes without including `positions`.
+Rotation and offset are included. Lines from LaTeXStrings are included.
+"""
+fast_string_boundingboxes(plot) = register_fast_string_boundingboxes!(plot)[]
+fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_string_boundingboxes!(plot))
+
+
+
+# target: contour, textlabel
+function register_string_boundingboxes!(plot)
+    if !haskey(plot.attributes, :string_boundingboxes)
+        register_fast_string_boundingboxes!(plot)
+        register_markerspace_position!(plot)
+        # project positions to markerspace, add them
+        map!(plot.attributes,
+                [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
+                :string_boundingboxes
+            ) do text_blocks, bbs, positions
+
+            return map(enumerate(text_blocks)) do (i, idxs)
+                if isempty(idxs)
+                    return Rect3d(Point3d(NaN), Vec3d(0))
+                else
+                    return bbs[i] + positions[first(idxs)]
+                end
+            end
+        end
+    end
+    return plot.string_boundingboxes
+end
+
+"""
+    string_boundingboxes(plot)
+
+Returns the final markerspace boundingbox of each string in the plot. This includes
+all relevant attributes (glyphs, fontsize, string layouting, rotation, offset and
+position). Lines from LaTeXStrings are included.
+
+Note that this bounding box is is reliant on the camera due to including positions
+which need to be transformed to `markerspace`.
+"""
+string_boundingboxes(plot) = register_string_boundingboxes!(plot)[]
+string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_string_boundingboxes!(plot))
+
+# This can not be used as `boundingbox()` for Axis/camera limits due to it
+# changing with camera updates
+function register_boundingbox!(plot, target_space::Symbol)
+    bbox_name = Symbol(target_space, :_boundingbox)
+    if !haskey(plot.attributes, bbox_name)
+        register_string_boundingboxes!(plot)
+        scene_graph = parent_scene(plot).compute
+        map!(plot.attributes, [:markerspace, :string_boundingboxes], bbox_name) do markerspace, bbs
+            if markerspace === target_space
+                return reduce(update_boundingbox, bbs, init = Rect3d())
+            else
+                proj = get_space_to_space_matrix(scene_graph, markerspace, target_space)
+                bb = mapreduce(update_boundingbox, bbs, init = Rect3d()) do bb
+                    return Rect3d(_project(proj, coordinates(bb)))
+                end
+                return bb
+            end
+        end
+    end
+    return getproperty(plot, bbox_name)
+end
+
+"""
+    full_boundingbox(plot, target_space = plot.space[])
+
+Returns the boundingbox of the full plot including all relevant text attributes
+transformed to `target_space`. This include fontsize, string layouting, rotation,
+offsets and positions. Lines from LaTeXStrings are included.
+
+Note that this bounding box is is reliant on the camera due to including positions
+which need to be transformed to `markerspace`.
+"""
+function full_boundingbox(plot::Text, target_space::Symbol = plot.space[])
+    return register_boundingbox!(plot, target_space)[]
+end
+function full_boundingbox_obs(plot::Text, target_space::Symbol = plot.space[])
+    return ComputePipeline.get_observable!(register_boundingbox!(plot, target_space))
+end
+
+# target: data_limits()
+function register_data_limits!(plot)
+    if !haskey(plot.attributes, :data_limits)
+        register_string_boundingboxes!(plot)
+        map!(plot.attributes,
+                [:markerspace, :space, :string_boundingboxes, :positions],
+                :data_limits
+            ) do markerspace, space, bbs, positions
+
+            if markerspace === space
+                return reduce(update_boundingbox, bbs, init = Rect3d())
+            else
+                return Rect3d(positions)
+            end
+        end
+    end
+    return plot.data_limits
+end
+
+data_limits(plot::Text) = register_data_limits!(plot)[]
+data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limits!(plot))
+
+######################
+
 
 function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
         rotation, color, strokecolor, strokewidth, word_wrap_width)

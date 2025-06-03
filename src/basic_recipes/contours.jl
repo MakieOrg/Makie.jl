@@ -289,7 +289,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         return
     end
 
-    bboxes = per_string_boundingboxes_obs(texts)
+    bboxes = string_boundingboxes_obs(texts)
 
     masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
         labels || return segments
