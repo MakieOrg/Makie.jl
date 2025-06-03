@@ -1,3 +1,5 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
+
 using Test
 using CairoMakie
 using Makie.FileIO
@@ -17,7 +19,6 @@ end
 
 include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
-
 
 @testset "changing screens" begin
     @testset "svg -> png" begin

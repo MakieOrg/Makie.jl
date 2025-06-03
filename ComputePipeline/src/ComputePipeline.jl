@@ -817,8 +817,19 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
     return
 end
 
+const ENABLE_COMPUTE_CHECKS = get(ENV, "ENABLE_COMPUTE_CHECKS", "false") == "true"
+
+macro if_enabled(expr)
+    if ENABLE_COMPUTE_CHECKS
+        return esc(expr)
+    else
+        return :()
+    end
+end
+
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
-    #check_boxed_values(f)
+    # TODO make the checks a compile time variable, so we can turn them on for tests!
+    @if_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
         existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
@@ -828,7 +839,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
             combined = join(existing, ", ")
             error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
-            #is_same_computation(f, attr, inputs, outputs)
+            @if_enabled(is_same_computation(f, attr, inputs, outputs))
             # edge already exists so we can return
             return
         end
