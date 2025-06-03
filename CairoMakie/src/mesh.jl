@@ -32,9 +32,9 @@ end
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
     Makie.compute_colors!(primitive.attributes)
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
-        draw_mesh2D(scene, screen, primitive)
+        draw_mesh2D(scene, screen, primitive.attributes)
     else
-        draw_mesh3D(scene, screen, primitive)
+        draw_mesh3D(scene, screen, primitive.attributes)
     end
     return nothing
 end
@@ -48,10 +48,10 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
     end
-    color = compute_colors(plot)
+    color = compute_colors(attr)
     cols = per_face_colors(color, nothing, fs, nothing, uv)
     if cols isa Cairo.CairoPattern
-        align_pattern(cols, scene, plot.model[])
+        align_pattern(cols, scene, attr.model[])
     end
     return draw_mesh2D(screen, cols, vs, fs)
 end
@@ -223,7 +223,7 @@ end
 
 
 # Mesh + surface entry point
-function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
+function draw_mesh3D(scene, screen, plot::ComputeGraph)
     @get_attribute(plot, (clip_planes, ))
     uv_transform = plot.pattern_uv_transform[]
 
@@ -249,7 +249,7 @@ function draw_mesh3D(scene, screen, @nospecialize(plot::Plot))
 end
 
 function draw_mesh3D(
-        scene, screen, @nospecialize(plot::Plot),
+        scene, screen, plot::ComputeGraph,
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
@@ -352,19 +352,20 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(
-        scene, screen, primitive, marker,
+        scene, screen, primitive.Attributes, marker,
         transformed_pos, markersize, rotation, colors,
         clip_planes, transform_marker, uv_transform
     )
 end
 
 function draw_scattered_mesh(
-        scene, screen, @nospecialize(plot::Plot), mesh,
+        scene, screen, plot::ComputeGraph, mesh,
         # positions in world space, acting as translations for mesh
         positions, scales, rotations, colors,
         clip_planes, transform_marker, uv_transform
     )
-    @get_attribute(plot, (model, space))
+    model = plot.model[]
+    space = plot.space[]
 
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
@@ -423,14 +424,12 @@ function draw_scattered_mesh(
 end
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    attr = primitive.attributes::Makie.ComputeGraph
-
+function draw_atomic(scene::Scene, screen::Screen, plot::Makie.Surface)
+    attr = plot.attributes
     Makie.add_computation!(attr, Val(:surface_as_mesh))
-
     Makie.register_pattern_uv_transform!(attr)
 
-    draw_mesh3D(scene, screen, primitive)
+    draw_mesh3D(scene, screen, attr)
     return nothing
 end
 
@@ -458,7 +457,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
 
     draw_scattered_mesh(
-        scene, screen, primitive, marker,
+        scene, screen, primitive.attributes, marker,
         transformed_pos, scale, Quaternionf(0,0,0,1), colors,
         Plane3f[], true, primitive.uv_transform[]
     )
