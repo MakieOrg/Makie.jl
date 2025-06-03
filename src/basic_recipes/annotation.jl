@@ -193,12 +193,14 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
     end
 
+    offsets = Observable(zeros(Vec2f, length(textpositions[])))
+
     txt = text!(
         p,
         textpositions;
         text = p.text,
         align = p.align,
-        offset = zeros(Vec2d, length(textpositions[])),
+        offset = offsets,
         color = p.textcolor,
         font = p.font,
         fonts = p.fonts,
@@ -210,8 +212,18 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     screenpoints_target = Ref{Vector{Point2f}}()
     screenpoints_label = Ref{Vector{Point2f}}()
 
-    glyphcolls = txt.plots[1][1]
-    text_bbs = lift(p, glyphcolls, scene.viewport, scene.camera.projectionview, p.labelspace) do glyphcolls, _, _, labelspace
+    # TODO:
+    # This needs some more reworking. Problems:
+    # - fast_string_boundingboxes_obs() includes offset, so it will update too much
+    #   - specifically the recursion will trigger this
+    # - string_boundingboxes_obs() would be better to use since it includes points already, but
+    #   we'd duplicate the project() code or we'd have to filter out the correct positions from
+    #   txt.markerspace_positions with text_blocks, which is risky as empty strings don't refer to
+    #   a per-glyph index anymore. Probably better to rework text.positions pipeline here...
+    # - project() does not include transform_func, clip planes
+
+    text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace) do _, _, _, labelspace
+        string_bbs = Rect2f.(fast_string_boundingboxes(txt))
         points = Makie.project.(Ref(scene), textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
@@ -221,23 +233,22 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         else
             error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:relative_pixel` and `:data`.")
         end
-        [Rect2f(unchecked_boundingbox(gc, Point3f(point..., 0), Makie.to_rotation(0))) for (gc, point) in zip(glyphcolls, points)]
+        return string_bbs .- offsets[] .+ points
     end
 
     onany(text_bbs, p.algorithm, p.maxiter, p.labelspace; update = true) do text_bbs, algorithm, maxiter, labelspace
         calculate_best_offsets!(
             algorithm,
-            txt.offset[],
+            offsets[],
             screenpoints_target[],
             screenpoints_label[],
             text_bbs,
-            Rect2d((0, 0),
-            scene.viewport[].widths);
+            Rect2d((0, 0), scene.viewport[].widths);
             labelspace,
             maxiter,
             reset = true, # start with zero offsets whenever text positions or texts change basically, so solutions are not influenced by previous ones
         )
-        notify(txt.offset)
+        notify(offsets)
     end
 
     p.__advance_optimization = 0
@@ -245,17 +256,16 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     on(p.__advance_optimization) do advance_optimization
         calculate_best_offsets!(
             p.algorithm[],
-            txt.offset[],
+            offset[],
             screenpoints_target[],
             screenpoints_label[],
             text_bbs[],
-            Rect2d((0, 0),
-            scene.viewport[].widths);
+            Rect2d((0, 0), scene.viewport[].widths);
             labelspace = p.labelspace[],
             maxiter = advance_optimization,
             reset = false, # don't reset on advance_optimization so we can advance the same one frame by frame
         )
-        notify(txt.offset)
+        notify(offsets)
     end
 
     plotspecs = lift(
@@ -269,7 +279,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
             p.linewidth,
         ) do text_bbs, pth, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]
-        broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, txt.offset[]) do text_bb, p2, conn, clipstart, offset
+        broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, offsets[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
 
             p2 in offset_bb && return
