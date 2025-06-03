@@ -67,6 +67,7 @@ function TextBuffer(
 end
 
 function start!(tb::Makie.Text)
+    attr = tb.attributes
     for key in (:arg1, :color, :rotation, :fontsize, :font, :align)
         empty!(attr.inputs[key].value)
     end
@@ -106,9 +107,9 @@ function append!(tb::Makie.Text, text_positions::Vector{Tuple{String, Point{N, F
             return last(attr.inputs[key].value)
         end
         val_vec = if key === :font
-            same_length_array(positions, to_font(tb.fonts[], val))
+            same_length_array(text_positions, to_font(tb.fonts[], val))
         else
-            same_length_array(positions, val, Key{key}())
+            same_length_array(text_positions, val, Key{key}())
         end
         append!(attr.inputs[key].value, val_vec)
     end
