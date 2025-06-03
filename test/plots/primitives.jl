@@ -40,21 +40,21 @@ end
     ids = map(data) do val
         trunc(UInt8, clamp(2 + 253 * (val - 0.3) / (1.8 - 0.3), 2, 254))
     end
-    @test p.converted[][4] == ids
+    @test p.chunk_u8[] == ids
 
     # colormap
-    @test length(p.colormap[]) == 255
-    @test p.colormap[][1] == RGBAf(1,0,1,1)
-    @test p.colormap[][2] == RGBAf(0,0,0,1)
-    @test p.colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
-    @test p.colormap[][end-1] == RGBAf(1,1,1,1)
-    @test p.colormap[][end] == RGBAf(0,1,0,1)
+    @test length(p.voxel_colormap[]) == 255
+    @test p.voxel_colormap[][1] == RGBAf(1,0,1,1)
+    @test p.voxel_colormap[][2] == RGBAf(0,0,0,1)
+    @test p.voxel_colormap[][2:end-1] == resample_cmap([RGBAf(0, 0, 0, 1), RGBAf(1, 1, 1, 1)], 253)
+    @test p.voxel_colormap[][end-1] == RGBAf(1,1,1,1)
+    @test p.voxel_colormap[][end] == RGBAf(0,1,0,1)
 
     # voxels-as-meshscatter helpers
     @test Makie.voxel_size(p) ≈ Vec3f(0.9)
     ps = [Point3f(x - 2.5, y - 2.0, z - 1.5) for z in 0:3 for y in 0:4 for x in 0:5]
     @test Makie.voxel_positions(p) ≈ ps
-    @test Makie.voxel_colors(p) == cc.colormap[][p.converted[end][][:]]
+    @test Makie.voxel_colors(p) == p.voxel_colormap[][p.chunk_u8[][:]]
 
     # raw UInt8 input updates, issue #4912
     data = Observable(zeros(UInt8, 4,5,6))
@@ -62,7 +62,7 @@ end
     @test p.converted[][1] == Vec2f(-2, 2)
     @test p.converted[][2] == Vec2f(-2.5, 2.5)
     @test p.converted[][3] == Vec2f(-3, 3)
-    @test p.converted[][4] == p.args[end][]
+    @test p.converted[][4] == p.args[][end]
     data[] = ones(UInt8, 4,5,6)
     @test p.args[][end] == data[]
     @test p.converted[][end] == data[]
