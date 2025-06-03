@@ -762,15 +762,63 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     return
 end
 
+
+function check_boxed_values(f)
+    names = propertynames(f)
+    values = map(x-> getfield(f, x), names)
+    boxed = filter(x -> x isa Core.Box, values)
+    if !isempty(boxed)
+        boxed_str = map(boxed) do (k, v)
+            box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
+            return "$(k)::Core.Box($(box))"
+        end
+        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
+    end
+end
+
+function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outputs)
+    e1 = attr.outputs[outputs[1]].parent
+
+    if length(inputs) != length(e1.inputs)
+        error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
+    end
+
+    if !all(attr.outputs[k].parent == e1 for k in outputs)
+        # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
+        error("Cannot register computation: $outputs already have multiple parent compute edges.")
+    end
+
+    if e1.callback != f
+        # We should only care about input arg types...
+        func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
+        func2, loc2 = edge_callback_to_string(e1)
+        error(
+            "Cannot register computation: The outputs already have a parent compute edge using " *
+            "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
+        )
+    end
+    # We can not rely on e1.inputs.name here because name can be different
+    # from the key in attr.outputs
+    inputs_to_verify = Set(e1.inputs)
+    for input in inputs
+        if input in inputs_to_verify
+            delete!(inputs_to_verify, input)
+        else
+            error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
+            "that uses a different set of inputs. (Failed to find $input in existing)")
+        end
+    end
+    if !isempty(inputs_to_verify)
+        error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
+        "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
+    end
+
+    # edge already exists so we can
+    return
+end
+
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
-    # if any(x-> getfield(f, x) isa Core.Box, propertynames(f))
-    #     boxed = [x => getfield(f, x) for x in propertynames(f) if getfield(f, x) isa Core.Box]
-    #     boxed_str = map(boxed) do (k, v)
-    #         box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
-    #         return "$(k)::Core.Box($(box))"
-    #     end
-    #     error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
-    # end
+    #check_boxed_values(f)
 
     if any(k -> haskey(attr.outputs, k), outputs)
         existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
@@ -780,43 +828,7 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
             combined = join(existing, ", ")
             error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
-            # e1 = attr.outputs[outputs[1]].parent
-
-            # if length(inputs) != length(e1.inputs)
-            #     error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
-            # end
-
-            # if !all(attr.outputs[k].parent == e1 for k in outputs)
-            #     # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
-            #     error("Cannot register computation: $outputs already have multiple parent compute edges.")
-            # end
-
-            # if e1.callback != f
-            #     # We should only care about input arg types...
-            #     func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
-            #     func2, loc2 = edge_callback_to_string(e1)
-            #     error(
-            #         "Cannot register computation: The outputs already have a parent compute edge using " *
-            #         "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
-            #     )
-            # end
-
-            # # We can not rely on e1.inputs.name here because name can be different
-            # # from the key in attr.outputs
-            # inputs_to_verify = Set(e1.inputs)
-            # for input in inputs
-            #     if input in inputs_to_verify
-            #         delete!(inputs_to_verify, input)
-            #     else
-            #         error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
-            #         "that uses a different set of inputs. (Failed to find $input in existing)")
-            #     end
-            # end
-            # if !isempty(inputs_to_verify)
-            #     error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
-            #     "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
-            # end
-
+            #is_same_computation(f, attr, inputs, outputs)
             # edge already exists so we can return
             return
         end
@@ -848,6 +860,7 @@ end
 struct MapFunctionWrapper{FT} <: Function
     user_func::FT
 end
+
 (x::MapFunctionWrapper)(inputs, changed, cached) = (x.user_func(values(inputs)...),)
 
 
