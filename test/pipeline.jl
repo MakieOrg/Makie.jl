@@ -14,13 +14,13 @@ end
 @testset "don't copy in theme merge" begin
     x = Observable{Any}(1)
     res=test_copy(linewidth=x)
-    res.linewidth === x
+    @test res.linewidth === x
 end
 
 @testset "don't copy observables in when calling merge!" begin
     x = Observable{Any}(1)
     res=test_copy2(Attributes(linewidth=x))
-    res.linewidth === x
+    @test res.linewidth === x
 end
 
 @testset "don't copy attributes in recipe" begin
@@ -30,8 +30,8 @@ end
     xmax = Observable{Any}([0.25, 0.5, 0.75, 1])
 
     p = hlines!(ax, list, xmax = xmax, color = :blue)
-    @test getfield(p, :args)[1] === list
-    @test p.xmax === xmax
+    @test p.args[] === (list[],)
+    @test p.xmax[] === xmax[]
     fig
 end
 
@@ -115,9 +115,9 @@ end
     # Test for https://github.com/MakieOrg/Makie.jl/issues/3266
     f, ax, pl = lines(1:4; color=Cycled(2))
     cpalette = ax.scene.theme.palette[:color][]
-    @test pl.calculated_colors[] == cpalette[2]
+    @test pl.scaled_color[] == cpalette[2]
     pl2 = lines!(ax, 1:4; color=Cycled(1))
-    @test pl2.calculated_colors[] == cpalette[1]
+    @test pl2.scaled_color[] == cpalette[1]
 end
 
 function test_default(arg)
@@ -159,7 +159,7 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError scatter(1:10; does_not_exist = 123)
     @test_throws InvalidAttributeError lines(1:10; does_not_exist = 123)
     @test_throws InvalidAttributeError linesegments(1:10; does_not_exist = 123)
-    @test_throws InvalidAttributeError text(1:10; does_not_exist = 123)
+    @test_throws InvalidAttributeError text(1:10; text = string.(1:10), does_not_exist = 123)
     @test_throws InvalidAttributeError volume(zeros(3, 3, 3); does_not_exist = 123)
     @test_throws InvalidAttributeError meshscatter(1:10; does_not_exist = 123)
     @test_throws InvalidAttributeError poly(Point2f[]; does_not_exist = 123)
@@ -181,7 +181,7 @@ import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
     @test textdiff("colorcolor", "color") == "color"
     @test textdiff("cloourm", "color") == "co\e[34m\e[1ml\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39mr"
     @test textdiff("ssoa", "ssao") == "ss\e[34m\e[1ma\e[22m\e[39m\e[34m\e[1mo\e[22m\e[39m"
-end 
+end
 
 @recipe(TestRecipe, x, y) do scene
     Attributes()
