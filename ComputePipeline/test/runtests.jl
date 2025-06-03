@@ -1,3 +1,4 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using ComputePipeline
 using Test
 using Random
