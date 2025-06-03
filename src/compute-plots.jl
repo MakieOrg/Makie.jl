@@ -116,10 +116,7 @@ function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, of
     end
 end
 
-function meshscatter_data_limits(positions, marker, markersize, rotation)
-    # TODO: avoid mesh generation here if possible
-    marker_bb = Rect3d(marker)
-    scales = markersize
+function meshscatter_data_limits(positions, marker_bb, scales, rotation)
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
@@ -128,6 +125,29 @@ function meshscatter_data_limits(positions, marker, markersize, rotation)
     else
         # TODO: optimize const scale, var rot and var scale, const rot
         return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+    end
+end
+
+function meshscatter_boundingbox(model_f32c, _positions, model, transform_marker, marker_bb, scales, rotation)
+    positions = _project(model_f32c, _positions)
+    # fast path for constant markersize
+    if scales isa VecTypes{3} && rotation isa Quaternion
+        bb = Rect3d(positions)
+        marker_bb = rotation * (marker_bb * scales)
+        if transform_marker
+            model = model[Vec(1,2,3), Vec(1,2,3)]
+            corners = [model * p for p in coordinates(marker_bb)]
+            mini = minimum(corners); maxi = maximum(corners)
+            return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
+        end
+        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
+    else
+        # TODO: optimize const scale, var rot and var scale, const rot
+        if transform_marker
+            return limits_with_marker_transforms(positions, scales, rotation, model, marker_bb)
+        else
+            return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
+        end
     end
 end
 
@@ -689,8 +709,12 @@ end
 function calculated_attributes!(::Type{Image}, plot::Plot)
     attr = plot.attributes
     calculated_attributes!(Heatmap, plot)
-    register_computation!(attr, [:data_limits], [:positions]) do (rect,), changed, cached
-        return (decompose(Point2d, Rect2d(rect)),)
+    # this must not sort to preserve inverse value ranges (e.g. 1..0), data_limits
+    # must must sort to generate non-negative widths in that case
+    register_computation!(attr, [:x, :y], [:positions]) do mini_maxi, changed, cached
+        mini = Vec3d(first.(values(mini_maxi))..., 0)
+        maxi = Vec3d(last.(values(mini_maxi))..., 0)
+        return (decompose(Point2d, Rect2d(mini, maxi .- mini)),)
     end
     Makie.register_position_transforms!(attr)
     register_position_transforms!(attr)
@@ -700,8 +724,8 @@ function calculated_attributes!(::Type{Heatmap}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr, :image)
     register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
-        mini = Vec3d(first.(values(mini_maxi))..., 0)
-        maxi = Vec3d(last.(values(mini_maxi))..., 0)
+        mini = Vec3d(minimum.(values(mini_maxi))..., 0)
+        maxi = Vec3d(maximum.(values(mini_maxi))..., 0)
         return (Rect3d(mini, maxi .- mini),)
     end
 end
@@ -741,10 +765,10 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_colormapping!(attr)
     register_position_transforms!(attr)
     register_pattern_uv_transform!(attr)
-    register_computation!(attr, [:positions, :marker, :markersize, :rotation],
-                          [:data_limits]) do args, changed, last
-        return (meshscatter_data_limits(args...),)
-    end
+    map!(Rect3d, attr, :marker, :marker_bb)
+    map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
+    map!(meshscatter_boundingbox, attr, [:model_f32c, :positions_transformed_f32c, :model,
+        :transform_marker, :marker_bb, :markersize, :rotation], :boundingbox)
 end
 
 

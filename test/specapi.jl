@@ -205,9 +205,9 @@ end
     # The value a categorical conversion maps to is somewhat arbitrary, so to make the test robust we
     # best use the actual look up
     vals = Makie.convert_dim_value.((ax.dim1_conversion[],), xvals)
-    @test first.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
+    @test first.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
     # test y values and expand_dimensions too
     f, ax, pl = barplot(xvals)
     vals = Makie.convert_dim_value.((ax.dim2_conversion[],), xvals)
-    @test last.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
+    @test last.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
 end
