@@ -174,6 +174,14 @@ function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTy
     return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
 end
 
+function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+    return (Vec4d.(getindex.(v1, 1), getindex.(v1, 2), getindex.(v2, 1), getindex.(v2, 2)),)
+end
+
+function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
+    return (Vec4d.(NaN, NaN, v1, v2),)
+end
+
 function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
     return (Vec4d.(v1, v2, v3, v4),)
 end
