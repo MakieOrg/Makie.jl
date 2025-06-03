@@ -497,6 +497,8 @@ end
 register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.attributes, scene.compute)
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+    isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
         attr = attributes(first(user_args)) # TODO: Should this copy to keep user_args[1] unchanged?
