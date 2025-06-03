@@ -127,6 +127,20 @@ function is_mouseinside(scene::Scene)
 end
 
 
+"""
+    add_camera_computation!(graph::ComputeGraph, scene)
+
+Adds `scene.viewport` and the `scene.camera` Observables as inputs to the compute
+graph along with computations for all possible spatial conversion matrices.
+
+More specifically this adds conversion matrices between any two spaces of :world,
+:eye, :pixel, :relative and :clip. These matrices are then used by plots to
+project their data.
+
+Also calculates some utilities like `scene_origin` and `resolution`, and tracks
+`eyeposition`, `upvector` and `view_direction`. (Pixel per unit is not included
+here)
+"""
 function add_camera_computation!(graph::ComputeGraph, scene)
     # This includes all combinations of:
     # [world, eye, pixel, relative, clip] to [world, eye, pixel, relative, clip]
@@ -245,86 +259,106 @@ get_pixelspace(graph::ComputeGraph) = Mat4f(graph[:pixel_to_clip][])
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :world, space)
-    return Mat4f(graph[Symbol(key, :_to_clip)][])
+    return Mat4f(graph[Symbol(key, :_to_clip)][])::Mat4f
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
-    return Mat4f(graph[key][])
+    return Mat4f(graph[key][])::Mat4f
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
     # or :eye_to_eye for the else case
-    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))
+    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))::Mat4f
 end
 
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     key1 = ifelse(space === :data, :world, space)
     key2 = ifelse(markerspace === :data, :world, markerspace)
-    return Mat4f(graph[Symbol(key1, :_to_, key2)][])
+    return Mat4f(graph[Symbol(key1, :_to_, key2)][])::Mat4f
 end
 
 
-
-function _has_camera_changed(changed, space, markerspace = space)
-    is_data = is_data_space(space) || is_data_space(markerspace)
-    is_pixel = is_pixel_space(space) || is_pixel_space(markerspace)
-    result = (is_data && (changed.view || changed.projection)) || (is_pixel && (changed.viewport))
-    return result
-end
-
-function camera_trigger(inputs, changed, cached)
-    isnothing(cached) && return (true,)
-    view, projection, viewport, spaces... = inputs
-    has_changed = _has_camera_changed(changed, spaces...)
-    # Same values get ignored
-    return has_changed ? (!cached[1],) : nothing
-end
-
-struct CameraMatrixCallback <: Function
-    graph::ComputeGraph
-end
-
-function (cb::CameraMatrixCallback)(inputs, changed, cached)
-    graph = cb.graph
+function get_camera_matrices(inputs, changed, cached)
     space = inputs.space
-    # TODO: more fine grained updates?
-    # e.g. log if space related matrices or markerspace related matrices need
-    # update in camera_trigger and only update those?
-    if haskey(inputs, :markerspace)
-        markerspace = inputs.markerspace
-        # TODO: breaks FastPixel?
-        preprojection = get_preprojection(graph, space, markerspace)
-        projectionview = get_projectionview(graph, markerspace)
-        projection = get_projection(graph, markerspace)
-        view = get_view(graph, markerspace)
-        return (projectionview, projection, view, preprojection)
+    is_data = is_data_space(space)
+    projectionview = Symbol(ifelse(is_data, :world, space), :_to_clip)
+    projection = ifelse(is_data, :eye_to_clip, Symbol(space, :_to_clip))
+    view = ifelse(is_data, :world_to_eye, :eye_to_eye)
+
+    if changed.space || changed[projectionview] || changed[projection] || changed[view] || isnothing(cached)
+        return (Mat4f(inputs[projectionview]), Mat4f(inputs[projection]), Mat4f(inputs[view]))
     else
-        projectionview = get_projectionview(graph, space)
-        projection = get_projection(graph, space)
-        view = get_view(graph, space)
-        return (projectionview, projection, view)
+        return nothing
     end
 end
+
+function get_camera_matrices_with_markerspace(inputs, changed, cached)
+    space = ifelse(is_data_space(inputs.space), :world, inputs.space)
+    markerspace = inputs.markerspace
+    is_data = is_data_space(markerspace)
+    preprojection = Symbol(space, :_to_, ifelse(is_data, :world, markerspace))
+    projectionview = Symbol(ifelse(is_data, :world, markerspace), :_to_clip)
+    projection = ifelse(is_data, :eye_to_clip, Symbol(markerspace, :_to_clip))
+    view = ifelse(is_data, :world_to_eye, :eye_to_eye)
+
+    if changed.markerspace || changed.space || changed[preprojection] || changed[projectionview] ||
+            changed[projection] || changed[view] || isnothing(cached)
+
+        return (Mat4f(inputs[preprojection]), Mat4f(inputs[projectionview]),
+            Mat4f(inputs[projection]), Mat4f(inputs[view]))
+    else
+        return nothing
+    end
+end
+
+function register_camera_matrices!(plot_graph, scene_graph)
+    space_names = [:world, :eye, :pixel, :relative, :clip]
+    all_names = [Symbol(input, :_to_, output) for input in space_names for output in space_names]
+
+    inputs = map(name -> getproperty(scene_graph, name), all_names)
+    if haskey(plot_graph, :markerspace)
+        pushfirst!(inputs, plot_graph.markerspace, plot_graph.space)
+        register_computation!(get_camera_matrices_with_markerspace, plot_graph, inputs,
+            [:preprojection, :projectionview, :projection, :view])
+    else
+        pushfirst!(inputs, plot_graph.space)
+        register_computation!(get_camera_matrices, plot_graph, inputs,
+            [:projectionview, :projection, :view])
+    end
+    return
+end
+
+"""
+    register_camera!(plot)
+    register_camera!(plot_graph, scene_graph)
+
+Connects camera related outputs from the scene to the given `plot`. These always
+include:
+- `pixel_space`: A matrix transforming from pixel space to clip space
+- `viewport`: The viewport of the scene
+- `scene_origin`: The `origin(viewport)`
+- `resolution`: The `widths(viewport)`
+- `eyeposition`: The eyeposition of the camera
+- `upvector`: The upvector of the camera
+- `view_direction`: The `lookat - eyeposition` of the camera
+
+The camera matrices depend on whether `markerspace` is present. If it is:
+- `preprojection` projects from `space` to `markerspace`
+- `projectionview` projects from `markerspace` to :clip space
+- `view` projects from :data/:world space to :eye space, if `is_dataspace(markerspace)`
+- `projection` projects from :eye or markerspace to :clip space, so that `projectionview = projection * view`
+
+Otherwise:
+- `projectionview` projects from `space` to :clip space
+- `view` projects from :data/:world space to :eye space, if `is_dataspace(space)`
+- `projection` projects from :eye or space to :clip space, so that `projectionview = projection * view`
+"""
+register_camera!(plot::Plot) = register_camera!(plot.attributes, parent_scene(plot).compute)
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-    # This should connect Computed's from the parent graph to a new Computed in the child graph
-    inputs = [scene_graph.view, scene_graph.projection, scene_graph.viewport, plot_graph.space]
-    haskey(plot_graph, :markerspace) && push!(inputs, plot_graph.markerspace)
-    @assert inputs isa Vector{ComputePipeline.Computed}
-
-    # Only propagate update from camera matrices if its relevant to space
-    register_computation!(camera_trigger, plot_graph, inputs, [:camera_trigger])
-
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    input_keys = [:camera_trigger, :space]
-    output_keys = [:projectionview, :projection, :view]
-    if haskey(plot_graph, :markerspace)
-        push!(input_keys, :markerspace)
-        push!(output_keys, :preprojection)
-    end
-    callback = CameraMatrixCallback(scene_graph)
-    register_computation!(callback, plot_graph, input_keys, output_keys)
+    # fetch camera matrices based on space (and optionally markerspace)
+    register_camera_matrices!(plot_graph, scene_graph)
 
     # Do we need those? Maybe also viewport?
     # type assert for safety
@@ -340,17 +374,3 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
 
     return
 end
-
-#=
-Design Notes:
-
-add_camera_computation!(scene.graph, scene)
-- creates inputs for camera controller, scene.viewport
-- calculates all space-to-space matrices
-- calculates some utilities, e.g. resolution, scene_origin (no ppu)
-
-register_camera!(plot_graph, scene_graph)
-- creates a trigger which filters space-relevant camera updates from scene_graph in plot_graph
-- pull view etc appropriate for the plots (marker)space via get_view(scene_graph, space)
-- connects some more utilities, e.g. resolution
-=#
