@@ -15,7 +15,7 @@ MakieCore.argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
 conversion_trait(::Type{Voxels}, args...) = Voxels
 
 function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
-    X, Y, Z = map(x -> EndPoints(-0.5*x, 0.5*x), size(chunk))
+    X, Y, Z = map(x -> EndPoints(Float32(-0.5*x), Float32(0.5*x)), size(chunk))
     return (X, Y, Z, chunk)
 end
 
@@ -28,7 +28,7 @@ end
 
 function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
                            zs::EndPoints, chunk::Array{<: Real,3})
-    return (xs, ys, zs, chunk)
+    return (el32convert(xs), el32convert(ys), el32convert(zs), chunk)
 end
 
 function register_voxel_conversions!(attr)

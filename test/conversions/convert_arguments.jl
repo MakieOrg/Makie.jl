@@ -10,7 +10,12 @@ using Makie.SparseArrays
 using GeometryBasics
 
 function apply_conversion(trait, args...)
-    return Makie.convert_arguments(trait, args...)
+    expanded = Makie.expand_dimensions(trait, args...)
+    if isnothing(expanded)
+        return Makie.convert_arguments(trait, args...)
+    else
+        return Makie.convert_arguments(trait, expanded...)
+    end
 end
 
 @testset "tuples" begin
@@ -70,6 +75,7 @@ end
 
 # custom vector type to ensure that the conversion can be overridden for vectors
 struct MyConvVector <: AbstractVector{Float64} end
+Makie.expand_dimensions(::PointBased, ::MyConvVector) = nothing
 Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
 @testset "convert_arguments" begin
@@ -473,10 +479,10 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 # pure 3D plots don't implement Float64 -> Float32 rescaling yet
                 @testset "Voxels" begin
                     @test_throws ErrorException apply_conversion(Voxels, xs, ys, zs, vol)
-                    @test apply_conversion(Voxels, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, i, i, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, t, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, i, i, i, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, t, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, i, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
                 end
 
                 @testset "Wireframe" begin
