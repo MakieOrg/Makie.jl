@@ -69,7 +69,7 @@ be very close to their associated data points so connection plots are typically 
     """
     The color of the text labels.
     """
-    textcolor = :black
+    textcolor = nothing
     """
     The basic color of the connection object. For more fine-grained adjustments, modify the `style` object directly.
     """
@@ -199,7 +199,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         text = p.text,
         align = p.align,
         offset = zeros(Vec2d, length(textpositions[])),
-        color = p.textcolor,
+        color = lift(something, p.textcolor, p.color),
         font = p.font,
         fonts = p.fonts,
         justification = p.justification,
