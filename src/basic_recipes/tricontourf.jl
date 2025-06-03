@@ -95,6 +95,26 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     return cm
 end
 
+function compute_lowcolor(el, cmap)
+    if isnothing(el)
+        return RGBAf(0, 0, 0, 0)
+    elseif el === automatic || el === :auto
+        return RGBAf(to_colormap(cmap)[begin])
+    else
+        return to_color(el)::RGBAf
+    end
+end
+
+function compute_highcolor(eh, cmap)
+    if isnothing(eh)
+        return RGBAf(0, 0, 0, 0)
+    elseif eh === automatic || eh === :auto
+        return RGBAf(to_colormap(cmap)[end])
+    else
+        return to_color(eh)::RGBAf
+    end
+end
+
 function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     tri, zs = c[1:2]
 
@@ -111,10 +131,14 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
-    c.attributes[:_computed_extendlow] = c.lowclip
+    lowcolor = Observable{RGBAf}()
+    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
+    c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(!isnothing, c, c.extendlow)
 
-    c.attributes[:_computed_extendhigh] = c.highclip
+    highcolor = Observable{RGBAf}()
+    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
+    c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
 
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
@@ -173,8 +197,8 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         colorscale = c.colorscale,
         colorrange = c.colorrange,
         alpha = c.alpha,
-        lowclip = c.lowclip,
-        highclip = c.highclip,
+        lowclip = lowcolor,
+        highclip = highcolor,
         nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,

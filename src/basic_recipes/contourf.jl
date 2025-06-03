@@ -178,10 +178,14 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
 
-    c.attributes[:_computed_extendlow] = c.lowclip
+    lowcolor = Observable{RGBAf}()
+    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
+    c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(!isnothing, c, c.extendlow)
 
-    c.attributes[:_computed_extendhigh] = c.highclip
+    highcolor = Observable{RGBAf}()
+    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
+    c.attributes[:_computed_extendhigh] = highcolor
     is_extended_high = lift(!isnothing, c, c.extendhigh)
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
 
@@ -212,8 +216,8 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         colorscale = c.colorscale,
         colorrange = c.colorrange,
         alpha = c.alpha,
-        lowclip = c.lowclip,
-        highclip = c.highclip,
+        lowclip = lowcolor,
+        highclip = highcolor,
         nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,
