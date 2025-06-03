@@ -38,9 +38,6 @@ function build_combined_transformation_matrix(
     return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
 end
 
-
-
-
 function project_position(
         scene::Scene, space::Symbol, ps::AbstractArray{<: VecTypes},
         indices::Union{Vector{<:Integer}, Base.OneTo}, model::Mat4,
