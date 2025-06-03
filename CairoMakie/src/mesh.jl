@@ -352,19 +352,20 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(
-        scene, screen, primitive, marker,
+        scene, screen, primitive.Attributes, marker,
         transformed_pos, markersize, rotation, colors,
         clip_planes, transform_marker, uv_transform
     )
 end
 
 function draw_scattered_mesh(
-        scene, screen, @nospecialize(plot::Plot), mesh,
+        scene, screen, plot::ComputeGraph, mesh,
         # positions in world space, acting as translations for mesh
         positions, scales, rotations, colors,
         clip_planes, transform_marker, uv_transform
     )
-    @get_attribute(plot, (model, space))
+    model = plot.model[]
+    space = plot.space[]
 
     meshpoints = decompose(Point3f, mesh)
     meshfaces = decompose(GLTriangleFace, mesh)
@@ -423,14 +424,12 @@ function draw_scattered_mesh(
 end
 
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Surface))
-    attr = primitive.attributes::Makie.ComputeGraph
-
+function draw_atomic(scene::Scene, screen::Screen, plot::Makie.Surface)
+    attr = plot.attributes
     Makie.add_computation!(attr, Val(:surface_as_mesh))
-
     Makie.register_pattern_uv_transform!(attr)
 
-    draw_mesh3D(scene, screen, primitive)
+    draw_mesh3D(scene, screen, attr)
     return nothing
 end
 
@@ -458,7 +457,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     end
 
     draw_scattered_mesh(
-        scene, screen, primitive, marker,
+        scene, screen, primitive.attributes, marker,
         transformed_pos, scale, Quaternionf(0,0,0,1), colors,
         Plane3f[], true, primitive.uv_transform[]
     )
