@@ -101,4 +101,5 @@ end
 
 boundingbox(p::Union{HSpan, VSpan}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
-convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::Interval) = convert_arguments(P, endpoints(x)...)
+convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::Interval) = endpoints(x)
+convert_arguments(P::Type{<:Union{HSpan, VSpan}}, x::AbstractVector{<:Interval}) = (leftendpoint.(x), rightendpoint.(x))
