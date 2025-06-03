@@ -67,13 +67,13 @@ be very close to their associated data points so connection plots are typically 
 """
 @recipe Annotation begin
     """
-    The color of the text labels.
+    The color of the text labels. If `automatic`, `textcolor` matches `color`.
     """
-    textcolor = :black
+    textcolor = automatic
     """
     The basic color of the connection object. For more fine-grained adjustments, modify the `style` object directly.
     """
-    color = :black
+    color = @inherit linecolor
     """
     One object or an array of objects that determine the textual content of the labels.
     """
@@ -166,8 +166,16 @@ function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
 
+function Makie.convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+    return ([Vec4d(NaN, NaN, p...)],)
+end
+
 function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
     return ([Vec4d(x, y, x2, y2)],)
+end
+
+function Makie.convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+    return ([Vec4d(p1..., p2...)],)
 end
 
 function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
@@ -194,6 +202,10 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     end
 
     offsets = Observable(zeros(Vec2f, length(textpositions[])))
+    textcolor = Observable{Any}()
+    map!(textcolor, p.textcolor, p.color) do tc, c
+        tc === automatic ? c : tc
+    end
 
     txt = text!(
         p,
@@ -201,7 +213,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         text = p.text,
         align = p.align,
         offset = offsets,
-        color = p.textcolor,
+        color = textcolor,
         font = p.font,
         fonts = p.fonts,
         justification = p.justification,

@@ -1,3 +1,5 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
+
 using Makie
 using GLMakie, Test
 using FileIO

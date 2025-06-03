@@ -549,3 +549,40 @@ function draw_single_segments(ctx, positions)
     # force clearing of path in case of skipped NaN
     Cairo.new_path(ctx)
 end
+
+function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
+    for c in bezierpath.commands
+        if c isa EllipticalArc
+            bp = Makie.elliptical_arc_to_beziers(c)
+            for bezier in bp.commands
+                proj_comm = project_command(bezier, scene, space, model)
+                path_command(ctx, proj_comm)
+            end
+        else
+            proj_comm = project_command(c, scene, space, model)
+            path_command(ctx, proj_comm)
+        end
+    end
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    Cairo.set_line_width(ctx, linewidth)
+    Cairo.stroke(ctx)
+    return
+end
+
+function project_command(m::MoveTo, scene, space, model)
+    MoveTo(project_position(scene, space, m.p, model))
+end
+
+function project_command(l::LineTo, scene, space, model)
+    LineTo(project_position(scene, space, l.p, model))
+end
+
+function project_command(c::CurveTo, scene, space, model)
+    CurveTo(
+        project_position(scene, space, c.c1, model),
+        project_position(scene, space, c.c2, model),
+        project_position(scene, space, c.p, model),
+    )
+end
+
+project_command(c::ClosePath, scene, space, model) = c

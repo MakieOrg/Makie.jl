@@ -1,4 +1,5 @@
 # COV_EXCL_START
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 
