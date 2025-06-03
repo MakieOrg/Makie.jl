@@ -1,4 +1,4 @@
-@reference_test "Value range < eps(Float32)" begin
+@reference_test "Value range below float32 eps" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
     xlims!(ax, 0, 12)
