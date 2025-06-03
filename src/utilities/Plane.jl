@@ -211,7 +211,7 @@ function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractAr
         end
         return sizehint!(indices, length(indices))
     else
-        return eachindex(positions)
+        return UInt32[eachindex(positions)...]
     end
 end
 
