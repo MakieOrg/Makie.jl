@@ -67,13 +67,13 @@ be very close to their associated data points so connection plots are typically 
 """
 @recipe Annotation begin
     """
-    The color of the text labels.
+    The color of the text labels. If `automatic`, `textcolor` matches `color`.
     """
-    textcolor = :black
+    textcolor = automatic
     """
     The basic color of the connection object. For more fine-grained adjustments, modify the `style` object directly.
     """
-    color = :black
+    color = @inherit linecolor
     """
     One object or an array of objects that determine the textual content of the labels.
     """
@@ -201,13 +201,18 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
     end
 
+    textcolor = Observable{Any}()
+    map!(textcolor, p.textcolor, p.color) do tc, c
+        tc === automatic ? c : tc
+    end
+
     txt = text!(
         p,
         textpositions;
         text = p.text,
         align = p.align,
         offset = zeros(Vec2d, length(textpositions[])),
-        color = p.textcolor,
+        color = textcolor,
         font = p.font,
         fonts = p.fonts,
         justification = p.justification,
