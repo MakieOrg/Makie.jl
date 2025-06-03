@@ -352,7 +352,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     uv_transform = primitive.pattern_uv_transform[]
 
     draw_scattered_mesh(
-        scene, screen, primitive.Attributes, marker,
+        scene, screen, primitive.attributes, marker,
         transformed_pos, markersize, rotation, colors,
         clip_planes, transform_marker, uv_transform
     )
@@ -364,7 +364,6 @@ function draw_scattered_mesh(
         positions, scales, rotations, colors,
         clip_planes, transform_marker, uv_transform
     )
-    model = plot.model[]
     space = plot.space[]
 
     meshpoints = decompose(Point3f, mesh)
