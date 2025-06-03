@@ -30,7 +30,7 @@ function cairo_project_to_screen(attr;
 end
 
 function draw_atomic(scene::Scene, screen::Screen, primitive::Makie.Mesh)
-    Makie.compute_colors!(plot)
+    Makie.compute_colors!(primitive.attributes)
     if Makie.cameracontrols(scene) isa Union{Camera2D, Makie.PixelCamera, Makie.EmptyCamera}
         draw_mesh2D(scene, screen, primitive)
     else
