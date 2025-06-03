@@ -166,8 +166,16 @@ function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
 
+function Makie.convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+    return ([Vec4d(NaN, NaN, p...)],)
+end
+
 function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
     return ([Vec4d(x, y, x2, y2)],)
+end
+
+function Makie.convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+    return ([Vec4d(p1..., p2...)],)
 end
 
 function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
