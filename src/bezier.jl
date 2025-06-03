@@ -99,6 +99,13 @@ function Base.write(io::IO, command::PathCommand)
 end
 
 function bbox(commands::Vector{PathCommand})
+    if length(commands) == 1
+        c = only(commands)
+        if !(c isa MoveTo)
+            error("Can currently only handle single-command paths with a MoveTo, not $c")
+        end
+        return Rect(c.p, zero(c.p))
+    end
     prev = commands[1]
     bb = nothing
     for comm in @view(commands[2:end])

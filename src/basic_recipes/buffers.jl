@@ -51,8 +51,8 @@ function TextBuffer(
         align = [Vec2f(0)],
         kw_args...
     ) where N
-    annotations!(
-        scene, String[" "], [Point{N, Float32}(0)];
+    text!(
+        scene, tuple.(String[" "], [Point{N, Float32}(0)]);
         rotation = rotation,
         color = color,
         fontsize = fontsize,
@@ -62,14 +62,14 @@ function TextBuffer(
     )
 end
 
-function start!(tb::Annotations)
+function start!(tb::Makie.Text)
     for key in (1, :color, :rotation, :fontsize, :font, :align)
         empty!(tb[key][])
     end
     return
 end
 
-function finish!(tb::Annotations)
+function finish!(tb::Makie.Text)
     # update the signal!
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
@@ -81,17 +81,17 @@ function finish!(tb::Annotations)
     return
 end
 
-function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
+function push!(tb::Makie.Text, text::String, position::VecTypes{N}; kw_args...) where N
     append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
 end
 
-function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    text_positions = convert_arguments(Annotations, text, positions)[1]
+function append!(tb::Makie.Text, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
+    text_positions = convert_arguments(Makie.Text, tuple.(text, positions))[1]
     append!(tb, text_positions; kw_args...)
     return
 end
 
-function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
+function append!(tb::Makie.Text, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
     append!(tb[1][], text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
