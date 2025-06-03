@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Fixed contour labels text positions update bug [#5010](https://github.com/MakieOrg/Makie.jl/pull/5010).
+
 ## [0.22.9] - 2025-06-03
 
 - Added conversion method for `annotation` to make it compatible with AlgebraOfGraphics [#5029](https://github.com/MakieOrg/Makie.jl/pull/5029).
