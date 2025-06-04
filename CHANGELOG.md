@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- Support vectors of intervals in `hspan` and `vspan`
+
 ## [0.22.10] - 2025-06-03
 
 - Quick fix for the just released `annotation`, `textcolor` now follows `color` by default [#5034](https://github.com/MakieOrg/Makie.jl/pull/5034).
