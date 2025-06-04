@@ -193,16 +193,17 @@ end
         @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = ComputeEdge(compute_identity(…), 1 input, 1 output, 1 dependent) @ output 1\n  value = 1\n  dirty = false"
         @test sprint(show, m, graph[:in2]) == "Computed:\n  name = :in2\n  parent = Input(:in2, 2)\n  value = #undef\n  dirty = true"
 
+        # regex needed for 1.6 which uses "NameTuple{(), Tuple{}}" instead o "@NamedTuple{}"
         s = sprint(show, m, graph[:added].parent)
-        @test contains(s, "ComputeEdge:\n  callback:\n    foo2(::@NamedTuple{}, ::@NamedTuple{}, ::Nothing)\n    @ ")
+        @test contains(s, r"ComputeEdge:\n  callback:\n    foo2\(::@?NamedTuple\{.*\}, ::@?NamedTuple\{.*\}, ::Nothing\)\n    @ ")
         @test contains(s, "\n  inputs:\n    ↻ Computed(:in1, 1)\n    ↻ Computed(:in2, #undef)\n  outputs:\n    ↻ Computed(:added, #undef)\n    ↻ Computed(:subtracted, #undef)\n  dependents:\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 1 dependent)\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)")
 
         s = sprint(show, m, graph[:output].parent)
-        @test contains(s, "ComputeEdge:\n  callback:\n    bar(::@NamedTuple{}, ::@NamedTuple{}, ::Nothing)\n    @ ")
+        @test contains(s, r"ComputeEdge:\n  callback:\n    bar\(::@?NamedTuple\{.*\}, ::@?NamedTuple\{.*\}, ::Nothing\)\n    @ ")
         @test contains(s, "\n  inputs:\n    ↻ Computed(:added, #undef)\n  outputs:\n    ↻ Computed(:output, #undef)\n  dependents:\n    ↻ ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)")
 
         s = sprint(show, m, graph[:output2].parent)
-        @test contains(s, "ComputeEdge:\n  callback:\n    bar(::@NamedTuple{}, ::@NamedTuple{}, ::Nothing)\n    @ ")
+        @test contains(s, r"ComputeEdge:\n  callback:\n    bar\(::@?NamedTuple\{.*\}, ::@?NamedTuple\{.*\}, ::Nothing\)\n    @ ")
         @test contains(s, "\n  inputs:\n    ↻ Computed(:output, #undef)\n  outputs:\n    ↻ Computed(:output2, #undef)\n  dependents:")
     end
 end
