@@ -440,12 +440,14 @@ import Makie: EndPoints
 
 function add_uv_mesh!(attr)
     if !haskey(attr, :positions)
-        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func], [:faces, :texturecoordinates, :wgl_positions]) do (rect, x, y, z, t), changed, last
+        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func],
+                [:faces, :texturecoordinates, :wgl_positions]) do (rect, x, y, z, t), changed, last
+
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
                 faces = init ? decompose(GLTriangleFace, Rect2f(rect)) : nothing
                 uv = init ? decompose_uv(Rect2f(rect)) : nothing
-                return (faces, uv, decompose(Point2f, Rect2f(rect)))
+                return (faces, uv, decompose(Point2d, Rect2d(rect)))
             else
                 px = WGLMakie.xy_convert(x, size(z, 1))
                 py = WGLMakie.xy_convert(y, size(z, 2))
