@@ -128,15 +128,18 @@ end
 @reference_test "Float64 model with rotation" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
-
-    # TODO: broken in GLMakie (bad placement), CairoMakie (not supported)
-    # p = heatmap!(ax, -0.75 .. -0.25, -0.75 .. -0.25, [1 2; 3 4], colormap = [:lightblue, :yellow])
+    
+    if Symbol(Makie.current_backend()) != :CairoMakie # rotated image not supported
+        p = image!(ax, 0..1, 0..1, [1 2; 3 4], colormap = [:lightblue, :yellow])
+        translate!(p, 1e9, 1e8, 0)
+        rotate!(p, Vec3f(0,0,1), pi/4)
+    end
+    
+    # TODO: incorrect placement, should be at bottom as a ♢
+    # p = heatmap!(ax, -0.75 .. -0.25, -0.75 .. -0.25, [1 2; 3 4], colormap = [:red, :cyan])
     # translate!(p, 1e9, 1e8, 0)
     # rotate!(p, Vec3f(0,0,1), pi/4)
-    p = image!(ax, 0..1, 0..1, [1 2; 3 4], colormap = [:lightblue, :yellow])
-    translate!(p, 1e9, 1e8, 0)
-    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
-
+    
     ps = 0.5 .* Makie.Point2d[(-1, -1), (-1, 1), (1, 1), (1, -1)]
     p = scatter!(ax, ps, marker = '+', markersize = 30)
     translate!(p, 1e9, 1e8, 0)
