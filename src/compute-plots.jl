@@ -238,7 +238,7 @@ function register_position_transforms!(attr, input_name = :positions)
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if !is_data_space(space) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
+        if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             m = changed[2] ? Mat4f(model) : nothing
             pos = changed[1] ? el32convert(positions) : nothing
             return (pos, m)
@@ -371,8 +371,9 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # TODO: Should we get rid of model as a documented attribute?
     #       (On master, it acts as an overwrite, making translate!() etc not work)
     @assert haskey(attr, :model) ":model is currently assumed to be initialized from default attributes"
-    # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
-    add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
+
+    # TODO: Is this dangerous? Scene might update this to LinearScaling later
+    add_input!(attr, :f32c, :uninitialized)
 
     return
 end
@@ -586,12 +587,19 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     add_theme!(plot, scene)
     plot.parent = parent
     attr = plot.attributes
-    if scene.float32convert !== nothing # this is statically a Nothing or Float32Convert
+
+    if attr.inputs[:f32c].value !== :uninitialized
+        error("plot.f32c must not be resolved before the scene is connected!")
+    end
+    if scene.float32convert === nothing # this is statically a Nothing or Float32Convert
+        attr.f32c = nothing
+    else
         on(plot, scene.float32convert.scaling, update = true) do f32c
             attr.f32c = f32c
             return
         end
     end
+
     # TODO, do this for recipes?
     plot.plot_position = get_plot_position(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
