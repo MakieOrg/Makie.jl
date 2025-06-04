@@ -55,15 +55,15 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
     end
 
     register_computation!(attr,
-        [:x_transformed, :y_transformed, :model, :f32c],
+        [:x_transformed, :y_transformed, :model, :f32c, :space],
         [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
-    ) do (x, y, model, f32c), changed, cached
+    ) do (x, y, model, f32c, space), changed, cached
         # TODO: this should be done in one nice function
         # This is simplified, skipping what's commented out
 
-        # trans, scale = decompose_translation_scale_matrix(model)
+        trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+        if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             m = changed.model ? Mat4f(model) : nothing
             xs = changed.x_transformed || changed.f32c ? el32convert(first.(x)) : nothing
             ys = changed.y_transformed || changed.f32c ? el32convert(last.(y)) : nothing
