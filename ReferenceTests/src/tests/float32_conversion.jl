@@ -70,7 +70,7 @@ end
     fig
 end
 
-@reference_test "Float64 h/vspan + h/vlines + error/rangebars + ablines" begin
+@reference_test "Float64 hvspan + hvlines + error, rangebars + ablines" begin
     fig = Figure()
     ax = Axis(fig[1, 1])
 
@@ -135,25 +135,25 @@ end
     # rotate!(p, Vec3f(0,0,1), pi/4)
     p = image!(ax, 0..1, 0..1, [1 2; 3 4], colormap = [:lightblue, :yellow])
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
 
     ps = 0.5 .* Makie.Point2d[(-1, -1), (-1, 1), (1, 1), (1, -1)]
     p = scatter!(ax, ps, marker = '+', markersize = 30)
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
     p = text!(ax, ps, text = string.(1:4), fontsize = 20)
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
 
     p = lines!(ax, [Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
     p = linesegments!(ax, [0.9 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)])
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
     p = lines!(ax, [0.8 * Point2f(cos(x), sin(x)) for x in range(0, 2pi, length=101)], linestyle = :dash)
     translate!(p, 1e9, 1e8, 0)
-    rotate!(p, Vec3f(0,0,1), pi/4)
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
 
     fig
 end
