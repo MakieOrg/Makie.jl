@@ -43,7 +43,7 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
         add_input!(attr, :text, get(user_kw, :text, ""))
     end
     if !haskey(attr, :position)
-        add_input!(attr, :position, get(user_kw, :position, Point2f[]))
+        add_input!(attr, :position, get(user_kw, :position, (0.0, 0.0)))
     end
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
