@@ -27,6 +27,8 @@ convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
 
+to_string_arr(text::AbstractVector) = text
+to_string_arr(text) = [text]
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
@@ -37,6 +39,12 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     # For conversion we want to move position data into the argument pipeline
     # and String-like data into attributes. Do this here:
     pushfirst!(inputs, :position, :text)
+    if !haskey(attr, :text)
+        add_input!(attr, :text, get(user_kw, :text, ""))
+    end
+    if !haskey(attr, :position)
+        add_input!(attr, :position, get(user_kw, :position, Point2f[]))
+    end
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
         # Note: Could add RichText
@@ -49,7 +57,7 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
             # [(text, pos), ...] argument
             return ((last.(args[1]),), Ref{Any}(first.(args[1])))
         else # assume position data
-            return (args, Ref{Any}(a_text))
+            return (args, Ref{Any}(to_string_arr(a_text)))
         end
     end
 
@@ -441,7 +449,6 @@ function tex_linesegments!(plot)
     # if no linesegments are needed
     map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
             :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
-
         isempty(linesegments) && return Point3f[]
         markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
         # TODO: avoid repeated apply_transform and use block_idx?

@@ -396,7 +396,6 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     attr = generic_robj_setup(screen, scene, plot)
 
-    # add atlas, run text_quads, attributes duplication
     if haskey(attr, :depthsorting) && attr[:depthsorting][]
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(attr,

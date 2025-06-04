@@ -9,7 +9,7 @@ function boundingbox(plot::Text, target_space::Symbol)
     if target_space == plot.markerspace[]
         return full_boundingbox(plot, target_space)
     elseif Makie.is_data_space(target_space)
-        return _project(plot.model_f32c[]::Mat4f, Rect3d(plot.positions_transformed_f32c[])::Rect3d)
+        return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
     else
         error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
     end

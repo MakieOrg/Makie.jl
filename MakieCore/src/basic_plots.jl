@@ -1,5 +1,5 @@
 default_theme(scene) = generic_plot_attributes!(Attributes())
-
+default_theme(::Type{<:Plot}) = Attributes()
 
 """
 ### Generic attributes
@@ -20,7 +20,6 @@ function generic_plot_attributes!(attr)
     attr[:visible] = true
     attr[:transparency] = false
     attr[:overdraw] = false
-    attr[:ssao] = false
     attr[:inspectable] = true
     attr[:depth_shift] = 0.0f0
     attr[:space] = :data

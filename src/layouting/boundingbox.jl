@@ -3,6 +3,8 @@
 ### boundingbox
 ################################################################################
 
+# Note: data space boundingboxes should not include float32convert
+
 """
     boundingbox(scenelike[, exclude = plot -> false])
 

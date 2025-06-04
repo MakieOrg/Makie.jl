@@ -20,6 +20,8 @@ concurrency:
 jobs:
   cairomakie:
     name: CairoMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -69,6 +71,7 @@ jobs:
     name: GLMakie Julia ${{ matrix.version }}
     env:
       MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -119,6 +122,8 @@ jobs:
 
   wglmakie:
     name: WGLMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

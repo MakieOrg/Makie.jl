@@ -777,6 +777,7 @@ float32type(::T) where {T} = float32type(T)
 float32type(T::Type) = error("Could not convert $T to a Float32 type")
 
 el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
+el32convert(x::Base.ReinterpretArray) = collect(elconvert(float32type(x), x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{T}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{<:Union{Missing,T}}) where {T<:Real} = elconvert(float32type(T), x)

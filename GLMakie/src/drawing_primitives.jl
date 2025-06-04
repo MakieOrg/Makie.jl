@@ -1,7 +1,7 @@
 using Makie: transform_func_obs, apply_transform
 using Makie: attribute_per_char, FastPixel, el32convert, Pixel
 using Makie: convert_arguments
-using Makie: apply_transform_and_f32_conversion, f32_conversion_obs
+using Makie: f32_conversion_obs
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
 

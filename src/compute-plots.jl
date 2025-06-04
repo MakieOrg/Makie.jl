@@ -128,8 +128,8 @@ function meshscatter_data_limits(positions, marker_bb, scales, rotation)
     end
 end
 
-function meshscatter_boundingbox(model_f32c, _positions, model, transform_marker, marker_bb, scales, rotation)
-    positions = _project(model_f32c, _positions)
+function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb, scales, rotation)
+    positions = _project(model, _positions)
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
@@ -229,15 +229,16 @@ function register_position_transforms!(attr, input_name = :positions)
     # TODO: f32c should be identity or not get applied here if space != :data
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
     register_computation!(attr,
-        [:positions_transformed, :model, :f32c],
+        [:positions_transformed, :model, :f32c, :space],
         [:positions_transformed_f32c, :model_f32c]
-    ) do (positions, model, f32c), changed, last
+    ) do (positions, model, f32c, space), changed, last
+
         # TODO: this should be done in one nice function
         # This is simplified, skipping what's commented out
 
-        # trans, scale = decompose_translation_scale_matrix(model)
+        trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
+        if !is_data_space(space) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             pos = changed[1] ? el32convert(positions) : nothing
             return (pos, Mat4f(model))
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
@@ -365,9 +366,6 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
 
-    # TODO: Should we get rid of model as a documented attribute?
-    #       (On master, it acts as an overwrite, making translate!() etc not work)
-    @assert haskey(attr, :model) ":model is currently assumed to be initialized from default attributes"
     # TODO: connect to scene: on(update!(...), scene.float32convert.scaling)
     add_input!(attr, :f32c, LinearScaling(Vec3d(1.0), Vec3d(0.0)))
 
@@ -458,12 +456,14 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
-        if is_primitive
-            add_input!(attr, k, v) do key, value
-                return convert_attribute(value, Key{key}(), Key{name}())
+        if !haskey(attr.inputs, k) && !haskey(attr.outputs, k)
+            if is_primitive
+                add_input!(attr, k, v) do key, value
+                    return convert_attribute(value, Key{key}(), Key{name}())
+                end
+            else
+                add_input!((k,v) -> Ref{Any}(v), attr, k, v)
             end
-        else
-            add_input!((k,v) -> Ref{Any}(v), attr, k, v)
         end
     end
     if !haskey(attr, :model)
@@ -541,12 +541,12 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
 
     attr = ComputeGraph()
-    add_attributes!(P, attr, user_attributes)
 
     register_arguments!(P, attr, user_attributes, user_args)
     converted = attr[:converted][]
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
+    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
@@ -763,7 +763,7 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_pattern_uv_transform!(attr)
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    map!(meshscatter_boundingbox, attr, [:model_f32c, :positions_transformed_f32c, :model,
+    map!(meshscatter_boundingbox, attr, [:positions_transformed, :model,
         :transform_marker, :marker_bb, :markersize, :rotation], :boundingbox)
 end
 

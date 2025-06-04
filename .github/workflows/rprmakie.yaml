@@ -19,6 +19,8 @@ concurrency:
 jobs:
   test:
     name: RPRMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
