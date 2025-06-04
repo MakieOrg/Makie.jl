@@ -59,14 +59,14 @@ end
 
 ### conversions for errorbars
 
-function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealVector)
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealOrVec)
     T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4{T}(x, y, e, e)
     end
     (xyerr,)
 end
-RealOrVec
+
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low::RealOrVec, error_high::RealOrVec)
     T = float_type(x, y, error_low, error_high)
     xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
