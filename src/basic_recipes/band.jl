@@ -11,6 +11,8 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     MakieCore.documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
+    strokewidth = 0
+    strokecolor = automatic
     shading = NoShading
 end
 
@@ -50,8 +52,7 @@ function Makie.plot!(plot::Band)
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
-    attr = copy(Attributes(plot))
-    pop!(attr, :direction)
+    attr = shared_attributes(plot, Mesh)
 
     attr[:color] = lift(plot, plot.color) do c
         if c isa AbstractVector
@@ -72,6 +73,12 @@ function Makie.plot!(plot::Band)
     end
 
     mesh!(plot, attr, coordinates, connectivity)
+
+    lattr = shared_attributes(plot, Lines)
+    lattr[:linewidth] = plot.strokewidth
+    lattr[:color] = @lift $(plot.strokecolor) === automatic ? $(plot.color) : $(plot.strokecolor)
+    lines!(plot, lattr, lowerpoints)
+    lines!(plot, lattr, upperpoints)
 end
 
 function fill_view(x, y1, y2, where::Nothing)
