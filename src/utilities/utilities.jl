@@ -398,8 +398,8 @@ Returns an un-normalized normal vector for the triangle formed by the three inpu
 Skips any combination of the inputs for which any point has a NaN component.
 """
 function nan_aware_orthogonal_vector(v1, v2, v3)
-    (isnan(v1) || isnan(v2) || isnan(v3)) && return Vec3f(0)
-    return Vec3f(cross(v2 - v1, v3 - v1))
+    (isnan(v1) || isnan(v2) || isnan(v3)) && return zero(v1)
+    return Vec3(cross(v2 - v1, v3 - v1))
 end
 
 """
@@ -411,21 +411,19 @@ which ignores all contributions from points with `NaN` components.
 Equivalent in application to `GeometryBasics.normals`.
 """
 function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
-    normals_result = zeros(Vec3f, length(vertices))
+    normals_result = zeros(Vec3{T}, length(vertices))
 
     for face in faces
-
         v1, v2, v3 = vertices[face]
         # we can get away with two edges since faces are planar.
         n = nan_aware_orthogonal_vector(v1, v2, v3)
 
-        for i in 1:length(F)
-            fi = face[i]
+        for fi in face
             normals_result[fi] = normals_result[fi] + n
         end
     end
-    normals_result .= GeometryBasics.normalize.(normals_result)
-    return normals_result
+    normals_result .= normalize.(normals_result)
+    return convert(Vector{Vec3f}, normals_result)
 end
 
 function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
