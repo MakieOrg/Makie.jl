@@ -534,9 +534,7 @@ function resolve!(edge::TypedEdge)
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result === :deregister
-            # TODO
-        elseif result isa Tuple
+        if result isa Tuple
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end

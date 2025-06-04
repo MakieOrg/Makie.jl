@@ -203,7 +203,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         else
             add_alpha(color, alpha)
         end
-        return (color, val, isnothing(last) ? color isa AbstractPattern : nothing)
+        return (color, val, color isa AbstractPattern)
     end
 
     # TODO: if colorscale is defined, should it act on user supplied colorrange?
@@ -238,9 +238,8 @@ function register_position_transforms!(attr, input_name = :positions)
         # trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if is_identity_transform(f32c) # && is_float_safe(scale, trans)
-            m = changed[2] ? Mat4f(model) : nothing
             pos = changed[1] ? el32convert(positions) : nothing
-            return (pos, m)
+            return (pos, Mat4f(model))
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
@@ -255,8 +254,7 @@ function register_position_transforms!(attr, input_name = :positions)
                 p4d = model * p4d
                 return f32_convert(f32c, p4d[Vec(1, 2, 3)])
             end
-            m = isnothing(last) ? Mat4f(I) : nothing
-            return (output, m)
+            return (output, Mat4f(I))
         end
     end
 end
@@ -425,9 +423,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         MakieCore.lookup_default(T, nothing, :cycle)
     end)
     add_input!(attr, :cycle, _cycle) do key, value
-        # TODO, better convert_attribute to just return nothing for the different ways of disabling cycle?
-        cyc = convert_attribute(value, Key{key}(), Key{name}())
-        return isempty(cyc.cycle) ? nothing : cyc
+        return convert_attribute(value, Key{key}(), Key{name}())
     end
     # Cycle attributes are get set to plot, and then set in connect_plot!
     add_input!(attr, :plot_position, 0)
@@ -481,6 +477,7 @@ end
 
 function add_theme!(plot::T, scene::Scene) where {T}
     plot_attr = MakieCore.plot_attributes(scene, T)
+
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
     gattr = plot.attributes
@@ -527,7 +524,6 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
 
     P = Plot{Func}
-
     # And also plot!(plot, ::ComputeGraph, args...)
     if !isempty(user_args) && first(user_args) isa ComputeGraph
         # shallow copy with generalized type (avoid changing graph, allow non Computed types)

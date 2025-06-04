@@ -372,10 +372,12 @@ function find_layoutable(
     return (idx, layoutables[idx]...)
 end
 
-function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
-    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
-    idx == -1 && return nothing, nothing
-    return plots[idx], idx
+function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::Vector{Pair{PlotSpec,Plot}}, scores)
+    idx = find_min_distance(plotspec, plots, scores) do (spec, p), _
+        return spec
+    end
+    idx == -1 && return nothing, nothing, nothing
+    return plots[idx][2], plots[idx][1], idx
 end
 
 to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
@@ -459,7 +461,7 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
         end
     end
     update!(plot, updates)
-    return
+    return updates
 end
 
 
@@ -507,7 +509,7 @@ function Base.propertynames(pl::PlotList)
     else
         ()
     end
-    return Tuple(unique([keys(pl.attributes)..., inner_pnames...]))
+    return Tuple(unique([keys(pl.attributes.inputs)..., inner_pnames...]))
 end
 
 function Base.getproperty(pl::PlotList, property::Symbol)
@@ -553,16 +555,25 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
-
-function get_plot_position(specs, spec::PlotSpec)
+function get_plot_position(specs, spec::PlotSpec, plot::Plot)
+    # TODO, this may not reproduce the exact same cycle index as on master
+    cycle = plot.cycle[]
+    isnothing(cycle) && return 0
+    syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
     for p in specs
-        p == spec && return pos
-        if p.type === spec.type
-            pos += 1
+        p === spec && return pos
+        if haskey(p.kwargs, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(spec)
+            is_cycling = any(syms) do x
+                return haskey(p.kwargs, x) && isnothing(p[x])
+            end
+            if  is_cycling
+                pos += 1
+            end
         end
     end
-    return pos + 1
+    # not inserted yet
+    return pos
 end
 
 function diff_plotlist!(
@@ -574,9 +585,11 @@ function diff_plotlist!(
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
+    reusable_plots_sorted = [Pair{PlotSpec,Plot}(k, v) for (k, v) in reusable_plots]
+    sort!(reusable_plots_sorted, by=((k, v),)-> v.plot_position[], rev=true)
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
+        reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
         # Forward kw arguments from Plotlist
         if !isnothing(plotlist)
             merge!(plotspec.kwargs, plotlist.kw)
@@ -603,8 +616,12 @@ function diff_plotlist!(
             @debug("updating old plot with spec")
             # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
+            deleteat!(reusable_plots_sorted, idx)
             # Update the position of the plot!
-            reused_plot.plot_position = get_plot_position(plotspecs, plotspec)
+            pos = get_plot_position(plotspecs, plotspec, reused_plot)
+            if pos != reused_plot.plot_position[]
+                reused_plot.plot_position = pos
+            end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 

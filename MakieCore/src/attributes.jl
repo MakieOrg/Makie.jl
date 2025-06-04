@@ -248,5 +248,5 @@ function merge_attributes!(input::Attributes, theme::Attributes)
 end
 
 function Base.propertynames(x::Union{Attributes, AbstractPlot})
-    return (keys(x.attributes)...,)
+    return (keys(x.attributes.inputs)...,)
 end
