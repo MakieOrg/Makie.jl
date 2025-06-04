@@ -128,8 +128,8 @@ function meshscatter_data_limits(positions, marker_bb, scales, rotation)
     end
 end
 
-function meshscatter_boundingbox(model_f32c, _positions, model, transform_marker, marker_bb, scales, rotation)
-    positions = _project(model_f32c, _positions)
+function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb, scales, rotation)
+    positions = _project(model, _positions)
     # fast path for constant markersize
     if scales isa VecTypes{3} && rotation isa Quaternion
         bb = Rect3d(positions)
@@ -767,7 +767,7 @@ function calculated_attributes!(::Type{MeshScatter}, plot::Plot)
     register_pattern_uv_transform!(attr)
     map!(Rect3d, attr, :marker, :marker_bb)
     map!(meshscatter_data_limits, attr, [:positions, :marker_bb, :markersize, :rotation], :data_limits)
-    map!(meshscatter_boundingbox, attr, [:model_f32c, :positions_transformed_f32c, :model,
+    map!(meshscatter_boundingbox, attr, [:positions_transformed, :model,
         :transform_marker, :marker_bb, :markersize, :rotation], :boundingbox)
 end
 
