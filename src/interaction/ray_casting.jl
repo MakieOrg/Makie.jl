@@ -290,7 +290,7 @@ function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; appl
     if apply_transform
         return _project(plot.model_f32c[], plot.positions_transformed_f32c[][idx])
     else
-        return to_ndim(plot.positions[][idx], point, 0)
+        return to_ndim(Point3d, plot.positions[][idx], 0)
     end
 end
 
