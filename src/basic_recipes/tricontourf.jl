@@ -18,12 +18,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
     """
     mode = :normal
-    "Sets the colormap from which the band colors are sampled."
-    colormap = @inherit colormap
-    "Color transform function"
-    colorscale = identity
-    "The alpha value of the colormap or color attribute."
-    alpha = 1.0
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
@@ -42,7 +36,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
-    nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -52,6 +45,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     triangulation = DelaunayTriangulation()
     edges = nothing
+    MakieCore.mixin_colormap_attributes()...
     MakieCore.mixin_generic_plot_attributes()...
 end
 
@@ -128,7 +122,11 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    colorrange = lift(extrema_nan, c, c._computed_levels)
+    if c.colorrange[] isa MakieCore.Automatic
+        c.colorrange = lift(c, c._computed_levels) do levels
+            minimum(levels), maximum(levels)
+        end
+    end
     computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
                              c.extendhigh)
     c.attributes[:_computed_colormap] = computed_colormap
@@ -197,10 +195,10 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         polys,
         colormap = c._computed_colormap,
         colorscale = c.colorscale,
-        colorrange = colorrange,
+        colorrange = c.colorrange,
         alpha = c.alpha,
-        highclip = highcolor,
         lowclip = lowcolor,
+        highclip = highcolor,
         nan_color = c.nan_color,
         color = colors,
         strokewidth = 0,
