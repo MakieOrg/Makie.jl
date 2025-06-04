@@ -229,15 +229,16 @@ function register_position_transforms!(attr, input_name = :positions)
     # TODO: f32c should be identity or not get applied here if space != :data
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
     register_computation!(attr,
-        [:positions_transformed, :model, :f32c],
+        [:positions_transformed, :model, :f32c, :space],
         [:positions_transformed_f32c, :model_f32c]
-    ) do (positions, model, f32c), changed, last
+    ) do (positions, model, f32c, space), changed, last
+
         # TODO: this should be done in one nice function
         # This is simplified, skipping what's commented out
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c) && is_float_safe(scale, trans)
+        if !is_data_space(space) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             m = changed[2] ? Mat4f(model) : nothing
             pos = changed[1] ? el32convert(positions) : nothing
             return (pos, m)
