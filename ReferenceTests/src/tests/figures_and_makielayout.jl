@@ -761,6 +761,10 @@ end
         color_active_dimmed = :lightgreen)
     Makie.set_close_to!(sl, 30)
 
+    Makie.Slider(f[3, 4])
+    sl = Makie.Slider(f[4, 4], range = (0:100)u"m")
+    Makie.set_close_to!(sl, 30.5u"m")
+
     gl = GridLayout(f[5, 1:3])
     Textbox(gl[1, 1])
     Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0,
