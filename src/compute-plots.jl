@@ -203,7 +203,7 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
         else
             add_alpha(color, alpha)
         end
-        return (color, val, isnothing(last) ? color isa AbstractPattern : nothing)
+        return (color, val, color isa AbstractPattern)
     end
 
     # TODO: if colorscale is defined, should it act on user supplied colorrange?
@@ -239,9 +239,8 @@ function register_position_transforms!(attr, input_name = :positions)
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            m = changed[2] ? Mat4f(model) : nothing
             pos = changed[1] ? el32convert(positions) : nothing
-            return (pos, m)
+            return (pos, Mat4f(model))
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
@@ -256,8 +255,7 @@ function register_position_transforms!(attr, input_name = :positions)
                 p4d = model * p4d
                 return f32_convert(f32c, p4d[Vec(1, 2, 3)])
             end
-            m = isnothing(last) ? Mat4f(I) : nothing
-            return (output, m)
+            return (output, Mat4f(I))
         end
     end
 end
@@ -316,40 +314,77 @@ function _filter(f, xs::NamedTuple)
     return NamedTuple{fkeys}(map(k -> xs[k], fkeys))
 end
 
-function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
-    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
-    args = attr[:args][]
-    if length(args) in (2, 3)
-        inputs = Symbol[]
-        for (i, arg) in enumerate(args)
-            update_dim_conversion!(dim_converts, i, arg)
-            obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
-            converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
-            add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
-            push!(inputs, Symbol(:dim_convert_, i))
+function add_convert_kwargs!(attr, user_kw, P, args)
+    conv_attributes = used_attributes(P, args...)
+    intrinsics = default_theme(nothing)
+    conv_attr_input = Symbol[]
+    for key in conv_attributes
+        if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
+            default = key === :space ? :data : nothing
+            add_input!(attr, key, pop!(user_kw, key, default))
+            push!(conv_attr_input, key)
         end
-        register_computation!(attr, [:args, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
-            last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
-            result = ntuple(length(converts)) do i
-                return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
-            end
-            return (Ref{Any}(result),)
-        end
-    else
+    end
+    register_computation!(attr, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+        return (_filter(!isnothing, inputs),)
+    end
+end
+
+function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input=:args)
+    if !(length(args) in (2, 3))
+        # We only support plots with 2 or 3 dimensions right now
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
             return (Ref{Any}(args.args),)
         end
+        return
     end
-    #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
-    conv_attributes = used_attributes(P, args...)
-    for key in conv_attributes
-        if !haskey(attr.inputs, key) # can be added from plot attributes
-            add_input!(attr, key, pop!(user_kw, key, nothing))
+
+    inputs = Symbol[]
+    for (i, arg) in enumerate(args)
+        update_dim_conversion!(dim_converts, i, arg)
+        obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
+        converts_updated = map!(x-> dim_converts[i], Observable{Any}(), obs)
+        add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+        push!(inputs, Symbol(:dim_convert_, i))
+    end
+    register_computation!(attr, [input, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
+        last_vals = isnothing(last) ? ntuple(i-> nothing, length(converts)) : last.dim_converted
+        result = ntuple(length(converts)) do i
+            return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
+        end
+        return (Ref{Any}(result),)
+    end
+end
+
+function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
+    dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
+    args = attr.args[]
+    add_convert_kwargs!(attr, user_kw, P, args)
+    kw = attr.convert_kwargs[]
+    args_converted = convert_arguments(P, args...; kw...)
+    status = got_converted(P, conversion_trait(P, args...), args_converted)
+    if status === true || status === SpecApi
+        # Nothing needs to be done, since we can just use convert_arguments without dim_converts
+        # And just pass the arguments through
+        register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
+            return (Ref{Any}(args.args),)
+        end
+    elseif isnothing(status) # we don't know (e.g. recipes)
+        add_dim_converts!(attr, dim_converts, args)
+    elseif status === false
+        if args_converted !== args
+            # Not at target conversion, but something got converted
+            # This means we need to convert the args before doing a dim conversion
+            register_computation!(attr, [:args], [:recursive_convert]) do args, changed, last
+                return (convert_arguments(P, args.args...),)
+            end
+            add_dim_converts!(attr, dim_converts, args_converted, :recursive_convert)
+        else
+            add_dim_converts!(attr, dim_converts, args)
         end
     end
-    register_computation!(attr, Symbol[conv_attributes...], [:convert_kwargs]) do inputs, changed, last
-        return (_filter(!isnothing, inputs),)
-    end
+    #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
+
     register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last
         x = convert_arguments(P, args.dim_converted...; args.convert_kwargs...)
         if x isa Tuple
@@ -367,10 +402,6 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     end
 
     add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
-
-    # TODO: Should we get rid of model as a documented attribute?
-    #       (On master, it acts as an overwrite, making translate!() etc not work)
-    @assert haskey(attr, :model) ":model is currently assumed to be initialized from default attributes"
 
     # TODO: Is this dangerous? Scene might update this to LinearScaling later
     add_input!(attr, :f32c, :uninitialized)
@@ -417,19 +448,24 @@ function default_attribute(user_attributes, (key, value))
     end
 end
 
+struct AttributeConvert{Key, Plot} end
+@inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
+Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
+function (::AttributeConvert{key, plot})(_, value) where {key, plot}
+    return convert_attribute(value, Key{key}(), Key{plot}())
+end
+
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     documented_attr = MakieCore.plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
     inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
     delete!(inputs, :cycle)
-    _cycle = to_value(get(kwargs, :cycle) do
-        MakieCore.lookup_default(T, nothing, :cycle)
-    end)
-    add_input!(attr, :cycle, _cycle) do key, value
-        # TODO, better convert_attribute to just return nothing for the different ways of disabling cycle?
-        cyc = convert_attribute(value, Key{key}(), Key{name}())
-        return isempty(cyc.cycle) ? nothing : cyc
+    if !haskey(attr.inputs, :cycle)
+        _cycle = to_value(get(kwargs, :cycle) do
+            MakieCore.lookup_default(T, nothing, :cycle)
+        end)
+        add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
     end
     # Cycle attributes are get set to plot, and then set in connect_plot!
     add_input!(attr, :plot_position, 0)
@@ -464,12 +500,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
-        if is_primitive
-            add_input!(attr, k, v) do key, value
-                return convert_attribute(value, Key{key}(), Key{name}())
+        if !haskey(attr.inputs, k) && !haskey(attr.outputs, k)
+            if is_primitive
+                add_input!(AttributeConvert(k, name), attr, k, v)
+            else
+                add_input!((k,v) -> Ref{Any}(v), attr, k, v)
             end
-        else
-            add_input!((k,v) -> Ref{Any}(v), attr, k, v)
         end
     end
     if !haskey(attr, :model)
@@ -483,6 +519,7 @@ end
 
 function add_theme!(plot::T, scene::Scene) where {T}
     plot_attr = MakieCore.plot_attributes(scene, T)
+
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
     gattr = plot.attributes
@@ -518,9 +555,25 @@ end
 
 register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.attributes, scene.compute)
 
+function argument_error(PTrait, P, args, user_kw, converted)
+    used_attr = used_attributes(P, args...) # ensure that P is registered
+    kw = Dict([k => v for (k,v) in user_kw if k in used_attr])
+    kw_str = isempty(kw) ?  "" : " and kw: $(kw)"
+    kw_convert = isempty(kw) ? "" : "; kw..."
+    conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
+    types = MakieCore.types_for_plot_arguments(P, PTrait)
+    throw(ArgumentError("""
+
+        Conversion failed for $(P)$(conv_trait) with args:
+            $(typeof(args)) $(kw_str)
+        Got converted to: $(typeof(converted))
+        $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
+        To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+    """))
+end
+
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
-
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
         attr = attributes(first(user_args)) # TODO: Should this copy to keep user_args[1] unchanged?
@@ -547,12 +600,16 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
 
     attr = ComputeGraph()
-    add_attributes!(P, attr, user_attributes)
 
     register_arguments!(P, attr, user_attributes, user_args)
-    converted = attr[:converted][]
+    converted = attr.converted[]
+    PTrait = conversion_trait(P, attr.args[]...)
+    if got_converted(P, PTrait, converted) == false
+        argument_error(PTrait, P, attr.args[], user_attributes, converted)
+    end
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
+    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
@@ -603,8 +660,8 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     # TODO, do this for recipes?
     plot.plot_position = get_plot_position(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
-
     handle_transformation!(plot, parent)
+
     if plot isa PrimitivePlotTypes
         register_camera!(scene, plot)
     end
@@ -840,7 +897,8 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     attributes = [
         :raw_color, :alpha_colormap, :raw_colormap, :colorscale, :color_mapping, :unscaled_colorrange,
         :lowclip, :highclip, :nan_color, :color_mapping_type, :scaled_colorrange, :scaled_color]
-    register_computation!(attr, attributes, [:cb_colormapping, :cb_observables]) do args, changed, cached
+
+    register_computation!(attr, attributes, [:cb_colormapping, :cb_observables, :colormap_obs]) do args, changed, cached
         dict = Dict(zip(attributes, values(args)))
         N = ndims(dict[:raw_color])
         Cin = typeof(dict[:raw_color])
@@ -851,7 +909,7 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
             end
             observable_dict = Dict(zip(attributes, observables))
             cm = ColorMapping{N,Cin,Cout}(observables...)
-            return (cm, observable_dict)
+            return (cm, observable_dict, nothing)
         else
             observable_dict = cached.cb_observables
             for (name, value, ischanged) in zip(attributes, args, changed)
@@ -859,12 +917,11 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
                     observable_dict[name][] = value
                 end
             end
-            return (cached.cb_colormapping, nothing)
+            return (cached.cb_colormapping, nothing, nothing)
         end
     end
-    on(plot, attr.onchange) do _
-        attr[:cb_colormapping][]
-    end
+    # Make sure this is not polling, but triggers on changes
+    ComputePipeline.get_observable!(attr, :colormap_obs)
     return attr[:cb_colormapping][]
 end
 

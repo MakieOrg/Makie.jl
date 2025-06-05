@@ -909,6 +909,9 @@ end
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
+# Normalize for cycle to be nothing if there's nothing to cycle!
+convert_attribute(cycle::Vector, ::key"cycle") = isempty(cycle) ? nothing : Cycle(cycle)
+convert_attribute(cycle::Nothing, ::key"cycle") = cycle
 convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
 

@@ -76,7 +76,7 @@ function initialize_block!(tbox::Textbox)
     end
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
-    cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
+    cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values=true) do ci, bbs
 
         textplot = t.blockscene.plots[1]
 

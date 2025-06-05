@@ -12,6 +12,7 @@ struct Cycle
     cycle::Vector{Pair{Vector{Symbol}, Symbol}}
     covary::Bool
 end
+Base.:(==)(a::Cycle, b::Cycle) = a.covary == b.covary && a.cycle == b.cycle
 
 Cycle(cycle::Cycle) = cycle
 Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)

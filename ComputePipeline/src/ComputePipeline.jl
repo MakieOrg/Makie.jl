@@ -220,7 +220,7 @@ struct ComputeGraph
     lock::ReentrantLock
 end
 
-function get_observable!(attr::ComputeGraph, key::Symbol)
+function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true, ignore_equal_values=false)
     # Because we allow output arrays to be reused it can be impossible to tell
     # if the data has updated. In this case the data is marked as dirty/changed
     # and added to the `onchange`. If this data is fed into an Observable which
@@ -228,12 +228,13 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
     # To prevent this we have to disambiguate the data and do == checks here.
     # This requires us to copy data every time we update and we can't use
     # `copy` because that is not always available (e.g. not for Rect)
+    _deepcopy(x) = use_deepcopy ? deepcopy(x) : x
     return get!(attr.observables, key) do
         val = attr.outputs[key]
-        result = Observable(deepcopy(val[]))
+        result = Observable(_deepcopy(val[]); ignore_equal_values=ignore_equal_values)
         on(attr.onchange) do changeset
             if (key in changeset) && (val[] != result[])
-                result[] = deepcopy(val[])
+                result[] = _deepcopy(val[])
             end
             return Consume(false)
         end
@@ -241,10 +242,10 @@ function get_observable!(attr::ComputeGraph, key::Symbol)
     end
 end
 
-function get_observable!(c::Computed)
+function get_observable!(c::Computed; use_deepcopy=true, ignore_equal_values=false)
     if hasparent(c)
         p = getparent(c)
-        return get_observable!(p.graph, c.name)
+        return get_observable!(p.graph, c.name; use_deepcopy=use_deepcopy, ignore_equal_values=ignore_equal_values)
     else
         error("Cannot get observable for Computed without parent")
     end
@@ -534,9 +535,7 @@ function resolve!(edge::TypedEdge)
         end
         last = NamedTuple{names}(vals)
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result === :deregister
-            # TODO
-        elseif result isa Tuple
+        if result isa Tuple
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end
