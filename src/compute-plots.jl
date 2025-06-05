@@ -363,13 +363,23 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
-    if status === true || status === SpecApi
+    if (status === true || status === SpecApi)
+        # TODO, cant check this case right now, since recipes that get their arguments dim_converted
+        # Will create plots with converted arguments, but those subplots will have the same dim_converts, so they error here
+        # if needs_dimconvert(dim_converts)
+        #     dims = ["dim $dim needs: $(typeof(dim_converts[dim]))" for dim in 1:3 if !(dim_converts[dim] isa Union{NoDimConversion, Nothing})]
+        #     throw(ArgumentError("""
+        #         Plot type $(P) does not support dim_converts with arguments $(typeof(args)), but dim_converts are set:
+        #         $(join(dims, ", ")).
+        #         """
+        #     ))
+        # end
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
         register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
             return (Ref{Any}(args.args),)
         end
-    elseif isnothing(status) # we don't know (e.g. recipes)
+    elseif isnothing(status) || status == true # we don't know (e.g. recipes)
         add_dim_converts!(attr, dim_converts, args)
     elseif status === false
         if args_converted !== args

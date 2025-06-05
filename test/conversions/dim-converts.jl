@@ -71,7 +71,7 @@ end
     # Unitful works as well
     scatter!(ax, LinRange(0u"yr", 0.1u"yr", 5))
     # TODO, how to check for this case?
-    # @test_throws ResolveException scatter!(ax, 1:4)
+    # @test_throws ArgumentError scatter!(ax, 1:4)
     @test_throws ArgumentError scatter!(ax, Hour(1):Hour(1):Hour(4), 1:4)
 end
 

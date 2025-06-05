@@ -24,6 +24,15 @@ function Base.setindex!(conversions::DimConversions, value::Observable, i::Int)
     end
 end
 
+function needs_dimconvert(conversions::DimConversions)
+    for i in 1:3
+        if !(conversions[i] isa Union{Nothing,NoDimConversion})
+            return true
+        end
+    end
+    return false
+end
+
 function Base.setindex!(conversions::DimConversions, value, i::Int)
     isnothing(value) && return # ignore no conversions
     conversions[i] === value && return # ignore same conversion
