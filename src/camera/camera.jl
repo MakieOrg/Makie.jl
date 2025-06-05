@@ -240,22 +240,36 @@ world ------>   eye   -----------> clip
                pixel  -----------> clip
              relative -----------> clip
 =#
+function get_camera_matrix_name(input_space::Symbol, output_space::Symbol)
+    key1 = ifelse(input_space === :data, :world, input_space)
+    key2 = ifelse(output_space === :data, :world, output_space)
+    return Symbol(key1, :_to_, key2)
+end
 
-get_pixelspace(graph::ComputeGraph) = Mat4f(graph[:pixel_to_clip][])
+function get_projectionview_name(space::Symbol)
+    return Symbol(ifelse(is_data_space(space), :world, space), :_to_clip)
+end
+function get_projection_name(space::Symbol)
+    return ifelse(is_data_space(space), :eye_to_clip, Symbol(space, :_to_clip))
+end
+function get_view_name(space::Symbol)
+    return ifelse(is_data_space(space), :world_to_eye, :eye_to_eye)
+end
+
+
+get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]::Mat4f
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
-    key = ifelse(space === :data, :world, space)
-    return Mat4f(graph[Symbol(key, :_to_clip)][])::Mat4f
+    return graph[get_projectionview_name(space)][]::Mat4f
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
-    key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
-    return Mat4f(graph[key][])::Mat4f
+    return graph[get_projection_name(space)][]::Mat4f
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
     # or :eye_to_eye for the else case
-    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))::Mat4f
+    return graph[get_view_name(space)][]::Mat4f
 end
 
 """
@@ -264,9 +278,7 @@ end
 Return a camera matrix that transforms from `input_space` to `output_space`.
 """
 function get_space_to_space_matrix(graph::ComputeGraph, input_space::Symbol, output_space::Symbol)
-    key1 = ifelse(input_space === :data, :world, input_space)
-    key2 = ifelse(output_space === :data, :world, output_space)
-    return Mat4f(graph[Symbol(key1, :_to_, key2)][])::Mat4f
+    return graph[get_camera_matrix_name(input_space, output_space)][]::Mat4f
 end
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     return get_space_to_space_matrix(graph, space, markerspace)
@@ -295,24 +307,7 @@ end
 
 function (cb::CameraMatrixCallback)(inputs, changed, cached)
     graph = cb.graph
-    space = inputs.space
-    # TODO: more fine grained updates?
-    # e.g. log if space related matrices or markerspace related matrices need
-    # update in camera_trigger and only update those?
-    if haskey(inputs, :markerspace)
-        markerspace = inputs.markerspace
-        # TODO: breaks FastPixel?
-        preprojection = get_preprojection(graph, space, markerspace)
-        projectionview = get_projectionview(graph, markerspace)
-        projection = get_projection(graph, markerspace)
-        view = get_view(graph, markerspace)
-        return (projectionview, projection, view, preprojection)
-    else
-        projectionview = get_projectionview(graph, space)
-        projection = get_projection(graph, space)
-        view = get_view(graph, space)
-        return (projectionview, projection, view)
-    end
+    return map(name -> graph[name][], inputs.camera_matrix_names)
 end
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
@@ -324,13 +319,24 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     # Only propagate update from camera matrices if its relevant to space
     register_computation!(camera_trigger, plot_graph, inputs, [:camera_trigger])
 
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    input_keys = [:camera_trigger, :space]
+
+    input_keys = [:camera_trigger, :camera_matrix_names]
     output_keys = [:projectionview, :projection, :view]
+
+    # merging Symbols is somewhat expensive so we shouldn't do it repetitively
     if haskey(plot_graph, :markerspace)
-        push!(input_keys, :markerspace)
+        map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
+            return get_projectionview_name(markerspace), get_projection_name(markerspace),
+                get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
+        end
         push!(output_keys, :preprojection)
+    else
+        map!(plot_graph, :space, :camera_matrix_names) do space
+            return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+        end
     end
+
+    # Update camera matrices in plot if space changed or a relevant camera update happened
     callback = CameraMatrixCallback(scene_graph)
     register_computation!(callback, plot_graph, input_keys, output_keys)
 
