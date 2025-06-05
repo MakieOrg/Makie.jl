@@ -101,7 +101,7 @@ Note that connecting a node between graphs will disable updating of that node in
 Therefore you can not use `update!(graph2, sum = new_value)` in the example above.
 Instead the `:sum` node is solely updated by the parent graph, in which you can update either `:input1` or `:input2` to update `:sum`
 
-## Observables
+## Interfacing with Observables
 
 You can use an `obs::Observable` as an input to a ComputeGraph by passing it to `add_input!(graph, name, obs)`.
 This will trigger `update!(graph, name = obs[])` every time the observable updates.
