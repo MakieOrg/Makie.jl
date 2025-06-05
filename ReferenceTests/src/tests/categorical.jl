@@ -1,5 +1,5 @@
 using Test
-
+using Makie.ComputePipeline: ResolveException
 using Makie: Categorical
 
 @reference_test "multi plot, error with non categorical" begin
