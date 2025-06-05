@@ -245,17 +245,17 @@ get_pixelspace(graph::ComputeGraph) = Mat4f(graph[:pixel_to_clip][])
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :world, space)
-    return Mat4f(graph[Symbol(key, :_to_clip)][])
+    return Mat4f(graph[Symbol(key, :_to_clip)][])::Mat4f
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
     key = ifelse(space === :data, :eye_to_clip, Symbol(space, :_to_clip))
-    return Mat4f(graph[key][])
+    return Mat4f(graph[key][])::Mat4f
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
     # or :eye_to_eye for the else case
-    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))
+    return Mat4f(space === :data ? graph[Symbol(:world_to_eye)][] : Mat4d(I))::Mat4f
 end
 
 """
@@ -266,7 +266,7 @@ Return a camera matrix that transforms from `input_space` to `output_space`.
 function get_space_to_space_matrix(graph::ComputeGraph, input_space::Symbol, output_space::Symbol)
     key1 = ifelse(input_space === :data, :world, input_space)
     key2 = ifelse(output_space === :data, :world, output_space)
-    return Mat4f(graph[Symbol(key1, :_to_, key2)][])
+    return Mat4f(graph[Symbol(key1, :_to_, key2)][])::Mat4f
 end
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     return get_space_to_space_matrix(graph, space, markerspace)
