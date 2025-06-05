@@ -151,6 +151,175 @@ end
         @test get_state(graph) == [0,0,0,0,0]
         @test !isdirty(graph[:output])
     end
+
+    counter = Dict{Symbol, Int}()
+    foreach(k -> counter[k] = 0, [:merged, :merged2, :zipped, :summed, :plus_one, :zipped2, :summed2, :plus_one2])
+    graph = ComputeGraph()
+    add_input!(graph, :in1, 1)
+    add_input!(graph, :in2, 2)
+    add_input!(graph, :in3, [1,2,3])
+    # bitstype
+    register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
+        counter[:merged] += 1
+        return (changed.in1 ? inputs[1] + inputs[2] : nothing,)
+    end
+    register_computation!(graph, [:merged], [:merged2]) do inputs, changed, cached
+        counter[:merged2] += 1
+        return (inputs.merged,)
+    end
+    # Array recreate
+    register_computation!(graph, [:in1, :in3], [:zipped]) do inputs, changed, cached
+        counter[:zipped] += 1
+        return (inputs.in1 .+ inputs.in3, )
+    end
+    register_computation!(graph, [:zipped], [:summed]) do inputs, changed, cached
+        counter[:summed] += 1
+        return (sum(inputs.zipped), )
+    end
+    register_computation!(graph, [:summed], [:plus_one]) do inputs, changed, cached
+        counter[:plus_one] += 1
+        return (inputs.summed + 1, )
+    end
+    # Array overwrite/reuse
+    register_computation!(graph, [:in1, :in3], [:zipped2]) do inputs, changed, cached
+        output = isnothing(cached) ? [0,0,0] : cached.zipped2
+        output .= inputs.in1 .+ inputs.in3
+        counter[:zipped2] += 1
+        return (output, )
+    end
+    register_computation!(graph, [:zipped2], [:summed2]) do inputs, changed, cached
+        counter[:summed2] += 1
+        return (sum(inputs.zipped2), )
+    end
+    register_computation!(graph, [:summed2], [:plus_one2]) do inputs, changed, cached
+        counter[:plus_one2] += 1
+        return (inputs.summed2 + 1, )
+    end
+
+    @testset "update skipping and changed" begin
+        @testset "initialization" begin
+            @test graph.merged2[] == 3
+            @test counter[:merged] == 1
+            @test counter[:merged2] == 1
+
+            @test graph.plus_one[] == 10
+            @test counter[:zipped] == 1
+            @test counter[:summed] == 1
+            @test counter[:plus_one] == 1
+
+            @test graph.plus_one2[] == 10
+            @test counter[:zipped2] == 1
+            @test counter[:summed2] == 1
+            @test counter[:plus_one2] == 1
+        end
+
+        @testset "explicit skip via return nothing" begin
+            graph.in2 = 3
+            @test graph.merged2[] == 3
+            @test counter[:merged] == 2
+            @test counter[:merged2] == 1
+        end
+
+        @testset "no skip" begin
+            graph.in1 = 2
+            @test graph.merged2[] == 5
+            @test counter[:merged] == 3
+            @test counter[:merged2] == 2
+
+            graph.in1 = 5
+            @test graph.merged2[] == 8
+            @test counter[:merged] == 4
+            @test counter[:merged2] == 3
+
+            graph.in1 = 4
+            graph.in2 = 5
+            @test graph.merged2[] == 9
+            @test counter[:merged] == 5
+            @test counter[:merged2] == 4
+
+            # from in1 updates
+            @test graph.plus_one[] == 19
+            @test counter[:zipped] == 2
+            @test counter[:summed] == 2
+            @test counter[:plus_one] == 2
+
+            @test graph.plus_one2[] == 19
+            @test counter[:zipped2] == 2
+            @test counter[:summed2] == 2
+            @test counter[:plus_one2] == 2
+
+            # from in3 updates
+            graph.in3 = [0, 1, 2]
+            @test graph.plus_one[] == 16
+            @test counter[:zipped] == 3
+            @test counter[:summed] == 3
+            @test counter[:plus_one] == 3
+
+            @test graph.plus_one2[] == 16
+            @test counter[:zipped2] == 3
+            @test counter[:summed2] == 3
+            @test counter[:plus_one2] == 3
+        end
+
+        @testset "same value skips" begin
+            graph.in1 = 4
+            @test graph.merged2[] == 9
+            @test counter[:merged] == 5
+            @test counter[:merged2] == 4
+
+            # from in1
+            @test graph.plus_one[] == 16
+            @test counter[:zipped] == 3
+            @test counter[:summed] == 3
+            @test counter[:plus_one] == 3
+
+            @test graph.plus_one2[] == 16
+            @test counter[:zipped2] == 3
+            @test counter[:summed2] == 3
+            @test counter[:plus_one2] == 3
+
+            # from in3
+            graph.in3 = [0,1,2]
+            @test graph.plus_one[] == 16
+            @test counter[:zipped] == 3
+            @test counter[:summed] == 3
+            @test counter[:plus_one] == 3
+
+            @test graph.plus_one2[] == 16
+            @test counter[:zipped2] == 3
+            @test counter[:summed2] == 3
+            @test counter[:plus_one2] == 3
+
+            # delayed same value
+            graph.in3 = [2,1,0]
+            @test graph.plus_one[] == 16
+            @test counter[:zipped] == 4     # input: [2,1,0] != [0,1,2]
+            @test counter[:summed] == 4     # input: [2,1,0] .+ 4 != [0,1,2] .+ 4
+            @test counter[:plus_one] == 3   # input:       sum(^) == sum(^)
+
+            @test graph.plus_one2[] == 16
+            @test counter[:zipped2] == 4
+            @test counter[:summed2] == 4
+            @test counter[:plus_one2] == 3
+        end
+
+        @testset "Array edge case" begin
+            graph.in3 = [3,2,1] # .+ 1
+            graph.in1 = 3       #  - 1
+
+            # new array generated, values match, update skipped
+            @test graph.plus_one[] == 16
+            @test counter[:zipped] == 5
+            @test counter[:summed] == 4
+            @test counter[:plus_one] == 3
+
+            # old array reused, values can't be compared, update advances
+            @test graph.plus_one2[] == 16
+            @test counter[:zipped2] == 5
+            @test counter[:summed2] == 5
+            @test counter[:plus_one2] == 3
+        end
+    end
 end
 
 @testset "Graph io" begin
