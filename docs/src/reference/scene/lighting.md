@@ -1,7 +1,7 @@
 # Lighting
 
 The Lighting capabilities of Makie differ between backends and plot types.
-They are implemented for mesh related plot types (`mesh`, `meshscatter`, `surface`), their derivatives (e.g. 3D `arrows`) and to some degree `volume` plots (and `contour3d`).
+They are implemented for mesh related plot types (`mesh`, `meshscatter`, `surface`), their derivatives (e.g. 3D `arrows`), `voxels` and to some degree `volume` plots (and `contour3d`).
 With respect to Backends:
 
 - GLMakie implements the baseline lighting model and will act as our default for this page.
@@ -26,69 +26,55 @@ Currently the following material attributes are available:
     See the [RPRMakie page](https://docs.makie.org/stable/documentation/backends/rprmakie/) for examples.
 
 
-## Lighting algorithm
+## Lights
 
-Lights are controlled through the `lights` vector in a `scene` and by the `shading` attribute in a plot.
-Generally you will not need to set `shading` yourself, as it is derived based on the lights vector.
-The possible options for `shading` are:
-- `shading = NoShading` disables light calculations, resulting in the plain color of an object being shown.
-- `shading = FastShading` enables a simplified lighting model which only allows for one `AmbientLight` and one `DirectionalLight`.
-- `shading = MultiLightShading` is a GLMakie exclusive option which enables multiple light sources (as set in the `ScreenConfig`, default up to 64) as well as `PointLight` and `SpotLight`.
-- `shading = Makie.automatic` derive one of the above options based on the lights in `scene.lights`
+Lights are controlled by the (underlying) scene a plot belongs to.
+Each scene can have one ambient light and a number of of other lights.
+The lights can set at initialization using the `lights` scene keyword argument.
+After initialization a number of functions can be used to view and manipulate lights.
+For these the ambient light and the remaining lights are separated.
 
-!!! note
-    You can access the underlying scene of an `Axis3` with `ax.scene`.
+- `get_lights(scene)` returns the current lights vector (without the ambient light)
+- `set_lights(scene, lights)` replaces the current lights with the given ones (excluding ambient)
+- `set_ambient_light!(scene, color)` sets the color (and intensity) of the ambient light
+- `set_light!(scene, n, light)` replaces the n-th light in the light vector with the given one
+- `set_light!(scene, n; fields...)` updates a field of the n-the light in the light vector
+- `push_light!(scene, light)` adds a light to the light vector
+- `set_directional_light!(scene; [color, direction, camera_relative])` adjusts the directional light of the scene if it is the only available light other than the ambient light. (I.e. the scene is in FastShading mode)
 
-For reference all the lighting calculations (except ambient) in GLMakie, WGLMakie and to some extend CairoMakie end up using the [Blinn-Phong reflection model](https://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_reflection_model) which boils down to
+Note that in these functions an `LScene` or `Axis3` can be used in place of `scene` as well.
 
-```julia
-function blinn_phong(
-        diffuse, specular, shininess, normal, object_color,
-        light_color, light_direction, camera_direction
-    )
-    diffuse_coefficient = max(dot(light_direction, -normal), 0.0)
-    H = normalize(light_direction + camera_direction)
-    specular_coefficient = max(dot(H, -normal), 0.0)^shininess
-    return light_color * (
-        diffuse * diffuse_coefficient * object_color +
-        specular * specular_coefficient
-    )
-end
-```
+Further note that having multiple lights, or lights other than ambient and directional lights requires GLMakie to be used with the correct lighting algorithm.
+The algorithm will be chosen based on the lights present when the scene gets displayed, i.e. when a window is opened.
+Thus you should set up your lights before displaying.
+You can also set the algorithm manually by passing `shading = MultiLightShading/FastShading/NoShading` as a scene keyword arguments, or by calling `set_shading_algorithm!(scene, MultiLightShading/FastShading/NoShading)` before displaying.
 
-The different light sources control the `light_direction` and may further adjust the result of this function. For example, `SpotLight` adds a factor which reduces light intensity outside its area.
-
-
-## Types of Light
-
+You can also disable or enable shading on the plot level by passing `plot!(..., shading = true/false)`.
 
 ### AmbientLight
 
-```
-```
+The `AmbientLight` provides a base light level to the scene.
 
 ```@figure backend=GLMakie
-
 fig = Figure(size = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [],))
 ax12 = LScene(fig[1, 2], scenekw = (lights = [AmbientLight(RGBf(0, 0, 0))],))
 ax21 = LScene(fig[2, 1], scenekw = (lights = [AmbientLight(RGBf(0.7, 0.7, 0.7))],))
-ax22 = LScene(fig[2, 2], scenekw = (lights = [AmbientLight(RGBf(0.8, 0.3, 0))],))
+ax22 = LScene(fig[2, 2])
+set_lights!(ax22, []) # remove default DirectionalLight
+set_ambient_light!(ax22, RGBf(0.8, 0.3, 0))
 for ax in (ax11, ax12, ax21, ax22)
     mesh!(ax, Sphere(Point3f(0), 1f0), color = :white)
 end
 fig
 ```
 
-
-
 ### DirectionalLight
 
-```
-```
+The `DirectionalLight` simulates a distant light source with parallel light ray.
+Depending on the angle between the light ray and the surface normal of the object, the shaded color differs.
 
 ```@figure backend=GLMakie
-
 fig = Figure(size = (600, 600))
 ax11 = LScene(fig[1, 1], scenekw = (lights = [DirectionalLight(RGBf(0, 0, 0), Vec3f(-1, 0, 0))],))
 ax12 = LScene(fig[1, 2], scenekw = (lights = [DirectionalLight(RGBf(1, 1, 1), Vec3f(-1, 0, 0))],))
@@ -98,7 +84,9 @@ lights = [
     DirectionalLight(RGBf(0.7, 0.7, 0.7), Vec3f(1, -1, -1))
 ]
 ax21 = LScene(fig[2, 1], scenekw = (lights = lights,))
-ax22 = LScene(fig[2, 2], scenekw = (lights = [DirectionalLight(RGBf(4, 2, 1), Vec3f(0, 0, -1))],))
+ax22 = LScene(fig[2, 2])
+set_ambient_light!(ax22, RGBf(0,0,0))
+set_lights!(ax22, [DirectionalLight(RGBf(4, 2, 1), Vec3f(0, 0, -1))])
 for ax in (ax11, ax12, ax21, ax22)
     mesh!(ax, Sphere(Point3f(0), 1f0), color = :white)
 end
@@ -108,11 +96,10 @@ fig
 
 ### PointLight
 
-```
-```
+A `PointLight` is a light source at some position, radiating outwards.
+
 
 ```@figure backend=GLMakie
-
 fig = Figure(size = (600, 600))
 ax = LScene(fig[1, 1], scenekw = (lights = [PointLight(RGBf(1, 1, 1), Point3f(0, 0, 0))],))
 ps = [Point3f(x, y, z) for x in (-1, 0, 1) for y in (-1, 0, 1) for z in (-1, 0, 1)]
@@ -120,27 +107,29 @@ meshscatter!(ax, ps, color = :white)
 fig
 ```
 
+A `PointLight` can optionally include a `distance` measure or an `attenuation::Vec2f` which reduces its intensity based on the distance between the light source and the surface.
 
 ```@figure backend=GLMakie
-
-lights = [
-    PointLight(RGBf(1, 1, 1), Point3f(0, 0, 5), 50),
-    PointLight(RGBf(2, 0, 0), Point3f(-3, -3, 2), 10),
-    PointLight(RGBf(0, 2, 0), Point3f(-3,  3, 2), 10),
-    PointLight(RGBf(0, 0, 2), Point3f( 3,  3, 2), 10),
-    PointLight(RGBf(2, 2, 0), Point3f( 3, -3, 2), 10),
-]
-
 fig = Figure(size = (600, 600))
-ax = LScene(fig[1, 1], scenekw = (lights = lights,))
+ax = LScene(fig[1, 1])
+set_ambient_light!(ax, RGBf(0,0,0))
+set_lights!(ax, [])
+push_light!(ax, PointLight(RGBf(1, 1, 1), Point3f(0, 0, 5), 50))
+push_light!(ax, PointLight(RGBf(2, 0, 0), Point3f(-3, -3, 2), 10))
+push_light!(ax, PointLight(RGBf(0, 2, 0), Point3f(-3,  3, 2), 10))
+push_light!(ax, PointLight(RGBf(0, 0, 2), Point3f( 3,  3, 2), 10))
+push_light!(ax, PointLight(RGBf(2, 2, 0), Point3f( 3, -3, 2), 10))
+
+light_positions = map(l -> l.position, get_lights(ax))
+light_colors = map(l -> l.color, get_lights(ax))
+
 ps = [Point3f(x, y, 0) for x in -5:5 for y in -5:5]
 meshscatter!(ax, ps, color = :white, markersize = 0.75)
-scatter!(ax, map(l -> l.position, lights), color = map(l -> l.color, lights), strokewidth = 1, strokecolor = :black)
+scatter!(ax, light_positions, color = light_colors, strokewidth = 1, strokecolor = :black)
 fig
 ```
 
-
-With a strong PointLight and Attenuation you can create different colors at different distances.
+With a strong intensity (light color) and attenuation you can create different colors at different distances.
 
 ```@figure backend=GLMakie
 using GeometryBasics
@@ -163,11 +152,10 @@ meshscatter!(
 fig
 ```
 
-
-
 ### SpotLight
-```
-```
+
+A `SpotLight` is a light source at a specific position which illumated objects within a light cone.
+The cone is defined by a direction marking it's center and two angles marking where the light intensity starts and stops dropping off.
 
 ```@figure backend=GLMakie
 GLMakie.closeall() # hide
@@ -186,10 +174,10 @@ scatter!(ax, map(l -> l.position, lights), color = map(l -> l.color, lights), st
 fig
 ```
 
-
 ### RectLight
-```
-```
+
+A `RectLight` is light source that illuminates a rectangular column.
+It is defined by a position, a directional vector and two vectors defining the rectangle.
 
 ```@figure backend=GLMakie
 using FileIO, GeometryBasics, LinearAlgebra
@@ -255,7 +243,7 @@ for l in lights
 end
 
 # place camera
-update_cam!(scene.scene, Vec3f(1.5, -13, 2), Vec3f(1, -2, 0), Vec3f(0, 0, 1))
+update_cam!(scene.scene, Vec3f(3, -10, 2), Vec3f(1, -2, 0), Vec3f(0, 0, 1))
 
 fig
 ```

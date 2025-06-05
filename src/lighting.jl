@@ -228,7 +228,7 @@ function add_light_computation!(graph, scene, lights)
     end
 
     # TODO: defaults
-    add_input!(graph, :ambient_color, ambient_color)
+    add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
@@ -348,10 +348,57 @@ end
 ################################################################################
 # User Interface
 
-set_ambient_light!(scene, color) = set_ambient_light!(scene.compute, color)
-set_ambient_light!(graph::ComputeGraph, color) = update!(graph, ambient_color = color)
+"""
+    set_shading_algorithm!(scenelike, mode::ShadingAlgorithm)
 
-set_light!(scene, idx; kwargs...) = set_light!(scene.compute, idx; kwargs...)
+Sets the shading algorithm of the scene. This is only valid before displaying these scene.
+"""
+set_shading_algorithm!(scene, mode) = set_shading_algorithm!(get_scene(scene).compute, mode)
+function set_shading_algorithm!(graph::ComputeGraph, mode::MakieCore.ShadingAlgorithm)
+    if haskey(graph, :lighting_mode)
+        error("Shading mode has already been set.")
+    else
+        graph.shading = mode
+    end
+    return
+end
+
+"""
+    set_ambient_light!(scenelike, color)
+
+Sets the color of the ambient light in the scene.
+"""
+set_ambient_light!(scene, color) = set_ambient_light!(get_scene(scene).compute, color)
+function set_ambient_light!(graph::ComputeGraph, color)
+    update!(graph, ambient_color = to_color(color))
+    return
+end
+
+"""
+    set_directional_light!(scenelike; [color, direction, camera_relative])
+
+Adjusts the directional light of the scene, assuming it is using `FastShading`.
+Not to be used with `MultiLightShading`.
+"""
+set_directional_light!(scene; kwargs...) = set_directional_light!(get_scene(scene).compute; kwargs...)
+function set_directional_light!(graph::ComputeGraph; kwargs...)
+    lights = graph[:lights][]
+    if graph[:shading][] == MultiLightShading || length(lights) != 1 || !isa(first(lights), DirectionalLight)
+        error("Cannot set directional light - Scene not in FastShading mode.")
+    end
+    light = lights[1]
+    data = map(name -> get(kwargs, name, getfield(light, name)), (:color, :direction, :camera_relative))
+    update!(graph, lights = [DirectionalLight(data...)])
+    return
+end
+
+"""
+    set_light!(scenelike, i; fields...)
+
+Adjusts one or multiple fields of light number `i`. (The ambient light is not
+included in the lights list.)
+"""
+set_light!(scene, idx; kwargs...) = set_light!(get_scene(scene).compute, idx; kwargs...)
 function set_light!(graph::ComputeGraph, idx; kwargs...)
     lights = graph[:lights][]
     light = lights[idx]
@@ -362,16 +409,56 @@ function set_light!(graph::ComputeGraph, idx; kwargs...)
     return
 end
 
-get_lights(scene) = get_lights(scene.compute)
+"""
+    set_light!(scenelike, i, light)
+
+Replaces light `i` with the given `light`. (The ambient light is not included in
+the lights list.)
+"""
+set_light!(scene, idx, light::AbstractLight) = set_light!(get_scene(scene).compute, idx, light)
+function set_light!(graph::ComputeGraph, idx, light::AbstractLight)
+    lights = graph[:lights][]
+    lights[idx] = light
+    update!(graph, lights = lights)
+    return
+end
+
+"""
+    get_lights(scenelike)
+
+Returns the current lights vector of the scene. The ambient light is not included
+in here.
+"""
+get_lights(scene) = get_lights(get_scene(scene).compute)
 get_lights(graph::ComputeGraph) = graph[:lights][]
 
-set_lights!(scene, lights) = set_lights!(scene.compute, lights)
-set_lights!(graph::ComputeGraph, lights) = update!(graph, lights = lights)
+"""
+    set_lights!(scene, lights)
 
-push_light!(scene, light) = push_light!(scene.compute, light)
+Replaces the lights vector with a new vector of `lights`. The new lights should
+not include `AmbientLight`.
+"""
+set_lights!(scene, lights) = set_lights!(get_scene(scene).compute, lights)
+function set_lights!(graph::ComputeGraph, lights)
+    if any(l -> l isa AmbientLight, lights)
+        error("The ambient light should be unique and controlled by `set_ambient_light!()`")
+    end
+    update!(graph, lights = lights)
+    return
+end
+
+"""
+    push_light!(scene, light)
+
+Adds a new light to the active lights. The light should not be an AmbientLight.
+"""
+push_light!(scene, light) = push_light!(get_scene(scene).compute, light)
 function push_light!(graph::ComputeGraph, light::AbstractLight)
     lights = graph[:lights][]
     push!(lights, light)
     update!(graph, lights = lights)
     return
+end
+function push_light!(graph::ComputeGraph, light::AmbientLight)
+    error("The ambient light should be unique and controlled by `set_ambient_light!()`")
 end

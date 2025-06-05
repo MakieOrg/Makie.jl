@@ -405,6 +405,8 @@ export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatte
 export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels,  annotation
 export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!, annotation!
 
+export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
+export set_shading_algorithm!, set_directional_light!
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
 export update!
