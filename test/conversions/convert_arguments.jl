@@ -22,7 +22,6 @@ end
     @test convert_arguments(PointBased(), [(1, 2), (1.0, 1.0f0)]) == (Point{2,Float64}[[1.0, 2.0], [1.0, 1.0]],)
 end
 
-
 struct CustomType
     v::Float64
 end

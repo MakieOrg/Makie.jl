@@ -3,8 +3,7 @@ using Makie.Dates, Makie.Unitful, Test
 @reference_test "combining units, error for numbers" begin
     f, ax, pl = scatter(Second(1):Second(600):Second(100*60), 1:10, markersize=20, color=1:10)
     scatter!(ax, Hour(1):Hour(1):Hour(10), 1:10; markersize=20, color=1:10, colormap=:reds)
-    # TODO
-    # @test_throws ArgumentError scatter!(ax, rand(10), 1:10) # should error!
+    @test_throws ResolveException scatter!(ax, rand(10), 1:10) # should error!
     f
 end
 
