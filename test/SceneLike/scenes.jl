@@ -103,7 +103,7 @@ end
         @test_throws BoundsError set_light!(a, 10, color = RGBf(0,0,1))
 
         set_lights!(a, [PointLight(RGBf(1,1,0), Vec3f(1))])
-        @test get_lights == [PointLight(RGBf(1,1,0), Vec3f(1))]
+        @test get_lights(a) == [PointLight(RGBf(1,1,0), Vec3f(1))]
 
         @test_throws ErrorException set_directional_light!(a, color = RGBf(0,0,1))
     end
