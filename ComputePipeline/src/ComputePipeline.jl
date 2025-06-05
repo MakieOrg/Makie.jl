@@ -220,7 +220,28 @@ struct ComputeGraph
     lock::ReentrantLock
 end
 
-function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true, ignore_equal_values=false)
+"""
+    get_observable!(graph::ComputeGraph, key::Symbol[; use_deepcopy = true])
+
+Returns an observable which contains the up to date value of the graph node with name `key`.
+
+Note that in order for the Observable to be up to date, the respective node needs
+to resolve immediately after being marked dirty. This may cause the graph to
+update more frequently.
+
+Within the compute graph, data can be updated in-place by using cached values.
+This makes it impossible for the compute graph to know whether that data has
+changed as the old data is not available anymore. In these cases updates are
+always propagated and observables are always triggered. If the observable is
+used to (eventually) update an input of the node it represents, this could lead
+to infinite loops of equal updates. To prevent these, the data in the Observable
+is a `deepcopy` of the data in the compute node and their data is compared
+before updating.
+Setting `use_deepcopy = false` will turn this safeguard off, removing both the
+deepcopy and the equality check. In this case in-place updates of the node will
+always trigger observable updates. Any other duplicate updates will be skipped.
+"""
+function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
     # Because we allow output arrays to be reused it can be impossible to tell
     # if the data has updated. In this case the data is marked as dirty/changed
     # and added to the `onchange`. If this data is fed into an Observable which
@@ -231,9 +252,14 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true, ign
     _deepcopy(x) = use_deepcopy ? deepcopy(x) : x
     return get!(attr.observables, key) do
         val = attr.outputs[key]
-        result = Observable(_deepcopy(val[]); ignore_equal_values=ignore_equal_values)
+        # The graph already does ignore_equal_values = true checks when data is
+        # not updated in-place
+        result = Observable(_deepcopy(val[]))
         on(attr.onchange) do changeset
-            if (key in changeset) && (val[] != result[])
+            # without deepcopy the content of the Observable can be identical to
+            # the compute node (i.e. x = Int[]; obs = Observable(x); x === obs[])
+            # != checks will then always fail with in-place updates
+            if (key in changeset) && (!use_deepcopy || val[] != result[])
                 result[] = _deepcopy(val[])
             end
             return Consume(false)
@@ -242,10 +268,10 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true, ign
     end
 end
 
-function get_observable!(c::Computed; use_deepcopy=true, ignore_equal_values=false)
+function get_observable!(c::Computed; use_deepcopy=true)
     if hasparent(c)
         p = getparent(c)
-        return get_observable!(p.graph, c.name; use_deepcopy=use_deepcopy, ignore_equal_values=ignore_equal_values)
+        return get_observable!(p.graph, c.name; use_deepcopy=use_deepcopy)
     else
         error("Cannot get observable for Computed without parent")
     end
@@ -287,8 +313,13 @@ end
 
 _first_arg(args, changed, last) = (args[1],)
 
+"""
+    alias!(graph::ComputeGraph, input::Symbol, output::Symbol)
+
+Creates `output` as an alias of `input`.
+"""
 function alias!(attr::ComputeGraph, key::Symbol, alias_key::Symbol)
-    #TODO more efficient implementation!
+    # TODO: more efficient implementation!
     register_computation!(_first_arg, attr, [key], [alias_key])
     return attr
 end
@@ -648,9 +679,6 @@ end
 
 compute_identity(inputs, changed, cached) = values(inputs)
 
-# TODO: These functions place the given Computed node into the graph. This
-#       typically results in `key != node.name`, which invites errors
-# for recipe -> recipe (mostly)
 """
     add_input!([callback], compute_graph, name::Symbol, node::Computed)
 
@@ -664,11 +692,6 @@ function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
-    # This skips checks and allows direct passing of input nodes.
-    # With one input & output, the checks boil down to:
-    # 1. input exists
-    # 2. output does not exist (or is already what we want to create)
-    # which are given here
     register_computation!(compute_identity, attr, [value], [key])
     return attr
 end
@@ -750,6 +773,8 @@ register_computation!(graph, [:input1, :input2], [:output1, :output2]) do inputs
     return (new_output1, new_output2)
 end
 ```
+
+See also: [`add_input!`](@ref), [`map!`](@ref)
 """
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     if !all(k -> haskey(attr.outputs, k), inputs)
@@ -869,11 +894,36 @@ end
 
 struct MapFunctionWrapper{FT} <: Function
     user_func::FT
+    pack::Bool
+end
+MapFunctionWrapper(f) = MapFunctionWrapper(f, true)
+
+function (x::MapFunctionWrapper)(inputs, changed, cached)
+    result = x.user_func(values(inputs)...)
+    return x.pack ? (result,) : result
 end
 
-(x::MapFunctionWrapper)(inputs, changed, cached) = (x.user_func(values(inputs)...),)
+"""
+    map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Vector{Symbol}}, outputs::Union{Symbol, Vector{Symbol}})
 
+Registers a new ComputeEdge in the `compute_graph` which connect one or multiple
+`inputs` to one or multiple `outputs`. The callback function `f` will be called
+with the values of the inputs as arguments. If the output is a `::Symbol`, the
+function is expected to return a value, otherwise it is expected to return a tuple
+of values to be mapped to the outputs.
 
+```julia
+graph = ComputeGraph()
+add_input!(graph, :input1, 2)
+add_input!(graph, :input2, 1)
+
+map!(x -> 2x, graph, :input1, :output1)
+map!((x, y) -> x+y, graph, [:input1, :input2], :output2)
+map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
+```
+
+See also: [`add_input!`](@ref), [`register_computation!`](@ref)
+"""
 function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     return attr
@@ -881,6 +931,16 @@ end
 
 function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
+    return attr
+end
+
+function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
+    return attr
+end
+
+function Base.map!(f, attr::ComputeGraph, inputs::Symbol, outputs::Vector{Symbol})
+    register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end
 

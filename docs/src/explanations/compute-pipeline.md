@@ -17,7 +17,7 @@ graph = ComputeGraph()
 
 # add inputs
 add_input!(graph, :input1, 1)
-add_input!(value -> Float32(value), graph, :input2, 2)
+add_input!((key, value) -> Float32(value), graph, :input2, 2)
 
 # add computations (edges + output nodes)
 register_computation!(graph, [:input1, :input2], [:output]) do inputs, changed, cached
@@ -38,6 +38,19 @@ The callback function of the computation always takes 3 arguments:
 3. `cached::Union{Nothing, Tuple}` which contains the data of the previous output(s) in order, or nothing if no previous output exists.
 
 The output should be either a tuple with equal size to the output names set in `register_computations!()`, or `nothing` if the result is the same as the previous.
+
+Alternatively to `register_computation!(f, graph, inputs, outputs)` you can also use `map!(f, graph, inputs, outputs)`.
+`map!()` simplifies the structure of the callback function `f` by passing the inputs directly as arguments, without `changed` or `cached`.
+It also allows you to pass just one symbol as the input and/or output.
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :input1, 1)
+add_input!((key, value) -> Float32(value), graph, :input2, 2)
+
+map!((a, b) -> a + b, graph, [:input1, :input2], :output)
+map!((a, b) -> ([a, b], [b, a]), graph, [:input1, :input2], [:ab, :ba])
+```
 
 ## Updating Data
 
@@ -87,3 +100,25 @@ graph2[:output][] # 2 * (1 + 2) = 6
 Note that connecting a node between graphs will disable updating of that node in the child graph.
 Therefore you can not use `update!(graph2, sum = new_value)` in the example above.
 Instead the `:sum` node is solely updated by the parent graph, in which you can update either `:input1` or `:input2` to update `:sum`
+
+## Observables
+
+You can use an `obs::Observable` as an input to a ComputeGraph by passing it to `add_input!(graph, name, obs)`.
+This will trigger `update!(graph, name = obs[])` every time the observable updates.
+
+You can also generate an observable output for a compute node, either directly by calling `ComputePipeline.get_observable!(graph, name)` or by having it implicitly generate in a `map(f, computed, computed_or_obs...)` (or `on`, `onany`, `lift`, `@lift`) call.
+This will create or retrieve an observable that mirrors the value of the respective compute node.
+In order to preserve the "push" nature of observables, this will force the compute graph to resolve immediately when the compute node becomes outdated.
+As a result the graph becomes less lazy and may run more computations than otherwise necessary.
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :input1, 1)
+add_input!(graph, :input2, 2)
+map!((a, b) -> a + b, graph, [:input1, :input2], :output)
+
+on(println, graph.output)
+update!(graph, input1 = 2); # prints 4
+
+obs2 = ComputePipeline.get_observable!(graph, :output)
+```
