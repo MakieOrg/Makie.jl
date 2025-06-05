@@ -342,7 +342,6 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
 
     # Do we need those? Maybe also viewport?
     # type assert for safety
-    add_input!(plot_graph, :pixel_space, scene_graph[:pixel_to_clip]::Computed)
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
     for key in [:resolution, :scene_origin]
         haskey(plot_graph.inputs, key) && continue
