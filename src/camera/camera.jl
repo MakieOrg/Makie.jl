@@ -307,7 +307,7 @@ end
 
 function (cb::CameraMatrixCallback)(inputs, changed, cached)
     graph = cb.graph
-    return map(name -> graph[name][], inputs.camera_matrix_names)
+    return map(name -> Mat4f(graph[name][]), inputs.camera_matrix_names)
 end
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
