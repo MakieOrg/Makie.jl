@@ -10,7 +10,7 @@ using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
-
+using Makie.ComputePipeline: ResolveException
 using Makie: volume
 # COV_EXCL_STOP
 

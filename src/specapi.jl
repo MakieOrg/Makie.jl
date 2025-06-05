@@ -678,7 +678,8 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
-    obs = map(first, ComputePipeline.get_observable!(p.converted))
+    arg_obs = ComputePipeline.get_observable!(p.converted; use_deepcopy=false)
+    obs = map(first, arg_obs)
     update_plotspecs!(scene, obs, p)
     return p
 end
@@ -1038,7 +1039,8 @@ plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
 function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
-    grid = map(first, plot.converted)
+    obs = ComputePipeline.get_observable!(plot.converted; use_deepcopy=false)
+    grid = map(first, obs)
     update_fig!(fig, grid)
     return fig
 end

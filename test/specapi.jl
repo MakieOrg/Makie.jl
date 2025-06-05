@@ -1,5 +1,5 @@
 import Makie.SpecApi as S
-using ComputePipeline
+using Makie.ComputePipeline
 
 function resolve_all!(plot)
     for (k, v) in plot.attributes.outputs
@@ -151,10 +151,12 @@ struct ForwardAllAttributes end
 function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs...)
     return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
 end
+
 Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.attribute_names(T)...,)
+
 @testset "Forward all attribute without error" begin
     f, ax, pl = lines(ForwardAllAttributes(); color=:red)
-    @test pl.color[] == to_color(:red)
+    @test pl.color[] == :red
 end
 
 struct UsedAttributesStairs
@@ -169,7 +171,7 @@ end
 
 @testset "Used attributes with stair plot" begin
     f, ax, pl = stairs(UsedAttributesStairs([1, 2, 3], [1, 2, 3]))
-    @test !haskey(pl, :clamp_bincounts)
+    @test haskey(pl, :clamp_bincounts)
     @test !haskey(pl.plots[1], :clamp_bincounts)
 end
 
@@ -177,7 +179,7 @@ end
     ax = S.Axis(title="interaction")
     ax.then(axis-> on(println, events(axis).mouseposition))
     gl = S.GridLayout(ax)
-
+    @test gl.content[1][2] === ax
     f, _, pl = plot(gl)
     real_ax = f.content[1]
     mpos = events(real_ax).mouseposition

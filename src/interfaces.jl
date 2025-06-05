@@ -34,9 +34,16 @@ function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
     return (x, y, z, data)
 end
 
-
+# Mainly for Voxels, which breaks conversion_trait(Voxels)::ConversionTrait
+got_converted(P, PTrait, result) = nothing
 function got_converted(P::Type, PTrait::ConversionTrait, result)
-    if result isa Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+    SpecLike = Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+    if result isa Tuple && length(result) == 1
+        if result[1] isa SpecLike
+            return SpecApi
+        end
+    end
+    if result isa SpecLike
         return SpecApi
     end
     types = MakieCore.types_for_plot_arguments(P, PTrait)

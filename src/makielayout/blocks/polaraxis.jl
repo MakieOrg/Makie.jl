@@ -75,7 +75,10 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         space_for_axis = space_from_center .- space_for_ticks
 
         # divide by width only because aspect ratios
-        usable_fraction[] = space_for_axis ./ space_from_center[1]
+        new_fraction = space_for_axis ./ space_from_center[1]
+        if !(new_fraction ≈ usable_fraction[])
+            usable_fraction[] = space_for_axis ./ space_from_center[1]
+        end
     end
 
     # Set up the title position
