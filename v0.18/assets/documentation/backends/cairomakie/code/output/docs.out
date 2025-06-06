@@ -1,0 +1,18 @@
+~~~
+<pre><code>CairoMakie.activate&#33;&#40;; screen_config...&#41;</code></pre>
+<p>Sets CairoMakie as the currently active backend and also allows to quickly set the <code>screen_config</code>. Note, that the <code>screen_config</code> can also be set permanently via <code>Makie.set_theme&#33;&#40;CairoMakie&#61;&#40;screen_config...,&#41;&#41;</code>.</p>
+<h1>Arguments one can pass via <code>screen_config</code>:</h1>
+<ul>
+<li><p><code>px_per_unit &#61; 1.0</code>: see <a href="https://docs.makie.org/v0.17.13/documentation/figure_size/index.html">figure size docs</a>.</p>
+</li>
+<li><p><code>pt_per_unit &#61; 0.75</code>: see <a href="https://docs.makie.org/v0.17.13/documentation/figure_size/index.html">figure size docs</a>.</p>
+</li>
+<li><p><code>antialias::Union&#123;Symbol, Int&#125; &#61; :best</code>: antialias modus Cairo uses to draw. Applicable options: <code>&#91;:best &#61;&gt; Cairo.ANTIALIAS_BEST, :good &#61;&gt; Cairo.ANTIALIAS_GOOD, :subpixel &#61;&gt; Cairo.ANTIALIAS_SUBPIXEL, :none &#61;&gt; Cairo.ANTIALIAS_NONE&#93;</code>.</p>
+</li>
+<li><p><code>visible::Bool</code>: if true, a browser/image viewer will open to display rendered output.</p>
+</li>
+</ul>
+
+
+
+~~~
