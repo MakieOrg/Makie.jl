@@ -499,7 +499,7 @@ Returns the raw glyph bounding boxes of the text plot. These only include scalin
 from fontsize. String layouting and application of rotation, offset and position
 attributes is not included. Lines from LaTeXStrings are not included.
 """
-raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes!(plot)[]
+raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes!(plot)[]::Vector{Rect2d}
 raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_glyph_boundingboxes!(plot))
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
@@ -526,7 +526,7 @@ end
 Returns the markerspace glyph boundingboxes without including `positions`.
 Rotation and offset are included. Lines from LaTeXStrings are not included.
 """
-fast_glyph_boundingboxes(plot) = register_fast_glyph_boundingboxes!(plot)[]
+fast_glyph_boundingboxes(plot) = register_fast_glyph_boundingboxes!(plot)[]::Vector{Rect3d}
 fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_glyph_boundingboxes!(plot))
 
 
@@ -559,7 +559,7 @@ position). Lines from LaTeXStrings are not included.
 Note that this bounding box is is reliant on the camera due to including positions
 which need to be transformed to `markerspace`.
 """
-glyph_boundingboxes(plot) = register_glyph_boundingboxes!(plot)[]
+glyph_boundingboxes(plot) = register_glyph_boundingboxes!(plot)[]::Vector{Rect3d}
 glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_boundingboxes!(plot))
 
 
@@ -600,7 +600,7 @@ end
 Returns the markerspace string boundingboxes without including `positions`.
 Rotation and offset are included. Lines from LaTeXStrings are included.
 """
-fast_string_boundingboxes(plot) = register_fast_string_boundingboxes!(plot)[]
+fast_string_boundingboxes(plot) = register_fast_string_boundingboxes!(plot)[]::Vector{Rect3d}
 fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_string_boundingboxes!(plot))
 
 
@@ -638,12 +638,12 @@ position). Lines from LaTeXStrings are included.
 Note that this bounding box is is reliant on the camera due to including positions
 which need to be transformed to `markerspace`.
 """
-string_boundingboxes(plot) = register_string_boundingboxes!(plot)[]
+string_boundingboxes(plot) = register_string_boundingboxes!(plot)[]::Vector{Rect3d}
 string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_string_boundingboxes!(plot))
 
 # This can not be used as `boundingbox()` for Axis/camera limits due to it
 # changing with camera updates
-function register_boundingbox!(plot, target_space::Symbol)
+function register_full_boundingbox!(plot, target_space::Symbol)
     bbox_name = Symbol(target_space, :_boundingbox)
     if !haskey(plot.attributes, bbox_name)
         register_string_boundingboxes!(plot)
@@ -674,10 +674,10 @@ Note that this bounding box is is reliant on the camera due to including positio
 which need to be transformed to `markerspace`.
 """
 function full_boundingbox(plot::Text, target_space::Symbol = plot.space[])
-    return register_boundingbox!(plot, target_space)[]
+    return register_full_boundingbox!(plot, target_space)[]::Rect3d
 end
 function full_boundingbox_obs(plot::Text, target_space::Symbol = plot.space[])
-    return ComputePipeline.get_observable!(register_boundingbox!(plot, target_space))
+    return ComputePipeline.get_observable!(register_full_boundingbox!(plot, target_space))
 end
 
 # target: data_limits()
@@ -699,7 +699,7 @@ function register_data_limits!(plot)
     return plot.data_limits
 end
 
-data_limits(plot::Text) = register_data_limits!(plot)[]
+data_limits(plot::Text) = register_data_limits!(plot)[]::Rect3d
 data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limits!(plot))
 
 ######################
