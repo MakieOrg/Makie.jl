@@ -260,16 +260,15 @@ end
 get_pixelspace(graph::ComputeGraph) = graph[:pixel_to_clip][]::Mat4f
 
 function get_projectionview(graph::ComputeGraph, space::Symbol)
-    return graph[get_projectionview_name(space)][]::Mat4f
+    return Mat4f(graph[get_projectionview_name(space)][])::Mat4f
 end
 
 function get_projection(graph::ComputeGraph, space::Symbol)
-    return graph[get_projection_name(space)][]::Mat4f
+    return Mat4f(graph[get_projection_name(space)][])::Mat4f
 end
 
 function get_view(graph::ComputeGraph, space::Symbol)
-    # or :eye_to_eye for the else case
-    return graph[get_view_name(space)][]::Mat4f
+    return Mat4f(graph[get_view_name(space)][])::Mat4f
 end
 
 """
@@ -278,7 +277,7 @@ end
 Return a camera matrix that transforms from `input_space` to `output_space`.
 """
 function get_space_to_space_matrix(graph::ComputeGraph, input_space::Symbol, output_space::Symbol)
-    return graph[get_camera_matrix_name(input_space, output_space)][]::Mat4f
+    return Mat4f(graph[get_camera_matrix_name(input_space, output_space)][])::Mat4f
 end
 function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symbol)
     return get_space_to_space_matrix(graph, space, markerspace)
