@@ -66,7 +66,7 @@ void main() {
     // But how would we do this for non-cubic chunks?
 
     // Map instance id to dimension and index along dimension (0..N+1 or 0..2N)
-    ivec3 size = textureSize(voxel_id, 0);
+    ivec3 size = textureSize(chunk_u8, 0);
     int dim, id = gl_InstanceID, front = 1;
     float gap = get_gap() + zero;
     if (gap > 0.01) {

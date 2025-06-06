@@ -1,14 +1,3 @@
-#=
-Backend Implementation Notes
-- lowclip, highclip are built into colormap
-- colorrange should not be fetched, use static (1, 255)
-- voxel_colormap is only defined if colormapping is used
-- colors is only define dif 1:1 mapping is used
-
-- x, y, z, chunk_u8 is output data
-
-renamed _limtis -> value_limits
-=#
 
 # TODO: Bad workaround for now
 MakieCore.argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
@@ -33,12 +22,24 @@ function convert_arguments(::Type{<:Voxels}, xs::EndPoints, ys::EndPoints,
 end
 
 function register_voxel_conversions!(attr)
+    # maybe include UInt16 in the future?
+    native_types = UInt8
 
-    register_computation!(attr, [:chunk, :colorrange, :is_air], [:value_limits]) do (chunk, colorrange, is_air), changed, cached
+    # For local updates we can update chunk data without causing an update of
+    # the compute graph and instead trigger from updated_indices
+    # ^ this must then resolve chunk_u8 immediately so nothing gets lost
+    # Any normal update will trigger chunk, which resets indices here
+    map!(attr, :chunk, :updated_indices) do chunk
+        return (1:size(chunk, 1), 1:size(chunk, 2), 1:size(chunk, 3))
+    end
+
+    register_computation!(attr, [:chunk, :updated_indices, :colorrange, :is_air], [:value_limits]) do (chunk, (is, js, ks), colorrange, is_air), changed, cached
         colorrange !== automatic && return (colorrange,)
+        eltype(chunk) <: native_types && return ((1, 255), )
 
-        mini, maxi = (Inf, -Inf)
-        for elem in chunk
+        mini, maxi = isnothing(cached) ? (Inf, -Inf) : cached[1]
+        for k in ks, j in js, i in is
+            elem = chunk[i, j, k]
             is_air(elem) && continue
             mini = min(mini, elem)
             maxi = max(maxi, elem)
@@ -49,22 +50,55 @@ function register_voxel_conversions!(attr)
         return ((mini, maxi),)
     end
 
-    register_computation!(attr, [:value_limits, :is_air, :colorscale, :chunk],
-            [:chunk_u8]) do (lims, is_air, scale, chunk), changed, last
+    register_computation!(attr, [:value_limits, :is_air, :colorscale, :chunk, :updated_indices],
+            [:chunk_u8]) do (lims, is_air, scale, chunk, (is, js, ks)), changed, last
 
         # No conversions necessary so no new array necessary. Should still
         # propagate updates though
-        chunk isa Array{UInt8, 3} && return (chunk, )
+        if chunk isa Array{UInt8, 3}
+            output = isnothing(last) ? ShaderAbstractions.Sampler(chunk, minfilter = :nearest) : last.chunk_u8
 
-        chunk_u8 = isnothing(last) ? Array{UInt8, 3}(undef, size(chunk)) : last.chunk_u8
+            # notify sampler
+            if chunk === ShaderAbstractions.data(output)
+                # in place update so we just need to tell the Sampler which
+                # indices it needs to forward to Textures
+                data = if is == axes(chunk, 1) && js == axes(chunk, 2) && ks == axes(chunk, 3)
+                    chunk
+                else
+                    view(chunk, is, js, ks)
+                end
+                ShaderAbstractions.updater(output).update[] = (setindex!, (data, is, js, ks))
+            else
+                # array got replaced
+                # ShaderAbstractions.update!(output, chunk) # errors :)
+                ShaderAbstractions.setfield!(output, :data, chunk)
+                Nx, Ny, Nz = size(chunk)
+                ShaderAbstractions.updater(output).update[] = (setindex!, (chunk, 1:Nx, 1:Ny, 1:Nz))
+            end
 
-        mini, maxi = apply_scale(scale, lims)
-        maxi = max(mini + 10eps(float(mini)), maxi)
-        @inbounds for i in eachindex(chunk)
-            _update_voxel(chunk_u8, chunk, i, is_air, scale, mini, maxi)
+            return (output,)
+        elseif chunk isa Sampler
+            return (chunk,)
+        else
+            output = if isnothing(last)
+                ShaderAbstractions.Sampler(Array{UInt8, 3}(undef, size(chunk)), minfilter = :nearest)
+            else
+                last.chunk_u8
+            end
+
+            mini, maxi = apply_scale(scale, lims)
+            maxi = max(mini + 10eps(float(mini)), maxi)
+            norm = 252.99998 / (maxi - mini)
+            @inbounds for k in ks, j in js, i in is
+                _update_voxel_data!(ShaderAbstractions.data(output), chunk, CartesianIndex(i, j, k), is_air, scale, mini, norm)
+            end
+
+            # notify sampler
+            x = view(ShaderAbstractions.data(output), is, js, ks)
+            ShaderAbstractions.updater(output).update[] = (setindex!, (x, is, js, ks))
+
+            return (output,)
         end
-
-        return (chunk_u8,)
     end
 end
 
@@ -120,31 +154,78 @@ function calculated_attributes!(::Type{Voxels}, plot::Plot)
     return
 end
 
-Base.@propagate_inbounds function _update_voxel(
-        output::Array{UInt8, 3}, input::Array, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real
+Base.@propagate_inbounds function _update_voxel_data!(
+        output::Array{UInt8, 3}, input::Array, i,
+        is_air::Function, scale, mini::Real, norm::Real
     )
-
     @boundscheck checkbounds(Bool, output, i) && checkbounds(Bool, input, i)
     # Rescale data to UInt8 range for voxel ids
-    c = 252.99998
+    # 0 is reserved for invisible voxels
+    # 1, 255 are reserved for lowclip and highclip (any outside mini..maxi should map to those)
+    # 2..254 are valid ids for colormapping (mini..maxi should map to those)
     @inbounds begin
         x = input[i]
         if is_air(x)
             output[i] = 0x00
         else
-            lin = clamp(c * (apply_scale(scale, x) - mini) / (maxi - mini) + 2, 1, 255)
-            output[i] = trunc(UInt8, lin)
+            scaled = apply_scale(scale, x)
+            lin = norm * (scaled - mini)
+            idf = clamp(lin + 2, 1, 255)
+            output[i] = trunc(UInt8, idf)
         end
     end
     return nothing
 end
 
-Base.@propagate_inbounds function _update_voxel(
-        output::Array{UInt8, 3}, input::Array{UInt8, 3}, i::Integer,
-        is_air::Function, scale, mini::Real, maxi::Real
-    )
-    return nothing
+@deprecate local_update local_update! false
+
+"""
+    local_update!(p::Voxels, data, is, js, ks)
+
+Updates a section of the voxel chunk to the given `data`. This will result in
+localized backend updates, i.e. avoid updating/uploading the full array.
+
+The `data` can be a singular value, an array or view matching the size set by the
+indices `is`, `js` and `ks`, or an array of the same size as the initial voxel
+plot data. In that case the indices will also index `data`.
+
+The indices can be integers, `OneTo` (i.e. `axes()`), unit ranges (`i:j`), or `Colon()`.
+
+```
+f,a,p = voxels(rand(10, 10, 10))
+Makie.local_update(p, 1.0, 5:10, 3:8, 5:10)
+```
+"""
+function local_update!(plot::Voxels{Tuple{X, Y, Z, C}}, value, _is, _js, _ks) where {X, Y, Z, C}
+    to_range(N, i::Integer) = i:i
+    to_range(N, r::UnitRange) = r
+    to_range(N, r::Base.OneTo) = 1:last(r)
+    to_range(N, ::Colon) = 1:N
+    to_range(N, x::Any) = throw(ArgumentError("Indices can't be converted to a range representation ($x)"))
+
+
+    # This is quite fragile...
+    # - plot.chunk must not be marked dirty, so that it does not trigger a
+    #   recomputation/reset of updated_indices
+    # - updated_indices must be changed and marked dirty, so they get pulled into
+    #   limit & chunk_u8 computations
+    # - chunk_u8 must be pulled immediately, so the local update resolves and does
+    #   not get overwritten by another. It should also be resolved beforehand to
+    #   make sure everything is initialized and no update is queued
+    plot.chunk_u8[]
+    chunk = plot.chunk[]::C
+    ranges = to_range.(size(chunk), (_is, _js, _ks))
+    if chunk === value
+        # already updated, no need to copy
+    elseif size(value) == size(chunk) # copy section of external buffer
+        chunk[ranges...] .= view(value, ranges)
+    else # copy value, view, array
+        chunk[ranges...] .= value
+    end
+    plot.attributes[:updated_indices].value[] = ranges
+    ComputePipeline.mark_dirty!(plot.updated_indices)
+    plot.chunk_u8[]
+    return
 end
 
 pack_voxel_uv_transform(uv_transform::Nothing) = nothing
@@ -179,7 +260,7 @@ function uvmap_to_uv_transform(uvmap::Array)
     end
 end
 
-# TODO: for CairoMakie
+# for CairoMakie
 
 function voxel_size(p::Voxels)
     mini, maxi = extrema(data_limits(p))
@@ -189,7 +270,7 @@ end
 
 function voxel_positions(p::Voxels)
     mini, maxi = extrema(data_limits(p))
-    voxel_id = p.chunk_u8[]
+    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
@@ -200,7 +281,7 @@ function voxel_positions(p::Voxels)
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.chunk_u8[]
+    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     uv_map = p.uvmap[]
     if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"

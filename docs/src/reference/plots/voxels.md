@@ -181,16 +181,13 @@ p.arg1 = rand(8,8,8)
 f
 ```
 
-Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.converted[][4]`) and the texture on gpu.
+Both of these solutions triggers a full replacement of the input array (i.e. `chunk`), the internal representation (`plot.chunk_u8[]`) and the texture on gpu.
 This can be quite slow and wasteful if you only want to update a small section of a large chunk.
-In that case you should instead update your input data without triggering an update (using `obs.val`) and then call `local_update(plot, is, js, ks)` to process the update:
+In that case you should instead use `Makie.local_update!()`.
 
 ```@figure backend=GLMakie
-chunk = Observable(rand(64, 64, 64))
-f, a, p = voxels(chunk, colorrange = (0, 1))
-chunk.val[30:34, :, :] .= NaN # or p.args[end].val
-# TODO bring back
-# Makie.local_update(p, 30:34, :, :)
+f, a, p = voxels(rand(64, 64, 64), colorrange = (0, 1))
+Makie.local_update!(p, NaN, 26:38, :, :)
 f
 ```
 
@@ -199,7 +196,7 @@ f
 #### Picking Voxels
 
 The `pick` function is able to pick individual voxels in a voxel plot.
-The returned index is a flat index into the array passed to `voxels`, i.e. `plt.args[end][][idx]` will return the relevant data.
+The returned index is a flat index into the array passed to `voxels`, i.e. `plt.arg1[][idx]` (or the alias `p.chunk[][idx]` and the lowered `p.chunk_u8[][idx]`) will return the relevant data.
 One important thing to note here is that the returned index is a `UInt32` internally and thus has limited range.
 Very large voxel plots (~4.3 billion voxels or 2048 x 2048 x 1024) can reach this limit and trigger an integer overflow.
 

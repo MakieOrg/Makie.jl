@@ -218,6 +218,8 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         else
             _robj = last.gl_renderobject
             update_robjs!(_robj, args, changed, input2glname)
+            # names = ([k for (k, v) in pairs(changed) if v])
+            # @info "updating robj $(robj.id) due to changes in: $names"
         end
         screen.requires_update = true
         return (_robj,)
@@ -1088,7 +1090,7 @@ end
 
 
 function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
-    voxel_id = Texture(screen.glscreen, args.chunk_u8, minfilter = :nearest)
+    voxel_id = Texture(screen.glscreen, args.chunk_u8)
     uvt = args.packed_uv_transform
     data[:voxel_id] = voxel_id
     data[:uv_transform] = isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest)

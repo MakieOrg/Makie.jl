@@ -118,7 +118,7 @@ bool is_clipped()
 {
     float d;
     // get center pos of this voxel
-    vec3 size = vec3(textureSize(voxel_id, 0).xyz);
+    vec3 size = vec3(textureSize(chunk_u8, 0).xyz);
     vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
     for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance between clip plane and voxel center
@@ -156,7 +156,7 @@ void main()
         discard;
 
     // grab voxel id
-    int id = int(texture(voxel_id, o_uvw).x);
+    int id = int(texture(chunk_u8, o_uvw).x);
 
     // id is invisible so we simply discard
     if (id == 0) {
@@ -179,7 +179,7 @@ void main()
     }
 
     if (picking) {
-        uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
+        uvec3 size = uvec3(textureSize(chunk_u8, 0).xyz);
         uvec3 idx = clamp(uvec3(o_uvw * vec3(size)), uvec3(0), size - uvec3(1));
         uint lin = idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);

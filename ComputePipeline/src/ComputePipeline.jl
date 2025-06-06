@@ -351,6 +351,7 @@ function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
 end
 
 function mark_dirty!(computed::Computed)
+    computed.dirty = true
     hasparent(computed) || return
     return mark_dirty!(computed.parent)
 end
