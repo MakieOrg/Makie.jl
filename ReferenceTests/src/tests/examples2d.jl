@@ -2052,13 +2052,13 @@ end
     dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,  groups = [1,1,2,3,3])
     dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    color = :blue, branch_shape = :tree, linestyle = :dot, linewidth = 3)
     p = dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  color = :black, width = 8, depth = 5)
-    textlabel!(Makie.dendrogram_node_positions(p), text = ["A", "A", "B", "C", "C"])
+    textlabel!(map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), text = ["A", "A", "B", "C", "C"])
     dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
 
     a = PolarAxis(f[2, 1])
     rlims!(a, 0, 6)
     p = dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
-    scatter!(a, Makie.dendrogram_node_positions(p), markersize = 20)
+    scatter!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), markersize = 20)
 
     f
 end
