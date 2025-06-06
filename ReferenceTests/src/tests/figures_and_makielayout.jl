@@ -276,38 +276,55 @@ end
     st = Makie.Stepper(f)
     e = events(f)
 
-    click(e, 450, 440) # turn blue line off, blue off + dashed
+    click(e, 450, 440)  # turn blue line off, blue off + dashed
     Makie.step!(st)
 
-    click(e, 450, 330) # turn orange band off, two dashed
+    click(e, 450, 330)  # turn orange band off, two dashed
     Makie.step!(st)
 
     click(e, 450, 400, Mouse.right) # invert
     Makie.step!(st)
 
     click(e, 450, 380)
-    click(e, 450, 420) # reenable all orange, blue scatter + band off, blue dashed, all orange free
+    click(e, 450, 420)  # re-enable all orange, blue scatter + band off, blue dashed, all orange free
     Makie.step!(st)
 
-    click(e, 450, 120) # turn off orange in second (should turn off all orange)
+    click(e, 450, 120)  # turn off orange in second (should turn off all orange)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # full reset (all on)
+    click(e, 450, 120, Mouse.middle)  # full reset (all on)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # swap (all off)
+    click(e, 450, 120, Mouse.middle)  # swap (all off)
     Makie.step!(st)
 
-    click(e, 450, 140) # turn on (all) blue
+    click(e, 450, 140)  # turn on (all) blue
     Makie.step!(st)
 
-    click(e, 450, 110, Mouse.right) # swap (all orange)
+    click(e, 450, 110, Mouse.right)  # swap (all orange)
     Makie.step!(st)
 
-    click(e, 450, 120, Mouse.middle) # full reset (tests that last element doesn't overwrite previous states)
+    click(e, 450, 120, Mouse.middle)  # full reset (tests that last element doesn't overwrite previous states)
     Makie.step!(st)
 
     st
+end
+
+@reference_test "Legend update" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    l = lines!(ax, [0, 1], [1, 1]; color = :blue)
+    s = scatter!(ax, [0], [0]; color = :red)
+    p = poly!(ax, [(0, 0), (0, 1), (0.5, 0.7)])
+    make_legend(pos) = Legend(pos, [[l, s, p], [p, l, s]], [["line", "scatter", "poly"], ["LINE", "SCATTER", "POLY"]], ["Group1", "Group2"])
+    make_legend(fig[1, 2])
+    legend = make_legend(fig[1, 3])
+    reverse!(legend.entrygroups[])
+    for (title, group) in legend.entrygroups[]
+        popfirst!(group)
+    end
+    notify(legend.entrygroups)
+    fig
 end
 
 @reference_test "LaTeXStrings in Axis3 plots" begin
@@ -433,9 +450,9 @@ end
     rs = vcat(rs, rs, rs, rs, rs[1])
 
     fig = Figure(size = (900, 300))
-    ax1 = PolarAxis(fig[1, 1], clip_r = false, radius_at_origin = -2)  # red square, black, blue bulging
-    ax2 = PolarAxis(fig[1, 2], clip_r = false, radius_at_origin = 0)   # red flower, black square, blue bulging
-    ax3 = PolarAxis(fig[1, 3], clip_r = false, radius_at_origin = 0.5) # red large flower, black star, blue square
+    ax1 = PolarAxis(fig[1, 1], clip_r = false, radius_at_origin = -2)   # red square, black, blue bulging
+    ax2 = PolarAxis(fig[1, 2], clip_r = false, radius_at_origin = 0)    # red flower, black square, blue bulging
+    ax3 = PolarAxis(fig[1, 3], clip_r = false, radius_at_origin = 0.5)  # red large flower, black star, blue square
     for ax in (ax1, ax2, ax3)
         lines!(ax, phis, rs .- 2, color = :red, linewidth = 4)
         lines!(ax, phis, rs, color = :black, linewidth = 4)
@@ -609,7 +626,7 @@ end
 
 @reference_test "datashader" begin
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
-    # Dont use the full dataset, since WGLMakie seems to time out if it's too big
+    # Don't use the full dataset, since WGLMakie seems to time out if it's too big
     fewer = airports[RNG.rand(1:length(airports), 1000)]
     fig, ax, ds = datashader(fewer; async=false)
     Colorbar(fig[1, 2], ds; width=100)
@@ -724,7 +741,7 @@ end
     f = Figure(size = (500, 250))
     Makie.Button(f[1, 1:2])
     Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20,
-        strokecolor = :red, strokewidth = 2, # TODO: allocate space for this
+        strokecolor = :red, strokewidth = 2,  # TODO: allocate space for this
         fontsize = 16, labelcolor = :blue)
 
     IntervalSlider(f[1, 3])

@@ -5,9 +5,7 @@ to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 # Will get overloaded by recipe Macro
 plotsym(x) = :plot
 
-function func2string(func::F) where F <: Function
-    string(F.name.mt.name)
-end
+func2string(func::Function) = string(nameof(func))
 
 plotfunc(::Plot{F}) where F = F
 plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
@@ -37,7 +35,7 @@ func2type(x::T) where T = func2type(T)
 func2type(x::Type{<: AbstractPlot}) = x
 func2type(f::Function) = Plot{plotfunc(f)}
 
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
+@generated plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = QuoteNode(Symbol(lowercase(func2string(Typ))))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
 plotkey(::Nothing) = :scatter
 plotkey(any) = nothing

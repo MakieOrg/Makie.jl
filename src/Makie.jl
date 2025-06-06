@@ -165,6 +165,7 @@ include("camera/old_camera3d.jl")
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
+include("basic_recipes/annotation.jl")
 include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
@@ -406,6 +407,7 @@ export arrows, arrows!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export Ann
 
 include("precompiles.jl")
 
