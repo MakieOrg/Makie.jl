@@ -71,7 +71,8 @@ function plot!(plot::Series)
             return scolor
         end
     end
-
+    # TODO if nseries = 0, we get a nasty Backend error that there is no overload for Series{...}
+    # since series.plots will be empty, which is currently the distinguishing factor for atomic vs not atomic
     for i in 1:nseries
         label = lift(l-> isnothing(l) ? "series $(i)" : l[i], plot, labels)
         positions = lift(c-> c[i], plot, curves)

@@ -41,12 +41,12 @@ colors = [:red, :green, :blue]
 f = Figure(size = (800, 400))
 ax = LScene(f[1,1], show_axis = false)
 p = mesh!(ax, vertices, faces1, color = colors)
-arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+arrows!(ax, vertices, p.converted[][1].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
 text!(ax, vertices[faces1[:]], text = ["1", "2", "3"], align = (:center, :center), fontsize = 20, strokecolor = :white, strokewidth = 2, overdraw = true)
 
 ax = LScene(f[1,2], show_axis = false)
 p = mesh!(ax, vertices, faces2, color = colors)
-arrows!(ax, vertices, p.converted[1][].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
+arrows!(ax, vertices, p.converted[][1].normal, lengthscale = 0.1, arrowsize = Vec3f(0.05, 0.05, 0.1), color = :orange)
 text!(ax, vertices[faces2[:]], text = ["1", "2", "3"], align = (:center, :center), fontsize = 20, strokecolor = :white, strokewidth = 2, overdraw = true)
 
 f

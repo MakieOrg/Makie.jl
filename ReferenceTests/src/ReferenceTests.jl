@@ -4,7 +4,6 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optle
     @eval Base.Experimental.@optlevel 0
 end
 
-# Write your package code here.
 using Test
 using MeshIO
 using FileIO
@@ -20,6 +19,7 @@ using ImageShow
 using Downloads: download
 
 # Deps for tests
+using Makie.ComputePipeline: ResolveException
 using CategoricalArrays
 using LinearAlgebra
 using Colors

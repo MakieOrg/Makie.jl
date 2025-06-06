@@ -69,18 +69,19 @@ function initialize_block!(tbox::Textbox)
         fontsize = tbox.fontsize, padding = tbox.textpadding)
 
     textplot = t.blockscene.plots[1]
-    displayed_charbbs = lift(topscene, textplot.text, textplot[1]) do _, _
-        charbbs(textplot)
+    # Manually add positions without considering transformations to prevent
+    # infinite loop from translate!() in on(cursorpoints)
+    displayed_charbbs = map(textplot.positions, fast_glyph_boundingboxes_obs(textplot)) do pos, bbs
+        return [Rect2f(bb) + Point2f(pos[1]) for bb in bbs]
     end
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
-    cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
+    cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values=true) do ci, bbs
 
         textplot = t.blockscene.plots[1]
-        glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
 
         hadvances = Float32[]
-        broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
+        broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
             hadvance = ex.hadvance * sc[1]
             push!(hadvances, hadvance)
         end
@@ -299,23 +300,6 @@ function initialize_block!(tbox::Textbox)
         return Consume(false)
     end
     tbox
-end
-
-
-function charbbs(text)
-    gc = text.plots[1][1][][]
-    if !(gc isa Makie.GlyphCollection)
-        error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
-    end
-    pos = Point2f(text[1][][1])
-    bbs = Rect2f[]
-    broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext)
-        bb = bb * sc
-        fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
-        push!(bbs, fr)
-    end
-    bbs
 end
 
 function validate_textbox(str, validator::Function)

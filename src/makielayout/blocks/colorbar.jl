@@ -33,6 +33,7 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
         return nothing
     end
 end
+extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
 
 function extract_colormap(plot::Union{Arrows, StreamPlot})
     return extract_colormap(plot.plots[1])
@@ -43,17 +44,17 @@ function extract_colormap(plot::Plot{volumeslices})
 end
 
 function extract_colormap(plot::Union{Contourf,Tricontourf})
-    levels = plot._computed_levels
+    levels = ComputePipeline.get_observable!(plot.computed_levels)
     limits = lift(l -> (l[1], l[end]), levels)
     function extend_color(color, computed)
         color === nothing && return automatic
         color == :auto || color == automatic && return computed
         return computed
     end
-    elow = lift(extend_color, plot.extendlow, plot._computed_extendlow)
-    ehigh = lift(extend_color, plot.extendhigh, plot._computed_extendhigh)
-    return ColorMapping(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
-                    elow, ehigh, plot.nan_color)
+    elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
+    ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
+    return ColorMapping(levels[], levels, plot.computed_colormap, limits,
+        plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color)
 end
 
 function extract_colormap(plot::Voxels)

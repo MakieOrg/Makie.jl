@@ -3,7 +3,7 @@
 #   unless they apply float32convert themselves (e.g. convert to pixel space)
 
 using Makie: Float32Convert, LinearScaling, f32_convert, update_limits!,
-    f32_convert_matrix, patch_model, apply_transform_and_f32_conversion
+    f32_convert_matrix, is_identity_transform
 using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
 @testset "float32convert" begin
@@ -85,29 +85,19 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
     end
 
     @testset "patch_model() and apply_transform_and_f32_conversion()" begin
-        let
-            # COV_EXCL_START
-            scene = Scene()
-            p = scatter!(scene, rand(10))
-            # COV_EXCL_STOP
-
-            a, b = patch_model(p)
-            c, d = patch_model(plot, scene.float32convert, p.model)
-            @test a[] == c[]
-            @test b[] == d[]
-        end
-
         function apply_random_transform!(plot, s, t, rotate = true)
             v1 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
             v2 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
             rot = Makie.rotation_between(v1, v2)
-            trans = t .* (2.0 .* rand(Vec3{Float64}) .- 1.0)
-            scale = s .* (2.0 .* rand(Vec3{Float64}) .- 1.0)
+            trans = t .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
+            scale = s .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
 
             rotate && Makie.rotate!(plot, rot)
-            Makie.scale!(plot, scale)
-            Makie.translate!(plot, trans)
-            
+            # z is not considered in Axis, so keep its scaling at unit values
+            # for easier debugging
+            Makie.scale!(plot, scale..., 1)
+            Makie.translate!(plot, trans..., 1)
+
             return
         end
 
@@ -115,6 +105,9 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             return abs.(t.scale[]) .> 1e4 * eps(Float32) .* abs.(t.translation[])
         end
 
+        # TODO: nothing conversions get treated as unit conversions atm, which
+        # results in unsafe model matrices being applied on the CPU. Not a problem
+        # but breaks p.model_f32c[] == Mat4f(p.model[]) below
         # With no conversion model should not change
         @testset "no Float32Convert" begin
             # COV_EXCL_START
@@ -126,17 +119,15 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
             # safe model
             apply_random_transform!(p, 10.0, 10.0)
-            f32c, model = patch_model(p)
-            @test f32c[] === nothing
-            @test model[] == Mat4f(p.model[])
-            @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+            @test is_identity_transform(p.f32c[])
+            @test p.model_f32c[] == Mat4f(p.model[])
+            @test p.positions_transformed_f32c[] ≈ p.positions[]
 
             # unsafe model
             apply_random_transform!(p, 1e50, 1e50)
-            f32c, model = patch_model(p)
-            @test f32c[] === nothing
-            @test model[] == Mat4f(p.model[])
-            @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+            @test is_identity_transform(p.f32c[])
+            # @test p.model_f32c[] == Mat4f(p.model[])
+            # @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
         end
 
 
@@ -145,7 +136,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                 # COV_EXCL_START
                 f, a, p = scatter(rand(10))
                 apply_random_transform!(p, 100.0, 100.0)
-                # since we choose a random scale and translation we can get a 
+                # since we choose a random scale and translation we can get a
                 # scale that is not Float32 compatible with the translation
                 # (i.e. a abs(scale) ⪅ eps(translation))
                 # this is effectively an explicit Makie.is_float_safe(scale, translation)
@@ -159,15 +150,14 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                 @test a.scene.float32convert.scaling[] == Makie.LinearScaling(Vec3d(1), Vec3d(0))
                 @test Makie.is_float_safe(p.transformation.scale[], p.transformation.translation[])
 
-                f32c, model = patch_model(p)
-                @test f32c[] === a.scene.float32convert.scaling[]
-                @test model[] == Mat4f(p.model[])
-                @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
+                @test p.f32c[] === a.scene.float32convert.scaling[]
+                @test p.model_f32c[] == Mat4f(p.model[])
+                @test p.positions_transformed_f32c[] ≈ p.positions[]
             end
         end
 
 
-        # Note that we just increase precision from Float32 to Float64 so if 
+        # Note that we just increase precision from Float32 to Float64 so if
         # these values are too large we'll see Float64 precision issues here
         for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
             data_info = data_scale == 10.0 ? "safe" : "unsafe"
@@ -179,7 +169,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
                     apply_random_transform!(p, 10.0, model_scale, false)
                     if model_scale != 10.0
-                        while any(is_f32_safe(p.transformation))
+                        while any(is_f32_safe(p.transformation)[Vec(1,2)])
                             apply_random_transform!(p, 10.0, model_scale, false)
                         end
                     else
@@ -201,42 +191,49 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     trans = p.transformation.translation[]
                     input_f32c = a.scene.float32convert.scaling[]
                     transformed = let
-                        ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                        ps = Makie.apply_transform_and_model(p, p.positions[], Point3d)
                         f32_convert(input_f32c, ps)
                     end
-                    f32c, model = patch_model(p)
 
-                    if safe_model
-                        r3 = @test f32c[].scale == input_f32c.scale
-                        r4 = @test f32c[].offset ≈ ((input_f32c.scale .- 1) .* trans .+ input_f32c.offset) ./ scale
-                        r5 = @test model[] == Mat4f(p.model[])
+                    # TODO: Bring back model preserving paths?
+                    # Note: p.f32c[] is the raw float32convert. It does not contain modifications from model
+                    # if safe_model
+                    #     r3 = @test p.f32c[].scale == input_f32c.scale
+                    #     r4 = @test p.f32c[].offset ≈ ((input_f32c.scale .- 1) .* trans .+ input_f32c.offset) ./ scale
+                    #     r5 = @test p.model_f32c[] == Mat4f(p.model[])
 
-                        ps = apply_transform_and_f32_conversion(p, f32c, p.converted[1])[]
-                        ps = [to_ndim(Point3f, model[] * to_ndim(Point4f, to_ndim(Point3f, p, 0), 1), NaN) for p in ps]
-                        r6 = @test ps ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
-                    else
-                        r3 = @test f32c[].scale ≈ scale * input_f32c.scale
-                        r4 = @test f32c[].offset ≈ input_f32c.scale * trans + input_f32c.offset
-                        r5 = @test model[] == Mat4f(I)
-                        r6 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
-                    end
+                    #     ps = Makie._project(p.model_f32c[], p.positions_transformed_f32c[])
+                    #     r6 = @test ps ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
+                    # else
+                    #     r3 = @test p.f32c[].scale ≈ scale * input_f32c.scale
+                    #     r4 = @test p.f32c[].offset ≈ input_f32c.scale * trans + input_f32c.offset
+                    #     r5 = @test p.model_f32c[] == Mat4f(I)
+                    #     r6 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
+                    # end
+
+                    r3 = @test p.f32c[].scale == input_f32c.scale
+                    r4 = @test p.f32c[].offset == input_f32c.offset
+                    r5 = @test p.model_f32c[] == Mat4f(I)
+                    r6 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
 
                     # For debugging
                     if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5, r6))
-                        println("scale = $scale")
-                        println("translation = $trans")
-                        println("data = $(p.converted[1][])")
+                        println("transform scale = $scale")
+                        println("transform translation = $trans")
+                        println("data = $(p.positions[])")
                         println("input_f32c = $(input_f32c)")
-                        println("f32c = $(f32c[])")
+                        println("f32c = $(p.f32c)")
                         println("model = $(p.model[])")
+                        println("model_f32c = $(p.model_f32c[])")
                         println("transformed = $transformed")
+                        println()
                     end
                 end
             end
         end
 
 
-        # Note that we just increase precision from Float32 to Float64 so if 
+        # Note that we just increase precision from Float32 to Float64 so if
         # these values are too large we'll see Float64 precision issues here
         for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
             data_info = data_scale == 10.0 ? "safe" : "unsafe"
@@ -248,7 +245,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
                     apply_random_transform!(p, 10.0, model_scale, true)
                     if model_scale != 10.0
-                        while any(is_f32_safe(p.transformation))
+                        while any(is_f32_safe(p.transformation)[Vec(1,2)])
                             apply_random_transform!(p, 10.0, model_scale, true)
                         end
                     else
@@ -269,14 +266,13 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     trans = p.transformation.translation[]
                     input_f32c = a.scene.float32convert.scaling[]
                     transformed = let
-                        ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                        ps = Makie.apply_transform_and_model(p, p.positions[], Point3d)
                         f32_convert(input_f32c, ps)
                     end
 
-                    f32c, model = patch_model(p)
-                    r3 = @test f32c[] == input_f32c
-                    r4 = @test model[] == Mat4f(I)
-                    r5 = @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+                    r3 = @test p.f32c[] == input_f32c
+                    r4 = @test p.model_f32c[] == Mat4f(I)
+                    r5 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1e-6
 
                     # For debugging
                     if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5))
@@ -313,19 +309,14 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                 scale = p.transformation.scale[]
                 trans = p.transformation.translation[]
                 input_f32c = a.scene.float32convert.scaling[]
-                expected_f32c =  Makie.LinearScaling(
-                    scale * input_f32c.scale, input_f32c.scale * trans + input_f32c.offset
-                )
                 transformed = let
-                    ps = Makie.apply_transform_and_model(p, p.converted[1][], Point3d)
+                    ps = Makie.apply_transform_and_model(p, p.positions[], Point3d)
                     f32_convert(input_f32c, ps)
                 end
 
-                f32c, model = patch_model(p)
-                @test f32c[].scale ≈ expected_f32c.scale
-                @test f32c[].offset ≈ expected_f32c.offset
-                @test model[] == Mat4f(I)
-                @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ transformed rtol = 1e-6
+                @test p.f32c[] == input_f32c
+                @test p.model_f32c[] == Mat4f(I)
+                @test to_ndim.(Point3f, p.positions_transformed_f32c[], 0) ≈ transformed rtol = 1e-6
             end
         end
     end

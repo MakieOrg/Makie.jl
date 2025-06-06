@@ -6,7 +6,7 @@ function last_major_version()
 end
 
 function download_refimages(tag=last_major_version())
-    url = "https://github.com/MakieOrg/Makie.jl/releases/download/$(tag)/reference_images.tar"
+    url = "https://github.com/MakieOrg/Makie.jl/releases/download/refimages-$(tag)/reference_images.tar"
     images_tar = basedir("reference_images.tar")
     images = basedir("reference_images")
     if isfile(images_tar)

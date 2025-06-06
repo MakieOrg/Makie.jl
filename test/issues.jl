@@ -37,22 +37,18 @@
         translate!(scene, 0, 0, 10)
         @test isassigned(p.transformation.parent)
         @test isassigned(p.plots[1].transformation.parent)
-        @test isassigned(p.plots[1].plots[1].transformation.parent)
-        @test isassigned(p.plots[1].plots[2].transformation.parent)
 
         @test scene.transformation.model[][3, 4] == 10.0
         @test p.transformation.model[][3, 4] == 10.0
         @test p.plots[1].transformation.model[][3, 4] == 10.0
-        @test p.plots[1].plots[1].transformation.model[][3, 4] == 10.0
-        @test p.plots[1].plots[2].transformation.model[][3, 4] == 10.0
     end
 
     @testset "#4883 colorscale that breaks sort" begin
         data = Float32.(Makie.peaks())
         f, a, p = image(data; colorscale = -)
-        @test p.calculated_colors[].colorrange_scaled[][1] == -maximum(data)
-        @test p.calculated_colors[].colorrange_scaled[][2] == -minimum(data)
-        @test issorted(p.calculated_colors[].colorrange_scaled[])
+        @test p.scaled_colorrange[][1] == -maximum(data)
+        @test p.scaled_colorrange[][2] == -minimum(data)
+        @test issorted(p.scaled_colorrange[])
     end
 
     @testset "#4957 axis cycling for same plot type with different argument types" begin

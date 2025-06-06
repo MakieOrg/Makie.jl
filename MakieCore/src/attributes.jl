@@ -180,20 +180,27 @@ Base.get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # Plot plots break this assumption in some way, but the way to look at it is,
 # that the plots contained in a Plot plot are not subplots, but _are_ actually
 # the plot itself.
-Base.getindex(plot::Plot, idx::Integer) = plot.converted[idx]
-Base.getindex(plot::Plot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+function Base.getindex(plot::Plot, idx::Integer)
+    name = argument_names(plot)[idx]
+    plot.attributes[name]
+end
+
+function Base.getindex(plot::Plot, idx::UnitRange{<:Integer})
+    names = argument_names(plot)[idx]
+    return getindex.((plot.attributes,), names)
+end
 Base.setindex!(plot::Plot, value, idx::Integer) = (plot.args[idx][] = value)
 Base.length(plot::Plot) = length(plot.converted)
 
-function Base.getindex(x::T, key::Symbol) where {T <: Plot}
-    argnames = argument_names(T, length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing
-        return attributes(x)[key]
-    else
-        return x.converted[idx]
-    end
-end
+# function Base.getindex(x::T, key::Symbol) where {T <: Plot}
+#     argnames = argument_names(T, length(x.converted))
+#     idx = findfirst(isequal(key), argnames)
+#     if idx === nothing
+#         return attributes(x)[key]
+#     else
+#         return x.converted[idx]
+#     end
+# end
 
 function Base.getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
@@ -205,28 +212,6 @@ function Base.setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, re
     dict = to_value(x[key])
     dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
     dict[key2, rest...] = value
-end
-
-function Base.setindex!(x::AbstractPlot, value, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing && haskey(x.attributes, key)
-        return x.attributes[key][] = value
-    elseif !haskey(x.attributes, key)
-        x.attributes[key] = convert(Observable, value)
-    else
-        return setindex!(x.converted[idx], value)
-    end
-end
-
-function Base.setindex!(x::AbstractPlot, value::Observable, key::Symbol)
-    argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(isequal(key), argnames)
-    if idx === nothing
-        return attributes(x)[key] = value
-    else
-        return setindex!(x.converted[idx], value)
-    end
 end
 
 # a few shortcut functions to make attribute conversion easier
@@ -263,5 +248,5 @@ function merge_attributes!(input::Attributes, theme::Attributes)
 end
 
 function Base.propertynames(x::Union{Attributes, AbstractPlot})
-    return (keys(x.attributes)...,)
+    return (keys(x.attributes.inputs)...,)
 end

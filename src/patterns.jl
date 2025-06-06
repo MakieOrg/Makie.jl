@@ -10,11 +10,11 @@ abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
 # for print_array because we defined it as <: Base.AbstractArray
 function Base.show(io::IO, p::AbstractPattern)
-    print(io, typeof(p))
+    print(io, typeof(p), "()")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
-    print(io, typeof(p))
+    print(io, typeof(p), "()")
 end
 
 struct ImagePattern <: AbstractPattern{RGBAf}
@@ -168,7 +168,7 @@ function pattern_offset(projectionview::Mat4, resolution::Vec2, yflip = false)
     return 0.5f0 .* maybe_flip .* resolution .* clip[Vec(1,2)] / clip[4]
 end
 
-function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern, use_mat3 = false)
+function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern)
     origin = pattern_offset(projectionview, resolution ./ size(pattern))
     px_to_uv = Makie.uv_transform(-origin, Vec2f(1.0 ./ size(pattern)))
 
@@ -179,9 +179,6 @@ function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Ve
     else # Mat{2,3,Float32}
         uvt = convert_attribute(uv_transform, Makie.key"uv_transform"()) * px_to_uv
     end
-    if use_mat3
-        return Mat3f(uvt[1], uvt[2], 0, uvt[3], uvt[4], 0, uvt[5], uvt[6], 1)
-    else
-        return uvt
-    end
+
+    return uvt
 end

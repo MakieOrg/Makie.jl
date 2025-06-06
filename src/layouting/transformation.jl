@@ -283,9 +283,10 @@ function apply_model(model::Mat4, transformed::Rect{N, T}) where {N, T}
         # (And finite values as well, of course)
         scale = to_ndim(Vec{N, T}, Vec3(model[1, 1], model[2, 2], model[3, 3]), 1.0)
         trans = to_ndim(Vec{N, T}, Vec3(model[1, 4], model[2, 4], model[3, 4]), 0.0)
-        mini = scale .* minimum(transformed) .+ trans
-        maxi = scale .* maximum(transformed) .+ trans
-        return Rect{N, T}(mini, maxi - mini)
+        # negative scaling (mirror) could flip the order of these
+        a = scale .* minimum(transformed) .+ trans
+        b = scale .* maximum(transformed) .+ trans
+        return Rect{N, T}(min.(a, b), abs.(a .- b))
     else
         for input in corners(transformed)
             output = apply_model(model, input)

@@ -155,63 +155,30 @@ convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_
 convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractString}})
-    attrs = copy(plot.attributes) # TODO: does this need to be a copy?
-    pop!(attrs, :calculated_colors, nothing)
-    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
     plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
-    attrs = copy(plot.attributes)
-    pop!(attrs, :calculated_colors, nothing)
-    textlabel!(plot, plot.position; attrs..., text = plot[1])
+    textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
     plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
-    strings_and_positions = plot[1]
-
-    strings = Observable{Vector{Any}}(first.(strings_and_positions[]))
-
-    positions = Observable(
-        Point3d[to_ndim(Point3d, last(x), 0) for x in  strings_and_positions[]] # avoid Any for zero elements
-    )
-
-    attrs = plot.attributes
-    pop!(attrs, :position)
-    pop!(attrs, :calculated_colors, nothing)
-    pop!(attrs, :text)
-
-    textlabel!(plot, positions, text = strings; attrs...)
-
-    # update both text and positions together
-    on(plot, strings_and_positions) do str_pos
-        strs = first.(str_pos)
-        poss = to_ndim.(Ref(Point3d), last.(str_pos), 0)
-
-        strings_unequal = strings.val != strs
-        pos_unequal = positions.val != poss
-        strings_unequal && (strings.val = strs)
-        pos_unequal && (positions.val = poss)
-        # Check for equality very important, otherwise we get an infinite loop
-        strings_unequal && notify(strings)
-        pos_unequal && notify(positions)
-
-        return
+    register_computation!(plot.attributes, [:_arg1], [:real_text, :real_position]) do (str_pos, ), changed, cached
+        text = first.(str_pos)
+        pos = last.(str_pos)
+        return (text, pos)
     end
+    textlabel!(plot, Attributes(plot), plot.real_position, text = plot.real_text)
     plot
 end
 
 
-function text_boundingbox_transforms(plot, ms_positions, glyph_collections::Vector, limits, padding, keep_aspect)
+function text_boundingbox_transforms(string_bbs::Vector, limits, padding, keep_aspect)
     (l, r, b, t) = padding
-    rotations = to_rotation(plot.rotation[])
-
-    transformations = Vector{Tuple{Vec2d, Vec2d, Float64}}(undef, length(glyph_collections))
-
-    for i in eachindex(glyph_collections)
-        bbox = string_boundingbox(glyph_collections[i], ms_positions[i], sv_getindex(rotations, i))
-        z = minimum(bbox)[3]
+    transformations = map(string_bbs) do bbox
+        z = Float64(minimum(bbox)[3])
         bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
         scale = widths(bbox) ./ widths(limits)
         if keep_aspect
@@ -220,7 +187,7 @@ function text_boundingbox_transforms(plot, ms_positions, glyph_collections::Vect
         # translate center for keep_aspect = true
         translation = minimum(bbox) + 0.5 * widths(bbox) .- scale .* (minimum(limits) + 0.5 * widths(limits))
 
-        transformations[i] = (translation, scale, z)
+        return (translation, scale, z)::Tuple{Vec2d, Vec2d, Float64}
     end
 
     return transformations
@@ -342,22 +309,19 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         return Consume(false)
     end
 
-    native_tp = tp.plots[1]
-
     translation_scale_z = map(
             plot,
             plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, native_tp.converted[1], plot.offset,
+            pixel_pos, fast_string_boundingboxes_obs(tp),
             # these are difficult because they are not in markerspace but always pixel space...
-            native_tp.strokewidth, native_tp.glowwidth,
-            native_tp.space, native_tp.markerspace
-        ) do limits, padding, keep_aspect, positions, glyph_collections, offset, sw, gw, args...
+            tp.strokewidth, tp.glowwidth
+        ) do limits, padding, keep_aspect, positions, bbs, sw, gw
 
-        pos = [p + to_ndim(Point3f, sv_getindex(offset, i), 0) for (i, p) in enumerate(positions)]
-        return text_boundingbox_transforms(
-            native_tp, pos, glyph_collections,
-            limits, to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw), keep_aspect
-        )
+        # fast_string_boundingboxes() skips positions which we add here manually
+        # without the z translation so that we can translate!() the plot instead
+        # to make CairoMakie depth-sort the way we want.
+        padding = to_lrbt_padding(padding) .+ to_lrbt_padding(sw + gw)
+        return text_boundingbox_transforms(bbs .+ positions, limits, padding, keep_aspect)
     end
 
     map!(

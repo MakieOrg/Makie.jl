@@ -49,7 +49,7 @@ function Makie.window_area(scene::Scene, screen::Screen)
         area = scene.events.window_area
         winscale = screen.scalefactor[]
 
-        ShaderAbstractions.switch_context!(window)
+        gl_switch_context!(window)
         if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
             winscale /= scale_factor(window)
         end
@@ -62,7 +62,7 @@ function Makie.window_area(scene::Scene, screen::Screen)
     # TODO put back window position, but right now it makes more trouble than it helps
     #function windowposcb(window, x::Cint, y::Cint)
     #    area = scene.events.window_area
-    #    ShaderAbstractions.switch_context!(window)
+    #    gl_switch_context!(window)
     #    winscale = screen.scalefactor[] / (@static Sys.isapple() ? scale_factor(window) : 1)
     #    xs, ys = round.(Int, (x, y) ./ winscale)
     #    if Vec(xs, ys) != minimum(area[])
@@ -298,7 +298,7 @@ end
 
 function Makie.frame_tick(scene::Scene, screen::Screen)
     # Separating screen ticks from event ticks allows us to sanitize:
-    # Internal on-tick event updates happen first (mouseposition), 
+    # Internal on-tick event updates happen first (mouseposition),
     # consuming in event.tick listeners doesn't affect backend ticks,
     # more control/consistent order
     on(Makie.TickCallback(scene), scene, screen.render_tick, priority = typemin(Int))

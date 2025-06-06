@@ -1,5 +1,6 @@
 module CairoMakie
 
+using Makie.ComputePipeline
 using Makie, LinearAlgebra
 using Colors, GeometryBasics, FileIO
 import CRC32c
@@ -13,6 +14,8 @@ using Makie.Observables
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
 using Makie: numbers_to_colors
 using Makie: Mat3f, Mat4f, Mat3d, Mat4d
+using Makie: sv_getindex
+using Makie: compute_colors
 
 # re-export Makie, including deprecated names
 for name in names(Makie, all=true)
@@ -27,7 +30,10 @@ include("screen.jl")
 include("display.jl")
 include("infrastructure.jl")
 include("utils.jl")
-include("primitives.jl")
+include("lines.jl")
+include("scatter.jl")
+include("image-hmap.jl")
+include("mesh.jl")
 include("overrides.jl")
 
 function __init__()

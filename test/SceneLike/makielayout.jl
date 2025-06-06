@@ -51,7 +51,7 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
+    @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
     @test cb.limits[] == Vec(-.5, .5)
 
     hm.colorrange = Float32.((-1, 1))
@@ -259,7 +259,7 @@ end
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
         cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
-        ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
+        ticklabel_strings = first.(cbar.axis.elements[:ticklabels].arg1[])
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end

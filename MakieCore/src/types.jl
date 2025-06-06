@@ -66,26 +66,20 @@ Scatter((1:4,), Dict{Symbol, Any}(:color => :red))
 """
 mutable struct Plot{PlotFunc, T} <: ScenePlot{PlotFunc}
     transformation::Union{Nothing, Transformable}
-
     # Unprocessed arguments directly from the user command e.g. `plot(args...; kw...)``
     kw::Dict{Symbol,Any}
-    kw_obs::Observable{Vector{Pair{Symbol,Any}}}
-    args::Vector{Any}
-
-    converted::Vector{Observable}
     # Converted and processed arguments
-    attributes::Attributes
+    attributes::ComputeGraph
 
     plots::Vector{Plot}
     deregister_callbacks::Vector{Observables.ObserverFunction}
     parent::Union{AbstractScene,Plot}
 
     function Plot{Typ,T}(
-                kw::Dict{Symbol,Any}, kw_obs::Observable{Vector{Pair{Symbol,Any}}},
-                args::Vector{Any}, converted::Vector{Observable},
+                kw::Dict{Symbol,Any}, attr::ComputeGraph,
                 deregister_callbacks::Vector{Observables.ObserverFunction}=Observables.ObserverFunction[]
             ) where {Typ,T}
-        return new{Typ,T}(nothing, kw, kw_obs, args, converted, Attributes(), Plot[], deregister_callbacks)
+        return new{Typ,T}(nothing, kw, attr, Plot[], deregister_callbacks)
     end
 end
 

@@ -32,118 +32,9 @@ function data_limits(scenelike, exclude::Function = (p)-> false)
     return bb_ref[]
 end
 
-"""
-    data_limits(plot::AbstractPlot)
-
-Returns the bounding box of a plot based on just its position data.
-
-See also: [`boundingbox`](@ref)
-"""
-function data_limits(plot::AbstractPlot)
-    # Assume primitive plot
-    if isempty(plot.plots)
-        return Rect3d(point_iterator(plot))
-    end
-
-    # Assume combined plot
-    bb_ref = Base.RefValue(data_limits(plot.plots[1]))
-    for i in 2:length(plot.plots)
-        update_boundingbox!(bb_ref, data_limits(plot.plots[i]))
-    end
-
-    return bb_ref[]
-end
-
-# A few overloads for performance
-function data_limits(plot::Surface)
-    mini_maxi = extrema_nan.((plot.x[], plot.y[], plot.z[]))
-    mini = first.(mini_maxi)
-    maxi = last.(mini_maxi)
-    return Rect3d(mini, maxi .- mini)
-end
-
-function data_limits(plot::Union{Heatmap, Image})
-    mini_maxi = extrema_nan.((plot.x[], plot.y[]))
-    mini = Vec3d(first.(mini_maxi)..., 0)
-    maxi = Vec3d(last.(mini_maxi)..., 0)
-    return Rect3d(mini, maxi .- mini)
-end
-
-function data_limits(x::Volume)
-    axes = (x[1][], x[2][], x[3][])
-    extremata = extrema.(axes)
-    return Rect3d(first.(extremata), last.(extremata) .- first.(extremata))
-end
-
-function data_limits(plot::Text)
-    if plot.space[] == plot.markerspace[]
-        return string_boundingbox(plot)
-    else
-        return Rect3d(point_iterator(plot))
-    end
-end
-
-function data_limits(plot::Scatter)
-    if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            to_font(plot.font[]),
-            plot
-        )
-        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
-        marker_offsets = convert_attribute(plot.marker_offset[], key"marker_offset"(), key"scatter"())
-
-        bb = Rect3d()
-        for (i, p) in enumerate(point_iterator(plot))
-            marker_pos = to_ndim(Point3d, p, 0) + sv_getindex(marker_offsets, i)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
-            quad_rotation = sv_getindex(rotations, i)
-
-            quad_origin = quad_rotation * quad_origin
-            quad_v1 = quad_rotation * Vec3d(quad_size[1], 0, 0)
-            quad_v2 = quad_rotation * Vec3d(0, quad_size[2], 0)
-
-            bb = update_boundingbox(bb, marker_pos + quad_origin)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v2)
-            bb = update_boundingbox(bb, marker_pos + quad_origin + quad_v1 + quad_v2)
-        end
-        return bb
-    else
-        return Rect3d(point_iterator(plot))
-    end
-end
-
-function data_limits(plot::Voxels)
-    xyz = to_value.(plot.converted[1:3])
-    return Rect3d(minimum.(xyz), maximum.(xyz) .- minimum.(xyz))
-end
-
-# includes markersize and rotation
-function data_limits(plot::MeshScatter)
-    # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotation)
-    marker_bb = Rect3d(marker)
-    positions = point_iterator(plot)
-    scales = markersize
-    # fast path for constant markersize
-    if scales isa VecTypes{3} && rotation isa Quaternion
-        bb = Rect3d(positions)
-        marker_bb = rotation * (marker_bb * scales)
-        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
-    else
-        # TODO: optimize const scale, var rot and var scale, const rot
-        return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
-    end
-end
-
 # include bbox from scaled markers
 function limits_with_marker_transforms(positions, scales, rotation, element_bbox)
     isempty(positions) && return Rect3d()
-
     first_scale = attr_broadcast_getindex(scales, 1)
     first_rot = attr_broadcast_getindex(rotation, 1)
     full_bbox = Ref(first_rot * (element_bbox * first_scale) + to_ndim(Point3d, first(positions), 0))
@@ -155,31 +46,6 @@ function limits_with_marker_transforms(positions, scales, rotation, element_bbox
 
     return full_bbox[]
 end
-
-
-################################################################################
-### point_iterator
-################################################################################
-
-
-function point_iterator(plot::Union{Scatter, MeshScatter, Lines, LineSegments})
-    return plot.positions[]
-end
-
-point_iterator(plot::Text) = point_iterator(plot.plots[1])
-function point_iterator(plot::Text{<: Tuple{<: Union{GlyphCollection, AbstractVector{GlyphCollection}}}})
-    return plot.position[]
-end
-
-point_iterator(mesh::GeometryBasics.AbstractMesh) = decompose(Point, mesh)
-point_iterator(plot::Mesh) = point_iterator(plot.mesh[])
-
-# Fallback for other primitive plots, used in boundingbox
-point_iterator(plot::AbstractPlot) = point_iterator(data_limits(plot))
-
-# For generic usage
-point_iterator(bbox::Rect) = unique(decompose(Point3d, bbox))
-
 
 ################################################################################
 ### Utilities
@@ -216,6 +82,7 @@ scalarmin(x, y) = min(x, y)
 
 extrema_nan(itr::Pair) = (itr[1], itr[2])
 extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
+
 function extrema_nan(itr)
     vs = iterate(itr)
     vs === nothing && return (NaN, NaN)
@@ -257,23 +124,50 @@ end
 function update_boundingbox!(bb_ref::Base.RefValue, bb::Rect)
     bb_ref[] = update_boundingbox(bb_ref[], bb)
 end
+
 function update_boundingbox(a::Rect{N}, b::Rect{N}) where N
     mini = finite_min.(minimum(a), minimum(b))
     maxi = finite_max.(maximum(a), maximum(b))
     return Rect{N}(mini, maxi - mini)
 end
 
-@deprecate _update_rect(rect, point) update_boundingbox(rect, point) false
-
+function maximum_widths(bounding_boxes::AbstractArray{<: Rect{N, T}}) where {N, T}
+    return mapreduce(widths, (a,b) -> max.(a, b), bounding_boxes, init = Vec{N, T}(0))
+end
 
 foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
 # foreach_plot(f, s::Figure) = foreach_plot(f, s.scene)
 # foreach_plot(f, s::FigureAxisPlot) = foreach_plot(f, s.figure)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
+
 function foreach_plot(f, plot::Plot)
     if isempty(plot.plots)
         f(plot)
     else
         foreach_plot(f, plot.plots)
+    end
+end
+
+function for_each_atomic_plot(f, plot::Text)
+    f(plot)
+    f(plot.plots[1]) # linesegments for latex
+end
+
+function for_each_atomic_plot(f, plot::Plot)
+    if is_atomic_plot(plot)
+        f(plot)
+    else
+        for child in plot.plots
+            for_each_atomic_plot(f, child)
+        end
+    end
+end
+
+function for_each_atomic_plot(f, scene::Scene)
+    for child in scene.plots
+        for_each_atomic_plot(f, child)
+    end
+    for child in scene.children
+        for_each_atomic_plot(f, child)
     end
 end

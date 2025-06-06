@@ -1,3 +1,4 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
@@ -27,11 +28,9 @@ excludes = Set([
     "Array of Images Scatter", # scatter does not support texture images
 
     "Order Independent Transparency",
-    "fast pixel marker",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
-    "per element uv_transform", # not implemented yet
     # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
 ])
 

@@ -17,6 +17,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
         color = nothing => Texture
         color_map = nothing => Texture
         uv_transform = nothing => Texture
+        px_per_unit = 1f0
         shader = GLVisualizeShader(
             screen,
             "voxel.vert",

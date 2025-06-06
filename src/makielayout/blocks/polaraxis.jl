@@ -41,39 +41,28 @@ function initialize_block!(po::PolarAxis; palette=nothing)
     rticklabelplot, thetaticklabelplot = draw_axis!(po)
 
     # Calculate fraction of screen usable after reserving space for theta ticks
-    # TODO: Should we include rticks here?
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
             po.blockscene,
-            rticklabelplot.plots[1].text,
-            rticklabelplot.plots[1].fontsize,
-            rticklabelplot.plots[1].font,
-            rticklabelplot.visible,
+            fast_string_boundingboxes_obs(thetaticklabelplot), thetaticklabelplot.visible,
+            fast_string_boundingboxes_obs(rticklabelplot), rticklabelplot.visible,
             po.rticklabelpad,
             po.rticksvisible, po.rticksize, po.rtickalign,
-            thetaticklabelplot.plots[1].text,
-            thetaticklabelplot.plots[1].fontsize,
-            thetaticklabelplot.plots[1].font,
-            thetaticklabelplot.visible,
             po.thetaticklabelpad,
             po.thetaticksvisible, po.thetaticksize, po.thetatickalign,
             po.overlay.viewport
-        ) do _, _, _, rvisible, rpad, rtvis, rtsize, rtalign, _, _, _, tvisible, tpad, ttvis, ttsize, ttalign, area
+        ) do tbbs, tpvis, rbbs, rpvis, rpad, rtvis, rtsize, rtalign, tpad, ttvis, ttsize, ttalign, area
 
         # get maximum size of tick label
         # (each boundingbox represents a string without text.position applied)
         max_widths = Vec2f(0)
-        if tvisible
-            for gc in thetaticklabelplot.plots[1].plots[1][1][]
-                bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-                max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
-            end
+        if tpvis
+            plot_widths = Vec2f(maximum_widths(tbbs))
+            max_widths = max.(max_widths, plot_widths)
         end
-        if rvisible
-            for gc in rticklabelplot.plots[1].plots[1][1][]
-                bbox = string_boundingbox(gc, Quaternionf(0, 0, 0, 1)) # no rotation
-                max_widths = max.(max_widths, widths(bbox)[Vec(1,2)])
-            end
+        if rpvis
+            plot_widths = Vec2f(maximum_widths(rbbs))
+            max_widths = max.(max_widths, plot_widths)
         end
 
         max_width, max_height = max_widths
@@ -86,7 +75,10 @@ function initialize_block!(po::PolarAxis; palette=nothing)
         space_for_axis = space_from_center .- space_for_ticks
 
         # divide by width only because aspect ratios
-        usable_fraction[] = space_for_axis ./ space_from_center[1]
+        new_fraction = space_for_axis ./ space_from_center[1]
+        if !(new_fraction ≈ usable_fraction[])
+            usable_fraction[] = space_for_axis ./ space_from_center[1]
+        end
     end
 
     # Set up the title position
@@ -566,12 +558,36 @@ end
 
 
 function draw_axis!(po::PolarAxis)
-    rtick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
-    rtick_align = Observable{Point2f}()
+    _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
+    rtick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    rticklabelalign = Observable{Point2f}()
     rticklabeloffset = Observable{Point2f}()
-    rtick_rotation = Observable{Float32}()
+    rticklabelrotation = Observable{Float32}()
     rgridpoints = Observable{Vector{Point2f}}()
     rminorgridpoints = Observable{Vector{LineString{2, Float32}}}()
+
+
+    clipcolor = map(po.blockscene, po.clipcolor, po.backgroundcolor) do cc, bgc
+        return cc === automatic ? RGBf(to_color(bgc)) : RGBf(to_color(cc))
+    end
+
+    # tick label plot
+    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
+        return sc === automatic ? bg : to_color(sc)
+    end
+
+    rticklabelplot = text!(
+        po.overlay, rtick_pos_lbl;
+        fontsize = po.rticklabelsize,
+        font = po.rticklabelfont,
+        color = po.rticklabelcolor,
+        strokewidth = po.rticklabelstrokewidth,
+        strokecolor = rstrokecolor,
+        align = rticklabelalign,
+        offset = rticklabeloffset,
+        rotation = rticklabelrotation,
+        visible = po.rticklabelsvisible
+    )
 
     function default_rtickangle(rtickangle, direction, thetalims, rmirror)
         if rtickangle === automatic
@@ -632,31 +648,50 @@ function draw_axis!(po::PolarAxis)
         end
 
         if rot === :horizontal
-            rtick_rotation[] = 0f0
+            rticklabelrotation[] = 0f0
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            rticklabelalign[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         elseif rot === :radial
-            rtick_rotation[] = angle
-            rtick_align[] = Point2f(0, 0.5)
+            rticklabelrotation[] = angle
+            rticklabelalign[] = Point2f(0, 0.5)
         elseif rot === :aligned
             N = trunc(Int, div(angle + 2pi + pi/4, pi/2)) % 4
-            rtick_rotation[] = angle - N * pi/2 # mod(angle, -pi/4 .. pi/4)
-            rtick_align[] = Point2f((0.0, 0.5, 1.0, 0.5)[N+1], (0.5, 0.0, 0.5, 1.0)[N+1])
+            rticklabelrotation[] = angle - N * pi/2 # mod(angle, -pi/4 .. pi/4)
+            rticklabelalign[] = Point2f((0.0, 0.5, 1.0, 0.5)[N+1], (0.5, 0.0, 0.5, 1.0)[N+1])
         elseif rot isa Real
-            rtick_rotation[] = rot
+            rticklabelrotation[] = rot
             s, c = sincos(angle - rot)
             scale = 1 / max(abs(s), abs(c))
-            rtick_align[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            rticklabelalign[] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
         end
         return
     end
 
 
-    thetatick_pos_lbl = Observable{Vector{<:Tuple{Any, Point2f}}}()
-    thetatick_align = Observable(Point2f[])
-    thetaticklabeloffset = Observable(Point2f[])
+    _, sample_labels = get_ticks(po.thetaticks[], identity, po.thetatickformat[], po.target_thetalims[]...)
+    thetatick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
+    thetaticklabelalign = Point2f[]
+    thetaticklabeloffset = Point2f[]
     thetagridpoints = Observable{Vector{Point2f}}()
     thetaminorgridpoints = Observable{Vector{Point2f}}()
+
+    # tick label plot
+
+    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
+        sc === automatic ? bg : to_color(sc)
+    end
+
+    thetaticklabelplot = text!(
+        po.overlay, thetatick_pos_lbl[];
+        fontsize = po.thetaticklabelsize,
+        font = po.thetaticklabelfont,
+        color = po.thetaticklabelcolor,
+        strokewidth = po.thetaticklabelstrokewidth,
+        strokecolor = thetastrokecolor,
+        align = thetaticklabelalign,
+        offset = thetaticklabeloffset,
+        visible = po.thetaticklabelsvisible
+    )
 
     onany(
             po.blockscene,
@@ -675,28 +710,30 @@ function draw_axis!(po::PolarAxis)
             pop!(_thetaticklabels)
         end
 
-        # Grid lines
-        rmin = (rlims[1] - r0) / (rlims[2] - r0)
-        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
-
-        _thetaminortickvalues = get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
-        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (rmin, 1)]
-
         # Text
-        resize!(thetatick_align.val, length(_thetatickvalues))
-        resize!(thetaticklabeloffset.val, length(_thetatickvalues))
+        resize!(thetaticklabelalign, length(_thetatickvalues))
+        resize!(thetaticklabeloffset, length(_thetatickvalues))
         shift = ifelse(mirror, pi, 0)
         for (i, angle) in enumerate(_thetatickvalues)
             s, c = sincos(dir * (angle + theta_0) + shift)
             scale = 1 / max(abs(s), abs(c)) # point on ellipse -> point on bbox
-            thetatick_align.val[i] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
+            thetaticklabelalign[i] = Point2f(0.5 - 0.5scale * c, 0.5 - 0.5scale * s)
             thetatickoffset = ifelse(tvis, (1-talign) * tlength, 0)
-            thetaticklabeloffset.val[i] = (thetatickoffset + px_pad) * Point2f(c, s)
+            thetaticklabeloffset[i] = (thetatickoffset + px_pad) * Point2f(c, s)
         end
+        rmin = (rlims[1] - r0) / (rlims[2] - r0)
 
         r = ifelse(mirror, rmin, 1)
         thetatick_pos_lbl[] = tuple.(_thetaticklabels, Point2f.(r, _thetatickvalues))
-        foreach(notify, (thetatick_align, thetaticklabeloffset))
+
+        # synchronized update
+        update!(thetaticklabelplot, arg1 = thetatick_pos_lbl[], align = thetaticklabelalign, offset = thetaticklabeloffset)
+
+        # Grid lines
+        thetagridpoints[] = [Point2f(r, theta) for theta in _thetatickvalues for r in (rmin, 1)]
+
+        _thetaminortickvalues = get_minor_tickvalues(thetaminorticks, identity, _thetatickvalues, thetalims...)
+        thetaminorgridpoints[] = [Point2f(r, theta) for theta in _thetaminortickvalues for r in (rmin, 1)]
 
         return
     end
@@ -739,10 +776,6 @@ function draw_axis!(po::PolarAxis)
     )
 
     # Clipping
-
-    clipcolor = map(po.blockscene, po.clipcolor, po.backgroundcolor) do cc, bgc
-        return cc === automatic ? RGBf(to_color(bgc)) : RGBf(to_color(cc))
-    end
 
     # create large square with r=1 circle sector cutout
     # only regenerate if circle sector angle changes
@@ -832,51 +865,6 @@ function draw_axis!(po::PolarAxis)
         visible = po.spinevisible
     )
 
-    # tick labels
-
-    rstrokecolor = map(po.blockscene, clipcolor, po.rticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    rticklabelplot = text!(
-        po.overlay, rtick_pos_lbl;
-        fontsize = po.rticklabelsize,
-        font = po.rticklabelfont,
-        color = po.rticklabelcolor,
-        strokewidth = po.rticklabelstrokewidth,
-        strokecolor = rstrokecolor,
-        align = rtick_align,
-        rotation = rtick_rotation,
-        visible = po.rticklabelsvisible,
-        offset = rticklabeloffset
-    )
-
-
-    thetastrokecolor = map(po.blockscene, clipcolor, po.thetaticklabelstrokecolor) do bg, sc
-        sc === automatic ? bg : to_color(sc)
-    end
-
-    thetaticklabelplot = text!(
-        po.overlay, thetatick_pos_lbl;
-        fontsize = po.thetaticklabelsize,
-        font = po.thetaticklabelfont,
-        color = po.thetaticklabelcolor,
-        strokewidth = po.thetaticklabelstrokewidth,
-        strokecolor = thetastrokecolor,
-        align = thetatick_align[],
-        offset = thetaticklabeloffset,
-        visible = po.thetaticklabelsvisible,
-    )
-
-    # Hack to deal with synchronous update problems
-    on(po.blockscene, thetatick_align) do align
-        thetaticklabelplot.align.val = align
-        if length(align) == length(thetatick_pos_lbl[])
-            notify(thetaticklabelplot.align)
-        end
-        return
-    end
-
     # ticks
 
     function tick_offset(angles, align, len)
@@ -905,6 +893,7 @@ function draw_axis!(po::PolarAxis)
     thetatickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetatickpos, po.thetaticksmirrored) do t0, d, p, m
         return tick_angle(t0 + d * pi/2, d, p, m)
     end
+
     thetatickplot = scatter!(
         po.overlay, thetatickpos,
         marker = Rect,

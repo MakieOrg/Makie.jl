@@ -65,6 +65,7 @@ The boxplot has 3 components:
     outlierstrokewidth = @inherit markerstrokewidth
     cycle = [:color => :patchcolor]
     inspectable = @inherit inspectable
+    visible = true
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
@@ -206,13 +207,15 @@ function Makie.plot!(plot::BoxPlot)
         outliers,
         inspectable = plot[:inspectable],
         colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        visible = plot.visible,
     )
     linesegments!(
         plot,
         color = plot[:whiskercolor],
         linewidth = plot[:whiskerlinewidth],
         t_segments,
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable],
+        visible = plot.visible
     )
     crossbar!(
         plot,
@@ -237,5 +240,6 @@ function Makie.plot!(plot::BoxPlot)
         medians,
         boxmin,
         boxmax,
+        visible = plot.visible
     )
 end

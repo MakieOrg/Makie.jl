@@ -11,7 +11,11 @@ const float max_distance = 1.3;
 const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
-uniform vec4 clip_planes[8];
+uniform vec4 uniform_clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
@@ -25,13 +29,13 @@ vec4 color_lookup(float intensity, bool color_ramp, bool norm) {
     return vec4(0); // stub method
 }
 
-vec4 color_lookup(sampler2D colormap, int index) {
-    return texelFetch(colormap, ivec2(index, 0), 0);
+vec4 color_lookup(sampler2D uniform_colormap, int index) {
+    return texelFetch(uniform_colormap, ivec2(index, 0), 0);
 }
-vec4 color_lookup(bool colormap, vec4 color) {
+vec4 color_lookup(bool uniform_colormap, vec4 color) {
     return color; // stub method
 }
-vec4 color_lookup(bool colormap, int index) {
+vec4 color_lookup(bool uniform_colormap, int index) {
     return vec4(0); // stub method
 }
 
@@ -59,14 +63,14 @@ vec3 gennormal(vec3 uvw, float d)
         return vec3(0, 0, -1);
     }
 
-    a.x = texture(volumedata, uvw - vec3(d,0.0,0.0)).r;
-    b.x = texture(volumedata, uvw + vec3(d,0.0,0.0)).r;
+    a.x = texture(uniform_color, uvw - vec3(d,0.0,0.0)).r;
+    b.x = texture(uniform_color, uvw + vec3(d,0.0,0.0)).r;
 
-    a.y = texture(volumedata, uvw - vec3(0.0,d,0.0)).r;
-    b.y = texture(volumedata, uvw + vec3(0.0,d,0.0)).r;
+    a.y = texture(uniform_color, uvw - vec3(0.0,d,0.0)).r;
+    b.y = texture(uniform_color, uvw + vec3(0.0,d,0.0)).r;
 
-    a.z = texture(volumedata, uvw - vec3(0.0,0.0,d)).r;
-    b.z = texture(volumedata, uvw + vec3(0.0,0.0,d)).r;
+    a.z = texture(uniform_color, uvw - vec3(0.0,0.0,d)).r;
+    b.z = texture(uniform_color, uvw + vec3(0.0,0.0,d)).r;
     return normalize(a-b);
 }
 
@@ -86,7 +90,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     vec3 H = normalize(L + V);
     float spec_coeff = pow(max(dot(H, -N), 0.0) + max(dot(H, N), 0.0), shininess);
     // final lighting model
-    return ambient * color + get_light_color() * vec3(
+    return ambient * color + light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -108,8 +112,8 @@ vec4 volume(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
-        vec4 density = color_lookup(intensity, colormap, colorrange);
+        float intensity = texture(uniform_color, pos).x;
+        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
         float opacity = step_size * density.a * absorption;
         T *= 1.0 - opacity;
         if (T <= 0.01)
@@ -129,7 +133,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = texture(uniform_color, pos);
         float opacity = step_size * density.a * absorption;
         T *= 1.0 - opacity;
         if (T <= 0.01)
@@ -149,12 +153,12 @@ vec4 contours(vec3 front, vec3 dir)
     int i = 0;
     vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
-        vec4 density = color_lookup(intensity, colormap, colorrange);
+        float intensity = texture(uniform_color, pos).x;
+        vec4 density = color_lookup(intensity, uniform_colormap, uniform_colorrange);
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = get_light_direction();
+            vec3 L = light_direction;
             vec3 opaque = blinnphong(N, camdir, L, density.rgb);
             Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
@@ -171,13 +175,13 @@ vec4 isosurface(vec3 front, vec3 dir)
     vec3 pos = front;
     vec4 c = vec4(0.0);
     int i = 0;
-    vec4 diffuse_color = color_lookup(isovalue, colormap, colorrange);
+    vec4 diffuse_color = color_lookup(isovalue, uniform_colormap, uniform_colorrange);
     vec3 camdir = normalize(dir);
     for (i; i < num_samples; ++i){
-        float density = texture(volumedata, pos).x;
+        float density = texture(uniform_color, pos).x;
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
-            vec3 L = get_light_direction();
+            vec3 L = light_direction;
             c = vec4(
                 blinnphong(N, camdir, L, diffuse_color.rgb),
                 diffuse_color.a
@@ -193,13 +197,13 @@ vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
     int i = 1;
-    float maximum = texture(volumedata, front).x;
+    float maximum = texture(uniform_color, front).x;
     for (i; i < num_samples; ++i, pos += dir){
-        float density = texture(volumedata, pos).x;
+        float density = texture(uniform_color, pos).x;
         if(maximum < density)
             maximum = density;
     }
-    return color_lookup(maximum, colormap, colorrange);
+    return color_lookup(maximum, uniform_colormap, uniform_colorrange);
 }
 
 vec4 additivergba(vec3 front, vec3 dir)
@@ -208,7 +212,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = texture(uniform_color, pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
     }
@@ -222,8 +226,8 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        int index = int(texture(volumedata, pos).x) - 1;
-        vec4 density = color_lookup(colormap, index);
+        int index = int(texture(uniform_color, pos).x) - 1;
+        vec4 density = color_lookup(uniform_colormap, index);
         float opacity = step_size * density.a * absorption;
         Lo += (T*opacity)*density.rgb;
         T *= 1.0 - opacity;
@@ -242,10 +246,10 @@ uniform int num_clip_planes;
 bool process_clip_planes(inout vec3 p1, inout vec3 p2)
 {
     float d1, d2;
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
+        d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {
@@ -327,17 +331,17 @@ void main()
     vec3 step_in_dir = (back_position - start) / float(num_samples);
 
     float steps = 0.1;
-    if(algorithm == uint(0))
+    if(algorithm == 0)
         color = isosurface(start, step_in_dir);
-    else if(algorithm == uint(1))
+    else if(algorithm == 1)
         color = volume(start, step_in_dir);
-    else if(algorithm == uint(2))
+    else if(algorithm == 2)
         color = mip(start, step_in_dir);
-    else if(algorithm == uint(3))
+    else if(algorithm == 3)
         color = absorptionrgba(start, step_in_dir);
-    else if(algorithm == uint(4))
+    else if(algorithm == 4)
         color = additivergba(start, step_in_dir);
-    else if(algorithm == uint(5))
+    else if(algorithm == 5)
         color = volumeindexedrgba(start, step_in_dir);
     else
         color = contours(start, step_in_dir);

@@ -3,8 +3,8 @@ precision highp int;
 
 uniform mat4 projection;
 uniform mat4 view;
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec4 uniform_clip_planes[8];
 
 uniform float atlas_tex_dim;
 
@@ -14,6 +14,7 @@ out float frag_uvscale;
 out float frag_distancefield_scale;
 out vec4 frag_uv_offset_width;
 out float o_clip_distance[8];
+flat out vec4 frag_strokecolor;
 
 flat out uint frag_instance_id;
 flat out vec2 f_sprite_scale;
@@ -46,7 +47,7 @@ float distancefield_scale(){
     // Glyph distance field units are in pixels; convert to dimensionless
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
-    vec4 uv_rect = get_uv_offset_width();
+    vec4 uv_rect = get_sdf_uv();
     float pixsize_x = (uv_rect.z - uv_rect.x) * get_atlas_texture_size();
     return -1.0/pixsize_x;
 }
@@ -56,6 +57,9 @@ vec3 tovec3(vec3 v){return v;}
 
 vec4 tovec4(vec3 v){return vec4(v, 1.0);}
 vec4 tovec4(vec4 v){return v;}
+vec4 tovec4(bool v) {
+    return vec4(0.0);
+}
 
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
@@ -66,8 +70,8 @@ float _determinant(mat2 m) {
 }
 
 void process_clip_planes(vec3 world_pos) {
-    for (int i = 0; i < num_clip_planes; i++)
-        o_clip_distance[i] = dot(world_pos, clip_planes[i].xyz) - clip_planes[i].w;
+    for (int i = 0; i < uniform_num_clip_planes; i++)
+        o_clip_distance[i] = dot(world_pos, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
 }
 
 void main(){
@@ -75,17 +79,17 @@ void main(){
     // get_position() returns the (relative) position of the current quad vertex
 
     vec3 f32c_scale = get_f32c_scale();
-    vec2 markersize = f32c_scale.xy * get_markersize();
+    vec2 ms = f32c_scale.xy * get_quad_scale();
     vec2 quad_offset = f32c_scale.xy * get_quad_offset();
     vec3 marker_offset = f32c_scale * tovec3(get_marker_offset());
 
-    vec2 bbox_radius = 0.5 * markersize;
+    vec2 bbox_radius = 0.5 * ms;
     vec2 sprite_bbox_centre = quad_offset + bbox_radius;
-    f_sprite_scale = markersize;
+    f_sprite_scale = ms;
     mat4 pview = projection * view;
-    mat4 trans = get_transform_marker() ? model : mat4(1.0);
+    mat4 trans = get_transform_marker() ? model_f32c : mat4(1.0);
 
-    vec4 position_world = model * vec4(tovec3(get_pos()), 1);
+    vec4 position_world = model_f32c * vec4(tovec3(get_positions_transformed_f32c()), 1);
     process_clip_planes(position_world.xyz);
 
     // Compute centre of billboard in clipping coordinates
@@ -96,7 +100,7 @@ void main(){
     data_point = pview * data_point;
 
     // Compute transform for the offset vectors from the central point
-    trans = (get_billboard() ? projection : pview) * qmat(get_rotation()) * trans;
+    trans = (get_billboard() ? projection : pview) * qmat(get_converted_rotation()) * trans;
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
 
     vec4 vclip = data_point + sprite_center;
@@ -136,7 +140,7 @@ void main(){
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = min(abs(markersize.x), abs(markersize.y));
+    float sprite_from_u_scale = min(abs(ms.x), abs(ms.y));
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
 
@@ -148,8 +152,9 @@ void main(){
     ) / viewport_from_sprite_scale;
     vec2 uv_pad_scale = padded_bbox_size / bbox_radius;
 
-    frag_color = tovec4(get_color());
-    frag_uv_offset_width = get_uv_offset_width();
+    frag_color = tovec4(get_vertex_color());
+    frag_strokecolor = tovec4(get_converted_strokecolor());
+    frag_uv_offset_width = get_sdf_uv();
     // get_uv() returns (0, 0), (1, 0), (0, 1) or (1, 1)
     // to accomodate stroke and glowwidth we need to extrude uv's outwards from (0.5, 0.5)
     frag_uv = vec2(0.5) + (get_uv() - vec2(0.5)) * uv_pad_scale;
