@@ -573,7 +573,7 @@ function register_fast_string_boundingboxes!(plot)
                 :fast_string_boundingboxes) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
 
             text_bbs = map(blocks) do idxs
-                output = Rect3f()
+                output = Rect3d()
                 for i in idxs
                     glyphbb = bbs[i]
                     glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
@@ -584,7 +584,7 @@ function register_fast_string_boundingboxes!(plot)
             end
 
             for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3f(to_ndim(Point3f, pos, 0) .- 0.5lw, Vec3f(lw))
+                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
