@@ -44,7 +44,8 @@ f, a, p = dendrogram(leaves, merges,
     ungrouped_color = :black)
 
 # Makie.dendrogram_node_positions(plot) can be used to get final node positions
-textlabel!(a, Makie.dendrogram_node_positions(p), text = ["A", "A", "B", "C", "C"],
+# of all nodes. The N input nodes are the first N returned
+textlabel!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), text = ["A", "A", "B", "C", "C"],
     shape = Circle(Point2f(0.5), 0.5), keep_aspect = true)
 f
 ```

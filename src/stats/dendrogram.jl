@@ -310,8 +310,9 @@ end
 """
     dendrogram_node_positions(dendrogram)
 
-Returns an Observable that tracks the positions of dendrogram nodes. This includes
-translations from `origin`, `rotation` and scaling from `width` and `depth`.
+Returns an Observable that tracks the positions of all dendrogram nodes. This
+includes translations from `origin`, `rotation` and scaling from `width` and
+`depth`. The N nodes given as arguments are the first N positions returned.
 """
 function dendrogram_node_positions(plot::Dendrogram)
     return map(plot,
