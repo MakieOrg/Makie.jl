@@ -1265,7 +1265,7 @@ end
             p2 = meshscatter!(a, Point3f.(xs, ys, zs)[:], markersize = 0.03, color = :white, shading = NoShading)
             if j == 2
                 for p in (p1, p2)
-                    rotate!(p, Vec3f(0,0,1), pi)
+                    Makie.rotate!(p, Vec3f(0,0,1), pi)
                     scale!(p, Vec3f(1.2, 1.2, 0.6))
                 end
             end

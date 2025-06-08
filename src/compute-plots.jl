@@ -894,7 +894,7 @@ end
 
 function calculated_attributes!(::Type{Volume}, plot::Plot)
     attr = plot.attributes
-    register_position_transforms!(attr) # TODO: isn't this skipped
+    ComputePipeline.alias!(attr, :model, :model_f32c)
     register_colormapping!(attr, :volume)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
         mini, maxi = Vec3.(x, y, z)
