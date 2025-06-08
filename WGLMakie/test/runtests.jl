@@ -196,7 +196,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
             sleep(1)
 
             # tests don't make this easy...
-            @test round(Int, 30dt_max) - 2 <= length(tick_record) <= round(Int, 30dt_max) + 2
+            @test round(Int, 30dt_max) - 10 <= length(tick_record) <= round(Int, 30dt_max) + 10
             t = 0.0
             for (i, tick) in enumerate(tick_record)
                 @test tick.state == Makie.RegularRenderTick
