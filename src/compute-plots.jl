@@ -1,10 +1,24 @@
 using Base: RefValue
-using LinearAlgebra
-using GeometryBasics
 
-################################################################################
+# TODO: Should this be moved to ComputePipeline? Or do we want to keep
+# ShaderAbstractions out of it?
+function ComputePipeline.add_input!(attr::ComputePipeline.ComputeGraph, key::Symbol,
+        value::ShaderAbstractions.UpdatableArray)
+    x = ComputePipeline._add_input!(identity, attr, key, value)
+    # Let Sampler/Buffer updates get processed first, before notifying the
+    # compute graph, so that the resolved plot has the new data
+    on(_ -> update!(attr, key => value), ShaderAbstractions.updater(value).update, priority = -1)
+    return x
+end
 
-# Sketching usage with scatter
+function ComputePipeline.add_input!(conversion_func, attr::ComputePipeline.ComputeGraph,
+        key::Symbol, value::ShaderAbstractions.UpdatableArray)
+    f = ComputePipeline.InputFunctionWrapper(key, conversion_func)
+    x = ComputePipeline._add_input!(f, attr, key, value)
+    on(_ -> update!(attr, key => value), ShaderAbstractions.updater(value).update, priority = -1)
+    return x
+end
+
 
 Base.haskey(x::Plot, key) = haskey(x.attributes, key)
 Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
