@@ -1251,3 +1251,35 @@ end
     scatter!(scene, 0.5, -0.5, marker = 'L', markersize = (20, 100), rotation = Quaternionf(0.3, 0.7, 0.5, 0.2), color = :black)
     scene
 end
+
+@reference_test "transformed surface" begin
+    xs = [cos(phi) * cos(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+    ys = [sin(phi) * cos(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+    zs = [sin(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+
+    f = Figure(size = (500, 500))
+    for i in 1:2
+        for j in 1:2
+            a = LScene(f[i, j], show_axis = false)
+            p1 = surface!(a, xs, ys, zs, colormap = [:white, :white])
+            p2 = meshscatter!(a, Point3f.(xs, ys, zs)[:], markersize = 0.03, color = :white, shading = NoShading)
+            if j == 2
+                for p in (p1, p2)
+                    rotate!(p, Vec3f(0,0,1), pi)
+                    scale!(p, Vec3f(1.2, 1.2, 0.6))
+                end
+            end
+        end
+    end
+    f.content[3].scene.transformation.transform_func[] = p -> -p
+    f.content[4].scene.transformation.transform_func[] = p -> -p
+
+    # make lighting more sensitive to normals
+    for a in f.content
+        update!(a.scene.plots[1], diffuse = Vec3f(0.5, -0.2, 1.5), specular = Vec3f(0.75, 1.25, -1))
+        set_ambient_light!(a, RGBf(0,0,0))
+        set_directional_light!(a, color = RGBf(1,1,1), direction = Vec3f(0,0,-1))
+    end
+
+    f
+end

@@ -370,6 +370,7 @@ get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
 
 """
     surface_normals(x, y, z)
+
 Normals for a surface defined on the grid xy
 """
 function surface_normals(x, y, z)

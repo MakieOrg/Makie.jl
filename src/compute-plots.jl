@@ -234,12 +234,16 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
 end
 
 function register_position_transforms!(attr, input_name = :positions)
-    haskey(attr.outputs, input_name) || return
+    haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
     register_computation!(attr, [input_name, :transform_func],
-                        [:positions_transformed]) do (positions, func), changed, last
+            [:positions_transformed]) do (positions, func), changed, last
         return (apply_transform(func, positions),)
     end
+    register_positions_transformed_f32c!(attr)
+    return
+end
 
+function register_positions_transformed_f32c!(attr)
     # TODO: f32c should be identity or not get applied here if space != :data
     # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
     register_computation!(attr,
@@ -272,6 +276,7 @@ function register_position_transforms!(attr, input_name = :positions)
             return (output, Mat4f(I))
         end
     end
+    return
 end
 
 # Split for text compat

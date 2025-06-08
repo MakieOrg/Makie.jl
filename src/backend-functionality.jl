@@ -99,54 +99,26 @@ end
 #       Could consider updating shader to accept matrix x, y and not always draw
 #       rects but that might be a larger chunk of work...
 
-_surf_xy_convert(x::AbstractArray, y::AbstractMatrix) = Point2.(x, y)
-_surf_xy_convert(x::AbstractArray, y::AbstractVector) = Point2.(x, y')
+_surf_xyz_convert(x::AbstractArray, y::AbstractMatrix, z::AbstractMatrix) = Point3.(x, y, z)
+_surf_xyz_convert(x::AbstractArray, y::AbstractVector, z::AbstractMatrix) = Point3.(x, y', z)
 function add_computation!(attr, scene, ::Val{:surface_transform})
-
-
-    # TODO: Shouldn't this include transforming z?
-    # TODO: If we're always creating a Matrix of Points the backends should just
+    # TODO: This is dropping fast paths for Range/Vector x, y w/o transform_func & f32c
+    # TODO: If we're always creating a Matrix of Points GLMakie should just
     #       use that directly instead of going back to a x and y matrix representation
     register_computation!(attr,
-            [:x, :y, :transform_func],
-            [:xy_transformed]
-        ) do (x, y, func), changed, last
-        return (apply_transform(func, _surf_xy_convert(x, y)), )
+            [:x, :y, :z, :transform_func],
+            [:positions_transformed]
+        ) do (x, y, z, func), changed, last
+        return (apply_transform(func, _surf_xyz_convert(x, y, z)), )
     end
 
-    register_computation!(attr,
-        [:xy_transformed, :model, :f32c],
-        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
-    ) do (xy, model, f32c), changed, cached
-        # TODO: this should be done in one nice function
-        # This is simplified, skipping what's commented out
+    register_positions_transformed_f32c!(attr)
 
-        # trans, scale = decompose_translation_scale_matrix(model)
-        # is_rot_free = is_translation_scale_matrix(model)
-        if is_identity_transform(f32c) # && is_float_safe(scale, trans)
-            m = changed.model ? Mat4f(model) : nothing
-            if (changed.xy_transformed || changed.f32c) || isnothing(changed)
-                xys = el32convert(xy)
-                return (first.(xys), last.(xys), m)
-            else
-                return (nothing, nothing, m)
-            end
-        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
-            # edge case: positions not float safe, model not float safe but result in float safe range
-            # (this means positions -> world not float safe, but appears float safe)
-        # elseif is_float_safe(scale, trans) && is_rot_free
-            # fast path: can swap order of f32c and model, i.e. apply model on GPU
-        # elseif is_rot_free
-            # fast path: can merge model into f32c and skip applying model matrix on CPU
-        else
-            # TODO: avoid reallocating?
-            xys = map(xy) do pos
-                p4d = model * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
-                return f32_convert(f32c, p4d[Vec(1, 2)])
-            end
-            m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
-            return (first.(xys), last.(xys), m)
-        end
+    register_computation!(attr,
+        [:positions_transformed_f32c],
+        [:x_transformed_f32c, :y_transformed_f32c, :z_transformed_f32c]
+    ) do (xyz, ), changed, cached
+        return ntuple(i -> getindex.(xyz, i), Val(3))
     end
 end
 
@@ -346,19 +318,19 @@ function add_computation!(attr, ::Val{:surface_as_mesh})
     # Generate mesh from surface data and add its data to the compute graph.
     # Use that to draw surface as a mesh
     register_computation!(attr,
-            [:x, :y, :z, :invert_normals], [:positions, :faces, :texturecoordinates, :normals]
-        ) do (x, y, z, invert_normals), changed, cached
+            [:x, :y, :z, :transform_func, :invert_normals], [:positions_transformed, :faces, :texturecoordinates, :normals]
+        ) do (x, y, z, transform_func, invert_normals), changed, cached
 
         # (x, y, z) are generated after convert_arguments and dim_converts,
         # before apply_transform and f32c
-        m = surface2mesh(x, y, z)
+        m = surface2mesh(x, y, z, transform_func)
         ns = normals(m)
         return coordinates(m), decompose(GLTriangleFace, m), texturecoordinates(m),
             invert_normals && !isnothing(ns) ? -ns : ns
     end
 
     # Get positions_transformed_f32c
-    register_position_transforms!(attr)
+    register_positions_transformed_f32c!(attr)
 end
 
 function compute_colors!(attributes, color_name = :scaled_color)

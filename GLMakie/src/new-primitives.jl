@@ -955,11 +955,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         return ((size(z,1)-1) * (size(z,2)-1), )
     end
 
-    # TODO: not part of the conversion pipeline on master... but shouldn't it be?
-    register_computation!(attr, [:z], [:z_converted]) do (z,), changed, cached
-        return (el32convert(z), )
-    end
-
     inputs = [
         # Special
         :space,
@@ -967,7 +962,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :alpha_colormap, :scaled_color, :scaled_colorrange
     ]
     uniforms = [
-        :x_transformed_f32c, :y_transformed_f32c, :z_converted,
+        :x_transformed_f32c, :y_transformed_f32c, :z_transformed_f32c,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :model_f32c, :instances,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
@@ -976,7 +971,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
 
     input2glname = Dict{Symbol, Symbol}(
         :x_transformed_f32c => :position_x, :y_transformed_f32c => :position_y,
-        :z_converted => :position_z,
+        :z_transformed_f32c => :position_z,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :image,
         :lowclip_color => :lowclip, :highclip_color => :highclip,
