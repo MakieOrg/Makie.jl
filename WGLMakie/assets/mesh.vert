@@ -76,7 +76,7 @@ vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
 {
     // normal in world space
-    o_normal = get_normalmatrix() * normal;
+    o_normal = get_world_normalmatrix() * normal;
     // position in clip space (w/ depth)
     process_clip_planes(position_world.xyz);
     gl_Position = projection * view * position_world; // TODO consider using projectionview directly

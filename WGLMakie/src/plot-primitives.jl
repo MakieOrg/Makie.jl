@@ -492,7 +492,7 @@ function mesh_program(attr)
         :PICKING_INDEX_FROM_UV => true,
         :wgl_uv_transform => attr.wgl_uv_transform,
         :depth_shift => attr.depth_shift,
-        :normalmatrix => attr.world_normalmatrix,
+        :world_normalmatrix => attr.world_normalmatrix,
         :interpolate_in_fragment_shader => true
     )
 
