@@ -190,13 +190,13 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
             t0 = time()
             colorbuffer(f)
-            sleep(1)
+            sleep(2)
             close(f.scene.current_screens[1])
             dt_max = time() - t0
             sleep(1)
 
             # tests don't make this easy...
-            @test 28 <= length(tick_record) <= round(Int, 30dt_max) + 2
+            @test round(Int, 30dt_max) - 2 <= length(tick_record) <= round(Int, 30dt_max) + 2
             t = 0.0
             for (i, tick) in enumerate(tick_record)
                 @test tick.state == Makie.RegularRenderTick
@@ -204,8 +204,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
                 @test tick.time > t
                 t = tick.time
             end
-            # first tick is arbitrary
-            @test Makie.mean([tick.delta_time for tick in tick_record[2:end]]) ≈ 0.033 atol = 0.001
+            # first few ticks have high variance
+            @test Makie.mean([tick.delta_time for tick in tick_record[10:end]]) ≈ 0.033 atol = 0.001
         end
     end
 
