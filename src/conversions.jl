@@ -1651,10 +1651,10 @@ to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
-    elseif isa(value, Int32) && value in 0:5
-        return value
+    elseif isa(value, Integer) && value in 0:5
+        return Int32(value)
     elseif value == 7
-        return value # makie internal contour implementation
+        return Int32(value) # makie internal contour implementation
     else
         error("$value is not a valid volume algorithm. Please have a look at the docstring of `to_volume_algorithm` (in the REPL, `?to_volume_algorithm`).")
     end
