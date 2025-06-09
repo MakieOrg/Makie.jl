@@ -236,6 +236,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
 
     text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace) do _, _, _, labelspace
         string_bbs = Rect2f.(fast_string_boundingboxes(txt))
+        @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0,0))
         points = Makie.project.(Ref(scene), textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
