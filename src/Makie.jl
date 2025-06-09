@@ -82,7 +82,7 @@ using Observables: listeners, to_value, notify
 import InverseFunctions
 
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
-using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
+using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
@@ -91,8 +91,8 @@ using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
+import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
+import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
@@ -405,9 +405,11 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe,  Voxels,  Annotation
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels,  annotation
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!, annotation!
+export Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
+export heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
+
+export arrows, arrows!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
