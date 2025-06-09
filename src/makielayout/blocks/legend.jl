@@ -690,7 +690,7 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
     LegendElement[LineElement(
         plots = plot,
         color = extract_color(plot, legend[:linecolor]),
-        linestyle = choose_scalar(plot.linestyle, legend[:linestyle]),
+        linestyle = choose_scalar(Linestyle(plot.linestyle[]), legend[:linestyle]),
         linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
