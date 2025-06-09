@@ -687,10 +687,11 @@ function extract_color(@nospecialize(plot), color_default)
 end
 
 function legendelements(plot::Union{Lines, LineSegments}, legend)
+    ls = plot.linestyle[]
     LegendElement[LineElement(
         plots = plot,
         color = extract_color(plot, legend[:linecolor]),
-        linestyle = choose_scalar(Linestyle(plot.linestyle[]), legend[:linestyle]),
+        linestyle = choose_scalar(ls isa Vector ? Linestyle(ls) : ls, legend[:linestyle]),
         linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
         colormap = plot.colormap,
         colorrange = plot.colorrange,
