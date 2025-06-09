@@ -504,11 +504,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
+    Makie.register_view_normalmatrix!(attr)
 
     register_computation!(attr, [:positions_transformed_f32c], [:instances, :gl_len]) do (pos, ), changed, cached
         return (length(pos), Int32(length(pos)))
     end
-
 
     inputs = [
         # Special
@@ -521,7 +521,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
-        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :diffuse, :specular, :shininess, :backlight, :world_normalmatrix, :view_normalmatrix,
         :gl_len, :transform_marker
     ]
 
@@ -949,6 +949,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:surface_transform))
     Makie.register_world_normalmatrix!(attr)
+    Makie.register_view_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))
 
     register_computation!(attr, [:z], [:instances]) do (z,), changed, cached
@@ -966,6 +967,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :model_f32c, :instances,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
+        :view_normalmatrix,
         :invert_normals, :pattern_uv_transform, :fetch_pixel
     ]
 
@@ -1050,6 +1052,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.register_world_normalmatrix!(attr)
+    Makie.register_view_normalmatrix!(attr)
 
     inputs = [
         # Special
@@ -1061,7 +1064,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Mesh)
         :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
         :lowclip_color, :highclip_color, :nan_color, :model_f32c, :matcap,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :pattern_uv_transform, :fetch_pixel,
+        :view_normalmatrix, :pattern_uv_transform, :fetch_pixel,
         :interpolate_in_fragment_shader
     ]
 

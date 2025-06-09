@@ -947,21 +947,16 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     return attr[:cb_colormapping][]
 end
 
-# This one plays nice with out system, only needs model
 function register_world_normalmatrix!(attr, modelname = :model_f32c)
     register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
         return (Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)]))), )
     end
 end
 
-# This one does not, requires the who-knows-when-it-updates view matrix...
-function add_view_normalmatrix!(data, attr, modelname = :model_f32c)
-    model = Observable(Mat3f)
-    register_computation!(attr, [modelname], Symbol[]) do (model,), _, __
-        model[] = model[Vec(1,2,3), Vec(1,2,3)]
-        return nothing
-    end
-    data[:view_normalmatrix] = map(data[:view], model) do v, m
-        return Mat3f(transpose(inv(v[Vec(1,2,3), Vec(1,2,3)] * m)))
+function register_view_normalmatrix!(attr, modelname = :model_f32c)
+    register_computation!(attr, [:view, modelname], Symbol[:view_normalmatrix]) do (view, model), _, __
+        i3 = Vec3(1,2,3)
+        nm = transpose(inv(view[i3, i3] * Mat3f(model[i3, i3])))
+        return (nm, )
     end
 end
