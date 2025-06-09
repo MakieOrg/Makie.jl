@@ -1007,7 +1007,7 @@ If `unique` is `true`, all plot objects with the same plot type and label will b
 """
 function Legend(
     fig_or_scene,
-    axes::Union{Vector{Axis},Vector{Axis3},Vector{LScene},Vector{Scene}},
+    axes::AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}},
     title=nothing;
     merge=false,
     unique=false,
