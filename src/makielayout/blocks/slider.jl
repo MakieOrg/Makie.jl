@@ -70,7 +70,7 @@ function initialize_block!(sl::Slider)
     end
     sl.value[] = sliderrange[][selected_index[]]
     # initialize slider value with closest from range
-    selected_index[] = sl.startvalue[] === automatic ? firstindex(sliderrange[]) : closest_index(sliderrange[], sl.startvalue[])
+    selected_index[] = closest_index(sliderrange[], sl.startvalue[] === automatic ? zero(eltype(sliderrange[])) : sl.startvalue[])
 
     middlepoint = lift(topscene, endpoints, displayed_sliderfraction) do ep, sf
         Point2f(ep[1] .+ sf .* (ep[2] .- ep[1]))
@@ -137,7 +137,7 @@ function initialize_block!(sl::Slider)
     end
 
     onmouseleftdoubleclick(mouseevents) do event
-        selected_index[] = sl.startvalue[] === automatic ? firstindex(sliderrange[]) : closest_index(sliderrange[], sl.startvalue[])
+        selected_index[] = closest_index(sliderrange[], sl.startvalue[] === automatic ? zero(eltype(sliderrange[])) : sl.startvalue[])
         return Consume(true)
     end
 
