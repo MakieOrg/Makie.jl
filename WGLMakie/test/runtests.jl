@@ -24,14 +24,12 @@ end
 
 excludes = Set([
     "Image on Surface Sphere", # TODO: texture rotated 180°
-    # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Array of Images Scatter", # scatter does not support texture images
-
     "Order Independent Transparency",
     "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
-    # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
+    "matcap", # not yet implemented
 ])
 
 Makie.inline!(Makie.automatic)

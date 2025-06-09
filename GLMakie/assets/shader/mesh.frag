@@ -88,6 +88,9 @@ vec4 get_color(sampler2D color, vec3 uv, Nothing color_norm, Nothing color_map, 
 vec4 get_color(sampler1D color, vec3 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
+vec4 get_color(sampler2D color, vec3 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
+    return matcap_color(matcap);
+}
 
 uniform bool fetch_pixel;
 
