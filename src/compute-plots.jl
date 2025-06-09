@@ -825,9 +825,9 @@ function calculated_attributes!(::Type{Surface}, plot::Plot)
     end
     register_colormapping!(attr, :color_with_default)
     register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
-        xlims = extrema(x)
-        ylims = extrema(y)
-        zlims = extrema(z)
+        xlims = extrema_nan(x)
+        ylims = extrema_nan(y)
+        zlims = extrema_nan(z)
         mini, maxi = Vec3d.(xlims, ylims, zlims)
         return (Rect3d(mini, maxi .- mini),)
     end
