@@ -24290,7 +24290,13 @@ function delete_three_scene(scene) {
 }
 window.THREE = mod;
 function dispose_screen(screen) {
-    const { renderer , picking_target , root_scene  } = screen;
+    if (Object.keys(screen).length === 0) {
+        return;
+    }
+    const { renderer , picking_target , root_scene , comm  } = screen;
+    comm.notify({
+        window_open: false
+    });
     if (renderer) {
         const canvas = renderer.domElement;
         if (canvas.parentNode) {
@@ -24644,6 +24650,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         px_per_unit,
         scalefactor,
         winscale,
+        comm,
         texture_atlas: undefined
     };
     add_canvas_events(screen, comm, resize_to);

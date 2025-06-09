@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.22.5"
+version = "0.22.10"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -97,7 +97,7 @@ KernelDensity = "0.5, 0.6"
 LaTeXStrings = "1.2"
 LinearAlgebra = "1.0, 1.6"
 MacroTools = "0.5"
-MakieCore = "=0.9.3"
+MakieCore = "=0.9.5"
 Markdown = "1.0, 1.6"
 MathTeXEngine = "0.5, 0.6"
 Observables = "0.5.5"

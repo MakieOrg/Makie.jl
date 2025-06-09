@@ -355,6 +355,7 @@ ax.then() do ax
     obs_array = onany(f3, some_obs1, some_obs2)
     return [obs1, obs2, obs_array...]
 end
+```
 This allows the SpecApi to clean up the callbacks on reuse.
 Note that things like `hidedecorations!(axis)` is not yet supported, since we will need some better book keeping of what got mutated by that call.
 One of the few functions that's already supported is `linkaxes!`:

@@ -9,8 +9,6 @@ The translation is set by `translate!()`, the scaling by `scale!()` and the rota
 Furthermore you can change the origin used for scaling and rotating with `origin!()`.
 
 ```@figure backend=GLMakie
-using GLMakie
-
 box = Rect2f(0.9, -0.1, 0.2, 0.2)
 
 f = Figure(size = (500, 450))
@@ -93,9 +91,7 @@ This allows you to prepare a plot with an initial model transformation.
 You can pass `scale`, `rotation` and/or `translation` as part of a NamedTuple, Dict or Attributes, or rotate and translate the xy plane to another plane with `(plane, shift)`.
 For example:
 
-```@figure
-using CairoMakie
-
+```@figure backend=CairoMakie
 f = Figure()
 # transform 0..1 Rect to -1..1 Rect
 lines(f[1, 1], Rect2f(0, 0, 1, 1),
@@ -125,7 +121,6 @@ This will not affect whether the parents model transformations are considered.
 As an example, here are two arms on a cart raising a box with a rope.
 
 ```@figure backend=GLMakie
-using GLMakie
 using Makie: Vec3d
 
 f = Figure(size = (600, 400))

@@ -38,3 +38,8 @@ used_attributes(::Any, x::Solution) = (:attribute,)
 function convert_arguments(p::MakieCore.PointBased, x::Solution; attribute = 1.0)
     return convert_arguments(p, x.data .* attribute)
 end
+
+@testset "func2string" begin
+    @test MakieCore.func2string(cos) == "cos"
+    @test startswith(MakieCore.func2string(x -> x), "#")
+end

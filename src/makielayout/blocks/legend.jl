@@ -211,10 +211,10 @@ function initialize_block!(leg::Legend; entrygroups)
     shade_color = RGBAf(0.9,0.9,0.9,0.65)
     hatch_width = leg.labelsize[]
     halfshade_color = LinePattern(direction=Vec2f(1), width=hatch_width/2,
-            tilesize=(hatch_width,hatch_width), linecolor=shade_color)
+            tilesize=round.(Int,(hatch_width,hatch_width)), linecolor=shade_color)
 
     # For cleaning up visible listeners on relayouting
-    entry_observer_funcs = Observable[]
+    entry_observer_funcs = ObserverFunction[]
 
     on(blockscene, entry_groups) do entry_groups
         # first delete all existing labels and patches
@@ -305,7 +305,7 @@ function initialize_block!(leg::Legend; entrygroups)
                 # TODO: Should this be connected to scene/blockscene for cleanup?
                 # Probably not plots since plot deletion needs to trigger relayout anyway
 
-                # listen to visibilty attributes of plot elements to toggle shades below
+                # listen to visibility attributes of plot elements to toggle shades below
                 visibilities = get_plot_visibilities(entry)
                 shade_visible = Observable{Bool}(false)
                 halfshade_visible = Observable{Bool}(false)

@@ -146,7 +146,7 @@ end
 
 function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
     result = Point{N, Float64}.(polygon)
-    if !isempty(result) && !(result[1] ≈ result[end])
+    if !isempty(result) && result[1] != result[end]
         push!(result, polygon[1])
     end
     return result

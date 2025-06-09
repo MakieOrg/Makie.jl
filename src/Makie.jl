@@ -165,6 +165,7 @@ include("camera/old_camera3d.jl")
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
+include("basic_recipes/annotation.jl")
 include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
@@ -398,12 +399,13 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
+export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe,  Voxels,  Annotation
+export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels,  annotation
+export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!, annotation!
 
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export Ann
 
 include("precompiles.jl")
 

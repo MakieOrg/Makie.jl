@@ -50,6 +50,9 @@ end
 @testset "text.jl" begin
     include("text.jl")
 end
+@testset "float32convert" begin
+    include("float32_conversion.jl")
+end
 @testset "attributes.jl" begin
     include("attributes.jl")
 end

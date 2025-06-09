@@ -29,6 +29,9 @@ RadeonProRender = "27029320-176d-4a42-b57d-56729d2ad457"
 Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
+[compat]
+DocumenterVitepress = "0.2.4"
+
 [sources]
 Makie = { path = ".." }
 MakieCore = { path = "../MakieCore" }
