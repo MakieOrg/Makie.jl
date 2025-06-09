@@ -77,8 +77,16 @@ function Makie.plot!(plot::Band)
     lattr = shared_attributes(plot, Lines)
     lattr[:linewidth] = plot.strokewidth
     lattr[:color] = plot.strokecolor
-    lines!(plot, lattr, lowerpoints)
-    lines!(plot, lattr, upperpoints)
+    merged_points = map(plot, lowerpoints, upperpoints, plot.direction) do lower, upper, direction
+        ps = copy(lower)
+        push!(ps, eltype(ps)(NaN))
+        append!(ps, upper)
+        if direction === :y
+            ps .= reverse.(ps)
+        end
+        return ps
+    end
+    lines!(plot, lattr, merged_points)
 end
 
 function fill_view(x, y1, y2, where::Nothing)
