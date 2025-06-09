@@ -318,11 +318,16 @@ export Quaternion, Quaternionf, qrotation
 export RGBAf, RGBf, VecTypes, RealVector
 export Transformation
 export Sphere, Circle
-export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
-export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
+for kind in (:Vec, :Point, :Rect)
+    @eval export $kind
+    for n in (2, 3, 4), typesuffix in ("f", "d", "i", "")
+        kind === :Rect && n == 4 && continue
+        @eval export $(Symbol(kind, n, typesuffix))
+    end
+end
 export (..)
-export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
-export Plane3f # other planes aren't used much for Makie
+export Rectf, Recti, Rectd
+export Plane3f, Plane3d # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes
