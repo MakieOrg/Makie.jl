@@ -12,7 +12,8 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
     strokewidth = 0
-    strokecolor = :black
+    strokecolor = automatic
+    strokealpha = 1.0
     shading = NoShading
 end
 
@@ -76,7 +77,23 @@ function Makie.plot!(plot::Band)
 
     lattr = shared_attributes(plot, Lines)
     lattr[:linewidth] = plot.strokewidth
-    lattr[:color] = plot.strokecolor
+    lattr[:alpha] = plot.strokealpha
+    lattr[:color] = map(plot, plot.strokecolor, plot.color) do strokecolor, color
+        c = if strokecolor !== automatic
+            strokecolor
+        elseif color isa AbstractMatrix
+            to_color(:black) # some default for when color is not usable
+        elseif color isa Union{Real, Vector{<: Real}}
+            color
+        else
+            RGBf.(to_color(color))
+        end
+        if c isa Vector
+            return vcat(c, c[1:1], c)
+        else
+            return c
+        end
+    end
     merged_points = map(plot, lowerpoints, upperpoints, plot.direction) do lower, upper, direction
         ps = copy(lower)
         push!(ps, eltype(ps)(NaN))
