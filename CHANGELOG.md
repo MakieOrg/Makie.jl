@@ -2,7 +2,15 @@
 
 ## [Unreleased]
 
-- Support vectors of intervals in `hspan` and `vspan`
+- Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
+- Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
+  - arrow size now considers all components of the arrow, not just the shaft
+  - arrows are now split into a tail, shaft and head, allowing for double-headed arrows
+  - align now works consistently for 2D and 3D arrows and now only accepts `:head, :center, :tail` or numbers
+  - arrows are now based on `poly`, fixing overlap issues with transparent arrows
+- Export `Float64` geometry types `Point3d`, `Vec4d`, `Rect2d` etc. [#5040](https://github.com/MakieOrg/Makie.jl/pull/5040).
+- Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
+- Added unit support to `Slider` [#5037](https://github.com/MakieOrg/Makie.jl/pull/5037)
 
 ## [0.22.10] - 2025-06-03
 

@@ -697,3 +697,5 @@ function best_font(c::Char, font = Makie.defaultfont())
     end
     return font
 end
+
+zero_normalize(v::AbstractVector{T}) where T = v ./ (norm(v) + eps(zero(T)))
