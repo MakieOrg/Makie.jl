@@ -43,3 +43,14 @@ end
     scatter!((0:10) .* u"kW/m^2", (0:10) .* u"kg")
     f
 end
+
+@reference_test "Unitful Axis3" begin
+    fig = Figure(size=(700, 300))
+    ax = Axis3(fig[1,1], dim1_conversion = Makie.UnitfulConversion(u"m"))
+    xs, ys = -2:0.2:2, -2:0.2:2;
+    x, y, z = [xi for xi in xs for yi in ys], [yi for xi in xs for yi in ys], [sin(xi)*cos(yi) for xi in xs for yi in ys]
+    scatter!(ax, u"m" .* x, y, z; markersize=10, color=x, alpha=0.8, transparency=true)
+    t = 0:0.1:6π; x, y = cos.(t), sin.(t)
+    scatter(fig[1, 2], x, y, t .* u"s", markersize=15, color=t,alpha=0.8, transparency=true, axis=(; type=Axis3))
+    fig
+end
