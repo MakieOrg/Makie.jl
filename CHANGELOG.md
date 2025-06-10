@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.23.0] - 2025-06-10
 
 - Add dim conversion support for Axis3 [#4964](https://github.com/MakieOrg/Makie.jl/pull/4964).
 - Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
@@ -835,7 +835,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...v0.23.0
 [0.22.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.9...v0.22.10
 [0.22.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.8...v0.22.9
 [0.22.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...v0.22.8
