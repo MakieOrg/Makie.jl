@@ -123,33 +123,35 @@ function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, tr
     end
 end
 
-to_lines(polygon) = convert_arguments(Lines, polygon)[1]
+to_lines(polygon) = (convert_arguments(Lines, polygon)[1], [typemax(Int)])
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
-to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
+to_lines(polygon::GeometryBasics.Mesh) = (convert_arguments(PointBased(), polygon)[1], [typemax(Int)])
 
 function to_lines(meshes::AbstractVector)
     get_dim(::AbstractVector{<: VecTypes{N}}) where N = N
     get_dim(::Any) = 3
     N = mapreduce(get_dim, max, meshes, init = 2)
     line = Point{N, Float64}[]
+    separation_indices = Int[]
     for (i, mesh) in enumerate(meshes)
-        points = to_ndim.(Point{N, Float64}, to_lines(mesh), 0)
+        points = to_ndim.(Point{N, Float64}, to_lines(mesh)[1], 0)
         append!(line, points)
+        push!(separation_indices, length(line) + 1)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
             push!(line, Point{N, Float64}(NaN))
         end
     end
-    return line
+    return (line, separation_indices)
 end
 
 function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
     result = Point{N, Float64}.(polygon)
-    if !isempty(result) && !(result[1] ≈ result[end])
+    if !isempty(result) && result[1] != result[end]
         push!(result, polygon[1])
     end
-    return result
+    return (result, [typemax(Int)])
 end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
@@ -175,22 +177,22 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle
         depth_shift = plot.depth_shift
     )
 
-    outline = lift(to_lines, plot, geometries)
-    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
+    outline_idxs = lift(to_lines, plot, geometries)
+    stroke = lift(plot, outline_idxs, plot.strokecolor) do (outline, increment_at), sc
         if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
-            idx = 1
-            return map(outline) do point
-                if isnan(point)
-                    idx += 1
+            mesh_idx = 1
+            return map(eachindex(outline)) do point_idx
+                if point_idx == increment_at[mesh_idx]
+                    mesh_idx += 1
                 end
-                return sc[idx]
+                return sc[mesh_idx]
             end
         else
             return sc
         end
     end
     lines!(
-        plot, outline, visible = plot.visible,
+        plot, lift(first, outline_idxs), visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
         linewidth = plot.strokewidth, linecap = plot.linecap,

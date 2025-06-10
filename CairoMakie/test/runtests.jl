@@ -317,3 +317,12 @@ end
     @test length(ps) == length(data) # this should never clip!
 
 end
+
+@testset "issue 4970 (invalid io use during finalization)" begin
+    @testset "$mime" for mime in CairoMakie.SUPPORTED_MIMES
+        @test_nowarn begin
+            sprint(io -> show(io, mime, Scene()))
+            GC.gc()
+        end
+    end
+end
