@@ -433,9 +433,9 @@ end
     f,a,p = text(x, y, text = strs, fontsize = 30)
     xlims!(a, -0.1, 1.1); ylims!(a, -0.1, 1.1)
 
-    merged_bb1 = map(bbs -> Makie.to_lines(Rect2f.(bbs)), Makie.glyph_boundingboxes_obs(p))
+    merged_bb1 = map(bbs -> Makie.to_lines(Rect2f.(bbs))[1], Makie.glyph_boundingboxes_obs(p))
     l1 = lines!(a, merged_bb1, space = :pixel, color = :cyan, linewidth = 2)
-    merged_bb2 = map(bbs -> Makie.to_lines(Rect2f.(bbs)), Makie.string_boundingboxes_obs(p))
+    merged_bb2 = map(bbs -> Makie.to_lines(Rect2f.(bbs))[1], Makie.string_boundingboxes_obs(p))
     l2 = lines!(a, merged_bb2, space = :pixel, color = :black, alpha = 0.75, linewidth = 2)
     l3 = lines!(a, map(Rect2f, Makie.full_boundingbox_obs(p, :data)), color = :red, linewidth = 2)
     f

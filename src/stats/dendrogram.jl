@@ -19,7 +19,7 @@ and parent nodes identified by `merges`.
 # Keywords
 - `merges`: specifies connections between nodes (see below)
 """
-@recipe Dendrogram begin
+@recipe Dendrogram (nodes,) begin
     """
     Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
     rectangular lines. Other styles can be defined by overloading
@@ -145,8 +145,9 @@ function _parse_dendrogram_scale(nodes, width::Real)
     return width / (maxi - mini)
 end
 
-function plot!(plot::Dendrogram)
-    branch_colors = map(plot, plot[1], plot.color, plot.groups) do nodes, color, groups
+function Makie.plot!(plot::Dendrogram)
+
+    map!(plot.attributes, [:nodes, :color, :groups], :branch_colors) do nodes, color, groups
         if isnothing(groups)
             return to_color(color)
         else
@@ -156,15 +157,11 @@ function plot!(plot::Dendrogram)
         end
     end
 
+    inputs = [:nodes, :origin, :rotation, :branch_shape, :branch_colors, :transform_func, :width, :depth]
 
+    map!(plot.attributes, inputs, [:line_points, :line_colors]) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
 
-    points_vec = Observable(Point2d[])
-    colors_vec = map(plot,
-            plot[1], plot.origin, plot.rotation, plot.branch_shape, branch_colors,
-            transform_func_obs(plot), plot.width, plot.depth
-        ) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
-
-        ps = empty!(points_vec[])
+        ps = Point2d[]
         origin = to_ndim(Vec2f, _origin, 0)
 
         # Generate positional data that connect branches of the tree. If colors are
@@ -205,30 +202,17 @@ function plot!(plot::Dendrogram)
         end
 
         if colors isa Vector
-            points_vec.val, colors = resample_for_transform(tf, ps, colors)
+            points, colors = resample_for_transform(tf, ps, colors)
         else
-            points_vec.val = resample_for_transform(tf, ps)[1]
+            points = resample_for_transform(tf, ps)[1]
         end
 
-        notify(points_vec)
-
-        return colors
+        return (points, colors)
     end
 
     attr = shared_attributes(plot, Lines)
-    # Not sure if Attributes() replaces an entry with setindex!(attr, key, ::Observable)
-    # or if it tries to be smart and updates, so pop!() to be safe
-    pop!(attr, :color)
-    attr[:color] = colors_vec
 
-    # Set the default for nan_color. If groups are used, nan_color represents the
-    # ungrouped case, :black. Otherwise it should follow the usual default :transparent
-    if plot.groups[] !== nothing
-        pop!(attr, :nan_color)
-        attr[:nan_color] = plot.ungrouped_color
-    end
-
-    lines!(plot, attr, points_vec)
+    lines!(plot, attr, plot.line_points, color=plot.line_colors, nan_color = plot.ungrouped_color)
 end
 
 
@@ -315,43 +299,5 @@ includes translations from `origin`, `rotation` and scaling from `width` and
 `depth`. The N nodes given as arguments are the first N positions returned.
 """
 function dendrogram_node_positions(plot::Dendrogram)
-    return map(plot,
-            plot.converted[1], plot.width, plot.depth, plot.rotation, plot.origin, transform_func_obs(plot)
-        ) do nodes, width, depth, rotation, _origin, tf
-
-        origin = to_ndim(Vec2f, _origin, 0)
-        ps = [node.position for node in nodes]
-
-        # force rotation to work with Polar transform
-        if tf isa Polar
-            rotation = ifelse(tf.theta_as_x, :up, :right)
-        end
-
-        # parse rotation, construct rotation matrix
-        if rotation isa Real;
-            rot_angle = rotation
-        elseif rotation === :down
-            rot_angle = 0.0
-        elseif rotation === :right
-            rot_angle = pi/2
-        elseif rotation === :up
-            rot_angle = pi
-        elseif rotation === :left
-            rot_angle = 3pi/2
-        else
-            error("Rotation $rotation is not valid. Must be a <: Real or :down, :right, :up or :left.")
-        end
-        R = rotmatrix2d(rot_angle)
-
-        # parse scaling
-        scale = Vec2d(_parse_dendrogram_scale(nodes, width), _parse_dendrogram_scale(nodes, depth))
-
-        # move root to (0, 0), scale, then rotate, then move to origin
-        root_pos = nodes[end].position
-        for (i, p) in enumerate(ps)
-            ps[i] = R * (scale .* (p - root_pos)) + origin
-        end
-
-        return ps
-    end
+    return plot.line_points
 end

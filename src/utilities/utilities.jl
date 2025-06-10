@@ -55,9 +55,9 @@ default_automatic(default) = x -> default_automatic(x, default)
 
 function replace_automatic!(args...)
     error(
-        "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
-        "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
-        "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
+    "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
+    "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
+    "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
     )
 end
 
@@ -595,10 +595,8 @@ Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot})
     # TODO: This currently happens for ComputeGraph passthrough already
-    return Attributes(plot)
-
     valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes)
+    existing_attributes = keys(plot.attributes.inputs)
     to_drop = setdiff(existing_attributes, valid_attributes)
     return drop_attributes(plot, to_drop)
 end
@@ -608,7 +606,7 @@ function drop_attributes(plot::Plot, to_drop::Symbol...)
 end
 
 function drop_attributes(plot::Plot, to_drop::Set{Symbol})
-    attr = attributes(attributes(plot))
+    attr = plot.attributes.outputs
     return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
 end
 
