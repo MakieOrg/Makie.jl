@@ -1,4 +1,3 @@
-
 function draw_atomic(::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
     ctx = screen.context
     attr = plot.attributes
@@ -30,7 +29,7 @@ function draw_lineplot(ctx, attributes)
     linestyle = attributes.linestyle
     miter_limit = attributes.miter_limit
     is_lines_plot = attributes.is_lines_plot
-
+    linecap = attributes.linecap
 
     # The linestyle can be set globally, as we do here.
     # However, there is a discrepancy between Makie
@@ -46,10 +45,7 @@ function draw_lineplot(ctx, attributes)
         isodd(length(pattern)) && push!(pattern, 0)
         Cairo.set_dash(ctx, pattern)
     end
-
     # linecap
-    linecap = attributes.linecap
-
     if linecap == 1
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
     elseif linecap == 2
@@ -62,8 +58,7 @@ function draw_lineplot(ctx, attributes)
 
     miter_angle = is_lines_plot ? miter_limit : 2pi/3
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
-
-    joinstyle = is_lines_plot ? attributes.joinstyle : linecap
+    joinstyle = is_lines_plot ? attributes.joinstyle : 0
     if joinstyle == 2
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
     elseif joinstyle == 3
@@ -71,14 +66,13 @@ function draw_lineplot(ctx, attributes)
     elseif joinstyle == 0
         Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
     else
-        error("$linecap is not a valid linecap. Valid: 0 (:miter), 2 (:round), 3 (:bevel)")
+        error("$joinstyle is not a valid linecap. Valid: 0 (:miter), 2 (:round), 3 (:bevel)")
     end
 
     # TODO, how do we allow this conversion?s
     # if is_lines_plot && to_value(plot.attributes) isa BezierPath
     #     return draw_bezierpath_lines(ctx, to_value(plot.attributes), plot, color, space, model, linewidth)
     # end
-
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
@@ -95,6 +89,9 @@ function draw_lineplot(ctx, attributes)
         Cairo.set_line_width(ctx, linewidth)
         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
         draw_single(is_lines_plot, ctx, positions)
+    end
+    if !isnothing(linestyle)
+        Cairo.set_dash(ctx, Float64[])  # Reset dash pattern
     end
 end
 

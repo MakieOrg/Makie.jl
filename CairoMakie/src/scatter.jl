@@ -1,4 +1,3 @@
-
 function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     attr = plot.attributes
     isempty(attr.positions[]) && return
@@ -103,7 +102,6 @@ function draw_atomic_scatter(ctx, attr::NamedTuple)
         end
         Cairo.restore(ctx)
     end
-
     return
 end
 

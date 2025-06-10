@@ -91,6 +91,8 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
+        # Reset any lingering pattern state
+        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
     end
     return nothing
 end
@@ -199,6 +201,8 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
         Cairo.destroy(pattern)
+        # Reset any lingering pattern state
+        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
     end
 
 end

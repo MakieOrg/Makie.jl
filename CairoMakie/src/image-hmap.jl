@@ -131,6 +131,8 @@ function draw_image(ctx, not_svg, attr)
         Cairo.fill(ctx)
         Cairo.restore(ctx)
         pattern_set_matrix(p, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_NONE)  # Reset pattern extend mode
+        Cairo.pattern_set_filter(p, Cairo.FILTER_FAST)  # Reset to default filter
     else
         # find projected image corners
         # this already takes care of flipping the image to correct cairo orientation
