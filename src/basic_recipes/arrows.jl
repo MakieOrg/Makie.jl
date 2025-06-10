@@ -610,16 +610,6 @@ function plot!(plot::Arrows3D)
         visible
     )
 
-    generic_attributes = copy(Attributes(plot))
-    foreach(k -> delete!(generic_attributes, k), [
-        :normalize, :align, :lengthscale, :markerscale, :argmode, :quality,
-        :tail, :taillength, :tailradius,
-        :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftradius,
-        :tip, :tiplength, :tipradius,
-        :visible,
-        :tailcolor, :shaftcolor, :tipcolor, :color
-    ])
-
     tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
     shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
     tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
@@ -713,18 +703,17 @@ function plot!(plot::Arrows3D)
     shaft_m = map(to_mesh, plot, shaft, quality)
     tip_m = map(to_mesh, plot, tip, quality)
 
-    meshscatter!(plot,
+    meshscatter!(plot, plot.attributes,
         map(first, plot, startpoints_directions), marker = tail_m, markersize = tail_scale, rotation = rot,
-        color = tailcolor, visible = tail_visible, transformation = :nothing, transform_marker = false;
-        generic_attributes...
+        color = tailcolor, visible = tail_visible, transformation = :nothing, transform_marker = false,
     )
-    meshscatter!(plot,
+    meshscatter!(plot, plot.attributes,
         shaft_pos, marker = shaft_m, markersize = shaft_scale, rotation = rot,
-        color = shaftcolor, visible = visible, transformation = :nothing, transform_marker = false; generic_attributes...
+        color = shaftcolor, visible = visible, transformation = :nothing, transform_marker = false,
     )
-    meshscatter!(plot,
+    meshscatter!(plot, plot.attributes,
         tip_pos, marker = tip_m, markersize = tip_scale, rotation = rot,
-        color = tipcolor, visible = tip_visible, transformation = :nothing, transform_marker = false; generic_attributes...
+        color = tipcolor, visible = tip_visible, transformation = :nothing, transform_marker = false,
     )
 
     return plot
