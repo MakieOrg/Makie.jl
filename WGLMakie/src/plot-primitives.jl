@@ -121,6 +121,15 @@ function create_wgl_renderobject(callback, attr, inputs)
     return attr[:wgl_renderobject][]
 end
 
+function add_primitive_shading!(scene::Scene, attr)
+    scene_shading = Makie.get_shading_mode(scene)
+    register_computation!(attr, [:shading], [:primitive_shading]) do (shading,), _, _
+        s = (shading ? scene_shading : shading)
+        shading = s isa Bool ? s : (s !== NoShading)
+        return (shading,)
+    end
+end
+
 function handle_color_getter!(uniform_dict)
     vertex_color = uniform_dict[:vertex_color]
     if vertex_color isa Union{Real, AbstractArray{<:Real}} && !(vertex_color isa Bool)
@@ -366,7 +375,14 @@ to_3x3(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
-    instance = args.marker
+    instance = Dict(
+        :position => args.position,
+        :faces => args.faces,
+        :normal => args.normal,
+    )
+    if !isnothing(args.uv)
+        instance[:uv] = args.uv
+    end
     data = Dict{Symbol, Any}(
         :diffuse => args.diffuse,
         :specular => args.specular,
@@ -391,21 +407,23 @@ function meshscatter_program(args)
     )
 end
 
-function add_primitive_shading!(scene::Scene, attr)
-    scene_shading = Makie.get_shading_mode(scene)
-    register_computation!(attr, [:shading], [:primitive_shading]) do (shading,), _, _
-        s = (shading ? scene_shading : shading)
-        shading = s isa Bool ? s : (s !== NoShading)
-        return (shading,)
+
+function disassemble_mesh!(attr, mesh_sym=:marker)
+    map!(attr, [mesh_sym], [:position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
     end
 end
 
-
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
+
+    disassemble_mesh!(attr)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     map!(to_3x3, attr, :packed_uv_transform, :wgl_uv_transform)
-
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     Makie.register_world_normalmatrix!(attr)
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
@@ -414,15 +432,15 @@ function create_shader(scene::Scene, plot::MeshScatter)
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
 
     inputs = [
-        # Special
-        :space,
+        :position, :faces, :normal, :uv, # marker mesh
         :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
         :wgl_uv_transform, :pattern,
         :positions_transformed_f32c, :markersize, :converted_rotation, :f32c_scale,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
+        :space,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
-        :transform_marker, :marker, :primitive_shading, :depth_shift,
+        :transform_marker, :primitive_shading, :depth_shift,
         :uniform_clip_planes, :uniform_num_clip_planes, :visible
     ]
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
