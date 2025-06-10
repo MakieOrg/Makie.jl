@@ -2224,7 +2224,7 @@ end
     a = PolarAxis(f[2, 1])
     rlims!(a, 0, 6)
     p = dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
-    scatter!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), markersize = 20)
+    scatter!(a, Makie.dendrogram_node_positions(p), markersize = 20)
     f
 end
 
