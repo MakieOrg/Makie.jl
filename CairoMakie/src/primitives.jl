@@ -84,8 +84,16 @@ end
 
 function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
     for c in bezierpath.commands
-        proj_comm = project_command(c, scene, space, model)
-        path_command(ctx, proj_comm)
+        if c isa EllipticalArc
+            bp = Makie.elliptical_arc_to_beziers(c)
+            for bezier in bp.commands
+                proj_comm = project_command(bezier, scene, space, model)
+                path_command(ctx, proj_comm)
+            end
+        else
+            proj_comm = project_command(c, scene, space, model)
+            path_command(ctx, proj_comm)
+        end
     end
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
     Cairo.set_line_width(ctx, linewidth)
@@ -1103,7 +1111,7 @@ function draw_mesh3D(
     if isnothing(meshnormals)
         ns = nothing
     else
-        ns = map(n -> normalize(normalmatrix * n), meshnormals)
+        ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
     end
 
     # Face culling
@@ -1185,10 +1193,15 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         facecolors = per_face_col[k]
         # light calculation
         if shading && !isnothing(ns)
+            # these face index expressions currently allocate for SizedVectors
+            # if done like `ns[f]`
+            mean_normal = sum(i -> ns[i], f) / length(f)
             c1, c2, c3 = Base.Cartesian.@ntuple 3 i -> begin
-                # these face index expressions currently allocate for SizedVectors
-                # if done like `ns[f]`
-                N = ns[f[i]]
+                # normals are usually interpolated on the face, which allows
+                # Vec3f(0) to be used to give a vertex no weight on the normal
+                # direction. To reproduce this here we mix in a tiny amount of
+                # the mean normal direction.
+                N = normalize(ns[f[i]] + 1e-20 * mean_normal)
                 v = vs[f[i]]
                 c = facecolors[i]
                 _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
