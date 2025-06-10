@@ -329,12 +329,28 @@ function isdirty(computed::Computed)
     return hasparent(computed) && isdirty(computed.parent)
 end
 
-function isdirty(edge::ComputeEdge)
-    # If resolve hasn't run, it has to be dirty
-    edge.got_resolved[] || return true
-    # Otherwise it's dirty if the input changed
-    return any(edge.inputs_dirty)
+
+isdirty(edge::ComputeEdge) = !edge.got_resolved[]
+
+# Note:
+# GLMakie may mark an unresolved renderobject as resolved to avoid repeated
+# errors from repeatedly pulling it. This requires us to not shortcut mark_dirty!()
+# Without that, we should be able to skip mark_dirty for any child/dependent that
+# is already dirty
+
+"""
+    mark_resolved!(computed)
+
+Mark the parent edge of a compute node as resolved, so that the node will no
+longer try to update. This will be undone the next time any (recursive) input
+to the node is updated.
+"""
+function mark_resolved!(computed::Computed)
+    hasparent(computed) && mark_resolved!(computed.parent)
+    return
 end
+mark_resolved!(edge::ComputeEdge) = edge.got_resolved[] = true
+mark_resolved!(edge::Input) = edge.is_dirty = true
 
 function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
     # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
@@ -597,7 +613,6 @@ function _resolve!(computed::Computed)
 end
 
 function resolve!(edge::ComputeEdge)
-    edge.got_resolved[] && return false
     isdirty(edge) || return false
     lock(edge.graph.lock) do
         # Resolve inputs first

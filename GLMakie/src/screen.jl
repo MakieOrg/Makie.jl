@@ -1053,9 +1053,10 @@ function poll_updates(screen)
                     plot.attributes[:gl_renderobject][]
                 catch e
                     @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
-                    # TODO: mark the output as resolved so we don't repeatedly pull in errors
-                    #       Wouldn't setting inputs_dirty break state though?
-                    # ComputePipeline.mark_resolved!(plot.args[1][:gl_renderobject]) <-- doesn't exist yet
+                    # Mark the output as resolved so we don't repeatedly pull in errors
+                    # TODO: Is there a better way to handle this? One that allows us to
+                    # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+                    ComputePipeline.mark_resolved!(plot.attributes[:gl_renderobject])
                 end
             end
         end

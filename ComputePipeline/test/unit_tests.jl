@@ -709,3 +709,51 @@ end
         end
     end
 end
+
+@testset "mark_resolved" begin
+    @testset "Input" begin
+        graph = ComputeGraph()
+        add_input!(graph, :in, 1)
+        map!(identity, graph, :in, :out)
+        @test graph.out[] == 1
+        @test !ComputePipeline.isdirty(graph.out)
+
+        graph.in = 2
+        @test ComputePipeline.isdirty(graph.out)
+        ComputePipeline.mark_resolved!(graph.out)
+        @test !ComputePipeline.isdirty(graph.out)
+        @test graph.out[] == 1
+
+        graph.in = 3
+        @test ComputePipeline.isdirty(graph.out)
+        @test graph.out[] == 3
+    end
+
+    @testset "ComputeEdge" begin
+        g = ComputeGraph()
+        add_input!(g, :input1, 0)
+        add_input!(g, :input2, 1)
+        map!(x -> x + 1, g, :input1, :out1)
+        map!(x -> x + 1, g, :input2, :out2)
+        map!(tuple, g, [:out1, :out2], :output)
+
+        @test g.output[] == (1, 2)
+        @test !ComputePipeline.isdirty(g.output)
+
+        g.input1 = 2
+        @test ComputePipeline.isdirty(g.output)
+        ComputePipeline.mark_resolved!(g.output)
+        @test !ComputePipeline.isdirty(g.output)
+        @test g.output[] == (1, 2)
+
+        g.input2 = 2
+        @test ComputePipeline.isdirty(g.output)
+        @test g.output[] == (3, 3)
+
+        g.input1 = 0
+        ComputePipeline.mark_resolved!(g.output)
+        @test g.output[] == (3, 3)
+        g.input1 = 1
+        @test g.output[] == (2, 3)
+    end
+end
