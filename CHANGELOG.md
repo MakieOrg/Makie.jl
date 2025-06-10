@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
 - Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
   - arrow size now considers all components of the arrow, not just the shaft
   - arrows are now split into a tail, shaft and head, allowing for double-headed arrows
