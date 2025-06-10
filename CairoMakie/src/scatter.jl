@@ -125,10 +125,13 @@ function draw_text(ctx, attr::NamedTuple)
         eye_to_clip = attr.eye_to_clip,
         view = attr.cam_view,
     )
+
     for (block_idx, glyph_indices) in enumerate(text_blocks)
-        Cairo.save(ctx)
+        Cairo.save(ctx)  # Block save
+
         for glyph_idx in glyph_indices
             glyph_idx in valid_indices || continue
+
             glyph = glyphindices[glyph_idx]
             offset = marker_offset[glyph_idx]
             font = font_per_char[glyph_idx]
@@ -141,47 +144,48 @@ function draw_text(ctx, attr::NamedTuple)
             glyph_pos = positions[glyph_idx]
 
             # Not renderable by font (e.g. '\n')
-            # TODO, filter out \n in GlyphCollection, and render unrenderables as box
             glyph == 0 && continue
 
             cairoface = set_ft_font(ctx, font)
             old_matrix = get_font_matrix(ctx)
 
-            Cairo.save(ctx)
+            Cairo.save(ctx)  # Glyph save
             Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 
             # offsets and scale apply in markerspace
             gp3 = glyph_pos .+ size_model * offset
 
             if any(isnan, gp3)
-                Cairo.restore(ctx)
+                Cairo.restore(ctx)  # Glyph restore (matches glyph save above)
+                cairo_font_face_destroy(cairoface)
+                set_font_matrix(ctx, old_matrix)
                 continue
             end
 
-            glyphpos, mat, _ =  project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+            glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
 
-            Cairo.save(ctx)
+            Cairo.save(ctx)  # Glyph rendering save
             set_font_matrix(ctx, mat)
             show_glyph(ctx, glyph, glyphpos...)
-            Cairo.restore(ctx)
+            Cairo.restore(ctx)  # Glyph rendering restore
 
             if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
-                Cairo.save(ctx)
+                Cairo.save(ctx)  # Stroke save
                 Cairo.move_to(ctx, glyphpos...)
                 set_font_matrix(ctx, mat)
                 glyph_path(ctx, glyph, glyphpos...)
                 Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
                 Cairo.set_line_width(ctx, strokewidth)
                 Cairo.stroke(ctx)
-                Cairo.restore(ctx)
+                Cairo.restore(ctx)  # Stroke restore
             end
-            Cairo.restore(ctx)
 
+            Cairo.restore(ctx)  # Glyph restore (matches glyph save above)
             cairo_font_face_destroy(cairoface)
             set_font_matrix(ctx, old_matrix)
         end
 
-        Cairo.restore(ctx)
+        Cairo.restore(ctx)  # Block restore
     end
 end
 
