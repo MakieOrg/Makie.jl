@@ -1050,15 +1050,19 @@ function poll_updates(screen)
     Base.invokelatest() do
         with_context(screen.glscreen) do
             for plot in values(screen.cache2plot)
-                # poll object for updates
-                try
-                    plot.attributes[:gl_renderobject][]
-                catch e
-                    @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
-                    # Mark the output as resolved so we don't repeatedly pull in errors
-                    # TODO: Is there a better way to handle this? One that allows us to
-                    # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
-                    ComputePipeline.mark_resolved!(plot.attributes[:gl_renderobject])
+                # Skip updating invisible renderobjects
+                # This is basically `if is_visible || was_visible`, which makes
+                # sure the robj updates on state change. (i.e. hides and redisplays)
+                if plot.visible[] || plot.gl_renderobject.value[].visible
+                    try
+                        plot.attributes[:gl_renderobject][]
+                    catch e
+                        @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                        # Mark the output as resolved so we don't repeatedly pull in errors
+                        # TODO: Is there a better way to handle this? One that allows us to
+                        # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+                        ComputePipeline.mark_resolved!(plot.attributes[:gl_renderobject])
+                    end
                 end
             end
         end
