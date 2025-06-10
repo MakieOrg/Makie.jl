@@ -11,8 +11,11 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     MakieCore.documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
+    "Sets the linewidth of lines at the lower and upper limits of the band."
     strokewidth = 0
+    "Sets the color of lines at the lower and upper limits of the band. Defaults to `color` without transparency."
     strokecolor = automatic
+    "Sets the alpha of the stroke."
     strokealpha = 1.0
     shading = NoShading
 end
