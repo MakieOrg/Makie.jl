@@ -170,7 +170,7 @@ end
     μ = vec(mean(X, dims=1)) # mean
     f, ax, _ = lines(t, μ)              # plot mean line
     σ = vec(std(X, dims=1))  # stddev
-    band!(ax, t, μ + σ, μ - σ, strokewidth = 3, strokecolor = :red)   # plot stddev band
+    band!(ax, t, μ + σ, μ - σ, strokewidth = 3)   # plot stddev band
 
     # vertical version
     ax2, _ = lines(f[1, 2], μ, t)
