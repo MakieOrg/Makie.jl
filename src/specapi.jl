@@ -368,7 +368,6 @@ function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> s
             idx = key
         end
     end
-    @info "" to_compare f(list[idx], idx) minscore
     return idx
 end
 
