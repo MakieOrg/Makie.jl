@@ -314,33 +314,33 @@ function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores; ma
     return norm(distance_score.(a, b, Ref(scores); maxscore=Inf))
 end
 
-function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
+function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore=Inf)
     a === b && return 0.0
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
         hypot(
             # keyword arguments are cheap to change
-            distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
+            distance_score(a.kwargs, b.kwargs, scores_dict; maxscore=maxscore/0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
-            distance_score(a.plots, b.plots, scores_dict),
+            distance_score(a.plots, b.plots, scores_dict; maxscore),
         ) |> Float64
     end
 end
 
 function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
-                        scores_dict) where {GP<:GridLayoutPosition,BS<:BlockSpec}
+                        scores_dict; maxscore=Inf) where {GP<:GridLayoutPosition,BS<:BlockSpec}
     at === bt && return 0.0
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
     hypot(
         abs(anesting - bnesting) * 0.5,
-        distance_score(ap, bp, scores_dict) * 0.5,
-        distance_score(a, b, scores_dict)
+        distance_score(ap, bp, scores_dict; maxscore=maxscore/0.5) * 0.5,
+        distance_score(a, b, scores_dict; maxscore)
     ) |> Float64
 end
 
 function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridLayoutSpec},
-                        scores) where {GP<:GridLayoutPosition}
+                        scores; maxscore=Inf) where {GP<:GridLayoutPosition}
     at === bt && return 0.0
     anesting, ap, a = at
     bnesting, bp, b = bt
@@ -348,8 +348,8 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
         anested = map(ac -> (anesting + 1, ac[1], ac[2]), a.content)
         bnested = map(bc -> (anesting + 1, bc[1], bc[2]), b.content)
         return norm([abs(anesting - bnesting),
-                     distance_score(ap, bp, scores),
-                     distance_score(anested, bnested, scores)])
+                     distance_score(ap, bp, scores; maxscore),
+                     distance_score(anested, bnested, scores; maxscore)])
     end
 end
 
@@ -368,6 +368,7 @@ function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> s
             idx = key
         end
     end
+    @info "" to_compare f(list[idx], idx) minscore
     return idx
 end
 
