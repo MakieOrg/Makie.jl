@@ -35,7 +35,11 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
 end
 extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
 
-function extract_colormap(plot::Union{Arrows, StreamPlot})
+function extract_colormap(plot::Arrows2D)
+    return plot.calculated_shaftcolor[]
+end
+
+function extract_colormap(plot::Union{Arrows2D, Arrows3D, StreamPlot})
     return extract_colormap(plot.plots[1])
 end
 

@@ -83,7 +83,7 @@ using Observables: listeners, to_value, notify
 import InverseFunctions
 
 using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
-using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
+using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
 using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 using MakieCore: Key, @key_str, Automatic, automatic, @recipe
 using MakieCore: Pixel, px, Unit, Billboard
@@ -92,8 +92,8 @@ using MakieCore: not_implemented_for
 import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
                   get_attribute, plotsym, plotkey, attributes, used_attributes
 import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
+import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
+import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
 import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
 import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
@@ -227,6 +227,7 @@ include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
 include("stats/hexbin.jl")
+include("stats/dendrogram.jl")
 
 
 # Interactiveness
@@ -319,11 +320,16 @@ export Quaternion, Quaternionf, qrotation
 export RGBAf, RGBf, VecTypes, RealVector
 export Transformation
 export Sphere, Circle
-export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
-export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
+for kind in (:Vec, :Point, :Rect)
+    @eval export $kind
+    for n in (2, 3, 4), typesuffix in ("f", "d", "i", "")
+        kind === :Rect && n == 4 && continue
+        @eval export $(Symbol(kind, n, typesuffix))
+    end
+end
 export (..)
-export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
-export Plane3f # other planes aren't used much for Makie
+export Rectf, Recti, Rectd
+export Plane3f, Plane3d # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes
@@ -401,9 +407,11 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe,  Voxels,  Annotation
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe,  voxels,  annotation
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!, annotation!
+export Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
+export heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
+
+export arrows, arrows!
 
 export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
 export set_shading_algorithm!, set_directional_light!
