@@ -9,6 +9,7 @@
   - arrows are now based on `poly`, fixing overlap issues with transparent arrows
 - Export `Float64` geometry types `Point3d`, `Vec4d`, `Rect2d` etc. [#5040](https://github.com/MakieOrg/Makie.jl/pull/5040).
 - Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
+- Added unit support to `Slider` [#5037](https://github.com/MakieOrg/Makie.jl/pull/5037)
 
 ## [0.22.10] - 2025-06-03
 
