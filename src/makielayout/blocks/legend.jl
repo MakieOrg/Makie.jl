@@ -1100,7 +1100,7 @@ end
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
     foreach_plot(entry) do p
-        obs = ComputePipeline.get_observable!(p.visible)::Observable{Bool}
+        obs = ComputePipeline.get_observable!(p.visible)
         push!(visibilities, obs)
         return
     end
