@@ -433,3 +433,5 @@ function is_degenerate(M::Mat2f)
     # Bad cases:   nan   ||     0 vector     ||   linearly dependent
     return any(isnan, M) || l1 ≈ 0 || l2 ≈ 0 || dot(v1, v2)^2 ≈ l1 * l2
 end
+
+zero_normalize(v::AbstractVector{T}) where T = v ./ (norm(v) + eps(zero(T)))
