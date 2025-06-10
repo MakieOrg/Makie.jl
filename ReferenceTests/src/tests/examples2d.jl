@@ -174,7 +174,7 @@ end
 
     # vertical version
     ax2, _ = lines(f[1, 2], μ, t)
-    band!(ax2, t, μ + σ, μ - σ, direction = :y, strokewidth = 3, strokecolor = :red)   # plot stddev band
+    band!(ax2, t, μ + σ, μ - σ, direction = :y, color = (:red, 0.5), strokewidth = 3, strokecolor = µ)   # plot stddev band
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
