@@ -2088,7 +2088,7 @@ end
     )
     scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
 
-    component_widths = widths.(Rect2f.(p.plots[1].args[1][]))
+    component_widths = widths.(Rect2f.(p.plots[1].args[][1]))
     for i in 1:8
         scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
         @test component_widths[2i-1][1] ≈ p.shaftwidth[] * scale # shaft
@@ -2170,7 +2170,7 @@ end
     p.tailwidth = 6
     Makie.step!(st)
 
-    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
     p.align = :center
     p.shaftcolor = :blue
     p.tail = Rect2f(0,-0.5,1,1)
@@ -2199,7 +2199,7 @@ end
     p.tailradius = 0.2
     Makie.step!(st)
 
-    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
     p.align = :center
     p.shaftcolor = :blue
     Makie.step!(st)
@@ -2230,19 +2230,19 @@ end
 
 @reference_test "annotation pointcloud" begin
     f = Figure(size = (350, 350))
-    
+
     points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
-    
+
     fruit = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew",
               "Indian Fig", "Jackfruit", "Kiwi", "Lychee", "Mango", "Nectarine", "Orange"]
-    
+
     ax = Axis(f[1, 1])
-    
+
     scatter!(ax, points)
     annotation!(ax, points, text = fruit)
-    
+
     hidedecorations!(ax)
-    
+
     f
 end
 
