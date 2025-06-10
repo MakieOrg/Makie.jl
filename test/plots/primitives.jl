@@ -14,7 +14,7 @@ end
     directions = decompose(Point2f, Circle(Point2f(0), 1))
     points = decompose(Point2f, Circle(Point2f(0), 0.5))
     color = range(0, 1, length=length(directions))
-    fig, ax, pl = arrows(points, directions; color=color)
+    fig, ax, pl = arrows2d(points, directions; color=color)
     cbar = Colorbar(fig[1, 2], pl)
     @test cbar.limits[] == Vec2f(0, 1)
     pl.colorrange = (0.5, 0.6)

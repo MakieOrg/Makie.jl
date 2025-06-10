@@ -16,6 +16,22 @@ function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
     end
 end
 
+
+function extract_colormap(plot::Arrows2D)
+    return ColorMapping(
+        plot.color[], plot.color, plot.colormap, plot.scaled_colorrange,
+        get(plot, :colorscale, Observable(identity)),
+        get(plot, :alpha, Observable(1.0)),
+        get(plot, :highclip, Observable(automatic)),
+        get(plot, :lowclip, Observable(automatic)),
+        get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
+    )
+end
+
+function extract_colormap(plot::Union{Arrows3D, StreamPlot})
+    return extract_colormap(plot.plots[1])
+end
+
 function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
@@ -34,14 +50,6 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
     end
 end
 extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
-
-function extract_colormap(plot::Arrows2D)
-    return plot.calculated_shaftcolor[]
-end
-
-function extract_colormap(plot::Union{Arrows2D, Arrows3D, StreamPlot})
-    return extract_colormap(plot.plots[1])
-end
 
 function extract_colormap(plot::Plot{volumeslices})
     return extract_colormap(plot.plots[1])

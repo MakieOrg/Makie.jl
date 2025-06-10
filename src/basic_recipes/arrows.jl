@@ -333,7 +333,7 @@ function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset
     return
 end
 
-function plot!(plot::Arrows2D)
+function Makie.plot!(plot::Arrows2D)
     @extract plot (
         normalize, align, lengthscale,
         tail, taillength, tailwidth,
@@ -601,7 +601,7 @@ function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
     end
 end
 
-function plot!(plot::Arrows3D)
+function Makie.plot!(plot::Arrows3D)
     @extract plot (
         normalize, align, lengthscale, markerscale, quality,
         tail, taillength, tailradius,
