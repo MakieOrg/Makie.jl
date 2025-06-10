@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
 - Add dim conversion support for Axis3 [#4964](https://github.com/MakieOrg/Makie.jl/pull/4964).
 - Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
 - Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
