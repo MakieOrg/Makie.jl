@@ -1010,6 +1010,7 @@ function vsynced_renderloop(screen)
             continue
         end
         pollevents(screen, Makie.RegularRenderTick) # GLFW poll
+        poll_updates(screen)
         render_frame(screen)
         yield()
         GC.safepoint()
@@ -1024,6 +1025,7 @@ function fps_renderloop(screen::Screen)
             pollevents(screen, Makie.PausedRenderTick)
         else
             pollevents(screen, Makie.RegularRenderTick)
+            poll_updates(screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
@@ -1157,10 +1159,7 @@ function render_asap(f::Function, screen::Screen, N::Integer)
         t = time()
         pollevents(screen, Makie.RegularRenderTick)
         f()
-        for plot in values(screen.cache2plot)
-            # poll object for updates
-            plot.attributes[:gl_renderobject][]
-        end
+        poll_updates(screen)
         render_frame(screen)
         GLFW.SwapBuffers(to_native(screen))
         GC.safepoint()
