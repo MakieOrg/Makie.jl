@@ -7,6 +7,7 @@ using FixedPointNumbers
 using ColorTypes
 using ..GLMakie.GLFW
 using ..GLMakie: ShaderSource
+import ..GLMakie.Makie.ComputePipeline: update!
 using Printf
 using LinearAlgebra
 using Observables
