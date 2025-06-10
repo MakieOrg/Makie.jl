@@ -3,6 +3,32 @@
 ## [Unreleased]
 
 - Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+- Add dim conversion support for Axis3 [#4964](https://github.com/MakieOrg/Makie.jl/pull/4964).
+- Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
+- Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
+  - arrow size now considers all components of the arrow, not just the shaft
+  - arrows are now split into a tail, shaft and head, allowing for double-headed arrows
+  - align now works consistently for 2D and 3D arrows and now only accepts `:head, :center, :tail` or numbers
+  - arrows are now based on `poly`, fixing overlap issues with transparent arrows
+- Export `Float64` geometry types `Point3d`, `Vec4d`, `Rect2d` etc. [#5040](https://github.com/MakieOrg/Makie.jl/pull/5040).
+- Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
+- Added unit support to `Slider` [#5037](https://github.com/MakieOrg/Makie.jl/pull/5037)
+- Added `sources` section to all Project.tomls in the monorepo, so that `]dev GLMakie` will download the monorepo and automatically dev Makie and MakieCore. [#4967](https://github.com/MakieOrg/Makie.jl/pull/4967)
+
+## [0.22.10] - 2025-06-03
+
+- Quick fix for the just released `annotation`, `textcolor` now follows `color` by default [#5034](https://github.com/MakieOrg/Makie.jl/pull/5034).
+
+## [0.22.9] - 2025-06-03
+
+- Added conversion method for `annotation` to make it compatible with AlgebraOfGraphics [#5029](https://github.com/MakieOrg/Makie.jl/pull/5029).
+- Fixed contour labels text positions update bug [#5010](https://github.com/MakieOrg/Makie.jl/pull/5010).
+
+## [0.22.8] - 2025-06-03
+
+- Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
+- Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
+- Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
 
 ## [0.22.7] - 2025-05-23
 
@@ -52,6 +78,7 @@
 - Fixed issue with small scatter markers disappearing in CairoMakie [#4882](https://github.com/MakieOrg/Makie.jl/pull/4882)
 - Added current axis/figure defaults to `resize_to_layout!`, `x/yautolimits`, `hidex/y/decoration!` and `tight_x/y/ticklabel_spacing!` [#4519](https://github.com/MakieOrg/Makie.jl/pull/4519)
 - Switched to Julia 1.10 for GLMakie CI due to issues with OpenGL on ubuntu-latest. This may cause GLMakie compatibility with the Julia 1.6 to degrade in the future. [#4913](https://github.com/MakieOrg/Makie.jl/pull/4913)
+- Added support for logarithmic units [#4853](https://github.com/MakieOrg/Makie.jl/pull/4853)
 
 ## [0.22.2] - 2025-02-26
 
@@ -809,7 +836,10 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...HEAD
+[0.22.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.9...v0.22.10
+[0.22.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.8...v0.22.9
+[0.22.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...v0.22.8
 [0.22.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.6...v0.22.7
 [0.22.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.5...v0.22.6
 [0.22.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.4...v0.22.5
