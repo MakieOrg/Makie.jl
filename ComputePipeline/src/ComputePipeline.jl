@@ -254,7 +254,8 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
         val = attr.outputs[key]
         # The graph already does ignore_equal_values = true checks when data is
         # not updated in-place
-        result = Observable(_deepcopy(val[]))
+        initial_value = _deepcopy(val[]) # resolve first so eltype can work
+        result = Observable{eltype(val.value)}(initial_value)
         on(attr.onchange) do changeset
             # without deepcopy the content of the Observable can be identical to
             # the compute node (i.e. x = Int[]; obs = Observable(x); x === obs[])
