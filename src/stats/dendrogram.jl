@@ -159,7 +159,7 @@ function Makie.plot!(plot::Dendrogram)
 
     inputs = [:nodes, :origin, :rotation, :branch_shape, :branch_colors, :transform_func, :width, :depth]
 
-    map!(plot.attributes, inputs, [:line_points, :line_colors]) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
+    map!(plot.attributes, inputs, [:node_points, :line_points, :line_colors]) do nodes, _origin, rotation, branch_shape, branch_colors, tf, width, depth
 
         ps = Point2d[]
         origin = to_ndim(Vec2f, _origin, 0)
@@ -207,7 +207,10 @@ function Makie.plot!(plot::Dendrogram)
             points = resample_for_transform(tf, ps)[1]
         end
 
-        return (points, colors)
+        # TODO: or keep track of which points are node points in ps/points
+        node_points = [R * (scale .* (node.position - root_pos)) + origin for node in nodes]
+
+        return (node_points, points, colors)
     end
 
     attr = shared_attributes(plot, Lines)
@@ -298,6 +301,4 @@ Returns an Observable that tracks the positions of all dendrogram nodes. This
 includes translations from `origin`, `rotation` and scaling from `width` and
 `depth`. The N nodes given as arguments are the first N positions returned.
 """
-function dendrogram_node_positions(plot::Dendrogram)
-    return plot.line_points
-end
+dendrogram_node_positions(plot::Dendrogram) = plot.node_points
