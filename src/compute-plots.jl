@@ -602,9 +602,10 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
-        attr = attributes(first(user_args)) # TODO: Should this copy to keep user_args[1] unchanged?
+        # TODO: Should this copy to keep user_args[1] unchanged?
+        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
         merge!(attr, user_attributes)
-        return Plot{Func}(Base.tail(user_args), user_attributes)
+        return Plot{Func}(Base.tail(user_args), attr)
     end
 
     P = Plot{Func}
