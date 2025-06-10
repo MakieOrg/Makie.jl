@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.11.10"
+version = "0.12.0"
 
 [deps]
 Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
@@ -19,6 +19,9 @@ RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+[sources]
+Makie = {path = ".."}
+
 [compat]
 Bonito = "3.2.4, 4"
 Colors = "0.11, 0.12, 0.13"
@@ -27,7 +30,7 @@ FreeTypeAbstraction = "0.10"
 GeometryBasics = "0.5"
 Hyperscript = "0.0.3, 0.0.4, 0.0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.22.10"
+Makie = "=0.23.0"
 Observables = "0.5.1"
 PNGFiles = "0.3, 0.4"
 PrecompileTools = "1.0"
@@ -42,6 +45,3 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "MeshIO"]
-
-[sources]
-Makie = { path = ".." }
