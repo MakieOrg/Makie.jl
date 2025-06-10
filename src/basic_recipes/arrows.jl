@@ -333,39 +333,14 @@ function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset
     return
 end
 
-
-function calculated_attributes!(::Type{<: Arrows2D}, plot)
-    scene = parent_scene(plot)
-    if !isnothing(scene) && haskey(plot, :cycle)
-        add_cycle_attribute!(plot, scene)
-    end
-    for key in (:tailcolor, :shaftcolor, :tipcolor)
-        colors = map(default_automatic, plot, getindex(plot, key), plot.color)
-        colors = assemble_colors(colors[], colors, plot)
-        attributes(plot.attributes)[Symbol(:calculated_, key)] = colors
-    end
-end
-
 function plot!(plot::Arrows2D)
     @extract plot (
-        colormap, colorscale, normalize, align, lengthscale,
+        normalize, align, lengthscale,
         tail, taillength, tailwidth,
         shaft, shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tip, tiplength, tipwidth,
         transparency, visible, inspectable,
-        calculated_tailcolor, calculated_shaftcolor, calculated_tipcolor
     )
-
-    generic_attributes = copy(Attributes(plot))
-    foreach(k -> delete!(generic_attributes, k), [
-        :normalize, :align, :lengthscale, :markerscale, :argmode,
-        :tail, :taillength, :tailwidth,
-        :shaft, :shaftlength, :minshaftlength, :maxshaftlength, :shaftwidth,
-        :tip, :tiplength, :tipwidth,
-        :tailcolor, :shaftcolor, :tipcolor, :color,
-        :calculated_tailcolor, :calculated_shaftcolor, :calculated_tipcolor,
-        :space, :alpha, :strokemask, :markerspace
-    ])
 
     startpoints_directions = map(
         _process_arrow_arguments, plot,
@@ -441,11 +416,55 @@ function plot!(plot::Arrows2D)
         return meshes
     end
 
-    calc_colors = map(plot,
-            arrow_metrics, calculated_tailcolor, calculated_shaftcolor, calculated_tipcolor
-        ) do metrics, calc_cs...
+    # Similar to register_colormapping, but for each color
+    register_colormapping_without_color!(plot.attributes)
+    map!(to_color, plot.attributes, :nan_color, :converted_nan_color)
 
-        colors = to_color.(calc_cs)
+    for key in [:tailcolor, :shaftcolor, :tipcolor]
+        map!(plot.attributes, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
+                ) do maybe_color, default, colorscale, alpha
+
+            color = to_color(default_automatic(maybe_color, default))
+            return if color isa Union{Real, AbstractArray{<: Real}}
+                clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+            elseif color isa AbstractArray
+                add_alpha.(color, alpha)
+            else
+                add_alpha(color, alpha)
+            end
+        end
+    end
+
+    map!(plot.attributes, [:colorrange, :colorscale, :scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor],
+            :scaled_colorrange) do colorrange, colorscale, colors...
+
+        if !any(c -> c isa Union{Real, AbstractArray{<:Real}}, colors)
+            return nothing
+        elseif colorrange === automatic
+            final_colorrange = Vec2f(Inf, -Inf)
+            for color in colors
+                if (color isa Union{Real, AbstractArray{<:Real}}) && !isempty(color)
+                    cr = distinct_extrema_nan(color)
+                    final_colorrange = Vec2f(min(cr[1], final_colorrange[1]), max(cr[2], final_colorrange[2]))
+                end
+            end
+            return final_colorrange[1] < final_colorrange[2] ? final_colorrange : Vec2f(0, 10)
+        else
+            return Vec2f(apply_scale(colorscale, colorrange))
+        end
+    end
+
+    # Convert to actual RGBA colors
+    for key in [:tailcolor, :shaftcolor, :tipcolor]
+        add_computation!(plot.attributes, Val(:computed_color), Symbol(:scaled_, key),
+            output_name = Symbol(:calculated_, key), nan_color = :converted_nan_color)
+    end
+
+    # map to poly vertices
+    calc_colors = map(plot,
+            arrow_metrics, plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor
+        ) do metrics, colors...
+
         output = RGBA[]
         should_render = (
             taillength[] > 0 && tailwidth[] > 0,
@@ -465,9 +484,9 @@ function plot!(plot::Arrows2D)
     # mesh anti-aliasing in GLMakie gets pretty bad when the mesh becomes very
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
-    poly!(plot, meshes, space = plot.markerspace, color = calc_colors,
+    poly!(plot, plot.attributes, meshes, space = plot.markerspace, color = calc_colors,
         strokecolor = calc_colors, strokewidth = plot.strokemask;
-        transformation = :nothing, generic_attributes...)
+        transformation = :nothing, alpha = 1)
 
     return plot
 end

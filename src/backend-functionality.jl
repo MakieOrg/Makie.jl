@@ -229,10 +229,10 @@ function sample_color(
     end
 end
 
-function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_color)
+function add_computation!(attr, ::Val{:computed_color}, color_name = :scaled_color; output_name = :computed_color, nan_color = :nan_color)
     register_computation!(attr,
-            [color_name, :scaled_colorrange, :alpha_colormap, :nan_color, :lowclip_color, :highclip_color, :color_mapping_type],
-            [:computed_color]
+            [color_name, :scaled_colorrange, :alpha_colormap, nan_color, :lowclip_color, :highclip_color, :color_mapping_type],
+            [output_name]
         ) do (color, colorrange, colormap, nan_color, lowclip, highclip, cmapping_type), changed, cached
         # colormapping
         if color isa AbstractArray{<:Real} || color isa Real

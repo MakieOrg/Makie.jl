@@ -170,7 +170,7 @@ function add_alpha(color, alpha)
     return RGBAf(Colors.color(color), alpha * Colors.alpha(color))
 end
 
-function register_colormapping!(attr::ComputeGraph, colorname=:color)
+function register_colormapping_without_color!(attr::ComputeGraph)
     register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do (icm, a), changed, last
         # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
         # This only differs from alpha_colormap in that it doesn't resample PlotUtils.ColorGradient...
@@ -200,6 +200,10 @@ function register_colormapping!(attr::ComputeGraph, colorname=:color)
             end
         end
     end
+end
+
+function register_colormapping!(attr::ComputeGraph, colorname=:color)
+    register_colormapping_without_color!(attr)
 
     register_computation!(
             attr,
