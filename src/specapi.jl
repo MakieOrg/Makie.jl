@@ -255,16 +255,15 @@ end
 # pessimistic about what's updatable and to avoid issues with
 # Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
 # TODO when focussing better performance, this is one of the first things we want to try
-function distance_score(a::PlotSpec, b::PlotSpec, scores_dict)
+function distance_score(a::PlotSpec, b::PlotSpec, scores_dict; maxscore=Inf)
     (a.type !== b.type) && return 100.0
-    scores = Float64[
-        distance_score(a.args, b.args, scores_dict),
-        distance_score(a.kwargs, b.kwargs, scores_dict)
-    ]
-    return norm(scores)
+    return hypot(
+        distance_score(a.args, b.args, scores_dict; maxscore),
+        distance_score(a.kwargs, b.kwargs, scores_dict; maxscore)
+    ) |> Float64
 end
 
-function distance_score(a::Any, b::Any, scores)
+function distance_score(a::Any, b::Any, scores; maxscore=Inf)
     a === b && return 0.0
     a == b && return 0.0
     typeof(a) == typeof(b) && return 0.01
@@ -275,60 +274,73 @@ _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
 
-function distance_score(a::T, b::T, scores_dict) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
     a === b && return 0.0
     a == b && return 0.0
     return 0.1 # we can always update a vector of colors/reals/vecs
 end
 
-function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:Dict{Symbol,Any}}
     a === b && return 0.0
     isempty(a) && isempty(b) && return 0.0
     all_keys = collect(union(keys(a), keys(b)))
-    scores = map(all_keys) do key
+    score = 0.0
+    for key in all_keys
+        score > maxscore && break
         if _has_index(a, key) && _has_index(b, key)
-            return distance_score(a[key], b[key], scores_dict)
+            score = hypot(score, distance_score(a[key], b[key], scores_dict; maxscore))
         else
-            return 1.0
+            score = hypot(score, 1)
         end
     end
-    return norm(scores)
+    return score
 end
 
-function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores)
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:Union{Tuple,AbstractVector}}
     a === b && return 0.0
-    return norm(distance_score.(a, b, Ref(scores)))
+    isempty(a) && isempty(b) && return 0.0
+    common_keys = max(firstindex(a), firstindex(b)):min(lastindex(a), lastindex(b))
+    n_different_keys = abs(firstindex(a) - firstindex(b)) + abs(lastindex(a) - lastindex(b))
+    score = √n_different_keys
+    for key in common_keys
+        score > maxscore && break
+        score = hypot(score, distance_score(a[key], b[key], scores_dict; maxscore))
+    end
+    return score
 end
 
-function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
+function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores; maxscore=Inf)
+    a === b && return 0.0
+    return norm(distance_score.(a, b, Ref(scores); maxscore=Inf))
+end
+
+function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore=Inf)
     a === b && return 0.0
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
-        scores = Float64[
+        hypot(
             # keyword arguments are cheap to change
-            distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
+            distance_score(a.kwargs, b.kwargs, scores_dict; maxscore=maxscore/0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
-            distance_score(a.plots, b.plots, scores_dict),
-        ]
-        return norm(scores)
+            distance_score(a.plots, b.plots, scores_dict; maxscore),
+        ) |> Float64
     end
 end
 
 function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
-                        scores_dict) where {GP<:GridLayoutPosition,BS<:BlockSpec}
+                        scores_dict; maxscore=Inf) where {GP<:GridLayoutPosition,BS<:BlockSpec}
     at === bt && return 0.0
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
-    scores = Float64[
+    hypot(
         abs(anesting - bnesting) * 0.5,
-        distance_score(ap, bp, scores_dict) * 0.5,
-        distance_score(a, b, scores_dict)
-    ]
-    return norm(scores)
+        distance_score(ap, bp, scores_dict; maxscore=maxscore/0.5) * 0.5,
+        distance_score(a, b, scores_dict; maxscore)
+    ) |> Float64
 end
 
 function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridLayoutSpec},
-                        scores) where {GP<:GridLayoutPosition}
+                        scores; maxscore=Inf) where {GP<:GridLayoutPosition}
     at === bt && return 0.0
     anesting, ap, a = at
     bnesting, bp, b = bt
@@ -336,8 +348,8 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
         anested = map(ac -> (anesting + 1, ac[1], ac[2]), a.content)
         bnested = map(bc -> (anesting + 1, bc[1], bc[2]), b.content)
         return norm([abs(anesting - bnesting),
-                     distance_score(ap, bp, scores),
-                     distance_score(anested, bnested, scores)])
+                     distance_score(ap, bp, scores; maxscore),
+                     distance_score(anested, bnested, scores; maxscore)])
     end
 end
 
@@ -346,7 +358,7 @@ function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> s
     minscore = 2.0
     idx = -1
     for key in keys(list)
-        score = distance_score(to_compare, f(list[key], key), scores)
+        score = distance_score(to_compare, f(list[key], key), scores; maxscore=minscore)
         score = penalty(key, score) # apply custom penalty
         if score ≈ 0.0 # shortcuircit for exact matches
             return key
@@ -356,6 +368,7 @@ function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> s
             idx = key
         end
     end
+    @info "" to_compare f(list[idx], idx) minscore
     return idx
 end
 
