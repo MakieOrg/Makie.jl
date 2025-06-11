@@ -726,3 +726,7 @@ function boundingbox(plot::Arrows3D, space::Symbol)
     end
     return bb
 end
+
+# compat
+const Arrows{T} = Union{Arrows2D{T}, Arrows3D{T}}
+export Arrows
