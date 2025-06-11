@@ -254,7 +254,7 @@ function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
     h = hash((glyph, objectid(font)))
     return get!(atlas.glyph_indices, h) do
         # if the glyph is not in the atlas, insert it
-        return insert_glyph!(atlas, glyph, font)
+        return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
     end
 end
 
