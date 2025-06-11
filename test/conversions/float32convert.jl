@@ -84,15 +84,12 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         # TODO: test the rest
     end
 
-    @testset "patch_model() and apply_transform_and_f32_conversion()" begin
+    @testset "model_f32c and positions_transformed_f32c" begin
         function apply_random_transform!(plot, s, t, rotate = true)
-            v1 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
-            v2 = normalize(2.0 .* rand(Vec3{Float64}) .- 1.0)
-            rot = Makie.rotation_between(v1, v2)
             trans = t .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
             scale = s .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
 
-            rotate && Makie.rotate!(plot, rot)
+            rotate && Makie.rotate!(plot, Vec3f(0,0,1), 2pi * rand())
             # z is not considered in Axis, so keep its scaling at unit values
             # for easier debugging
             Makie.scale!(plot, scale..., 1)
@@ -102,7 +99,8 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         end
 
         function is_f32_safe(t)
-            return abs.(t.scale[]) .> 1e4 * eps(Float32) .* abs.(t.translation[])
+            scale = Vec3f(t.model[] * Vec4f(1,1,1,0))
+            return abs.(scale) .> 1e4 * eps(Float32) .* abs.(t.translation[])
         end
 
         # TODO: nothing conversions get treated as unit conversions atm, which
