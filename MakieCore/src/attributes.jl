@@ -94,6 +94,13 @@ function Base.setindex!(x::Attributes, value::NamedTuple, key::Symbol)
     return x[key] = Attributes(value)
 end
 
+function Base.setindex(x::Attributes, value::Observable, key::Symbol)
+    y = copy(x)
+    y[key] = value
+    return y
+end
+Base.setindex(x::Attributes, value, key::Symbol) = setindex(x, Observable(value), key)
+
 function Base.setproperty!(x::Union{Attributes, AbstractPlot}, key::Symbol, value)
     if hasfield(typeof(x), key)
         setfield!(x, key, value)
