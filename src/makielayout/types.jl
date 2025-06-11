@@ -951,7 +951,7 @@ end
         "Controls if the parent layout can adjust to this element's height"
         tellheight::Bool = true
         "The start value of the slider or the value that is closest in the slider range."
-        startvalue = 0
+        startvalue = automatic
         "The current value of the slider. Don't set this manually, use the function `set_close_to!`."
         value = 0
         "The width of the slider line"
@@ -1372,7 +1372,7 @@ function get_plots(le::LegendElement)
     if hasfield(typeof(le), :plots)
         return le.plots
     else
-        @warn """LegendElements should now keep track of the plots they respresent in a `plots` field.
+        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
         This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
         toggle visibility of the associated plots. The `plots` field is missing in: $(le)
         """

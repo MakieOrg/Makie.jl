@@ -2039,3 +2039,217 @@ end
     Makie.step!(st)
     st
 end
+
+@reference_test "Transformed 2D Arrows" begin
+    ps = [Point2f(i, 2^i) for i in 1:10]
+    vs = [Vec2f(1, 100) for _ in 1:10]
+    f,a,p = arrows2d(ps, vs, color = log10.(norm.(ps)), colormap = :RdBu)
+    arrows2d(f[1,2], ps, vs, color = log10.(norm.(ps)), axis = (yscale = log10,))
+
+    ps = coordinates(Rect2f(-1, -1, 2, 2))
+    a, p = arrows2d(f[2,1], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    translate!(p, 1, 1, 0)
+
+    a, p = arrows2d(f[2,2], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1)
+    Makie.rotate!(p, pi/4)
+
+    f
+end
+
+@reference_test "arrow min- and maxshaftlength scaling" begin
+    # widths should not scale while the tip ends in the gray area (between min
+    # and maxshaftlength)
+    scene = Scene(camera = campixel!, size = (500, 500))
+    min = 30; max = 60
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 40, color = :lightgray, linewidth = max-min)
+    heights = [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40
+    p = arrows2d!(scene,
+        50:50:400, zeros(8),
+        zeros(8), heights,
+        minshaftlength = min, maxshaftlength = max,
+        shaftwidth = 20, tipwidth = 40, tiplength = 40,
+        strokemask = 0
+    )
+    scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
+
+    component_widths = widths.(Rect2f.(p.plots[1].args[1][]))
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test component_widths[2i-1][1] ≈ p.shaftwidth[] * scale # shaft
+        @test component_widths[2i][1]   ≈ p.tipwidth[] * scale   # tip
+    end
+
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 290, color = :lightgray, linewidth = max-min)
+    p = arrows3d!(scene,
+        50:50:400, fill(250, 8),
+        zeros(8), heights,
+        minshaftlength = min, maxshaftlength = max,
+        shaftradius = 10, tipradius = 20, tiplength = 40,
+        markerscale = 1.0
+    )
+    sp = scatter!(scene, 50:50:400, fill(270, 8), marker = Rect, markersize = 20, color = :red)
+    translate!(sp, 0, 0, 100)
+
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test p.plots[2].markersize[][i][1] ≈ 2 * p.shaftradius[] * scale # shaft
+        @test p.plots[3].markersize[][i][1] ≈ 2 * p.tipradius[] * scale   # tip
+    end
+
+    scene
+end
+
+function arrow_align_test(plotfunc, tail, taillength)
+    function draw_row!(ax, y; kwargs...)
+        plotfunc(ax, (1, y), (0, 1), align = -0.5; kwargs...)
+        plotfunc(ax, (2, y), (0, 1), align = :tail; kwargs...)
+        plotfunc(ax, (3, y), (0, 1), align = :center; kwargs...)
+        plotfunc(ax, (4, y), (0, 1), align = :tip; kwargs...)
+        plotfunc(ax, (5, y), (0, 1), align = 1.5; kwargs...)
+    end
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    hlines!(ax, [1, 3, 5])
+
+    draw_row!(ax, 1)
+    draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1), alpha = 0.3)
+    draw_row!(ax, 5; tail = tail, taillength = taillength,
+        tailcolor = :orange, shaftcolor = RGBAf(0.1, 0.9, 0.2, 0.5), tipcolor = :red)
+
+    plotfunc(ax, (1, 7), (1, 8), argmode = :endpoints, lengthscale = 0.5, align = -0.5)
+    plotfunc(ax, (2, 7), (2, 8), argmode = :endpoints, lengthscale = 0.5, align = :tail)
+    plotfunc(ax, (3, 7), (3, 8), argmode = :endpoints, lengthscale = 0.5, align = :center)
+    plotfunc(ax, (4, 7), (4, 8), argmode = :endpoints, lengthscale = 0.5, align = :tip)
+    plotfunc(ax, (5, 7), (5, 8), argmode = :endpoints, lengthscale = 0.5, align = 1.5)
+    hlines!(ax, [7, 8], color = :red)
+
+    fig
+end
+
+@reference_test "arrows2d alignment" begin
+    arrow_align_test(arrows2d!, Point2f[(0, 0), (1, -0.5), (1, 0.5)], 8)
+end
+
+@reference_test "arrows3d alignment" begin
+    arrow_align_test(arrows3d!, Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0), 0.4)
+end
+
+@reference_test "arrows2d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows2d(ps, grad_func)
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 4
+    p.tipwidth = 8
+    p.shaftwidth = 1
+    p.taillength = 8
+    p.tailwidth = 6
+    Makie.step!(st)
+
+    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    p.tail = Rect2f(0,-0.5,1,1)
+    p.tailwidth = 8
+    Makie.step!(st)
+    st
+end
+
+# Adjusted from 2d version
+@reference_test "arrows3d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows3d(ps, grad_func)
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 0.2
+    p.tipradius = 0.08
+    p.shaftradius = 0.1
+    p.tail = Rect3f(-0.5,-0.5,0, 1,1,1)
+    p.taillength = 0.2
+    p.tailradius = 0.2
+    Makie.step!(st)
+
+    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    Makie.step!(st)
+    st
+end
+
+@reference_test "Dendrogram" begin
+    leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+    merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
+
+    f = Figure(size = (400, 700))
+    a = Axis(f[1, 1], aspect = DataAspect())
+    # TODO: vary more attributes to confirm that they work
+    #       (i.e. Lines attributes, colors w/o grouping, branch_style)
+    dendrogram!(leaves, merges; origin = Point2f( 0, -2), rotation = :down,  ungrouped_color = :gray, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,  groups = [1,1,2,3,3])
+    dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    color = :blue, branch_shape = :tree, linestyle = :dot, linewidth = 3)
+    p = dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  color = :black, width = 8, depth = 5)
+    textlabel!(map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), text = ["A", "A", "B", "C", "C"])
+    dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+
+    a = PolarAxis(f[2, 1])
+    rlims!(a, 0, 6)
+    p = dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
+    scatter!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), markersize = 20)
+    f
+end
+
+@reference_test "annotation pointcloud" begin
+    f = Figure(size = (350, 350))
+    
+    points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
+    
+    fruit = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew",
+              "Indian Fig", "Jackfruit", "Kiwi", "Lychee", "Mango", "Nectarine", "Orange"]
+    
+    ax = Axis(f[1, 1])
+    
+    scatter!(ax, points)
+    annotation!(ax, points, text = fruit)
+    
+    hidedecorations!(ax)
+    
+    f
+end
+
+@reference_test "annotation manual" begin
+    f, ax, _ = lines(0..10, sin, figure = (; size = (600, 450)))
+
+    annotation!(ax, 0, -100, pi/2, 1.0,
+        text = "Peak", style = Ann.Styles.LineArrow(), color = :red,
+        textcolor = :orange, align = (:right, :top))
+    annotation!(ax, 0, 100, 3pi/2, -1.0,
+        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold)
+    annotation!(ax, -100, 0, 5pi/2, 1.0,
+        text = "Second\nPeak",
+        style = Ann.Styles.LineArrow(head = Ann.Arrows.Head(),
+        tail = Ann.Arrows.Head(length = 20, color = :cyan, notch = 0.3)),
+        path = Ann.Paths.Arc(-0.3), justification = :right,
+    )
+    annotation!(ax, 7, -0.5, 3pi/2, -1.0,
+        text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
+        linewidth = 3, shrink = (0, 30))
+
+    f
+end
