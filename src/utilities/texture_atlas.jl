@@ -512,11 +512,10 @@ end
 rescale_marker(atlas, char, font, markersize) = markersize
 
 function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
-    dct = Dict{eltype(char), Vec2f}()
-    msf(char) =
-        get!(dct, char) do
-            marker_scale_factor(atlas, char, font)
-        end
+    dct = Dict{Char, Vec2f}()
+    msf(char) = get!(dct, char) do
+        marker_scale_factor(atlas, char, font)
+    end
     return _bcast(markersize) .* msf.(char)
 end
 
