@@ -769,11 +769,14 @@ function legendelements(plot::Mesh, legend)
 end
 
 function legendelements(plot::Surface, legend)
-    xyzs = map(args -> convert_arguments(Surface, args...), legend[:surfacedata])
-    mesh = map(xyzs -> surface2mesh(xyzs...), xyzs)
-    color = map(xyzs, legend.surfacevalues) do xyzs, vals
-        return vals === automatic ? xyzs[end] : vals
-    end
+    # TODO these where observables, but actually not any
+    # Which can be updated from the Legend/user
+    # So seems silly to convert them to observables
+    data = to_value(legend.surfacedata)
+    xyzs = convert_arguments(Surface, data...)
+    mesh = surface2mesh(xyzs...)
+    vals = legend.surfacevalues
+    color = vals === automatic ? xyzs[end] : vals
     LegendElement[MeshElement(
         plots = plot,
         mesh = mesh,
