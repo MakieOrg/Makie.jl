@@ -598,6 +598,8 @@ function shared_attributes(plot::Plot, target::Type{<:Plot})
     valid_attributes = attribute_names(target)
     existing_attributes = keys(plot.attributes.outputs)
     to_drop = setdiff(existing_attributes, valid_attributes)
+    # Model is always shared, but should not be shared and therefore dropped
+    push!(to_drop, :model)
     return drop_attributes(plot, to_drop)
 end
 
@@ -607,7 +609,7 @@ end
 
 function drop_attributes(plot::Plot, to_drop::Set{Symbol})
     attr = plot.attributes.outputs
-    return Attributes([k => ComputePipeline.get_observable!(v) for (k, v) in attr if !(k in to_drop)])
+    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
 end
 
 isscalar(x::StaticVector) = true
