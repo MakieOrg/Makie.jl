@@ -24,6 +24,7 @@ struct TextureAtlas
     # resolution and then downsample to the pix_per_glyph.
     downsample::Int32
     font_render_callback::Vector{Function}
+    glyph_indices::Dict{UInt64, Int}
 end
 
 Base.size(atlas::TextureAtlas) = size(atlas.data)
@@ -40,7 +41,8 @@ function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, dow
         pix_per_glyph,
         glyph_padding,
         downsample,
-        Function[]
+        Function[],
+        Dict{UInt64, Int}()
     )
 end
 
@@ -128,7 +130,7 @@ function load_texture_atlas(path::AbstractString)
         pix_per_glyph = read(io, Int32)
         glyph_padding = read(io, Int32)
         downsample = read(io, Int32)
-        return TextureAtlas(packer, Dict(mapping), data, uv_rectangles, pix_per_glyph, glyph_padding, downsample, Function[])
+        return TextureAtlas(packer, Dict(mapping), data, uv_rectangles, pix_per_glyph, glyph_padding, downsample, Function[], Dict{UInt64, Int}())
     end
 end
 
@@ -249,11 +251,19 @@ function find_font_for_char(glyph, font::NativeFont)
 end
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
-    return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
+    h = hash((glyph, objectid(font)))
+    return get!(atlas.glyph_indices, h) do
+        # if the glyph is not in the atlas, insert it
+        return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
+    end
 end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
-    return insert_glyph!(atlas, b)
+    h = fast_stable_hash(b)
+    return get!(atlas.glyph_indices, h) do
+        # if the glyph is not in the atlas, insert it
+        return insert_glyph!(atlas, b)
+    end
 end
 
 function glyph_uv_width!(atlas::TextureAtlas, glyph, font::NativeFont)
@@ -452,7 +462,14 @@ primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
 primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
-primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map(m-> primitive_uv_offset_width(atlas, m, font), x)
+function primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font)
+    dct = Dict{eltype(x), Vec4f}()
+    map(x) do b
+        get!(dct, b) do
+            primitive_uv_offset_width(atlas, b, font)
+        end
+    end
+end
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
@@ -493,14 +510,23 @@ function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, marke
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), pathmarker)
+    dct = Dict{eltype(pathmarker), Vec2f}()
+    msf(pathmarker) =
+        get!(dct, pathmarker) do
+            marker_scale_factor(atlas, pathmarker)
+        end
+    return _bcast(markersize) .* msf.(pathmarker)
 end
 
 # Rect / Circle dont need no rescaling
 rescale_marker(atlas, char, font, markersize) = markersize
 
 function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), char, font)
+    dct = Dict{Char, Vec2f}()
+    msf(char) = get!(dct, char) do
+        marker_scale_factor(atlas, char, font)
+    end
+    return _bcast(markersize) .* msf.(char)
 end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
