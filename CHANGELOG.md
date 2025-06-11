@@ -12,9 +12,9 @@
   - **Breaking** Outside of `minshaftlength .. maxshaftlength`, arrows now scale as a whole instead of just their shaft.
   - **Breaking** 3D Arrows now try to scale to a size appropriate to the given data. This can be turned off by setting `markerscale` to a static number.
   - Arrows are now split into a tail, shaft and head, allowing for double-headed arrows.
-  - 2D arrows are now based on `poly`, fixing overlap issues with transparent arrows.
+  - 2D arrows are now based on `poly`, fixing self-overlap issues with transparent arrows.
   - 3D arrow tips, or more generally the new `GeometryBasics.Cone` renders with much smoother shading.
-  - `argmode = :endpoint` has been added to allow constructing arrows with a start and end point instead of a start point and direction.
+  - `argmode = :endpoint` has been added to allow constructing arrows with a start and end point instead of a start point and a direction.
   - Arrows now work correctly with `colorrange`, `alpha`, etc.
   - Transforms (e.g. `log` or `rotate!(plot, ...)`) now only affect the start and end points of arrows, rather than its components. This fixes issues like incorrect tip rotation of 2D arrows and stretching/squishing of 3D arrows.
 - Add dim conversion support for Axis3 [#4964](https://github.com/MakieOrg/Makie.jl/pull/4964).
