@@ -7,7 +7,6 @@ function initialize_block!(l::Label)
 
     textpos = Observable(Point3f(0, 0, 0))
     word_wrap_width = Observable(-1f0)
-
     t = text!(
         topscene, textpos, text = l.text, fontsize = l.fontsize, font = l.font, color = l.color,
         visible = l.visible, align = (:center, :center), rotation = l.rotation, markerspace = :data,

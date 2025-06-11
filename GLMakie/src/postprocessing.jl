@@ -76,10 +76,8 @@ function OIT_postprocessor(framebuffer, shader_cache)
 end
 
 
-
-
 function ssao_postprocessor(framebuffer, shader_cache)
-    ShaderAbstractions.switch_context!(shader_cache.context)
+    gl_switch_context!(shader_cache.context)
     require_context(shader_cache.context) # for framebuffer, uniform textures
 
     # Add missing buffers
@@ -208,7 +206,7 @@ end
 Returns a PostProcessor that handles fxaa.
 """
 function fxaa_postprocessor(framebuffer, shader_cache)
-    ShaderAbstractions.switch_context!(shader_cache.context)
+    gl_switch_context!(shader_cache.context)
     require_context(shader_cache.context) # for framebuffer, uniform textures
 
     # Add missing buffers

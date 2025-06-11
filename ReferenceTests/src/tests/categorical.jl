@@ -1,12 +1,12 @@
 using Test
-
+using Makie.ComputePipeline: ResolveException
 using Makie: Categorical
 
 @reference_test "multi plot, error with non categorical" begin
     f, ax, p = scatter(1:4, Categorical(["a", "b", "c", "a"]), color=1:4, colormap=:viridis, markersize=20)
     scatter!(ax, 1:4, Categorical(["b", "x", "a", "c"]), color=1:4, colormap=:reds, markersize=20)
     # TODO, throw better error (not that easy since we need to check for sortability)
-    @test_throws MethodError scatter!(ax, 1:4, 1:4) # error
+    @test_throws ResolveException scatter!(ax, 1:4, 1:4) # error
     f
 end
 

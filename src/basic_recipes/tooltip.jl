@@ -4,7 +4,7 @@
 
 Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe Tooltip (position,) begin
+@recipe Tooltip begin
     # General
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
@@ -59,8 +59,7 @@ function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real)
 end
 
 function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
-    plot.attributes[:text]  = plot[2]
-    tooltip!(plot, plot[1]; plot.attributes...)
+    tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
     plot
 end
 

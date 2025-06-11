@@ -670,9 +670,10 @@ end
         end
 
         a, p = surface(f[i, j], xs, ys, zs, color = cs, nan_color = :red, axis = (show_axis = false,))
-        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
+        Makie.set_ambient_light!(a.scene, RGBf(0, 0, 0))
+        Makie.set_lights!(a.scene, [DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))])
         # plot a wireframe so we can see what's going on, and in which cells.
-        m = Makie.surface2mesh(to_value.(p.converted)...)
+        m = Makie.surface2mesh(xs, ys, zs)
         wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
 
@@ -683,9 +684,10 @@ end
         nan_color = ifelse(i == 1, :transparent, :red)
         a, p = surface(f[4, i], 1..11, 1..11, data, color = cs, colormap = [:white, :white];
             nan_color, axis = (show_axis = false,))
-        a.scene.lights = [AmbientLight(RGBf(0, 0, 0)), DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))]
-        m = Makie.surface2mesh(to_value.(p.converted)...)
-        wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
+        Makie.set_ambient_light!(a.scene, RGBf(0, 0, 0))
+        Makie.set_lights!(a.scene, [DirectionalLight(RGBf(2,2,2), Vec3f(0.5, -1, -0.8))])
+        m = Makie.surface2mesh(to_value.(p.converted[])...)
+        w = wireframe!(a, m, depth_shift = -1f-3, color = RGBf(0,0.9,0), linewidth = 1)
     end
 
     colgap!(f.layout, 0.0)
@@ -815,9 +817,9 @@ end
     fig = Figure()
 
     ax = Axis(fig[1, 1], xscale = log10, yscale = log10, backgroundcolor = :transparent)
+    Makie.update!(ax.scene.compute, shading = NoShading)
     xlims!(ax, 1, 10)
     ylims!(ax, 1, 10)
-    empty!(ax.scene.lights)
     hidedecorations!(ax)
 
     heatmap!(ax, 0..0.5, 0..0.5, [i+j for i in 1:10, j in 1:10], transformation = Transformation())
@@ -870,7 +872,6 @@ end
 
 @reference_test "per element uv_transform" begin
     cow = load(assetpath("cow.png"))
-
     N = 8; M = 10
     f = Figure(size = (500, 400))
     a, p = meshscatter(
@@ -1249,4 +1250,36 @@ end
     scatter!(scene, 0.5, 0, marker = 'L', markersize = 50, rotation = Quaternionf(0.3, 0.7, 0.5, 0.2))
     scatter!(scene, 0.5, -0.5, marker = 'L', markersize = (20, 100), rotation = Quaternionf(0.3, 0.7, 0.5, 0.2), color = :black)
     scene
+end
+
+@reference_test "transformed surface" begin
+    xs = [cos(phi) * cos(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+    ys = [sin(phi) * cos(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+    zs = [sin(theta) for phi in range(0, 2pi, length=21), theta in range(0, pi/2, length=11)]
+
+    f = Figure(size = (500, 500))
+    for i in 1:2
+        for j in 1:2
+            a = LScene(f[i, j], show_axis = false)
+            p1 = surface!(a, xs, ys, zs, colormap = [:white, :white])
+            p2 = meshscatter!(a, Point3f.(xs, ys, zs)[:], markersize = 0.03, color = :white, shading = NoShading)
+            if j == 2
+                for p in (p1, p2)
+                    Makie.rotate!(p, Vec3f(0,0,1), pi)
+                    scale!(p, Vec3f(1.2, 1.2, 0.6))
+                end
+            end
+        end
+    end
+    f.content[3].scene.transformation.transform_func[] = p -> -p
+    f.content[4].scene.transformation.transform_func[] = p -> -p
+
+    # make lighting more sensitive to normals
+    for a in f.content
+        update!(a.scene.plots[1], diffuse = Vec3f(0.5, -0.2, 1.5), specular = Vec3f(0.75, 1.25, -1))
+        set_ambient_light!(a, RGBf(0,0,0))
+        set_directional_light!(a, color = RGBf(1,1,1), direction = Vec3f(0,0,-1))
+    end
+
+    f
 end

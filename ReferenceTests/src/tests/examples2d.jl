@@ -715,7 +715,7 @@ end
         background_color = :white, text_align = (:left, :bottom)
     )
     textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
-    textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
+    p = textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
         background_color = :orange,
         text_rotation = pi/8,
         word_wrap_width = 8,
@@ -767,8 +767,8 @@ end
         draw_on_top = false
     )
 
-    p = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
-    translate!(p, 0, 0, 10)
+    mp = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
+    translate!(mp, 0, 0, 10)
 
     xlims!(ax, 0.8, 3.4)
     ylims!(ax, -1.6, 1.4)
@@ -2009,12 +2009,25 @@ end
     surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
     meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
         color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+        f
 
     st = Stepper(f)
     Makie.step!(st)
     translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
     Makie.step!(st)
     st
+end
+
+# Since the above is rather symmetric...
+@reference_test "Color Pattern orientation" begin
+    img = fill(RGBf(1,1,1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1,0,0)
+    img[12:16, 1:8] .= RGBf(0,1,0)
+    img[1:8, 12:16] .= RGBf(0,0,1)
+    f,a, p = mesh(Rect2f(0,0,1,1), color = Makie.ImagePattern(img), shading = false)
+    surface(f[1,2], -1..1, -1..1, zeros(4,4), color = Makie.ImagePattern(img), shading = false)
+    meshscatter(f[2, 1:2], [1,2,3], [1,1,1], marker = Rect2f(0,0,1,1), markersize = 0.5, color = Makie.ImagePattern(img), shading = false)
+    f
 end
 
 @reference_test "Color patterns in recipes" begin
@@ -2075,7 +2088,7 @@ end
     )
     scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
 
-    component_widths = widths.(Rect2f.(p.plots[1].args[1][]))
+    component_widths = widths.(Rect2f.(p.plots[1].args[][1]))
     for i in 1:8
         scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
         @test component_widths[2i-1][1] ≈ p.shaftwidth[] * scale # shaft
@@ -2157,7 +2170,7 @@ end
     p.tailwidth = 6
     Makie.step!(st)
 
-    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
     p.align = :center
     p.shaftcolor = :blue
     p.tail = Rect2f(0,-0.5,1,1)
@@ -2186,7 +2199,7 @@ end
     p.tailradius = 0.2
     Makie.step!(st)
 
-    p.args[2][] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
     p.align = :center
     p.shaftcolor = :blue
     Makie.step!(st)
@@ -2211,25 +2224,25 @@ end
     a = PolarAxis(f[2, 1])
     rlims!(a, 0, 6)
     p = dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
-    scatter!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), markersize = 20)
+    scatter!(a, Makie.dendrogram_node_positions(p), markersize = 20)
     f
 end
 
 @reference_test "annotation pointcloud" begin
     f = Figure(size = (350, 350))
-    
+
     points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
-    
+
     fruit = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew",
               "Indian Fig", "Jackfruit", "Kiwi", "Lychee", "Mango", "Nectarine", "Orange"]
-    
+
     ax = Axis(f[1, 1])
-    
+
     scatter!(ax, points)
     annotation!(ax, points, text = fruit)
-    
+
     hidedecorations!(ax)
-    
+
     f
 end
 

@@ -30,7 +30,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     isnothing(screen.scene) && return
 
     nw = to_native(screen)
-    ShaderAbstractions.switch_context!(nw)
+    gl_switch_context!(nw)
     GLAbstraction.require_context(nw)
 
     function sortby(x)
@@ -129,6 +129,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            elem[:px_per_unit] = ppu
             render(elem)
         end
     catch e

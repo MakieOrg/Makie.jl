@@ -59,9 +59,7 @@ spy(0..1, 0..1, x)
 end
 
 function data_limits(plot::Spy)
-    xmin, xmax = minmax(plot.x[]...)
-    ymin, ymax = minmax(plot.y[]...)
-    return Rect3d(Point3d(xmin, ymin, 0), Vec3d(xmax - xmin, ymax - ymin, 0))
+    return Rect3d(plot.data_limits[])
 end
 
 function boundingbox(p::Spy, space::Symbol=:data)
@@ -82,7 +80,7 @@ end
 needs_tight_limits(::Spy) = true
 
 function Makie.plot!(p::Spy)
-    rect = lift(p, p.x, p.y) do x, y
+    map!(p.attributes, [:x, :y], :data_limits) do x, y
         xe = minmax(x...)
         ye = minmax(y...)
         Rect2((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
@@ -90,43 +88,36 @@ function Makie.plot!(p::Spy)
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
-    markersize = lift(p, p.markersize, rect, p.z, p.marker_gap) do msize, rect, z, gap
-        if msize === automatic
-            (widths(rect) ./ Vec2(size(z))) .- gap
+    register_computation!(p, [:markersize, :data_limits, :z, :marker_gap], [:spy_markersize]) do (markersize, rect, z, gap), _, _
+        if markersize === automatic
+            return (Vec2f((widths(rect) ./ Vec2(size(z))) .- gap),)
         else
-            msize
+            (Vec2f(markersize),)
         end
     end
-    index_map = Observable(Dict{Int, Tuple{Int, Int}}(); ignore_equal_values=true)
-    p._index_map = index_map
-    xyc = lift(p, p.z; ignore_equal_values=true) do z
-        x, y, color = SparseArrays.findnz(z)
-        index_map[] = Dict(enumerate(zip(x, y)))
-        return (x, y, color, size(z))
-    end
-    xycol = lift(p, rect, xyc, markersize) do rect, (x, y, color, size_z), markersize
+
+    register_computation!(p, [:z, :spy_markersize, :color, :data_limits], [:positions, :spy_color, :index_map]) do (z, markersize, color, rect), _, _
+        x, y, scolor = SparseArrays.findnz(z)
+        index_map = Dict(enumerate(zip(x, y)))
         mhalf = markersize ./ 2
         points = map(x, y) do x, y
-            p01 = (Point2(x, y) .- 1) ./ Point2(size_z)
+            p01 = (Point2(x, y) .- 1) ./ Point2(size(z))
             return (p01 .* widths(rect)) .+ minimum(rect) .+ mhalf
         end
-        points, convert(Vector{Float32}, color)
-    end
-    color = map(p, p.color, xycol) do color, xycol
-        return isnothing(color) ? xycol[2] : color
+        _color = isnothing(color) ? convert(Vector{Float32}, scolor) : color
+        return (points, _color, index_map)
     end
 
     scatter!(
-        p,
-        lift(first, p, xycol);
-        color = color,
+        p, p.positions;
+        color = p.spy_color,
         markerspace = :data,
-        marker = p.marker, markersize = markersize,
+        marker = p.marker, markersize = p.spy_markersize,
         MakieCore.colormap_attributes(p)...,
         MakieCore.generic_plot_attributes(p)...
     )
 
-    lines!(p, rect,
+    lines!(p, p.data_limits;
         color = p.framecolor,
         linewidth = p.framesize,
         visible = p.framevisible,

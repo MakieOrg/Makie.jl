@@ -45,6 +45,7 @@ using OffsetArrays
 using Downloads
 using ShaderAbstractions
 using Dates
+using ComputePipeline
 
 import Unitful
 import UnicodeFun
@@ -145,6 +146,7 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
+include("compute-plots.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -166,7 +168,6 @@ include("camera/old_camera3d.jl")
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotation.jl")
-include("basic_recipes/annotations.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
 include("basic_recipes/axis.jl")
@@ -241,6 +242,7 @@ include("display.jl")
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
+include("backend-functionality.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
@@ -411,8 +413,11 @@ export heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly!
 
 export arrows, arrows!
 
+export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
+export set_shading_algorithm!, set_directional_light!
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export update!
 export Ann
 
 include("precompiles.jl")

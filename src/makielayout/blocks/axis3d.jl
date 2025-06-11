@@ -360,7 +360,7 @@ function getlimits(ax::Axis3, dim)
 
     filtered_plots = filter(ax.scene.plots) do p
         attr = p.attributes
-        to_value(get(attr, :visible, true)) &&
+        p.visible[] &&
         is_data_space(p) &&
         ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
         ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&

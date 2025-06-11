@@ -165,10 +165,11 @@ function UnitfulConversion(unit=automatic; units_in_label=true)
     return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
 end
 
-function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
+function update_extrema!(conversion::UnitfulConversion, id::String, vals)
     conversion.automatic_units || return
-    eltype, extrema = eltype_extrema(value_obs[])
-    conversion.extrema[value_obs.id] = if eltype <: Unitful.LogScaled
+
+    eltype, extrema = eltype_extrema(vals)
+    conversion.extrema[id] = if eltype <: Unitful.LogScaled
         extrema
     else
         promote(Quantity.(extrema)...)
@@ -192,6 +193,10 @@ function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     end
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
+        # TODO, somehow we need another notify to update the axis label
+        # The interactions in Lineaxis are too complex to debug this in a sane amount of time
+        # So, I think we should just revisit this once we move lineaxis to use compute graph
+        notify(conversion.unit)
     end
 end
 
@@ -223,18 +228,15 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function convert_dim_observable(conversion::UnitfulConversion, value_obs::Observable, deregister)
-    result = map(conversion.unit, value_obs; ignore_equal_values=true) do unit, values
-        if !isempty(values)
-            # try if conversion works, to through error if not!
-            # Is there a function for this to check in Unitful?
-            unit_convert(unit, values[1])
-        end
-        update_extrema!(conversion, value_obs)
-        return unit_convert(conversion.unit[], values)
+function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)
+    unit = conversion.unit[]
+    if !isempty(values)
+        # try if conversion works, to through error if not!
+        # Is there a function for this to check in Unitful?
+        unit_convert(unit, values[1])
     end
-    append!(deregister, result.inputs)
-    return result
+    update_extrema!(conversion, string(objectid(attr)), values)
+    return unit_convert(conversion.unit[], values)
 end
 
 function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)

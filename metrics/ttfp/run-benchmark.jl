@@ -14,7 +14,8 @@ using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
 using Statistics: median
 Package = ARGS[1]
 n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
-base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+# base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+base_branch = "master"
 
 # Package = "CairoMakie"
 # n_samples = 2
@@ -58,7 +59,7 @@ Pkg.activate(project1)
 if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
-pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
+pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package"), (; path="./ComputePipeline")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 Pkg.add([(; name="JSON")])

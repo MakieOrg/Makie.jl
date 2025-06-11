@@ -1,4 +1,5 @@
 # COV_EXCL_START
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 
@@ -9,7 +10,7 @@ using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
-
+using Makie.ComputePipeline: ResolveException
 using Makie: volume
 # COV_EXCL_STOP
 

@@ -362,10 +362,13 @@ function fast_bb(points, f)
 end
 
 
-function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, op, binsize::Observable)
-    canvas = Canvas(limits[]; resolution=(widths(pixel_area[])...,), op=op[])
-    canvas_obs = Observable(canvas)
-    onany(p, limits, pixel_area, binsize, op) do lims, pxarea, binsize, op
+function canvas_computation!(p::DataShader)
+    register_computation!(p, [:axis_limits, :pixel_area, :binsize, :agg], [:canvas]) do (lims, pxarea, binsize, op), _, last
+        if isnothing(last)
+            canvas = Canvas(lims; resolution=(widths(pxarea)...,), op=op)
+        else
+            canvas = last.canvas
+        end
         binsize isa Int || error("Bin factor $binsize is not an Int.")
         xsize, ysize = round.(Int, Makie.widths(pxarea) ./ binsize)
         has_changed = Base.resize!(canvas, (xsize, ysize))
@@ -375,43 +378,35 @@ function canvas_obs(p::DataShader, limits::Observable, pixel_area::Observable, o
             has_changed = true
             canvas.bounds = lims64
         end
-        if has_changed
-            canvas_obs[] = canvas
-        end
+        has_changed = has_changed || isnothing(last)
+        return has_changed ? (canvas,) : nothing
     end
-    return canvas_obs
 end
 
 function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     scene = parent_scene(p)
-    limits = projview_to_2d_limits(p)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(p, limits, viewport, p.agg, p.binsize)
-    p._boundingbox = lift(fast_bb, p.points, p.point_transform)
-    on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
-    p.canvas = canvas_with_aggregation
-    colorrange = Observable(Vec2f(0, 1))
-    on(p.colorrange; update=true) do crange
-        if !(crange isa Automatic)
-            colorrange[] = Vec2f(crange)
-        end
+    add_axis_limits!(p)
+    add_input!(p.attributes, :pixel_area, scene.viewport)
+    canvas_computation!(p)
+
+    register_computation!(p, [:points, :point_transform], [:data_limits]) do (points, f), _, _
+        return (fast_bb(points, f),)
     end
 
-    on_func(p, canvas, p.points, p.point_transform) do canvas, points, f
-        Aggregation.aggregate!(canvas, points; point_transform=f, method=p.method[])
-        canvas_with_aggregation[] = canvas
-        # If not automatic, it will get updated by the above on(p.colorrange)
-        if p.colorrange[] isa Automatic
-            colorrange[] = Vec2f(distinct_extrema_nan(canvas.data_extrema))
+    register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
+        Aggregation.aggregate!(canvas, points; point_transform=f, method=method)
+        if crange isa Automatic
+            cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
+        else
+            cr = Vec2f(crange)
         end
-        return
+        return (canvas, cr)
     end
-    p.raw_colorrange = colorrange
-    image!(p, canvas_with_aggregation, p.operation, p.local_operation;
+    image!(p, p.canvas_with_aggregation, p.operation, p.local_operation;
         interpolate=p.interpolate,
         MakieCore.generic_plot_attributes(p)...,
-        MakieCore.colormap_attributes(p)...)
+        MakieCore.colormap_attributes(p)...
+    )
     return p
 end
 
@@ -439,33 +434,30 @@ end
 
 function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}}}}})
     scene = parent_scene(p)
-    limits = projview_to_2d_limits(p)
-    viewport = lift(identity, p, scene.viewport; ignore_equal_values=true)
-    canvas = canvas_obs(p, limits, viewport, Observable(AggCount{Float32}()), p.binsize)
-    p._boundingbox = lift(p, p.points, p.point_transform) do cats, func
-        rects = map(points -> fast_bb(points, func), values(cats))
-        return reduce(union, rects)
+    add_axis_limits!(p)
+    add_input!(p.attributes, :pixel_area, scene.viewport)
+    canvas_computation!(p)
+    register_computation!(p, [:points, :point_transform], [:data_limits]) do (categories, f), _, _
+        rects = map(points -> fast_bb(points, f), values(categories))
+        return (reduce(union, rects),)
     end
     categories = p.points[]
-    canvases = Dict(k => Canvas(canvas[].bounds; resolution=canvas[].resolution, op=AggCount{Float32}())
+    canvas = p.canvas[]
+    canvases = Dict(k => Canvas(canvas.bounds; resolution=canvas.resolution, op=AggCount{Float32}())
                     for (k, v) in categories)
 
-    on_func = p.async[] ? onany_latest : onany
-    canvas_with_aggregation = Observable(canvas[]) # Canvas that only gets notified after get_aggregation happened
-    p.canvas = canvas_with_aggregation
-    toal_value = Observable(0f0)
-    on_func(p, canvas, p.points) do canvas, cats
+    register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
         aggregate_categories!(canvases, cats; method=p.method[])
-        toal_value[] = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
-        return
+        total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
+        return (canvases, total_value)
     end
     colors = Dict(k => Makie.wong_colors()[i] for (i, (k, v)) in enumerate(categories))
     p._categories = colors
-    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, toal_value)
+    op = lift(total -> (x -> log10(x + 1) / log10(total + 1)), p, p.total_value)
 
     for (k, canv) in canvases
         color = colors[k]
@@ -475,8 +467,8 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     return p
 end
 
-data_limits(p::DataShader) = p._boundingbox[]
-boundingbox(p::DataShader, space::Symbol = :data) = apply_transform_and_model(p, p._boundingbox[])
+data_limits(p::DataShader)::Rect3d = p.data_limits[]
+boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
 
 function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
     pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
@@ -505,14 +497,9 @@ end
 # transform, we just create the colorbar form the raw data.
 # TODO, should we merge the local/global op with colorscale?
 function extract_colormap(plot::DataShader)
-    color = lift(x -> x.aggbuffer, plot, plot.canvas)
-    return ColorMapping(
-       color[], color, plot.colormap, plot.raw_colorrange,
-        plot.colorscale,
-        plot.alpha,
-        plot.highclip,
-        plot.lowclip,
-        plot.nan_color)
+    color = lift(x -> x.pixelbuffer, plot, plot.canvas)
+    attributes = [:colormap, :raw_colorrange, :colorscale, :alpha, :highclip, :lowclip, :nan_color]
+    return ColorMapping(color[], color, map(k -> getindex(plot, k), attributes)...)
 end
 
 function xy_to_rect(x, y)
@@ -602,10 +589,7 @@ function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderCo
 end
 
 function data_limits(p::HeatmapShader)
-    x, y = p[1][], p[2][]
-    mini = Vec3f(x[1], y[1], 0)
-    widths = Vec3f(x[2] - x[1], y[2] - y[1], 0)
-    return Rect3f(mini, widths)
+    return Rect3d(p.data_limits[])
 end
 
 function boundingbox(p::HeatmapShader, space::Symbol=:data)
@@ -680,7 +664,7 @@ function Makie.plot!(p::HeatmapShader)
         # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
         # This works best with `ax.zoombutton = Keyboard.left_control`.
         # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
-        update_while_pressed = p.values[].update_while_button_pressed
+        update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
         if update_while_pressed || (no_mbutton && no_kbutton)
@@ -693,122 +677,65 @@ function Makie.plot!(p::HeatmapShader)
         return
     end
 
-    x, y = map(identity, p, p.x; ignore_equal_values=true), map(identity, p, p.y; ignore_equal_values=true)
-    max_resolution = lift(p, p.values, scene.viewport) do resampler, viewport
+    max_resolution = lift(p, scene.viewport) do viewport
+        resampler = p.image[]
         res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
         return max.(res, 512) # Not sure why, but viewport can become (1, 1)
     end
-    image = lift(x-> x.data, p, p.values)
-    image_area = lift(xy_to_rect, x, y; ignore_equal_values=true)
-    x_y_overview_image = lift(resample_image, p, x, y, image, max_resolution, image_area)
-    overview_image = lift(last, x_y_overview_image)
+    add_input!(p.attributes, :max_resolution, max_resolution)
 
-    colorrange = lift(p, p.colorrange, overview_image; ignore_equal_values=true) do crange, image
-        if eltype(image) <: Number
+    register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
+        return (xy_to_rect(x, y),)
+    end
+    register_computation!(p, [:image, :x, :y, :max_resolution, :data_limits], [:x_endpoints, :y_endpoints, :overview_image]) do (image, x, y, max_resolution, image_area), changed, last
+        return resample_image(x, y, image.data, max_resolution, image_area)
+    end
+    register_computation!(p, [:colorrange, :overview_image], [:computed_colorrange]) do (crange, img), changed, last
+        if eltype(img) <: Number
             if crange isa Automatic
-                return nan_extrema(image)
+                return (Vec2f(nan_extrema(img)),)
             else
-                return Vec2f(crange)
+                return (Vec2f(crange),)
             end
         else
-            return crange
+            return (automatic,) # Matrix{<:Colorant}
         end
     end
+    add_input!(p.attributes, :limits, limits_slow)
+    register_computation!(p, [:image, :x, :y, :max_resolution, :limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+        xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
+        if isnothing(xe_ye_oimg)
+            if isnothing(last) # first downsample
+                return (x, x, fill(0f0, 2, 2), false)
+            else
+                return (nothing, nothing, nothing, false) # simply dont update!
+            end
+        end
+        return (xe_ye_oimg..., true)
+    end
+
     gpa = MakieCore.generic_plot_attributes(p)
     cpa = MakieCore.colormap_attributes(p)
-    overview = overview_image
-    if !p.values[].lowres_background
-        # If we don't use the lowres background,
-        # We still display a background image, but with only the average of the image
-        # Leading to a background that blends relatively well with the high res image
-        overview = map(p, colorrange) do cr
-            Float32[mean(cr) for _ in 1:1, _ in 1:1]
-        end
-    end
+    # overview = overview_image
+    # if !p.image[].lowres_background
+    #     # If we don't use the lowres background,
+    #     # We still display a background image, but with only the average of the image
+    #     # Leading to a background that blends relatively well with the high res image
+    #     overview = map(p, colorrange) do cr
+    #         Float32[mean(cr) for _ in 1:1, _ in 1:1]
+    #     end
+    # end
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, x, y, overview; gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange)
+    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange)
     translate!(lp, 0, 0, -1)
 
-    first_downsample = resample_image(x[], y[], image[], max_resolution[], limits[])
-    # We hide the image when outside of the limits, but we also want to correctly forward, p.visible
-    visible = Observable(p.visible[]; ignore_equal_values=true)
-    on(p, p.visible) do v
-        visible[] = v
-        return
-    end
-    # if nothing, the image is currently not visible in the limits chosen
-    if isnothing(first_downsample)
-        visible[] = false
-        first_downsample = EndPoints{Float32}(0, 1), EndPoints{Float32}(0, 1), zeros(Float32, 2, 2)
-    end
-    # Make sure we don't trigger an event if the image/xy stays the same
-    args = map(arg -> lift(identity, p, arg; ignore_equal_values=true), (x, y, image, max_resolution))
-
-    CT = Tuple{typeof.(to_value.(args))..., typeof(limits_slow[])}
-
-    # To actually run the resampling on another thread, we need another channel:
-    # To make this threadsafe, the observable needs to be triggered from the current thread
-    # So we need another channel for the result (unbuffered, so `put!` blocks while the image is being updated)
-    image_to_obs = Channel{Union{Nothing, typeof(first_downsample)}}(0)
-    do_resample = Channel{CT}(Inf; spawn=true) do ch
-        for (x, y, image, res, limits) in ch
-            if isempty(ch) # only update if there is no newer image queued
-                resampled = resample_image(x, y, image, res, limits)
-                put!(image_to_obs, resampled)
-            end
-        end
-    end
-
-    onany(p, args..., limits_slow) do x, y, image, res, limits
-        # We remove any queued up resampling requests, since we only care about the latest one
-        # empty!(do_resample)
-        empty_channel!(do_resample)
-        # And then we put the newest:
-        put!(do_resample, (x, y, image, res, limits))
-        return
-    end
-
-    imgp = image!(
-        p, first_downsample...;
-        gpa..., cpa..., interpolate=p.interpolate, colorrange=colorrange, visible=visible,
+    image!(
+        p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
+        gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange, visible=p.l_visible,
     )
 
-    # We need to update the image from the same thread as the one that created it
-    # Which is why we need another task here:
-    task = @async for x_y_image in image_to_obs
-        # Image is nothing
-        if isnothing(x_y_image)
-            visible[] = false
-            continue
-        end
-        # if do_resample/ch is not empty, we already know that
-        # there is a newer image queued to be updated
-        # So we can skip this update
-        if isempty(do_resample) && isempty(image_to_obs)
-            x, y, image = x_y_image
-            if !p.values[].lowres_background
-                # hiding without a background looks really bad
-                if !visible[]
-                    visible[] = true
-                end
-            else
-                visible[] = false
-            end
-            if imgp[1][] != x
-                imgp[1] = x
-            end
-            if imgp[2][] != y
-                imgp[2] = y
-            end
-            imgp[3] = image
-            if !visible[]
-                visible[] = true
-            end
-        end
-    end
-    bind(image_to_obs, task)
     return p
 end
 

@@ -296,9 +296,9 @@ function set_palette!(plt, plotattributes)
     end
 end
 
-function plot_series_annotations!(plt, args, pt, plotattributes)
+function plot_series_text!(plt, args, pt, plotattributes)
 
-    sa = plotattributes[:series_annotations]
+    sa = plotattributes[:series_text]
 
     positions = Point2f.(plotattributes[:x], plotattributes[:y])
 
@@ -308,15 +308,15 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     fontsize = sa[3]
 
-    @debug("Series annotations say hi")
+    @debug("Series texts say hi")
 
-    annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    text!(plt, positions; text = strs, fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
-function plot_annotations!(plt, args, pt, plotattributes)
+function plot_text!(plt, args, pt, plotattributes)
 
-    sa = plotattributes[:annotations]
+    sa = plotattributes[:text]
 
     positions = Point2f.(plotattributes[:x], plotattributes[:y])
 
@@ -324,9 +324,9 @@ function plot_annotations!(plt, args, pt, plotattributes)
 
     fontsizes = Float32.(getindex.(sa, 4))
 
-    @debug("Annotations say hi")
+    @debug("Texts say hi")
 
-    annotations!(plt, strs, positions; fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    text!(plt, positions; text = strs, fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
@@ -379,13 +379,13 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     plot!(plt, pt, args...; ap_attrs...)
 
-    # handle fill and series annotations after, so they can overdraw
+    # handle fill and series text after, so they can overdraw
 
     !isnothing(get(plotattributes, :fill, nothing)) && plot_fill!(plt, args, pt, plotattributes)
 
-    haskey(plotattributes, :annotations) && plot_annotations!(plt, args, pt, plotattributes)
+    haskey(plotattributes, :text) && plot_text!(plt, args, pt, plotattributes)
 
-    !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
+    !isnothing(get(plotattributes, :series_text, nothing)) && plot_series_text!(plt, args, pt, plotattributes)
 
     return plt
 end

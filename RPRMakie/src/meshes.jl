@@ -63,7 +63,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     # Potentially per instance attributes
     !plot.visible[] && return nothing
     positions = to_value(plot[1])
-    m_mesh = convert_attribute(plot.marker[], key"marker"(), key"meshscatter"())
+    m_mesh = plot.marker[]
     marker = RPR.Shape(context, m_mesh)
     instances = [marker]
     n_instances = length(positions)
@@ -76,13 +76,12 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
         push!(instances, inst)
     end
 
-    color = plot.calculated_colors[]
-    if color isa AbstractVector{<:Union{Number,Colorant}} || color isa Makie.ColorMapping
-        c_converted = to_color(color)
+    color = Makie.compute_colors(plot)
+    if color isa AbstractVector{<:Union{Number,Colorant}}
         object_id = RPR.InputLookupMaterial(matsys)
         object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
         uv = object_id * Vec3f(0, 1 / (n_instances-1), 0)
-        tex = RPR.Texture(matsys, reverse(c_converted)'; uv=uv)
+        tex = RPR.Texture(matsys, reverse(color)'; uv=uv)
         material.color = tex
     elseif color isa Union{Colorant, AbstractMatrix{<:Colorant}}
         material.color = color

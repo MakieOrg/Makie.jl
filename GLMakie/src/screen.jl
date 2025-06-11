@@ -304,7 +304,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
-    ShaderAbstractions.switch_context!(window)
+    gl_switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
     fb = GLFramebuffer(window, initial_resolution)
     postprocessors = [
@@ -402,7 +402,7 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
     glw = screen.glscreen
 
     if screen.owns_glscreen
-        ShaderAbstractions.switch_context!(glw)
+        gl_switch_context!(glw)
         GLFW.SetWindowAttrib(glw, GLFW.FOCUS_ON_SHOW, config.focus_on_show)
         GLFW.SetWindowAttrib(glw, GLFW.DECORATED, config.decorated)
         GLFW.SetWindowTitle(glw, config.title)
@@ -542,7 +542,7 @@ Makie.@noconstprop function Screen(scene::Scene, config::ScreenConfig, ::Makie.I
 end
 
 function pollevents(screen::Screen, frame_state::Makie.TickState)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     GLFW.PollEvents()
     screen.render_tick[] = frame_state
     return
@@ -561,6 +561,7 @@ function add_scene!(screen::Screen, scene::Scene)
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
         screen.requires_update = true
+        # TODO: Does this consume?
         onany((args...) -> screen.requires_update = true,
               scene,
               scene.visible, scene.backgroundcolor, scene.clear,
@@ -572,7 +573,7 @@ function add_scene!(screen::Screen, scene::Scene)
 end
 
 function Makie.insertplots!(screen::Screen, scene::Scene)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
@@ -622,20 +623,27 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
-function destroy!(rob::RenderObject)
+function destroy!(rob::RenderObject, has_cached_camera = false)
+    # With camera caching these must not be cleaned up. If they do get cleared
+    # here, the cached Observable will continue to exist in camera and be used
+    # for future plots, but not be connected to the parent values.
+    # TODO, remove has_cached_camera + keep_alive
+    keep_alive = (:view, :projection, :projectionview, :resolution, :eyeposition, :lookat, :viewdirection, :upvector)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     with_context(rob.context) do
         # Get texture for texture atlas directly, to not trigger a new texture creation
         tex = get(atlas_texture_cache, (gl_texture_atlas(), rob.context), (nothing,))[1]
         for (k, v) in rob.uniforms
+            if has_cached_camera && in(k, keep_alive)
+                continue
+            end
+
             if v isa Observable
                 Observables.clear(v)
             elseif v isa GPUArray && v !== tex
                 # We usually don't share gpu data and it should be hard for users to share buffers..
                 # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
-
                 # TODO, refcounting, or leaving freeing to GC...
                 # GC can cause random context switches, so immediate free is necessary.
                 # I guess as long as we make it hard for users to share buffers directly, this should be fine!
@@ -647,31 +655,37 @@ function destroy!(rob::RenderObject)
         end
         GLAbstraction.free(rob.vertexarray)
     end
-    return
+    keep_alive_vals = [rob[k] for k in keep_alive if haskey(rob, k)]
+    for obs in rob.observables
+        if has_cached_camera && in(obs, keep_alive_vals)
+        else
+            Observables.clear(obs)
+        end
+    end
+    GLAbstraction.free(rob.vertexarray)
 end
 
 # Note: called from scene finalizer, must not error
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-
-    if !isempty(plot.plots)
-        # this plot consists of children, so we flatten it and delete the children instead
-        for cplot in Makie.collect_atomic_plots(plot)
-            delete!(screen, scene, cplot)
-        end
-    else
-        # I think we can double delete renderobjects, so this may be ok
-        # TODO, is it?
-        renderobject = get(screen.cache, objectid(plot), nothing)
-        if !isnothing(renderobject)
-            # Switch to context, so we can delete the renderobjects
-            with_context(screen.glscreen) do
-                destroy!(renderobject)
-                filter!(x-> x[3] !== renderobject, screen.renderlist)
-                delete!(screen.cache2plot, renderobject.id)
-            end
-        end
-        delete!(screen.cache, objectid(plot))
+    # this plot consists of children, so we flatten it and delete the children instead
+    for cplot in Makie.collect_atomic_plots(plot)
+        cplot === plot && continue # don't delete the plot itself
+        delete!(screen, scene, cplot)
     end
+    # I think we can double delete renderobjects, so this may be ok
+    # TODO, is it?
+    renderobject = get(screen.cache, objectid(plot), nothing)
+    if !isnothing(renderobject)
+        # Switch to context, so we can delete the renderobjects
+        with_context(screen.glscreen) do
+            destroy!(renderobject, plot isa Makie.ComputePlots)
+            filter!(x-> x[3] !== renderobject, screen.renderlist)
+            delete!(screen.cache2plot, renderobject.id)
+        end
+    end
+    delete!(screen.cache, objectid(plot))
+
+    haskey(plot, :gl_renderobject) && delete!(plot.attributes, :gl_renderobject)
     screen.requires_update = true
     return
 end
@@ -817,7 +831,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
-        ShaderAbstractions.switch_context!(window)
+        gl_switch_context!(window)
         winw, winh = window_size(screen, w, h)
         if window_size(window) != (winw, winh)
             GLFW.SetWindowSize(window, winw, winh)
@@ -857,7 +871,7 @@ heatmap(depth_color, colormap=:grays)
 ```
 """
 function depthbuffer(screen::Screen)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
     source = screen.framebuffer.buffers[:depth]
@@ -872,11 +886,12 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if !isopen(screen)
         error("Screen not open!")
     end
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    pollevents(screen, Makie.BackendTick)
+    pollevents(screen, Makie.BackendTick) # TODO: consider triggering update on pollevents since we generally poll before rendering
+    poll_updates(screen)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render
     if screen.config.visible
@@ -995,6 +1010,7 @@ function vsynced_renderloop(screen)
             continue
         end
         pollevents(screen, Makie.RegularRenderTick) # GLFW poll
+        poll_updates(screen)
         render_frame(screen)
         yield()
         GC.safepoint()
@@ -1009,6 +1025,7 @@ function fps_renderloop(screen::Screen)
             pollevents(screen, Makie.PausedRenderTick)
         else
             pollevents(screen, Makie.RegularRenderTick)
+            poll_updates(screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
@@ -1029,25 +1046,48 @@ end
 
 
 # const time_record = sizehint!(Float64[], 100_000)
+function poll_updates(screen)
+    Base.invokelatest() do
+        with_context(screen.glscreen) do
+            for plot in values(screen.cache2plot)
+                # Skip updating invisible renderobjects
+                # This is basically `if is_visible || was_visible`, which makes
+                # sure the robj updates on state change. (i.e. hides and redisplays)
+                if plot.visible[] || plot.gl_renderobject.value[].visible
+                    try
+                        plot.attributes[:gl_renderobject][]
+                    catch e
+                        @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                        # Mark the output as resolved so we don't repeatedly pull in errors
+                        # TODO: Is there a better way to handle this? One that allows us to
+                        # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+                        ComputePipeline.mark_resolved!(plot.attributes[:gl_renderobject])
+                    end
+                end
+            end
+        end
+    end
+    return
+end
 
 function on_demand_renderloop(screen::Screen)
     tick_state = Makie.UnknownTickState
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
-        pollevents(screen, tick_state) # GLFW poll
-
-        if !screen.config.pause_renderloop && requires_update(screen)
-            tick_state = Makie.RegularRenderTick
-            render_frame(screen)
-            GLFW.SwapBuffers(to_native(screen))
-        else
-            tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+        with_context(screen.glscreen) do
+            pollevents(screen, tick_state) # GLFW poll
+            poll_updates(screen)
+            if !screen.config.pause_renderloop && requires_update(screen)
+                tick_state = Makie.RegularRenderTick
+                render_frame(screen)
+                GLFW.SwapBuffers(to_native(screen))
+            else
+                tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+            end
+            GC.safepoint()
+            sleep(screen.timer)
         end
-
-        GC.safepoint()
-        sleep(screen.timer)
-
         # t = time_ns()
         # push!(time_record, 1e-9 * (t - last_time))
         # last_time = t
@@ -1059,7 +1099,7 @@ end
 function renderloop(screen)
     isopen(screen) || error("Screen most be open to run renderloop!")
     # Context needs to be current for GLFW.SwapInterval
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     try
         if screen.config.render_on_demand
             GLFW.SwapInterval(0)
@@ -1093,3 +1133,44 @@ function plot2robjs(screen::Screen, plot)
 end
 
 export plot2robjs
+
+"""
+    render_asap([callback::Function, ]screen, N)
+
+Renders N frames as fast as possible, calling `callback` before each frame if
+defined. This will stop the existing rendertask and disable vsync before
+running, and recreate the rendertask once it is done. This is meant for
+benchmarking.
+
+Hot loop for reference:
+```
+pollevents(screen, Makie.RegularRenderTick)
+callback()
+render_frame(screen)
+GLFW.SwapBuffers(to_native(screen))
+GC.safepoint()
+```
+"""
+render_asap(screen::Screen, N::Integer) = render_asap(() -> nothing, screen, N)
+function render_asap(f::Function, screen::Screen, N::Integer)
+    screen.close_after_renderloop = false
+    stop_renderloop!(screen)
+    yield()
+    GLFW.SwapInterval(0)
+    ts = Vector{Float64}(undef, N)
+
+    for i in 1:N
+        t = time()
+        pollevents(screen, Makie.RegularRenderTick)
+        f()
+        poll_updates(screen)
+        render_frame(screen)
+        GLFW.SwapBuffers(to_native(screen))
+        GC.safepoint()
+        ts[i] = time() - t
+    end
+
+    screen.close_after_renderloop = true
+    start_renderloop!(screen)
+    return ts
+end

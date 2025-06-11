@@ -63,8 +63,8 @@ end
         algorithm=:mip,  # maximum-intensity-projection
         colorrange=(0, 1),
     )
-    ax.scene[OldAxis].names.textcolor = :lightgray # let axis labels be seen on dark background
-    ax.scene[OldAxis].ticks.textcolor = :gray # let axis ticks be seen on dark background
+    ax.scene[OldAxis].names[].textcolor = :lightgray # let axis labels be seen on dark background
+    ax.scene[OldAxis].ticks[].textcolor = :gray # let axis ticks be seen on dark background
     ax.scene.backgroundcolor[] = to_color(:black)
     ax.scene.clear[] = true
 
@@ -301,10 +301,10 @@ end
     vx = -1:0.01:1
     vy = -1:0.01:1
 
-    f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
+    fff(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     scene = Scene(size=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    psurf = surface!(scene, vx, vy, f)
+    psurf = surface!(scene, vx, vy, fff)
     axis3d!(scene, frame = (linewidth = 2.0,))
     center!(scene)
     # One can also directly get the axis object and manipulate it
@@ -312,7 +312,7 @@ end
 
     # You can access nested attributes likes this:
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-    tstyle = axis[:names] # or just get the nested attributes and work directly with them
+    tstyle = axis[:names][] # or just get the nested attributes and work directly with them
 
     tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
@@ -328,7 +328,7 @@ end
         fontsize=20,
         font="helvetica"
     )
-    psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
+    psurf.arg3 = fff.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
 

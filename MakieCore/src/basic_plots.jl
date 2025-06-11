@@ -1,5 +1,5 @@
 default_theme(scene) = generic_plot_attributes!(Attributes())
-
+default_theme(::Type{<:Plot}) = Attributes()
 
 """
 ### Generic attributes
@@ -20,7 +20,6 @@ function generic_plot_attributes!(attr)
     attr[:visible] = true
     attr[:transparency] = false
     attr[:overdraw] = false
-    attr[:ssao] = false
     attr[:inspectable] = true
     attr[:depth_shift] = 0.0f0
     attr[:space] = :data
@@ -81,7 +80,7 @@ function mixin_generic_plot_attributes()
         behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the
         parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
         """
-        clip_planes = automatic
+        clip_planes = @inherit clip_planes automatic
     end
 end
 
@@ -149,7 +148,7 @@ end
 """
 ### 3D shading attributes
 
-- `shading = Makie.automatic` sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie.
+- `shading = true` controls if the plot object is shaded by the parent scenes lights or not. The lighting algorithm used is controlled by the scenes `shading` attribute.
 - `diffuse::Vec3f = Vec3f(1.0)` sets how strongly the red, green and blue channel react to diffuse (scattered) light.
 - `specular::Vec3f = Vec3f(0.4)` sets how strongly the object reflects light in the red, green and blue channels.
 - `shininess::Real = 32.0` sets how sharp the reflection is.
@@ -157,7 +156,7 @@ end
 - `ssao::Bool = false` adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
 """
 function shading_attributes!(attr)
-    attr[:shading] = automatic
+    attr[:shading] = true
     attr[:diffuse] = 1.0
     attr[:specular] = 0.2
     attr[:shininess] = 32.0f0
@@ -178,8 +177,8 @@ end
 
 function mixin_shading_attributes()
     @DocumentedAttributes begin
-        "Sets the lighting algorithm used. Options are `NoShading` (no lighting), `FastShading` (AmbientLight + PointLight) or `MultiLightShading` (Multiple lights, GLMakie only). Note that this does not affect RPRMakie."
-        shading = automatic
+        "Controls if the plot object is shaded by the parent scenes lights or not. The lighting algorithm used is controlled by the scenes `shading` attribute."
+        shading = true
         "Sets how strongly the red, green and blue channel react to diffuse (scattered) light."
         diffuse = 1.0
         "Sets how strongly the object reflects light in the red, green and blue channels."
@@ -265,7 +264,7 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
 """
 @recipe Heatmap (x::Union{EndPoints,RealVector, RealMatrix},
                  y::Union{EndPoints,RealVector, RealMatrix},
-                 values::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
+                 image::AbstractMatrix{<:Union{FloatType,Colorant}}) begin
     "Sets whether colors should be interpolated"
     interpolate = false
     mixin_generic_plot_attributes()...
@@ -326,6 +325,7 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
     color = nothing
+    matcap = nothing
     "Inverts the normals generated for the surface. This can be useful to illuminate the other side of the surface."
     invert_normals = false
     "[(W)GLMakie only] Specifies whether the surface matrix gets sampled with interpolation."
@@ -489,6 +489,10 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     font = @inherit markerfont
     "Optional distancefield used for e.g. font and bezier path rendering. Will get set automatically."
     distancefield = nothing
+    """
+    Sets the font to be used for character markers
+    """
+    font = "default"
     uv_offset_width = (0.0, 0.0, 0.0, 0.0)
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
@@ -516,6 +520,7 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 `markersize` is a scaling applied to the primitive passed as `marker`.
 """
 @recipe MeshScatter (positions,) begin
+    matcap = nothing
     "Sets the color of the marker."
     color = @inherit markercolor
     "Sets the scattered mesh."
@@ -538,6 +543,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     uv_transform = automatic
     "Controls whether the (complete) model matrix applies to the scattered mesh, rather than just the positions. (If this is false, `scale!`, `rotate!` and `translate!()` will not affect the scattered mesh.)"
     transform_marker = true
+    "When using textures as colors, controls whether the texture is sampled with linear interpolation (true) or nearest interpolation (false). (This requires the scattered mesh to include uv coordinates.)"
+    interpolate = true
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
@@ -679,7 +686,7 @@ Plots polygons, which are defined by
 `coordinates` (the coordinates of the vertices) and
 `connectivity` (the edges between the vertices).
 """
-@recipe Poly begin
+@recipe Poly (polygon,) begin
     """
     Sets the color of the poly. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`.
     A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates.
@@ -705,7 +712,7 @@ Plots polygons, which are defined by
     joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
 
-    shading = NoShading
+    shading = false
 
     cycle = [:color => :patchcolor]
     """

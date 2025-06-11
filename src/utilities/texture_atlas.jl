@@ -474,6 +474,104 @@ function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
 end
 
+function register_sdf_computations!(attr, atlas)
+    haskey(attr, :sdf_uv) && haskey(attr, :sdf_marker_shape) && return
+    register_computation!(attr, [:uv_offset_width, :marker, :font],
+                          [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+        new_mf = changed[2] || changed[3]
+        uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : nothing
+        marker = changed[1] ? marker_to_sdf_shape(m[]) : nothing
+        return (marker, uv)
+    end
+end
+
+function pack_images(images_marker)
+    images = map(el32convert, images_marker)
+    isempty(images) && error("Can not display empty vector of images as primitive")
+    sizes = map(size, images)
+    if !all(x -> x == sizes[1], sizes)
+        # create texture atlas
+        maxdims = sum(map(Vec{2, Int}, sizes))
+        rectangles = map(x->Rect2(0, 0, x...), sizes)
+        rpack = RectanglePacker(Rect2(0, 0, maxdims...))
+        uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
+        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
+        texture_atlas = fill(eltype(images[1])(RGBAf(0,0,0,0)), max_xy...)
+        for (area, img) in zip(uv_coordinates, images)
+            mini = minimum(area)
+            maxi = maximum(area)
+            texture_atlas[mini[1]+1:maxi[1], mini[2]+1:maxi[2]] = img # transfer to texture atlas
+        end
+        uvs = map(uv_coordinates) do uv
+            m = max_xy .- 1
+            mini = reverse((minimum(uv)) ./ m)
+            maxi = reverse((maximum(uv) .- 1) ./ m)
+            return Vec4f(mini..., maxi...)
+        end
+        images = texture_atlas
+    else
+        uvs = Vec4f(0,0,1,1)
+    end
+
+    return (uvs, images)
+end
+
+# For switching between ellipse method and faster circle method in shader
+is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
+is_all_equal_scale(::Real) = true
+is_all_equal_scale(::Vector{Real}) = true
+is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
+is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
+function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
+    # TODO, only calculate offset if needed
+    # [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
+    # [:sdf_marker_shape, :sdf_uv, :image]
+    if m isa Matrix{<: Colorant} # single image marker
+        return (Cint(RECTANGLE), Vec4f(0,0,1,1), m)
+    elseif m isa Vector{<: Matrix{<: Colorant}} # multiple image markers
+        # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
+        if changed[3]
+            uvs, images = pack_images(m)
+            return (Cint(RECTANGLE), uvs, images)
+        else
+            # if marker is up to date don't update
+            return (nothing, nothing, nothing)
+        end
+    else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
+        if changed[3] || changed.markersize
+            shape = Cint(marker_to_sdf_shape(m)) # expensive for arrays with abstract eltype?
+            if shape == 0 && !is_all_equal_scale(scale)
+                shape = Cint(5)
+            end
+        else
+            shape = last.sdf_marker_shape
+        end
+
+        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
+            uv = Makie.primitive_uv_offset_width(atlas, m, f)
+        elseif isnothing(last)
+            uv = Vec4f(0,0,1,1)
+        else
+            uv = nothing # Is this even worth it?
+        end
+        return (shape, uv, nothing)
+    end
+end
+
+function all_marker_computations!(attr, markername=:marker)
+    if !haskey(attr, :atlas)
+        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
+            (get_texture_atlas(),)
+        end
+    end
+    inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
+    outputs = [:sdf_marker_shape, :sdf_uv, :image]
+    register_computation!(
+        compute_marker_attributes, attr, inputs, outputs
+    )
+end
+
 _bcast(x::Vec) = Ref(x)
 _bcast(x) = x
 
@@ -618,13 +716,13 @@ function get_glyph_sdf(atlas::TextureAtlas, hash::UInt32)
     return atlas.data[x_range, y_range]
 end
 
-function glyph_boundingobx(::BezierPath, ::Makie.NativeFont)
+function glyph_boundingbox(::BezierPath, ::Makie.NativeFont)
     # TODO, implement this
     # Main blocker is the JS side since this is a bit more complicated.
     return (Vec2f(0), Vec2f(0))
 end
 
-function glyph_boundingobx(gi::UInt64, font::Makie.NativeFont)
+function glyph_boundingbox(gi::UInt64, font::Makie.NativeFont)
     extent = FreeTypeAbstraction.get_extent(font, gi)
     glyph_bb = FreeTypeAbstraction.boundingbox(extent)
     w, mini = widths(glyph_bb), minimum(glyph_bb)
@@ -666,7 +764,7 @@ function inner_get_glyph_data(atlas::TextureAtlas, tracker, marker::Union{Bezier
         push!(tracker, hash)
         uv = primitive_uv_offset_width(atlas, marker, ffont)
         sdf = get_glyph_sdf(atlas, hash)
-        w, mini = glyph_boundingobx(tex_marker, ffont)
+        w, mini = glyph_boundingbox(tex_marker, ffont)
         return (hash, [uv, sdf, w, mini])
     end
     return (hash, nothing)

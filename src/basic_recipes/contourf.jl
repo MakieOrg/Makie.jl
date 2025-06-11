@@ -8,7 +8,7 @@ and vertical grid positions `ys`.
 or matrices for curvilinear grids,
 similar to how [`surface`](@ref) works.
 """
-@recipe Contourf begin
+@recipe Contourf (x, y, z) begin
     """
     Can be either
     - an `Int` that produces n equally wide levels or bands
@@ -87,9 +87,6 @@ function calculate_contourf_polys!(
         xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
-    empty!(polys)
-    empty!(colors)
-
     # zs needs to be transposed to match rest of makie
     isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
@@ -118,9 +115,6 @@ function calculate_contourf_polys!(
         xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix,
         lows::AbstractVector, highs::AbstractVector
     )
-    empty!(polys)
-    empty!(colors)
-
     # A brief note on terminology:
     # - **rectilinear** space: the space of the z matrix, or the space of cartesian indices.
     #   This is usually `(1:n, 1:m)` for a `n x m` matrix.
@@ -164,35 +158,68 @@ function calculate_contourf_polys!(
     return (polys, colors)
 end
 
+
+function compute_contourf_colormap(levels, cmap, elow, ehigh)
+    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+    n = length(levels_scaled)
+
+    _cmap = to_colormap(cmap)
+
+    if elow === :auto && ehigh !== :auto
+        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    elseif ehigh === :auto && elow !== :auto
+        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    elseif ehigh === :auto && elow === :auto
+        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical=true)
+    else
+        cm = cgrad(_cmap, levels_scaled; categorical=true)
+    end
+    return cm
+end
+
+function compute_lowcolor(el, cmap)
+    if isnothing(el)
+        return RGBAf(0, 0, 0, 0)
+    elseif el === automatic || el === :auto
+        return RGBAf(to_colormap(cmap)[begin])
+    else
+        return to_color(el)::RGBAf
+    end
+end
+
+function compute_highcolor(eh, cmap)
+    if isnothing(eh)
+        return RGBAf(0, 0, 0, 0)
+    elseif eh === automatic || eh === :auto
+        return RGBAf(to_colormap(cmap)[end])
+    else
+        return to_color(eh)::RGBAf
+    end
+end
+
+
+function register_contourf_computations!(graph, argname)
+    map!(graph, [argname, :levels, :mode], :computed_levels) do zs, levels, mode
+        return _get_isoband_levels(Val(mode), levels, vec(zs))
+    end
+
+    map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
+    map!(compute_contourf_colormap, graph, [:computed_levels, :colormap, :extendlow, :extendhigh], :computed_colormap)
+    map!(compute_lowcolor, graph, [:extendlow, :colormap], :computed_lowcolor)
+    map!(compute_highcolor, graph, [:extendhigh, :colormap], :computed_highcolor)
+
+    return
+end
+
 function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
-    xs, ys, zs = c[1:3]
+    graph = c.attributes
 
-    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
-        _get_isoband_levels(Val(mode), levels, vec(zs))
-    end
+    register_contourf_computations!(graph, :z)
 
-    colorrange = lift(c, c._computed_levels) do levels
-        minimum(levels), maximum(levels)
-    end
-    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
-    c.attributes[:_computed_colormap] = computed_colormap
-
-    lowcolor = Observable{RGBAf}()
-    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
-    c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, c.extendlow)
-
-    highcolor = Observable{RGBAf}()
-    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
-    c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, c.extendhigh)
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
-
-    polys = Observable(PolyType[])
-    colors = Observable(Float64[])
-
-    function calculate_polys(xs, ys, zs, levels, is_extended_low, is_extended_high)
+    function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         levels = copy(levels)
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
@@ -200,24 +227,34 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         lows = levels[1:end-1]
         highs = levels[2:end]
 
-        calculate_contourf_polys!(polys[], colors[], xs, ys, zs, lows, highs)
-
-        notify(polys)
+        calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
+        return
     end
 
-    onany(calculate_polys, c, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
-    # onany doesn't get called without a push, so we call
-    # it on a first run!
-    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+    register_computation!(graph,
+            [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
+            [:polys, :computed_colors]
+        ) do (xs, ys, zs, levels, _low, _high), changed, cached
+        is_extended_low = !isnothing(_low)
+        is_extended_high = !isnothing(_high)
+        if isnothing(cached)
+            polys = Polygon{2, Float32}[]
+            colors = Float64[]
+        else
+            polys, colors = empty!.(values(cached))
+        end
+        calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+        return (polys, colors)
+    end
 
     poly!(c,
-        polys,
-        colormap = c._computed_colormap,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
+        c.polys,
+        colormap = c.computed_colormap,
+        colorrange = c.computed_colorrange,
+        highclip = c.computed_highcolor,
+        lowclip = c.computed_lowcolor,
         nan_color = c.nan_color,
-        color = colors,
+        color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         shading = NoShading,

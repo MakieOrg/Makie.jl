@@ -45,6 +45,7 @@ It is most commonly used as part of the `boxplot`.
     midlinewidth= @inherit linewidth
     inspectable =  @inherit inspectable
     cycle = [:color => :patchcolor]
+    visible = true
 end
 
 function Makie.plot!(plot::CrossBar)
@@ -107,7 +108,8 @@ function Makie.plot!(plot::CrossBar)
         colorscale=plot.colorscale,
         strokecolor=plot.strokecolor,
         strokewidth=plot.strokewidth,
-        inspectable = plot[:inspectable]
+        inspectable = plot[:inspectable],
+        visible = plot.visible
     )
     linesegments!(
         plot,

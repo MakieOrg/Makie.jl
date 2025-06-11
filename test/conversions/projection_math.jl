@@ -1,5 +1,20 @@
 using Makie
 
+@testset "Camera space_to_space matrices" begin
+    # Sanity check - these should all be mat * inv
+    f,a,p = scatter(rand(Point2f, 10));
+    Makie.update_state_before_display!(f)
+    cam = a.scene.compute
+    spaces = [:world, :pixel, :clip, :relative, :eye]
+    for i in 1:5, j in i:5
+        a = spaces[i]; b = spaces[j]
+        @testset ":$a <-> :$b" begin
+            @test cam[Symbol(a, :_to_, b)][] * cam[Symbol(b, :_to_, a)][] ≈ Makie.Mat4d(I)
+            @test cam[Symbol(b, :_to_, a)][] * cam[Symbol(a, :_to_, b)][] ≈ Makie.Mat4d(I)
+        end
+    end
+end
+
 @testset "Projection math" begin
     @testset "Rotation matrix" begin
         @test eltype(Makie.rotationmatrix_x(1)) == Float64

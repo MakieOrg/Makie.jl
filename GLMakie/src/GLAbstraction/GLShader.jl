@@ -150,7 +150,7 @@ function get_shader!(cache::ShaderCache, src::ShaderSource, template_replacement
     shader_dict = cache.shader_cache[src.name]
     return get!(shader_dict, template_replacement) do
         templated_source = mustache_replace(template_replacement, src.source)
-        ShaderAbstractions.switch_context!(cache.context)
+        gl_switch_context!(cache.context)
         return compile_shader(cache.context, src, templated_source)
     end::Shader
 end
@@ -234,7 +234,7 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
             tr = Dict(zip(template_keys[i], replacements[i]))
             shaders[i] = get_shader!(cache, shader_source, tr)
         end
-        ShaderAbstractions.switch_context!(cache.context)
+        gl_switch_context!(cache.context)
         return compile_program(shaders, fragdatalocation)
     end
 end

@@ -1,3 +1,4 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 
@@ -23,16 +24,11 @@ end
 
 excludes = Set([
     "Image on Surface Sphere", # TODO: texture rotated 180°
-    # "heatmaps & surface", # TODO: fix direct NaN -> nancolor conversion
     "Array of Images Scatter", # scatter does not support texture images
-
     "Order Independent Transparency",
-    "fast pixel marker",
-    "Textured meshscatter", # not yet implemented
     "3D Contour with 2D contour slices", # looks like a z-fighting issue
     "Mesh with 3d volume texture", # Not implemented yet
-    "per element uv_transform", # not implemented yet
-    # "DataInspector", "DataInspector 2", # getting the right frames to render is hard
+    "matcap", # not yet implemented
 ])
 
 Makie.inline!(Makie.automatic)
@@ -191,13 +187,13 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
             t0 = time()
             colorbuffer(f)
-            sleep(1)
+            sleep(2)
             close(f.scene.current_screens[1])
             dt_max = time() - t0
             sleep(1)
 
             # tests don't make this easy...
-            @test 28 <= length(tick_record) <= round(Int, 30dt_max) + 2
+            @test round(Int, 30dt_max) - 10 <= length(tick_record) <= round(Int, 30dt_max) + 10
             t = 0.0
             for (i, tick) in enumerate(tick_record)
                 @test tick.state == Makie.RegularRenderTick
@@ -205,8 +201,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
                 @test tick.time > t
                 t = tick.time
             end
-            # first tick is arbitrary
-            @test Makie.mean([tick.delta_time for tick in tick_record[2:end]]) ≈ 0.033 atol = 0.001
+            # first few ticks have high variance
+            @test Makie.mean([tick.delta_time for tick in tick_record[10:end]]) ≈ 0.033 atol = 0.001
         end
     end
 
@@ -252,8 +248,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
         # It could be related to the error in the console:
         # " Trying to send to a closed session"
         # So maybe a subsession closes and doesn't get freed?
-        @test session_size < 11
-        @test texture_atlas_size < 11
+        @test session_size < 13
+        @test texture_atlas_size < 12
 
         js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")

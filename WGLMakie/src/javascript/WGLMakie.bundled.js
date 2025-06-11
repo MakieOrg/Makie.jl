@@ -21407,6 +21407,39 @@ function getErrorMessage(version) {
     element.innerHTML = message;
     return element;
 }
+function uv_to_pixel_bounds(uv, tex_width, tex_height) {
+    const tex_size = new T(tex_width, tex_height);
+    const uv_left_bottom = new T(uv.x, uv.y);
+    const uv_right_top = new T(uv.z, uv.w);
+    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).floor();
+    const px_right_top = uv_right_top.clone().multiply(tex_size).ceil();
+    const wx = Math.abs(px_right_top.x - px_left_bottom.x);
+    const wy = Math.abs(px_right_top.y - px_left_bottom.y);
+    return [
+        px_left_bottom,
+        new T(wx, wy)
+    ];
+}
+function is_three_fixed_array(value) {
+    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
+}
+function to_three_vector(data) {
+    if (data.length == 2) {
+        return new mod.Vector2().fromArray(data);
+    }
+    if (data.length == 3) {
+        return new mod.Vector3().fromArray(data);
+    }
+    if (data.length == 4) {
+        return new mod.Vector4().fromArray(data);
+    }
+    if (data.length == 16) {
+        const mat = new mod.Matrix4();
+        mat.fromArray(data);
+        return mat;
+    }
+    return data;
+}
 function typedarray_to_vectype(typedArray, ndim) {
     if (typedArray instanceof Float32Array) {
         if (ndim === 1) {
@@ -21438,25 +21471,25 @@ function attribute_type(attribute) {
     }
 }
 function uniform_type(obj) {
-    if (obj instanceof THREE.Uniform) {
+    if (obj instanceof mod.Uniform) {
         return uniform_type(obj.value);
     } else if (typeof obj === "number") {
         return "float";
     } else if (typeof obj === "boolean") {
         return "bool";
-    } else if (obj instanceof THREE.Vector2) {
+    } else if (obj instanceof mod.Vector2) {
         return "vec2";
-    } else if (obj instanceof THREE.Vector3) {
+    } else if (obj instanceof mod.Vector3) {
         return "vec3";
-    } else if (obj instanceof THREE.Vector4) {
+    } else if (obj instanceof mod.Vector4) {
         return "vec4";
-    } else if (obj instanceof THREE.Color) {
+    } else if (obj instanceof mod.Color) {
         return "vec4";
-    } else if (obj instanceof THREE.Matrix3) {
+    } else if (obj instanceof mod.Matrix3) {
         return "mat3";
-    } else if (obj instanceof THREE.Matrix4) {
+    } else if (obj instanceof mod.Matrix4) {
         return "mat4";
-    } else if (obj instanceof THREE.Texture) {
+    } else if (obj instanceof mod.Texture) {
         return "sampler2D";
     } else {
         return "invalid";
@@ -21479,6 +21512,333 @@ function attributes_to_type_declaration(attributes_dict) {
         result += `in ${type} ${name};\n`;
     }
     return result;
+}
+function update_uniform(uniform, new_value) {
+    if (uniform.value.isTexture) {
+        const im_data = uniform.value.image;
+        const [size, tex_data] = new_value;
+        if (tex_data.length == im_data.data.length) {
+            im_data.data.set(tex_data);
+        } else {
+            const old_texture = uniform.value;
+            uniform.value = re_create_texture(old_texture, tex_data, size);
+            old_texture.dispose();
+        }
+        uniform.value.needsUpdate = true;
+    } else {
+        if (is_three_fixed_array(uniform.value)) {
+            uniform.value.fromArray(new_value);
+        } else {
+            uniform.value = new_value;
+        }
+    }
+}
+function re_create_buffer(buffer, is_segments) {
+    if (buffer instanceof mod.InterleavedBufferAttribute) {
+        return new mod.InterleavedBufferAttribute(buffer.data, buffer.itemSize, buffer.offset);
+    }
+    let { new_data  } = buffer;
+    if (!new_data) {
+        new_data = buffer.array;
+    }
+    let new_buffer;
+    if (buffer instanceof mod.InstancedInterleavedBuffer) {
+        new_buffer = new mod.InstancedInterleavedBuffer(new_data, buffer.stride, buffer.meshPerAttribute);
+        new_buffer.count = Math.max(0, is_segments ? Math.floor(new_buffer.count - 1) : new_buffer.count - 3);
+    } else if (buffer instanceof mod.InstancedBufferAttribute) {
+        new_buffer = new mod.InstancedBufferAttribute(new_data, buffer.itemSize, buffer.normalized, buffer.meshPerAttribute);
+    } else if (buffer instanceof mod.BufferAttribute) {
+        new_buffer = new mod.BufferAttribute(new_data, buffer.itemSize, buffer.normalized);
+    } else {
+        throw new Error("Unsupported buffer type. Must be THREE.BufferAttribute, THREE.InstancedBufferAttribute, or THREE.InstancedInterleavedBuffer.");
+    }
+    if (buffer.usage) {
+        new_buffer.usage = buffer.usage;
+    }
+    if (buffer.updateRange) {
+        new_buffer.updateRange = {
+            offset: buffer.updateRange.offset,
+            count: buffer.updateRange.count
+        };
+    }
+    return new_buffer;
+}
+function re_create_geometry(geometry, is_segments) {
+    let new_geometry;
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        new_geometry = new mod.InstancedBufferGeometry();
+    } else {
+        new_geometry = new mod.BufferGeometry();
+    }
+    new_geometry.boundingSphere = new mod.Sphere();
+    new_geometry.boundingSphere.radius = 10000000000000;
+    new_geometry.frustumCulled = false;
+    const interleaved_attributes = new Map();
+    let instance_count = geometry.instanceCount;
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        let new_attribute;
+        if (attribute.isInterleavedBufferAttribute) {
+            const old_buffer = attribute.data;
+            let new_buffer;
+            if (!interleaved_attributes.has(old_buffer)) {
+                new_buffer = re_create_buffer(old_buffer, is_segments);
+                interleaved_attributes.set(old_buffer, new_buffer);
+            } else {
+                new_buffer = interleaved_attributes.get(old_buffer);
+            }
+            attribute.data = new_buffer;
+            new_attribute = re_create_buffer(attribute, is_segments);
+            instance_count = new_attribute.count;
+        } else {
+            new_attribute = re_create_buffer(attribute, is_segments);
+        }
+        new_geometry.setAttribute(name, new_attribute);
+        if (new_attribute instanceof mod.InstancedBufferAttribute) {
+            instance_count = new_attribute.count;
+        }
+    }
+    if (geometry.interleaved_attributes) {
+        new_geometry.interleaved_attributes = {};
+        Object.keys(geometry.interleaved_attributes).forEach((name)=>{
+            const old = geometry.interleaved_attributes[name];
+            new_geometry.interleaved_attributes[name] = interleaved_attributes.get(old);
+        });
+    }
+    if (geometry instanceof mod.InstancedBufferGeometry) {
+        geometry.instanceCount = instance_count;
+    }
+    if (geometry.index) {
+        new_geometry.index = re_create_buffer(geometry.index, is_segments);
+    }
+    return new_geometry;
+}
+function find_interleaved_attribute(geometry, buffer) {
+    for (const [name, attribute] of Object.entries(geometry.attributes)){
+        if (attribute.data === buffer) {
+            return attribute;
+        }
+    }
+    return null;
+}
+function convert_RGB_to_RGBA(rgbArray) {
+    const length = rgbArray.length;
+    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
+    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
+    for(let i = 0, j = 0; i < length; i += 3, j += 4){
+        rgbaArray[j] = rgbArray[i];
+        rgbaArray[j + 1] = rgbArray[i + 1];
+        rgbaArray[j + 2] = rgbArray[i + 2];
+        rgbaArray[j + 3] = a;
+    }
+    return rgbaArray;
+}
+function create_texture_from_data(data) {
+    let buffer = data.data;
+    if (data.size.length == 3) {
+        const tex = new mod.Data3DTexture(buffer, data.size[0], data.size[1], data.size[2]);
+        tex.format = mod[data.three_format];
+        tex.type = mod[data.three_type];
+        return tex;
+    } else {
+        let format = mod[data.three_format];
+        if (data.three_format == "RGBFormat") {
+            buffer = convert_RGB_to_RGBA(buffer);
+            format = mod.RGBAFormat;
+        }
+        return new mod.DataTexture(buffer, data.size[0], data.size[1], format, mod[data.three_type]);
+    }
+}
+class TextureAtlas {
+    constructor(width, pix_per_glyph, glyph_padding){
+        this.pix_per_glyph = pix_per_glyph;
+        this.glyph_padding = glyph_padding;
+        this.width = width;
+        this.height = width;
+        this.data = new Float32Array(width * width);
+        for(let i = 0; i < this.data.length; i++){
+            this.data[i] = 0.0;
+        }
+        this.glyph_data = new Map();
+        this.textures = new Map();
+    }
+    insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
+        this.glyph_data.set(hash, [
+            uv_pos,
+            width,
+            minimum
+        ]);
+        const [px_start, px_width] = uv_to_pixel_bounds(uv_pos, this.width, this.height);
+        for(let col = 0; col < px_width.y; col++){
+            for(let row = 0; row < px_width.x; row++){
+                const glyph_index = col * px_width.x + row;
+                const atlas_index = (px_start.y + col) * this.height + (px_start.x + row);
+                this.data[atlas_index] = glyph_data.array[glyph_index];
+            }
+        }
+    }
+    insert_glyphs(glyph_data) {
+        let written = false;
+        Object.keys(glyph_data).forEach((hash)=>{
+            if (this.glyph_data.has(hash)) {
+                return;
+            }
+            const [uv, sdf, width, minimum] = glyph_data[hash];
+            this.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
+            written = true;
+            return;
+        });
+        if (written) {
+            this.upload_tex_data();
+        }
+    }
+    get_glyph_data(hash, scale) {
+        const data = this.glyph_data.get(hash.toString());
+        if (!data) {
+            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
+            return null;
+        }
+        const [uv_offset_width, width, mini] = data;
+        const w_scaled = width.clone().multiply(scale);
+        const mini_scaled = mini.clone().multiply(scale);
+        const pad = this.glyph_padding / this.pix_per_glyph;
+        const scaled_pad = scale.clone().multiplyScalar(2 * pad);
+        const scales = w_scaled.clone().add(scaled_pad);
+        const quad_offsets = mini_scaled.clone().sub(scale.clone().multiplyScalar(pad));
+        return [
+            uv_offset_width,
+            scales,
+            quad_offsets
+        ];
+    }
+    get_texture(renderer) {
+        if (this.textures.has(renderer)) {
+            return this.textures.get(renderer);
+        }
+        const texture = new Lt(this.data, this.width, this.height, Tl, pi);
+        texture.magFilter = Ut;
+        texture.minFilter = Ut;
+        texture.wrapS = Ht;
+        texture.wrapT = Ht;
+        this.textures.set(renderer, texture);
+        return texture;
+    }
+    upload_tex_data() {
+        for (const [renderer, texture] of this.textures.entries()){
+            if (!texture.image) {
+                this.textures.delete(renderer);
+                continue;
+            }
+            texture.image.data.set(this.data);
+            texture.needsUpdate = true;
+        }
+    }
+}
+const TEXTURE_ATLAS = [];
+function get_texture_atlas() {
+    if (TEXTURE_ATLAS.length === 0) {
+        const atlas = new TextureAtlas(2048, 64, 12);
+        TEXTURE_ATLAS.push(atlas);
+    }
+    return TEXTURE_ATLAS[0];
+}
+function create_texture(scene, data) {
+    const buffer = data.data;
+    if (buffer === "texture_atlas") {
+        const { texture_atlas , renderer  } = scene.screen;
+        if (!texture_atlas) {
+            const atlas = get_texture_atlas();
+            scene.screen.texture_atlas = atlas.get_texture(renderer);
+        }
+        return scene.screen.texture_atlas;
+    } else {
+        return create_texture_from_data(data);
+    }
+}
+function re_create_texture(old_texture, buffer, size) {
+    let tex;
+    if (size.length == 3) {
+        tex = new mod.Data3DTexture(buffer, size[0], size[1], size[2]);
+        tex.format = old_texture.format;
+        tex.type = old_texture.type;
+    } else {
+        tex = new mod.DataTexture(buffer, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
+    }
+    tex.minFilter = old_texture.minFilter;
+    tex.magFilter = old_texture.magFilter;
+    tex.anisotropy = old_texture.anisotropy;
+    tex.wrapS = old_texture.wrapS;
+    if (size.length > 1) {
+        tex.wrapT = old_texture.wrapT;
+    }
+    if (size.length > 2) {
+        tex.wrapR = old_texture.wrapR;
+    }
+    return tex;
+}
+function BufferAttribute(buffer) {
+    const jsbuff = new mod.BufferAttribute(buffer.flat, buffer.type_length);
+    jsbuff.setUsage(mod.DynamicDrawUsage);
+    return jsbuff;
+}
+function InstanceBufferAttribute(buffer) {
+    const jsbuff = new mod.InstancedBufferAttribute(buffer.flat, buffer.type_length);
+    jsbuff.setUsage(mod.DynamicDrawUsage);
+    return jsbuff;
+}
+function attach_geometry(buffer_geometry, vertexarrays, faces) {
+    for(const name in vertexarrays){
+        const buff = vertexarrays[name];
+        let buffer;
+        if (buff.to_update) {
+            buffer = new mod.BufferAttribute(buff.to_update, buff.itemSize);
+        } else {
+            buffer = BufferAttribute(buff);
+        }
+        buffer_geometry.setAttribute(name, buffer);
+    }
+    buffer_geometry.setIndex(faces);
+    buffer_geometry.boundingSphere = new mod.Sphere();
+    buffer_geometry.boundingSphere.radius = 10000000000000;
+    buffer_geometry.frustumCulled = false;
+    return buffer_geometry;
+}
+function attach_instanced_geometry(buffer_geometry, instance_attributes) {
+    for(const name in instance_attributes){
+        const buffer = InstanceBufferAttribute(instance_attributes[name]);
+        buffer_geometry.setAttribute(name, buffer);
+    }
+}
+function create_material(plot) {
+    const is_volume = "isovalue" in plot.deserialized_uniforms;
+    return new mod.RawShaderMaterial({
+        uniforms: plot.deserialized_uniforms,
+        vertexShader: plot.plot_data.vertex_source,
+        fragmentShader: plot.plot_data.fragment_source,
+        side: is_volume ? mod.BackSide : mod.DoubleSide,
+        transparent: true,
+        glslVersion: mod.GLSL3,
+        depthTest: !plot.plot_data.overdraw,
+        depthWrite: !plot.plot_data.transparency
+    });
+}
+function create_mesh(plot) {
+    const buffer_geometry = new mod.BufferGeometry();
+    const { plot_data  } = plot;
+    const faces = new mod.BufferAttribute(plot_data.faces, 1);
+    attach_geometry(buffer_geometry, plot_data.vertexarrays, faces);
+    const material = create_material(plot);
+    const mesh = new mod.Mesh(buffer_geometry, material);
+    return mesh;
+}
+function create_instanced_mesh(plot) {
+    const { plot_data  } = plot;
+    const buffer_geometry = new mod.InstancedBufferGeometry();
+    const faces = new mod.BufferAttribute(plot_data.faces, 1);
+    attach_geometry(buffer_geometry, plot_data.vertexarrays, faces);
+    attach_instanced_geometry(buffer_geometry, plot_data.instance_attributes);
+    const material = create_material(plot);
+    const mesh = new mod.Mesh(buffer_geometry, material);
+    return mesh;
 }
 const _changeEvent = {
     type: "change"
@@ -22346,7 +22706,13 @@ class MakieCamera {
         this.resolution = new Wh(new T());
         this.eyeposition = new Wh(new w());
         this.preprojections = {};
+        this.original_light_direction = [
+            -1,
+            -1,
+            -1
+        ];
         this.light_direction = new Wh(new w(-1, -1, -1).normalize());
+        this.on_update = new Map();
     }
     calculate_matrices() {
         const [w, h] = this.resolution.value;
@@ -22367,9 +22733,21 @@ class MakieCamera {
         this.resolution.value.fromArray(resolution);
         this.eyeposition.value.fromArray(eyepos);
         this.calculate_matrices();
-        return;
+        this.recalculate_light_dir();
+        for (const func of this.on_update.values()){
+            try {
+                func(this);
+            } catch (e) {
+                console.error("Error during camera update callback:", e);
+            }
+        }
+    }
+    recalculate_light_dir() {
+        const light_dir = this.original_light_direction;
+        this.update_light_dir(light_dir);
     }
     update_light_dir(light_dir) {
+        this.original_light_direction = light_dir;
         const T = new Gt().setFromMatrix4(this.view.value).invert();
         const new_dir = new w().fromArray(light_dir);
         new_dir.applyMatrix3(T).normalize();
@@ -22422,25 +22800,48 @@ class MakieCamera {
         }
     }
 }
-function update_uniform(uniform, new_value) {
-    if (uniform.value.isTexture) {
-        const im_data = uniform.value.image;
-        const [size, tex_data] = new_value;
-        if (tex_data.length == im_data.data.length) {
-            im_data.data.set(tex_data);
-        } else {
-            const old_texture = uniform.value;
-            uniform.value = re_create_texture(old_texture, tex_data, size);
-            old_texture.dispose();
-        }
-        uniform.value.needsUpdate = true;
-    } else {
-        if (is_three_fixed_array(uniform.value)) {
-            uniform.value.fromArray(new_value);
-        } else {
-            uniform.value = new_value;
-        }
+function create_plot(scene, data) {
+    const PlotClass = mod1[data.plot_type];
+    if (typeof PlotClass !== "function") {
+        throw new Error(`Unknown plot type: ${data.plot_type}`);
     }
+    return new PlotClass(scene, data);
+}
+function connect_plot(scene, plot) {
+    const cam = scene.wgl_camera;
+    const identity = new Wh(new D());
+    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+    const space = plot.plot_data.cam_space;
+    if (space == "data") {
+        uniforms.view = cam.view;
+        uniforms.projection = cam.projection;
+        uniforms.projectionview = cam.projectionview;
+        uniforms.eyeposition = cam.eyeposition;
+    } else if (space == "pixel") {
+        uniforms.view = identity;
+        uniforms.projection = cam.pixel_space;
+        uniforms.projectionview = cam.pixel_space;
+    } else if (space == "relative") {
+        uniforms.view = identity;
+        uniforms.projection = cam.relative_space;
+        uniforms.projectionview = cam.relative_space;
+    } else if (space == "clip") {
+        uniforms.view = identity;
+        uniforms.projection = identity;
+        uniforms.projectionview = identity;
+    } else {
+        throw new Error(`Space ${space} not supported!`);
+    }
+    const { px_per_unit  } = scene.screen;
+    uniforms.resolution = cam.resolution;
+    uniforms.px_per_unit = new Wh(px_per_unit);
+    if (plot.plot_data.uniforms.preprojection) {
+        const { space , markerspace  } = plot.plot_data;
+        uniforms.preprojection = cam.preprojection_matrix(space, markerspace);
+    }
+    uniforms.light_direction = scene.light_direction;
+    uniforms.ambient = scene.ambient;
+    uniforms.light_color = scene.light_color;
 }
 function filter_by_key(dict, keys, default_value = false) {
     const result = {};
@@ -22454,23 +22855,336 @@ function filter_by_key(dict, keys, default_value = false) {
     });
     return result;
 }
-function uv_to_pixel_bounds(uv, tex_width, tex_height) {
-    const tex_size = new T(tex_width, tex_height);
-    const uv_left_bottom = new T(uv.x, uv.y);
-    const uv_right_top = new T(uv.z, uv.w);
-    const px_left_bottom = uv_left_bottom.clone().multiply(tex_size).floor();
-    const px_right_top = uv_right_top.clone().multiply(tex_size).ceil();
-    const wx = Math.abs(px_right_top.x - px_left_bottom.x);
-    const wy = Math.abs(px_right_top.y - px_left_bottom.y);
-    return [
-        px_left_bottom,
-        new T(wx, wy)
-    ];
+const scene_cache = {};
+const plot_cache = {};
+function add_plot(scene, plot_data) {
+    const p = create_plot(scene, plot_data);
+    plot_cache[p.uuid] = p.mesh;
+    scene.add(p.mesh);
+    const next_insert = new Set(ON_NEXT_INSERT);
+    next_insert.forEach((f)=>f());
+}
+function add_scene(scene_id, three_scene) {
+    scene_cache[scene_id] = three_scene;
+}
+function find_scene(scene_id) {
+    return scene_cache[scene_id];
+}
+function delete_scene(scene_id) {
+    const scene = scene_cache[scene_id];
+    if (!scene) {
+        return;
+    }
+    delete_three_scene(scene);
+    while(scene.children.length > 0){
+        scene.remove(scene.children[0]);
+    }
+    delete scene_cache[scene_id];
+}
+function find_plots(plot_uuids) {
+    const plots = [];
+    plot_uuids.forEach((id)=>{
+        const plot = plot_cache[id];
+        if (plot) {
+            plots.push(plot);
+        }
+    });
+    return plots;
+}
+function delete_scenes(scene_uuids, plot_uuids) {
+    plot_uuids.forEach((plot_id)=>{
+        const plot = plot_cache[plot_id];
+        if (plot) {
+            delete_plot(plot);
+        }
+    });
+    scene_uuids.forEach((scene_id)=>{
+        delete_scene(scene_id);
+    });
+}
+function insert_plot(scene_id, plot_data) {
+    const scene = find_scene(scene_id);
+    plot_data.forEach((plot)=>{
+        add_plot(scene, plot);
+    });
+}
+function delete_plots(plot_uuids) {
+    const plots = find_plots(plot_uuids);
+    plots.forEach(delete_plot);
+}
+function convert_texture(scene, data) {
+    const tex = create_texture(scene, data);
+    tex.needsUpdate = true;
+    tex.generateMipmaps = data.mipmap;
+    tex.minFilter = mod[data.minFilter];
+    tex.magFilter = mod[data.magFilter];
+    tex.anisotropy = data.anisotropy;
+    tex.wrapS = mod[data.wrapS];
+    if (data.size.length > 1) {
+        tex.wrapT = mod[data.wrapT];
+    }
+    if (data.size.length > 2) {
+        tex.wrapR = mod[data.wrapR];
+    }
+    return tex;
+}
+function is_typed_array(data) {
+    return data instanceof Float32Array || data instanceof Int32Array || data instanceof Uint32Array;
+}
+function to_uniform(scene, data) {
+    if (data.type !== undefined) {
+        if (data.type == "Sampler") {
+            return convert_texture(scene, data);
+        }
+        throw new Error(`Type ${data.type} not known`);
+    }
+    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
+        if (!data.every((x1)=>typeof x1 === "number")) {
+            return data;
+        }
+        return to_three_vector(data);
+    }
+    return data;
+}
+function deserialize_uniforms(scene, data) {
+    const result = {};
+    for(const name in data){
+        const value = data[name];
+        if (value instanceof mod.Uniform) {
+            result[name] = value;
+        } else {
+            const ser = to_uniform(scene, value);
+            result[name] = new mod.Uniform(ser);
+        }
+    }
+    return result;
+}
+const ON_NEXT_INSERT = new Set();
+function on_next_insert(f) {
+    ON_NEXT_INSERT.add(f);
+}
+function add_glyphs_from_plots(scene_data) {
+    const atlas = get_texture_atlas();
+    scene_data.plots.forEach((plot_data)=>{
+        if (plot_data.glyph_data) {
+            const glyph_data = plot_data.glyph_data;
+            const { atlas_updates  } = glyph_data;
+            if (atlas_updates) {
+                atlas.insert_glyphs(atlas_updates);
+            }
+        }
+    });
+    scene_data.children.forEach((child)=>{
+        add_glyphs_from_plots(child);
+    });
+}
+function deserialize_scene(data, screen) {
+    add_glyphs_from_plots(data);
+    return deserialize_scene_recursive(data, screen);
+}
+function deserialize_scene_recursive(data, screen) {
+    const scene = new mod.Scene();
+    scene.screen = screen;
+    const { canvas  } = screen;
+    add_scene(data.uuid, scene);
+    scene.scene_uuid = data.uuid;
+    scene.frustumCulled = false;
+    scene.viewport = data.viewport;
+    scene.backgroundcolor = data.backgroundcolor;
+    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
+    scene.clearscene = data.clearscene;
+    scene.visible = data.visible;
+    const camera = new MakieCamera();
+    scene.wgl_camera = camera;
+    function update_cam(camera_matrices, force) {
+        if (!force) {
+            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
+                return;
+            }
+        }
+        const [view, projection, resolution, eyepos] = camera_matrices;
+        camera.update_matrices(view, projection, resolution, eyepos);
+    }
+    if (data.cam3d_state) {
+        attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
+    }
+    update_cam(data.camera.value, true);
+    data.camera.on(update_cam);
+    if (data.camera_relative_light.value) {
+        camera.update_light_dir(data.light_direction.value);
+        scene.light_direction = camera.light_direction;
+        data.light_direction.on((value)=>{
+            camera.update_light_dir(value);
+        });
+    } else {
+        const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
+        scene.light_direction = new mod.Uniform(light_dir);
+        data.light_direction.on((value)=>{
+            scene.light_direction.value.fromArray(value);
+        });
+    }
+    const ambient = new mod.Vector3().fromArray(data.ambient.value);
+    scene.ambient = new mod.Uniform(ambient);
+    data.ambient.on((value)=>{
+        scene.ambient.value.fromArray(value);
+    });
+    const light_color = new mod.Vector3().fromArray(data.light_color.value);
+    scene.light_color = new mod.Uniform(light_color);
+    data.light_color.on((value)=>{
+        scene.light_color.value.fromArray(value);
+    });
+    data.plots.forEach((plot_data)=>{
+        add_plot(scene, plot_data);
+    });
+    scene.scene_children = data.children.map((child)=>{
+        const childscene = deserialize_scene_recursive(child, screen);
+        return childscene;
+    });
+    return scene;
+}
+function delete_plot(plot) {
+    plot.plot_object.dispose();
+}
+function delete_three_scene(scene) {
+    delete scene_cache[scene.scene_uuid];
+    scene.scene_children.forEach(delete_three_scene);
+    while(scene.children.length > 0){
+        delete_plot(scene.children[0]);
+    }
+}
+class Plot {
+    mesh = undefined;
+    parent = undefined;
+    uuid = "";
+    name = "";
+    is_instanced = false;
+    geometry_needs_recreation = false;
+    plot_data = {};
+    deserialized_uniforms = {};
+    type = "";
+    constructor(scene, data){
+        this.plot_data = data;
+        connect_plot(scene, this);
+        this.deserialized_uniforms = deserialize_uniforms(scene, data.uniforms);
+        this.name = data.name;
+        this.uuid = data.uuid;
+        this.parent = scene;
+        data.updater.on((data)=>{
+            this.update(data);
+        });
+    }
+    init_mesh() {
+        this.mesh.plot_uuid = this.plot_data.uuid;
+        this.mesh.frustumCulled = false;
+        this.mesh.matrixAutoUpdate = false;
+        this.mesh.renderOrder = this.plot_data.zvalue;
+        this.mesh.plot_object = this;
+        this.mesh.visible = this.plot_data.visible;
+    }
+    dispose() {
+        delete plot_cache[this.uuid];
+        this.parent.remove(this.mesh);
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        this.mesh = undefined;
+        this.parent = undefined;
+        this.is_instanced = false;
+        this.geometry_needs_recreation = false;
+        this.plot_data = {};
+    }
+    move_to(scene) {
+        if (scene === this.parent) {
+            return;
+        }
+        this.parent.remove(this.mesh);
+        connect_plot(scene, this);
+        scene.add(this.mesh);
+        this.parent = scene;
+        return;
+    }
+    update(data) {
+        const { mesh  } = this;
+        if (!mesh) {
+            console.log(`Updating plot ${this.name} (${this.uuid}) with data:`);
+        }
+        const { geometry  } = mesh;
+        const { attributes , interleaved_attributes  } = geometry;
+        const { uniforms  } = mesh.material;
+        data.forEach(([key, value])=>{
+            if (key in uniforms) {
+                this.update_uniform(key, value);
+            } else if (key in attributes || interleaved_attributes && key in interleaved_attributes) {
+                this.update_buffer(key, value);
+            } else if (key === "faces") {
+                this.update_faces(value);
+            } else if (key === "visible") {
+                this.mesh.visible = value;
+            } else {
+                console.warn(`Unknown key ${key} in Plot: ${this.name}`);
+            }
+        });
+        this.apply_updates();
+    }
+    update_uniform(name, new_data) {
+        const uniform = this.mesh.material.uniforms[name];
+        if (!uniform) {
+            throw new Error(`Uniform ${name} doesn't exist in Plot: ${this.name}`);
+        }
+        update_uniform(uniform, new_data);
+    }
+    update_buffer(name, new_data) {
+        const { geometry  } = this.mesh;
+        let buffer = geometry.attributes[name];
+        if (!buffer) {
+            buffer = geometry.interleaved_attributes[name];
+            if (!buffer) {
+                throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
+            }
+        }
+        const old_length = buffer.array.length;
+        const is_interleaved = buffer instanceof qh;
+        const attribute = is_interleaved ? find_interleaved_attribute(geometry, buffer) : buffer;
+        if (attribute == null) {
+            console.log(name);
+            console.log(geometry.interleaved_attributes);
+            console.log(geometry.attributes);
+        }
+        const new_count = new_data.length / attribute.itemSize;
+        if (new_data.length <= old_length) {
+            buffer.set(new_data);
+            buffer.count = new_count;
+            if (this instanceof Lines) {
+                const is_segments = this.is_segments === true;
+                const skipped = new_count / (buffer.stride / attribute.itemSize);
+                buffer.count = Math.max(0, is_segments ? Math.floor(skipped - 1) : skipped - 3);
+            }
+            buffer.needsUpdate = true;
+        } else {
+            buffer.new_data = new_data;
+            this.geometry_needs_recreation = true;
+        }
+        if (this.is_instanced) {
+            this.mesh.geometry.instanceCount = attribute.count;
+        }
+    }
+    apply_updates() {
+        if (this.geometry_needs_recreation) {
+            const { geometry  } = this.mesh;
+            const new_geometry = re_create_geometry(geometry, this.is_segments === true);
+            geometry.dispose();
+            this.mesh.geometry = new_geometry;
+            this.mesh.needsUpdate = true;
+        }
+        this.geometry_needs_recreation = false;
+    }
+    update_faces(face_data) {
+        this.mesh.geometry.setIndex(new Z(face_data, 1));
+    }
 }
 function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     const attribute_decl = attributes_to_type_declaration(attributes);
     const uniform_decl = uniforms_to_type_declaration(uniforms);
-    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
+    const color = attribute_type(attributes.line_color_start) || uniform_type(uniforms.line_color_start);
     if (is_linesegments) {
         return `precision highp float;
             precision highp int;
@@ -22495,7 +23209,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;         // invalid / not needed
 
             ${uniform_decl}
-            uniform vec4 clip_planes[8];
+            uniform vec4 uniform_clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -22507,7 +23221,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
             vec4 clip_space(vec3 point) {
-                return projectionview * model * vec4(point, 1);
+                return projectionview * model_f32c * vec4(point, 1);
             }
             vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
@@ -22524,10 +23238,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2)
             {
                 float d1, d2;
-                for (int i = 0; i < int(num_clip_planes); i++) {
+                for (int i = 0; i < int(uniform_num_clip_planes); i++) {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+                    d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p2.w;
 
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
@@ -22566,17 +23280,17 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+                float width = px_per_unit * (is_end ? uniform_linewidth_end : uniform_linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 // color at line start/end for interpolation
-                f_color1 = color_start;
-                f_color2 = color_end;
+                f_color1 = line_color_start;
+                f_color2 = line_color_end;
 
                 // restrict to visible area (see other shader)
                 vec3 p1, p2;
                 {
-                    vec4 _p1 = clip_space(linepoint_start), _p2 = clip_space(linepoint_end);
+                    vec4 _p1 = clip_space(positions_transformed_f32c_start), _p2 = clip_space(positions_transformed_f32c_end);
 
                     vec4 v1 = _p2 - _p1;
 
@@ -22603,7 +23317,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 float segment_length = length(v1);
                 v1 /= segment_length;
 
-                // line normal (i.e. in linewidth direction)
+                // line normal (i.e. in uniform_linewidth direction)
                 vec2 n1 = normal_vector(v1);
 
 
@@ -22612,7 +23326,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                // invalid - no joints requiring pattern adjustments
+                // invalid - no joints requiring uniform_pattern adjustments
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
 
                 // invalid - no joints requiring line sdfs to be extruded
@@ -22621,7 +23335,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start; // NOTE: this is correct, no need to multiple by 2
+                f_instance_id = lineindex_start + uint(1); // NOTE: this is correct, no need to multiple by 2
 
                 // we restart patterns for each segment
                 f_cumulative_length = 0.0;
@@ -22690,7 +23404,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             flat out vec4 f_miter_vecs;
 
             ${uniform_decl}
-            uniform vec4 clip_planes[8];
+            uniform vec4 uniform_clip_planes[8];
 
             // Constants
             const float AA_RADIUS = 0.8;
@@ -22707,13 +23421,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
 
-            vec2 process_pattern(bool pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
+            vec2 process_pattern(bool uniform_pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // do not adjust stuff
                 f_pattern_overwrite = vec4(-1e12, 1.0, 1e12, 1.0);
                 return vec2(0);
             }
 
-            vec2 process_pattern(sampler2D pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
+            vec2 process_pattern(sampler2D uniform_pattern, bool[4] isvalid, vec2 extrusion, float segment_length, float halfwidth) {
                 // samples:
                 //   -ext1  p1 ext1    -ext2 p2 ext2
                 //      1   2   3        4   5   6
@@ -22724,14 +23438,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 f_pattern_overwrite.z = +1e12;
                 vec2 adjust = vec2(0);
                 float width = 2.0 * halfwidth;
-                float uv_scale = 1.0 / (width * pattern_length);
+                float uv_scale = 1.0 / (width * uniform_pattern_length);
                 float left, center, right;
 
                 if (isvalid[0]) {
                     float offset = abs(extrusion[0]);
-                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_start - offset), 0.0)).x;
-                    center = width * texture(pattern, vec2(uv_scale * (lastlen_start         ), 0.0)).x;
-                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + offset), 0.0)).x;
+                    left   = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start - offset), 0.0)).x;
+                    center = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start         ), 0.0)).x;
+                    right  = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + offset), 0.0)).x;
 
                     // cases:
                     // ++-, +--, +-+ => elongate backwards
@@ -22741,7 +23455,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
                         // overwrite until one AA gap past the corner/joint
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (px_per_unit * lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         // using the sign of the center to decide between drawing or not drawing
                         f_pattern_overwrite.y = sign(center);
                     } else if (left > 0.0) {
@@ -22752,7 +23466,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.x = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.x = uv_scale * (lastlen_start + abs(extrusion[0]) + AA_RADIUS);
+                        f_pattern_overwrite.x = uv_scale * (px_per_unit * lastlen_start + abs(extrusion[0]) + AA_RADIUS);
                         f_pattern_overwrite.y = sign(center);
                     }
 
@@ -22760,13 +23474,13 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 
                 if (isvalid[3]) {
                     float offset = abs(extrusion[1]);
-                    left   = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length - offset), 0.0)).x;
-                    center = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length         ), 0.0)).x;
-                    right  = width * texture(pattern, vec2(uv_scale * (lastlen_start + segment_length + offset), 0.0)).x;
+                    left   = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length - offset), 0.0)).x;
+                    center = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length         ), 0.0)).x;
+                    right  = width * texture(uniform_pattern, vec2(uv_scale * (px_per_unit * lastlen_start + segment_length + offset), 0.0)).x;
 
                     if ((left > 0.0 && center > 0.0 && right > 0.0) || (left < 0.0 && right < 0.0)) {
                         // default/freeze
-                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (px_per_unit * lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     } else if (left > 0.0) {
                         // shrink backwards
@@ -22776,7 +23490,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                         adjust.y = 1.0;
                     } else {
                         // default - see above
-                        f_pattern_overwrite.z = uv_scale * (lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
+                        f_pattern_overwrite.z = uv_scale * (px_per_unit * lastlen_start + segment_length - abs(extrusion[1]) - AA_RADIUS);
                         f_pattern_overwrite.w = sign(center);
                     }
                 }
@@ -22790,7 +23504,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             ////////////////////////////////////////////////////////////////////////
 
             vec4 clip_space(vec3 point) {
-                return projectionview * model * vec4(point, 1);
+                return projectionview * model_f32c * vec4(point, 1);
             }
             vec4 clip_space(vec2 point) { return clip_space(vec3(point, 0)); }
 
@@ -22808,11 +23522,11 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
             void process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
             {
                 float d1, d2;
-                for(int i = 0; i < int(num_clip_planes); i++)
+                for(int i = 0; i < int(uniform_num_clip_planes); i++)
                 {
                     // distance from clip planes with negative clipped
-                    d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
-                    d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
+                    d1 = dot(p1.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p1.w;
+                    d2 = dot(p2.xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w * p2.w;
 
                     // both outside - clip everything
                     if (d1 < 0.0 && d2 < 0.0) {
@@ -22849,14 +23563,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 ////////////////////////////////////////////////////////////////////
 
 
-                float width = px_per_unit * (is_end ? linewidth_end : linewidth_start);
+                float width = px_per_unit * (is_end ? uniform_linewidth_end : uniform_linewidth_start);
                 float halfwidth = 0.5 * max(AA_RADIUS, width);
 
                 bool[4] isvalid = bool[4](true, true, true, true);
 
                 // color at start/end of segment
-                f_color1 = color_start;
-                f_color2 = color_end;
+                f_color1 = line_color_start;
+                f_color2 = line_color_end;
 
                 // To apply pixel space linewidths we transform line vertices to pixel space
                 // here. This is dangerous with perspective projection as p.xyz / p.w sends
@@ -22866,10 +23580,10 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 vec3 p0, p1, p2, p3;
                 {
                     // All in clip space
-                    vec4 clip_p0 = clip_space(linepoint_prev);
-                    vec4 clip_p1 = clip_space(linepoint_start);
-                    vec4 clip_p2 = clip_space(linepoint_end);
-                    vec4 clip_p3 = clip_space(linepoint_next);
+                    vec4 clip_p0 = clip_space(positions_transformed_f32c_prev);
+                    vec4 clip_p1 = clip_space(positions_transformed_f32c_start);
+                    vec4 clip_p2 = clip_space(positions_transformed_f32c_end);
+                    vec4 clip_p3 = clip_space(positions_transformed_f32c_next);
 
                     vec4 v1 = clip_p2 - clip_p1;
 
@@ -22923,7 +23637,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 if (isvalid[3])
                     v2 = normalize(p3.xy - p2.xy);
 
-                // line normals (i.e. in linewidth direction)
+                // line normals (i.e. in uniform_linewidth direction)
                 vec2 n0 = normal_vector(v0);
                 vec2 n1 = normal_vector(v1);
                 vec2 n2 = normal_vector(v2);
@@ -23007,14 +23721,14 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                     shape_factor = segment_length / max(segment_length,
                         (halfwidth + AA_THICKNESS) * (extrusion[0] - extrusion[1]));
 
-                // If a pattern starts or stops drawing in a joint it will get
+                // If a uniform_pattern starts or stops drawing in a joint it will get
                 // fractured across the joint. To avoid this we either:
                 // - adjust the involved line segments so that the patterns ends
                 //   on straight line quad (adjustment becomes +1.0 or -1.0)
-                // - or adjust the pattern to start/stop outside of the joint
+                // - or adjust the uniform_pattern to start/stop outside of the joint
                 //   (f_pattern_overwrite is set, adjustment is 0.0)
                 vec2 adjustment = process_pattern(
-                    pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth
+                    uniform_pattern, isvalid, halfwidth * extrusion, segment_length, halfwidth
                 );
 
                 // If adjustment != 0.0 we replace a joint by an extruded line,
@@ -23068,9 +23782,9 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                 // used to compute width sdf
                 f_linewidth = halfwidth;
 
-                f_instance_id = lineindex_start;
+                f_instance_id = lineindex_start + uint(1);
 
-                f_cumulative_length = lastlen_start;
+                f_cumulative_length = px_per_unit * lastlen_start;
 
                 // linecap + joinstyle
                 f_capmode = ivec2(
@@ -23101,7 +23815,7 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
                             vec3(vec2[2](miter_n1, miter_n2)[x], 0);
                     }
                 } else {
-                    // discard joint for cleaner pattern handling
+                    // discard joint for cleaner uniform_pattern handling
                     offset =
                         adjustment[x] * (halfwidth * abs(extrusion[x]) + AA_THICKNESS) * v1 +
                         vec3(position.y * (halfwidth + AA_THICKNESS) * n1, 0);
@@ -23149,16 +23863,16 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
 function lines_fragment_shader(uniforms, attributes) {
     const color_uniforms = filter_by_key(uniforms, [
         "picking",
-        "pattern",
-        "pattern_length",
-        "colorrange",
-        "colormap",
+        "uniform_pattern",
+        "uniform_pattern_length",
+        "uniform_colorrange",
+        "uniform_colormap",
         "nan_color",
-        "highclip",
-        "lowclip"
+        "highclip_color",
+        "lowclip_color"
     ]);
     const uniform_decl = uniforms_to_type_declaration(color_uniforms);
-    const color = attribute_type(attributes.color_start) || uniform_type(uniforms.color_start);
+    const color = attribute_type(attributes.line_color_start) || uniform_type(uniforms.line_color_start);
     return `
     // uncomment for debug rendering
     // #define DEBUG
@@ -23216,9 +23930,9 @@ function lines_fragment_shader(uniforms, attributes) {
         if (value <= cmax && value >= cmin) {
             // in value range, continue!
         } else if (value < cmin) {
-            return lowclip;
+            return lowclip_color;
         } else if (value > cmax) {
-            return highclip;
+            return highclip_color;
         } else {
             // isnan CAN be broken (of course) -.-
             // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -23249,7 +23963,7 @@ function lines_fragment_shader(uniforms, attributes) {
     ////////////////////////////////////////////////////////////////////////
 
 
-    float get_pattern_sdf(sampler2D pattern, vec2 uv){
+    float get_pattern_sdf(sampler2D uniform_pattern, vec2 uv){
 
         // f_pattern_overwrite.x
         //      v           joint
@@ -23261,23 +23975,23 @@ function lines_fragment_shader(uniforms, attributes) {
 
         float w = 2.0 * f_linewidth;
         if (uv.x <= f_pattern_overwrite.x) {
-            // overwrite for pattern with "ON" to the right (positive uv.x)
-            float sdf_overwrite = w * pattern_length * (f_pattern_overwrite.x - uv.x);
-            // pattern value where we start overwriting
-            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.x, 0.5)).x;
+            // overwrite for uniform_pattern with "ON" to the right (positive uv.x)
+            float sdf_overwrite = w * uniform_pattern_length * (f_pattern_overwrite.x - uv.x);
+            // uniform_pattern value where we start overwriting
+            float edge_sample = w * texture(uniform_pattern, vec2(f_pattern_overwrite.x, 0.5)).x;
             // offset for overwrite to smoothly connect between sampling and edge
             float sdf_offset = max(f_pattern_overwrite.y * edge_sample, -AA_RADIUS);
             // add offset and apply direction ("ON" to left or right) to overwrite
             return f_pattern_overwrite.y * (sdf_overwrite + sdf_offset);
         } else if (uv.x >= f_pattern_overwrite.z) {
             // same as above (other than mirroring overwrite direction)
-            float sdf_overwrite = w * pattern_length * (uv.x - f_pattern_overwrite.z);
-            float edge_sample = w * texture(pattern, vec2(f_pattern_overwrite.z, 0.5)).x;
+            float sdf_overwrite = w * uniform_pattern_length * (uv.x - f_pattern_overwrite.z);
+            float edge_sample = w * texture(uniform_pattern, vec2(f_pattern_overwrite.z, 0.5)).x;
             float sdf_offset = max(f_pattern_overwrite.w * edge_sample, -AA_RADIUS);
             return f_pattern_overwrite.w * (sdf_overwrite + sdf_offset);
         } else
             // in allowed range
-            return w * texture(pattern, uv).x;
+            return w * texture(uniform_pattern, uv).x;
     }
 
     float get_pattern_sdf(bool _, vec2 uv){
@@ -23303,7 +24017,7 @@ function lines_fragment_shader(uniforms, attributes) {
 
         // f_quad_sdf.x is the distance from p1, negative in v1 direction.
         vec2 uv = vec2(
-            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * pattern_length),
+            (f_cumulative_length - f_quad_sdf.x) / (2.0 * f_linewidth * uniform_pattern_length),
             0.5 + 0.5 * f_quad_sdf.z / f_linewidth
         );
 
@@ -23347,7 +24061,7 @@ function lines_fragment_shader(uniforms, attributes) {
             sdf = max(sdf, f_truncation.y);
         }
 
-        // distance in linewidth direction
+        // distance in uniform_linewidth direction
         // f_quad_sdf.z is 0 along the line connecting p1 and p2 and increases along line-normal direction
         //  ^  |  ^      ^  | ^
         //     1------------2
@@ -23362,8 +24076,8 @@ function lines_fragment_shader(uniforms, attributes) {
         sdf = max(sdf, min(f_quad_sdf.x + 1.0, 100.0 * discard_sdf1 - 1.0));
         sdf = max(sdf, min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0));
 
-        // pattern application
-        sdf = max(sdf, get_pattern_sdf(pattern, uv));
+        // uniform_pattern application
+        sdf = max(sdf, get_pattern_sdf(uniform_pattern, uv));
 
         // draw
 
@@ -23378,7 +24092,7 @@ function lines_fragment_shader(uniforms, attributes) {
         // f_start_length.y is the distance between the edges of this segment, in v1 direction
         // so this is 0 at the left edge and 1 at the right edge (with extrusion considered)
         float factor = (-f_quad_sdf.x - f_linestart) / f_linelength;
-        color = get_color(f_color1 + factor * (f_color2 - f_color1), colormap, colorrange);
+        color = get_color(f_color1 + factor * (f_color2 - f_color1), uniform_colormap, uniform_colorrange);
 
         color.a *= aastep(0.0, -sdf) * f_alpha_weight;
     #endif
@@ -23421,8 +24135,8 @@ function lines_fragment_shader(uniforms, attributes) {
         if (min(f_quad_sdf.y + 1.0, 100.0 * discard_sdf2 - 1.0) > 0.0)
             color.g += 0.2;
 
-        // mark pattern in white
-        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(pattern, uv));
+        // mark uniform_pattern in white
+        color.rgb += vec3(0.3) * step(0.0, get_pattern_sdf(uniform_pattern, uv));
     #endif
 
         if (color.a <= 0.0)
@@ -23438,23 +24152,41 @@ function lines_fragment_shader(uniforms, attributes) {
     }
     `;
 }
-function create_line(scene, line_data) {
-    return _create_line(scene, line_data, false);
+function create_line_material(uniforms_des, attributes, is_linesegments) {
+    const mat = new THREE.RawShaderMaterial({
+        uniforms: uniforms_des,
+        glslVersion: THREE.GLSL3,
+        vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
+        fragmentShader: lines_fragment_shader(uniforms_des, attributes),
+        transparent: true,
+        blending: THREE.CustomBlending,
+        blendSrc: THREE.SrcAlphaFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.ZeroFactor,
+        blendDstAlpha: THREE.OneFactor,
+        blendEquation: THREE.AddEquation
+    });
+    mat.uniforms.object_id = {
+        value: 1
+    };
+    return mat;
 }
 function attach_interleaved_line_buffer(attr_name, geometry, data, ndim, is_segments, is_position) {
     const skip_elems = is_segments ? 2 * ndim : ndim;
-    const buffer1 = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
-    buffer1.count = Math.max(0, is_segments ? Math.floor(buffer1.count - 1) : buffer1.count - 3);
-    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer1, ndim, ndim));
-    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer1, ndim, 2 * ndim));
+    const buffer = new THREE.InstancedInterleavedBuffer(data, skip_elems, 1);
+    buffer.count = Math.max(0, is_segments ? Math.floor(buffer.count - 1) : buffer.count - 3);
+    geometry.setAttribute(attr_name + "_start", new THREE.InterleavedBufferAttribute(buffer, ndim, ndim));
+    geometry.setAttribute(attr_name + "_end", new THREE.InterleavedBufferAttribute(buffer, ndim, 2 * ndim));
     if (is_position) {
-        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer1, ndim, 0));
-        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer1, ndim, 3 * ndim));
+        geometry.setAttribute(attr_name + "_prev", new THREE.InterleavedBufferAttribute(buffer, ndim, 0));
+        geometry.setAttribute(attr_name + "_next", new THREE.InterleavedBufferAttribute(buffer, ndim, 3 * ndim));
     }
-    return buffer1;
+    geometry.interleaved_attributes[attr_name] = buffer;
+    return buffer;
 }
 function create_line_instance_geometry() {
     const geometry = new THREE.InstancedBufferGeometry();
+    geometry.interleaved_attributes = {};
     const instance_positions = [
         -1,
         -1,
@@ -23476,8 +24208,8 @@ function create_line_instance_geometry() {
     return geometry;
 }
 function create_line_buffer(geometry, buffers, name, attr, is_segments, is_position) {
-    const flat_buffer = attr.value.flat;
-    const ndims = attr.value.type_length;
+    const flat_buffer = attr.flat;
+    const ndims = attr.type_length;
     const linebuffer = attach_interleaved_line_buffer(name, geometry, flat_buffer, ndims, is_segments, is_position);
     buffers[name] = linebuffer;
     return flat_buffer;
@@ -23485,479 +24217,201 @@ function create_line_buffer(geometry, buffers, name, attr, is_segments, is_posit
 function create_line_buffers(geometry, buffers, attributes, is_segments) {
     for(let name in attributes){
         const attr = attributes[name];
-        create_line_buffer(geometry, buffers, name, attr, is_segments, name == "linepoint");
+        create_line_buffer(geometry, buffers, name, attr, is_segments, name == "positions_transformed_f32c");
     }
 }
-function attach_updates(mesh, buffers, attributes, is_segments) {
-    for(let name in attributes){
-        const attr = attributes[name];
-        attr.on((new_vertex_data)=>{
-            let buff = buffers[name];
-            const new_flat_data = new_vertex_data.flat;
-            const old_length = buff.array.length;
-            if (old_length != new_flat_data.length) {
-                mesh.geometry.dispose();
-                mesh.geometry = create_line_instance_geometry();
-                create_line_buffers(mesh.geometry, buffers, attributes, is_segments);
-                mesh.geometry.instanceCount = mesh.geometry.attributes.linepoint_start.count;
-            } else {
-                buff.set(new_flat_data);
-            }
-            buff.needsUpdate = true;
-            mesh.needsUpdate = true;
-        });
-    }
-}
-function _create_line(scene, line_data, is_segments) {
-    const geometry = create_line_instance_geometry();
-    const buffers = {};
-    create_line_buffers(geometry, buffers, line_data.attributes, is_segments);
-    const material = create_line_material(scene, line_data.uniforms, geometry.attributes, is_segments);
-    material.depthTest = !line_data.overdraw.value;
-    material.depthWrite = !line_data.transparency.value;
-    material.uniforms.is_linesegments = {
-        value: is_segments
-    };
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.geometry.instanceCount = geometry.attributes.linepoint_start.count;
-    attach_updates(mesh, buffers, line_data.attributes, is_segments);
-    return mesh;
-}
-function create_linesegments(scene, line_data) {
-    return _create_line(scene, line_data, true);
-}
-class Plot {
-    mesh = undefined;
-    parent = undefined;
-    uuid = "";
-    name = "";
-    is_instanced = false;
-    geometry_needs_recreation = false;
-    plot_data = {};
-    constructor(scene, data){
-        this.plot_data = data;
-        connect_plot(scene, this);
-        if (data.plot_type === "lines") {
-            this.mesh = create_line(scene, this.plot_data);
-        } else if (data.plot_type === "linesegments") {
-            this.mesh = create_linesegments(scene, this.plot_data);
-        } else if ("glyph_data" in data) {
-            this.is_instanced = true;
-            this.mesh = create_text_mesh(scene, this.plot_data);
-        } else if ("instance_attributes" in data) {
-            this.is_instanced = true;
-            this.mesh = create_instanced_mesh(scene, this.plot_data);
-        } else {
-            this.mesh = create_mesh(scene, this.plot_data);
-        }
-        this.name = data.name;
-        this.uuid = data.uuid;
-        this.mesh.plot_uuid = data.uuid;
-        this.mesh.frustumCulled = false;
-        this.mesh.matrixAutoUpdate = false;
-        this.mesh.renderOrder = data.zvalue;
-        data.uniform_updater.on(([name, data])=>{
-            this.update_uniform(name, data);
-        });
-        if (!(data.plot_type === "lines" || data.plot_type === "linesegments")) {
-            connect_attributes(this.mesh, data.attribute_updater);
-        }
-        this.parent = scene;
-        this.mesh.plot_object = this;
-        this.mesh.visible = data.visible.value;
-        data.visible.on((v)=>{
-            this.mesh.visible = v;
-        });
-    }
-    dispose() {
-        delete plot_cache[this.uuid];
-        this.parent.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.dispose();
-        this.mesh = undefined;
-        this.parent = undefined;
-        this.uuid = "";
-        this.name = "";
-        this.is_instanced = false;
-        this.geometry_needs_recreation = false;
-        this.plot_data = {};
-    }
-    move_to(scene) {
-        if (scene === this.parent) {
-            return;
-        }
-        this.parent.remove(this.mesh);
-        connect_plot(scene, this);
-        scene.add(this.mesh);
-        this.parent = scene;
-        return;
-    }
-    update(attributes) {
-        attributes.keys().forEach((key)=>{
-            const value = attributes[key];
-            if (value.type == "uniform") {
-                this.update_uniform(key, value.data);
-            } else if (value.type === "geometry") {
-                this.update_geometries(value.data);
-            } else if (value.type === "faces") {
-                this.update_faces(value.data);
-            }
-        });
-        this.apply_updates();
-    }
-    update_uniform(name, new_data) {
-        const uniform = this.mesh.material.uniforms[name];
-        if (!uniform) {
-            throw new Error(`Uniform ${name} doesn't exist in Plot: ${this.name}`);
-        }
-        update_uniform(uniform, new_data);
-    }
-    update_geometry(name, new_data) {
-        buffer = this.mesh.geometry.attributes[name];
-        if (!buffer) {
-            throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
-        }
-        const old_length = buffer.count;
-        if (new_data.length <= old_length) {
-            buffer.set(new_data.data);
-            buffer.needsUpdate = true;
-        } else {
-            buffer.to_update = new_data.data;
-            this.geometry_needs_recreation = true;
+function get_points_view(points, indices, ndim) {
+    let view = new Float32Array(indices.length * ndim);
+    for(let i = 0; i < indices.length; i++){
+        let index = indices[i];
+        for(let j = 0; j < ndim; j++){
+            view[i * ndim + j] = points[index * ndim + j];
         }
     }
-    update_faces(face_data) {
-        this.mesh.geometry.setIndex(new mod.BufferAttribute(face_data, 1));
-    }
+    return view;
 }
-const scene_cache = {};
-const plot_cache = {};
-function add_scene(scene_id, three_scene) {
-    scene_cache[scene_id] = three_scene;
-}
-function find_scene(scene_id) {
-    return scene_cache[scene_id];
-}
-function delete_scene(scene_id) {
-    const scene = scene_cache[scene_id];
-    if (!scene) {
-        return;
-    }
-    delete_three_scene(scene);
-    while(scene.children.length > 0){
-        scene.remove(scene.children[0]);
-    }
-    delete scene_cache[scene_id];
-}
-function find_plots(plot_uuids) {
-    const plots = [];
-    plot_uuids.forEach((id)=>{
-        const plot = plot_cache[id];
-        if (plot) {
-            plots.push(plot);
-        }
-    });
-    return plots;
-}
-function delete_scenes(scene_uuids, plot_uuids) {
-    plot_uuids.forEach((plot_id)=>{
-        const plot = plot_cache[plot_id];
-        if (plot) {
-            delete_plot(plot);
-        }
-    });
-    scene_uuids.forEach((scene_id)=>{
-        delete_scene(scene_id);
-    });
-}
-function insert_plot(scene_id, plot_data1) {
-    const scene = find_scene(scene_id);
-    plot_data1.forEach((plot)=>{
-        add_plot(scene, plot);
-    });
-}
-function delete_plots(plot_uuids) {
-    const plots = find_plots(plot_uuids);
-    plots.forEach(delete_plot);
-}
-function convert_texture(scene, data) {
-    const tex = create_texture(scene, data);
-    tex.needsUpdate = true;
-    tex.generateMipmaps = data.mipmap;
-    tex.minFilter = mod[data.minFilter];
-    tex.magFilter = mod[data.magFilter];
-    tex.anisotropy = data.anisotropy;
-    tex.wrapS = mod[data.wrapS];
-    if (data.size.length > 1) {
-        tex.wrapT = mod[data.wrapT];
-    }
-    if (data.size.length > 2) {
-        tex.wrapR = mod[data.wrapR];
-    }
-    return tex;
-}
-function is_three_fixed_array(value) {
-    return value instanceof mod.Vector2 || value instanceof mod.Vector3 || value instanceof mod.Vector4 || value instanceof mod.Matrix4;
-}
-function to_uniform(scene, data) {
-    if (data.type !== undefined) {
-        if (data.type == "Sampler") {
-            return convert_texture(scene, data);
-        }
-        throw new Error(`Type ${data.type} not known`);
-    }
-    if (Array.isArray(data) || ArrayBuffer.isView(data)) {
-        if (!data.every((x1)=>typeof x1 === "number")) {
-            return data;
-        }
-        return to_three_vector(data);
+function pack_array(array, data, type_length = 0) {
+    if (array.flat) {
+        const tl = type_length === 0 ? array.type_length : type_length;
+        return {
+            flat: data,
+            type_length: tl
+        };
     }
     return data;
 }
-function deserialize_uniforms(scene, data) {
-    const result = {};
-    for(const name in data){
-        const value = data[name];
-        if (value instanceof mod.Uniform) {
-            result[name] = value;
+function unpack_array(array) {
+    if (array.flat) {
+        return array.flat;
+    }
+    return array;
+}
+function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
+    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+    if (points.length === 0) return new Float32Array(0);
+    const num_points = points.length / point_ndim;
+    const output = new Float32Array(num_points);
+    const scale = new THREE.Vector2(0.5 * res.x, 0.5 * res.y);
+    const second_point_idx = 1 * point_ndim;
+    let clip = new THREE.Vector4(points[second_point_idx], points[second_point_idx + 1], point_ndim === 3 ? points[second_point_idx + 2] : 0, 1).applyMatrix4(pvm);
+    let prev = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+    output[0] = 0.0;
+    output[1] = 0.0;
+    output[output.length - 1] = 0.0;
+    let point_i = 2;
+    while(point_i < num_points){
+        const array_idx = point_i * point_ndim;
+        const x1 = points[array_idx];
+        const y1 = points[array_idx + 1];
+        const z = point_ndim === 3 ? points[array_idx + 2] : 0;
+        if (Number.isFinite(x1) && Number.isFinite(y1) && (point_ndim === 2 || Number.isFinite(z))) {
+            clip = new THREE.Vector4(x1, y1, z, 1).applyMatrix4(pvm);
+            const current = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+            const length = current.distanceTo(prev);
+            output[point_i] = output[point_i - 1] + length;
+            prev = current;
+            point_i += 1;
         } else {
-            const ser = to_uniform(scene, value);
-            result[name] = new mod.Uniform(ser);
+            output[point_i] = 0.0;
+            output[point_i + 1] = 0.0;
+            if (point_i + 2 < num_points) {
+                output[Math.min(output.length - 1, point_i + 2)] = 0.0;
+                const next_point_idx = (point_i + 2) * point_ndim;
+                clip = new THREE.Vector4(points[next_point_idx], points[next_point_idx + 1], point_ndim === 3 ? points[next_point_idx + 2] : 0, 1).applyMatrix4(pvm);
+                prev = new THREE.Vector2(clip.x, clip.y).multiply(scale).divideScalar(clip.w);
+            }
+            point_i += 3;
         }
     }
-    return result;
+    return output;
 }
-function create_line_material(scene, uniforms, attributes, is_linesegments) {
-    const uniforms_des = deserialize_uniforms(scene, uniforms);
-    const mat = new THREE.RawShaderMaterial({
-        uniforms: uniforms_des,
-        glslVersion: THREE.GLSL3,
-        vertexShader: lines_vertex_shader(uniforms_des, attributes, is_linesegments),
-        fragmentShader: lines_fragment_shader(uniforms_des, attributes),
-        transparent: true,
-        blending: THREE.CustomBlending,
-        blendSrc: THREE.SrcAlphaFactor,
-        blendDst: THREE.OneMinusSrcAlphaFactor,
-        blendSrcAlpha: THREE.ZeroFactor,
-        blendDstAlpha: THREE.OneFactor,
-        blendEquation: THREE.AddEquation
-    });
-    mat.uniforms.object_id = {
-        value: 1
-    };
-    return mat;
-}
-const ON_NEXT_INSERT = new Set();
-function on_next_insert(f) {
-    ON_NEXT_INSERT.add(f);
-}
-function connect_plot(scene, plot) {
-    const cam = scene.wgl_camera;
-    const identity = new mod.Uniform(new mod.Matrix4());
-    const uniforms = plot.mesh ? plot.mesh.material.uniforms : plot.plot_data.uniforms;
+function get_projectionview(cam, plot) {
     const space = plot.plot_data.cam_space;
+    const identity = new THREE.Uniform(new THREE.Matrix4());
     if (space == "data") {
-        uniforms.view = cam.view;
-        uniforms.projection = cam.projection;
-        uniforms.projectionview = cam.projectionview;
-        uniforms.eyeposition = cam.eyeposition;
+        return cam.projectionview;
     } else if (space == "pixel") {
-        uniforms.view = identity;
-        uniforms.projection = cam.pixel_space;
-        uniforms.projectionview = cam.pixel_space;
+        return cam.pixel_space;
     } else if (space == "relative") {
-        uniforms.view = identity;
-        uniforms.projection = cam.relative_space;
-        uniforms.projectionview = cam.relative_space;
+        return cam.relative_space;
     } else if (space == "clip") {
-        uniforms.view = identity;
-        uniforms.projection = identity;
-        uniforms.projectionview = identity;
+        return identity;
     } else {
         throw new Error(`Space ${space} not supported!`);
     }
-    const { px_per_unit  } = scene.screen;
-    uniforms.resolution = cam.resolution;
-    uniforms.px_per_unit = new mod.Uniform(px_per_unit);
-    if (plot.plot_data.uniforms.preprojection) {
-        const { space , markerspace  } = plot.plot_data;
-        uniforms.preprojection = cam.preprojection_matrix(space.value, markerspace.value);
+}
+function get_last_len(plot, points) {
+    const cam = plot.scene.wgl_camera;
+    const is_lines = !plot.is_segments;
+    const pvm = get_projectionview(cam, plot);
+    const res = cam.resolution;
+    const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
+    const space = plot.plot_data.cam_space;
+    const static_space = space === "clip" || space === "relative";
+    if (!cam.on_update.has(plot.uuid) && !static_space) {
+        cam.on_update[plot.uuid] = (x1)=>{
+            const geom = plot.mesh.geometry;
+            const ia = geom.interleaved_attributes;
+            const new_points = ia.positions_transformed_f32c.array;
+            const lastlen = compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines);
+            plot.update_buffer("lastlen", lastlen);
+        };
     }
-    uniforms.light_direction = scene.light_direction;
+    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines);
 }
-function add_plot(scene, plot_data1) {
-    const p = new Plot(scene, plot_data1);
-    plot_cache[p.uuid] = p.mesh;
-    scene.add(p.mesh);
-    const next_insert = new Set(ON_NEXT_INSERT);
-    next_insert.forEach((f)=>f());
-}
-function convert_RGB_to_RGBA(rgbArray) {
-    const length = rgbArray.length;
-    const rgbaArray = new rgbArray.constructor(length / 3 * 4);
-    const a = rgbArray instanceof Uint8Array ? 255 : 1.0;
-    for(let i = 0, j = 0; i < length; i += 3, j += 4){
-        rgbaArray[j] = rgbArray[i];
-        rgbaArray[j + 1] = rgbArray[i + 1];
-        rgbaArray[j + 2] = rgbArray[i + 2];
-        rgbaArray[j + 3] = a;
-    }
-    return rgbaArray;
-}
-function create_texture_from_data(data) {
-    let buffer1 = data.data;
-    if (data.size.length == 3) {
-        const tex = new mod.Data3DTexture(buffer1, data.size[0], data.size[1], data.size[2]);
-        tex.format = mod[data.three_format];
-        tex.type = mod[data.three_type];
-        return tex;
-    } else {
-        let format = mod[data.three_format];
-        if (data.three_format == "RGBFormat") {
-            buffer1 = convert_RGB_to_RGBA(buffer1);
-            format = mod.RGBAFormat;
+function add_line_attributes(plot, attributes) {
+    const new_data = {};
+    let { lineindex  } = plot;
+    if (attributes.positions_transformed_f32c) {
+        const { positions_transformed_f32c  } = attributes;
+        const val = unpack_array(positions_transformed_f32c);
+        if (positions_transformed_f32c.type_length) {
+            plot.ndims["positions_transformed_f32c"] = positions_transformed_f32c.type_length;
         }
-        return new mod.DataTexture(buffer1, data.size[0], data.size[1], format, mod[data.three_type]);
+        lineindex = nan_free_points_indices(val, plot.ndims["positions_transformed_f32c"]);
+        plot.lineindex = lineindex;
+        const points = get_points_view(val, lineindex, plot.ndims["positions_transformed_f32c"]);
+        new_data["positions_transformed_f32c"] = pack_array(positions_transformed_f32c, points);
+        new_data["lineindex"] = pack_array(positions_transformed_f32c, lineindex, 1);
+        new_data["lastlen"] = pack_array(positions_transformed_f32c, get_last_len(plot, points), 1);
     }
-}
-function get_texture_atlas() {
-    if (TEXTURE_ATLAS.length === 0) {
-        const atlas = new TextureAtlas(2048, 64, 12);
-        TEXTURE_ATLAS.push(atlas);
+    function is_uniform(key) {
+        return key in plot.deserialized_uniforms;
     }
-    return TEXTURE_ATLAS[0];
-}
-function create_texture(scene, data) {
-    const buffer1 = data.data;
-    if (buffer1 == "texture_atlas") {
-        const { texture_atlas , renderer  } = scene.screen;
-        if (!texture_atlas) {
-            const atlas = get_texture_atlas();
-            scene.screen.texture_atlas = atlas.get_texture(renderer);
+    for (const [key, value] of Object.entries(attributes)){
+        const val = unpack_array(value);
+        if (key === "positions_transformed_f32c") {
+            continue;
         }
-        return scene.screen.texture_atlas;
-    } else {
-        return create_texture_from_data(data);
-    }
-}
-function re_create_texture(old_texture, buffer1, size) {
-    let tex;
-    if (size.length == 3) {
-        tex = new mod.Data3DTexture(buffer1, size[0], size[1], size[2]);
-        tex.format = old_texture.format;
-        tex.type = old_texture.type;
-    } else {
-        tex = new mod.DataTexture(buffer1, size[0], size[1] ? size[1] : 1, old_texture.format, old_texture.type);
-    }
-    tex.minFilter = old_texture.minFilter;
-    tex.magFilter = old_texture.magFilter;
-    tex.anisotropy = old_texture.anisotropy;
-    tex.wrapS = old_texture.wrapS;
-    if (size.length > 1) {
-        tex.wrapT = old_texture.wrapT;
-    }
-    if (size.length > 2) {
-        tex.wrapR = old_texture.wrapR;
-    }
-    return tex;
-}
-function BufferAttribute(buffer1) {
-    const jsbuff = new mod.BufferAttribute(buffer1.flat, buffer1.type_length);
-    jsbuff.setUsage(mod.DynamicDrawUsage);
-    return jsbuff;
-}
-function InstanceBufferAttribute(buffer1) {
-    const jsbuff = new mod.InstancedBufferAttribute(buffer1.flat, buffer1.type_length);
-    jsbuff.setUsage(mod.DynamicDrawUsage);
-    return jsbuff;
-}
-function attach_geometry(buffer_geometry, vertexarrays, faces) {
-    for(const name in vertexarrays){
-        const buff = vertexarrays[name];
-        let buffer1;
-        if (buff.to_update) {
-            buffer1 = new mod.BufferAttribute(buff.to_update, buff.itemSize);
+        if ((key === "line_color" || key === "uniform_linewidth") && is_uniform(key)) {
+            new_data[key + "_start"] = value;
+            new_data[key + "_end"] = value;
+        } else if (is_typed_array(val) && (key === "line_color" || key === "uniform_linewidth")) {
+            if (value.type_length) {
+                plot.ndims[key] = value.type_length;
+            }
+            new_data[key] = pack_array(value, get_points_view(val, lineindex, plot.ndims[key]));
         } else {
-            buffer1 = BufferAttribute(buff);
+            new_data[key] = value;
         }
-        buffer_geometry.setAttribute(name, buffer1);
     }
-    buffer_geometry.setIndex(faces);
-    buffer_geometry.boundingSphere = new mod.Sphere();
-    buffer_geometry.boundingSphere.radius = 10000000000000;
-    buffer_geometry.frustumCulled = false;
-    return buffer_geometry;
+    return new_data;
 }
-function attach_instanced_geometry(buffer_geometry, instance_attributes) {
-    for(const name in instance_attributes){
-        const buffer1 = InstanceBufferAttribute(instance_attributes[name]);
-        buffer_geometry.setAttribute(name, buffer1);
-    }
-}
-function recreate_geometry(mesh, vertexarrays, faces) {
-    const buffer_geometry = new mod.BufferGeometry();
-    attach_geometry(buffer_geometry, vertexarrays, faces);
-    mesh.geometry.dispose();
-    mesh.geometry = buffer_geometry;
-    mesh.needsUpdate = true;
-}
-function recreate_instanced_geometry(mesh) {
-    const buffer_geometry = new mod.InstancedBufferGeometry();
-    const vertexarrays = {};
-    const instance_attributes = {};
-    const faces = [
-        ...mesh.geometry.index.array
-    ];
-    Object.keys(mesh.geometry.attributes).forEach((name)=>{
-        const buffer1 = mesh.geometry.attributes[name];
-        const copy = buffer1.to_update ? buffer1.to_update : buffer1.array.map((x1)=>x1);
-        if (buffer1.isInstancedBufferAttribute) {
-            instance_attributes[name] = {
-                flat: copy,
-                type_length: buffer1.itemSize
-            };
-        } else {
-            vertexarrays[name] = {
-                flat: copy,
-                type_length: buffer1.itemSize
-            };
-        }
-    });
-    attach_geometry(buffer_geometry, vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, instance_attributes);
-    mesh.geometry.dispose();
-    mesh.geometry = buffer_geometry;
-    mesh.needsUpdate = true;
-}
-function create_material(scene, program) {
-    const is_volume = "volumedata" in program.uniforms;
-    return new mod.RawShaderMaterial({
-        uniforms: deserialize_uniforms(scene, program.uniforms),
-        vertexShader: program.vertex_source,
-        fragmentShader: program.fragment_source,
-        side: is_volume ? mod.BackSide : mod.DoubleSide,
-        transparent: true,
-        glslVersion: mod.GLSL3,
-        depthTest: !program.overdraw.value,
-        depthWrite: !program.transparency.value
-    });
-}
-function create_mesh(scene, program) {
-    const buffer_geometry = new mod.BufferGeometry();
-    const faces = new mod.BufferAttribute(program.faces.value, 1);
-    attach_geometry(buffer_geometry, program.vertexarrays, faces);
-    const material = create_material(scene, program);
-    const mesh = new mod.Mesh(buffer_geometry, material);
-    program.faces.on((x1)=>{
-        mesh.geometry.setIndex(new mod.BufferAttribute(x1, 1));
-    });
+function create_line(plot_object) {
+    const geometry = create_line_instance_geometry();
+    const buffers = {};
+    const { plot_data  } = plot_object;
+    create_line_buffers(geometry, buffers, add_line_attributes(plot_object, plot_data.attributes), plot_object.is_segments);
+    const material = create_line_material(add_line_attributes(plot_object, plot_object.deserialized_uniforms), geometry.attributes, plot_object.is_segments);
+    material.depthTest = !plot_data.overdraw;
+    material.depthWrite = !plot_data.transparency;
+    material.uniforms.is_linesegments = {
+        value: plot_object.is_segments
+    };
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.geometry.instanceCount = geometry.attributes.positions_transformed_f32c_start.count;
     return mesh;
+}
+class Lines extends Plot {
+    constructor(scene, data){
+        super(scene, data);
+        if (data.plot_type !== "Lines") {
+            throw new Error(`Lines class must be initialized with plot_type 'Lines' found ${data.plot_type}`);
+        }
+        this.is_segments = data.is_segments === true;
+        this.is_instanced = true;
+        this.ndims = {};
+        this.scene = scene;
+        this.mesh = create_line(this);
+        this.init_mesh();
+    }
+    update(data_key_value_array) {
+        const dict = Object.fromEntries(data_key_value_array);
+        const line_attr = Object.entries(add_line_attributes(this, dict));
+        super.update(line_attr);
+    }
+    dispose() {
+        this.scene.wgl_camera.on_update.delete(this.uuid);
+        super.dispose();
+    }
+}
+class Mesh extends Plot {
+    constructor(scene, data){
+        super(scene, data);
+        if ("instance_attributes" in data) {
+            this.is_instanced = true;
+            this.mesh = create_instanced_mesh(this);
+        } else {
+            this.mesh = create_mesh(this);
+        }
+        this.init_mesh();
+    }
 }
 function broadcast_getindex(a, x1, i) {
     if (a.length == x1.length / 2) {
-        return new mod.Vector2(x1[i * 2], x1[i * 2 + 1]);
+        return new T(x1[i * 2], x1[i * 2 + 1]);
     } else if (x1.length == 2) {
-        return new mod.Vector2(x1[0], x1[1]);
+        return new T(x1[0], x1[1]);
     } else {
         throw new Error(`broadcast_getindex: x has length ${x1.length}, but a has length ${a.length}`);
     }
@@ -23971,9 +24425,9 @@ function per_glyph_data(glyph_hashes, scales) {
         const hash = glyph_hashes[i];
         const data = atlas.get_glyph_data(hash, broadcast_getindex(glyph_hashes, scales, i));
         const [uv, c_width, q_offset] = data ?? [
-            new mod.Vector4(0, 0, 0, 0),
-            new mod.Vector2(0, 0),
-            new mod.Vector2(0, 0)
+            new ot(0, 0, 0, 0),
+            new T(0, 0),
+            new T(0, 0)
         ];
         uv_offset_width.set(uv.toArray(), i * 4);
         markersize.set(c_width.toArray(), i * 2);
@@ -23985,309 +24439,113 @@ function per_glyph_data(glyph_hashes, scales) {
         quad_offsets
     ];
 }
-function to_three_vector(data) {
-    if (data.length == 2) {
-        return new mod.Vector2().fromArray(data);
-    }
-    if (data.length == 3) {
-        return new mod.Vector3().fromArray(data);
-    }
-    if (data.length == 4) {
-        return new mod.Vector4().fromArray(data);
-    }
-    if (data.length == 16) {
-        const mat = new mod.Matrix4();
-        mat.fromArray(data);
-        return mat;
-    }
-    return data;
-}
-class TextureAtlas {
-    constructor(width, pix_per_glyph, glyph_padding){
-        this.pix_per_glyph = pix_per_glyph;
-        this.glyph_padding = glyph_padding;
-        this.width = width;
-        this.height = width;
-        this.data = new Float32Array(width * width);
-        for(let i = 0; i < this.data.length; i++){
-            this.data[i] = 0.5 * pix_per_glyph + glyph_padding;
-        }
-        this.glyph_data = new Map();
-        this.textures = new Map();
-    }
-    insert_glyph(hash, glyph_data, uv_pos, width, minimum) {
-        this.glyph_data.set(hash, [
-            uv_pos,
-            width,
-            minimum
-        ]);
-        const [px_start, px_width] = uv_to_pixel_bounds(uv_pos, this.width, this.height);
-        for(let col = 0; col < px_width.y; col++){
-            for(let row = 0; row < px_width.x; row++){
-                const glyph_index = col * px_width.x + row;
-                const atlas_index = (px_start.y + col) * this.height + (px_start.x + row);
-                this.data[atlas_index] = glyph_data.array[glyph_index];
-            }
-        }
-    }
-    insert_glyphs(glyph_data) {
-        let written = false;
-        Object.keys(glyph_data).forEach((hash)=>{
-            if (this.glyph_data.has(hash)) {
-                return;
-            }
-            const [uv, sdf, width, minimum] = glyph_data[hash];
-            this.insert_glyph(hash, sdf, to_three_vector(uv), to_three_vector(width), to_three_vector(minimum));
-            written = true;
-            return;
-        });
-        if (written) {
-            this.upload_tex_data();
-        }
-    }
-    get_glyph_data(hash, scale) {
-        const data = this.glyph_data.get(hash.toString());
-        if (!data) {
-            console.warn(`Glyph with hash ${hash} not found in the atlas.`);
-            return null;
-        }
-        const [uv_offset_width, width, mini] = data;
-        const w_scaled = width.clone().multiply(scale);
-        const mini_scaled = mini.clone().multiply(scale);
-        const pad = this.glyph_padding / this.pix_per_glyph;
-        const scaled_pad = scale.clone().multiplyScalar(2 * pad);
-        const scales = w_scaled.clone().add(scaled_pad);
-        const quad_offsets = mini_scaled.clone().sub(scale.clone().multiplyScalar(pad));
-        return [
-            uv_offset_width,
-            scales,
-            quad_offsets
-        ];
-    }
-    get_texture(renderer) {
-        if (this.textures.has(renderer)) {
-            return this.textures.get(renderer);
-        }
-        const texture = new Lt(this.data, this.width, this.height, Tl, pi);
-        texture.magFilter = Ut;
-        texture.minFilter = Ut;
-        texture.wrapS = Ht;
-        texture.wrapT = Ht;
-        this.textures.set(renderer, texture);
-        return texture;
-    }
-    upload_tex_data() {
-        for (const [renderer, texture] of this.textures.entries()){
-            if (!texture.image) {
-                this.textures.delete(renderer);
-                continue;
-            }
-            texture.image.data.set(this.data);
-            texture.needsUpdate = true;
-        }
-    }
-}
-const TEXTURE_ATLAS = [];
 function get_glyph_data_attributes(atlas, glyph_data) {
+    if (glyph_data == null) {
+        return {};
+    }
     const { glyph_hashes , atlas_updates , scales  } = glyph_data;
     atlas.insert_glyphs(atlas_updates);
     if (glyph_hashes) {
-        const [uv_offset_width, markersize, quad_offset] = per_glyph_data(glyph_hashes, scales);
+        const [sdf_uv, quad_scale, quad_offset] = per_glyph_data(glyph_hashes, scales);
         return {
-            uv_offset_width,
-            markersize,
+            sdf_uv,
+            quad_scale,
             quad_offset
         };
     }
     return {};
 }
-function create_text_mesh(scene, program) {
-    const glyph_obs = program.glyph_data;
-    const updater = program.attribute_updater;
-    const lengths = {
-        uv_offset_width: 4
-    };
-    const atlas = get_texture_atlas();
-    glyph_obs.on((glyph_data)=>{
-        const data = get_glyph_data_attributes(atlas, glyph_data);
-        for(const name in data){
-            const buff = data[name];
-            const len = lengths[name] || 2;
-            updater.notify([
-                name,
-                buff,
-                buff.length / len
-            ]);
-        }
-    });
-    const gdata = get_glyph_data_attributes(atlas, glyph_obs.value);
-    for(const name in gdata){
-        const buff = gdata[name];
-        const len = lengths[name] || 2;
-        program.instance_attributes[name] = {
-            flat: buff,
-            type_length: len
+class Scatter extends Plot {
+    constructor(scene, data){
+        const atlas = get_texture_atlas();
+        const lengths = {
+            sdf_uv: 4
         };
-    }
-    return create_instanced_mesh(scene, program);
-}
-function create_instanced_mesh(scene, program) {
-    const buffer_geometry = new mod.InstancedBufferGeometry();
-    const faces = new mod.BufferAttribute(program.faces.value, 1);
-    attach_geometry(buffer_geometry, program.vertexarrays, faces);
-    attach_instanced_geometry(buffer_geometry, program.instance_attributes);
-    const material = create_material(scene, program);
-    const mesh = new mod.Mesh(buffer_geometry, material);
-    program.faces.on((x1)=>{
-        mesh.geometry.setIndex(new mod.BufferAttribute(x1, 1));
-    });
-    return mesh;
-}
-function first(x1) {
-    return x1[Object.keys(x1)[0]];
-}
-function connect_attributes(mesh, updater) {
-    const instance_buffers = {};
-    const geometry_buffers = {};
-    let first_instance_buffer;
-    const real_instance_length = [
-        0
-    ];
-    let first_geometry_buffer;
-    const real_geometry_length = [
-        0
-    ];
-    function re_assign_buffers() {
-        const attributes = mesh.geometry.attributes;
-        Object.keys(attributes).forEach((name)=>{
-            const buffer1 = attributes[name];
-            if (buffer1.isInstancedBufferAttribute) {
-                instance_buffers[name] = buffer1;
-            } else {
-                geometry_buffers[name] = buffer1;
+        if ("glyph_data" in data) {
+            const gdata = get_glyph_data_attributes(atlas, data.glyph_data);
+            delete data.glyph_data;
+            for(const name in gdata){
+                const buff = gdata[name];
+                const len = lengths[name] || 2;
+                data.instance_attributes[name] = {
+                    flat: buff,
+                    type_length: len
+                };
             }
-        });
-        first_instance_buffer = first(instance_buffers);
-        if (first_instance_buffer) {
-            real_instance_length[0] = first_instance_buffer.count;
         }
-        first_geometry_buffer = first(geometry_buffers);
-        real_geometry_length[0] = first_geometry_buffer.count;
+        super(scene, data);
+        this.is_instanced = true;
+        this.atlas = atlas;
+        this.mesh = create_instanced_mesh(this);
+        this.init_mesh();
     }
-    re_assign_buffers();
-    updater.on(([name, new_values, length])=>{
-        const buffer1 = mesh.geometry.attributes[name];
-        let buffers;
-        let real_length;
-        let is_instance = false;
-        if (name in instance_buffers) {
-            buffers = instance_buffers;
-            first_instance_buffer;
-            real_length = real_instance_length;
-            is_instance = true;
-        } else {
-            buffers = geometry_buffers;
-            first_geometry_buffer;
-            real_length = real_geometry_length;
-        }
-        if (length <= real_length[0]) {
-            buffer1.set(new_values);
-            buffer1.needsUpdate = true;
-            if (is_instance) {
-                mesh.geometry.instanceCount = length;
+    update(data_key_value_array) {
+        const dict = Object.fromEntries(data_key_value_array);
+        if ("glyph_data" in dict) {
+            const data = get_glyph_data_attributes(this.atlas, dict.glyph_data);
+            delete dict.glyph_data;
+            for (const [key, value] of Object.entries(data)){
+                dict[key] = value;
             }
-        } else {
-            buffer1.to_update = new_values;
-            const all_have_same_length = Object.values(buffers).every((x1)=>x1.to_update && x1.to_update.length / x1.itemSize == length);
-            if (all_have_same_length) {
-                if (is_instance) {
-                    recreate_instanced_geometry(mesh);
-                    re_assign_buffers();
-                    mesh.geometry.instanceCount = new_values.length / buffer1.itemSize;
+        }
+        super.update(Object.entries(dict));
+    }
+}
+function nan_free_points_indices(points, ndim) {
+    const indices = [];
+    const npoints = points.length / ndim;
+    let was_nan = true;
+    let loop_start_idx = -1;
+    for(let i = 0; i < npoints; i++){
+        const p = get_point(points, i, ndim);
+        if (point_isnan(p)) {
+            if (!was_nan) {
+                if (loop_start_idx !== -1 && loop_start_idx + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start_idx], ndim), get_point(points, i - 1, ndim))) {
+                    indices.push(indices[loop_start_idx + 1]);
+                    indices[loop_start_idx - 1] = i - 2;
                 } else {
-                    recreate_geometry(mesh, buffers, mesh.geometry.index);
-                    re_assign_buffers();
+                    indices.push(i - 1);
                 }
             }
-        }
-    });
-}
-function add_glyphs_from_plots(scene_data) {
-    const atlas = get_texture_atlas();
-    scene_data.plots.forEach((plot_data1)=>{
-        if (plot_data1.glyph_data) {
-            const glyph_data = plot_data1.glyph_data.value;
-            const { atlas_updates  } = glyph_data;
-            if (atlas_updates) {
-                atlas.insert_glyphs(atlas_updates);
+            loop_start_idx = -1;
+            was_nan = true;
+        } else {
+            if (was_nan) {
+                indices.push(i);
+                loop_start_idx = indices.length;
             }
+            was_nan = false;
         }
-    });
-    scene_data.children.forEach((child)=>{
-        add_glyphs_from_plots(child);
-    });
-}
-function deserialize_scene_recursive(data, screen) {
-    const scene = new mod.Scene();
-    scene.screen = screen;
-    add_scene(data.uuid, scene);
-    const { canvas  } = screen;
-    scene.scene_uuid = data.uuid;
-    scene.frustumCulled = false;
-    scene.viewport = data.viewport;
-    scene.backgroundcolor = data.backgroundcolor;
-    scene.backgroundcolor_alpha = data.backgroundcolor_alpha;
-    scene.clearscene = data.clearscene;
-    scene.visible = data.visible;
-    const camera = new MakieCamera();
-    scene.wgl_camera = camera;
-    function update_cam(camera_matrices, force) {
-        if (!force) {
-            if (!(Bonito.can_send_to_julia && Bonito.can_send_to_julia())) {
-                return;
-            }
+        indices.push(i);
+    }
+    if (!was_nan) {
+        if (loop_start_idx !== -1 && loop_start_idx + 2 < indices.length && points_approx_equal(get_point(points, indices[loop_start_idx], ndim), get_point(points, npoints - 1, ndim))) {
+            indices.push(indices[loop_start_idx + 1]);
+            indices[loop_start_idx - 1] = npoints - 2;
+        } else {
+            indices.push(npoints - 1);
         }
-        const [view, projection, resolution, eyepos] = camera_matrices;
-        camera.update_matrices(view, projection, resolution, eyepos);
     }
-    if (data.cam3d_state) {
-        attach_3d_camera(canvas, camera, data.cam3d_state, data.light_direction, scene);
-    }
-    update_cam(data.camera.value, true);
-    camera.update_light_dir(data.light_direction.value);
-    data.camera.on(update_cam);
-    if (data.camera_relative_light) {
-        scene.light_direction = camera.light_direction;
-    } else {
-        const light_dir = new mod.Vector3().fromArray(data.light_direction.value);
-        scene.light_direction = new mod.Uniform(light_dir);
-        data.light_direction.on((value)=>{
-            plot_data.uniforms.light_direction.value.fromArray(value);
-        });
-    }
-    data.plots.forEach((plot_data1)=>{
-        add_plot(scene, plot_data1);
-    });
-    scene.scene_children = data.children.map((child)=>{
-        const childscene = deserialize_scene_recursive(child, screen);
-        return childscene;
-    });
-    return scene;
+    return new Uint32Array(indices);
 }
-function deserialize_scene(data, screen) {
-    add_glyphs_from_plots(data);
-    return deserialize_scene_recursive(data, screen);
+function get_point(points, index, ndim) {
+    return points.slice(index * ndim, (index + 1) * ndim);
 }
-function delete_plot(plot) {
-    plot.plot_object.dispose();
+function point_isnan(p) {
+    return p.some((p)=>isNaN(p));
 }
-function delete_three_scene(scene) {
-    delete scene_cache[scene.scene_uuid];
-    scene.scene_children.forEach(delete_three_scene);
-    while(scene.children.length > 0){
-        delete_plot(scene.children[0]);
-    }
+function points_approx_equal(p1, p2) {
+    return p1.every((p, i)=>approx_equal(p, p2[i]));
 }
+function approx_equal(a, b) {
+    return Math.abs(a - b) < Number.EPSILON;
+}
+const mod1 = {
+    Plot: Plot,
+    Lines: Lines,
+    Mesh: Mesh,
+    Scatter: Scatter
+};
 window.THREE = mod;
 function dispose_screen(screen) {
     if (Object.keys(screen).length === 0) {
@@ -24422,17 +24680,6 @@ function wglerror(gl, error) {
             return "Unknown error";
     }
 }
-function handleSource(string, errorLine) {
-    const lines = string.split("\n");
-    const lines2 = [];
-    const from = Math.max(errorLine - 6, 0);
-    const to = Math.min(errorLine + 6, lines.length);
-    for(let i = from; i < to; i++){
-        const line = i + 1;
-        lines2.push(`${line === errorLine ? ">" : " "} ${line}: ${lines[i]}`);
-    }
-    return lines2.join("\n");
-}
 function getShaderErrors(gl, shader, type) {
     const status = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
     const errors = gl.getShaderInfoLog(shader).trim();
@@ -24440,7 +24687,7 @@ function getShaderErrors(gl, shader, type) {
     const errorMatches = /ERROR: 0:(\d+)/.exec(errors);
     if (errorMatches) {
         const errorLine = parseInt(errorMatches[1]);
-        return type.toUpperCase() + "\n\n" + errors + "\n\n" + handleSource(gl.getShaderSource(shader), errorLine);
+        return type.toUpperCase() + "\n\n" + errors + "\n\n" + "In line: " + errorLine + "\n\n" + "Source:\n" + gl.getShaderSource(shader);
     } else {
         return errors;
     }
@@ -24656,6 +24903,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
     const three_scene = deserialize_scene(scenes, screen);
+    console.log(three_scene);
     screen.root_scene = three_scene;
     start_renderloop(three_scene);
     canvas_width.on((w_h)=>{
@@ -24809,8 +25057,8 @@ function pick_closest(scene, xy, range) {
     const y1 = Math.min(canvas.height, Math.ceil(px_per_unit * (xy[1] + range)));
     const dx = x1 - x0;
     const dy = y1 - y0;
-    const [plot_data1, _] = pick_native(scene, x0, y0, dx, dy, false);
-    const plot_matrix = plot_data1.data;
+    const [plot_data, _] = pick_native(scene, x0, y0, dx, dy, false);
+    const plot_matrix = plot_data.data;
     let min_dist = px_per_unit * px_per_unit * range * range;
     let selection = [
         null,
@@ -24854,11 +25102,11 @@ function pick_sorted(scene, xy, range) {
     if (!picked) {
         return null;
     }
-    const [plot_data1, selected] = picked;
+    const [plot_data, selected] = picked;
     if (selected.length == 0) {
         return null;
     }
-    const plot_matrix = plot_data1.data;
+    const plot_matrix = plot_data.data;
     const distances = selected.map((x1)=>1e30);
     const x2 = xy[0] * px_per_unit + 1 - x0;
     const y2 = xy[1] * px_per_unit + 1 - y0;

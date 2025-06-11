@@ -73,10 +73,10 @@ preferred_axis_type(::Union{Image,Heatmap}) = Axis
 
 function preferred_axis_type(p::Plot{F}) where F
     # Otherwise, we check the arguments
-    input_args = map(to_value, p.args)
+    input_args = p.args[]
     result = args_preferred_axis(Plot{F}, input_args...)
     isnothing(result) || return result
-    conv_args = map(to_value, p.converted)
+    conv_args = p.converted[]
     result = args_preferred_axis(Plot{F}, conv_args...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result

@@ -539,7 +539,7 @@ creates indices under the assumption, that each triplet in `xyz` forms a triangl
 """
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector
+        xyz::AbstractVector{<: VecTypes}
     )
     faces = connect(UInt32.(0:length(xyz)-1), GLTriangleFace)
     # TODO support faceview natively
@@ -559,11 +559,15 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
 end
 
 function convert_arguments(
-        ::Type{<:Mesh},
-        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
-    )
-    # TODO: clear faceviews
-    return (meshes,)
+        T::Type{<:Mesh},
+        meshes::AbstractVector{<: GeometryBasics.AbstractGeometry{DIM}}
+    ) where DIM
+
+    if isempty(meshes)
+        return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
+    end
+    converted = [convert_arguments(T, m)[1] for m in meshes]
+    return (merge(converted),)
 end
 
 function convert_arguments(MT::Type{<:Mesh}, xyz::AbstractPolygon)
@@ -756,6 +760,7 @@ float32type(::T) where {T} = float32type(T)
 float32type(T::Type) = MethodError(float32type, (T,))
 
 el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
+el32convert(x::Base.ReinterpretArray) = collect(elconvert(float32type(x), x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{T}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{<:Union{Missing,T}}) where {T<:Real} = elconvert(float32type(T), x)
@@ -882,21 +887,37 @@ end
 
 
 
+# convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+# convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-convert_attribute(color, ::key"color") = to_color(color)
+# Normalize for cycle to be nothing if there's nothing to cycle!
+convert_attribute(cycle::Vector, ::key"cycle") = isempty(cycle) ? nothing : Cycle(cycle)
+convert_attribute(cycle::Nothing, ::key"cycle") = cycle
+convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
-convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
-convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"highclip") = p
-convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"lowclip") = p
+convert_attribute(x::Automatic, ::key"color") = x
+convert_attribute(color, ::key"color") = to_color(color)
+
+convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
+
+convert_attribute(c, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic, Nothing}, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+convert_attribute(c, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic,Nothing}, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+
+convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
+
+# TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
+convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
+
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -927,6 +948,7 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
+convert_attribute(r, ::key"rotation", ::key"scatter") = Ref{Any}(r)
 convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
@@ -1234,7 +1256,7 @@ end
 
 function convert_attribute(value::Symbol, ::key"linecap")
     # TODO: make this an enum?
-    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    vals = Dict(:butt => Int32(0), :square => Int32(1), :round => Int32(2))
     return get(vals, value) do
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
@@ -1243,7 +1265,7 @@ end
 function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
-    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
+    vals = (miter = Int32(0), round = Int32(2), bevel = Int32(3))
     return get(vals, value) do
         error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
     end
@@ -1295,6 +1317,7 @@ component `Tuple`s with `Real` and `Symbol` elements.
 To specify a custom error message you can add an `error_prefix` or use
 `halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
+to_align(x::AbstractVector) = to_align.(x)
 to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
 to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
 
@@ -1455,9 +1478,6 @@ to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
 
-convert_attribute(x, ::key"colorrange") = to_colorrange(x)
-to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
-
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
 to_fontsize(x::AbstractVector{T}) where T <: Number = el32convert(x)
@@ -1594,14 +1614,30 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
+"""
+    to_colormapping_type(colormap)
+Returns `continuous`, `categorical` or `banded` according to the type of the
+colormap passed.
+Note: Currently recognizes all named colormaps as continuous. To recognize them
+as categorical they need to be wrapped in `Categorical(colormap)`.
+"""
+to_colormapping_type(::Any) = continuous
+to_colormapping_type(::Categorical) = categorical
+to_colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
+to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
+to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
+# TODO: some Symbols should probably be considered categorical?
+# TODO: Would be nice if we could extract more information like colorscale from
+#       PlotUtils, colormapping types from ColorSchemes, ...
+
 # Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
-    elseif isa(value, Int32) && value in 0:5
-        return value
+    elseif isa(value, Integer) && value in 0:5
+        return Int32(value)
     elseif value == 7
-        return value # makie internal contour implementation
+        return Int32(value) # makie internal contour implementation
     else
         error("$value is not a valid volume algorithm. Please have a look at the docstring of `to_volume_algorithm` (in the REPL, `?to_volume_algorithm`).")
     end
@@ -1985,6 +2021,15 @@ convert_attribute(value, ::key"specular") = Vec3f(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 
+convert_attribute(value::Automatic, ::key"shading") = true
+function convert_attribute(value::MakieCore.ShadingAlgorithm, ::key"shading")
+    if value != NoShading
+        @warn "`shading = $value` is deprecated in favor of `shading = true` as a plot attribute. To switch between `FastShading` and `MultiLightShading` explicitly, use scene attributes."
+    end
+    return value != NoShading
+end
+
+
 convert_attribute(value, ::key"depth_shift") = Float32(value)
 
 
@@ -1994,7 +2039,7 @@ convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
     return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
                                       x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
-                                      z_repeat=s.repeat[min(3, N)],
+                                      z_repeat=s.repeat[min(3, N)], mipmap = s.mipmap,
                                       anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
 end
 
@@ -2004,7 +2049,7 @@ function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
     data = el32convert(x.data)
     return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
                                        x.repeat,
-                                       x.anisotropic,
+                                       x.anisotropic, mipmap = s.mipmap,
                                        x.color_swizzel,
                                        ShaderAbstractions.ArrayUpdater(data, x.updates.update))
 end
@@ -2021,3 +2066,6 @@ GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T})
 to_lrbt_padding(x::Real) = Vec4f(x)
 to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
 to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
+
+convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
+convert_attribute(x::Vector{<: Plane}, ::key"clip_planes") = Plane3f.(x)

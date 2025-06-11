@@ -88,12 +88,12 @@
         end
 
         transform = Transformation(
-            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1), 
+            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1),
             ScaleTransform(Vec3d(1.1, 0.8, 1.2))
         )
         # Some plots don't support transform_funcs
         simple_transform = Transformation(
-            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1), 
+            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1),
             identity
         )
 
@@ -140,7 +140,7 @@
 
             # Surface (3D)
             scene = Scene(size = (400, 400))
-            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10], 
+            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
                 transformation = simple_transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (129.0, 188.0))
@@ -218,7 +218,7 @@
 
             # Surface (3D)
             scene = Scene(size = (400, 400))
-            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10], 
+            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
                 transformation = simple_transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (118.0, 208.0))

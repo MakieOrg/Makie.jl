@@ -123,7 +123,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
         transparency_weight_scale = 1000f0,
-        # maximum number of lights with shading = :verbose
+        # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
     ),

@@ -286,14 +286,11 @@ function position_on_plot(plot::AbstractPlot, idx::Integer; apply_transform = tr
     )
 end
 
-
 function position_on_plot(plot::Union{Scatter, MeshScatter}, idx, ray::Ray; apply_transform = true)
-    point = plot[1][][idx]
-    point3 = to_ndim(Point3d, point, 0)
-    if apply_transform && !isnan(point3)
-        return apply_transform_and_model(plot, point3)
+    if apply_transform
+        return _project(plot.model_f32c[], plot.positions_transformed_f32c[][idx])
     else
-        return point3
+        return to_ndim(Point3d, plot.positions[][idx], 0)
     end
 end
 

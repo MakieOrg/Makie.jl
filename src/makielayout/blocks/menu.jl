@@ -2,7 +2,6 @@ function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
     listheight = Observable(0.0; ignore_equal_values=true)
-
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values=true)
@@ -67,7 +66,6 @@ function initialize_block!(m::Menu; default = 1)
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
         inspectable = false
     )
-
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values=true)
     selectiontext = text!(
         blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
@@ -114,15 +112,14 @@ function initialize_block!(m::Menu; default = 1)
     list_y_bounds = Ref(Float32[])
 
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
+
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         fontsize = m.fontsize, inspectable = false)
 
     # listheight needs to be up to date before showing the menuscene so that its
     # direction is correct
-    gc_heights = map(blockscene, optiontexts.plots[1][1], m.textpadding) do gcs, pad
-        gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
-        heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
+    gc_heights = map(blockscene, fast_string_boundingboxes_obs(optiontexts), m.textpadding) do bbs, pad
+        heights = map(size -> size[2] + pad[3] + pad[4], widths.(bbs))
         h = sum(heights)
         listheight[] = h
         return (heights, h)
@@ -220,7 +217,7 @@ function initialize_block!(m::Menu; default = 1)
         else
             # If not inside menuscene, we check the state for the menu button
             # (use position because selectionpoly is in blockscene)
-            if position in selectionpoly.converted[1][]
+            if position in selectionpoly.converted[][1]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button = true

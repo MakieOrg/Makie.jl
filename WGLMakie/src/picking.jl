@@ -71,7 +71,6 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
 end
 
 function Makie.pick(::Scene, screen::Screen, xy)
-
     plot_matrix = pick_native(screen, Rect2i(xy..., 1, 1))
     return plot_matrix[1, 1]
 end

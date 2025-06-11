@@ -15,11 +15,12 @@ function LinesegmentBuffer(
 end
 
 function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
+    attr = lsb.attributes
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
-    append!(lsb[1][], positions)
-    append!(lsb[:color][], colorv)
-    append!(lsb[:linewidth][], thickv)
+    append!(attr.inputs[:arg1].value, positions)
+    append!(attr.inputs[:color].value, colorv)
+    append!(attr.inputs[:linewidth].value, thickv)
     return
 end
 
@@ -28,17 +29,20 @@ function push!(tb::LineSegments, positions::Point{N, Float32}; kw_args...) where
 end
 
 function start!(lsb::LineSegments)
-    resize!(lsb[1][], 0)
-    resize!(lsb[:color][], 0)
-    resize!(lsb[:linewidth][], 0)
+    attr = lsb.attributes
+    resize!(attr.inputs[:arg1].value, 0)
+    resize!(attr.inputs[:color].value, 0)
+    resize!(attr.inputs[:linewidth].value, 0)
     return
 end
 
 function finish!(lsb::LineSegments)
     # update the signal!
-    lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    attr = lsb.attributes
+    ComputePipeline.mark_dirty!(attr.inputs[:arg1])
+    ComputePipeline.mark_dirty!(attr.inputs[:color])
+    ComputePipeline.mark_dirty!(attr.inputs[:linewidth])
+    ComputePipeline.update_observables!(attr)
     return
 end
 
@@ -63,21 +67,23 @@ function TextBuffer(
 end
 
 function start!(tb::Makie.Text)
-    for key in (1, :color, :rotation, :fontsize, :font, :align)
-        empty!(tb[key][])
+    attr = tb.attributes
+    for key in (:arg1, :color, :rotation, :fontsize, :font, :align)
+        empty!(attr.inputs[key].value)
     end
     return
 end
 
 function finish!(tb::Makie.Text)
-    # update the signal!
+    attr = tb.attributes
     # now update all callbacks
-    # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
-    # in basic_recipes annotations should depend on all signals here, so updating one should be enough
-    if length(tb[1][]) != length(tb.fontsize[])
-        error("Inconsistent buffer state for $(tb[1][])")
+    if length(attr.inputs[:arg1].value) != length(attr.inputs[:fontsize].value)
+        error("Inconsistent buffer state for $(attr.inputs[:arg1].value)")
     end
-    notify(tb[1])
+    for key in (:arg1, :text, :color, :rotation, :fontsize, :font, :align)
+        ComputePipeline.mark_dirty!(attr.inputs[key])
+    end
+    ComputePipeline.update_observables!(attr)
     return
 end
 
@@ -92,19 +98,25 @@ function append!(tb::Makie.Text, text::Vector{String}, positions::Vector{Point{N
 end
 
 function append!(tb::Makie.Text, text_positions::Vector{Tuple{String, Point{N, Float32}}}; kw_args...) where N
-    append!(tb[1][], text_positions)
+    attr = tb.attributes
+    append!(attr.inputs[:arg1].value, text_positions)
     kw = Dict(kw_args)
     for key in (:color, :rotation, :fontsize, :font, :align)
         val = get(kw, key) do
-            isempty(tb[key][]) && error("please provide default for $key")
-            return last(tb[key][])
+            isempty(attr.inputs[key].value) && error("please provide default for $key")
+            return last(attr.inputs[key].value)
         end
         val_vec = if key === :font
-            same_length_array(text_positions, to_font(tb.fonts, val))
+            same_length_array(text_positions, to_font(tb.fonts[], val))
         else
             same_length_array(text_positions, val, Key{key}())
         end
-        append!(tb[key][], val_vec)
+        append!(attr.inputs[key].value, val_vec)
     end
+    return
+end
+
+function append!(tb::Text, text_positions::Vector{Tuple{String, <: VecTypes{N}}}; kw_args...) where N
+    append!(tb, first.(text_positions), last.(text_positions); kw_args...)
     return
 end

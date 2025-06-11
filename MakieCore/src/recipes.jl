@@ -41,8 +41,6 @@ plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
 
-argtypes(::T) where {T <: Tuple} = T
-
 function create_axis_like end
 function create_axis_like! end
 function figurelike_return end
@@ -60,12 +58,12 @@ plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
 function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted))
+    argument_names(P, length(plot.converted[]))
 end
 
 function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
     # this is called in the indexing function, so let's be a bit efficient
-    ntuple(i -> Symbol("arg$i"), num_args)
+    ntuple(i -> Symbol("_arg$i"), num_args)
 end
 
 # Since we can use Plot like a scene in some circumstances, we define this alias
@@ -412,9 +410,19 @@ function attribute_names(T::Type{<:Plot})
     return keys(attr.d)
 end
 
+
+function plot_attributes(scene, T)
+    plot_attr = MakieCore.documented_attributes(T)
+    if isnothing(plot_attr)
+        return merge(default_theme(scene, T), default_theme(T))
+    else
+        return plot_attr.d
+    end
+end
+
 function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
     thm = theme(scene)
-    metas = documented_attributes(T).d
+    metas = plot_attributes(scene, T)
     psym = plotsym(T)
     if haskey(thm, psym)
         overwrite = thm[psym]
