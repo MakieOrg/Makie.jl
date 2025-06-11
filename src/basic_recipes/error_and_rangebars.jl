@@ -42,7 +42,7 @@ The `low_high` argument can be a vector of tuples or intervals.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
 """
-@recipe Rangebars begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
     "The color of the lines. Can be an array to color each bar separately."
@@ -139,21 +139,21 @@ Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::Ab
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
+function to_ydirection(dir)
+    if dir === :y
+        return true
+    elseif dir === :x
+        return false
+    else
+        error("Invalid direction $dir. Options are :x and :y.")
+    end
+end
+
 function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
 
-    x_y_low_high = plot[1]
+    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
 
-    is_in_y_direction = lift(plot, plot.direction) do dir
-        if dir === :y
-            true
-        elseif dir === :x
-            false
-        else
-            error("Invalid direction $dir. Options are :x and :y.")
-        end
-    end
-
-    linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
+    map!(plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs) do x_y_low_high, in_y
         output = sizehint!(Point2d[], 2length(x_y_low_high))
         for (x, y, l, h) in x_y_low_high
             if in_y
@@ -165,25 +165,15 @@ function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
         return output
     end
 
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    _plot_bars!(plot)
 end
 
 
 function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
 
-    val_low_high = plot[1]
+    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
 
-    is_in_y_direction = lift(plot, plot.direction) do dir
-        if dir === :y
-            return true
-        elseif dir === :x
-            return false
-        else
-            error("Invalid direction $dir. Options are :x and :y.")
-        end
-    end
-
-    linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
+    map!(plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs) do vlh, in_y
         output = sizehint!(Point2d[], 2length(vlh))
         for (v, l, h) in vlh
             if in_y
@@ -194,36 +184,24 @@ function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
         end
         return output
     end
-
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    _plot_bars!(plot)
 end
 
+reverse_if(cond, vec) = cond ? reverse(vec) : vec
 
 
-function _plot_bars!(plot, linesegpairs, is_in_y_direction)
-
-    f_if(condition, f, arg) = condition ? f(arg) : arg
-
-    @extract plot (
-        whiskerwidth, color, linewidth, linecap, visible, colormap, colorscale, colorrange,
-        inspectable, transparency)
-
-    scene = parent_scene(plot)
-
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
-
-        screenendpoints = plot_to_screen(plot, endpoints)
-
-        screenendpoints_shifted_pairs = map(screenendpoints) do sep
-            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+function _plot_bars!(plot)
+    attr = plot.attributes
+    map!(attr, [:linewidth, :whiskerwidth, :is_in_y_direction], [:whisker_size, :whisker_visible]) do linewidth, whiskerwidth, dir
+        isvisible = !(linewidth == 0 || whiskerwidth == 0)
+        widths = reverse_if.(!dir, Vec2f.(whiskerwidth, linewidth))
+        if widths isa Vec2f
+            return widths, isvisible
         end
-
-        return [p for pair in screenendpoints_shifted_pairs for p in pair]
+        [widths[i] for i in 1:length(widths) for j in 1:2], isvisible
     end
-    whiskercolors = Observable{RGBColors}()
-    lift!(plot, whiskercolors, color) do color
+
+    map!(attr, [:color], :whiskercolors) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -232,26 +210,13 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
             return to_color(color)::RGBAf
         end
     end
-    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
-    lift!(plot, whiskerlinewidths, linewidth) do linewidth
-        # same for linewidth
-        if linewidth isa AbstractVector
-            return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
-        else
-            return convert(Float32, linewidth)
-        end
-    end
-
-    linesegments!(
-        plot, linesegpairs, color = color, linewidth = linewidth, linecap = linecap, visible = visible,
-        colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
-        transparency = transparency
-    )
-    linesegments!(
-        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, linecap = linecap,
-        visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency, space = :pixel,
-        model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
+    lattr = shared_attributes(plot, LineSegments)
+    linesegments!(plot, lattr, attr.linesegpairs)
+    sattr = shared_attributes(plot, Scatter)
+    scatter!(
+        plot, sattr, attr.linesegpairs; color=attr.whiskercolors,
+        markersize = attr.whisker_size, marker=Rect, visible=attr.whisker_visible,
+        markerspace=:pixel,
     )
     plot
 end
