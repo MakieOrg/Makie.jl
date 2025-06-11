@@ -107,7 +107,7 @@ function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
     # We unpack Attributes, even though, for consistency, we store them as Observables
     # this makes it easier to create nested attributes
-    return to_value(x) isa Attributes ? to_value(x): x
+    return to_value(x) isa Attributes ? to_value(x) : x
 end
 
 function Base.setindex!(x::Attributes, value, key::Symbol)
