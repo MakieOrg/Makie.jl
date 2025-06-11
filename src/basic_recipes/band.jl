@@ -11,6 +11,12 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     MakieCore.documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
+    "Sets the color of the lines at the lower and upper limits of the band"
+    strokecolor = @inherit patchstrokecolor
+    "Sets the colormap that is sampled for numeric `strokecolor`s."
+    strokecolormap = @inherit colormap
+    "Sets the width of the lines at the lower and upper limits of the band"
+    strokewidth = @inherit patchstrokewidth
     shading = NoShading
 end
 
@@ -50,8 +56,7 @@ function Makie.plot!(plot::Band)
     end
     connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
 
-    attr = copy(Attributes(plot))
-    pop!(attr, :direction)
+    attr = shared_attributes(plot, Mesh)
 
     attr[:color] = lift(plot, plot.color) do c
         if c isa AbstractVector
@@ -72,6 +77,26 @@ function Makie.plot!(plot::Band)
     end
 
     mesh!(plot, attr, coordinates, connectivity)
+
+    lattr = shared_attributes(plot, Lines)
+    lattr[:linewidth] = plot.strokewidth
+    lattr[:color] = map(plot, plot.strokecolor) do strokecolor
+        if strokecolor isa Vector
+            return vcat(strokecolor, strokecolor[1:1], strokecolor)
+        else
+            return strokecolor
+        end
+    end
+    merged_points = map(plot, lowerpoints, upperpoints, plot.direction) do lower, upper, direction
+        ps = copy(lower)
+        push!(ps, eltype(ps)(NaN))
+        append!(ps, upper)
+        if direction === :y
+            ps .= reverse.(ps)
+        end
+        return ps
+    end
+    lines!(plot, lattr, merged_points)
 end
 
 function fill_view(x, y1, y2, where::Nothing)
