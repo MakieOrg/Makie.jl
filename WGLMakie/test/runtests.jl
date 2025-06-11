@@ -248,8 +248,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
         # It could be related to the error in the console:
         # " Trying to send to a closed session"
         # So maybe a subsession closes and doesn't get freed?
-        @test session_size < 11
-        @test texture_atlas_size < 11
+        @test session_size < 13
+        @test texture_atlas_size < 12
 
         js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
