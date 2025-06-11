@@ -233,8 +233,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     replace_automatic!(()-> zrange, plot, :colorrange)
 
     @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
-    args = @extract plot (color, colormap, colorscale, colorrange, alpha)
-    level_colors = lift(color_per_level, plot, args..., levels)
+    color_args = @extract plot (color, colormap, colorscale, colorrange, alpha)
+    level_colors = lift(color_per_level, plot, color_args..., levels)
     args = (x, y, z, levels, level_colors, labels)
     arg_values = map(to_value, args)
     old_values = map(copy, arg_values)
@@ -252,12 +252,14 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     P = T <: Contour ? Point2f : Point3f
     scene = parent_scene(plot)
 
+    lab_pos, lab_rot, lab_col, lab_str = P[], Float32[], RGBA{Float32}[], String[]
+
     texts = text!(
         plot,
-        Observable(P[]);
-        color = Observable(RGBA{Float32}[]),
-        rotation = Observable(Float32[]),
-        text = Observable(String[]),
+        Observable(lab_pos);
+        rotation = Observable(lab_rot),
+        color = Observable(lab_col),
+        text = Observable(lab_str),
         align = (:center, :center),
         fontsize = labelsize,
         font = labelfont,
@@ -268,10 +270,10 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             labels, labelcolor, labelformatter, lev_pos_col
         ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
         labels || return
-        pos = texts.positions[]; empty!(pos)
-        rot = texts.rotation[]; empty!(rot)
-        col = texts.color[]; empty!(col)
-        lbl = texts.text[]; empty!(lbl)
+        empty!(lab_pos)
+        empty!(lab_rot)
+        empty!(lab_col)
+        empty!(lab_str)
         for (lev, (p1, p2, p3), color) in lev_pos_col
             px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
             px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
@@ -283,21 +285,25 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             else
                 rot_from_horz
             end
-            push!(col, labelcolor === nothing ? color : to_color(labelcolor))
-            push!(rot, rot_from_vert)
-            push!(lbl, labelformatter(lev))
             p = p2  # try to position label around center
             isnan(p) && (p = p1)
             isnan(p) && (p = p3)
-            push!(pos, p)
+            push!(lab_pos, p)
+            push!(lab_rot, rot_from_vert)
+            push!(lab_col, labelcolor === nothing ? color : to_color(labelcolor))
+            push!(lab_str, labelformatter(lev))
         end
+        notify(texts.positions)
+        notify(texts.rotation)
+        notify(texts.color)
         notify(texts.text)
         return
     end
 
     bboxes = lift(plot, labels, texts.text; ignore_equal_values=true) do labels, _
         labels || return
-        return broadcast(texts.plots[1][1].val, texts.positions.val, texts.rotation.val) do gc, pt, rot
+        glyphcollections = texts.plots[1][1]
+        return broadcast(glyphcollections[], texts.positions[], texts.rotation[]) do gc, pt, rot
             # drop the depth component of the bounding box for 3D
             px_pos = project(scene, apply_transform(transform_func(plot), pt))
             bb = unchecked_boundingbox(gc, to_ndim(Point3f, px_pos, 0f0), to_rotation(rot))
@@ -343,12 +349,12 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         linecap = plot.linecap,
         joinstyle = plot.joinstyle,
         miter_limit = plot.miter_limit,
-        visible=plot.visible,
-        transparency=plot.transparency,
-        overdraw=plot.overdraw,
-        inspectable=plot.inspectable,
-        depth_shift=plot.depth_shift,
-        space=plot.space
+        visible = plot.visible,
+        transparency = plot.transparency,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        depth_shift = plot.depth_shift,
+        space = plot.space,
     )
     plot
 end
