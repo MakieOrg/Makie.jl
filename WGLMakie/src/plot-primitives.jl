@@ -114,6 +114,7 @@ function create_wgl_renderobject(callback, attr, inputs)
             return (program, Observable{Any}([]))
         else
             updates = plot_updates(args, changed)
+            last.wgl_renderobject[:visible] = args.visible
             update_values!(last.wgl_update_obs, Bonito.LargeUpdate(updates))
             return nothing
         end
