@@ -260,7 +260,7 @@ end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
     h = fast_stable_hash(b)
-    return get!(atlas.glyph_indices, b) do
+    return get!(atlas.glyph_indices, h) do
         # if the glyph is not in the atlas, insert it
         return insert_glyph!(atlas, b)
     end
