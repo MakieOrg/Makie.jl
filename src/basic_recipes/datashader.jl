@@ -404,8 +404,8 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     end
     image!(p, p.canvas_with_aggregation, p.operation, p.local_operation;
         interpolate=p.interpolate,
-        MakieCore.generic_plot_attributes(p)...,
-        MakieCore.colormap_attributes(p)...
+        generic_plot_attributes(p)...,
+        colormap_attributes(p)...
     )
     return p
 end
@@ -714,8 +714,8 @@ function Makie.plot!(p::HeatmapShader)
         return (xe_ye_oimg..., true)
     end
 
-    gpa = MakieCore.generic_plot_attributes(p)
-    cpa = MakieCore.colormap_attributes(p)
+    gpa = generic_plot_attributes(p)
+    cpa = colormap_attributes(p)
     # overview = overview_image
     # if !p.image[].lowres_background
     #     # If we don't use the lowres background,

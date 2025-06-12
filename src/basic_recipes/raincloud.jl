@@ -291,7 +291,7 @@ function plot!(plot::RainClouds)
             edges = pick_hist_edges(data_array, hist_bins)
             # dodge belongs below: it ensure that the histogram groups labels by both dodge
             # and category (so there is a separate histogram for each dodge group)
-            groupings = if plot.dodge[] isa MakieCore.Automatic
+            groupings = if plot.dodge[] isa Automatic
                 category_labels
             else
                 zip(category_labels, plot.dodge[])

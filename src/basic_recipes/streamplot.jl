@@ -182,8 +182,8 @@ function plot!(p::StreamPlot)
         end
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
-    colormap_args = MakieCore.colormap_attributes(p)
-    generic_plot_attributes = MakieCore.generic_plot_attributes(p)
+    colormap_args = colormap_attributes(p)
+    generic_plot_attributes = generic_plot_attributes(p)
 
     lines!(
         p,

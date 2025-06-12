@@ -113,8 +113,8 @@ function Makie.plot!(p::Spy)
         color = p.spy_color,
         markerspace = :data,
         marker = p.marker, markersize = p.spy_markersize,
-        MakieCore.colormap_attributes(p)...,
-        MakieCore.generic_plot_attributes(p)...
+        colormap_attributes(p)...,
+        generic_plot_attributes(p)...
     )
 
     lines!(p, p.data_limits;

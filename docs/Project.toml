@@ -18,7 +18,6 @@ GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Gumbo = "708ec375-b3d6-5a57-a7ce-8257bf98657a"
 ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 MappedArrays = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 NIfTI = "a3a9e032-41b5-5fc4-967a-a6b7a19844d3"
@@ -35,7 +34,6 @@ DocumenterVitepress = "0.2.4"
 
 [sources]
 Makie = { path = ".." }
-MakieCore = { path = "../MakieCore" }
 CairoMakie = { path = "../CairoMakie" }
 GLMakie = { path = "../GLMakie" }
 WGLMakie = { path = "../WGLMakie" }

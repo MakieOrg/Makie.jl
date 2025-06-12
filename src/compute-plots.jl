@@ -423,7 +423,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     end
     converted = attr[:converted][]
     n_args = length(converted)
-    register_computation!(attr, [:converted], [MakieCore.argument_names(P, n_args)...]) do args, changed, last
+    register_computation!(attr, [:converted], [argument_names(P, n_args)...]) do args, changed, last
         return args.converted # destructure
     end
 
@@ -466,9 +466,9 @@ function default_attribute(user_attributes, (key, value))
         else
             return user_attributes[key]
         end
-    elseif value isa MakieCore.AttributeMetadata
+    elseif value isa AttributeMetadata
         val = value.default_value
-        return val isa MakieCore.Inherit ? val.fallback : val
+        return val isa Inherit ? val.fallback : val
     else
         return to_value(value)
     end
@@ -482,14 +482,14 @@ function (::AttributeConvert{key, plot})(_, value) where {key, plot}
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    documented_attr = MakieCore.plot_attributes(nothing, T)
+    documented_attr = plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
     inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
     delete!(inputs, :cycle)
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(get(kwargs, :cycle) do
-            MakieCore.lookup_default(T, nothing, :cycle)
+            lookup_default(T, nothing, :cycle)
         end)
         add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
     end
@@ -544,7 +544,7 @@ end
 # const GScatter{ARGS} = Scatter{gscatter, ARGS}
 
 function add_theme!(plot::T, scene::Scene) where {T}
-    plot_attr = MakieCore.plot_attributes(scene, T)
+    plot_attr = plot_attributes(scene, T)
 
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
@@ -562,7 +562,7 @@ function add_theme!(plot::T, scene::Scene) where {T}
                 setproperty!(gattr, k, v[])
             elseif v isa Attributes
                 setproperty!(gattr, k, v)
-            elseif v.default_value isa MakieCore.Inherit
+            elseif v.default_value isa Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
                     setproperty!(gattr, k, to_value(scene_theme[default.key]))
@@ -619,7 +619,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
 
         # remove attributes that the parent graph has but don't apply to this plot
-        valid_keys = keys(MakieCore.plot_attributes(nothing, P))
+        valid_keys = keys(plot_attributes(nothing, P))
         filter!(kv -> in(kv[1], valid_keys), attr)
 
         merge!(attr, user_attributes)
@@ -697,7 +697,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot!(plot)
 
 
-    documented_attr = MakieCore.plot_attributes(scene, Plot{Func})
+    documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes.outputs, k)
             if haskey(documented_attr, k)

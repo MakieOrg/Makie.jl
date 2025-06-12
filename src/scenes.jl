@@ -485,13 +485,13 @@ function Base.empty!(scene::Scene; free=false)
 end
 
 function Base.push!(plot::Plot, subplot)
-    MakieCore.validate_attribute_keys(subplot)
+    validate_attribute_keys(subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
 
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))
-    MakieCore.validate_attribute_keys(plot)
+    validate_attribute_keys(plot)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)

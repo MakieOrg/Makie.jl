@@ -29,9 +29,9 @@ Plots `scatter` markers and `lines` between them.
     cycle = [:color]
 end
 
-MakieCore.conversion_trait(::Type{<: ScatterLines}) = PointBased()
+conversion_trait(::Type{<: ScatterLines}) = PointBased()
 
-function MakieCore.plot!(p::ScatterLines)
+function plot!(p::ScatterLines)
 
     attr = p.attributes
 

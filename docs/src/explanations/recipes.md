@@ -33,9 +33,6 @@ Plotting of a `Circle` for example can be defined via a conversion into a vector
 
 ```julia
 Makie.convert_arguments(::Type{<: AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
-
-# or if you picked up MakieCore as a light-weight recipe system dependency
-MakieCore.convert_arguments(::Type{<: AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
