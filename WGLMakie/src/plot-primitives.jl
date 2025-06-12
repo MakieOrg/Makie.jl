@@ -289,40 +289,45 @@ function create_shader(scene::Scene, plot::Scatter)
 end
 
 const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
+const SCENE_ATLAS_LOCK = ReentrantLock()
 
-function get_atlas_tracker(scene::Scene)
-    for (s, _) in SCENE_ATLASES
-        Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
-    end
-    screen = Makie.getscreen(scene, WGLMakie)
-    if isnothing(screen.session)
-        @warn "No session found, returning empty atlas tracker"
-        # TODO, it's not entirely clear in which case this can happen,
-        # which is why we don't just error, but just assume there isn't anything tracked
-        return Set{UInt32}()
-    end
-    session = Bonito.root_session(screen.session)
-    if haskey(SCENE_ATLASES, session)
-        return SCENE_ATLASES[session]
-    else
-        atlas = Set{UInt32}()
-        SCENE_ATLASES[session] = atlas
-        return atlas
+function get_atlas_tracker(f, scene::Scene)
+    lock(SCENE_ATLAS_LOCK) do
+        for (s, _) in SCENE_ATLASES
+            Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
+        end
+        screen = Makie.getscreen(scene, WGLMakie)
+        if isnothing(screen.session)
+            @warn "No session found, returning empty atlas tracker"
+            # TODO, it's not entirely clear in which case this can happen,
+            # which is why we don't just error, but just assume there isn't anything tracked
+            return f(Set{UInt32}())
+        end
+        session = Bonito.root_session(screen.session)
+        if haskey(SCENE_ATLASES, session)
+            return f(SCENE_ATLASES[session])
+        else
+            atlas = Set{UInt32}()
+            SCENE_ATLASES[session] = atlas
+            return f(atlas)
+        end
     end
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)
-    tracker = get_atlas_tracker(Makie.root(scene))
-    atlas = Makie.get_texture_atlas()
-    _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
-    return new_glyphs
+    get_atlas_tracker(Makie.root(scene)) do tracker
+        atlas = Makie.get_texture_atlas()
+        _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
+        return new_glyphs
+    end
 end
 
 function get_glyph_data(scene::Scene, glyphs, fonts)
-    tracker = get_atlas_tracker(Makie.root(scene))
-    atlas = Makie.get_texture_atlas()
-    glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
-    return glyph_hashes, new_glyphs
+    get_atlas_tracker(Makie.root(scene)) do tracker
+        atlas = Makie.get_texture_atlas()
+        glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
+        return glyph_hashes, new_glyphs
+    end
 end
 
 function register_text_computation!(attr, scene)
