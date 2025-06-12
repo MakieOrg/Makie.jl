@@ -54,8 +54,8 @@ spy(0..1, 0..1, x)
     Per default the color of the markers will be determined by the value in the matrix, but can be overwritten via `color`.
     """
     color = nothing
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
 end
 
 function data_limits(plot::Spy)
@@ -113,8 +113,8 @@ function Makie.plot!(p::Spy)
         color = p.spy_color,
         markerspace = :data,
         marker = p.marker, markersize = p.spy_markersize,
-        MakieCore.colormap_attributes(p)...,
-        MakieCore.generic_plot_attributes(p)...
+        colormap_attributes(p)...,
+        generic_plot_attributes(p)...
     )
 
     lines!(p, p.data_limits;

@@ -64,11 +64,9 @@ function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
     error("AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")
 end
 
-using MakieCore: should_dim_convert
-
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-MakieCore.should_dim_convert(::Type{<:Real}) = false
+should_dim_convert(::Type{<:Real}) = false
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
@@ -78,10 +76,6 @@ end
 function get_ticks(::Union{Nothing,NoDimConversion}, ticks, scale, formatter, vmin, vmax)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
-
-# The below is defined in MakieCore, to be accessible by `@recipe`
-# MakieCore.should_dim_convert(eltype) = false
-
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
@@ -121,7 +115,7 @@ function get_conversions(attr::Union{Attributes, Dict, NamedTuple})
 end
 
 function dim_conversion_from_args(values)
-    return create_dim_conversion(MakieCore.get_element_type(values))
+    return create_dim_conversion(get_element_type(values))
 end
 
 function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)

@@ -6,7 +6,7 @@ import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inne
 function symbol_to_specable(sym::Symbol)
     block = symbol_to_block(sym)
     isnothing(block) || return block
-    return MakieCore.symbol_to_plot(sym)
+    return symbol_to_plot(sym)
 end
 
 deref(x) = x
@@ -170,7 +170,7 @@ function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = MakieCore.symbol_to_plot(p.type)
+plottype(p::PlotSpec) = symbol_to_plot(p.type)
 
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
@@ -417,7 +417,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # It seems impossible to merge the recipes from all modules
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
-    # The names are loaded from cache and dont contain anything after MakieCore.
+    # The names are loaded from cache and dont contain anything after 
     func = symbol_to_specable(field)
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
@@ -463,7 +463,7 @@ function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     if !isempty(reset_to_default)
         for k in reset_to_default
             old_attr = plot[k][]
-            new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
+            new_value = lookup_default(typeof(plot), parent_scene(plot), k)
             # In case of e.g. dim_conversions
             isnothing(new_value) && continue
             # only update if different
@@ -561,7 +561,7 @@ end
 
 
 function push_without_add!(scene::Scene, plot)
-    MakieCore.validate_attribute_keys(plot)
+    validate_attribute_keys(plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
     end
@@ -742,7 +742,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
                         return nan_extrema(color)
                     end
                 else
-                    MakieCore.lookup_default(pt, scene, k)
+                    lookup_default(pt, scene, k)
                 end
             end
         end
@@ -1046,9 +1046,9 @@ end
 
 args_preferred_axis(::GridLayoutSpec) = FigureOnly
 
-plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
+plot!(plot::Plot{plot,Tuple{GridLayoutSpec}}) = plot
 
-function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
+function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
     obs = ComputePipeline.get_observable!(plot.converted; use_deepcopy=false)

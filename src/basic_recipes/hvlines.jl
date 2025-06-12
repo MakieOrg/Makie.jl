@@ -11,7 +11,7 @@ they are broadcast to calculate the final line segments.
     xmin = 0
     "The end of the lines in relative axis units (0 to 1) along the x dimension."
     xmax = 1
-    MakieCore.documented_attributes(LineSegments)...
+    documented_attributes(LineSegments)...
     cycle = [:color]
 end
 
@@ -28,7 +28,7 @@ they are broadcast to calculate the final line segments.
     ymin = 0
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
     ymax = 1
-    MakieCore.documented_attributes(LineSegments)...
+    documented_attributes(LineSegments)...
     cycle = [:color]
 end
 

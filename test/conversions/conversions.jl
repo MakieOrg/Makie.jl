@@ -2,7 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
-using Makie.MakieCore: plotfunc, plotfunc!, func2type
+using Makie: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion

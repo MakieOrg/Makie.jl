@@ -116,7 +116,7 @@ Therefore, dev'ing Makie almost works as with other Julia packages, just, that o
 
 ```julia
 ]dev --local Makie # local will clone the repository at ./dev/Makie
-]dev dev/Makie/MakieCore dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
+]dev dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
 ```
 
 To run the tests, you also should add:

@@ -37,7 +37,7 @@ jobs:
       - name: "Run CompatHelper"
         run: |
           import CompatHelper
-          CompatHelper.main(subdirs=["", "MakieCore", "GLMakie", "WGLMakie", "CairoMakie", "RPRMakie"])
+          CompatHelper.main(subdirs=["", "GLMakie", "WGLMakie", "CairoMakie", "RPRMakie"])
         shell: julia --color=yes {0}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

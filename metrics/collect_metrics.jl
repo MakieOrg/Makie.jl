@@ -65,7 +65,7 @@ for metric_target in metric_targets
 
             @everywhere i_proc begin
                 pkg"activate --temp"
-                pkg"dev . MakieCore GLMakie CairoMakie"
+                pkg"dev . GLMakie CairoMakie"
                 Pkg.precompile()
                 @timed begin end
             end

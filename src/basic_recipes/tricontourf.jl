@@ -52,7 +52,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     triangulation = DelaunayTriangulation()
     edges = nothing
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})

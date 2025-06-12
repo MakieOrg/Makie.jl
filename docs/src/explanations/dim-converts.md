@@ -106,8 +106,8 @@ end
 Makie.create_dim_conversion(::Type{MyUnit}) = MyDimConversion()
 
 # This function needs to be overloaded too, even though it's redundant to the above in a sense.
-# We did not want to use `hasmethod(MakieCore.should_dim_convert, (MyDimTypes,))` because it can be slow and error prown.
-Makie.MakieCore.should_dim_convert(::Type{MyUnit}) = true
+# We did not want to use `hasmethod(Makie.should_dim_convert, (MyDimTypes,))` because it can be slow and error prown.
+Makie.should_dim_convert(::Type{MyUnit}) = true
 
 # The non observable version of the actual conversion function
 # This is needed to convert axis limits, and should be a pure version of the below `convert_dim_observable`

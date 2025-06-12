@@ -24,14 +24,14 @@ Plots `scatter` markers and `lines` between them.
     strokewidth = @inherit markerstrokewidth
     "Sets the scatter marker."
     marker = @inherit marker
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
     cycle = [:color]
 end
 
-MakieCore.conversion_trait(::Type{<: ScatterLines}) = PointBased()
+conversion_trait(::Type{<: ScatterLines}) = PointBased()
 
-function MakieCore.plot!(p::ScatterLines)
+function plot!(p::ScatterLines)
 
     attr = p.attributes
 
