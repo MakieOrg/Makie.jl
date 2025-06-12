@@ -139,58 +139,32 @@ Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::Ab
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function to_ydirection(dir)
-    if dir === :y
-        return true
-    elseif dir === :x
-        return false
-    else
-        error("Invalid direction $dir. Options are :x and :y.")
-    end
-end
-
 function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
-
-    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
-
-    map!(plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs) do x_y_low_high, in_y
-        output = sizehint!(Point2d[], 2length(x_y_low_high))
-        for (x, y, l, h) in x_y_low_high
-            if in_y
-                push!(output, Point2d(x, y - l), Point2d(x, y + h))
-            else
-                push!(output, Point2d(x - l, y), Point2d(x + h, y))
-            end
-        end
-        return output
-    end
-
+    _plot_bars!(plot)
+end
+function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
     _plot_bars!(plot)
 end
 
-
-function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
-
-    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
-
-    map!(plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs) do vlh, in_y
-        output = sizehint!(Point2d[], 2length(vlh))
-        for (v, l, h) in vlh
-            if in_y
-                push!(output, Point2d(v, l), Point2d(v, h))
-            else
-                push!(output, Point2d(l, v), Point2d(h, v))
-            end
-        end
-        return output
-    end
-    _plot_bars!(plot)
+function to_ydirection(dir)
+    dir === :y && return true
+    dir === :x && return false
+    error("Invalid direction $dir. Options are :x and :y.")
 end
 
 reverse_if(cond, vec) = cond ? reverse(vec) : vec
 
+function inner_segment((x, y, l, h)::Vec4, in_y)
+    return in_y ? (Point2d(x, y - l), Point2d(x, y + h)) : (Point2d(x - l, y), Point2d(x + h, y))
+end
+function inner_segment((v, l, h)::Vec3, in_y)
+    return in_y ? (Point2d(v, l), Point2d(v, h)) : (Point2d(l, v), Point2d(h, v))
+end
+generate_segments(data, in_y::Bool) = Point2d[p for item in data for p in inner_segment(item, in_y)]
 
 function _plot_bars!(plot)
+    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
+    map!(generate_segments, plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs)
     attr = plot.attributes
     map!(attr, [:linewidth, :whiskerwidth, :is_in_y_direction], [:whisker_size, :whisker_visible]) do linewidth, whiskerwidth, dir
         isvisible = !(linewidth == 0 || whiskerwidth == 0)
@@ -210,9 +184,10 @@ function _plot_bars!(plot)
             return to_color(color)::RGBAf
         end
     end
-    lattr = shared_attributes(plot, LineSegments)
+    lattr = shared_attributes(plot, LineSegments; drop=[:fxaa])
     linesegments!(plot, lattr, attr.linesegpairs)
-    sattr = shared_attributes(plot, Scatter)
+    sattr = shared_attributes(plot, Scatter; drop=[:fxaa])
+
     scatter!(
         plot, sattr, attr.linesegpairs; color=attr.whiskercolors,
         markersize = attr.whisker_size, marker=Rect, visible=attr.whisker_visible,
@@ -245,29 +220,6 @@ function plot_to_screen(plot, p::VecTypes)
     return Point2f(p4d) / p4d[4]
 end
 
-function screen_to_plot(plot, points::AbstractVector)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
-        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
-    itf = inverse_transform(transform_func(plot))
-
-    return map(points) do p
-        pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
-        p3 = Point3d(pre_transform) / pre_transform[4]
-        return apply_transform(itf, p3)
-    end
-end
-
-function screen_to_plot(plot, p::VecTypes)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
-        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
-    pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
-    p3 = Point3d(pre_transform) / pre_transform[4]
-    return apply_transform(itf, p3)
-end
 
 # ignore whiskers when determining data limits
 data_limits(bars::Union{Errorbars, Rangebars}) = data_limits(bars.plots[1])
