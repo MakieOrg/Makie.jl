@@ -13,7 +13,7 @@ Both bounds can be passed together as an interval `ys_lowhigh`.
     xmin = 0
     "The end of the bands in relative axis units (0 to 1) along the x dimension."
     xmax = 1
-    MakieCore.documented_attributes(Poly)...
+    documented_attributes(Poly)...
     cycle = [:color => :patchcolor]
 end
 
@@ -32,7 +32,7 @@ Both bounds can be passed together as an interval `xs_lowhigh`.
     ymin = 0
     "The end of the bands in relative axis units (0 to 1) along the y dimension."
     ymax = 1
-    MakieCore.documented_attributes(Poly)...
+    documented_attributes(Poly)...
     cycle = [:color => :patchcolor]
 end
 

@@ -25,7 +25,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
     to_buffer(:uvw, :texturecoordinates)
 
     # Only emit normals, when we shadin'
-    shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
+    shading = get(result, :shading, NoShading)::Makie.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
         to_buffer(:normal, :normals)
@@ -36,7 +36,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
 end
 
 function draw_mesh(screen, data::Dict)
-    shading = pop!(data, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
+    shading = pop!(data, :shading, NoShading)::Makie.ShadingAlgorithm
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer

@@ -1,4 +1,4 @@
-function light_calc(x::Makie.MakieCore.ShadingAlgorithm)
+function light_calc(x::Makie.ShadingAlgorithm)
     if x === NoShading
         return "#define NO_SHADING"
     elseif x === FastShading
@@ -16,7 +16,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0f0,0f0,1f0,1f0))
     to_opengl_mesh!(screen.glscreen, data, primitive)
-    shading = pop!(data, :shading, FastShading)::Makie.MakieCore.ShadingAlgorithm
+    shading = pop!(data, :shading, FastShading)::Makie.ShadingAlgorithm
     @gen_defaults! data begin
         scale = nothing
         position = nothing

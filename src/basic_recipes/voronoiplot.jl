@@ -33,7 +33,7 @@ DelaunayTriangulation.jl.
     unbounded_edge_extension_factor=0.1
     "Sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`."
     clip=automatic
-    MakieCore.mixin_colormap_attributes()...
+    mixin_colormap_attributes()...
 end
 
 preferred_axis_type(::Voronoiplot) = Axis

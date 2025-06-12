@@ -45,8 +45,8 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     labelformatter = contour_label_formatter
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 """
@@ -56,7 +56,7 @@ Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
 """
 @recipe Contour3d begin
-    MakieCore.documented_attributes(Contour)...
+    documented_attributes(Contour)...
 end
 
 # result in [-π, π]

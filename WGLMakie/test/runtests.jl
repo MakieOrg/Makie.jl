@@ -183,7 +183,6 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
             # should be empty (or at least not contain Render ticks yet?)
             @test isempty(tick_record)
-            # @test all(tick -> tick.state == Makie.UnknownTickState, tick_record)
 
             t0 = time()
             colorbuffer(f)
@@ -201,8 +200,31 @@ edisplay = Bonito.use_electron_display(devtools=true)
                 @test tick.time > t
                 t = tick.time
             end
-            # first few ticks have high variance
-            @test Makie.mean([tick.delta_time for tick in tick_record[10:end]]) ≈ 0.033 atol = 0.001
+
+            # Each tick aims to trigger at t = N * 1/30 + t0 where N is some
+            # whole number. Consecutive ticks will usually be at N and N+1, but
+            # can skip to N+2 or more if other sources delay them too much.
+            # Sleep is also fairly inaccurate so the variance is rather large
+            # Test: tick.time follow N * 1/30
+            dt = 1/30
+            dist_from_target = map(tick -> ((tick.time + 0.5dt) % dt) - 0.5dt, tick_record)
+            standard_error = sqrt(mapreduce(t -> t*t, +, dist_from_target) / length(dist_from_target))
+            @test standard_error < 0.3dt
+
+            # Ticks will usually get increasing delayed (or early) and eventually
+            # correct themselves by sleeping less. This will then average out
+            # to a lower error over multiple samples
+            window = 8
+            windowed_dist = [mean(dist_from_target[i:i+window]) for i in 1:length(dist_from_target)-window]
+            standard_error = sqrt(mapreduce(t -> t*t, +, windowed_dist) / length(windowed_dist))
+            @test standard_error < 0.1dt
+
+            # delta times should average out to 1/30, with the caveat that ticks
+            # can sometimes get skipped/merge into a N * 1/30 tick. Those ticks
+            # need to count as N ticks in the mean then.
+            # This is somewhat self-fulling...
+            av = last(tick_record).time / round(Int, last(tick_record).time * 30)
+            @test abs(av - dt) < 0.005dt
         end
     end
 

@@ -14,7 +14,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
     threshold=1
     strokewidth=0
     strokecolor=:black
-    MakieCore.mixin_colormap_attributes()...
+    mixin_colormap_attributes()...
 end
 
 # xy hardcoded scale factors
