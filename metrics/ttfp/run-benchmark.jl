@@ -68,7 +68,7 @@ Pkg.add([(; name="JSON")])
 
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-pkgs = [(; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="JSON")]
+pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="JSON")]
 Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 
