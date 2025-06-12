@@ -208,8 +208,10 @@ edisplay = Bonito.use_electron_display(devtools=true)
             # Test: tick.time follow N * 1/30
             dt = 1/30
             dist_from_target = map(tick -> ((tick.time + 0.5dt) % dt) - 0.5dt, tick_record)
+            t0 = mean(dist_from_target)
+            dist_from_target .-= t0
             standard_error = sqrt(mapreduce(t -> t*t, +, dist_from_target) / length(dist_from_target))
-            @test standard_error < 0.3dt
+            @test standard_error < 0.2dt
 
             # Ticks will usually get increasing delayed (or early) and eventually
             # correct themselves by sleeping less. This will then average out
@@ -217,7 +219,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
             window = 10
             windowed_dist = [mean(dist_from_target[i:i+window]) for i in 1:length(dist_from_target)-window]
             standard_error = sqrt(mapreduce(t -> t*t, +, windowed_dist) / length(windowed_dist))
-            @test standard_error < 0.1dt
+            @test standard_error < 0.05dt
             @info dist_from_target
 
             # delta times should average out to 1/30, with the caveat that ticks
