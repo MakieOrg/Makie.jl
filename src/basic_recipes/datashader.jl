@@ -526,6 +526,12 @@ struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
     lowres_background::Bool
 end
 
+function Base.:(==)(a::Resampler, b::Resampler)
+    return a.data == b.data && a.max_resolution == b.max_resolution &&
+        a.update_while_button_pressed == b.update_while_button_pressed &&
+        a.lowres_background == b.lowres_background
+end
+
 using Interpolations: Interpolations
 using ImageBase: ImageBase
 
@@ -656,33 +662,30 @@ function empty_channel!(channel::Channel)
 end
 
 function Makie.plot!(p::HeatmapShader)
-    limits = Makie.projview_to_2d_limits(p)
     scene = Makie.parent_scene(p)
-    limits_slow = Observable(limits[])
     events = scene.events
-    onany(p, events.mousebutton, events.keyboardbutton, limits) do buttons, kb, lims
-        # This makes sure we only update the limits, while no key is pressed (e.g. while zooming or panning)
-        # This works best with `ax.zoombutton = Keyboard.left_control`.
-        # We need to listen on keyboard/mousebutton changes, to update the limits once the key is released
+    add_axis_limits!(p)
+    register_computation!(p.attributes, [:axis_limits], [:slow_limits]) do (lims,), changed, last
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
         if update_while_pressed || (no_mbutton && no_kbutton)
             # instead of ignore_equal_values=true (uses ==),
             # we check with isapprox to not update when there are very small changes
-            if !(minimum(lims) ≈ minimum(limits_slow[]) && widths(lims) ≈ widths(limits_slow[]))
-                limits_slow[] = lims
+            last_lims = isnothing(last) ? Rect2d() : last.slow_limits
+            if !(minimum(lims) ≈ minimum(last_lims) && widths(lims) ≈ widths(last_lims))
+                return (lims,)
+            else
+                return nothing # no change
             end
         end
-        return
     end
 
-    max_resolution = lift(p, scene.viewport) do viewport
+    map!(p.attributes, :resolution, :max_resolution) do resolution
         resampler = p.image[]
-        res = resampler.max_resolution isa Automatic ? widths(viewport) : resampler.max_resolution
-        return max.(res, 512) # Not sure why, but viewport can become (1, 1)
+        res = resampler.max_resolution isa Automatic ? resolution : resampler.max_resolution
+        return round.(Int, max.(res, 512)) # Not sure why, but viewport can become (1, 1)
     end
-    add_input!(p.attributes, :max_resolution, max_resolution)
 
     register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
         return (xy_to_rect(x, y),)
@@ -701,8 +704,7 @@ function Makie.plot!(p::HeatmapShader)
             return (automatic,) # Matrix{<:Colorant}
         end
     end
-    add_input!(p.attributes, :limits, limits_slow)
-    register_computation!(p, [:image, :x, :y, :max_resolution, :limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+    register_computation!(p, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
         if isnothing(xe_ye_oimg)
             if isnothing(last) # first downsample
