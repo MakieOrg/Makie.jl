@@ -359,10 +359,10 @@ function peaks(n=49)
 end
 
 
-function attribute_names(PlotType)
-    # TODO, have all plot types store their attribute names
-    return keys(default_theme(nothing, PlotType))
-end
+# function attribute_names(PlotType)
+#     # TODO, have all plot types store their attribute names
+#     return keys(default_theme(nothing, PlotType))
+# end
 
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]

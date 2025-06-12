@@ -34,7 +34,7 @@ Draw a violin plot.
     color = @inherit patchcolor
     strokecolor = @inherit patchstrokecolor
     strokewidth = @inherit patchstrokewidth
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
     cycle = [:color => :patchcolor]
 end
 

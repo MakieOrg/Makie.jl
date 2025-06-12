@@ -47,7 +47,7 @@ Creates a tooltip pointing at `position` displaying the given `string
     "Sets the linestyle of the tooltip outline."
     outline_linestyle = nothing
 
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
     inspectable = false
 end
 

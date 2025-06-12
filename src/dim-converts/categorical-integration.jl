@@ -44,12 +44,12 @@ end
 
 expand_dimensions(::PointBased, y::Categorical) = (keys(y.values), y)
 needs_tick_update_observable(conversion::CategoricalConversion) = conversion.category_to_int
-MakieCore.should_dim_convert(::Type{Categorical}) = true
+should_dim_convert(::Type{Categorical}) = true
 create_dim_conversion(::Type{Categorical}) = CategoricalConversion(; sortby=identity)
 
 # Support enums as categorical per default
 expand_dimensions(::PointBased, y::AbstractVector{<:Enum}) = (keys(y), y)
-MakieCore.should_dim_convert(::Type{<:Enum}) = true
+should_dim_convert(::Type{<:Enum}) = true
 create_dim_conversion(::Type{<:Enum}) = CategoricalConversion(; sortby=identity)
 
 function recalculate_categories!(conversion::CategoricalConversion)

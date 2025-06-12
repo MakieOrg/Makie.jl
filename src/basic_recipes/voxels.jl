@@ -1,6 +1,6 @@
 
 # TODO: Bad workaround for now
-MakieCore.argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
+argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
 conversion_trait(::Type{Voxels}, args...) = Voxels
 
 function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})

@@ -8,7 +8,7 @@ between the points in `lower` and `upper`.
 Both bounds can be passed together as `lowerupper`, a vector of intervals.
 """
 @recipe Band (lowerpoints, upperpoints) begin
-    MakieCore.documented_attributes(Mesh)...
+    documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
     shading = NoShading

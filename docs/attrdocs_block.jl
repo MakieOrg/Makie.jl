@@ -28,7 +28,7 @@ end
 
 function attrs_examples_docs_defaults(type::Type{<:Makie.Plot})
 
-    docatt = Makie.MakieCore.documented_attributes(type)
+    docatt = Makie.documented_attributes(type)
     metadata = docatt.d
 
     attrkeys = sort(collect(keys(metadata)))

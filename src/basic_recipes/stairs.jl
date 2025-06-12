@@ -13,7 +13,7 @@ The conversion trait of `stairs` is `PointBased`.
     - `:center`: horizontal part of step extends halfway between the two adjacent values of `xs`.
     """
     step = :pre
-    MakieCore.documented_attributes(Lines)...
+    documented_attributes(Lines)...
 end
 
 conversion_trait(::Type{<:Stairs}) = PointBased()

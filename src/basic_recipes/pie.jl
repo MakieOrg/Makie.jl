@@ -21,7 +21,7 @@ Creates a pie chart from the given `values`.
     offset = 0
     "The offset of each pie segment from the center along the radius"
     offset_radius = 0
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0.0, 0.0, values)

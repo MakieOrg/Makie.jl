@@ -148,7 +148,7 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie.MakieCore:
+import Makie:
     InvalidAttributeError,
     attribute_names
 import Makie: _attribute_docs
@@ -166,7 +166,7 @@ import Makie: _attribute_docs
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
-import Makie.MakieCore: find_nearby_attributes, attribute_names, textdiff
+import Makie: find_nearby_attributes, attribute_names, textdiff
 
 @testset "attribute suggestions" begin
     @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
@@ -232,4 +232,9 @@ end
     @test :default in attribute_names(Menu)
     @test :entrygroups in attribute_names(Legend)
     @test :palette in attribute_names(PolarAxis)
+end
+
+@testset "func2string" begin
+    @test Makie.func2string(cos) == "cos"
+    @test startswith(Makie.func2string(x -> x), "#")
 end

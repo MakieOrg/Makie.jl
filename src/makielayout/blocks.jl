@@ -221,9 +221,9 @@ function extract_attributes!(body)
 
     args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
 
-    attrs::Vector{Any} = map(MakieCore.extract_attribute_metadata, args)
+    attrs::Vector{Any} = map(extract_attribute_metadata, args)
 
-    lras = map(MakieCore.extract_attribute_metadata, layout_related_attributes)
+    lras = map(extract_attribute_metadata, layout_related_attributes)
 
     for lra in lras
         i = findfirst(x -> x.symbol == lra.symbol, attrs)
@@ -291,11 +291,11 @@ function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing,
     return attributes
 end
 
-function MakieCore.InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
-    return MakieCore.InvalidAttributeError(BT, "block", attributes)
+function InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
+    return InvalidAttributeError(BT, "block", attributes)
 end
 
-function MakieCore.attribute_names(::Type{T}) where {T <: Block}
+function attribute_names(::Type{T}) where {T <: Block}
     attrs = _attribute_docs(T)
     # Some blocks have keyword arguments that are not attributes.
     # TODO: Refactor intiailize_block! to just not use kwargs?
@@ -307,9 +307,9 @@ function MakieCore.attribute_names(::Type{T}) where {T <: Block}
 end
 
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
-    badnames = setdiff(keys(kwdict), MakieCore.attribute_names(T))
+    badnames = setdiff(keys(kwdict), attribute_names(T))
     if !isempty(badnames)
-        throw(MakieCore.InvalidAttributeError(T, badnames))
+        throw(InvalidAttributeError(T, badnames))
     end
     return
 end

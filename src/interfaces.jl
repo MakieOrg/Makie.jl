@@ -46,7 +46,7 @@ function got_converted(P::Type, PTrait::ConversionTrait, result)
     if result isa SpecLike
         return SpecApi
     end
-    types = MakieCore.types_for_plot_arguments(P, PTrait)
+    types = types_for_plot_arguments(P, PTrait)
     if !isnothing(types)
         return result isa types
     end

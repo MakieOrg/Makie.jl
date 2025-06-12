@@ -35,8 +35,8 @@ See the function `Makie.streamplot_impl` for implementation details.
     joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
     linestyle = nothing
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
@@ -182,8 +182,8 @@ function plot!(p::StreamPlot)
         end
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
-    colormap_args = MakieCore.colormap_attributes(p)
-    generic_plot_attributes = MakieCore.generic_plot_attributes(p)
+    colormap_args = colormap_attributes(p)
+    generic_plot_attributes = Makie.generic_plot_attributes(p)
 
     lines!(
         p,

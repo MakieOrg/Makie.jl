@@ -57,7 +57,7 @@ end
 expand_dimensions(::PointBased, y::AbstractVector{<:Dates.AbstractTime}) = (keys(y), y)
 needs_tick_update_observable(conversion::DateTimeConversion) = conversion.type
 create_dim_conversion(::Type{<:Dates.AbstractTime}) = DateTimeConversion()
-MakieCore.should_dim_convert(::Type{<:Dates.AbstractTime}) = true
+should_dim_convert(::Type{<:Dates.AbstractTime}) = true
 
 
 function convert_dim_value(conversion::DateTimeConversion, value::Dates.TimeType)
@@ -70,7 +70,7 @@ end
 
 function convert_dim_value(conversion::DateTimeConversion, attr, values, previous_values)
     T = conversion.type[]
-    eltype = MakieCore.get_element_type(values)
+    eltype = get_element_type(values)
     if T <: Automatic
         new_type = eltype
         conversion.type[] = new_type
