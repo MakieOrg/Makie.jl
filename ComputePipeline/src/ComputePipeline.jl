@@ -252,7 +252,9 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
     # This requires us to copy data every time we update and we can't use
     # `copy` because that is not always available (e.g. not for Rect)
     return get!(attr.observables, key) do
-        push!(attr.should_deepcopy, key)
+        if use_deepcopy
+            push!(attr.should_deepcopy, key)
+        end
         # resolve first so eltype can work
         val = attr.outputs[key]
         initial_value = use_deepcopy ? deepcopy(val[]) : val[]
@@ -316,6 +318,7 @@ function ComputeGraph()
             if !(key in graph.should_deepcopy)
                 obs.val = val
             elseif val != obs[] # treat in-place updates
+
                 obs.val = deepcopy(val)
             else # same value (with deepcopy), skip update
                 delete!(changeset, key)
