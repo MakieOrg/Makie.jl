@@ -69,7 +69,6 @@ Pkg.add([(; name="JSON")])
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
 pkgs = [
-    (; rev=base_branch, name="MakieCore"),
     (; url="https://github.com/MakieOrg/Makie.jl", subdir="ComputePipeline", rev=base_branch), # TODO: adjust once ComputePipeline is released
     (; rev=base_branch, name="Makie"),
     (; rev=base_branch, name="$Package"),
