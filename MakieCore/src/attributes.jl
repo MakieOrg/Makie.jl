@@ -20,8 +20,11 @@ value_convert(x::NamedTuple) = Attributes(x)
 
 # Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
 node_any(obj::Computed) = obj
-node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
-                               isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
+function node_any(@nospecialize(obj))
+    isa(obj, Observable{Any}) && return obj
+    isa(obj, Observable) && return convert(Observable{Any}, obj)
+    return Observable{Any}(obj)
+end
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
