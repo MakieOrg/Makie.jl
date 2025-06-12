@@ -86,7 +86,7 @@ We use an example to show how this works:
 
     colormap = @inherit colormap :viridis
 
-    MakieCore.mixin_generic_plot_attributes()...
+    Makie.mixin_generic_plot_attributes()...
 end
 ```
 
@@ -154,8 +154,8 @@ Attributes can also be included from the output of a function by calling that fu
 The function needs to return the output of `@DocumentedAttributes` for this.
 
 ```julia
-function shared_attributes()
-    MakieCore.@DocumentedAttributes begin
+function shared_myplot_attributes()
+    Makie.@DocumentedAttributes begin
         "Some attribute that is used by multiple recipes"
         shared_attribute1 = 1
         shared_attribute2 = @inherit markersize
@@ -164,12 +164,12 @@ end
 
 @recipe MyPlot1 begin
     local_attrib1 = 1
-    shared_attributes()...
+    shared_myplot_attributes()...
     local_attrib2 = 2
 end
 
 @recipe MyPlot2 begin
-    shared_attributes()...
+    shared_myplot_attributes()...
 end
 ```
 
@@ -219,6 +219,9 @@ end
 ```
 
 #### Attribute and Argument Manipulation
+
+!!! warning
+    This applies to Makie 0.24+
 
 Typically you want to transform, combine and extend attributes and arguments before passing them along to other plots.
 To do this dynamically these operations should react to changes in their inputs and notify their outputs.
@@ -288,12 +291,14 @@ end
 
 #### Attribute Passthrough
 
+!!! warning
+    This applies to Makie 0.24+
+
 Recipes often include a lot of attributes that simply get passed along to a child plot for customizability.
 While you can pass them one by one via keyword arguments, you can also pass `plot.attributes` in their entirety.
 
 ```julia
 function Makie.plot!(myplot::MyPlot)
-    # ...
     lines!(myplot, myplot.attributes, args...; kwargs...)
 end
 ```
@@ -304,12 +309,47 @@ If you want to prevent an attribute from getting forwarded you can explicitly se
 
 ```julia
 function Makie.plot!(myplot::MyPlot)
-    # ...
     lines!(myplot, myplot.attributes, args...; color = myplot.computed_color)
 end
 ```
 
 With this `color` would be set by `myplot.computed_color` and `linewidth` would still follow from `myplot.linewidth`
+
+#### Legacy Attribute and Argument handling
+
+The ComputeGraph was introduced with Makie Version 0.24.
+The explanations above build on that and are not valid for previous version.
+Before Makie 0.24 dynamic updating in recipes was handled by Observables.
+They can still be used, but may run into update synchronization issues, can be harder to debug and may perform worse.
+The code above can be translated to:
+
+```julia
+@recipe MyPlot (positions, ) begin
+    window = 10
+end
+
+function Makie.plot!(myplot::MyPlot)
+    # individual map() calls will cause synchronization issues in lines, as
+    # colors and positions must match in length. To work around this we do
+    # ovs.val updates
+    running_average = Observable(Float32[])
+    running_variance = Observable(Float32[])
+
+    onany(myplot, myplot.position, myplot.window) do positions, window
+        running_average.val = [mean(positions[i : i + window]) for i in 1 : length(positions)-window]
+        running_variance.val = [var(positions[i : i + window]) for i in 1 : length(positions)-window]
+        notify(running_average)
+        notify(running_variance)
+        return
+    end
+
+    lines!(myplot, plot.running_average, color = myplot.running_variance)
+    return myplot
+end
+```
+
+Passing `plot.attributes` to a child plot is incompatible between versions, as those attributes take priority over keyword arguments before 0.24. To be compatible with 0.24 attributes need to be passed as keyword arguments explicitly.
+
 
 ## Example: Stock Chart
 
