@@ -55,7 +55,7 @@ obtained from the distribution of `x` via an affine transformation.
     strokecolor = @inherit markerstrokecolor
     strokewidth = @inherit markerstrokewidth
     marker = @inherit marker
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
     cycle = [:color]
 end
 
@@ -66,7 +66,7 @@ Shorthand for `qqplot(Normal(0,1), y)`, i.e., draw a Q-Q plot of `y` against the
 standard normal distribution. See `qqplot` for more details.
 """
 @recipe QQNorm begin
-    MakieCore.documented_attributes(QQPlot)...
+    documented_attributes(QQPlot)...
 end
 
 # Compute points and line for the qqplot

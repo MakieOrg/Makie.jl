@@ -56,7 +56,7 @@ and parent nodes identified by `merges`.
     "Sets the color of branches with mixed groups if groups are defined."
     ungrouped_color = :gray
 
-    MakieCore.documented_attributes(Lines)...
+    documented_attributes(Lines)...
 end
 
 function dendrogram_points!(ret_points, nodes, branch_shape, branch_color_groups)

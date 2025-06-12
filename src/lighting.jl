@@ -276,7 +276,7 @@ function get_shading_mode(scene)
                 ifelse(is_fast, FastShading, MultiLightShading)
             else
                 shading
-            end::MakieCore.ShadingAlgorithm
+            end::Makie.ShadingAlgorithm
             return (mode,)
         end
     end
@@ -354,7 +354,7 @@ end
 Sets the shading algorithm of the scene. This is only valid before displaying these scene.
 """
 set_shading_algorithm!(scene, mode) = set_shading_algorithm!(get_scene(scene).compute, mode)
-function set_shading_algorithm!(graph::ComputeGraph, mode::Union{Automatic, MakieCore.ShadingAlgorithm})
+function set_shading_algorithm!(graph::ComputeGraph, mode::Union{Automatic, Makie.ShadingAlgorithm})
     if haskey(graph, :lighting_mode)
         error("Shading mode has already been set.")
     else

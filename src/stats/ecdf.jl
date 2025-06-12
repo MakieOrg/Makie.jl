@@ -46,7 +46,7 @@ Plot the empirical cumulative distribution function (ECDF) of `values`.
 If `weights` for the values are provided, a weighted ECDF is plotted.
 """
 @recipe ECDFPlot begin
-    MakieCore.documented_attributes(Stairs)...
+    documented_attributes(Stairs)...
 end
 
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)

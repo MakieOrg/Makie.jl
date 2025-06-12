@@ -341,8 +341,8 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     like there are more NaN bins than there actually are.
     """
     interpolate = false
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
 end
 
 function fast_bb(points, f)
@@ -575,7 +575,7 @@ end
 const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}}
 
 # The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
-struct HeatmapShaderConversion <: MakieCore.ConversionTrait end
+struct HeatmapShaderConversion <: ConversionTrait end
 
 function conversion_trait(::Type{<:Heatmap}, x, y, ::Resampler)
     return HeatmapShaderConversion()
@@ -584,7 +584,7 @@ function conversion_trait(::Type{<:Heatmap}, ::Resampler)
     return HeatmapShaderConversion()
 end
 
-function MakieCore.types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
+function types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
     return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
 end
 

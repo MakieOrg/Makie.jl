@@ -587,7 +587,7 @@ function argument_error(PTrait, P, args, user_kw, converted)
     kw_str = isempty(kw) ?  "" : " and kw: $(kw)"
     kw_convert = isempty(kw) ? "" : "; kw..."
     conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
-    types = MakieCore.types_for_plot_arguments(P, PTrait)
+    types = types_for_plot_arguments(P, PTrait)
     throw(ArgumentError("""
 
         Conversion failed for $(P)$(conv_trait) with args:

@@ -43,7 +43,7 @@ similar to how [`surface`](@ref) works.
     extendhigh = nothing
     # TODO, Isoband doesn't seem to support nans?
     nan_color = :transparent
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.

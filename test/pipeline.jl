@@ -233,3 +233,8 @@ end
     @test :entrygroups in attribute_names(Legend)
     @test :palette in attribute_names(PolarAxis)
 end
+
+@testset "func2string" begin
+    @test MakieCore.func2string(cos) == "cos"
+    @test startswith(MakieCore.func2string(x -> x), "#")
+end

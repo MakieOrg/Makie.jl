@@ -5,7 +5,7 @@ Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene
 You can pass one or multiple intercepts or slopes.
 """
 @recipe ABLines (intercept, slope) begin
-    MakieCore.documented_attributes(LineSegments)...
+    documented_attributes(LineSegments)...
 end
 
 function Makie.plot!(p::ABLines)

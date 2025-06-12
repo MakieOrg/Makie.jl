@@ -23,7 +23,7 @@ end
 """
 @recipe TimeSeries (signal,) begin
     history = 100
-    MakieCore.documented_attributes(Lines)...
+    documented_attributes(Lines)...
 end
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)

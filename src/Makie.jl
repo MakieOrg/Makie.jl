@@ -40,7 +40,6 @@ using FreeType
 using FreeTypeAbstraction
 using LinearAlgebra
 using Statistics
-using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
@@ -82,20 +81,6 @@ using Observables: listeners, to_value, notify
 
 import InverseFunctions
 
-using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
-using MakieCore: Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
-using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-using MakieCore: Key, @key_str, Automatic, automatic, @recipe
-using MakieCore: Pixel, px, Unit, Billboard
-using MakieCore: NoShading, FastShading, MultiLightShading
-using MakieCore: not_implemented_for
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-                  get_attribute, plotsym, plotkey, attributes, used_attributes
-import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
-import MakieCore: heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
-import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
@@ -124,6 +109,11 @@ end
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
+include("coretypes.jl")
+include("attributes.jl")
+include("recipes.jl")
+include("basic_plots.jl")
+include("conversion.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/Plane.jl")

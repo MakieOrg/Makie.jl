@@ -6,7 +6,7 @@ const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.LogScaled,Unitful.U
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
-MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
+should_dim_convert(::Type{<:SupportedUnits}) = true
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
