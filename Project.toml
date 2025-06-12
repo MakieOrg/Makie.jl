@@ -65,8 +65,8 @@ TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[sources]
-MakieCore = {path = "MakieCore"}
+[sources.MakieCore]
+path = "MakieCore"
 
 [compat]
 Animations = "0.4"
@@ -101,7 +101,7 @@ KernelDensity = "0.5, 0.6"
 LaTeXStrings = "1.2"
 LinearAlgebra = "1.0, 1.6"
 MacroTools = "0.5"
-MakieCore = "=0.11.0"
+MakieCore = "=0.11.0, 0.10"
 Markdown = "1.0, 1.6"
 MathTeXEngine = "0.5, 0.6"
 Observables = "0.5.5"
