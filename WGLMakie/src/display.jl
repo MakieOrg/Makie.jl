@@ -97,7 +97,7 @@ function poll_all_plots(scene)
                 # Mark the output as resolved so we don't repeatedly pull in errors
                 # TODO: Is there a better way to handle this? One that allows us to
                 # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
-                ComputePipeline.mark_resolved!(plot.attributes[:wgl_renderobject])
+                ComputePipeline.mark_resolved!(p.attributes[:wgl_renderobject])
             end
         end
     end
