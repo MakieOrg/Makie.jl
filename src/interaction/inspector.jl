@@ -283,17 +283,19 @@ function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...
     # We delegate the hover processing to another channel,
     # So that we can skip queued up updates with empty_channel!
     # And also not slow down the processing of e.mouseposition/e.scroll
-    was_open = false
     channel = Channel{Nothing}(blocking ? 0 : Inf) do ch
-        for _ in ch
-            if isopen(scene)
-                was_open = true
+        while !isclosed(parent)
+            take!(ch) # wait for event
+            println("jo")
+            if isopen(parent)
+                println("hoverin")
                 on_hover(inspector)
             end
-            if !isopen(scene) && was_open
-                close(ch)
-                break
-            end
+        end
+    end
+    on(parent, parent.events.window_open) do open
+        if !open && isopen(channel)
+            put!(channel, nothing)
         end
     end
     listeners = onany(e.mouseposition, e.scroll) do _, _
