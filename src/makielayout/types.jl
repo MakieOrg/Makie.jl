@@ -1051,6 +1051,10 @@ end
         alignmode = Inside()
         "The width of the value label column. If `automatic`, the width is determined by sampling a few values from the slider ranges and picking the largest label size found."
         value_column_width = automatic
+        "The font size of the entry labels."
+        labelsize = @inherit(:fontsize, 16f0)
+        "The font size of the entry value labels."
+        valuesize = @inherit(:fontsize, 16f0)
     end
 end
 
