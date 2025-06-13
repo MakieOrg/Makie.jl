@@ -100,11 +100,11 @@ Camera3D
 Sometimes you may need to interact with camera matrices to project data into a different space.
 As of Makie 0.24 you can get all the relevant matrices for this from `scene.compute` using the helper functions:
 
-- [`Makie.get_projectionview`](@ref)
-- [`Makie.get_projection`](@ref)
-- [`Makie.get_view`](@ref)
-- [`Makie.get_preprojection`](@ref)
-- [`Makie.get_space_to_space_matrix`](@ref)
+- `Makie.get_projectionview(scene, space)`
+- `Makie.get_projection(scene, space)`
+- `Makie.get_view(scene, space)`
+- `Makie.get_preprojection(scene, space, markerspace)`
+- `Makie.get_space_to_space_matrix(scene, input_space, output_space)`
 
 
 ## Example - Visualizing the camera's view box
