@@ -94,7 +94,7 @@
                         div = document.createElement("div") 
                         cell.append(div)
 
-                        if (score > 0.05)
+                        if (isNaN(score) || !isFinite(score) || score > 0.05)
                             div.style.backgroundColor = '#ffbbbb';
                         else if (score > 0.001)
                             div.style.backgroundColor = '#ffffbb';
