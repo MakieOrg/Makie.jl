@@ -1,11 +1,8 @@
-name: Makie.jl
+name: ComputePipeline.jl
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-    branches:
-      - master
+    paths:
+      - 'ComputePipeline/**'
   push:
     tags:
       - '*'
@@ -17,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  makie:
+  test:
     name: Julia ${{ matrix.version }}
     env:
       ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
@@ -26,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.10'
+          - '1.9'
           - '1'
         os:
           - ubuntu-latest
@@ -40,17 +37,12 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - name: Develop and test Makie
+      - name: Develop and test ComputePipeline
         shell: julia --project=monorepo {0}
         run: |
           using Pkg
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./ComputePipeline"
-          Pkg.test("Makie"; coverage=true)
-
-      - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v5
-        with:
-          file: lcov.info
+          pkg"dev ./ComputePipeline"
+          Pkg.test("ComputePipeline")
