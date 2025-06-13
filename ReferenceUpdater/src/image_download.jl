@@ -19,9 +19,21 @@ function upload_reference_images(path=basedir("recorded"), tag=last_major_versio
     end
 end
 
+function download_progress_callback(total::Int, now::Int)
+    mb = x -> round(x / 1024^2; digits=1)
+    if total > 0
+        pct = round(1000 * now / total) / 10  # one decimal
+        msg = "Downloading: $(pct)% ($(mb(now)) / $(mb(total)) MB)"
+    else
+        msg = "Downloading: $(mb(now)) MB"
+    end
+    print("\r$msg\e[K")
+end
+
 function download_refimages(tag=last_major_version())
     url = "https://github.com/MakieOrg/Makie.jl/releases/download/refimages-$(tag)/reference_images.tar"
-    images_tar = Downloads.download(url)
+
+    images_tar = Downloads.download(url; progress = download_progress_callback)
     images = tempname()
     isdir(images) && rm(images, recursive=true, force=true)
     Tar.extract(images_tar, images)

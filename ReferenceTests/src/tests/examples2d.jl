@@ -2229,7 +2229,7 @@ end
 end
 
 @reference_test "annotation pointcloud" begin
-    f = Figure(size = (350, 350))
+    f = Figure(size = (700, 350))
 
     points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
 
@@ -2240,8 +2240,16 @@ end
 
     scatter!(ax, points)
     annotation!(ax, points, text = fruit)
-
+    
     hidedecorations!(ax)
+
+    points2 = [10 .^ p for p in points]
+    ax2 = Axis(f[1, 2], yscale = log10, xscale = log10)
+
+    scatter!(ax2, points2)
+    annotation!(ax2, points2, text = fruit)
+
+    hidedecorations!(ax2)
 
     f
 end
