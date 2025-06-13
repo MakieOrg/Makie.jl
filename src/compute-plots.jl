@@ -539,16 +539,13 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
 end
 
-# function gscatter end
-
-# const GScatter{ARGS} = Scatter{gscatter, ARGS}
-
 function add_theme!(plot::T, scene::Scene) where {T}
     plot_attr = plot_attributes(scene, T)
-
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
     gattr = plot.attributes
+    # gattr[k] = v is relatively expensive, so we collect all updates first
+    updates = Dict{Symbol, Any}()
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
         if !haskey(plot.kw, k)
@@ -557,17 +554,17 @@ function add_theme!(plot::T, scene::Scene) where {T}
                 continue
             end
             if haskey(plot_scene_theme, k)
-                setproperty!(gattr, k, to_value(plot_scene_theme[k]))
+                updates[k] = to_value(plot_scene_theme[k])
             elseif v isa Observable
-                setproperty!(gattr, k, v[])
+                updates[k] = v[]
             elseif v isa Attributes
-                setproperty!(gattr, k, v)
+                updates[k] = v
             elseif v.default_value isa Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
-                    setproperty!(gattr, k, to_value(scene_theme[default.key]))
+                    updates[k] = to_value(scene_theme[default.key])
                 elseif !isnothing(default.fallback)
-                    setproperty!(gattr, k, default.fallback)
+                    updates[k] = default.fallback
                 else
                     error("No fallback + theme for $(k)")
                 end
@@ -576,6 +573,7 @@ function add_theme!(plot::T, scene::Scene) where {T}
             end
         end
     end
+    update!(gattr, updates)
     return
 end
 
