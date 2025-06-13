@@ -297,7 +297,7 @@ function get_atlas_tracker(f, scene::Scene)
             Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
         end
         screen = Makie.getscreen(scene, WGLMakie)
-        if isnothing(screen.session)
+        if isnothing(screen) || isnothing(screen.session)
             @warn "No session found, returning empty atlas tracker"
             # TODO, it's not entirely clear in which case this can happen,
             # which is why we don't just error, but just assume there isn't anything tracked

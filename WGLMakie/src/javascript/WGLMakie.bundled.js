@@ -24547,6 +24547,31 @@ const mod1 = {
     Scatter: Scatter
 };
 window.THREE = mod;
+const orderedExecutor = {
+    tasks: new Map(),
+    nextExpected: 1,
+    insert (f, order) {
+        if (this.tasks.has(order)) {
+            throw new Error(`Duplicate task for order ${order}`);
+        }
+        this.tasks.set(order, f);
+        this.flush();
+    },
+    flush () {
+        while(this.tasks.has(this.nextExpected)){
+            const f = this.tasks.get(this.nextExpected);
+            f();
+            this.tasks.delete(this.nextExpected);
+            this.nextExpected += 1;
+        }
+    }
+};
+function execute_in_order(order, f) {
+    if (order < 1 || !Number.isInteger(order)) {
+        throw new Error(`Invalid order: ${order}`);
+    }
+    orderedExecutor.insert(f, order);
+}
 function dispose_screen(screen) {
     if (Object.keys(screen).length === 0) {
         return;
@@ -25212,6 +25237,7 @@ window.WGL = {
     get_texture_atlas
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
+export { execute_in_order as execute_in_order };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };
