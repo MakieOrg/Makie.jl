@@ -978,6 +978,7 @@ end
 
 function refreshwindowcb(screen, window)
     screen.render_tick[] = Makie.BackendTick
+    poll_updates(screen)
     render_frame(screen)
     GLFW.SwapBuffers(window)
     return

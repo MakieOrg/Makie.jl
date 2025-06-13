@@ -232,15 +232,14 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     #   we'd duplicate the project() code or we'd have to filter out the correct positions from
     #   txt.markerspace_positions with text_blocks, which is risky as empty strings don't refer to
     #   a per-glyph index anymore. Probably better to rework text.positions pipeline here...
-    # - project() does not include transform_func, clip planes
 
-    text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace) do _, _, _, labelspace
+    text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace, transform_func(p)) do _, _, _, labelspace, _
         string_bbs = Rect2f.(fast_string_boundingboxes(txt))
         @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0,0))
-        points = Makie.project.(Ref(scene), textpositions[])
+        points = plot_to_screen(p, textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
-            Makie.project.(Ref(scene), Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2)))
+            plot_to_screen(p, Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2)))
         elseif labelspace === :relative_pixel
             points .+ Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2))
         else

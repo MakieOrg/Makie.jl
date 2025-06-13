@@ -160,7 +160,11 @@ function download_artifacts(; commit = nothing, pr = nothing)
             download_url = a["archive_download_url"]
             if !haskey(URL_CACHE, download_url)
                 @info "Downloading artifact from $download_url"
-                filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(github_token())"))
+                filepath = Downloads.download(
+                    download_url,
+                    headers = Dict("Authorization" => "token $(github_token())"),
+                    progress = download_progress_callback,
+                )
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
