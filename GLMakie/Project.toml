@@ -21,8 +21,8 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
-[sources]
-Makie = {path = ".."}
+[sources.Makie]
+path = ".."
 
 [compat]
 ColorTypes = "0.9, 0.10, 0.11, 0.12"
@@ -33,7 +33,7 @@ FreeTypeAbstraction = "0.10"
 GLFW = "3.4.3"
 GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.24.0"
+Makie = "=0.24.0, 0.23"
 Markdown = "1.0, 1.6"
 MeshIO = "0.5"
 ModernGL = "1"
