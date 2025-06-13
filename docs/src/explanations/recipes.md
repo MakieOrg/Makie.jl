@@ -121,8 +121,7 @@ This is optional but it will allow the use of `plot_object.x` to fetch the first
 Alternatively you can always fetch the `i`th converted argument using `plot_object[i]`.
 If you leave out the `(x, y, z)` the default version of `argument_names` will provide `plot_object.converted_1` etc.
 To get the unconverted arguments of the plot, i.e. the `rand(10)` vectors, `plot_object.arg1` etc can be used.
-It is currently not possible to rename these arguments as their number and interpretation may change.
-For example `scatter(rand(10), rand(10))` would naturally be named `x, y` whereas `scatter(rand(Point2f, 10))` would be `position` and `scatter(rand(10))` would be `y`.
+Unlike converted argument, their names can not be changed.
 
 #### Recipe Attributes
 
