@@ -51,6 +51,8 @@ jobs:
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
