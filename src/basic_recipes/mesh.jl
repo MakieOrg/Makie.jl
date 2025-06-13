@@ -7,7 +7,6 @@ function plot!(p::Mesh{<: Tuple{<: GeometryBasics.MetaMesh}})
         for (i, m) in enumerate(meshes)
             mesh!(p, Attributes(p), m, color = i, colorrange = (1, length(meshes)))
         end
-
         return p
     end
 
