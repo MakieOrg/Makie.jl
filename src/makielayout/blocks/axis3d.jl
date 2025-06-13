@@ -1,3 +1,5 @@
+struct Axis3Camera <: AbstractCamera end
+
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
@@ -30,6 +32,8 @@ function initialize_block!(ax::Axis3)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
+    cam = Axis3Camera()
+    cameracontrols!(scene, cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits, ax.clip) do model, lims, clip
         if clip
             _planes = planes(lims)
