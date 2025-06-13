@@ -539,16 +539,15 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
 end
 
-function add_theme!(plot::T, scene::Scene) where {T}
+function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
     plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
-    gattr = plot.attributes
-    # gattr[k] = v is relatively expensive, so we collect all updates first
+
     updates = Dict{Symbol, Any}()
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
-        if !haskey(plot.kw, k)
+        if !haskey(kw, k)
             # dont set theme values for cycled attributes
             if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], k)
                 continue
@@ -666,9 +665,9 @@ end
 # should this just be connect_plot?
 function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     scene = parent_scene(parent)
-    add_theme!(plot, scene)
-    plot.parent = parent
     attr = plot.attributes
+    add_theme!(Plot{Func}, plot.kw, attr, scene)
+    plot.parent = parent
 
     if attr.inputs[:f32c].value !== :uninitialized
         error("plot.f32c must not be resolved before the scene is connected!")

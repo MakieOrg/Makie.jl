@@ -10,7 +10,7 @@ function extract_material(matsys, plot)
     end
 end
 
-function mesh_material(context, matsys, plot, color_obs = plot.color)
+function mesh_material(context, matsys, plot, color_obs = plot.scaled_color)
     color = to_value(color_obs)
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.ImageTextureMaterial(matsys)
@@ -34,7 +34,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.color)
         # ignore!
         color_obs
     else
-        error("Unsupported color type for RadeonProRender backend: $(typeof(color))")
+        error("Unsupported color type for RadeonProRender backend: $(typeof(color)) for $(typeof(plot))")
     end
 
     material = extract_material(matsys, plot)
