@@ -19,7 +19,7 @@ They also process user input like mouse drags if that has an effect on the camer
 
 `Block`s have their own interaction system, which is also used to control the camera.
 This effectively replaces `cameracontrols(scene)`.
-For example, if you check `cameracontrols(ax.scene)` for `Axis`, `Axis3` and `PolarAxis` you will find an `EmptyCamera`.
+For example, if you check `cameracontrols(ax.scene)` for `Axis` and `PolarAxis` you will find an `EmptyCamera`.
 `LScene` still uses `cameracontrols(scene)` as it is just a wrapper around `Scene`.
 
 Makie 0.24 brought in another layer with the scenes `ComputeGraph` in `scene.compute`.
