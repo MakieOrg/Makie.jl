@@ -1,4 +1,4 @@
-name: ComputePipeline
+name: ComputePipeline.jl
 on:
   pull_request:
     paths:
