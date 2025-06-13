@@ -5,6 +5,8 @@ macro compile(block)
         let
             figlike = $(esc(block))
             Makie.colorbuffer(figlike; px_per_unit=1)
+            screen = Makie.getscreen(Makie.get_scene(figlike))
+            foreach(p -> Makie.ComputePipeline.resolve!(p.gl_renderobject, true), values(screen.cache2plot))
             return nothing
         end
     end
