@@ -474,7 +474,7 @@ end
 
 function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
     if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
-        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[[1,2,2,1], [1,1,2,2]])
+        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[:])
     else
         ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
     end
@@ -593,11 +593,14 @@ end
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot})
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol}=Symbol[])
     # TODO: This currently happens for ComputeGraph passthrough already
     valid_attributes = attribute_names(target)
     existing_attributes = keys(plot.attributes.outputs)
     to_drop = setdiff(existing_attributes, valid_attributes)
+    # Model is always shared, but should not be shared and therefore dropped
+    push!(to_drop, :model)
+    union!(to_drop, drop)
     return drop_attributes(plot, to_drop)
 end
 
@@ -607,7 +610,7 @@ end
 
 function drop_attributes(plot::Plot, to_drop::Set{Symbol})
     attr = plot.attributes.outputs
-    return Attributes([k => ComputePipeline.get_observable!(v) for (k, v) in attr if !(k in to_drop)])
+    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
 end
 
 isscalar(x::StaticVector) = true

@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/compute-graph
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}

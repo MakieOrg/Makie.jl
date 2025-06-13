@@ -84,7 +84,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     graph = c.attributes
 
     # prepare levels, colormap related nodes
-    register_contourf_computations!(graph, :_arg2)
+    register_contourf_computations!(graph, :converted_2)
 
     function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         levels = copy(levels)
@@ -123,7 +123,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     end
 
     register_computation!(graph,
-            [:_arg1, :_arg2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+            [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
             [:polys, :computed_colors]
         ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)

@@ -165,7 +165,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
-    register_computation!(plot.attributes, [:_arg1], [:real_text, :real_position]) do (str_pos, ), changed, cached
+    register_computation!(plot.attributes, [:converted_1], [:real_text, :real_position]) do (str_pos, ), changed, cached
         text = first.(str_pos)
         pos = last.(str_pos)
         return (text, pos)

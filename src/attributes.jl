@@ -19,16 +19,20 @@ end
 value_convert(x::NamedTuple) = Attributes(x)
 
 # Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
-node_any(@nospecialize(obj)) = isa(obj, Observable{Any}) ? obj :
-                               isa(obj, Observable) ? convert(Observable{Any}, obj) : Observable{Any}(obj)
+node_any(obj::Computed) = obj
+function node_any(@nospecialize(obj))
+    isa(obj, Observable{Any}) && return obj
+    isa(obj, Observable) && return convert(Observable{Any}, obj)
+    return Observable{Any}(obj)
+end
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
-Attributes(; kw_args...) = Attributes(Dict{Symbol, Observable}(node_pairs(kw_args)))
-Attributes(pairs::Dict) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
-Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Observable}(node_pairs(pairs)))
-Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Observable}(node_pairs.(pairs)))
+Attributes(; kw_args...) = Attributes(Dict{Symbol, Any}(node_pairs(kw_args)))
+Attributes(pairs::Dict) = Attributes(Dict{Symbol, Any}(node_pairs(pairs)))
+Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Any}(node_pairs(pairs)))
+Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Any}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
 attributes(x::Attributes) = getfield(x, :attributes)
@@ -106,7 +110,7 @@ function Base.getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
     # We unpack Attributes, even though, for consistency, we store them as Observables
     # this makes it easier to create nested attributes
-    return x[] isa Attributes ? x[] : x
+    return to_value(x) isa Attributes ? to_value(x) : x
 end
 
 function Base.setindex!(x::Attributes, value, key::Symbol)

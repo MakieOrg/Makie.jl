@@ -227,8 +227,10 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
         yproj = project_flipped(pv, resolution, origin + yvec, true)
     end
 
-    xdiff = xproj - proj_pos
-    ydiff = yproj - proj_pos
+    # CairoMatrix somehow has a bug if the precision is too high
+    # Where in rare cases a glyph becomes suddenly really large
+    xdiff = Float32.(xproj - proj_pos)
+    ydiff = Float32.(yproj - proj_pos)
 
     mat = Cairo.CairoMatrix(
         xdiff[1], xdiff[2],

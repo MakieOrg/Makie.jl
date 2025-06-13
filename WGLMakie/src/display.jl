@@ -83,20 +83,36 @@ end
 
 function poll_all_plots(scene)
     Makie.for_each_atomic_plot(scene) do p
-        try
-            haskey(p, :wgl_renderobject) &&p[:wgl_renderobject][]
-            yield()
-        catch e
-            @warn "Error accessing render object for plot $(typeof(p))" exception=(e, Base.catch_backtrace())
+        if haskey(p, :wgl_renderobject)
+            try
+                # Skip updating invisible renderobjects
+                # This is basically `if is_visible || was_visible`, which makes
+                # sure the robj updates on state change. (i.e. hides and redisplays)
+                computed = p[:wgl_renderobject]
+                if p.visible[] || computed.value[][:visible]
+                    computed[]
+                end
+            catch e
+                @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                # Mark the output as resolved so we don't repeatedly pull in errors
+                # TODO: Is there a better way to handle this? One that allows us to
+                # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+                ComputePipeline.mark_resolved!(p.attributes[:wgl_renderobject])
+            end
         end
     end
 end
 
 function start_polling_loop!(scene)
-    @async while !Makie.isclosed(scene)
-        poll_all_plots(scene)
+    task = @async while !Makie.isclosed(scene)
+        try
+            poll_all_plots(scene)
+        catch e
+            @error "Error in polling loop" exception=(e, catch_backtrace())
+        end
         sleep(1/100)
     end
+    Base.errormonitor(task)
 end
 
 function render_with_init(screen::Screen, session::Session, scene::Scene)

@@ -213,11 +213,13 @@ graph[:derived_node][]
 struct ComputeGraph
     inputs::Dict{Symbol,Input}
     outputs::Dict{Symbol,Computed}
+    lock::ReentrantLock
+
     onchange::Observable{Set{Symbol}}
     observables::Dict{Symbol,Observable}
+    should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
-    lock::ReentrantLock
 end
 
 """
@@ -249,23 +251,16 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
     # To prevent this we have to disambiguate the data and do == checks here.
     # This requires us to copy data every time we update and we can't use
     # `copy` because that is not always available (e.g. not for Rect)
-    _deepcopy(x) = use_deepcopy ? deepcopy(x) : x
     return get!(attr.observables, key) do
-        val = attr.outputs[key]
-        # The graph already does ignore_equal_values = true checks when data is
-        # not updated in-place
-        initial_value = _deepcopy(val[]) # resolve first so eltype can work
-        result = Observable{eltype(val.value)}(initial_value)
-        on(attr.onchange) do changeset
-            # without deepcopy the content of the Observable can be identical to
-            # the compute node (i.e. x = Int[]; obs = Observable(x); x === obs[])
-            # != checks will then always fail with in-place updates
-            if (key in changeset) && (!use_deepcopy || val[] != result[])
-                result[] = _deepcopy(val[])
-            end
-            return Consume(false)
+        if use_deepcopy
+            push!(attr.should_deepcopy, key)
         end
-        return result
+        # resolve first so eltype can work
+        val = attr.outputs[key]
+        initial_value = use_deepcopy ? deepcopy(val[]) : val[]
+        # The graph already does ignore_equal_values = true checks when data is
+        # not updated in-place, so it's useless to add it here
+        return Observable{eltype(val.value)}(initial_value)
     end
 end
 
@@ -305,11 +300,42 @@ function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
 end
 
 function ComputeGraph()
-    onchange = Observable(Set{Symbol}())
-    on(empty!, onchange, priority = typemin(Int)) # clear changeset after processing observables
-    return ComputeGraph(
-        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), onchange,
-        Dict{Symbol,Observable}(), Observables.ObserverFunction[], Observable[], Base.ReentrantLock())
+    graph = ComputeGraph(
+        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Base.ReentrantLock(),
+        Observable(Set{Symbol}()), Dict{Symbol,Observable}(), Set{Symbol}(),
+        Observables.ObserverFunction[], Observable[]
+    )
+
+    on(graph.onchange) do changeset
+        intersect!(changeset, keys(graph.observables))
+
+        # update data
+        for key in changeset
+            val = graph.outputs[key][]
+            obs = graph.observables[key]
+            # Trust the graph to discard equal values. This doesn't work for
+            # anything updated in-place
+            if !(key in graph.should_deepcopy)
+                obs.val = val
+            elseif val != obs[] # treat in-place updates
+
+                obs.val = deepcopy(val)
+            else # same value (with deepcopy), skip update
+                delete!(changeset, key)
+            end
+        end
+
+        # trigger observables
+        for key in changeset
+            notify(graph.observables[key])
+        end
+
+        # clear changeset after processing observables
+        empty!(changeset)
+        return Consume(false)
+    end
+
+    return graph
 end
 
 _first_arg(args, changed, last) = (args[1],)
@@ -513,6 +539,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
     key === :obs_to_update && return getfield(attr, :obs_to_update)
     key === :lock && return getfield(attr, :lock)
+    key === :should_deepcopy && return getfield(attr, :should_deepcopy)
     return attr.outputs[key]
 end
 
