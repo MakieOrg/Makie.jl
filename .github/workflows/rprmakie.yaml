@@ -46,7 +46,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           # dev mono repo versions
-          pkg"dev ./ComputePipeline ./ ./RPRMakie ./ReferenceTests"
+          pkg"dev ./ComputePipeline ./Makie ./RPRMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >
