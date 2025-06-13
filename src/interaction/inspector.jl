@@ -286,9 +286,7 @@ function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...
     channel = Channel{Nothing}(blocking ? 0 : Inf) do ch
         while !isclosed(parent)
             take!(ch) # wait for event
-            println("jo")
             if isopen(parent)
-                println("hoverin")
                 on_hover(inspector)
             end
         end
