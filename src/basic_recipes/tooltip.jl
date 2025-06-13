@@ -35,19 +35,21 @@ Creates a tooltip pointing at `position` displaying the given `string
 
     # Background
     "Sets the background color of the tooltip."
-    backgroundcolor = :white
+    backgroundcolor = (:white, 0.9)
     "Sets the size of the triangle pointing at `position`."
     triangle_size = 10
 
     # Outline
     "Sets the color of the tooltip outline."
-    outline_color = :black
+    outline_color = (:black, 0.5)
     "Sets the linewidth of the tooltip outline."
     outline_linewidth = 2f0
     "Sets the linestyle of the tooltip outline."
     outline_linestyle = nothing
 
     mixin_generic_plot_attributes()...
+    transparency = true
+
     inspectable = false
 end
 
@@ -69,58 +71,185 @@ struct ToolTipShape
     triangle_size::Float32
 end
 
-function (tt::ToolTipShape)(origin::VecTypes{2}, size::VecTypes{2})
+
+function rounded_corner(center::Tuple, r, start_angle, end_angle, steps=4)
+    angles = range(start_angle, stop=end_angle, length=steps)
+    return [Vec2f(center) .+ r .* Vec2f(cos(a), sin(a)) for a in angles]
+end
+
+function (tt::ToolTipShape)(origin::Vec2, size::Vec2)
     l, b = origin
     w, h = size
     r, t = (l, b) .+ (w, h)
     s = tt.triangle_size
+    cr = 5  # Default to 0 if not specified
+
+    # Helper function to create rounded corner points
+    function rounded_corner(center_x, center_y, radius, start_angle, end_angle, num_points=8)
+        if radius <= 0
+            return Point2f[(center_x, center_y)]
+        end
+        angles = range(start_angle, end_angle, length=num_points)
+        return [Point2f(center_x + radius * cos(a), center_y + radius * sin(a)) for a in angles]
+    end
 
     # tt.placement refers to the tooltip relative to the pointed at position
     # i.e. left means that the tooltip is to the left, with the triangle pointing right
     if tt.placement === :left
-        return Point2f[
-            (l, b), (l, t), (r, t),
-            (r,     b + tt.align * h + 0.5s),
-            (r + s, b + tt.align * h       ),
-            (r,     b + tt.align * h - 0.5s),
-            (r, b), (l, b)
-        ]
+        points = Point2f[]
+
+        # Bottom-left corner
+        append!(points, rounded_corner(l + cr, b + cr, cr, π, 3π/2))
+
+        # Bottom edge to triangle start
+        push!(points, Point2f(r, b))
+        push!(points, Point2f(r, b + tt.align * h - 0.5s))
+
+        # Triangle
+        push!(points, Point2f(r + s, b + tt.align * h))
+        push!(points, Point2f(r, b + tt.align * h + 0.5s))
+
+        # Continue to top-right corner
+        push!(points, Point2f(r, t - cr))
+        append!(points, rounded_corner(r - cr, t - cr, cr, 0, π/2))
+
+        # Top edge
+        push!(points, Point2f(l + cr, t))
+
+        # Top-left corner
+        append!(points, rounded_corner(l + cr, t - cr, cr, π/2, π))
+
+        # Left edge back to start
+        push!(points, Point2f(l, b + cr))
+
+        return points
+
     elseif tt.placement === :right
-        return Point2f[
-            (l, b),
-            (l,   b + tt.align * h - 0.5s),
-            (l-s, b + tt.align * h       ),
-            (l,   b + tt.align * h + 0.5s),
-            (l, t), (r, t), (r, b), (l, b),
-        ]
+        points = Point2f[]
+
+        # Start at bottom-left, after corner
+        push!(points, Point2f(l, b + cr))
+
+        # Bottom-left corner
+        append!(points, rounded_corner(l + cr, b + cr, cr, π, 3π/2))
+
+        # Bottom edge
+        push!(points, Point2f(r - cr, b))
+
+        # Bottom-right corner
+        append!(points, rounded_corner(r - cr, b + cr, cr, 3π/2, 2π))
+
+        # Right edge to triangle
+        push!(points, Point2f(r, b + tt.align * h - 0.5s))
+
+        # Triangle
+        push!(points, Point2f(r + s, b + tt.align * h))
+        push!(points, Point2f(r, b + tt.align * h + 0.5s))
+
+        # Continue right edge
+        push!(points, Point2f(r, t - cr))
+
+        # Top-right corner
+        append!(points, rounded_corner(r - cr, t - cr, cr, 0, π/2))
+
+        # Top edge
+        push!(points, Point2f(l + cr, t))
+
+        # Top-left corner
+        append!(points, rounded_corner(l + cr, t - cr, cr, π/2, π))
+
+        return points
+
     elseif tt.placement in (:below, :down, :bottom)
-        return Point2f[
-            (l, b), (l, t),
-            (l + tt.align * w - 0.5s, t  ),
-            (l + tt.align * w,        t+s),
-            (l + tt.align * w + 0.5s, t  ),
-            (r, t), (r, b), (l, b),
-        ]
+        points = Point2f[]
+
+        # Start at bottom-left corner
+        push!(points, Point2f(l, b + cr))
+        append!(points, rounded_corner(l + cr, b + cr, cr, π, 3π/2))
+
+        # Bottom edge
+        push!(points, Point2f(r - cr, b))
+
+        # Bottom-right corner
+        append!(points, rounded_corner(r - cr, b + cr, cr, 3π/2, 2π))
+
+        # Right edge
+        push!(points, Point2f(r, t - cr))
+
+        # Top-right corner
+        append!(points, rounded_corner(r - cr, t - cr, cr, 0, π/2))
+
+        # Top edge to triangle
+        push!(points, Point2f(l + tt.align * w + 0.5s, t))
+
+        # Triangle
+        push!(points, Point2f(l + tt.align * w, t + s))
+        push!(points, Point2f(l + tt.align * w - 0.5s, t))
+
+        # Continue top edge
+        push!(points, Point2f(l + cr, t))
+
+        # Top-left corner
+        append!(points, rounded_corner(l + cr, t - cr, cr, π/2, π))
+
+        return points
+
     elseif tt.placement in (:above, :up, :top)
-        return Point2f[
-            (l, b), (l, t), (r, t), (r, b),
-            (l + tt.align * w + 0.5s, b  ),
-            (l + tt.align * w,        b-s),
-            (l + tt.align * w - 0.5s, b  ),
-            (l, b),
-        ]
+        points = Point2f[]
+
+        # Start at bottom-left after triangle
+        push!(points, Point2f(l, b + cr))
+
+        # Bottom-left corner
+        append!(points, rounded_corner(l + cr, b + cr, cr, π, 3π/2))
+
+        # Bottom edge to triangle
+        push!(points, Point2f(l + tt.align * w - 0.5s, b))
+
+        # Triangle
+        push!(points, Point2f(l + tt.align * w, b - s))
+        push!(points, Point2f(l + tt.align * w + 0.5s, b))
+
+        # Continue bottom edge
+        push!(points, Point2f(r - cr, b))
+
+        # Bottom-right corner
+        append!(points, rounded_corner(r - cr, b + cr, cr, 3π/2, 2π))
+
+        # Right edge
+        push!(points, Point2f(r, t - cr))
+
+        # Top-right corner
+        append!(points, rounded_corner(r - cr, t - cr, cr, 0, π/2))
+
+        # Top edge
+        push!(points, Point2f(l + cr, t))
+
+        # Top-left corner
+        append!(points, rounded_corner(l + cr, t - cr, cr, π/2, π))
+
+        return points
+
     else
-        @error "Tooltip placement $placement invalid. Assuming :above"
-        return Point2f[
-            (l, b), (l, t), (r, t), (r, b),
-            (l + tt.align * w + 0.5s, b  ),
-            (l + tt.align * w,        b-s),
-            (l + tt.align * w - 0.5s, b  ),
-            (l, b),
-        ]
+        @error "Tooltip placement $(tt.placement) invalid. Assuming :above"
+        # Default to :above case with rounded corners
+        points = Point2f[]
+
+        push!(points, Point2f(l, b + cr))
+        append!(points, rounded_corner(l + cr, b + cr, cr, π, 3π/2))
+        push!(points, Point2f(l + tt.align * w - 0.5s, b))
+        push!(points, Point2f(l + tt.align * w, b - s))
+        push!(points, Point2f(l + tt.align * w + 0.5s, b))
+        push!(points, Point2f(r - cr, b))
+        append!(points, rounded_corner(r - cr, b + cr, cr, 3π/2, 2π))
+        push!(points, Point2f(r, t - cr))
+        append!(points, rounded_corner(r - cr, t - cr, cr, 0, π/2))
+        push!(points, Point2f(l + cr, t))
+        append!(points, rounded_corner(l + cr, t - cr, cr, π/2, π))
+
+        return points
     end
 end
-
 
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
@@ -159,7 +288,6 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
             return Vec2f(0, o + b + ts)
         end
     end
-
     p = textlabel!(
         p, p[1], p.text, shape = shape,
 
