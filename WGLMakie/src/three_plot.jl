@@ -28,8 +28,21 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
+const SCENE_ORDER_PER_SESSION = Dict{String, Int}()
+const ORDER_LOCK = Base.ReentrantLock()
+
+function get_order!(session::Session)
+    roots = Bonito.root_session(session)
+    lock(ORDER_LOCK) do
+        order = get!(SCENE_ORDER_PER_SESSION, roots.id, 1)
+        SCENE_ORDER_PER_SESSION[roots.id] = order + 1
+        return order
+    end
+end
+
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
+    order = get_order!(session)
     scene_serialized = serialize_scene(scene)
     window_open = scene.events.window_open
     width, height = size(scene)
@@ -48,27 +61,30 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
     evaljs(session, js"""
     $(WGL).then(WGL => {
-        try {
-            const wrapper = $wrapper
-            const canvas = $canvas
-            if (wrapper == null || canvas == null) {
+        WGL.execute_in_order($order, ()=> {
+            console.log("RUNNING IN ORDER: ", $order)
+            try {
+                const wrapper = $wrapper
+                const canvas = $canvas
+                if (wrapper == null || canvas == null) {
+                    return
+                }
+                const renderer = WGL.create_scene(
+                    wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
+                    $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
+                )
+                const gl = renderer.getContext()
+                const err = gl.getError()
+                if (err != gl.NO_ERROR) {
+                    throw new Error("WebGL error: " + WGL.wglerror(gl, err))
+                }
+                $(done_init).notify(true)
+            } catch (e) {
+                Bonito.Connection.send_error("error initializing scene", e)
+                $(done_init).notify(e)
                 return
             }
-            const renderer = WGL.create_scene(
-                wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
-                $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
-            )
-            const gl = renderer.getContext()
-            const err = gl.getError()
-            if (err != gl.NO_ERROR) {
-                throw new Error("WebGL error: " + WGL.wglerror(gl, err))
-            }
-            $(done_init).notify(true)
-        } catch (e) {
-            Bonito.Connection.send_error("error initializing scene", e)
-            $(done_init).notify(e)
-            return
-        }
+        })
     })
     """)
     on(session, done_init) do val

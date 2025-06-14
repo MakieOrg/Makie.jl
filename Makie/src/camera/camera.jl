@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(11) do i
+    Camera(ntuple(9) do i
         getfield(x, i)
     end...)
 end
@@ -88,8 +88,6 @@ function Camera(viewport)
         Observable(Vec3f(1)),
         Observable(Vec3f(0, 1, 0)),
         ObserverFunction[],
-        Dict{Symbol, Observable{Mat4f}}(),
-        Dict{Float64,Observable{Vec2f}}()
     )
 end
 
@@ -271,11 +269,6 @@ function get_view(graph::ComputeGraph, space::Symbol)
     return Mat4f(graph[get_view_name(space)][])::Mat4f
 end
 
-"""
-    get_space_to_space_matrix(scene_graph, input_space, output_space)
-
-Return a camera matrix that transforms from `input_space` to `output_space`.
-"""
 function get_space_to_space_matrix(graph::ComputeGraph, input_space::Symbol, output_space::Symbol)
     return Mat4f(graph[get_camera_matrix_name(input_space, output_space)][])::Mat4f
 end
@@ -283,6 +276,50 @@ function get_preprojection(graph::ComputeGraph, space::Symbol, markerspace::Symb
     return get_space_to_space_matrix(graph, space, markerspace)
 end
 
+"""
+    get_projectionview(scene, space)
+
+Returns the matrix projecting from `space` to clip space.
+"""
+get_projectionview(scene, space::Symbol) = get_projectionview(get_scene(scene), space)
+
+"""
+    get_projection(scene, space)
+
+If `is_data_space(space)`, returns the matrix projecting from eye (or view) space
+to clip space. Otherwise returns the same matrix as `get_projectionview()`
+
+Eye space excludes the orientation and placement of the camera.
+"""
+get_projection(scene, space::Symbol) = get_projection(get_scene(scene), space)
+
+"""
+    get_view(scene, space)
+
+If `is_data_space(space)`, returns the matrix projecting from `space` to eye
+space. Otherwise returns an identity matrix.
+
+Eye space excludes the orientation and placement of the camera.
+"""
+get_view(scene, space::Symbol) = get_view(get_scene(scene), space)
+
+"""
+    get_preprojection(scene, space, markerspace)
+
+Returns the matrix projecting from `space` to `markerspace`.
+"""
+function get_preprojection(scene, space::Symbol, markerspace::Symbol)
+    return get_preprojection(get_scene(scene).compute, space, markerspace)
+end
+
+"""
+    get_space_to_space_matrix(scene, input_space, output_space)
+
+Return a camera matrix that transforms from `input_space` to `output_space`.
+"""
+function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Symbol)
+    return get_preprojection(get_scene(scene).compute, input_space, output_space)
+end
 
 
 function _has_camera_changed(changed, space, markerspace = space)

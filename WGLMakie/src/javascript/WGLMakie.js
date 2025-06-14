@@ -19,6 +19,35 @@ import {get_texture_atlas} from "./TextureAtlas.js";
 
 window.THREE = THREE;
 
+const orderedExecutor = {
+    tasks: new Map(),
+    nextExpected: 1,
+
+    insert(f, order) {
+        if (this.tasks.has(order)) {
+            throw new Error(`Duplicate task for order ${order}`);
+        }
+        this.tasks.set(order, f);
+        this.flush();
+    },
+
+    flush() {
+        while (this.tasks.has(this.nextExpected)) {
+            const f = this.tasks.get(this.nextExpected);
+            f();
+            this.tasks.delete(this.nextExpected);
+            this.nextExpected += 1;
+        }
+    },
+};
+
+export function execute_in_order(order, f) {
+    if (order < 1 || !Number.isInteger(order)) {
+        throw new Error(`Invalid order: ${order}`);
+    }
+    orderedExecutor.insert(f, order);
+}
+
 function dispose_screen(screen) {
     if (Object.keys(screen).length === 0) {
         return;
