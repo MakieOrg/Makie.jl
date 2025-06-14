@@ -179,8 +179,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
         error("Event list is empty")
     end
 
-    cursor_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor.png"))'
-    cursor_pressed_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor_pressed.png"))'
+    cursor_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "Makie", "assets", "cursor.png"))'
+    cursor_pressed_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "Makie", "assets", "cursor_pressed.png"))'
     cursor_tip_frac = (0.3, 0.15)
 
     record(content_scene, filepath; framerate = fps, px_per_unit, kwargs...) do io
