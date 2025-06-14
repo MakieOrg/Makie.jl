@@ -610,7 +610,7 @@ end
         mesh!(ax, Rect2f(0.8, 0.1, 0.1, 0.8), space = :relative, color = :blue, shading = NoShading)
         linesegments!(ax, Rect2f(-0.5, -0.5, 1, 1), space = :clip, color = :cyan, linewidth = 5)
         text!(ax, 0, 0.52, text = "Clip Space", align = (:center, :bottom), space = :clip)
-        image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], colormap = [:yellow, :green], space = :pixel)
+        image!(ax, 0..40, 0..800, [x for x in range(0, 1, length=40), _ in 1:10], space = :pixel)
     end
     fig
 end
