@@ -833,20 +833,14 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
-    autolimits!()
-    autolimits!(la::Axis)
+    autolimits!(ax::Axis)
 
-Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
-The argument `la` defaults to `current_axis()`.
+Reset manually specified limits of `ax` to an automatically determined rectangle, that depends on the data limits of 
+all plot objects in the axis, as well as the autolimit margins for x and y axis.
 """
 function autolimits!(ax::Axis)
     ax.limits[] = (nothing, nothing)
     return
-end
-function autolimits!()
-    curr_ax = current_axis()
-    isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
-    autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)

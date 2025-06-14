@@ -171,7 +171,7 @@ function get_figure(gp::GridLayoutBase.GridPosition)
 end
 
 """
-    resize_to_layout!(fig::Figure)
+    resize_to_layout!(fig::Figure = current_figure())
 
 Resize `fig` so that it fits the current contents of its top `GridLayout`.
 If a `GridLayout` contains fixed-size content or aspect-constrained
@@ -180,6 +180,8 @@ differs from the size of the `Figure`. This can result in superfluous
 whitespace at the borders, or content clipping at the figure edges.
 Once resized, all content should fit the available space, including
 the `Figure`'s outer padding.
+
+If no figure is provided, `fig` defaults to `current_figure()`.
 """
 function resize_to_layout!(fig::Figure = current_figure())
     # it is assumed that all plot objects have been added at this point,
@@ -193,6 +195,7 @@ function resize_to_layout!(fig::Figure = current_figure())
     new_size
 end
 
+# No default to `current_figure()` added, as `Base` owns this function
 function Base.empty!(fig::Figure)
     empty!(fig.scene)
     empty!(fig.scene.events)
@@ -207,6 +210,7 @@ end
 # Layouts are already hooked up to this, so it's very simple.
 """
     resize!(fig::Figure, width, height)
+
 Resizes the given `Figure` to the size given by `width` and `height`.
 If you want to resize the figure to its current layout content, use `resize_to_layout!(fig)` instead.
 """
