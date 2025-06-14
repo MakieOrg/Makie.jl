@@ -142,6 +142,7 @@ end
 
 function pick_hist_edges(vals, bins)
     if bins isa Int
+        isempty(vals) && return 0:10 # corresponds to what we do for empty `Axis`
         mi, ma = float.(extrema(vals))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
