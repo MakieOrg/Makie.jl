@@ -180,6 +180,7 @@ end
 @inline inv_f32_convert(c::Float32Convert, x::VecTypes{N}) where N = inv(c.scaling[])(to_ndim(Point{N, Float64}, x, 0))
 @inline inv_f32_convert(c::Union{Nothing, Float32Convert}, x::AbstractArray) = inv_f32_convert.((c,), x)
 @inline inv_f32_convert(ls::Float32Convert, r::Rect) = inv_f32_convert(ls.scaling[], r)
+@inline inv_f32_convert(::Nothing, r::Rect) = r
 @inline inv_f32_convert(x::SceneLike, args...) = inv_f32_convert(f32_conversion(x), args...)
 @inline inv_f32_convert(::Nothing, array::AbstractVector) = array
 

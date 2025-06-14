@@ -12,6 +12,8 @@ using Makie.IntervalSets
 using GeometryBasics: Pyramid
 using Makie.ComputePipeline: ResolveException
 using Makie: volume
+
+include("testplot.jl")
 # COV_EXCL_STOP
 
 @testset "Unit tests" begin
@@ -29,7 +31,7 @@ using Makie: volume
 
     @testset "Plots" begin
         include("plots/primitives.jl")
-        include("plots/generic_attributes.jl")
+        include("plots/generic.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
         include("plots/hist.jl")
