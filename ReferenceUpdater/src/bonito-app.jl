@@ -3,7 +3,7 @@ using Bonito, DelimitedFiles
 include("cross_backend_score.jl")
 
 """
-    create_app(path_to_reference_images_folder)
+    serve_update_page(path_to_reference_images_folder)
 """
 function create_app_content(root_path::String)
 
@@ -444,26 +444,12 @@ function create_app_content(root_path::String)
     )
 end
 
-function create_app_from_dir(root_path)
+function serve_update_page_from_dir(root_path)
     return App(() -> create_app_content(root_path))
 end
 
-const server = Ref{Any}()
-function create_browser_display_from_dir(root_path)
-    isassigned(server) && close(server)
-    server[] = Bonito.Server("0.0.0.0", 8080)
-    route!(server[], "/" => create_app(root_path))
-    return server[]
-end
-
-function create_app(; commit = nothing, pr = nothing)
+function serve_update_page(; commit = nothing, pr = nothing)
     tmpdir = download_artifacts(commit = commit, pr = pr)
     @info "Creating Bonito app from folder $tmpdir."
-    return create_app_from_dir(tmpdir)
-end
-
-function create_browser_display(; commit = nothing, pr = nothing)
-    tmpdir = download_artifacts(commit = commit, pr = pr)
-    @info "Creating Bonito app from folder $tmpdir."
-    return create_browser_display_from_dir(tmpdir)
+    return serve_update_page_from_dir(tmpdir)
 end
