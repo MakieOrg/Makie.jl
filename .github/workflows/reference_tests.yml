@@ -62,6 +62,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -115,6 +117,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -170,6 +174,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
