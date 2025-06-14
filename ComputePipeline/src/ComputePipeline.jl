@@ -399,8 +399,8 @@ function mark_dirty!(computed::Computed)
     return mark_dirty!(computed.parent)
 end
 
-function resolve!(input::Input)
-    input.dirty || return
+function resolve!(input::Input, force = false)
+    force || input.dirty || return
     value = input.f(input.value)
     if isdefined(input.output, :value) && isassigned(input.output.value)
         input.output.value[] = deref(value)
@@ -564,8 +564,8 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     end
 end
 
-function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
+function set_result!(edge::TypedEdge, result, i, value, force)
+    if isnothing(value) || is_same(edge.outputs[i][], value, force)
         edge.output_nodes[i].dirty = false
     else
         edge.output_nodes[i].dirty = true
@@ -574,17 +574,18 @@ function set_result!(edge::TypedEdge, result, i, value)
     if !isempty(result)
         next_val = first(result)
         rem = Base.tail(result)
-        set_result!(edge, rem, i + 1, next_val)
+        set_result!(edge, rem, i + 1, next_val, force)
     end
     return
 end
 
-function set_result!(edge::TypedEdge, result)
+function set_result!(edge::TypedEdge, result, force)
     next_val = first(result)
     rem = Base.tail(result)
-    return set_result!(edge, rem, 1, next_val)
+    return set_result!(edge, rem, 1, next_val, force)
 end
 
+is_same(@nospecialize(a), @nospecialize(b), force) = !force && is_same(a, b)
 is_same(@nospecialize(a), @nospecialize(b)) = false
 is_same(a::Symbol, b::Symbol) = a == b
 function is_same(a::T, b::T) where T
@@ -602,8 +603,8 @@ end
 
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
-function resolve!(edge::TypedEdge)
-    if any(edge.inputs_dirty) # only call if inputs changed
+function resolve!(edge::TypedEdge, force = false)
+    if force || any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
         names = ntuple(length(vals)) do i
@@ -615,7 +616,7 @@ function resolve!(edge::TypedEdge)
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
             end
-            set_result!(edge, result)
+            set_result!(edge, result, force)
         elseif isnothing(result)
             foreach(x -> x.dirty = false, edge.output_nodes)
         else
@@ -624,33 +625,33 @@ function resolve!(edge::TypedEdge)
     end
 end
 
-function resolve!(computed::Computed)
+function resolve!(computed::Computed, force = false)
     try
-        return _resolve!(computed)
+        return _resolve!(computed, force)
     catch e
         rethrow(ResolveException(computed, e))
     end
 end
 
-function _resolve!(computed::Computed)
+function _resolve!(computed::Computed, force = false)
     if hasparent(computed)
-        resolve!(computed.parent)
+        resolve!(computed.parent, force)
     end
     return computed.value[]
 end
 
-function resolve!(edge::ComputeEdge)
-    isdirty(edge) || return false
+function resolve!(edge::ComputeEdge, force = false)
+    force || isdirty(edge) || return false
     lock(edge.graph.lock) do
         # Resolve inputs first
-        foreach(_resolve!, edge.inputs)
+        foreach(input -> _resolve!(input, force), edge.inputs)
         # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
         # TODO, can/should we store this tuple?
         if !isassigned(edge.typed_edge)
             # constructor does first resolve to determine fully typed outputs
             edge.typed_edge[] = TypedEdge(edge)
         else
-            resolve!(edge.typed_edge[])
+            resolve!(edge.typed_edge[], force)
         end
         edge.got_resolved[] = true
         fill!(edge.inputs_dirty, false)
