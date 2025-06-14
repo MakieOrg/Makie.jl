@@ -50,6 +50,7 @@
 
 ## [0.22.6] - 2025-05-17
 
+- Use the `bar_default_fillto` method from [#3004](https://github.com/MakieOrg/Makie.jl/pull/3004) in stacked barplots as well, to stop the first member of the stack from disappearing in log scale [#4670](https://github.com/MakieOrg/Makie.jl/pull/4849).
 - Added `alpha` keyword to `density` recipe [#4975](https://github.com/MakieOrg/Makie.jl/pull/4975).
 - Improved CairoMakie rendering of normal `band`s with array-valued colors [#4989](https://github.com/MakieOrg/Makie.jl/pull/4989).
 - Fixed cycling not being consistent when the same plot function was called with different input types (float32 vs float64 lines, for example) [#4960](https://github.com/MakieOrg/Makie.jl/pull/4960)

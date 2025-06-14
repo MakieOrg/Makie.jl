@@ -17,21 +17,26 @@ Returns a Tuple of new y positions and offset arrays.
 - `ys`: The y-values passed to `barplot`.
 - `offset`: The `offset` parameter passed to `barplot`.
 """
-function bar_default_fillto(tf, ys, offset, in_y_direction)
-    return ys, offset
-end
-
-# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
-function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
-    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
-    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
+function bar_default_fillto(tf, ys, offset, in_y_direction; log_clamp=false)
+    if log_clamp
         # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
         # use the minimal non-zero y divided by 2 as lower bound for log scale
-        smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ys) / 2
-        return clamp.(ys, smart_fillto, Inf), smart_fillto
+        _smart_log_clamp(ys)
     else
         return ys, offset
     end
+end
+
+"""
+    _smart_log_clamp(ys, ref=ys)::(ys_clamped, min_ref/2)
+
+Clamps the values of `ys` to a minimum value that is half the minimum non-zero value in `ref`.
+"""
+function _smart_log_clamp(ys, ref=ys)
+    # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
+    # use the minimal non-zero y divided by 2 as lower bound for log scale
+    smart_fillto = minimum(y -> y<=0 ? oftype(y, Inf) : y, ref) / 2
+    return clamp.(ys, smart_fillto, Inf), smart_fillto
 end
 
 """
@@ -141,7 +146,7 @@ function stack_from_to(i_stack, y)
     (from = view(from, inv_perm), to = view(to, inv_perm))
 end
 
-function stack_grouped_from_to(i_stack, y, grp)
+function stack_grouped_from_to(i_stack, y, grp; log_clamp=false)
     from = Array{Float64}(undef, length(y))
     to   = Array{Float64}(undef, length(y))
 
@@ -162,6 +167,9 @@ function stack_grouped_from_to(i_stack, y, grp)
         to[inds] .= fromto.to
     end
 
+    if log_clamp
+        from, _ = _smart_log_clamp(from, to)
+    end
     (from = from, to = to)
 end
 
@@ -291,9 +299,11 @@ function Makie.plot!(p::BarPlot)
         # ----------- Stacking -----------
         # --------------------------------
 
+        _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <: Real}}
+        log_clamp = transformation isa Tuple && in_y_direction && transformation[2] isa _logT || (!in_y_direction && transformation[1] isa _logT)
         if stack === automatic
             if fillto === automatic
-                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
+                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction; log_clamp = log_clamp)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -303,7 +313,7 @@ function Makie.plot!(p::BarPlot)
             end
             i_stack = stack
 
-            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
+            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,); log_clamp = log_clamp)
             y, fillto = to, from
         else
             ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
