@@ -5,7 +5,13 @@ struct Plane{N, T}
     distance::T
 
     function Plane{N, T}(normal::Vec{N, T}, distance::T) where {N, T <: Real}
-        return new{N, T}(normalize(normal), distance)
+        # Functions using Plane assume `normal` to be normalized.
+        # `normalize()` turns 0 vectors into NaN vectors which we don't want,
+        # so we explicitly handle normalization here
+        n = norm(normal)
+        ϵ = 100 * max(eps.(normal)...)
+        normalized = ifelse(n > ϵ, normal / n, Vec{N, T}(0))
+        return new{N, T}(normalized, distance)
     end
 end
 
@@ -36,6 +42,10 @@ function Plane{N}(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real}
 end
 function Plane{N, T}(normal::VecTypes{N, T}, distance::Real) where {N, T <: Real}
     return Plane{N, T}(Vec{N, T}(normal), T(distance))
+end
+
+function Plane{N, T}(plane::Plane) where {N, T <: Real}
+    return Plane{N, T}(to_ndim(Vec{N, T}, plane.normal, 0), T(plane.distance))
 end
 
 const Plane2{T} = Plane{2, T}
@@ -192,7 +202,7 @@ function to_model_space(model::Mat4, planes::Vector{<: Plane3})
 end
 
 function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractArray, space::Symbol)
-    if space == :data && !isempty(clip_planes)
+    if Makie.is_data_space(space) && !isempty(clip_planes)
         indices = sizehint!(UInt32[], length(positions))
         for i in eachindex(positions)
             if is_visible(clip_planes, to_ndim(Point3f, positions[i], 0))
@@ -201,7 +211,7 @@ function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractAr
         end
         return sizehint!(indices, length(indices))
     else
-        return eachindex(positions)
+        return UInt32[eachindex(positions)...]
     end
 end
 

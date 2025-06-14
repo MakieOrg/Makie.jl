@@ -10,9 +10,9 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
             if mesh_obs isa Observable
                 val = map(m -> getproperty(m, name), m)
             end
-            if val[] isa AbstractVector
+            if to_value(val) isa AbstractVector
                 result[target] = GLBuffer(context, val)
-            elseif val[] isa AbstractMatrix
+            elseif to_value(val) isa AbstractMatrix
                 result[target] = Texture(context, val)
             else
                 error("unsupported attribute: $(name)")
@@ -25,7 +25,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
     to_buffer(:uvw, :texturecoordinates)
 
     # Only emit normals, when we shadin'
-    shading = get(result, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
+    shading = get(result, :shading, NoShading)::Makie.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
         to_buffer(:normal, :normals)
@@ -36,7 +36,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<: GeometryBasics.
 end
 
 function draw_mesh(screen, data::Dict)
-    shading = pop!(data, :shading, NoShading)::Makie.MakieCore.ShadingAlgorithm
+    shading = pop!(data, :shading, NoShading)::Makie.ShadingAlgorithm
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
@@ -51,6 +51,7 @@ function draw_mesh(screen, data::Dict)
         texturecoordinates = Vec2f(0) => GLBuffer
         uv_transform = Mat{2,3,Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
+        px_per_unit = 1f0
         interpolate_in_fragment_shader = true
         shader = GLVisualizeShader(
             screen,

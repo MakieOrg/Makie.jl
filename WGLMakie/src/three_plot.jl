@@ -27,6 +27,7 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
     Bonito.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
 end
 
+
 function three_display(screen::Screen, session::Session, scene::Scene)
     config = screen.config
     scene_serialized = serialize_scene(scene)
@@ -45,7 +46,6 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     comm = Observable(Dict{String,Any}())
     done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    ta = Bonito.Retain(TEXTURE_ATLAS)
     evaljs(session, js"""
     $(WGL).then(WGL => {
         try {
@@ -56,7 +56,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             }
             const renderer = WGL.create_scene(
                 wrapper, canvas, $canvas_width, $scene_serialized, $comm, $width, $height,
-                $(ta), $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
+                $(config.framerate), $(config.resize_to), $(config.px_per_unit), $(config.scalefactor)
             )
             const gl = renderer.getContext()
             const err = gl.getError()
@@ -78,7 +78,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     return wrapper, done_init
 end
 
-Makie.supports_move_to(::Screen) = true
+Makie.supports_move_to(::Screen) = false
 
 function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
     session = get_screen_session(screen)

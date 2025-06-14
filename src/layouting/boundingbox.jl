@@ -3,12 +3,12 @@
 ### boundingbox
 ################################################################################
 
-# TODO: differentiate input space (plot.converted) and :world space (after
-# transform_func and model) more clearly.
+# Note: data space boundingboxes should not include float32convert
+
 """
     boundingbox(scenelike[, exclude = plot -> false])
 
-Returns the combined world space bounding box of all plots collected under
+Returns the combined data space bounding box of all plots collected under
 `scenelike`. This include `plot.transformation`, i.e. the `transform_func` and
 the `model` matrix. Plots with `exclude(plot) == true` are excluded.
 
@@ -27,7 +27,7 @@ end
 """
     boundingbox(plot::AbstractPlot)
 
-Returns the world space bounding box of a plot. This include `plot.transformation`,
+Returns the data space bounding box of a plot. This include `plot.transformation`,
 i.e. the `transform_func` and the `model` matrix.
 
 See also: [`data_limits`](@ref)
@@ -48,33 +48,9 @@ function boundingbox(plot::AbstractPlot, space::Symbol = :data)
     return bb_ref[]
 end
 
-# same as data_limits except using iterate_transformed
-function boundingbox(plot::MeshScatter, space::Symbol = :data)
-    # TODO: avoid mesh generation here if possible
-    @get_attribute plot (marker, markersize, rotation)
-    marker_bb = Rect3d(marker)
-    positions = iterate_transformed(plot)
-    scales = markersize
-    # fast path for constant markersize
-    if scales isa VecTypes{3} && rotation isa Quaternion
-        bb = Rect3d(positions)
-        marker_bb = rotation * (marker_bb * scales)
-        if plot.transform_marker[]::Bool
-            model = (plot.model[][Vec(1,2,3), Vec(1,2,3)])::Mat3d
-            corners = [model * p for p in coordinates(marker_bb)]
-            mini = minimum(corners); maxi = maximum(corners)
-            return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
-        end
-        return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
-    else
-        # TODO: optimize const scale, var rot and var scale, const rot
-        if plot.transform_marker[]::Bool
-            return limits_with_marker_transforms(positions, scales, rotation, plot.model[], marker_bb)
-        else
-            return limits_with_marker_transforms(positions, scales, rotation, marker_bb)
-        end
-    end
-end
+# TODO: implement space
+boundingbox(plot::MeshScatter, space::Symbol = :data) = plot.boundingbox[]
+
 
 function limits_with_marker_transforms(positions, scales, rotation, model, element_bbox)
     isempty(positions) && return Rect3d()
@@ -95,32 +71,30 @@ function limits_with_marker_transforms(positions, scales, rotation, model, eleme
     return full_bbox[]
 end
 
+# Without the extra arg this isn't used in Scene limits
+# function boundingbox(plot::Scatter, space::Symbol = plot.space[])
 function boundingbox(plot::Scatter)
-    if plot.space[] == plot.markerspace[]
-        scale, offset = marker_attributes(
-            get_texture_atlas(),
-            plot.marker[],
-            plot.markersize[],
-            get(plot.attributes, :font, Observable(Makie.defaultfont())),
-            plot
-        )
-        rotations = convert_attribute(to_value(get(plot, :rotation, 0)), key"rotation"())
-        marker_offsets = convert_attribute(plot.marker_offset[], key"marker_offset"(), key"scatter"())
-        model = plot.model[]
+    space = plot.space[]
+    if space == plot.markerspace[]
+        scale = plot.quad_scale[]
+        offset = plot.quad_offset[]
+        rotations = plot.converted_rotation[]
+        marker_offsets = plot.marker_offset[]
+        model = plot.model[]::Mat4d
         model33 = model[Vec(1,2,3), Vec(1,2,3)]
-        transform_marker = to_value(get(plot, :transform_marker, false))::Bool
-        clip_planes = plot.clip_planes[]
+        transform_marker = plot.transform_marker[]::Bool
+        clip_planes = plot.clip_planes[]::Vector{Plane3f}
 
         bb = Rect3d()
-        for (i, p) in enumerate(point_iterator(plot))
+        for (i, p) in enumerate(plot.positions[])
             marker_pos = apply_transform_and_model(plot, p)
             if is_clipped(clip_planes, marker_pos)
                 continue
             end
 
             marker_offset = sv_getindex(marker_offsets, i)
-            quad_origin = to_ndim(Vec3d, sv_getindex(offset[], i), 0)
-            quad_size = Vec2d(sv_getindex(scale[], i))
+            quad_origin = to_ndim(Vec3d, sv_getindex(offset, i), 0)
+            quad_size = Vec2d(sv_getindex(scale, i))
             quad_rotation = sv_getindex(rotations, i)
 
             if transform_marker
@@ -150,11 +124,17 @@ function boundingbox(plot::Scatter)
 end
 
 
-
 ################################################################################
-### transformed point iterator
+### point iterator
 ################################################################################
 
+function point_iterator(plot::AbstractPlot)
+    if haskey(plot, :positions)
+        return plot.positions[]
+    else
+        error("Generic point_iterator has been deprecated, now only plots with `plot.positions` defined implement it.")
+    end
+end
 
 @inline iterate_transformed(plot) = iterate_transformed(plot, point_iterator(plot))
 

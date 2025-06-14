@@ -63,8 +63,8 @@ end
         algorithm=:mip,  # maximum-intensity-projection
         colorrange=(0, 1),
     )
-    ax.scene[OldAxis].names.textcolor = :lightgray # let axis labels be seen on dark background
-    ax.scene[OldAxis].ticks.textcolor = :gray # let axis ticks be seen on dark background
+    ax.scene[OldAxis].names[].textcolor = :lightgray # let axis labels be seen on dark background
+    ax.scene[OldAxis].ticks[].textcolor = :gray # let axis ticks be seen on dark background
     ax.scene.backgroundcolor[] = to_color(:black)
     ax.scene.clear[] = true
 
@@ -215,6 +215,18 @@ end
     arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize=0.02, linecolor=:green, arrowcolor=:darkblue)
 end
 
+@reference_test "Arrows 3D marker_transform" begin
+    f = Figure()
+    a = Axis3(f[1,1])
+    r = range(-1, 1, length = 5)
+    arrows!(a, Point3f[(1, 0, 0), (0,0,0)], Point3f[(0,0,0.1), (1,0,0)], color = :gray)
+    arrows!(a, Point3f[(-1, 1, 0), (0,0,0)], Point3f[(0,0,0.1), (-1,1,0)], color = :lightblue,)
+    arrows!(a, Point3f[(1, -1, 0), (0,0,0)], Point3f[(0,0,0.1), (1,-1,0)], color = :yellow,)
+    mesh!(a, Rect2f(-1,-1,2,2), color = (:red, 0.5), transparency = true)
+    f
+end
+
+
 @reference_test "Image on Surface Sphere" begin
     n = 20
     θ = [0;(0.5:n - 0.5) / n;1]
@@ -289,10 +301,10 @@ end
     vx = -1:0.01:1
     vy = -1:0.01:1
 
-    f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
+    fff(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     scene = Scene(size=(500, 500), camera=cam3d!)
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    psurf = surface!(scene, vx, vy, f)
+    psurf = surface!(scene, vx, vy, fff)
     axis3d!(scene, frame = (linewidth = 2.0,))
     center!(scene)
     # One can also directly get the axis object and manipulate it
@@ -300,7 +312,7 @@ end
 
     # You can access nested attributes likes this:
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-    tstyle = axis[:names] # or just get the nested attributes and work directly with them
+    tstyle = axis[:names][] # or just get the nested attributes and work directly with them
 
     tstyle[:fontsize] = 10
     tstyle[:textcolor] = (:red, :green, :black)
@@ -316,7 +328,7 @@ end
         fontsize=20,
         font="helvetica"
     )
-    psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
+    psurf.arg3 = fff.(vx .+ 0.5, (vy .+ 0.5)')
     scene
 end
 
@@ -757,5 +769,29 @@ end
     f, ax, pl = mesh(uv3_mesh(positions), color=data, shading=NoShading, axis=(; show_axis=false))
     positions = [Point3f(0.0, 0.5, 0), Point3f(1.0, 0.5, 0), Point3f(1, 0.5, 1), Point3f(0.0, 0.5, 1)]
     mesh!(ax, uv3_mesh(positions); color=data, shading=NoShading)
+    f
+end
+
+@reference_test "Transformed 3D Arrows" begin
+    ps = [Point2f(i, 2^i) for i in 1:10]
+    vs = [Vec2f(1, 100) for _ in 1:10]
+    f,a,p = arrows3d(ps, vs, markerscale = 1, tiplength = 30, color = log10.(norm.(ps)), colormap = :RdBu)
+    arrows3d(f[1,2], ps, vs, markerscale = 1, color = log10.(norm.(ps)), axis = (yscale = log10,))
+
+    ps = coordinates(Rect3f(-1, -1, -1, 2, 2, 2))
+    a, p = arrows3d(f[2,1], ps, ps)
+    meshscatter!(a, Point3f(0), markersize = 1, marker = Rect3f(-0.5, -0.5, -0.5, 1, 1, 1))
+    translate!(p, 0, 0, 1)
+
+    a, p = arrows3d(f[2,2], ps, ps)
+    meshscatter!(a, Point3f(0), markersize = 1, marker = Rect3f(-0.5, -0.5, -0.5, 1, 1, 1))
+    scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1.0/sqrt(2))
+    Makie.rotate!(p, Vec3f(0,0,1), pi/4)
+
+    startpoints = Makie.apply_transform_and_model(p, ps)
+    endpoints = Makie.apply_transform_and_model(p, ps + ps)
+    meshscatter!(a, startpoints, color = :red)
+    meshscatter!(a, endpoints, color = :red)
+
     f
 end

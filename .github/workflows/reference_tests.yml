@@ -19,15 +19,17 @@ concurrency:
 jobs:
   cairomakie:
     name: CairoMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -45,7 +47,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+          pkg"dev . ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -68,15 +70,16 @@ jobs:
     name: GLMakie Julia ${{ matrix.version }}
     env:
       MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -95,7 +98,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+          pkg"dev . ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -118,15 +121,17 @@ jobs:
 
   wglmakie:
     name: WGLMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -137,7 +142,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
@@ -145,7 +150,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"dev . ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -171,7 +176,7 @@ jobs:
 
   consolidation:
     name: Merge artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:

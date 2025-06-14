@@ -362,6 +362,31 @@ function _to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+function _project(matrix::Mat4{T1}, ps::AbstractArray{<: VecTypes{N, T2}}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+    T = promote_type(Float32, T1, T2)
+    matrix == Mat4{T1}(I) && return to_ndim.(Point3{T}, ps, 0)
+    ps4 = to_ndim.(Point4{T}, to_ndim.(Point3{T}, ps, 0.0), dim4)
+    ps4 = [matrix * p for p in ps4]
+    return Point3{T}[Point3{T}(p) / p[4] for p in ps4]
+end
+
+function _project(matrix::Mat4{T1}, p::VecTypes{N, T2}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+    T = promote_type(Float32, T1, T2)
+    matrix == Mat4{T1}(I) && return to_ndim(Point3{T}, p, 0)
+    p4 = to_ndim(Point4{T}, to_ndim(Point3{T}, p, 0.0), dim4)
+    p4 = matrix * p4
+    return Point3{T}(p4[Vec(1,2,3)] / p4[4])
+end
+
+function _project(matrix::Mat4{T1}, r::Rect3{T2}, dim4::Real = 1.0) where {T1 <: Real, T2 <: Real}
+    T = promote_type(Float32, T1, T2)
+    if matrix == Mat4{T1}(I)
+        return Rect3{T}(r)
+    else
+        return Rect3{T}(_project(matrix, coordinates(r), dim4))
+    end
+end
+
 
 # TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
@@ -433,7 +458,7 @@ function clip_to_space(cam::Camera, space::Symbol)
     if is_data_space(space)
         return inv(cam.projectionview[])
     elseif space == :eye
-        return inv(cam.projectionview[])
+        return inv(cam.projection[])
     elseif is_pixel_space(space)
         w, h = cam.resolution[]
         return Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, -10_000, 0, 0.5w, 0.5h, 0, 1) # -10_000
@@ -448,13 +473,13 @@ end
 
 function get_space(scene::Scene)
     space = get_space(cameracontrols(scene))::Symbol
-    space === :data ? (:data,) : (:data, space)
+    Makie.is_data_space(space) ? (:data,) : (:data, space)
 end
 get_space(::AbstractCamera) = :data
 function get_space(plot::Plot)
     space = to_value(get(plot, :space, :data))::Symbol
     # :data should resolve based on the parent scene/camera
-    if (space == :data) && (parent_scene(plot) !== nothing)
+    if Makie.is_data_space(space) && (parent_scene(plot) !== nothing)
         return get_space(parent_scene(plot))
     end
     return space
@@ -492,4 +517,23 @@ function project(scenelike::SceneLike, input_space::Symbol, output_space::Symbol
     p4d = to_ndim(Point4{T}, to_ndim(Point3{T}, pos, 0), 1)
     transformed = output_f32c * output_from_clip * clip_from_input * input_f32c * p4d
     return Point3{T}(transformed[Vec(1, 2, 3)] ./ transformed[4])
+end
+
+function transform_and_project(
+        scenelike::SceneLike, input_space::Symbol, output_space::Symbol,
+        pos::Vector{<: VecTypes{N, T1}}, target_type = Point{N, promote_type(Float32, T1)}
+    ) where {N, T1}
+
+    T = promote_type(Float32, T1) # always float, maybe Float64
+    transformed = apply_transform_and_model(scenelike, pos)
+    transformed_f32 = to_ndim.(Point3{T}, f32_convert(scenelike, transformed), 0)
+
+    input_space === output_space && return to_ndim.(target_type, transformed_f32, 1)
+
+    cam = camera(scenelike)
+    projection_matrix = clip_to_space(cam, output_space) * space_to_clip(cam, input_space)
+    return map(transformed_f32) do point
+        p4d = projection_matrix * to_ndim(Point4{T}, point, 1)
+        return target_type(p4d[Vec(1,2,3)] / p4d[4])
+    end
 end

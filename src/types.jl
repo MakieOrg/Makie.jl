@@ -15,6 +15,8 @@ get_space(::EmptyCamera) = :clip
     IndexedAbsorptionRGBA # 5
 end
 
+const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
+
 include("interaction/iodevices.jl")
 
 """
@@ -65,7 +67,7 @@ not trigger other observer functions. The order in which functions are executed
 can be controlled via the `priority` keyword (default 0) in `on`.
 
 Example:
-```
+```julia
 on(events(scene).mousebutton, priority = 20) do event
     if is_correct_event(event)
         do_something()
@@ -308,9 +310,8 @@ struct Camera
     We need to keep track of them, so, that we can connect and disconnect them.
     """
     steering_nodes::Vector{ObserverFunction}
-
-    calculated_values::Dict{Symbol, Observable}
 end
+
 
 """
 Holds the transformations for Scenes.
@@ -457,7 +458,7 @@ struct GlyphCollection
         # @assert length(fonts) == n
         @assert length(origins) == n
         @assert length(extents) == n
-        @assert attr_broadcast_length(scales) in (n, 1)
+        @assert attr_broadcast_length(scales) in (n, 1) "$(typeof(scales)) has length $(length(scales)) but should have $n or 1"
         @assert attr_broadcast_length(rotations) in (n, 1)
         @assert attr_broadcast_length(colors) in (n, 1)
         @assert strokewidths isa Number || strokewidths isa AbstractVector{<:Number}
@@ -539,14 +540,6 @@ end
 (s::ReversibleScale)(args...) = s.forward(args...) # functor
 Base.show(io::IO, s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
 Base.show(io::IO, ::MIME"text/plain", s::ReversibleScale) = print(io, "ReversibleScale($(s.name))")
-
-
-struct Cycler
-    counters::IdDict{Type,Int}
-end
-
-Cycler() = Cycler(IdDict{Type,Int}())
-
 
 # Float32 conversions
 struct LinearScaling

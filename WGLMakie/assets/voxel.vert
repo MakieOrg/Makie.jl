@@ -29,7 +29,7 @@ const mat2x3 orientations[3] = mat2x3[](
 void main() {
     // Without fetching the instanced data the shader wont render. On some
     // systems (linux + firefox for example) this even needs to be used.
-    float zero = get_dummy();
+    float zero = get_dummy_data();
 
     /* How this works:
     To simplify lets consider a 2d grid of pixel where the voxel surface would
@@ -66,7 +66,7 @@ void main() {
     // But how would we do this for non-cubic chunks?
 
     // Map instance id to dimension and index along dimension (0..N+1 or 0..2N)
-    ivec3 size = textureSize(voxel_id, 0);
+    ivec3 size = textureSize(chunk_u8, 0);
     int dim, id = gl_InstanceID, front = 1;
     float gap = get_gap() + zero;
     if (gap > 0.01) {
@@ -102,7 +102,7 @@ void main() {
 
     // plane placement
     // Figure out which plane to start with
-    vec3 normal = get_normalmatrix() * unit_vecs[dim];
+    vec3 normal = get_world_normalmatrix() * unit_vecs[dim];
     int dir = dot(get_view_direction(), normal) < 0.0 ? -1 : 1, start;
     if (depthsorting) {
         // TODO: depthsorted should start far away from viewer so every plane draws
@@ -112,8 +112,8 @@ void main() {
         // otherwise we should start at viewer and expand in view direction so
         // that the depth test can quickly eliminate unnecessary fragments
         // Note that model can have rotations and (uneven) scaling
-        vec4 origin = model * vec4(0, 0, 0, 1);
-        vec4 back   = model * vec4(size, 1);
+        vec4 origin = voxel_model * vec4(0, 0, 0, 1);
+        vec4 back   = voxel_model * vec4(size, 1);
         float front_dist = dot(origin.xyz / origin.w, normal);
         float back_dist  = dot(back.xyz / back.w, normal);
         float cam_dist   = dot(eyeposition, normal);
@@ -140,7 +140,7 @@ void main() {
 
     // place plane vertices
     vec3 plane_vertex = vec3(size) * (orientations[dim] * get_position()) + displacement;
-    vec4 world_pos = get_model() * vec4(plane_vertex, 1.0f);
+    vec4 world_pos = get_voxel_model() * vec4(plane_vertex, 1.0f);
     gl_Position = projection * view * world_pos;
     gl_Position.z += gl_Position.w * get_depth_shift();
 
@@ -165,12 +165,20 @@ void main() {
     // the quad is associated with the "previous" or "next" slice of voxels. We
     // can derive that from the normal direction, as the normal always points
     // away from the voxel center.
-    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * o_normal) / vec3(size);
+    // requires object space normal (unit_vec[dim])
+    o_uvw = (plane_vertex - 0.5 * (1.0 - gap) * normal_dir * unit_vecs[dim]) / vec3(size);
 
     // normal in: -x -y -z +x +y +z direction
     o_side = dim + 3 * int(0.5 + 0.5 * normal_dir);
 
     // map plane_vertex (-w/2 .. w/2 scale) back to 2d (scaled 0 .. w)
-    // if the normal is negative invert range (w .. 0)
-    o_tex_uv = transpose(orientations[dim]) * (vec3(-normal_dir, normal_dir, 1.0) * plane_vertex);
+    // use normal_dir to invert u/v direction based on which side is viewed
+    o_tex_uv = vec2(0);
+    if (dim == 0) { //          x normal, yz planes
+        o_tex_uv = vec2(normal_dir, 1.0) * plane_vertex.yz;
+    } else if (dim == 1) { //   y normal, xz planes
+        o_tex_uv = vec2(-normal_dir, 1.0) * plane_vertex.xz;
+    } else { // (dim == 2)      z normal, xy planes
+        o_tex_uv = vec2(1.0, normal_dir) * plane_vertex.xy;
+    }
 }

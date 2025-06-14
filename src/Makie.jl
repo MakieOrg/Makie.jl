@@ -40,11 +40,11 @@ using FreeType
 using FreeTypeAbstraction
 using LinearAlgebra
 using Statistics
-using MakieCore
 using OffsetArrays
 using Downloads
 using ShaderAbstractions
 using Dates
+using ComputePipeline
 
 import Unitful
 import UnicodeFun
@@ -81,20 +81,6 @@ using Observables: listeners, to_value, notify
 
 import InverseFunctions
 
-using MakieCore: SceneLike, MakieScreen, ScenePlot, AbstractScene, AbstractPlot, Transformable, Attributes, Plot, Theme, Plot
-using MakieCore: Arrows, Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe
-using MakieCore: ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
-using MakieCore: Key, @key_str, Automatic, automatic, @recipe
-using MakieCore: Pixel, px, Unit, Billboard
-using MakieCore: NoShading, FastShading, MultiLightShading
-using MakieCore: not_implemented_for
-import MakieCore: plot, plot!, theme, plotfunc, plottype, merge_attributes!, calculated_attributes!,
-                  get_attribute, plotsym, plotkey, attributes, used_attributes
-import MakieCore: create_axis_like, create_axis_like!, figurelike_return, figurelike_return!
-import MakieCore: arrows, heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, voxels
-import MakieCore: arrows!, heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, voxels!
-import MakieCore: convert_arguments, convert_attribute, default_theme, conversion_trait
-import MakieCore: RealVector, RealMatrix, RealArray, FloatType, EndPointsLike, EndPoints
 export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
@@ -123,6 +109,11 @@ end
 include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
+include("coretypes.jl")
+include("attributes.jl")
+include("recipes.jl")
+include("basic_plots.jl")
+include("conversion.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/Plane.jl")
@@ -145,6 +136,7 @@ include("scenes.jl")
 include("float32-scaling.jl")
 
 include("interfaces.jl")
+include("compute-plots.jl")
 include("units.jl")
 include("shorthands.jl")
 include("theming.jl")
@@ -165,7 +157,7 @@ include("camera/old_camera3d.jl")
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
 include("basic_recipes/ablines.jl")
-include("basic_recipes/annotations.jl")
+include("basic_recipes/annotation.jl")
 include("basic_recipes/arc.jl")
 include("basic_recipes/arrows.jl")
 include("basic_recipes/axis.jl")
@@ -195,6 +187,7 @@ include("basic_recipes/voronoiplot.jl")
 include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
+include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
@@ -224,6 +217,7 @@ include("stats/crossbar.jl")
 include("stats/boxplot.jl")
 include("stats/violin.jl")
 include("stats/hexbin.jl")
+include("stats/dendrogram.jl")
 
 
 # Interactiveness
@@ -238,6 +232,7 @@ include("display.jl")
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
+include("backend-functionality.jl")
 
 # bezier paths
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
@@ -315,11 +310,16 @@ export Quaternion, Quaternionf, qrotation
 export RGBAf, RGBf, VecTypes, RealVector
 export Transformation
 export Sphere, Circle
-export Vec4f, Vec3f, Vec2f, Point4f, Point3f, Point2f
-export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
+for kind in (:Vec, :Point, :Rect)
+    @eval export $kind
+    for n in (2, 3, 4), typesuffix in ("f", "d", "i", "")
+        kind === :Rect && n == 4 && continue
+        @eval export $(Symbol(kind, n, typesuffix))
+    end
+end
 export (..)
-export Rect, Rectf, Rect2f, Rect2i, Rect3f, Rect3i, Rect3, Recti, Rect2
-export Plane3f # other planes aren't used much for Makie
+export Rectf, Recti, Rectd
+export Plane3f, Plane3d # other planes aren't used much for Makie
 export widths, decompose
 
 # building blocks for series recipes
@@ -397,12 +397,18 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Arrows  , Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
-export arrows  , heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
-export arrows! , heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
+export Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
+export heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
+export heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
 
+export arrows, arrows!
+
+export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
+export set_shading_algorithm!, set_directional_light!
 export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
 export FastPixel
+export update!
+export Ann
 
 include("precompiles.jl")
 

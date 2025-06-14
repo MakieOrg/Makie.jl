@@ -20,7 +20,7 @@ function initialize_block!(tbox::Textbox)
 
     tbox.displayed_string[] = isnothing(tbox.stored_string[]) ? tbox.placeholder[] : tbox.stored_string[]
 
-    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator) do str, validator
+    displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
 
@@ -69,37 +69,48 @@ function initialize_block!(tbox::Textbox)
         fontsize = tbox.fontsize, padding = tbox.textpadding)
 
     textplot = t.blockscene.plots[1]
-    displayed_charbbs = lift(topscene, textplot.text, textplot[1]) do _, _
-        charbbs(textplot)
+    # Manually add positions without considering transformations to prevent
+    # infinite loop from translate!() in on(cursorpoints)
+    displayed_charbbs = map(textplot.positions, fast_glyph_boundingboxes_obs(textplot)) do pos, bbs
+        return [Rect2f(bb) + Point2f(pos[1]) for bb in bbs]
     end
 
-    cursorpoints = lift(topscene, cursorindex, displayed_charbbs) do ci, bbs
+    cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
+    cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values=true) do ci, bbs
 
         textplot = t.blockscene.plots[1]
-        glyphcollection = textplot.plots[1][1][][]::Makie.GlyphCollection
 
         hadvances = Float32[]
-        broadcast_foreach(glyphcollection.extents, glyphcollection.scales) do ex, sc
+        broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
             hadvance = ex.hadvance * sc[1]
             push!(hadvances, hadvance)
         end
 
         if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
-            cursorindex[] = length(bbs)
-            return
+            ci = cursorindex[] = length(bbs)
         end
 
-        if 0 < ci < length(bbs)
-            [leftline(bbs[ci+1])...]
+        line_ps = if 0 < ci < length(bbs)
+            leftline(bbs[ci+1])
         elseif ci == 0
-            [leftline(bbs[1])...]
+            leftline(bbs[1])
         else
-            [leftline(bbs[ci])...] .+ Point2f(hadvances[ci], 0)
+            leftline(bbs[ci]) .+ (Point2f(hadvances[ci], 0),)
         end
+
+        # could this be done statically as
+        # max_height = font.height / font.units_per_EM * fontsize
+        max_height = abs(line_ps[1][2] - line_ps[2][2])
+        if !(cursorsize[][2] ≈ max_height)
+            cursorsize[] = Vec2f(1, max_height)
+        end
+
+        return 0.5 * (line_ps[1] + line_ps[2])
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = tbox.cursorcolor, linewidth = 1, inspectable = false)
+    cursor = scatter!(scene, cursorpoints, marker = Rect, color = tbox.cursorcolor,
+        markersize = cursorsize, inspectable = false)
 
     on(cursorpoints) do cpts
         typeof(tbox.width[]) <: Number || return
@@ -137,9 +148,11 @@ function initialize_block!(tbox::Textbox)
     onmouseleftdown(mouseevents) do state
         focus!(tbox)
 
-        if tbox.displayed_string[] == tbox.placeholder[] || tbox.displayed_string[] == " "
+        if tbox.displayed_string[] == tbox.placeholder[]
             tbox.displayed_string[] = " "
             cursorindex[] = 0
+            return Consume(true)
+        elseif tbox.displayed_string[] == " "
             return Consume(true)
         end
 
@@ -289,23 +302,6 @@ function initialize_block!(tbox::Textbox)
     tbox
 end
 
-
-function charbbs(text)
-    gc = text.plots[1][1][][]
-    if !(gc isa Makie.GlyphCollection)
-        error("Expected a single GlyphCollection from the textbox string, got a $(typeof(gc)).")
-    end
-    pos = Point2f(text[1][][1])
-    bbs = Rect2f[]
-    broadcast_foreach(gc.extents, gc.scales, gc.origins) do ext, sc, ori
-        bb = Makie.height_insensitive_boundingbox_with_advance(ext)
-        bb = bb * sc
-        fr = Rect2f(Point2f(ori) + bb.origin + pos, bb.widths)
-        push!(bbs, fr)
-    end
-    bbs
-end
-
 function validate_textbox(str, validator::Function)
     validator(str)
 end
@@ -344,10 +340,18 @@ end
 Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
 function set!(tb::Textbox, string::String)
-    if !validate_textbox(string, tb.validator[])
+    if validate_textbox(string, tb.validator[])
+        unsafe_set!(tb, string)
+    else
         error("Invalid string \"$(string)\" for textbox.")
     end
+end
 
+"""
+    unsafe_set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, ignoring the possibility that it might not pass the validator function.
+"""
+function unsafe_set!(tb::Textbox, string::String)
     tb.displayed_string = string
     tb.stored_string = string
     nothing

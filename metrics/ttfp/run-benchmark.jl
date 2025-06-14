@@ -1,6 +1,6 @@
 #= TODOs
 1) Use one GH-Action job in the end to merge all results and comment in one go (instead of merging with existing comment)
-2) Improve analysis of benchmark resutls to account for the variance in the benchmarks.
+2) Improve analysis of benchmark results to account for the variance in the benchmarks.
 3) Upload raw benchmark data as artifacts to e.g. create plots from It
 =#
 
@@ -14,7 +14,8 @@ using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
 using Statistics: median
 Package = ARGS[1]
 n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
-base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+# base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
+base_branch = "master"
 
 # Package = "CairoMakie"
 # n_samples = 2
@@ -43,7 +44,7 @@ end
 
 function make_project_folder(name)
     result = "$name-benchmark.json"
-    isfile(result) && rm(result) # remove old benchmark resutls
+    isfile(result) && rm(result) # remove old benchmark results
     project = joinpath(@__DIR__, "benchmark-projects", name)
     # It seems, that between julia versions, the manifest must be deleted to not get problems
     isdir(project) && rm(project; force=true, recursive=true)
@@ -58,7 +59,7 @@ Pkg.activate(project1)
 if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
-pkgs = NamedTuple[(; path="./MakieCore"), (; path="."), (; path="./$Package")]
+pkgs = NamedTuple[(; path="."), (; path="./$Package"), (; path="./ComputePipeline")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 Pkg.add([(; name="JSON")])
@@ -67,7 +68,12 @@ Pkg.add([(; name="JSON")])
 
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
-pkgs = [(; rev=base_branch, name="MakieCore"), (; rev=base_branch, name="Makie"), (; rev=base_branch, name="$Package"), (;name="JSON")]
+pkgs = [
+    (; url="https://github.com/MakieOrg/Makie.jl", subdir="ComputePipeline", rev=base_branch), # TODO: adjust once ComputePipeline is released
+    (; rev=base_branch, name="Makie"),
+    (; rev=base_branch, name="$Package"),
+    (;name="JSON")
+]
 Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
 Pkg.add(pkgs)
 

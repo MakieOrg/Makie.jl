@@ -56,7 +56,7 @@ Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
 function bind(t::Texture)
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     if t.id == 0
         error("Binding freed Texture{$(eltype(t))}")
     end
@@ -64,7 +64,7 @@ function bind(t::Texture)
 end
 
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
-ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+gl_switch_context!(t::TextureBuffer) = gl_switch_context!(t.texture.context)
 
 function free(tb::TextureBuffer)
     free(tb.texture)
@@ -108,8 +108,8 @@ Makie.@noconstprop function Texture(
     texture::Texture{T, NDim}
 end
 export resize_nocopy!
-function resize_nocopy!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
-    switch_context!(t.context)
+function resize_nocopy!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
+    gl_switch_context!(t.context)
     bind(t)
     glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
     t.size = newdims
@@ -256,21 +256,21 @@ end
 
 # GPUArray interface:
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(b.texture.context)
+    gl_switch_context!(b.texture.context)
     copy!(a, readoffset, b.buffer, writeoffset, len)
     bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.texture.context)
+    gl_switch_context!(a.texture.context)
     copy!(a.buffer, readoffset, b, writeoffset, len)
     bind(a.texture)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
 
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.texture.context)
+    gl_switch_context!(a.texture.context)
     @assert a.texture.context == b.texture.context
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
@@ -283,7 +283,7 @@ function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T},
 end
 
 function gpu_setindex!(t::TextureBuffer{T}, newvalue::Vector{T}, indexes::UnitRange{I}) where {T, I <: Integer}
-    switch_context!(t.texture.context)
+    gl_switch_context!(t.texture.context)
     bind(t.texture)
     t.buffer[indexes] = newvalue # set buffer indexes
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) # update texture
@@ -291,13 +291,13 @@ function gpu_setindex!(t::TextureBuffer{T}, newvalue::Vector{T}, indexes::UnitRa
 end
 
 function gpu_setindex!(t::Texture{T, 1}, newvalue::Array{T, 1}, indexes::UnitRange{I}) where {T, I <: Integer}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     bind(t)
     texsubimage(t, newvalue, indexes)
     bind(t, 0)
 end
 function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{UnitRange,Integer}...) where {T, N}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     bind(t)
     texsubimage(t, newvalue, indexes...)
     bind(t, 0)
@@ -305,7 +305,7 @@ end
 
 
 function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGenFramebuffers()) where T
-    switch_context!(target.context)
+    gl_switch_context!(target.context)
     @assert target.context == source.context
     glBindFramebuffer(GL_FRAMEBUFFER, fbo)
     glFramebufferTexture2D(
@@ -336,15 +336,15 @@ function gpu_setindex!{T}(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGe
 end
 =#
 # Implementing the GPUArray interface
-function gpu_data(t::Texture{T, ND}) where {T, ND}
-    switch_context!(t.context)
-    result = Array{T, ND}(undef, size(t))
+function gpu_data(t::Texture{T, NDim}) where {T, NDim}
+    gl_switch_context!(t.context)
+    result = Array{T, NDim}(undef, size(t))
     unsafe_copy!(result, t)
     return result
 end
 
 function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
-    switch_context!(t.context)
+    gl_switch_context!(source.context)
     bind(source)
     glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, dest)
     bind(source, 0)
@@ -376,7 +376,7 @@ function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim
 end
 # Resize Texture
 function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
-    switch_context!(t.texture.context)
+    gl_switch_context!(t.texture.context)
     resize!(t.buffer, newdims)
     bind(t.texture)
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) #update data in texture
@@ -385,8 +385,8 @@ function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
     t
 end
 # Resize Texture
-function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
-    switch_context!(t.context)
+function gpu_resize!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
+    gl_switch_context!(t.context)
     # dangerous code right here...Better write a few tests for this
     newtex = similar(t, newdims)
     old_size = size(t)
@@ -398,13 +398,13 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
 end
 
 function texsubimage(t::Texture{T, 1}, newvalue::Array{T}, xrange::UnitRange, level=0) where {T}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     glTexSubImage1D(
         t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
     )
 end
 function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, level=0) where T
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     glTexSubImage2D(
         t.texturetype, level,
         first(xrange)-1, first(yrange)-1, length(xrange), length(yrange),
@@ -412,7 +412,7 @@ function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yr
     )
 end
 function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     glTexSubImage3D(
         t.texturetype, level,
         first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
@@ -421,7 +421,7 @@ function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yr
 end
 
 function Base.iterate(t::TextureBuffer{T}) where {T}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     iterate(t.buffer)
 end
 function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
@@ -447,6 +447,7 @@ end
 default_colorformat_sym(::Type{T}) where {T <: Real} = default_colorformat_sym(1, T <: Integer, "RED")
 default_colorformat_sym(::Type{T}) where {T <: AbstractArray} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
 default_colorformat_sym(::Type{T}) where {T <: StaticVector} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
+default_colorformat_sym(::Type{T}) where {T <: Quaternion} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
 default_colorformat_sym(::Type{T}) where {T <: Colorant} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, string(Base.typename(T).name))
 
 @generated function default_colorformat(::Type{T}) where T
@@ -579,7 +580,7 @@ function texparameter(t::Texture, key::GLenum, val::Float32)
     glTexParameterf(t.texturetype, key, val)
 end
 function set_parameters(t::Texture, parameters::Vector{Tuple{GLenum, Any}})
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     bind(t)
     for elem in parameters
         texparameter(t, elem...)

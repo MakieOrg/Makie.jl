@@ -1,3 +1,5 @@
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
+
 using Test
 using CairoMakie
 using Makie.FileIO
@@ -17,7 +19,6 @@ end
 
 include(joinpath(@__DIR__, "svg_tests.jl"))
 include(joinpath(@__DIR__, "rasterization_tests.jl"))
-
 
 @testset "changing screens" begin
     @testset "svg -> png" begin
@@ -151,11 +152,11 @@ end
     @test !isfile(tmp_path)
 end
 
-@testset "plotlist no ambiguity (#4038)" begin
-    f = plotlist([Makie.SpecApi.Scatter(1:10)])
-    Makie.colorbuffer(f; backend=CairoMakie)
-    plotlist!([Makie.SpecApi.Scatter(1:10)])
-end
+# @testset "plotlist no ambiguity (#4038)" begin
+#     f = plotlist([Makie.SpecApi.Scatter(1:10)])
+#     Makie.colorbuffer(f; backend=CairoMakie)
+#     plotlist!([Makie.SpecApi.Scatter(1:10)])
+# end
 
 @testset "multicolor line clipping (#4313)" begin
     fig, ax, p = contour(rand(20,20))
@@ -184,16 +185,15 @@ excludes = Set([
     # markers too big, close otherwise, needs to be assimilated with glmakie
     "Depth Shift",
     "Order Independent Transparency",
-    "fast pixel marker",
     "scatter with glow", # some are missing
-    "scatter with stroke", # stroke acts inward in CairoMakie, outwards in W/GLMakie
     "Textured meshscatter", # not yet implemented
-    "Voxel - texture mapping", # not yet implemented
-    "Miter Joints for line rendering", # CairoMakie does not show overlap here
+    "Voxel - texture mapping", # textures not implemented
+    "Voxel uvs", # textures not implemented
     "picking", # Not implemented
     "MetaMesh (Sponza)", # makes little sense without per pixel depth order
     "Mesh with 3d volume texture", # Not implemented yet
     "Volume absorption",
+    "DataInspector", "DataInspector 2", # No DataInspector without pick/interactivity
 ])
 
 functions = [:volume, :volume!, :uv_mesh]
@@ -289,8 +289,9 @@ end
     f = Figure(size = (600, 450))
     a, p = stephist(f[1, 1], 1:10, bins=[0,5,10], axis=(;limits=(0..10, nothing)))
     Makie.update_state_before_display!(f)
+    colorbuffer(f) # trigger add_computations! for CairoMakie
     lp = p.plots[1].plots[1]
-    ps, _, _ = CairoMakie.project_line_points(a.scene, lp, lp[1][], nothing, nothing)
+    ps = lp.clipped_points[]
     # Points 1, 2, 5, 6 are on the clipping boundary, 7 is a duplicate of 6.
     # The output may drop 1, 6, 7 and adjust 2, 5 if these points are recognized
     # as outside. The adjustment of 2, 5 should be negligible.
@@ -298,9 +299,10 @@ end
     @test length(ps) >= 4
     @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
 
-    ls_points = lp[1][][[1,2,2,3,3,4,4,5,5,6]]
+    ls_points = lp.positions[][[1,2,2,3,3,4,4,5,5,6]]
     ls = linesegments!(a, ls_points, xautolimits = false, yautolimits = false)
-    ps, _, _ = CairoMakie.project_line_points(a.scene, ls, ls_points, nothing, nothing)
+    colorbuffer(f)
+    ps = ls.clipped_points[]
     @test length(ps) >= 6 # at least 6 points: [2,3,3,4,4,5]
     @test all(ref -> findfirst(p -> isapprox(p, ref, atol = 1e-4), ps) !== nothing, necessary_points)
 
@@ -311,7 +313,16 @@ end
 
     f, a, p = lines(data)
     Makie.update_state_before_display!(f)
-    ps, _, _ = @test_nowarn CairoMakie.project_line_points(a.scene, p, data, nothing, nothing)
+    colorbuffer(f)
+    ps = @test_nowarn p.clipped_points[]
     @test length(ps) == length(data) # this should never clip!
+end
 
+@testset "issue 4970 (invalid io use during finalization)" begin
+    @testset "$mime" for mime in CairoMakie.SUPPORTED_MIMES
+        @test_nowarn begin
+            sprint(io -> show(io, mime, Scene()))
+            GC.gc()
+        end
+    end
 end

@@ -24,28 +24,12 @@ struct TextureAtlas
     # resolution and then downsample to the pix_per_glyph.
     downsample::Int32
     font_render_callback::Vector{Function}
+    glyph_indices::Dict{UInt64, Int}
 end
 
 Base.size(atlas::TextureAtlas) = size(atlas.data)
 Base.size(atlas::TextureAtlas, dim) = size(atlas)[dim]
 
-"""
-    get_uv_img(atlas::TextureAtlas, glyph_bezierpath, [font])
-
-Helper to debug texture atlas (this usually happens on the GPU)!
-
-can be used like this:
-```julia
-matr = Makie.get_uv_img(atlas, glyph_index, font)
-scatter(Point2f(0), distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=100)
-```
-"""
-get_uv_img(atlas::TextureAtlas, glyph, font) = get_uv_img(atlas, primitive_uv_offset_width(atlas, glyph, font))
-get_uv_img(atlas::TextureAtlas, path) = get_uv_img(atlas, primitive_uv_offset_width(atlas, path, nothing))
-function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
-    xmin, ymin, xmax, ymax = round.(Int, uv_rect .* Vec4f(size(atlas)..., size(atlas)...))
-    return atlas.data[Rect(xmin, ymin, xmax - xmin, ymax - ymin)]
-end
 
 function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, downsample=5)
     return TextureAtlas(
@@ -57,7 +41,8 @@ function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, dow
         pix_per_glyph,
         glyph_padding,
         downsample,
-        Function[]
+        Function[],
+        Dict{UInt64, Int}()
     )
 end
 
@@ -116,8 +101,8 @@ function write_array(io::IO, array::AbstractArray)
 end
 
 function read_array(io::IO, T)
-    nd = read(io, Int32)
-    size = Vector{Int32}(undef, nd)
+    ndims = read(io, Int32)
+    size = Vector{Int32}(undef, ndims)
     read!(io, size)
     array = Array{T}(undef, size...)
     read!(io, array)
@@ -145,7 +130,7 @@ function load_texture_atlas(path::AbstractString)
         pix_per_glyph = read(io, Int32)
         glyph_padding = read(io, Int32)
         downsample = read(io, Int32)
-        return TextureAtlas(packer, Dict(mapping), data, uv_rectangles, pix_per_glyph, glyph_padding, downsample, Function[])
+        return TextureAtlas(packer, Dict(mapping), data, uv_rectangles, pix_per_glyph, glyph_padding, downsample, Function[], Dict{UInt64, Int}())
     end
 end
 
@@ -256,7 +241,7 @@ function find_font_for_char(glyph, font::NativeFont)
     FreeTypeAbstraction.glyph_index(font, glyph) != 0 && return font
     # it seems that linebreaks are not found which messes up font metrics
     # if another font is selected just for those chars
-    glyph in ('\n', '\r', '\t') && return font
+    glyph in ('\n', '\r', '\t', UInt32(0)) && return font
     for afont in alternativefonts()
         if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
             return afont
@@ -266,22 +251,24 @@ function find_font_for_char(glyph, font::NativeFont)
 end
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
-    if FreeTypeAbstraction.glyph_index(font, glyph) == 0
-        for afont in alternativefonts()
-            if FreeTypeAbstraction.glyph_index(afont, glyph) != 0
-                font = afont
-            end
-        end
+    h = hash((glyph, objectid(font)))
+    return get!(atlas.glyph_indices, h) do
+        # if the glyph is not in the atlas, insert it
+        return insert_glyph!(atlas, glyph, find_font_for_char(glyph, font))
     end
-    return insert_glyph!(atlas, glyph, font)
 end
 
 function glyph_index!(atlas::TextureAtlas, b::BezierPath)
-    return insert_glyph!(atlas, b)
+    h = fast_stable_hash(b)
+    return get!(atlas.glyph_indices, h) do
+        # if the glyph is not in the atlas, insert it
+        return insert_glyph!(atlas, b)
+    end
 end
 
 function glyph_uv_width!(atlas::TextureAtlas, glyph, font::NativeFont)
-    return atlas.uv_rectangles[glyph_index!(atlas, glyph, font)]
+    idx = glyph_index!(atlas, glyph, font)
+    return atlas.uv_rectangles[idx]
 end
 
 function glyph_uv_width!(atlas::TextureAtlas, b::BezierPath)
@@ -316,6 +303,27 @@ function insert_glyph!(atlas::TextureAtlas, hash::UInt32, path_or_glyp::Union{Be
     end
 end
 
+function sdf_uv_to_pixel(atlas::TextureAtlas, uv_width::Vec4f)
+    tex_size = Vec2f(size(atlas.data)) # (width, height)
+    # uv: (left, bottom, right, top)
+    uv_left_bottom = Vec2f(uv_width[1], uv_width[2])
+    uv_right_top = Vec2f(uv_width[3], uv_width[4])
+
+    # reverse the normalization to get pixel coordinates
+    # Note: all uvs are pixel centered, so uv * size = integer + 0.5
+    # taking the floor returns the left pixel border, equivalent to 0-based indices
+    # taking the ceil return the right border, equivalent to 1-based indices
+    px_left_bottom = ceil.(Int, uv_left_bottom .* tex_size)
+    px_right_top = ceil.(Int, uv_right_top .* tex_size)
+
+    # create pixel ranges
+    x_range = px_left_bottom[1] : px_right_top[1]
+    y_range = px_left_bottom[2] : px_right_top[2]
+    return x_range, y_range
+end
+
+
+
 """
     sdistancefield(img, downsample, pad)
 Calculates a distance fields, that is downsampled `downsample` time,
@@ -325,7 +333,7 @@ The padding is in units after downscaling!
 function sdistancefield(img, downsample, pad)
     # we pad before downsampling, so we need to have `downsample` as much padding
     pad = downsample * pad
-    # padd the image
+    # pad the image
     padded_size = size(img) .+ 2pad
 
     # for the downsampling, we need to make sure that
@@ -419,7 +427,7 @@ returns the Shape type for the distancefield shader
 marker_to_sdf_shape(x) = error("$(x) is not a valid scatter marker shape.")
 
 marker_to_sdf_shape(::AbstractMatrix) = RECTANGLE # Image marker
-marker_to_sdf_shape(::Union{BezierPath, Char}) = DISTANCEFIELD
+marker_to_sdf_shape(::Union{BezierPath, Char, UInt32}) = DISTANCEFIELD
 marker_to_sdf_shape(::Type{T}) where {T <: Circle} = CIRCLE
 marker_to_sdf_shape(::Type{T}) where {T <: Rect} = RECTANGLE
 marker_to_sdf_shape(x::Shape) = x
@@ -453,9 +461,115 @@ Extracts the uv offset and width from a primitive.
 primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
-primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font) = map(m-> primitive_uv_offset_width(atlas, m, font), x)
+primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
+function primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font)
+    dct = Dict{eltype(x), Vec4f}()
+    map(x) do b
+        get!(dct, b) do
+            primitive_uv_offset_width(atlas, b, font)
+        end
+    end
+end
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
     return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
+end
+
+function register_sdf_computations!(attr, atlas)
+    haskey(attr, :sdf_uv) && haskey(attr, :sdf_marker_shape) && return
+    register_computation!(attr, [:uv_offset_width, :marker, :font],
+                          [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+        new_mf = changed[2] || changed[3]
+        uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : nothing
+        marker = changed[1] ? marker_to_sdf_shape(m[]) : nothing
+        return (marker, uv)
+    end
+end
+
+function pack_images(images_marker)
+    images = map(el32convert, images_marker)
+    isempty(images) && error("Can not display empty vector of images as primitive")
+    sizes = map(size, images)
+    if !all(x -> x == sizes[1], sizes)
+        # create texture atlas
+        maxdims = sum(map(Vec{2, Int}, sizes))
+        rectangles = map(x->Rect2(0, 0, x...), sizes)
+        rpack = RectanglePacker(Rect2(0, 0, maxdims...))
+        uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
+        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
+        texture_atlas = fill(eltype(images[1])(RGBAf(0,0,0,0)), max_xy...)
+        for (area, img) in zip(uv_coordinates, images)
+            mini = minimum(area)
+            maxi = maximum(area)
+            texture_atlas[mini[1]+1:maxi[1], mini[2]+1:maxi[2]] = img # transfer to texture atlas
+        end
+        uvs = map(uv_coordinates) do uv
+            m = max_xy .- 1
+            mini = reverse((minimum(uv)) ./ m)
+            maxi = reverse((maximum(uv) .- 1) ./ m)
+            return Vec4f(mini..., maxi...)
+        end
+        images = texture_atlas
+    else
+        uvs = Vec4f(0,0,1,1)
+    end
+
+    return (uvs, images)
+end
+
+# For switching between ellipse method and faster circle method in shader
+is_all_equal_scale(o::Observable) = is_all_equal_scale(o[])
+is_all_equal_scale(::Real) = true
+is_all_equal_scale(::Vector{Real}) = true
+is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
+is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
+
+function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
+    # TODO, only calculate offset if needed
+    # [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
+    # [:sdf_marker_shape, :sdf_uv, :image]
+    if m isa Matrix{<: Colorant} # single image marker
+        return (Cint(RECTANGLE), Vec4f(0,0,1,1), m)
+    elseif m isa Vector{<: Matrix{<: Colorant}} # multiple image markers
+        # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
+        if changed[3]
+            uvs, images = pack_images(m)
+            return (Cint(RECTANGLE), uvs, images)
+        else
+            # if marker is up to date don't update
+            return (nothing, nothing, nothing)
+        end
+    else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
+        if changed[3] || changed.markersize
+            shape = Cint(marker_to_sdf_shape(m)) # expensive for arrays with abstract eltype?
+            if shape == 0 && !is_all_equal_scale(scale)
+                shape = Cint(5)
+            end
+        else
+            shape = last.sdf_marker_shape
+        end
+
+        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
+            uv = Makie.primitive_uv_offset_width(atlas, m, f)
+        elseif isnothing(last)
+            uv = Vec4f(0,0,1,1)
+        else
+            uv = nothing # Is this even worth it?
+        end
+        return (shape, uv, nothing)
+    end
+end
+
+function all_marker_computations!(attr, markername=:marker)
+    if !haskey(attr, :atlas)
+        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
+            (get_texture_atlas(),)
+        end
+    end
+    inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
+    outputs = [:sdf_marker_shape, :sdf_uv, :image]
+    register_computation!(
+        compute_marker_attributes, attr, inputs, outputs
+    )
 end
 
 _bcast(x::Vec) = Ref(x)
@@ -494,14 +608,23 @@ function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, marke
 end
 
 function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), pathmarker)
+    dct = Dict{eltype(pathmarker), Vec2f}()
+    msf(pathmarker) =
+        get!(dct, pathmarker) do
+            marker_scale_factor(atlas, pathmarker)
+        end
+    return _bcast(markersize) .* msf.(pathmarker)
 end
 
 # Rect / Circle dont need no rescaling
 rescale_marker(atlas, char, font, markersize) = markersize
 
 function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, markersize)
-    return _bcast(markersize) .* marker_scale_factor.(Ref(atlas), char, font)
+    dct = Dict{Char, Vec2f}()
+    msf(char) = get!(dct, char) do
+        marker_scale_factor(atlas, char, font)
+    end
+    return _bcast(markersize) .* msf.(char)
 end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
@@ -555,4 +678,114 @@ function marker_attributes(atlas::TextureAtlas, marker, markersize, font, plot_o
                       ignore_equal_values=true)
 
     return scale, quad_offset
+end
+
+
+
+"""
+    get_uv_img(atlas::TextureAtlas, glyph_bezierpath, [font])
+
+Helper to debug texture atlas (this usually happens on the GPU)!
+
+can be used like this:
+```julia
+matr = Makie.get_uv_img(atlas, glyph_index, font)
+scatter(Point2f(0), distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=100)
+```
+"""
+get_uv_img(atlas::TextureAtlas, glyph, font) = get_uv_img(atlas, primitive_uv_offset_width(atlas, glyph, font))
+get_uv_img(atlas::TextureAtlas, path) = get_uv_img(atlas, primitive_uv_offset_width(atlas, path, nothing))
+function get_uv_img(atlas::TextureAtlas, uv_rect::Vec4f)
+    xmin, ymin, xmax, ymax = round.(Int, uv_rect .* Vec4f(size(atlas)..., size(atlas)...))
+    return atlas.data[Rect(xmin, ymin, xmax - xmin, ymax - ymin)]
+end
+
+function get_glyph_sdf(atlas::TextureAtlas, glyph::Char, font::NativeFont)
+    gi = FreeTypeAbstraction.glyph_index(font, glyph)
+    glyph_index!(atlas, gi, font)
+    hash = fast_stable_hash((gi, FreeTypeAbstraction.fontname(font)))
+    return get_glyph_sdf(atlas, hash)
+end
+
+function get_glyph_sdf(atlas::TextureAtlas, hash::UInt32)
+    index = atlas.mapping[hash]
+    uv = atlas.uv_rectangles[index]
+    # create pixel ranges
+    x_range, y_range = sdf_uv_to_pixel(atlas, uv)
+    # slice the data
+    return atlas.data[x_range, y_range]
+end
+
+function glyph_boundingbox(::BezierPath, ::Makie.NativeFont)
+    # TODO, implement this
+    # Main blocker is the JS side since this is a bit more complicated.
+    return (Vec2f(0), Vec2f(0))
+end
+
+function glyph_boundingbox(gi::UInt64, font::Makie.NativeFont)
+    extent = FreeTypeAbstraction.get_extent(font, gi)
+    glyph_bb = FreeTypeAbstraction.boundingbox(extent)
+    w, mini = widths(glyph_bb), minimum(glyph_bb)
+    return (w, mini)
+end
+
+
+function get_marker_hash(atlas::Makie.TextureAtlas, marker::BezierPath, f::Makie.NativeFont)
+    hash = Makie.fast_stable_hash(marker)
+    Makie.insert_glyph!(atlas, hash, marker)
+    return hash, marker, f
+end
+
+function get_marker_hash(atlas::Makie.TextureAtlas, marker::Union{UInt64, Char}, font::Makie.NativeFont)
+    ff = Makie.find_font_for_char(marker, font)
+    gi = FreeTypeAbstraction.glyph_index(ff, marker)
+    hash = Makie.fast_stable_hash((gi, FreeTypeAbstraction.fontname(ff)))
+    Makie.insert_glyph!(atlas, hash, (gi, ff))
+    return hash, gi, ff
+end
+
+get_marker_hash(::Makie.TextureAtlas, f::Makie.NativeFont, x::Any) = nothing, x, f
+
+
+function inner_get_glyph_data(atlas::TextureAtlas, tracker, hash::UInt32, font::NativeFont)
+    if !(hash in tracker)
+        push!(tracker, hash)
+        uv = atlas.uv_rectangles[atlas.mapping[hash]]
+        sdf = get_glyph_sdf(atlas, hash)
+        return (hash, [uv, sdf, Vec2f(0), Vec2f(0)])
+    end
+    return (hash, nothing)
+end
+
+function inner_get_glyph_data(atlas::TextureAtlas, tracker, marker::Union{BezierPath, UInt64, Char}, font::NativeFont)
+    hash, tex_marker, ffont = get_marker_hash(atlas, marker, font)
+    hash === nothing && return (hash, nothing)
+    if !(hash in tracker)
+        push!(tracker, hash)
+        uv = primitive_uv_offset_width(atlas, marker, ffont)
+        sdf = get_glyph_sdf(atlas, hash)
+        w, mini = glyph_boundingbox(tex_marker, ffont)
+        return (hash, [uv, sdf, w, mini])
+    end
+    return (hash, nothing)
+end
+
+function get_glyph_data(atlas::TextureAtlas, tracker, marker::Union{BezierPath, UInt64, Char}, font::NativeFont)
+    hash, data = inner_get_glyph_data(atlas, tracker, marker, font)
+    data === nothing && return [hash], Dict()
+    return [hash], Dict(hash => data)
+end
+
+function get_glyph_data(atlas::TextureAtlas, tracker, markers::AbstractVector, fonts)
+    new_glyphs = Dict{UInt32, Any}()
+    glyph_hashes = UInt32[]
+    for (i, marker) in enumerate(markers)
+        font = Makie.sv_getindex(fonts, i)
+        hash, data = inner_get_glyph_data(atlas, tracker, marker, font)
+        push!(glyph_hashes, hash)
+        isnothing(data) && continue
+        push!(tracker, hash)
+        new_glyphs[hash] = data
+    end
+    return glyph_hashes, new_glyphs
 end

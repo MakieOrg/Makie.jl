@@ -56,6 +56,9 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
+            @handle msg.window_open begin
+                e.window_open[] = window_open
+            end
             @handle msg.mouseposition begin
                 x, y = Float64.((mouseposition...,))
                 e.mouseposition[] = (x, y)
@@ -118,16 +121,21 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
         return
     end
 
+    return
+end
+
+function connect_post_init_events(screen, scene)
+    e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
+    # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
-        if isopen(screen)
+        if !Makie.isclosed(scene)
             tick_callback(Makie.RegularRenderTick)
-            # @info "tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
             Makie.stop!(timer)
+            e.window_open[] = false
         end
         return
     end
-
     return
 end

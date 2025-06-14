@@ -13,7 +13,7 @@ Examples:
 
 """
 @recipe Arc (origin, radius, start_angle, stop_angle) begin
-    MakieCore.documented_attributes(Lines)...
+    documented_attributes(Lines)...
     "The number of line points approximating the arc."
     resolution = 361
 end
@@ -26,6 +26,5 @@ function plot!(p::Arc)
         end
     end
     attr = Attributes(p)
-    delete!(attr, :resolution)
     lines!(p, attr, positions)
 end

@@ -5,8 +5,8 @@ function ecdf_xvalues(ecdf::StatsBase.ECDF, npoints)
     return @inbounds range(x[1], x[n]; length=npoints)
 end
 
-used_attributes(::Type{<:AbstractPlot}, ::StatsBase.ECDF) = (:npoints,)
-function convert_arguments(P::Type{<:AbstractPlot}, ecdf::StatsBase.ECDF; npoints=10_000)
+used_attributes(::Type{<:Plot}, ::StatsBase.ECDF) = (:npoints,)
+function convert_arguments(P::Type{<:Plot}, ecdf::StatsBase.ECDF; npoints=10_000)
     ptype = plottype(P, Stairs)
     x0 = ecdf_xvalues(ecdf, npoints)
     if ptype <: Stairs
@@ -20,13 +20,13 @@ function convert_arguments(P::Type{<:AbstractPlot}, ecdf::StatsBase.ECDF; npoint
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, x::AbstractVector, ecdf::StatsBase.ECDF)
+function convert_arguments(P::Type{<:Plot}, x::AbstractVector, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
     kwargs = ptype <: Stairs ? (; step=:post) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, x0::AbstractInterval, ecdf::StatsBase.ECDF)
+function convert_arguments(P::Type{<:Plot}, x0::AbstractInterval, ecdf::StatsBase.ECDF)
     xmin, xmax = extrema(x0)
     z = ecdf_xvalues(ecdf, Inf)
     n = length(z)
@@ -46,7 +46,7 @@ Plot the empirical cumulative distribution function (ECDF) of `values`.
 If `weights` for the values are provided, a weighted ECDF is plotted.
 """
 @recipe ECDFPlot begin
-    MakieCore.documented_attributes(Stairs)...
+    documented_attributes(Stairs)...
 end
 
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)

@@ -131,12 +131,12 @@ end
 ########################################################################################
 # OpenGL Arrays
 
-const GLArrayEltypes = Union{StaticVector,Real,Colorant}
+const GLArrayEltypes = Union{StaticVector, Quaternion, Real, Colorant}
 """
 Transform julia datatypes to opengl enum type
 """
 julia2glenum(x::Type{T}) where {T <: FixedPoint} = julia2glenum(FixedPointNumbers.rawtype(x))
-julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector,Colorant}} = julia2glenum(eltype(x))
+julia2glenum(x::Union{Type{T},T}) where {T <: Union{StaticVector, Quaternion, Colorant}} = julia2glenum(eltype(x))
 julia2glenum(::Type{OffsetInteger{O,T}}) where {O,T} = julia2glenum(T)
 julia2glenum(::Type{GLubyte})  = GL_UNSIGNED_BYTE
 julia2glenum(::Type{GLbyte})   = GL_BYTE
@@ -184,10 +184,16 @@ mutable struct GLVertexArray{T}
 end
 
 """
-returns the length of the vertex array.
-This is amount of primitives stored in the vertex array, needed for `glDrawArrays`
+    length(vao::GLVertexArray)
+
+Returns the length of the vertex array. More specifically this returns the minimum
+of the lengths of each vertex buffer, i.e. the number of addressable vertices. If
+no vertex buffers are present -1 is returned.
 """
-length(vao::GLVertexArray) = length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
+function length(vao::GLVertexArray)
+    isempty(vao.buffers) && return -1
+    return mapreduce(length, min, values(vao.buffers))
+end
 
 GLVertexArray(vao::GLVertexArray) = GLVertexArray(vao.buffers, vao.program)
 
@@ -195,7 +201,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     # get the size of the first array, to assert later, that all have the same size
     indexes = -1
     len = -1
-    ShaderAbstractions.switch_context!(program.context)
+    gl_switch_context!(program.context)
     id = glGenVertexArrays()
     glBindVertexArray(id)
     lenbuffer = 0
@@ -251,7 +257,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
 end
 using ShaderAbstractions: Buffer
 function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
-    ShaderAbstractions.switch_context!(program.context)
+    gl_switch_context!(program.context)
     # get the size of the first array, to assert later, that all have the same size
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -283,14 +289,17 @@ function bind(va::GLVertexArray)
     glBindVertexArray(va.id)
 end
 
-
-function Base.show(io::IO, vao::GLVertexArray)
-    show(io, vao.program)
+Base.show(io::IO, vao::GLVertexArray) = print(io, "GLVertexArray $(vao.id)")
+function Base.show(io::IO, ::MIME"text/plain", vao::GLVertexArray)
+    # show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
-    print(io, "GLVertexArray $(vao.id) buffers: ")
-    writemime(io, MIME("text/plain"), vao.buffers)
-    println(io, "\nGLVertexArray $(vao.id) indices: ", vao.indices)
+    print(io, "buffers: ")
+    show(io, MIME("text/plain"), vao.buffers)
+    _print_indices(io, vao.indices)
 end
+_print_indices(io::IO, n::Integer) = print(io, "\nindices: ", Int64(n))
+_print_indices(io::IO, is::AbstractVector{<: Integer}) = print(io, "\nindices: ", Int64.(is))
+_print_indices(io::IO, fs) = print(io, "\nfaces: ", fs)
 
 ##################################################################################
 
@@ -330,12 +339,14 @@ mutable struct RenderObject{Pre}
             context,
             uniforms, observables, vertexarray,
             prerenderfunctions, postrenderfunctions,
-            id, visible[]
+            id, to_value(visible)
         )
-        push!(observables, visible)
-        on(visible) do visible
-            robj.visible = visible
-            return
+        if visible isa Observable # old way, set in GLMakie now
+            push!(observables, visible)
+            on(visible) do visible
+                robj.visible = visible
+                return
+            end
         end
         return robj
     end
@@ -346,13 +357,8 @@ function RenderObject(
         pre::Pre, post,
         context
     ) where Pre
-    switch_context!(context)
+    gl_switch_context!(context)
     require_context(context)
-
-    # This is a lazy workaround for disabling updates of `requires_update` when
-    # not rendering on demand. A cleaner implementation should probably go
-    # through @gen_defaults! and adjust constructors instead.
-    track_updates = to_value(pop!(data, :track_updates, true))
 
     # Explicit conversion targets for gl_convert
     targets = get(data, :gl_convert_targets, Dict())

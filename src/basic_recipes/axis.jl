@@ -58,7 +58,7 @@ $(ATTRIBUTES)
     gridthickness = ntuple(x-> 1f0, Val(3))
     axislinewidth = ntuple(x->1.5f0, Val(3))
     tsize = 5 # in percent
-    Attributes(
+    return Attributes(
         visible = true,
         showticks = (true, true, true),
         showaxis = (true, true, true),
@@ -196,7 +196,7 @@ a_length(x::AbstractVector) = length(x)
 a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<: Axis3D}, plot)
-    ticks = plot.ticks
+    ticks = plot.ticks[]
     args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
     ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
         num_ticks = labels === automatic ? automatic : a_length.(labels)
@@ -285,7 +285,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
                 end
             end
             if !isempty(axisnames[i])
-                font = to_font(fonts, tfont[i])
+                font = to_font(fonts[], tfont[i])
                 tick_widths = maximum(ticklabels[i]) do label
                     widths(text_bb(label, font, tfontsize[i]))[1]
                 end / scale[j]
@@ -330,7 +330,7 @@ function plot!(axis::Axis3D)
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))
     framevals = getindex.(frame, (:linecolor, :linewidth, :axislinewidth, :axiscolor))
-    tvals = getindex.(ticks, (:textcolor, :rotation, :fontsize, :align, :font, :gap))
+    tvals = getindex.((ticks,), (:textcolor, :rotation, :fontsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals..., axis.padding
@@ -338,7 +338,7 @@ function plot!(axis::Axis3D)
     onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks.ranges_labels, Observable(axis.fonts), args...; update=true
+        axis[1], axis.ticks[].ranges_labels, Observable(axis.fonts), args...; update=true
     )
     return axis
 end

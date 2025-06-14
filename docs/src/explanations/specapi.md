@@ -346,7 +346,7 @@ ax.then() do actual_axis_object
     end
 end
 ```
-Note, that the callback must be pure, since the objects will get re-used and the callback will be called again.
+Note, that the callback must be pure, since the objects will get reused and the callback will be called again.
 To allow `on` or `onany`, one can return an array of `ObserverFunctions` or single one as in the above example.
 ```julia
 ax.then() do ax
@@ -355,7 +355,8 @@ ax.then() do ax
     obs_array = onany(f3, some_obs1, some_obs2)
     return [obs1, obs2, obs_array...]
 end
-This allows the SpecApi to clean up the callbacks on re-use.
+```
+This allows the SpecApi to clean up the callbacks on reuse.
 Note that things like `hidedecorations!(axis)` is not yet supported, since we will need some better book keeping of what got mutated by that call.
 One of the few functions that's already supported is `linkaxes!`:
 

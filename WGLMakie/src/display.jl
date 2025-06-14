@@ -57,13 +57,13 @@ mutable struct Screen <: Makie.MakieScreen
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
         screen = new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
-
-        finalizer(screen) do screen
-            close(screen.tick_clock)
-        end
-
+        finalizer(close, screen)
         return screen
     end
+end
+
+function Makie.px_per_unit(s::Screen)::Float64
+    return something(s.config.px_per_unit, 1.0)
 end
 
 function Screen(; config...)
@@ -81,30 +81,77 @@ function scene_already_displayed(screen::Screen, scene=screen.scene)
            js_uuid(screen.scene) in screen.displayed_scenes
 end
 
+function poll_all_plots(scene)
+    Makie.for_each_atomic_plot(scene) do p
+        if haskey(p, :wgl_renderobject)
+            try
+                # Skip updating invisible renderobjects
+                # This is basically `if is_visible || was_visible`, which makes
+                # sure the robj updates on state change. (i.e. hides and redisplays)
+                computed = p[:wgl_renderobject]
+                if p.visible[] || computed.value[][:visible]
+                    computed[]
+                end
+            catch e
+                @error "Failed to update renderobject - skipping update" exception=(e, catch_backtrace())
+                # Mark the output as resolved so we don't repeatedly pull in errors
+                # TODO: Is there a better way to handle this? One that allows us to
+                # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+                ComputePipeline.mark_resolved!(p.attributes[:wgl_renderobject])
+            end
+        end
+    end
+end
+
+function start_polling_loop!(scene)
+    task = @async while !Makie.isclosed(scene)
+        try
+            poll_all_plots(scene)
+        catch e
+            @error "Error in polling loop" exception=(e, catch_backtrace())
+        end
+        sleep(1/100)
+    end
+    Base.errormonitor(task)
+end
+
 function render_with_init(screen::Screen, session::Session, scene::Scene)
     # Reference to three object which gets set once we serve this to a browser
-    # Make sure it's a new Channel, since we may re-use the screen.
+    # Make sure it's a new Channel, since we may reuse the screen.
     screen.plot_initialized = Channel{Any}(1)
     screen.session = session
     Makie.push_screen!(scene, screen)
-    canvas, on_init = three_display(screen, session, scene)
-    screen.canvas = canvas
-    on(session, on_init) do initialized
-        if isready(screen.plot_initialized)
-            # plot_initialized contains already an item
-            # This should not happen, but lets check anyways, so it errors and doesn't hang forever
-            error("Plot initialized multiple times?")
+    try
+        canvas, on_init = three_display(screen, session, scene)
+        screen.canvas = canvas
+        on(session, on_init) do initialized
+            if isready(screen.plot_initialized)
+                # plot_initialized contains already an item
+                # This should not happen, but lets check anyways, so it errors and doesn't hang forever
+                error("Plot initialized multiple times?")
+            end
+            if initialized == true
+                put!(screen.plot_initialized, true)
+                mark_as_displayed!(screen, scene)
+                start_polling_loop!(scene)
+                connect_post_init_events(screen, scene)
+            else
+                # Will be an error from WGLMakie.js
+                put!(screen.plot_initialized, initialized)
+            end
+            return
         end
-        if initialized == true
-            put!(screen.plot_initialized, true)
-            mark_as_displayed!(screen, scene)
-        else
-            # Will be an error from WGLMakie.js
-            put!(screen.plot_initialized, initialized)
+        on(session, session.on_close) do closed
+            if closed == true
+                close(screen)
+            end
+            return
         end
-        return
+        return canvas
+    catch e
+        put!(screen.plot_initialized, e)
+        rethrow(e)
     end
-    return canvas
 end
 
 function Bonito.jsrender(session::Session, scene::Scene)
@@ -174,8 +221,11 @@ end
 Base.resize!(::WGLMakie.Screen, w, h) = nothing
 
 function Base.isopen(screen::Screen)
-    session = get_screen_session(screen)
-    return !isnothing(session) && isopen(session)
+    # This function is used as the source of truth for dynamically setting
+    # window_open[] = false (as opposed to using close()), so it can't just
+    # rely on window_open. Check the session too.
+    return !isnothing(screen.scene) && screen.scene.events.window_open[] &&
+        !isnothing(screen.session) && isopen(screen.session)
 end
 
 function mark_as_displayed!(screen::Screen, scene::Scene)
@@ -202,8 +252,11 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-# TODO implement
-Base.close(screen::Screen) = nothing
+function Base.close(screen::Screen)
+    Makie.stop!(screen.tick_clock)
+    events(screen.scene).window_open[] = false
+    return
+end
 
 function Base.size(screen::Screen)
     return size(screen.scene)
@@ -233,7 +286,9 @@ function get_screen_session(screen::Screen; timeout=100,
         throw_error("Timed out waiting for session to get ready")
         return nothing
     end
-    success = Bonito.wait_for(() -> isready(screen.plot_initialized); timeout=timeout)
+    success = Bonito.wait_for(timeout=timeout) do
+        isready(screen.plot_initialized)
+    end
     # Throw error if error message specified
     if success !== :success
         throw_error("Timed out waiting $(timeout)s for session to get initialize")
@@ -307,6 +362,7 @@ function Makie.colorbuffer(screen::Screen)
         Base.display(screen, screen.scene)
     end
     session = get_screen_session(screen; error="Not able to show scene in a browser")
+    poll_all_plots(screen.scene)
     return session2image(session, screen.scene)
 end
 
@@ -339,24 +395,20 @@ function insert_scene!(session::Session, screen::Screen, scene::Scene)
 end
 
 function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
-    @assert !haskey(plot, :__wgl_session)
     plot_data = serialize_plots(scene, Plot[plot])
-    plot_sub = Session(session)
-    Bonito.init_session(plot_sub)
     # serialize + evaljs via sub session, so we can keep track of those observables
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    Bonito.evaljs_value(plot_sub, js; timeout=50)
-    @assert !haskey(plot.attributes, :__wgl_session)
-    plot.attributes[:__wgl_session] = plot_sub
+    Bonito.evaljs_value(session, js; timeout=50)
     return
 end
 
-function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::PlotList))
+function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
     return nothing
 end
+
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     session = get_screen_session(screen; error="Plot needs to be displayed to insert additional plots")
     if js_uuid(scene) in screen.displayed_scenes
@@ -411,10 +463,10 @@ function delete_js_objects!(screen::Screen, scene::Scene)
     isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
-        if haskey(plot, :__wgl_session)
-            wgl_session = plot.__wgl_session[]
-            close(wgl_session)
-        end
+        delete!(plot.attributes, :wgl_renderobject)
+        obs = plot.attributes[:wgl_update_obs][]
+        delete!(plot.attributes, :wgl_update_obs)
+        Bonito.delete_cached!(root, root, obs.id)
     end
 
     Bonito.evaljs(root, js"""
@@ -484,12 +536,23 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String},Union{Session,Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
-function Base.delete!(screen::Screen, scene::Scene, plot::Plot)
-    # only queue atomics to actually delete on js
+function Base.delete!(screen::Screen, ::Scene, plot::Plot)
+    # # only queue atomics to actually delete on js
+    atomics = Makie.collect_atomic_plots(plot)
+    session = screen.session
+    for plot in atomics
+        if haskey(plot.attributes.outputs, :wgl_update_obs)
+            # This plot was never rendered, so we don't need to delete it
+            # obs = plot.attributes.outputs[:wgl_update_obs].value[]
+            delete!(plot.attributes, :wgl_update_obs; force=true, recursive=true)
+            # if !isnothing(session)
+            #     Bonito.delete_cached!(session, session, obs.id)
+            # end
+        end
+    end
     if !DISABLE_JS_FINALZING[]
-        plot_uuids = map(js_uuid, Makie.collect_atomic_plots(plot))
-        session = to_value(get(plot, :__wgl_session, nothing))
-        push!(DELETE_QUEUE, (screen, plot_uuids, session))
+        plot_uuids = map(js_uuid, atomics)
+        push!(DELETE_QUEUE, (screen, plot_uuids, nothing))
     end
     return
 end

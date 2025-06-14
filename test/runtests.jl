@@ -1,4 +1,5 @@
 # COV_EXCL_START
+ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 
@@ -9,7 +10,7 @@ using Makie.PlotUtils
 using Makie.FileIO
 using Makie.IntervalSets
 using GeometryBasics: Pyramid
-
+using Makie.ComputePipeline: ResolveException
 using Makie: volume
 # COV_EXCL_STOP
 
@@ -23,10 +24,12 @@ using Makie: volume
         include("isolated/observables.jl")
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
+        include("isolated/texture_atlas.jl")
     end
 
     @testset "Plots" begin
         include("plots/primitives.jl")
+        include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
         include("plots/hist.jl")
@@ -61,6 +64,7 @@ using Makie: volume
         include("interactivity/camera_controls.jl")
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
+        include("interactivity/DataInspector.jl")
     end
 
     include("boundingboxes.jl")

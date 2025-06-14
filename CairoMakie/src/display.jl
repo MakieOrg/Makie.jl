@@ -51,6 +51,15 @@ function Base.display(screen::Screen{IMAGE}, scene::Scene; connect=false, screen
 end
 
 function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
+    mark(io)
+    # fix for #4970, to avoid that the finalizer of this surface tries to write to `io` later
+    # when `io` is possibly not valid anymore
+    Cairo.finish(screen.surface)
+    # we can't avoid that Cairo writes an svg scaffold into `io` unless
+    # we refactor the whole screen setup code so the svg surface isn't initialized with the `io`
+    # in the first place, so instead we just overwrite that part again with the string we build below
+    reset(io)
+
     Makie.push_screen!(scene, screen)
     # Display the plot on a new screen writing to a string, so that we can manipulate the
     # result (the io in `screen` should directly write to the file we're saving)
@@ -98,13 +107,6 @@ function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/post
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
-    return screen
-end
-
-function Makie.backend_show(screen::Screen{IMAGE}, io::IO, ::MIME"image/png", scene::Scene)
-    Makie.push_screen!(scene, screen)
-    cairo_draw(screen, scene)
-    Cairo.write_to_png(screen.surface, io)
     return screen
 end
 

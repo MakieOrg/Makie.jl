@@ -8,12 +8,13 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     observers::Vector{Observables.ObserverFunction}
 
     function GLBuffer{T}(context, ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where T
-        switch_context!(context)
+        gl_switch_context!(context)
         id = glGenBuffers()
         glBindBuffer(buffertype, id)
-        # size of 0 can segfault it seems
-        buff_length = buff_length == 0 ? 1 : buff_length
-        glBufferData(buffertype, buff_length * sizeof(T), ptr, usage)
+        # size of 0 can segfault it seems, but so can a draw call to an index buffer that has garbage data.
+        # Therefore we let the buffer pull some garbage data in to have a GPU size > 0,
+        # but keep the CPU size unchanged. Draw calls are then discarded if the CPU size is 0.
+        glBufferData(buffertype, max(1, buff_length) * sizeof(T), ptr, usage)
         glBindBuffer(buffertype, 0)
 
         obj = new(
@@ -100,18 +101,26 @@ function indexbuffer(
 end
 # GPUArray interface
 function gpu_data(b::GLBuffer{T}) where T
-    switch_context!(b.context)
+    gl_switch_context!(b.context)
     data = Vector{T}(undef, length(b))
     bind(b)
     glGetBufferSubData(b.buffertype, 0, sizeof(data), data)
     bind(b, 0)
-    data
+    return data
+end
+
+# for render() debug checks
+function gpu_data_no_unbind(b::GLBuffer{T}) where T
+    data = Vector{T}(undef, length(b))
+    bind(b)
+    glGetBufferSubData(b.buffertype, 0, sizeof(data), data)
+    return data
 end
 
 
 # Resize buffer
 function gpu_resize!(buffer::GLBuffer{T}, newdims::NTuple{1, Int}) where T
-    switch_context!(buffer.context)
+    gl_switch_context!(buffer.context)
     #TODO make this safe!
     newlength = newdims[1]
     oldlen    = length(buffer)
@@ -135,7 +144,7 @@ function gpu_resize!(buffer::GLBuffer{T}, newdims::NTuple{1, Int}) where T
 end
 
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::Integer) where T
-    switch_context!(b.context)
+    gl_switch_context!(b.context)
     multiplicator = sizeof(T)
     bind(b)
     glBufferSubData(b.buffertype, multiplicator*(offset-1), sizeof(value), value)
@@ -143,7 +152,7 @@ function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::Integer) where 
 end
 
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::UnitRange{Int}) where T
-    switch_context!(b.context)
+    gl_switch_context!(b.context)
     multiplicator = sizeof(T)
     bind(b)
     glBufferSubData(b.buffertype, multiplicator*(first(offset)-1), sizeof(value), value)
@@ -154,7 +163,7 @@ end
 # copy between two buffers
 # could be a setindex! operation, with subarrays for buffers
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.context)
+    gl_switch_context!(a.context)
     @assert a.context == b.context
     multiplicator = sizeof(T)
     @assert a.id != 0 & b.id != 0
@@ -178,7 +187,7 @@ end
 
 #copy inside one buffer
 function unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, len::Int) where T
-    switch_context!(buffer.context)
+    gl_switch_context!(buffer.context)
     len <= 0 && return nothing
     bind(buffer)
     ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
@@ -191,7 +200,7 @@ function unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, le
 end
 
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(b.context)
+    gl_switch_context!(b.context)
     bind(b)
     ptr = Ptr{T}(glMapBuffer(b.buffertype, GL_WRITE_ONLY))
     for i=1:len
@@ -202,7 +211,7 @@ function unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset
 end
 
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.context)
+    gl_switch_context!(a.context)
     bind(a)
     ptr = Ptr{T}(glMapBuffer(a.buffertype, GL_READ_ONLY))
     for i in 1:len
@@ -213,7 +222,7 @@ function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset
 end
 
 function gpu_getindex(b::GLBuffer{T}, range::UnitRange) where T
-    switch_context!(b.context)
+    gl_switch_context!(b.context)
     multiplicator = sizeof(T)
     offset = first(range)-1
     value = Vector{T}(undef, length(range))

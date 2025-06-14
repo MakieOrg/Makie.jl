@@ -2,7 +2,7 @@ using Makie:
     to_vertices,
     categorical_colors,
     (..)
-using Makie.MakieCore: plotfunc, plotfunc!, func2type
+using Makie: plotfunc, plotfunc!, func2type
 
 @testset "Conversions" begin
     # NoConversion
@@ -18,9 +18,9 @@ end
 
 @testset "Heatmapshader with ranges" begin
     hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol,Any}())
-    hm.converted[1][] isa Makie.EndPoints{Float32}
-    hm.converted[2][] isa Makie.EndPoints{Float32}
-    hm.converted[3][].data == Resampler(zeros(4, 4)).data
+    @test hm.converted[][1] isa Makie.EndPoints{Float32}
+    @test hm.converted[][2] isa Makie.EndPoints{Float32}
+    @test hm.converted[][3].data == Resampler(zeros(4, 4)).data
 end
 
 @testset "changing input types" begin
@@ -127,8 +127,10 @@ end
     y = [1..2, 1..3, 2..3]
     @test convert_arguments(Band, x, y) == (Point2f.([1, 5, 10], [1, 1, 2]), Point2f.([1, 5, 10], [2, 3, 3]))
     @test convert_arguments(Rangebars, x, y) == (Vec3f.([1,5,10], [1,1,2], [2,3,3]),)
-    @test convert_arguments(HSpan, 1..2) == (1f0, 2f0)
-    @test convert_arguments(VSpan, 1..2) == (1f0, 2f0)
+    @test convert_arguments(HSpan, 1..2) == (1, 2)
+    @test convert_arguments(VSpan, 1..2) == (1, 2)
+    @test convert_arguments(HSpan, y) == ([1,1,2], [2,3,3])
+    @test convert_arguments(VSpan, y) == ([1,1,2], [2,3,3])
 end
 
 @testset "functions" begin
@@ -292,26 +294,26 @@ end
     # Geometry Primitive
     f, ax, pl = poly(Rect2f[]);
     pl[1] = [Rect2f(0, 0, 1, 1)];
-    @test pl.plots[1][1][] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
+    @test pl.plots[1].arg1[] == [GeometryBasics.triangle_mesh(Rect2f(0, 0, 1, 1))]
 
     # Empty Polygon
     f, ax, pl = poly(Polygon(Point2f[]));
     pl[1] = Polygon(Point2f[(1,0), (1,1), (0,1)]);
-    @test pl.plots[1][1][] == GeometryBasics.triangle_mesh(pl[1][])
+    @test pl.plots[1].arg1[] == GeometryBasics.triangle_mesh(pl[1][])
 
     f, ax, pl = poly(Polygon[]);
     pl[1] = [Polygon(Point2f[(1,0), (1,1), (0,1)])];
-    @test pl.plots[1][1][] == GeometryBasics.triangle_mesh.(pl[1][])
+    @test pl.plots[1].arg1[] == GeometryBasics.triangle_mesh.(pl[1][])
 
     # PointBased inputs
     f, ax, pl = poly(Point2f[])
     points = decompose(Point2f, Circle(Point2f(0),1))
     pl[1] = points
-    @test pl.plots[1][1][] == Makie.poly_convert(points)
+    @test pl.plots[1].arg1[] == Makie.poly_convert(points)
 
     f, ax, pl = poly(Vector{Point2f}[])
     pl[1] = [points]
-    @test pl.plots[1][1][][1] == Makie.poly_convert(points)
+    @test pl.plots[1].arg1[][1] == Makie.poly_convert(points)
 end
 
 @testset "Poly with matrix" begin

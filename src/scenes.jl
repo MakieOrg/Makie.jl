@@ -88,9 +88,8 @@ mutable struct Scene <: AbstractScene
     backgroundcolor::Observable{RGBAf}
     visible::Observable{Bool}
     ssao::SSAO
-    lights::Vector{AbstractLight}
     deregister_callbacks::Vector{Observables.ObserverFunction}
-    cycler::Cycler
+    compute::ComputeGraph
 
     conversions::DimConversions
     isclosed::Bool
@@ -129,12 +128,13 @@ mutable struct Scene <: AbstractScene
             backgroundcolor,
             visible,
             ssao,
-            convert(Vector{AbstractLight}, lights),
             deregister_callbacks,
-            Cycler(),
+            ComputeGraph(),
             DimConversions(),
             false
         )
+        add_camera_computation!(scene.compute, scene)
+        add_light_computation!(scene.compute, scene, lights)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -163,15 +163,16 @@ end
 @inline function Base.map!(f, @nospecialize(scene::Union{Plot,Scene}), result::AbstractObservable, os...;
                            update::Bool=true, priority = 0)
     # note: the @inline prevents de-specialization due to the splatting
-    callback = Observables.MapCallback(f, result, os)
-    for o in os
+    observables = map(x -> x isa Computed ? ComputePipeline.get_observable!(x) : x, os)
+    callback = Observables.MapCallback(f, result, observables)
+    for o in observables
         o isa AbstractObservable && on(callback, scene, o, priority = priority)
     end
     update && callback(nothing)
     return result
 end
 
-@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::AbstractObservable, args...;
+@inline function Base.map(f::F, @nospecialize(scene::Union{Plot,Scene}), arg1::Union{Computed, AbstractObservable}, args...;
                           ignore_equal_values=false, priority = 0) where {F}
     # note: the @inline prevents de-specialization due to the splatting
     obs = Observable(f(arg1[], map(Observables.to_value, args)...); ignore_equal_values=ignore_equal_values)
@@ -185,6 +186,9 @@ get_scene(plot::AbstractPlot) = parent_scene(plot)
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
 function Base.show(io::IO, scene::Scene)
+    print(io, "Scene(", length(scene.children), " children, ", length(scene.plots), " plots)")
+end
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
 
@@ -246,6 +250,28 @@ function Scene(;
     cam = camera isa Camera ? camera : Camera(viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
+    if lights isa Automatic
+        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
+
+        if haskey(m_theme, :lights)
+            copyto!(_lights, m_theme.lights[])
+        else
+            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
+            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
+            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
+
+            if haskey(m_theme, :ambient)
+                push!(_lights, AmbientLight(m_theme[:ambient][]))
+            end
+
+            push!(_lights, DirectionalLight(
+                m_theme[:light_color][], m_theme[:light_direction][],
+                to_value(get(m_theme, :camera_relative_light, false))
+            ))
+        end
+    end
+
+
     # if we have an opaque background, automatically set clear to true!
     if clear isa Automatic
         clear = Observable(alpha(bg[]) == 1 ? true : false)
@@ -269,34 +295,8 @@ function Scene(;
         end
     end
 
-    if lights isa Automatic
-        haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
-
-        if haskey(m_theme, :lights)
-            copyto!(scene.lights, m_theme.lights[])
-        else
-            haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
-            haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
-            haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
-
-            if haskey(m_theme, :ambient)
-                push!(scene.lights, AmbientLight(m_theme[:ambient][]))
-            end
-
-            push!(scene.lights, DirectionalLight(
-                m_theme[:light_color][], m_theme[:light_direction],
-                to_value(get(m_theme, :camera_relative_light, false))
-            ))
-        end
-    end
-
     return scene
 end
-
-get_directional_light(scene::Scene) = get_one_light(scene.lights, DirectionalLight)
-get_point_light(scene::Scene) = get_one_light(scene.lights, PointLight)
-get_ambient_light(scene::Scene) = get_one_light(scene.lights, AmbientLight)
-default_shading!(plot, scene::Scene) = default_shading!(plot, scene.lights)
 
 function Scene(
         parent::Scene;
@@ -483,13 +483,13 @@ function Base.empty!(scene::Scene; free=false)
 end
 
 function Base.push!(plot::Plot, subplot)
-    MakieCore.validate_attribute_keys(subplot)
+    validate_attribute_keys(subplot)
     subplot.parent = plot
     push!(plot.plots, subplot)
 end
 
 function Base.push!(scene::Scene, @nospecialize(plot::Plot))
-    MakieCore.validate_attribute_keys(plot)
+    validate_attribute_keys(plot)
     push!(scene.plots, plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
@@ -513,6 +513,7 @@ function free(plot::AbstractPlot)
         Observables.off(f)
     end
     foreach(free, plot.plots)
+    empty!(plot.attributes)
     # empty!(plot.plots)
     empty!(plot.deregister_callbacks)
     free(plot.transformation)
@@ -522,6 +523,12 @@ end
 # Note: can be called from scene finalizer
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     filter!(x -> x !== plot, scene.plots)
+
+    # Remove references to the plot compute graph from any parent compute graph.
+    # (E.g. the scene compute graph)
+    # This is meant to make the plot graph GC-able.
+    ComputePipeline.unsafe_disconnect_from_parents!(plot.attributes)
+
     # TODO, if we want to delete a subplot of a plot,
     # It won't be in scene.plots directly, but will still be deleted
     # by delete!(screen, scene, plot)
@@ -558,6 +565,10 @@ function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
         return
     end
+
+    # TODO: This requires surgery, disconnecting the plot from the old scene
+    # compute graph and connecting it to the new scene compute graph.
+    # unsafe_disconnect_from_parents!() + register_computation!() is not enough
 
     if is_space_compatible(plot, scene)
         obsfunc = connect!(transformation(scene), transformation(plot))
@@ -630,15 +641,13 @@ end
 update_cam!(x, bb::AbstractCamera, rect) = update_cam!(get_scene(x), bb, rect)
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
-function not_in_data_space(p)
-    !is_data_space(to_value(get(p, :space, :data)))
-end
+not_in_data_space(p) = !is_data_space(p)
 
 function center!(scene::Scene, padding=0.01, exclude = not_in_data_space)
     bb = boundingbox(scene, exclude)
     w = widths(bb)
-    padd = w .* padding
-    bb = Rect3d(minimum(bb) .- padd, w .+ 2padd)
+    pad = w .* padding
+    bb = Rect3d(minimum(bb) .- pad, w .+ 2pad)
     update_cam!(scene, bb)
     scene
 end
@@ -692,6 +701,8 @@ Backends may have a different definition of what is considered an atomic plot,
 but instead of overloading this function, they should create their own definition and pass it to `collect_atomic_plots`
 """
 is_atomic_plot(plot::Plot) = isempty(plot.plots)
+# Text is special, since it contains lines for latexstrings, but is still atomic itself
+is_atomic_plot(plot::Text) = true
 
 """
     collect_atomic_plots(scene::Scene, plots = AbstractPlot[]; is_atomic_plot = is_atomic_plot)
@@ -708,6 +719,15 @@ function collect_atomic_plots(xplot::Plot, plots=AbstractPlot[]; is_atomic_plot=
         for elem in xplot.plots
             collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
         end
+    end
+    return plots
+end
+
+# Text is atomic but contains another atomic (lines for latexstrings)
+function collect_atomic_plots(xplot::Text, plots=AbstractPlot[]; is_atomic_plot=is_atomic_plot)
+    push!(plots, xplot)
+    for elem in xplot.plots
+        collect_atomic_plots(elem, plots; is_atomic_plot=is_atomic_plot)
     end
     return plots
 end

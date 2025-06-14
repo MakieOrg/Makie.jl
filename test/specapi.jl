@@ -1,48 +1,83 @@
 import Makie.SpecApi as S
+using Makie.ComputePipeline
+
+function resolve_all!(plot)
+    for (k, v) in plot.attributes.outputs
+        v[]
+    end
+end
+# Track the changes from the backends view (we prune updates that don't actually change anything)
+function all_changes!(plot)
+    all_outputs = collect(keys(plot.attributes.outputs))
+    register_computation!(plot.attributes, all_outputs, [:changed]) do attr, changeset, _
+        res = Dict{Symbol, Any}()
+        for k in keys(attr)
+            changeset[k] && (res[k] = attr[k])
+        end
+        return (res,)
+    end
+end
+# This is a simpler version of the above, but isdirty(x) is conservative
+# And is true for any computed value depending on a dirty input.
+function check_changed(plot, changed)
+    for (k, v) in plot.attributes.outputs
+        @testset "changed $k" begin
+            if haskey(changed, k)
+                @test ComputePipeline.isdirty(v)
+                @test changed[k] == v[]
+            else
+                @test !ComputePipeline.isdirty(v)
+            end
+        end
+    end
+end
 
 @testset "diffing" begin
     @testset "update_plot!" begin
-        obs = Observable[]
+        oldspec = S.Scatter(1:4; cycle=[])
+        newspec = S.Scatter(1:4; cycle=[])
+
+        p = Makie.to_plot_object(newspec)
+        s = Scene()
+        plot!(s, p)
+        resolve_all!(s.plots[1])
+        updated = Makie.update_plot!(p, oldspec, newspec)
+
+
+
         oldspec = S.Scatter(1:4; cycle=[])
         newspec = S.Scatter(1:4; cycle=[])
         p = Makie.to_plot_object(newspec)
         s = Scene()
         plot!(s, p)
-        Makie.update_plot!(obs, p, oldspec, newspec)
-        @test isempty(obs)
-
-        newspec = S.Scatter(1:4; color=:red)
-        Makie.update_plot!(obs, p, oldspec, newspec)
+        all_changes!(s.plots[1])
+        s.plots[1].changed[] |> empty! # fetch one time, to initialize
+        updated = Makie.update_plot!(p, oldspec, newspec)
+        @test isempty(updated)
+        @test isempty(s.plots[1].changed[])
+        newspec = S.Scatter(1:4; color=:red,  cycle=[])
+        updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test length(obs) == 1
-        @test obs[1] === p.color
-
+        @test updated == Dict(:color => to_color(:red))
+        @test s.plots[1].changed[] == Dict(:color => to_color(:red), :raw_color => to_color(:red), :scaled_color => to_color(:red))
         newspec = S.Scatter(1:4; color=:green, cycle=[])
-        empty!(obs)
-        Makie.update_plot!(obs, p, oldspec, newspec)
+        updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test length(obs) == 1
-        @test obs[1] === p.color
-        @test obs[1].val == to_color(:green)
-
+        @test updated == Dict(:color => to_color(:green))
+        @test s.plots[1].changed[] == Dict(:color => to_color(:green), :raw_color => to_color(:green), :scaled_color => to_color(:green))
         newspec = S.Scatter(1:5; color=:green, cycle=[])
-        empty!(obs)
-        Makie.update_plot!(obs, p, oldspec, newspec)
+        updates = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test length(obs) == 1
-        @test obs[1] === p.args[1]
-
+        @test s.plots[1].args[][1] == updates[:arg1]
         oldspec = S.Scatter(1:5; color=:green, marker=:rect, cycle=[])
         newspec = S.Scatter(1:4; color=:red, marker=:circle, cycle=[])
-        empty!(obs)
         p = Makie.to_plot_object(oldspec)
         s = Scene()
         plot!(s, p)
-        Makie.update_plot!(obs, p, oldspec, newspec)
-        @test length(obs) == 3
-        @test obs[1] === p.args[1]
-        @test obs[2] === p.color
-        @test obs[3] === p.marker
+        updates = Makie.update_plot!(p, oldspec, newspec)
+        @test updates[:arg1] == p.arg1[]
+        @test updates[:color]  == p.color[]
+        @test Makie.to_spritemarker(updates[:marker]) == p.marker[]
     end
 
     @testset "diff_plotlist!" begin
@@ -50,25 +85,33 @@ import Makie.SpecApi as S
         plotspecs = [S.Scatter(1:4; color=:red), S.Scatter(1:4; color=:red)]
         reusable_plots = IdDict{PlotSpec,Plot}()
         obs_to_notify = Observable[]
-        new_plots = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, reusable_plots)
+        new_plots = Makie.diff_plotlist!(scene, plotspecs, nothing, reusable_plots)
         @test length(new_plots) == 2
         @test Set(scene.plots) == Set(values(new_plots))
-        @test isempty(obs_to_notify)
 
-        new_plots2 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, new_plots)
+        foreach(plot-> resolve_all!(plot), scene.plots)
+        new_plots2 = Makie.diff_plotlist!(scene, plotspecs, nothing, new_plots)
 
         @test isempty(new_plots) # they got all used up
         @test Set(scene.plots) == Set(values(new_plots2))
-        @test isempty(obs_to_notify)
+        check_changed(scene.plots[1], (;)) # changed without updating anything
+        check_changed(scene.plots[2], (;)) # changed without updating anything
 
         plotspecs = [S.Scatter(1:4; color=:yellow), S.Scatter(1:4; color=:green)]
-        new_plots3 = Makie.diff_plotlist!(scene, plotspecs, obs_to_notify, nothing, new_plots2)
+        plot1 = scene.plots[1]
+        plot2 = scene.plots[2]
+        all_changes!(plot1)
+        all_changes!(plot2)
+        plot1.changed[] # resolve once, all attributes will be changed on first resolve
+        plot2.changed[]
+        new_plots3 = Makie.diff_plotlist!(scene, plotspecs, nothing, new_plots2)
 
         @test isempty(new_plots) # they got all used up
         @test Set(scene.plots) == Set(values(new_plots3))
-        # TODO, and some point we should try to find the matching plot and just
-        # switch them, so we don't need an update!
-        @test Set(obs_to_notify) == Set([scene.plots[1].color, scene.plots[2].color])
+        yellow = to_color(:yellow)
+        green = to_color(:green)
+        plot1.changed[] == Dict(:color=>yellow, :raw_color=>yellow, :scaled_color => yellow)
+        plot2.changed[] == Dict(:color=>green, :raw_color=>green, :scaled_color => green)
     end
 end
 
@@ -108,10 +151,12 @@ struct ForwardAllAttributes end
 function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs...)
     return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
 end
+
 Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.attribute_names(T)...,)
+
 @testset "Forward all attribute without error" begin
     f, ax, pl = lines(ForwardAllAttributes(); color=:red)
-    @test pl.color[] == to_color(:red)
+    @test pl.color[] == :red
 end
 
 struct UsedAttributesStairs
@@ -126,7 +171,7 @@ end
 
 @testset "Used attributes with stair plot" begin
     f, ax, pl = stairs(UsedAttributesStairs([1, 2, 3], [1, 2, 3]))
-    @test !haskey(pl, :clamp_bincounts)
+    @test haskey(pl, :clamp_bincounts)
     @test !haskey(pl.plots[1], :clamp_bincounts)
 end
 
@@ -134,7 +179,7 @@ end
     ax = S.Axis(title="interaction")
     ax.then(axis-> on(println, events(axis).mouseposition))
     gl = S.GridLayout(ax)
-
+    @test gl.content[1][2] === ax
     f, _, pl = plot(gl)
     real_ax = f.content[1]
     mpos = events(real_ax).mouseposition
@@ -144,12 +189,12 @@ end
     @test first(ax.then_observers).f === println
 
     pl[1] = S.GridLayout(S.Axis(title="interaction"))
-    @test real_ax === f.content[1] # re-use axis
+    @test real_ax === f.content[1] # reuse axis
     @test length(mpos.listeners) == 1
     @test mpos.listeners[1][2] !== println
 end
 
-@testset "Blockspec re-use" begin
+@testset "Blockspec reuse" begin
     ax1 = S.Axis(; title="Title 1")
     ax2 = S.Axis(; title="Title 2")
     ax3 = S.Axis(; title="Title 3")
@@ -205,9 +250,9 @@ end
     # The value a categorical conversion maps to is somewhat arbitrary, so to make the test robust we
     # best use the actual look up
     vals = Makie.convert_dim_value.((ax.dim1_conversion[],), xvals)
-    @test first.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
+    @test first.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
     # test y values and expand_dimensions too
     f, ax, pl = barplot(xvals)
     vals = Makie.convert_dim_value.((ax.dim2_conversion[],), xvals)
-    @test last.(pl.converted[1][]) == vals[sortperm(xvals)] # sorted by ENUM value
+    @test last.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
 end

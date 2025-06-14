@@ -16,6 +16,22 @@ function extract_colorrange(@nospecialize(plot::AbstractPlot))::Vec2{Float64}
     end
 end
 
+
+function extract_colormap(plot::Arrows2D)
+    return ColorMapping(
+        plot.color[], plot.color, plot.colormap, plot.scaled_colorrange,
+        get(plot, :colorscale, Observable(identity)),
+        get(plot, :alpha, Observable(1.0)),
+        get(plot, :highclip, Observable(automatic)),
+        get(plot, :lowclip, Observable(automatic)),
+        get(plot, :nan_color, Observable(RGBAf(0,0,0,0))),
+    )
+end
+
+function extract_colormap(plot::Union{Arrows3D, StreamPlot})
+    return extract_colormap(plot.plots[1])
+end
+
 function extract_colormap(@nospecialize(plot::AbstractPlot))
     has_colorrange = haskey(plot, :colorrange) && !(plot.colorrange[] isa Makie.Automatic)
     if haskey(plot, :calculated_colors) && plot.calculated_colors[] isa Makie.ColorMapping
@@ -33,27 +49,24 @@ function extract_colormap(@nospecialize(plot::AbstractPlot))
         return nothing
     end
 end
-
-function extract_colormap(plot::Union{Arrows, StreamPlot})
-    return extract_colormap(plot.plots[1])
-end
+extract_colormap(@nospecialize(plot::ComputePlots)) = get_colormapping(plot)
 
 function extract_colormap(plot::Plot{volumeslices})
     return extract_colormap(plot.plots[1])
 end
 
 function extract_colormap(plot::Union{Contourf,Tricontourf})
-    levels = plot._computed_levels
+    levels = ComputePipeline.get_observable!(plot.computed_levels)
     limits = lift(l -> (l[1], l[end]), levels)
     function extend_color(color, computed)
         color === nothing && return automatic
         color == :auto || color == automatic && return computed
         return computed
     end
-    elow = lift(extend_color, plot.extendlow, plot._computed_extendlow)
-    ehigh = lift(extend_color, plot.extendhigh, plot._computed_extendhigh)
-    return ColorMapping(levels[], levels, plot._computed_colormap, limits, plot.colorscale, Observable(1.0),
-                    elow, ehigh, plot.nan_color)
+    elow = lift(extend_color, plot.extendlow, plot.computed_lowcolor)
+    ehigh = lift(extend_color, plot.extendhigh, plot.computed_highcolor)
+    return ColorMapping(levels[], levels, plot.computed_colormap, limits,
+        plot.colorscale, Observable(1.0), elow, ehigh, plot.nan_color)
 end
 
 function extract_colormap(plot::Voxels)
@@ -159,7 +172,12 @@ function initialize_block!(cb::Colorbar)
             if mapping_type === Makie.banded
                 error("Banded without a mapping is invalid. Please use colormap=cgrad(...; categorical=true)")
             elseif mapping_type === Makie.categorical
-                return convert(Vector{Float64}, sort!(unique(values)))
+                # First we find all unique values,
+                # then we throw out NaNs that are rendered independently anyway
+                # then we clamp the remaining values to the limits,
+                # remove remaining duplicates and sort
+                vals = sort(unique(clamp.(filter(!isnan, unique(values)), limits...)))
+                return convert(Vector{Float64}, vals)
             else
                 return convert(Vector{Float64}, LinRange(limits..., n))
             end

@@ -1,12 +1,12 @@
 using Dates, Observables
 import Unitful
-using Unitful: Quantity, @u_str, uconvert, ustrip
+using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
 
-const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.Units}
+const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.LogScaled,Unitful.Units}
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
-MakieCore.should_dim_convert(::Type{<:SupportedUnits}) = true
+should_dim_convert(::Type{<:SupportedUnits}) = true
 
 const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
 const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
@@ -23,14 +23,18 @@ unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
 unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
+unit_string(unit::T) where T <: Unitful.MixedUnits = string(unit)
+unit_string(unit::Unitful.LogScaled) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
+unit_string_long(unit::Unitful.LogScaled) = string(unit)
 
 is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
 is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
 is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
 is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
+is_compound_unit(::T) where T <: Union{Unitful.LogScaled, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = false
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -103,18 +107,24 @@ function best_unit(min, max)
     return all_units[index]
 end
 
+best_unit(min::LogScaled, max) = Unitful.logunit(min)
+best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
+
 unit_convert(::Automatic, x) = x
 
 function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     return unit_convert.(Ref(unit), x)
 end
 
+unit_convert(unit::Unitful.MixedUnits, x::AbstractArray) = unit_convert.(Ref(unit), x)
+
 # We always convert to preferred unit!
 function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
     conv = uconvert(to_free_unit(unit, value), value)
-    return Float64(ustrip(conv))
+    return float(ustrip(conv))
 end
 
+unit_convert(unit::T, value) where T <: Union{Unitful.MixedUnits, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = Float64(ustrip(value))
 
 # Overload conversion functions for Axis, to properly display units
 
@@ -137,10 +147,10 @@ using Unitful, CairoMakie
 scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 ```
 
-Fix unit to always use Meter & display unit in the xlabel:
+Fix unit to always use Meter & display unit in the ylabel:
 ```julia
 uc = Makie.UnitfulConversion(u"m"; units_in_label=false)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, xlabel="x (km)"))
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, ylabel="y (m)"))
 ```
 """
 struct UnitfulConversion <: AbstractDimConversion
@@ -155,10 +165,15 @@ function UnitfulConversion(unit=automatic; units_in_label=true)
     return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
 end
 
-function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
+function update_extrema!(conversion::UnitfulConversion, id::String, vals)
     conversion.automatic_units || return
-    eltype, extrema = eltype_extrema(value_obs[])
-    conversion.extrema[value_obs.id] = promote(Quantity.(extrema)...)
+
+    eltype, extrema = eltype_extrema(vals)
+    conversion.extrema[id] = if eltype <: Unitful.LogScaled
+        extrema
+    else
+        promote(Quantity.(extrema)...)
+    end
     imini, imaxi = extrema
     for (mini, maxi) in values(conversion.extrema)
         imini = min(imini, mini)
@@ -178,6 +193,10 @@ function update_extrema!(conversion::UnitfulConversion, value_obs::Observable)
     end
     if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
+        # TODO, somehow we need another notify to update the axis label
+        # The interactions in Lineaxis are too complex to debug this in a sane amount of time
+        # So, I think we should just revisit this once we move lineaxis to use compute graph
+        notify(conversion.unit)
     end
 end
 
@@ -209,18 +228,15 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function convert_dim_observable(conversion::UnitfulConversion, value_obs::Observable, deregister)
-    result = map(conversion.unit, value_obs; ignore_equal_values=true) do unit, values
-        if !isempty(values)
-            # try if conversion works, to through error if not!
-            # Is there a function for this to check in Unitful?
-            unit_convert(unit, values[1])
-        end
-        update_extrema!(conversion, value_obs)
-        return unit_convert(conversion.unit[], values)
+function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)
+    unit = conversion.unit[]
+    if !isempty(values)
+        # try if conversion works, to through error if not!
+        # Is there a function for this to check in Unitful?
+        unit_convert(unit, values[1])
     end
-    append!(deregister, result.inputs)
-    return result
+    update_extrema!(conversion, string(objectid(attr)), values)
+    return unit_convert(conversion.unit[], values)
 end
 
 function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)

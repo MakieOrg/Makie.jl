@@ -36,15 +36,31 @@ function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
 end
 
 """
-Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
-value is nothing
+    default_automatic(a, default)
+
+Returns `default` if `a == automatic` and `a` otherwise.
 """
-function replace_automatic!(f, dict, key)
-    haskey(dict, key) || return (dict[key] = f())
-    val = dict[key]
-    to_value(val) == automatic && return (dict[key] = f())
-    val
+default_automatic(::Automatic, b) = b
+default_automatic(a, b) = a
+default_automatic(x, ::Automatic) = throw(MethodError(default_automatic, (x, automatic)))
+
+"""
+    default_automatic(default)
+
+Creates a function `x -> default_automatic(x, default)` which returns `x` if it is
+not automatic and `default` otherwise.
+"""
+default_automatic(::Automatic) = throw(MethodError(default_automatic, (automatic)))
+default_automatic(default) = x -> default_automatic(x, default)
+
+function replace_automatic!(args...)
+    error(
+    "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
+    "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
+    "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
+    )
 end
+
 
 is_unitrange(x) = (false, 0:0)
 is_unitrange(x::AbstractRange) = (true, x)
@@ -208,7 +224,6 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
         # skip if there's a zero length element (like an empty annotations collection, etc)
         # this differs from standard broadcasting logic in which all non-scalar shapes have to match
         0 in lengths && return
-
         for i in 1:maxlen
             Base.Cartesian.@ncall $N f (j -> attr_broadcast_getindex(args[j], i))
         end
@@ -232,7 +247,7 @@ for (raw_idx, idx) in enumerate(indices)
 end
 ```
 """
-@generated function broadcast_foreach_index(f, arg1, indices, args...)
+@generated function broadcast_foreach_index(f, indices, args...)
     N = length(args)
     quote
         lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
@@ -244,15 +259,12 @@ end
         if (maxlen > 1) && (length(last(indices)) > maxlen) # assuming indices sorted
             error("Indices must be in range. Found $(last(indices)) > $maxlen.")
         end
-        if length(indices) != length(arg1)
-            error("First arg out of bounds.")
-        end
         # skip if there's a zero length element (like an empty annotations collection, etc)
         # this differs from standard broadcasting logic in which all non-scalar shapes have to match
         0 in lengths && return
 
-        for (raw, i) in enumerate(indices)
-            Base.Cartesian.@ncall $N f arg1[raw] (j -> attr_broadcast_getindex(args[j], i))
+        for i in indices
+            Base.Cartesian.@ncall $N f (j -> attr_broadcast_getindex(args[j], i))
         end
 
         return
@@ -347,10 +359,10 @@ function peaks(n=49)
 end
 
 
-function attribute_names(PlotType)
-    # TODO, have all plot types store their attribute names
-    return keys(default_theme(nothing, PlotType))
-end
+# function attribute_names(PlotType)
+#     # TODO, have all plot types store their attribute names
+#     return keys(default_theme(nothing, PlotType))
+# end
 
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
@@ -358,6 +370,7 @@ get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
 
 """
     surface_normals(x, y, z)
+
 Normals for a surface defined on the grid xy
 """
 function surface_normals(x, y, z)
@@ -386,8 +399,8 @@ Returns an un-normalized normal vector for the triangle formed by the three inpu
 Skips any combination of the inputs for which any point has a NaN component.
 """
 function nan_aware_orthogonal_vector(v1, v2, v3)
-    (isnan(v1) || isnan(v2) || isnan(v3)) && return Vec3f(0)
-    return Vec3f(cross(v2 - v1, v3 - v1))
+    (isnan(v1) || isnan(v2) || isnan(v3)) && return zero(v1)
+    return Vec3(cross(v2 - v1, v3 - v1))
 end
 
 """
@@ -399,35 +412,33 @@ which ignores all contributions from points with `NaN` components.
 Equivalent in application to `GeometryBasics.normals`.
 """
 function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
-    normals_result = zeros(Vec3f, length(vertices))
+    normals_result = zeros(Vec3{T}, length(vertices))
 
     for face in faces
-
         v1, v2, v3 = vertices[face]
         # we can get away with two edges since faces are planar.
         n = nan_aware_orthogonal_vector(v1, v2, v3)
 
-        for i in 1:length(F)
-            fi = face[i]
+        for fi in face
             normals_result[fi] = normals_result[fi] + n
         end
     end
-    normals_result .= GeometryBasics.normalize.(normals_result)
-    return normals_result
+    normals_result .= normalize.(normals_result)
+    return convert(Vector{Vec3f}, normals_result)
 end
 
 function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
     return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
 end
 
-function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, space = :data)
+function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
-    ps = matrix_grid(p -> apply_transform(transform_func, p, space), xs, ys, zs)
+    ps = matrix_grid(p -> apply_transform(transform_func, p), xs, ys, zs)
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
     rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
-    # we use quad faces so that color handling is consistent
+    # we use quad faces so that nan handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
     faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
@@ -435,7 +446,7 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity, spa
     # uv = map(x-> Vec2f(1f0 - x[2], 1f0 - x[1]), decompose_uv(rect))
     uv = decompose_uv(rect)
     # return a mesh with known uvs and normals.
-    return GeometryBasics.Mesh(ps, faces; uv=uv, normal = nan_aware_normals(ps, faces))
+    return GeometryBasics.Mesh(ps, faces, uv = uv, normal = nan_aware_normals(ps, faces))
 end
 
 
@@ -463,7 +474,7 @@ end
 
 function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
     if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
-        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[[1,2,2,1], [1,1,2,2]])
+        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[:])
     else
         ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
     end
@@ -483,9 +494,19 @@ function extract_keys(attributes, keys)
 end
 
 # Scalar - Vector getindex
-sv_getindex(v::AbstractVector, i::Integer) = v[i]
+"""
+    sv_getindex(x, index)
+
+Returns `x[i]` if x is a `AbstractArray` and `x` otherwise. `VecTypes` and `Mat`
+are treated as values rather than Arrays for this, i.e. they do not get indexed.
+"""
+sv_getindex(v::AbstractArray, i::Integer) = v[i]
 sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+sv_getindex(x::Mat, ::Integer) = x
+# for CairoMakie meshscatter we don't want images and patterns to get indexed
+sv_getindex(x::AbstractMatrix{<: Colorant}, ::Integer) = x
+sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
 # TODO: move to GeometryBasics
 function corners(rect::Rect2{T}) where T
@@ -572,10 +593,14 @@ end
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot})
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol}=Symbol[])
+    # TODO: This currently happens for ComputeGraph passthrough already
     valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes)
+    existing_attributes = keys(plot.attributes.outputs)
     to_drop = setdiff(existing_attributes, valid_attributes)
+    # Model is always shared, but should not be shared and therefore dropped
+    push!(to_drop, :model)
+    union!(to_drop, drop)
     return drop_attributes(plot, to_drop)
 end
 
@@ -584,6 +609,13 @@ function drop_attributes(plot::Plot, to_drop::Symbol...)
 end
 
 function drop_attributes(plot::Plot, to_drop::Set{Symbol})
-    attr = attributes(attributes(plot))
-    return Attributes([(k => v) for (k, v) in attr if !(k in to_drop)])
+    attr = plot.attributes.outputs
+    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
 end
+
+isscalar(x::StaticVector) = true
+isscalar(x::Mat) = true
+isscalar(x::AbstractArray) = false
+isscalar(x::Billboard) = isscalar(x.rotation)
+isscalar(x::Observable) = isscalar(x[])
+isscalar(x) = true

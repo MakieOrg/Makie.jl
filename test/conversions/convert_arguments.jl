@@ -10,13 +10,17 @@ using Makie.SparseArrays
 using GeometryBasics
 
 function apply_conversion(trait, args...)
-    return Makie.convert_arguments(trait, args...)
+    expanded = Makie.expand_dimensions(trait, args...)
+    if isnothing(expanded)
+        return Makie.convert_arguments(trait, args...)
+    else
+        return Makie.convert_arguments(trait, expanded...)
+    end
 end
 
 @testset "tuples" begin
     @test convert_arguments(PointBased(), [(1, 2), (1.0, 1.0f0)]) == (Point{2,Float64}[[1.0, 2.0], [1.0, 1.0]],)
 end
-
 
 struct CustomType
     v::Float64
@@ -70,6 +74,7 @@ end
 
 # custom vector type to ensure that the conversion can be overridden for vectors
 struct MyConvVector <: AbstractVector{Float64} end
+Makie.expand_dimensions(::PointBased, ::MyConvVector) = nothing
 Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
 
 @testset "convert_arguments" begin
@@ -374,17 +379,12 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 # If a recipe transforms its input arguments it is fine for it
                 # to keep T_in in apply_conversion.
 
-                @testset "Annotations" begin
-                    @test apply_conversion(Annotations, strings, ps2) isa Tuple{Vector{Tuple{String, Point{2, T_out}}}}
-                    @test apply_conversion(Annotations, strings, ps3) isa Tuple{Vector{Tuple{String, Point{3, T_out}}}}
-                end
-
                 @testset "Arrows" begin
-                    @test apply_conversion(Arrows, xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Vec2{T_out}}}
-                    @test apply_conversion(Arrows, xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Vec3{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, xs, ys) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, m, m) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, zs, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Vector{Point3{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, identity) isa Tuple{Vector{Point2{T_out}}, Vector{Point2{T_out}}}
+                    @test apply_conversion(Makie.ArrowLike(), xs, ys, zs, identity) isa Tuple{Vector{Point3{T_out}}, Vector{Point3{T_out}}}
                 end
 
                 @testset "Band" begin
@@ -478,10 +478,10 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 # pure 3D plots don't implement Float64 -> Float32 rescaling yet
                 @testset "Voxels" begin
                     @test_throws ErrorException apply_conversion(Voxels, xs, ys, zs, vol)
-                    @test apply_conversion(Voxels, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, i, i, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, t, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
-                    @test apply_conversion(Voxels, i, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{UInt8, 3}}
+                    @test apply_conversion(Voxels, vol)          isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, i, i, i, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, t, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
+                    @test apply_conversion(Voxels, i, t, t, vol) isa Tuple{EndPoints{Float32}, EndPoints{Float32}, EndPoints{Float32}, Array{T_in, 3}}
                 end
 
                 @testset "Wireframe" begin
@@ -519,5 +519,12 @@ end
         @test nan_equal(convert_arguments(PointBased(), ls1)[1], ps12)
         @test nan_equal(convert_arguments(PointBased(), ls2)[1], ps12)
         @test nan_equal(convert_arguments(PointBased(), ls3)[1], ps3)
+    end
+
+    @testset "Lines" begin
+        r = Rect3f(0,0,0,1,1,1)
+        ps = Point3f[[0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.0, 1.0, 1.0], [1.0, 0.0, 0.0], [1.0, 0.0, 1.0], [1.0, 1.0, 0.0], [1.0, 1.0, 1.0], [NaN, NaN, NaN]]
+        ps = ps[[1, 3, 4, 2, 1, 5, 6, 2, 9, 6, 8, 7, 5, 9, 8, 4, 9, 7, 3]]
+        @test nan_equal(convert_arguments(Lines, r)[1], ps)
     end
 end

@@ -9,12 +9,11 @@ user-defined data structure for different existing recipes.
 In this tutorial, we will show you how to teach Makie to plot our custom data type `MyHist` that is
 a simplified histogram type.
 
-To define recipes, one only needs to use `MakieCore.jl`, this is especially handy when you're a package
-developer and want to avoid depend on the full Makie.jl. For demonstration purpose, this tutorial
+For demonstration purpose, this tutorial
 will use `CairoMakie.jl` to visualize things as we go.
 
 ```@example recipe
-using MakieCore, CairoMakie
+using CairoMakie
 CairoMakie.activate!() # hide
 
 struct MyHist

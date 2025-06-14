@@ -24,6 +24,15 @@ function Base.setindex!(conversions::DimConversions, value::Observable, i::Int)
     end
 end
 
+function needs_dimconvert(conversions::DimConversions)
+    for i in 1:3
+        if !(conversions[i] isa Union{Nothing,NoDimConversion})
+            return true
+        end
+    end
+    return false
+end
+
 function Base.setindex!(conversions::DimConversions, value, i::Int)
     isnothing(value) && return # ignore no conversions
     conversions[i] === value && return # ignore same conversion
@@ -55,11 +64,9 @@ function convert_dim_value(conversion::AbstractDimConversion, value, deregister)
     error("AbstractDimConversion $(typeof(conversion)) not supported for value of type $(typeof(value))")
 end
 
-using MakieCore: should_dim_convert
-
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-MakieCore.should_dim_convert(::Type{<:Real}) = true
+should_dim_convert(::Type{<:Real}) = false
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
@@ -69,10 +76,6 @@ end
 function get_ticks(::Union{Nothing,NoDimConversion}, ticks, scale, formatter, vmin, vmax)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
-
-# The below is defined in MakieCore, to be accessible by `@recipe`
-# MakieCore.should_dim_convert(eltype) = false
-
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
@@ -86,6 +89,7 @@ function get_conversions(ax::AbstractAxis)
         return nothing
     end
 end
+
 function get_conversions(plot::Plot)
     if haskey(plot.kw, :dim_conversions)
         return to_value(plot.kw[:dim_conversions])
@@ -111,7 +115,7 @@ function get_conversions(attr::Union{Attributes, Dict, NamedTuple})
 end
 
 function dim_conversion_from_args(values)
-    return create_dim_conversion(MakieCore.get_element_type(values))
+    return create_dim_conversion(get_element_type(values))
 end
 
 function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
@@ -172,6 +176,17 @@ function needs_tick_update_observable(conversion::Observable)
     else
         return needs_tick_update_observable(conversion[])
     end
+end
+
+convert_dim_value(conv, attr, value, last_value) = value
+
+function update_dim_conversion!(conversions::DimConversions, dim, value)
+    conversion = conversions[dim]
+    if !(conversion isa Union{Nothing,NoDimConversion})
+        return
+    end
+    c = dim_conversion_from_args(value)
+    conversions[dim] = c
 end
 
 function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)

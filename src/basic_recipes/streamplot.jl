@@ -35,8 +35,8 @@ See the function `Makie.streamplot_impl` for implementation details.
     joinstyle = @inherit joinstyle
     miter_limit = @inherit miter_limit
     linestyle = nothing
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
@@ -59,6 +59,15 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
 end
 
 scatterfun(N) = N == 2 ? scatter! : meshscatter!
+
+function arrow_head(N, ::Automatic, quality)
+    if N == 2
+        return :utriangle
+    else
+        return Tessellation(Cone(Point3f(0), Point3f(0,0,1), 0.5f0), quality)
+    end
+end
+arrow_head(N, marker, quality) = marker
 
 """
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
@@ -173,8 +182,8 @@ function plot!(p::StreamPlot)
         end
         streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
     end
-    colormap_args = MakieCore.colormap_attributes(p)
-    generic_plot_attributes = MakieCore.generic_plot_attributes(p)
+    colormap_args = colormap_attributes(p)
+    generic_plot_attributes = Makie.generic_plot_attributes(p)
 
     lines!(
         p,

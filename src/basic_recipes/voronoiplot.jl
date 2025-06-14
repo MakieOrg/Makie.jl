@@ -33,7 +33,7 @@ DelaunayTriangulation.jl.
     unbounded_edge_extension_factor=0.1
     "Sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`."
     clip=automatic
-    MakieCore.mixin_colormap_attributes()...
+    mixin_colormap_attributes()...
 end
 
 preferred_axis_type(::Voronoiplot) = Axis
@@ -99,7 +99,7 @@ function get_voronoi_tiles!(generators, polygons, vorn, bbox)
     sizehint!(polygons, DelTri.num_polygons(vorn))
 
     for i in DelTri.each_generator(vorn)
-        !DelTri.has_polygon(vorn, i) && continue 
+        !DelTri.has_polygon(vorn, i) && continue
         polygon_coords = DelTri.get_polygon_coordinates(vorn, i, voronoi_bbox(bbox))
         polygon_coords_2f = map(polygon_coords) do coords
             return Point2f(DelTri.getxy(coords))
@@ -122,19 +122,17 @@ convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(
 convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
 function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
-    attr = copy(p.attributes)
-    smooth = pop!(attr, :smooth)
-
     # from call pattern (::Vector, ::Vector, ::Matrix)
     if N == 3
         ps = map(ps -> Point2f.(ps), p, p[1])
-        attr[:color] = map(ps -> last.(ps), p, p[1])
+        color = map(ps -> last.(ps), p, p[1])
     else
         ps = p[1]
+        color = p.color
     end
 
     # Handle transform_func early so tessellation is in cartesian space.
-    vorn = map(p, p.transformation.transform_func, ps, smooth) do tf, ps, smooth
+    vorn = map(p, p.transformation.transform_func, ps, p.smooth) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
         tri = DelTri.triangulate(transformed, randomise = false)
         vorn = DelTri.voronoi(tri, clip = smooth, smooth = smooth, randomise = false)
@@ -142,7 +140,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    attr[:clip] = map(p, pop!(attr, :clip), p.unbounded_edge_extension_factor,
+    clip = map(p, p.clip, p.unbounded_edge_extension_factor,
                               transform_func_obs(p), ps) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(p -> p[1 + tf.theta_as_x], ps) * (1 + ext)
@@ -151,15 +149,16 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
             return bb
         end
     end
-    attr[:transformation] = Transformation(p.transformation; transform_func=identity)
-    return voronoiplot!(p, attr, vorn)
+
+    return voronoiplot!(p, Attributes(p), vorn, transformation = :inherit_model,
+        color = color, clip = clip)
 end
 
 function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
-        return Rect3d(p.converted[1][])
+        return Rect3d(p[1][])
     else
         # First component is either another Voronoiplot or a poly plot. Both
         # cases span the full limits of the plot
@@ -173,7 +172,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
     polygons = Observable(PolyType[])
 
-    p.attributes[:_calculated_colors] = map(p, p.color, p[1]) do color, vorn
+    calculated_colors = map(p, p.color, p[1]) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
             cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
@@ -206,7 +205,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     poly!(p, polygons;
           strokecolor=p.strokecolor,
           strokewidth=p.strokewidth,
-          color=p._calculated_colors,
+          color=calculated_colors,
           colormap=p.colormap,
           colorscale=p.colorscale,
           colorrange=p.colorrange,

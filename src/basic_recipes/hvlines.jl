@@ -11,7 +11,7 @@ they are broadcast to calculate the final line segments.
     xmin = 0
     "The end of the lines in relative axis units (0 to 1) along the x dimension."
     xmax = 1
-    MakieCore.documented_attributes(LineSegments)...
+    documented_attributes(LineSegments)...
     cycle = [:color]
 end
 
@@ -28,7 +28,7 @@ they are broadcast to calculate the final line segments.
     ymin = 0
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
     ymax = 1
-    MakieCore.documented_attributes(LineSegments)...
+    documented_attributes(LineSegments)...
     cycle = [:color]
 end
 
@@ -44,17 +44,11 @@ function projview_to_2d_limits(plot::AbstractPlot)
 end
 
 function Makie.plot!(p::Union{HLines, VLines})
-    scene = parent_scene(p)
-    transf = transform_func_obs(scene)
-    limits = projview_to_2d_limits(p)
-
-    points = Observable(Point2d[])
-
-    mi = p isa HLines ? p.xmin : p.ymin
-    ma = p isa HLines ? p.xmax : p.ymax
-
-    onany(p, limits, p[1], mi, ma, transf) do lims, vals, mi, ma, transf
-        empty!(points[])
+    mi = p isa HLines ? (:xmin) : (:ymin)
+    ma = p isa HLines ? (:xmax) : (:ymax)
+    add_axis_limits!(p)
+    map!(p.attributes, [:axis_limits, :arg1, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
+        points = Point2d[]
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
         broadcast_foreach(vals, mi, ma) do val, mi, ma
@@ -62,26 +56,19 @@ function Makie.plot!(p::Union{HLines, VLines})
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
                 val = _apply_y_transform(transf, val)
-                push!(points[], Point2d(x_mi, val))
-                push!(points[], Point2d(x_ma, val))
+                push!(points, Point2d(x_mi, val))
+                push!(points, Point2d(x_ma, val))
             elseif p isa VLines
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
                 val = _apply_x_transform(transf, val)
-                push!(points[], Point2d(val, y_mi))
-                push!(points[], Point2d(val, y_ma))
+                push!(points, Point2d(val, y_mi))
+                push!(points, Point2d(val, y_ma))
             end
         end
-        notify(points)
+        return points
     end
-
-    notify(p[1])
-
-    line_attributes = copy(p.attributes)
-    foreach(key-> delete!(line_attributes, key), [:ymin, :ymax, :xmin, :xmax, :xautolimits, :yautolimits])
-    # Drop transform_func because we handle it manually
-    line_attributes[:transformation] = Transformation(p, transform_func = identity)
-    linesegments!(p, line_attributes, points)
+    linesegments!(p, Attributes(p), p.points, transformation = :inherit_model)
     p
 end
 

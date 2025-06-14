@@ -127,8 +127,31 @@ export px
 
 ########################################
 
+"""
+    spaces()
+
+Returns the currently available `space` values:
+- `:data`: Corresponds to the space defined by the parent scenes camera.
+- `:pixel`: Corresponds to a space using pixel units as defined by the parent scenes viewport.
+- `:relative`: Corresponds to a space where (x, y, z) is normalized to a 0..1 range (within the parent scenes viewport).
+- `:clip`: Corresponds to a -1..1 normalized space (within the parent scenes viewport).
+
+Note that `space` only affects projections, i.e. it has no effect on plot transformations.
+As such `:data` space does not correspond to the data passed to a plot, but the data after transformations are applied.
+"""
 spaces() = (:data, :pixel, :relative, :clip)
-is_data_space(space) = space === :data
-is_pixel_space(space) = space === :pixel
-is_relative_space(space) = space === :relative
-is_clip_space(space) = space === :clip
+
+is_data_space(p::Plot) = is_data_space(to_value(get(p, :space, :data)))
+is_pixel_space(p::Plot) = is_pixel_space(to_value(get(p, :space, :data)))
+is_relative_space(p::Plot) = is_relative_space(to_value(get(p, :space, :data)))
+is_clip_space(p::Plot) = is_clip_space(to_value(get(p, :space, :data)))
+
+is_data_space(space::Observable) = is_data_space(space[])
+is_pixel_space(space::Observable) = is_pixel_space(space[])
+is_relative_space(space::Observable) = is_relative_space(space[])
+is_clip_space(space::Observable) = is_clip_space(space[])
+
+is_data_space(space::Symbol) = space === :data
+is_pixel_space(space::Symbol) = space === :pixel
+is_relative_space(space::Symbol) = space === :relative
+is_clip_space(space::Symbol) = space === :clip

@@ -18,8 +18,11 @@ flat in int plane_dim;
 flat in int plane_front;
 #endif
 
-uniform int num_clip_planes;
-uniform vec4 clip_planes[8];
+uniform int uniform_num_clip_planes;
+uniform vec4 uniform_clip_planes[8];
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 vec4 debug_color(uint id) {
     return vec4(
@@ -31,33 +34,58 @@ vec4 debug_color(uint id) {
 }
 vec4 debug_color(int id) { return debug_color(uint(id)); }
 
-vec4 get_color(bool color, bool color_map, bool uv_map, int id) {
+// unused but compilation requires it
+mat3x2 get_uv_transform_mat(bool uv_transform, int id, int side) {
+    return mat3x2(1,0,0,1,0,0);
+}
+mat3x2 get_uv_transform_mat(sampler2D uv_transform, int id, int side) {
+    vec2 part1 = texelFetch(uv_transform, ivec2(0, id-1), 0).xy;
+    vec2 part2 = texelFetch(uv_transform, ivec2(1, id-1), 0).xy;
+    vec2 part3 = texelFetch(uv_transform, ivec2(2, id-1), 0).xy;
+    return mat3x2(part1, part2, part3);
+}
+mat3x2 get_uv_transform_mat(sampler3D uv_transform, int id, int side) {
+    vec2 part1 = texelFetch(uv_transform, ivec3(0, id-1, side), 0).xy;
+    vec2 part2 = texelFetch(uv_transform, ivec3(1, id-1, side), 0).xy;
+    vec2 part3 = texelFetch(uv_transform, ivec3(2, id-1, side), 0).xy;
+    return mat3x2(part1, part2, part3);
+}
+
+
+vec4 get_color_from_texture(sampler2D color, int id) {
+    mat3x2 uvt = get_uv_transform_mat(wgl_uv_transform, id, o_side);
+    // compute uv normalized to voxel
+    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
+    vec2 voxel_uv = mod(o_tex_uv, 1.0);
+    // correct for shrinking due to gap
+    voxel_uv = (voxel_uv - vec2(0.5 * gap)) / vec2(1.0 - gap);
+    voxel_uv = uvt * vec3(voxel_uv, 1);
+    return texture(color, voxel_uv);
+}
+
+vec4 get_color(bool color, bool color_map, bool uv_transform, int id) {
     return debug_color(id);
 }
-vec4 get_color(bool color, sampler2D color_map, bool uv_map, int id) {
+vec4 get_color(bool color, sampler2D color_map, bool uv_transform, int id) {
     return texelFetch(color_map, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, sampler2D color_map, bool uv_map, int id) {
+vec4 get_color(sampler2D color, sampler2D color_map, bool uv_transform, int id) {
     return texelFetch(color, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, bool color_map, bool uv_map, int id) {
+vec4 get_color(sampler2D color, bool color_map, bool uv_transform, int id) {
     return texelFetch(color, ivec2(id-1, 0), 0);
 }
-vec4 get_color(sampler2D color, sampler2D color_map, sampler2D uv_map, int id) {
-    vec4 lrbt = texelFetch(uv_map, ivec2(id-1, o_side), 0);
-    // compute uv normalized to voxel
-    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
-    vec2 voxel_uv = mod(o_tex_uv, 1.0);
-    voxel_uv = mix(lrbt.xz, lrbt.yw, voxel_uv);
-    return texture(color, voxel_uv);
+vec4 get_color(sampler2D color, sampler2D color_map, sampler2D uv_transform, int id) {
+    return get_color_from_texture(color, id);
 }
-vec4 get_color(sampler2D color, bool color_map, sampler2D uv_map, int id) {
-    vec4 lrbt = texelFetch(uv_map, ivec2(id-1, o_side), 0);
-    // compute uv normalized to voxel
-    // TODO: float precision causes this to wrap sometimes (e.g. 5.999..7.0002)
-    vec2 voxel_uv = mod(o_tex_uv, 1.0);
-    voxel_uv = mix(lrbt.xz, lrbt.yw, voxel_uv);
-    return texture(color, voxel_uv);
+vec4 get_color(sampler2D color, bool color_map, sampler2D uv_transform, int id) {
+    return get_color_from_texture(color, id);
+}
+vec4 get_color(sampler2D color, sampler2D color_map, sampler3D uv_transform, int id) {
+    return get_color_from_texture(color, id);
+}
+vec4 get_color(sampler2D color, bool color_map, sampler3D uv_transform, int id) {
+    return get_color_from_texture(color, id);
 }
 
 // Smoothes out edge around 0 light intensity, see GLMakie
@@ -80,7 +108,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -90,11 +118,11 @@ bool is_clipped()
 {
     float d;
     // get center pos of this voxel
-    vec3 size = vec3(textureSize(voxel_id, 0).xyz);
+    vec3 size = vec3(textureSize(chunk_u8, 0).xyz);
     vec3 xyz = vec3(ivec3(o_uvw * size)) + vec3(0.5);
-    for (int i = 0; i < num_clip_planes; i++) {
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
         // distance between clip plane and voxel center
-        d = dot(xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d = dot(xyz, uniform_clip_planes[i].xyz) - uniform_clip_planes[i].w;
         if (d < 0.0)
             return true;
     }
@@ -128,7 +156,7 @@ void main()
         discard;
 
     // grab voxel id
-    int id = int(texture(voxel_id, o_uvw).x);
+    int id = int(texture(chunk_u8, o_uvw).x);
 
     // id is invisible so we simply discard
     if (id == 0) {
@@ -136,7 +164,7 @@ void main()
     }
 
     // otherwise we draw. For now just some color...
-    vec4 voxel_color = get_color(color, color_map, uv_map, id);
+    vec4 voxel_color = get_color(wgl_color, wgl_colormap, wgl_uv_transform, id);
 
 #ifdef DEBUG_RENDER_ORDER
     if (plane_dim != DEBUG_RENDER_ORDER)
@@ -145,13 +173,13 @@ void main()
 #endif
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 light = blinnphong(o_normal, normalize(o_camdir), L, voxel_color.rgb);
-        voxel_color.rgb = get_ambient() * voxel_color.rgb + light;
+        voxel_color.rgb = ambient * voxel_color.rgb + light;
     }
 
     if (picking) {
-        uvec3 size = uvec3(textureSize(voxel_id, 0).xyz);
+        uvec3 size = uvec3(textureSize(chunk_u8, 0).xyz);
         uvec3 idx = clamp(uvec3(o_uvw * vec3(size)), uvec3(0), size - uvec3(1));
         uint lin = idx.x + size.x * (idx.y + size.y * idx.z);
         fragment_color = pack_int(object_id, lin);

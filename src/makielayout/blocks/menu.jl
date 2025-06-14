@@ -2,7 +2,6 @@ function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
     listheight = Observable(0.0; ignore_equal_values=true)
-
     # the direction is auto-chosen as up if there is too little space below and if the space below
     # is smaller than above
     _direction = Observable{Symbol}(:none; ignore_equal_values=true)
@@ -23,18 +22,25 @@ function initialize_block!(m::Menu; default = 1)
         end
     end
 
-    scenearea = lift(blockscene, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
-                     ignore_equal_values=true) do bbox, h, d, open
-        !open ?
-            round_to_IRect2D(BBox(left(bbox), right(bbox), 0, 0)) :
-            round_to_IRect2D(BBox(
+    scenearea = Observable(Rect2i(0,0,0,0), ignore_equal_values=true)
+    map!(blockscene, scenearea, m.layoutobservables.computedbbox, listheight, _direction, m.is_open;
+                     update = true) do bbox, h, d, open
+        if open
+            return round_to_IRect2D(BBox(
                 left(bbox),
                 right(bbox),
                 d === :down ? max(0, bottom(bbox) - h) : top(bbox),
-                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))))
+                d === :down ? bottom(bbox) : min(top(bbox) + h, top(blockscene.viewport[]))
+            ))
+        else
+            # If the scene is not visible the scene placement and size does not
+            # matter for rendering. We still need to set the size to 0 for
+            # interactions though.
+            return Rect2i(0,0,0,0)
+        end
     end
 
-    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true)
+    menuscene = Scene(blockscene, scenearea, camera = campixel!, clear=true, visible = m.is_open)
     translate!(menuscene, 0, 0, 200)
 
     onany(blockscene, scenearea, listheight) do area, listheight
@@ -60,7 +66,6 @@ function initialize_block!(m::Menu; default = 1)
         blockscene, selectionarea, color = m.selection_cell_color_inactive[];
         inspectable = false
     )
-
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values=true)
     selectiontext = text!(
         blockscene, selectiontextpos, text = selected_text, align = (:left, :center),
@@ -107,29 +112,41 @@ function initialize_block!(m::Menu; default = 1)
     list_y_bounds = Ref(Float32[])
 
     optionpolys = poly!(menuscene, optionrects, color = optionpolycolors, inspectable = false)
+
     optiontexts = text!(menuscene, textpositions, text = optionstrings, align = (:left, :center),
         fontsize = m.fontsize, inspectable = false)
 
-    onany(blockscene, optionstrings, m.textpadding, m.layoutobservables.computedbbox) do _, pad, bbox
-        gcs = optiontexts.plots[1][1][]::Vector{GlyphCollection}
-        bbs = map(x -> string_boundingbox(x, zero(Point3f), Quaternion(0, 0, 0, 0)), gcs)
-        heights = map(bb -> height(bb) + pad[3] + pad[4], bbs)
-        heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
+    # listheight needs to be up to date before showing the menuscene so that its
+    # direction is correct
+    gc_heights = map(blockscene, fast_string_boundingboxes_obs(optiontexts), m.textpadding) do bbs, pad
+        heights = map(size -> size[2] + pad[3] + pad[4], widths.(bbs))
         h = sum(heights)
+        listheight[] = h
+        return (heights, h)
+    end
+
+    onany(blockscene, gc_heights, scenearea) do (heights, h), bbox
+        # No need to update when the scene is hidden
+        widths(bbox) == Vec2i(0) && return
+
+        pad = m.textpadding[] # gc_heights triggers on padding, so we don't need to react to it
+        # listheight[] = h
+
+        heights_cumsum = [zero(eltype(heights)); cumsum(heights)]
         list_y_bounds[] = h .- heights_cumsum
         texts_y = @views h .- 0.5 .* (heights_cumsum[1:end-1] .+ heights_cumsum[2:end])
         textpositions[] = Point2f.(pad[1], texts_y)
-        listheight[] = h
         w_bbox = width(bbox)
         # need to manipulate the vectors themselves, otherwise update errors when lengths change
-        resize!(optionrects.val, length(bbs))
+        resize!(optionrects.val, length(heights))
 
-        optionrects.val .= map(eachindex(bbs)) do i
+        optionrects.val .= map(eachindex(heights)) do i
             BBox(0, w_bbox, h - heights_cumsum[i+1], h - heights_cumsum[i])
         end
 
         update_option_colors!(0)
         notify(optionrects)
+        return
     end
     notify(optionstrings)
 
@@ -178,8 +195,9 @@ function initialize_block!(m::Menu; default = 1)
         is_over_button = false
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
-            # Is inside the expanded menu selection
-            if mouseover(menuscene, optionpolys, optiontexts)
+            # Is inside the expanded menu selection (the polys cover the whole
+            # selectable area and are in pixel space relative to menuscene)
+            if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
                 was_inside_options = true
                 # we either clicked on an item or hover it
@@ -198,7 +216,8 @@ function initialize_block!(m::Menu; default = 1)
             return Consume(true)
         else
             # If not inside menuscene, we check the state for the menu button
-            if mouseover(blockscene, selectiontext, selectionpoly)
+            # (use position because selectionpoly is in blockscene)
+            if position in selectionpoly.converted[][1]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button = true

@@ -160,7 +160,11 @@ function download_artifacts(; commit = nothing, pr = nothing)
             download_url = a["archive_download_url"]
             if !haskey(URL_CACHE, download_url)
                 @info "Downloading artifact from $download_url"
-                filepath = Downloads.download(download_url, headers = Dict("Authorization" => "token $(github_token())"))
+                filepath = Downloads.download(
+                    download_url,
+                    headers = Dict("Authorization" => "token $(github_token())"),
+                    progress = download_progress_callback,
+                )
                 @info "Download successful"
                 tmpdir = mktempdir()
                 unzip(filepath, tmpdir)
@@ -203,7 +207,7 @@ given commit or pr with the respective test from the given `source_version` and
 uploads the result to `target_version`.
 
 This is useful for breaking pull requests, where new or changed tests from master
-(previous version) should be added to the new, breaking verison. E.g.:
+(previous version) should be added to the new, breaking version. E.g.:
 ```
 update_from_previous_version(source_version = "v0.21.0", target_version = "v0.22.0", pr = 4477)
 ```

@@ -164,7 +164,7 @@ f
 ```
 
 
-We can also hide the spine after creation 
+We can also hide the spine after creation
 with `hidespines!(ax)`. And, hide the ticklabels, grid, and/or minorgrid with `hidedecorations!`, `hiderdecorations`, and `hidethetadecorations!`.
 
 ```@figure
@@ -188,6 +188,40 @@ hidedecorations!(ax5)
 fig
 ```
 
+## Ticks and Minorticks
+
+Ticks and minor ticks are hidden by default.
+They are made visible with the `tickvisible` attributes.
+
+```@figure
+f = Figure()
+a = PolarAxis(f[1,1],
+    rticksvisible = true, thetaticksvisible = true,
+    rminorticksvisible = true,
+    thetaminorticksvisible = true,
+)
+f
+```
+
+They can be styled with various other `tick` attributes.
+They can also be mirrored to the other side of a sector-style PolarAxis with `ticksmirrored`.
+
+```@figure
+f = Figure(size = (800, 400))
+kwargs = (
+    rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red, rtickalign = 0.5,
+    thetaticksvisible = true, thetaticksize = 12, thetatickwidth = 4, thetatickcolor = :blue, thetatickalign = 0.5,
+    rminorticksvisible = true, rminorticksize = 8, rminortickwidth = 3, rminortickcolor = :orange, rminortickalign = 1.0,
+    thetaminorticksvisible = true, thetaminorticksize = 8, thetaminortickwidth = 3, thetaminortickcolor = :cyan, thetaminortickalign = 1.0,
+)
+a = PolarAxis(f[1,1], title = "normal", rticksmirrored = false, thetaticksmirrored = false; kwargs...)
+rlims!(a, 0.5, 0.9)
+thetalims!(a, 1pi/5, 2pi/5)
+a = PolarAxis(f[1,2], title = "mirrored", rticksmirrored = true, thetaticksmirrored = true; kwargs...)
+rlims!(a, 0.5, 0.9)
+thetalims!(a, 1pi/5, 2pi/5)
+f
+```
 
 ## Interactivity
 

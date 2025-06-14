@@ -19,6 +19,8 @@ concurrency:
 jobs:
   test:
     name: RPRMakie Julia ${{ matrix.version }}
+    env:
+      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,7 +28,7 @@ jobs:
         version:
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -44,7 +46,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
+          pkg"dev ./ComputePipeline ./ ./RPRMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >

@@ -1,3 +1,4 @@
+
 function record_comparison(base_folder::String, backend::String; record_folder_name="recorded", tag=last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
     @info "Downloading reference images"

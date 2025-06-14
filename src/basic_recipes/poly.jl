@@ -66,8 +66,8 @@ function poly_convert(geometries::AbstractVector, transform_func=identity)
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{2, T}, transform_func=identity) where {T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{2,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
 end
 
 poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
@@ -108,12 +108,13 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes{2, T}}, transform_func=identity) where {T}
-    points = convert(Vector{Point2{float_type(T)}}, polygon)
-    points_transformed = apply_transform(transform_func, points)
+function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func=identity) where {N, T}
+    points2d = convert(Vector{Point2{float_type(T)}}, polygon)
+    points_transformed = apply_transform(transform_func, points2d)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
     # TODO, same as above!
-    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{2, float_type(T), GLTriangleFace}
+    points = convert(Vector{Point{N, float_type(T)}}, polygon)
+    return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
 end
 
 function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
@@ -122,36 +123,42 @@ function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, tr
     end
 end
 
-to_lines(polygon) = convert_arguments(Lines, polygon)[1]
+to_lines(polygon) = (convert_arguments(Lines, polygon)[1], [typemax(Int)])
 # Need to explicitly overload for Mesh, since otherwise, Mesh will dispatch to AbstractVector
-to_lines(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
+to_lines(polygon::GeometryBasics.Mesh) = (convert_arguments(PointBased(), polygon)[1], [typemax(Int)])
 
 function to_lines(meshes::AbstractVector)
-    line = Point2d[]
+    get_dim(::AbstractVector{<: VecTypes{N}}) where N = N
+    get_dim(::Any) = 3
+    N = mapreduce(get_dim, max, meshes, init = 2)
+    line = Point{N, Float64}[]
+    separation_indices = Int[]
     for (i, mesh) in enumerate(meshes)
-        points = to_lines(mesh)
+        points = to_ndim.(Point{N, Float64}, to_lines(mesh)[1], 0)
         append!(line, points)
+        push!(separation_indices, length(line) + 1)
         # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
-            push!(line, Point2d(NaN))
+            push!(line, Point{N, Float64}(NaN))
         end
     end
-    return line
+    return (line, separation_indices)
 end
 
-function to_lines(polygon::AbstractVector{<: VecTypes})
-    result = Point2d.(polygon)
-    if !isempty(result) && !(result[1] ≈ result[end])
+function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
+    result = Point{N, Float64}.(polygon)
+    if !isempty(result) && result[1] != result[end]
         push!(result, polygon[1])
     end
-    return result
+    return (result, [typemax(Int)])
 end
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
-    geometries = plot[1]
+    geometries = plot.polygon
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)
+
     mesh!(plot, meshes;
         visible = plot.visible,
         shading = plot.shading,
@@ -171,22 +178,22 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle
         depth_shift = plot.depth_shift
     )
 
-    outline = lift(to_lines, plot, geometries)
-    stroke = lift(plot, outline, plot.strokecolor) do outline, sc
+    outline_idxs = lift(to_lines, plot, geometries)
+    stroke = lift(plot, outline_idxs, plot.strokecolor) do (outline, increment_at), sc
         if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
-            idx = 1
-            return map(outline) do point
-                if isnan(point)
-                    idx += 1
+            mesh_idx = 1
+            return map(eachindex(outline)) do point_idx
+                if point_idx == increment_at[mesh_idx]
+                    mesh_idx += 1
                 end
-                return sc[idx]
+                return sc[mesh_idx]
             end
         else
             return sc
         end
     end
     lines!(
-        plot, outline, visible = plot.visible,
+        plot, lift(first, outline_idxs), visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
         linewidth = plot.strokewidth, linecap = plot.linecap,
@@ -195,68 +202,4 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle
         overdraw = plot.overdraw, transparency = plot.transparency,
         inspectable = plot.inspectable, depth_shift = plot.stroke_depth_shift
     )
-end
-
-# TODO: for Makie v0.22, GeometryBasics v0.5,
-# switch from AbstractMesh{Polytope{N, T}} to AbstractMesh{N, T}
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{<: AbstractMesh{N, T}, Polygon{N, T}} where {N, T}
-    meshes = plot[1]
-    attrs = Attributes(
-        visible = plot.visible, shading = plot.shading, fxaa = plot.fxaa,
-        inspectable = plot.inspectable, transparency = plot.transparency,
-        space = plot.space, ssao = plot.ssao,
-        alpha = plot.alpha,
-        lowclip = get(plot, :lowclip, automatic),
-        highclip = get(plot, :highclip, automatic),
-        nan_color = get(plot, :nan_color, :transparent),
-        colormap = get(plot, :colormap, nothing),
-        colorscale = get(plot, :colorscale, identity),
-        colorrange = get(plot, :colorrange, automatic),
-        depth_shift = plot.depth_shift
-    )
-
-    num_meshes = lift(plot, meshes; ignore_equal_values=true) do meshes
-        return Int[length(coordinates(m)) for m in meshes]
-    end
-
-    mesh_colors = Observable{Union{AbstractPattern, Matrix{RGBAf}, RGBColors, Float32}}()
-
-    interpolate_in_fragment_shader = Observable(false)
-
-    lift!(plot, mesh_colors, plot.color, num_meshes) do colors, num_meshes
-        # one mesh per color
-        if colors isa AbstractVector && length(colors) == length(num_meshes)
-            ccolors = colors isa AbstractArray{<: Number} ? colors : to_color(colors)
-            result = similar(ccolors, float32type(ccolors), sum(num_meshes))
-            i = 1
-            for (cs, len) in zip(ccolors, num_meshes)
-                for j in 1:len
-                    result[i] = cs
-                    i += 1
-                end
-            end
-            # For GLMakie (right now), to not interpolate between the colors (which are meant to be per mesh)
-            interpolate_in_fragment_shader[] = false
-            return result
-        else
-            # If we have colors per vertex, we need to interpolate in fragment shader
-            interpolate_in_fragment_shader[] = true
-            return to_color(colors)
-        end
-    end
-    attrs[:color] = mesh_colors
-    transform_func = plot.transformation.transform_func
-    bigmesh = lift(plot, meshes, transform_func) do meshes, tf
-        if isempty(meshes)
-            # TODO: Float64
-            return GeometryBasics.Mesh(Point{N, T}[], GLTriangleFace[])
-        else
-            triangle_meshes = map(mesh -> poly_convert(mesh, tf), meshes)
-            return merge(triangle_meshes)
-        end
-    end
-    mpl = mesh!(plot, attrs, bigmesh)
-    # splice in internal attribute after creation to avoid validation
-    attributes(mpl)[:interpolate_in_fragment_shader] = interpolate_in_fragment_shader
-    return mpl
 end

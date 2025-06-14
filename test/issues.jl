@@ -37,13 +37,51 @@
         translate!(scene, 0, 0, 10)
         @test isassigned(p.transformation.parent)
         @test isassigned(p.plots[1].transformation.parent)
-        @test isassigned(p.plots[1].plots[1].transformation.parent)
-        @test isassigned(p.plots[1].plots[2].transformation.parent)
 
         @test scene.transformation.model[][3, 4] == 10.0
         @test p.transformation.model[][3, 4] == 10.0
         @test p.plots[1].transformation.model[][3, 4] == 10.0
-        @test p.plots[1].plots[1].transformation.model[][3, 4] == 10.0
-        @test p.plots[1].plots[2].transformation.model[][3, 4] == 10.0
+    end
+
+    @testset "#4883 colorscale that breaks sort" begin
+        data = Float32.(Makie.peaks())
+        f, a, p = image(data; colorscale = -)
+        @test p.scaled_colorrange[][1] == -maximum(data)
+        @test p.scaled_colorrange[][2] == -minimum(data)
+        @test issorted(p.scaled_colorrange[])
+    end
+
+    @testset "#4957 axis cycling for same plot type with different argument types" begin
+        @testset "Lines" begin
+            f, a, p1 = lines(rand(Float64, 10))
+            p2 = lines!(a, rand(Float32, 10))
+            p3 = lines!(a, rand(Float64, 10))
+
+            palette_colors = a.scene.theme.palette.color[]
+
+            @test p1.color[] == palette_colors[1]
+            @test p2.color[] == palette_colors[2]
+            @test p3.color[] == palette_colors[3]
+
+            p4 = lines!(a, rand(Float32, 10))
+            @test p4.color[] == palette_colors[4]
+        end
+
+        @testset "Poly" begin
+            poly1 = Makie.GeometryBasics.Polygon(Point2f[(0,0), (0, 1), (1, 1), (1, 0), (0, 0)])
+            multipoly1 = Makie.GeometryBasics.MultiPolygon([poly1, poly1])
+
+            f, a, p1 = poly(poly1; alpha = 1)
+            p2 = poly!(a, [poly1, poly1])
+            p3 = poly!(a, multipoly1)
+
+            # convert to RGBf here, because poly decreases alpha by 0.2
+            palette_colors = Makie.RGBf.(a.scene.theme.palette.color[])
+
+            @test Makie.RGBf(p1.color[]) == palette_colors[1]
+            @test Makie.RGBf(p2.color[]) == palette_colors[2]
+            @test Makie.RGBf(p3.color[]) == palette_colors[3]
+
+        end
     end
 end

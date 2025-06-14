@@ -69,7 +69,7 @@ function getAttributesInfo(p::GLProgram)
     @show activeAttr = glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES)
     # get location and type for each attrib
     for i=0:activeAttr-1
-        @show name, typ, siz = glGetActiveAttrib(program,    i)
+        @show name, typ, size = glGetActiveAttrib(program, i)
         @show loc = glGetAttribLocation(program, name)
     end
 end
@@ -102,6 +102,6 @@ const FAILED_FREE_COUNTER = Threads.Atomic{Int}(0)
 function verify_free(obj::T, name = T) where T
     if obj.id != 0
         FAILED_FREE_COUNTER[] += 1
-        Core.println(Core.stderr, "Error: ", name, " has not been freed.")
+        Core.println(Core.stderr, "Error: $name with id $(obj.id) has not been freed.")
     end
 end

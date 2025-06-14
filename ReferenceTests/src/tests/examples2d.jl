@@ -168,10 +168,18 @@ end
     X = cumsum(RNG.randn(n, m), dims=2)
     X = X .- X[:, 1]
     μ = vec(mean(X, dims=1)) # mean
-    lines(t, μ)              # plot mean line
+    f, ax, _ = lines(t, μ)              # plot mean line
     σ = vec(std(X, dims=1))  # stddev
-    band!(t, μ + σ, μ - σ)   # plot stddev band
-    current_figure()
+    band!(ax, t, μ + σ, μ - σ)   # plot stddev band
+
+    # vertical version
+    ax2, _ = lines(f[1, 2], μ, t)
+    band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
+
+    # array colors
+    band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
+    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues)
+    f
 end
 
 @reference_test "Band with NaN" begin
@@ -685,14 +693,97 @@ end
     for (i, scale) in enumerate([log10, log2, log, sqrt, Makie.logit, identity])
         row, col = fldmod1(i, 2)
         Axis(f[row, col], yscale = scale, title = string(scale),
-            yminorticksvisible = true, yminorgridvisible = true,
-            xminorticksvisible = true, xminorgridvisible = true,
-            yminortickwidth = 4.0, xminortickwidth = 4.0,
-            yminorgridwidth = 6.0, xminorgridwidth = 6.0,
+            yminorticksvisible = i != 6, yminorgridvisible = true,
+            xminorticksvisible = i != 6, xminorgridvisible = true,
+            yminortickwidth = 3.0, xminortickwidth = 3.0,
+            yminorticksize = 8.0, xminorticksize = 8.0,
+            yminorgridwidth = 3.0, xminorgridwidth = 3.0,
+            yminortickcolor = :red, xminortickcolor = :red,
+            yminorgridcolor = :lightgreen, xminorgridcolor = :lightgreen,
             yminorticks = IntervalsBetween(3))
 
         lines!(data, color = :blue)
     end
+    f
+end
+
+@reference_test "textlabel" begin
+    f = Figure(size = (500, 500))
+    ax = Axis(f[1, 1])
+    textlabel!(ax,
+        [1, 2, 3], [1, 1, 1], ["Label $i" for i in 1:3],
+        background_color = :white, text_align = (:left, :bottom)
+    )
+    textlabel!(ax, [("Lbl 1", (1,0)), ("Lbl 2", (2, 0))])
+    p = textlabel!(ax, "Wrapped Label", position = Point2f(3,0),
+        background_color = :orange,
+        text_rotation = pi/8,
+        word_wrap_width = 8,
+        cornerradius = 10,
+        cornervertices = 2,
+        justification = :center,
+        text_align = (:center, :center)
+    )
+    textlabel!(ax, Point2f(1.5, 0), text=rich("A ", rich("title", color = :red, font = :bold_italic)), fontsize=20,)
+    textlabel!(ax, Point2f(2.5, 0), text= L"\sum_a^b{xy} + \mathscr{L}", fontsize=10,)
+
+    textlabel!(
+        ax, (1, -1), "Circle",
+        shape = Circle(Point2f(0.5), 0.5),
+        padding = Vec4f(5),
+        keep_aspect = true
+    )
+
+    textlabel!(
+        ax, 2, -1, text = "~ ~ ~ ~ ~ ~\nStylized Label\n~ ~ ~ ~ ~ ~",
+        background_color = RGBf(0.7, 0.8, 1),
+        strokecolor = RGBf(0, 0.1, 0.4),
+        strokewidth = 3,
+        linestyle = :dash,
+        joinstyle = :round,
+        stroke_alpha = 0.8,
+        alpha = 0.5,
+        text_color = RGBf(1, 0.2, 0),
+        font = "Noto Sans",
+        text_strokecolor = RGBf(0.7, 0, 0.1),
+        text_strokewidth = 2,
+        text_glowcolor = RGBAf(0.8, 1, 0.3),
+        text_glowwidth = 2,
+        text_align = (:center, :center),
+        fontsize = 20,
+        justification = :center,
+        lineheight = 0.7,
+        offset = (0.0, -10.0),
+        text_alpha = 0.8,
+
+        shape = Circle(Point2f(0), 1),
+        shape_limits = Rect2f(-1, -1, 2, 2),
+        padding = Vec4f(10),
+    )
+
+    textlabel!(
+        ax, (3, -1), "Below",
+        cornerradius = 10, fontsize = 20, text_align = (:center, :center),
+        draw_on_top = false
+    )
+
+    mp = mesh!(ax, Rect2f(0.9, -1, 2.4, 2.2), color = RGBf(0.7, 1, 0.8), shading = NoShading)
+    translate!(mp, 0, 0, 10)
+
+    xlims!(ax, 0.8, 3.4)
+    ylims!(ax, -1.6, 1.4)
+
+    ax = Axis3(f[2, 1])
+    m = load(assetpath("brain.stl"))
+    mesh!(ax, m, color = [RGBf(abs.(n)...) for n in normals(m)])
+    textlabel!(ax, Point3f(0), text = "Brain", background_color = :white)
+
+    textlabel!(ax,
+        ["-x -x", "+z\n+z", "-y -y"], position = [(-65, 0, 0), (0, 0, 45), (0, -90, 0)],
+        background_color = :lightgray, text_align = (:center, :center),
+        draw_on_top = false
+    )
+
     f
 end
 
@@ -843,6 +934,23 @@ end
     f
 end
 
+@reference_test "tricontourf alpha transparency" begin
+    dxy = 1.0;
+    x = [0.0, dxy, 0.0, -dxy, 0.0, dxy/2, -dxy/2, dxy/2, -dxy/2];
+    y = [0.0, 0.0, dxy, 0.0, -dxy, dxy/2, dxy/2, -dxy/2, -dxy/2];
+    @. f1(x,y) = x^2 + y^2;
+    z = f1(x,y);
+
+    f = Figure()
+    ax1=Axis(f[1,1], title = "alpha = 1.0 (default)")
+    ax2=Axis(f[1,2], title = "alpha = 0.5 (semitransparent)")
+    hlines!(ax1, [-0.5, 0.0, 0.5])
+    hlines!(ax2, [-0.5, 0.0, 0.5])
+    tricontourf!(ax1, x, y, z, levels = 3)
+    tricontourf!(ax2, x, y, z, levels = 3, alpha=0.5)
+    f
+end
+
 @reference_test "contour labels 2D" begin
     paraboloid = (x, y) -> 10(x^2 + y^2)
 
@@ -890,6 +998,28 @@ end
     # and now, we plot!
     fig, ax, srf = surface(xs, ys, fill(0f0, size(zs)); color=zs, shading = NoShading, axis = (; type = Axis, aspect = DataAspect()))
     ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, labelfont = :bold, labelsize = 12)
+
+    fig
+end
+
+@reference_test "filled contour 2d with curvilinear grid" begin
+    x = -10:10
+    y = -10:10
+    # The curvilinear grid:
+    xs = [x + 0.01y^3 for x in x, y in y]
+    ys = [y + 10cos(x/40) for x in x, y in y]
+
+    # Now, for simplicity, we calculate the `Z` values to be
+    # the radius from the center of the grid (0, 10).
+    zs = sqrt.(xs .^ 2 .+ (ys .- 10) .^ 2)
+
+    # We can use Makie's tick finders to get some nice looking contour levels.
+    # This could also be Makie.get_tickvalues(Makie.LinearTicks(7), extrema(zs)...)
+    # but it's more stable as a test if we hardcode it.
+    levels = 0:4:20
+
+    # and now, we plot!
+    fig, ax, ctr = contourf(xs, ys, zs; levels = levels)
 
     fig
 end
@@ -959,8 +1089,6 @@ end
     f
 end
 
-
-
 @reference_test "hexbin two cellsizes" begin
     f = Figure(size = (800, 800))
 
@@ -973,7 +1101,6 @@ end
         wireframe!(ax, Rect2f(Point2f.(x, y)), color = :red)
         scatter!(ax, x, y, color = :red, markersize = 5)
     end
-
     f
 end
 
@@ -996,8 +1123,8 @@ end
 @reference_test "hexbin threshold" begin
     f = Figure(size = (800, 800))
 
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     for (i, threshold) in enumerate([1, 10, 100, 500])
         ax = Axis(f[fldmod1(i, 2)...], title = "threshold = $threshold", aspect = DataAspect())
@@ -1007,8 +1134,8 @@ end
 end
 
 @reference_test "hexbin scale" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
     f = Figure()
     hexbin(f[1, 1], x, y, bins = 40,
@@ -1020,10 +1147,10 @@ end
 
 # Scatter needs working highclip/lowclip first
 @reference_test "hexbin colorrange highclip lowclip" begin
-    x = RNG.randn(100000)
-    y = RNG.randn(100000)
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000)
 
-    f, ax, pl = hexbin(x, y,
+    hexbin(x, y,
         bins = 40,
         axis = (aspect = DataAspect(),),
         colorrange = (10, 300),
@@ -1032,6 +1159,14 @@ end
         strokewidth = 1,
         strokecolor = :gray30
     )
+end
+
+@reference_test "hexbin logscale" begin
+    # https://github.com/MakieOrg/Makie.jl/issues/4895
+    x = RNG.randn(100_000)
+    y = RNG.randn(100_000) .|> exp
+
+    hexbin(x, y; axis = (; yscale=log10))
 end
 
 @reference_test "bracket scalar" begin
@@ -1874,12 +2009,25 @@ end
     surface!(a, -1..1, -1..1, zeros(4,4), color = Makie.Pattern('/'), shading = NoShading)
     meshscatter!(a, [Point2f(x, y) for x in 2:4 for y in -1:1], markersize = 0.5,
         color = Makie.Pattern('+', tilesize = (8, 8)), shading = NoShading)
+        f
 
     st = Stepper(f)
     Makie.step!(st)
     translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
     Makie.step!(st)
     st
+end
+
+# Since the above is rather symmetric...
+@reference_test "Color Pattern orientation" begin
+    img = fill(RGBf(1,1,1), 16, 16)
+    img[1:8, 1:8] .= RGBf(1,0,0)
+    img[12:16, 1:8] .= RGBf(0,1,0)
+    img[1:8, 12:16] .= RGBf(0,0,1)
+    f,a, p = mesh(Rect2f(0,0,1,1), color = Makie.ImagePattern(img), shading = false)
+    surface(f[1,2], -1..1, -1..1, zeros(4,4), color = Makie.ImagePattern(img), shading = false)
+    meshscatter(f[2, 1:2], [1,2,3], [1,1,1], marker = Rect2f(0,0,1,1), markersize = 0.5, color = Makie.ImagePattern(img), shading = false)
+    f
 end
 
 @reference_test "Color patterns in recipes" begin
@@ -1903,4 +2051,226 @@ end
     translate!(a.scene, 0.1, 0.05) # test that pattern are anchored to the plot
     Makie.step!(st)
     st
+end
+
+@reference_test "Transformed 2D Arrows" begin
+    ps = [Point2f(i, 2^i) for i in 1:10]
+    vs = [Vec2f(1, 100) for _ in 1:10]
+    f,a,p = arrows2d(ps, vs, color = log10.(norm.(ps)), colormap = :RdBu)
+    arrows2d(f[1,2], ps, vs, color = log10.(norm.(ps)), axis = (yscale = log10,))
+
+    ps = coordinates(Rect2f(-1, -1, 2, 2))
+    a, p = arrows2d(f[2,1], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    translate!(p, 1, 1, 0)
+
+    a, p = arrows2d(f[2,2], ps, ps)
+    scatter!(a, 0,0, markersize = 50, marker = '+')
+    scale!(p, 1.0/sqrt(2), 1.0/sqrt(2), 1)
+    Makie.rotate!(p, pi/4)
+
+    f
+end
+
+@reference_test "arrow min- and maxshaftlength scaling" begin
+    # widths should not scale while the tip ends in the gray area (between min
+    # and maxshaftlength)
+    scene = Scene(camera = campixel!, size = (500, 500))
+    min = 30; max = 60
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 40, color = :lightgray, linewidth = max-min)
+    heights = [10, min-10, min, min+10, max-10, max, max+10, 180] .+ 40
+    p = arrows2d!(scene,
+        50:50:400, zeros(8),
+        zeros(8), heights,
+        minshaftlength = min, maxshaftlength = max,
+        shaftwidth = 20, tipwidth = 40, tiplength = 40,
+        strokemask = 0
+    )
+    scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
+
+    component_widths = widths.(Rect2f.(p.plots[1].args[][1]))
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test component_widths[2i-1][1] ≈ p.shaftwidth[] * scale # shaft
+        @test component_widths[2i][1]   ≈ p.tipwidth[] * scale   # tip
+    end
+
+    linesegments!(scene, [-10, 510], [0.5(min+max), 0.5(min+max)] .+ 290, color = :lightgray, linewidth = max-min)
+    p = arrows3d!(scene,
+        50:50:400, fill(250, 8),
+        zeros(8), heights,
+        minshaftlength = min, maxshaftlength = max,
+        shaftradius = 10, tipradius = 20, tiplength = 40,
+        markerscale = 1.0
+    )
+    sp = scatter!(scene, 50:50:400, fill(270, 8), marker = Rect, markersize = 20, color = :red)
+    translate!(sp, 0, 0, 100)
+
+    for i in 1:8
+        scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
+        @test p.plots[2].markersize[][i][1] ≈ 2 * p.shaftradius[] * scale # shaft
+        @test p.plots[3].markersize[][i][1] ≈ 2 * p.tipradius[] * scale   # tip
+    end
+
+    scene
+end
+
+function arrow_align_test(plotfunc, tail, taillength)
+    function draw_row!(ax, y; kwargs...)
+        plotfunc(ax, (1, y), (0, 1), align = -0.5; kwargs...)
+        plotfunc(ax, (2, y), (0, 1), align = :tail; kwargs...)
+        plotfunc(ax, (3, y), (0, 1), align = :center; kwargs...)
+        plotfunc(ax, (4, y), (0, 1), align = :tip; kwargs...)
+        plotfunc(ax, (5, y), (0, 1), align = 1.5; kwargs...)
+    end
+
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    hlines!(ax, [1, 3, 5])
+
+    draw_row!(ax, 1)
+    draw_row!(ax, 3; lengthscale = 0.5, color = RGBf(0.8, 0.2, 0.1), alpha = 0.3)
+    draw_row!(ax, 5; tail = tail, taillength = taillength,
+        tailcolor = :orange, shaftcolor = RGBAf(0.1, 0.9, 0.2, 0.5), tipcolor = :red)
+
+    plotfunc(ax, (1, 7), (1, 8), argmode = :endpoints, lengthscale = 0.5, align = -0.5)
+    plotfunc(ax, (2, 7), (2, 8), argmode = :endpoints, lengthscale = 0.5, align = :tail)
+    plotfunc(ax, (3, 7), (3, 8), argmode = :endpoints, lengthscale = 0.5, align = :center)
+    plotfunc(ax, (4, 7), (4, 8), argmode = :endpoints, lengthscale = 0.5, align = :tip)
+    plotfunc(ax, (5, 7), (5, 8), argmode = :endpoints, lengthscale = 0.5, align = 1.5)
+    hlines!(ax, [7, 8], color = :red)
+
+    fig
+end
+
+@reference_test "arrows2d alignment" begin
+    arrow_align_test(arrows2d!, Point2f[(0, 0), (1, -0.5), (1, 0.5)], 8)
+end
+
+@reference_test "arrows3d alignment" begin
+    arrow_align_test(arrows3d!, Makie.Cone(Point3f(0,0,1), Point3f(0,0,0), 0.5f0), 0.4)
+end
+
+@reference_test "arrows2d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows2d(ps, grad_func)
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 4
+    p.tipwidth = 8
+    p.shaftwidth = 1
+    p.taillength = 8
+    p.tailwidth = 6
+    Makie.step!(st)
+
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    p.tail = Rect2f(0,-0.5,1,1)
+    p.tailwidth = 8
+    Makie.step!(st)
+    st
+end
+
+# Adjusted from 2d version
+@reference_test "arrows3d updates" begin
+    grad_func(p) = 0.2 * p .- 0.01 * p.^3
+    ps = [Point2f(x, y) for x in -5:5, y in -5:5]
+    f, a, p = arrows3d(ps, grad_func)
+
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    p.color[] = :orange
+    p[1][] = vec(ps .+ Point2f(0.2))
+    p.lengthscale[] = 1.5
+    p.tiplength = 0.2
+    p.tipradius = 0.08
+    p.shaftradius = 0.1
+    p.tail = Rect3f(-0.5,-0.5,0, 1,1,1)
+    p.taillength = 0.2
+    p.tailradius = 0.2
+    Makie.step!(st)
+
+    p.arg2[] = p -> 0.01 * p.^3 - 0.2 * p + 0.00001 * p.^5
+    p.align = :center
+    p.shaftcolor = :blue
+    Makie.step!(st)
+    st
+end
+
+@reference_test "Dendrogram" begin
+    leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
+    merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
+
+    f = Figure(size = (400, 700))
+    a = Axis(f[1, 1], aspect = DataAspect())
+    # TODO: vary more attributes to confirm that they work
+    #       (i.e. Lines attributes, colors w/o grouping, branch_style)
+    dendrogram!(leaves, merges; origin = Point2f( 0, -2), rotation = :down,  ungrouped_color = :gray, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+    dendrogram!(leaves, merges; origin = Point2f( 2,  0), rotation = :right, ungrouped_color = :red,  groups = [1,1,2,3,3])
+    dendrogram!(leaves, merges; origin = Point2f( 0,  2), rotation = :up,    color = :blue, branch_shape = :tree, linestyle = :dot, linewidth = 3)
+    p = dendrogram!(leaves, merges; origin = Point2f(-2,  0), rotation = :left,  color = :black, width = 8, depth = 5)
+    textlabel!(map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), text = ["A", "A", "B", "C", "C"])
+    dendrogram!(leaves, merges; origin = Point2f( 4,  4), rotation = 3pi/4,  ungrouped_color = :orange, groups = [1,1,2,3,3], colormap=[:blue, :orange, :purple])
+
+    a = PolarAxis(f[2, 1])
+    rlims!(a, 0, 6)
+    p = dendrogram!(a, leaves, merges; origin = (0,1), rotation = 3pi/4, groups = [1,1,2,3,3], linewidth = 10, joinstyle = :round, linecap = :round)
+    scatter!(a, Makie.dendrogram_node_positions(p), markersize = 20)
+    f
+end
+
+@reference_test "annotation pointcloud" begin
+    f = Figure(size = (700, 350))
+
+    points = [(-2.15, -0.19), (-1.66, 0.78), (-1.56, 0.87), (-0.97, -1.91), (-0.96, -0.25), (-0.79, 2.6), (-0.74, 1.68), (-0.56, -0.44), (-0.36, -0.63), (-0.32, 0.67), (-0.15, -1.11), (-0.07, 1.23), (0.3, 0.73), (0.72, -1.48), (0.8, 1.12)]
+
+    fruit = ["Apple", "Banana", "Cherry", "Date", "Elderberry", "Fig", "Grape", "Honeydew",
+              "Indian Fig", "Jackfruit", "Kiwi", "Lychee", "Mango", "Nectarine", "Orange"]
+
+    ax = Axis(f[1, 1])
+
+    scatter!(ax, points)
+    annotation!(ax, points, text = fruit)
+    
+    hidedecorations!(ax)
+
+    points2 = [10 .^ p for p in points]
+    ax2 = Axis(f[1, 2], yscale = log10, xscale = log10)
+
+    scatter!(ax2, points2)
+    annotation!(ax2, points2, text = fruit)
+
+    hidedecorations!(ax2)
+
+    f
+end
+
+@reference_test "annotation manual" begin
+    f, ax, _ = lines(0..10, sin, figure = (; size = (600, 450)))
+
+    annotation!(ax, 0, -100, pi/2, 1.0,
+        text = "Peak", style = Ann.Styles.LineArrow(), color = :red,
+        textcolor = :orange, align = (:right, :top))
+    annotation!(ax, 0, 100, 3pi/2, -1.0,
+        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold)
+    annotation!(ax, -100, 0, 5pi/2, 1.0,
+        text = "Second\nPeak",
+        style = Ann.Styles.LineArrow(head = Ann.Arrows.Head(),
+        tail = Ann.Arrows.Head(length = 20, color = :cyan, notch = 0.3)),
+        path = Ann.Paths.Arc(-0.3), justification = :right,
+    )
+    annotation!(ax, 7, -0.5, 3pi/2, -1.0,
+        text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
+        linewidth = 3, shrink = (0, 30))
+
+    f
 end

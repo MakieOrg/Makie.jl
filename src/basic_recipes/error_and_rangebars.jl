@@ -25,8 +25,8 @@ If you want to plot intervals from low to high values instead of relative errors
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
     cycle = [:color]
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 const RealOrVec = Union{Real, RealVector}
@@ -42,7 +42,7 @@ The `low_high` argument can be a vector of tuples or intervals.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
 """
-@recipe Rangebars begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
     "The color of the lines. Can be an array to color each bar separately."
@@ -53,20 +53,20 @@ If you want to plot errors relative to a reference value, use `errorbars`.
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
     cycle = [:color]
-    MakieCore.mixin_colormap_attributes()...
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 ### conversions for errorbars
 
-function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealVector)
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealOrVec)
     T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4{T}(x, y, e, e)
     end
     (xyerr,)
 end
-RealOrVec
+
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low::RealOrVec, error_high::RealOrVec)
     T = float_type(x, y, error_low, error_high)
     xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
@@ -126,8 +126,9 @@ end
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
                            low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
     T_out = float_type(float_type(val), T)
+    T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        Vec3{T_out}(val, low, high)
+        Vec3{T_out_ref[]}(val, low, high)
     end
     (val_low_high,)
 end
@@ -139,90 +140,42 @@ Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::Ab
 ### and then hit the same underlying implementation in `_plot_bars!`
 
 function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
-
-    x_y_low_high = plot[1]
-
-    is_in_y_direction = lift(plot, plot.direction) do dir
-        if dir === :y
-            true
-        elseif dir === :x
-            false
-        else
-            error("Invalid direction $dir. Options are :x and :y.")
-        end
-    end
-
-    linesegpairs = lift(plot, x_y_low_high, is_in_y_direction) do x_y_low_high, in_y
-        output = sizehint!(Point2d[], 2length(x_y_low_high))
-        for (x, y, l, h) in x_y_low_high
-            if in_y
-                push!(output, Point2d(x, y - l), Point2d(x, y + h))
-            else
-                push!(output, Point2d(x - l, y), Point2d(x + h, y))
-            end
-        end
-        return output
-    end
-
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    _plot_bars!(plot)
 end
-
-
 function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
-
-    val_low_high = plot[1]
-
-    is_in_y_direction = lift(plot, plot.direction) do dir
-        if dir === :y
-            return true
-        elseif dir === :x
-            return false
-        else
-            error("Invalid direction $dir. Options are :x and :y.")
-        end
-    end
-
-    linesegpairs = lift(plot, val_low_high, is_in_y_direction) do vlh, in_y
-        output = sizehint!(Point2d[], 2length(vlh))
-        for (v, l, h) in vlh
-            if in_y
-                push!(output, Point2d(v, l), Point2d(v, h))
-            else
-                push!(output, Point2d(l, v), Point2d(h, v))
-            end
-        end
-        return output
-    end
-
-    _plot_bars!(plot, linesegpairs, is_in_y_direction)
+    _plot_bars!(plot)
 end
 
+function to_ydirection(dir)
+    dir === :y && return true
+    dir === :x && return false
+    error("Invalid direction $dir. Options are :x and :y.")
+end
 
+reverse_if(cond, vec) = cond ? reverse(vec) : vec
 
-function _plot_bars!(plot, linesegpairs, is_in_y_direction)
+function inner_segment((x, y, l, h)::Vec4, in_y)
+    return in_y ? (Point2d(x, y - l), Point2d(x, y + h)) : (Point2d(x - l, y), Point2d(x + h, y))
+end
+function inner_segment((v, l, h)::Vec3, in_y)
+    return in_y ? (Point2d(v, l), Point2d(v, h)) : (Point2d(l, v), Point2d(h, v))
+end
+generate_segments(data, in_y::Bool) = Point2d[p for item in data for p in inner_segment(item, in_y)]
 
-    f_if(condition, f, arg) = condition ? f(arg) : arg
-
-    @extract plot (
-        whiskerwidth, color, linewidth, linecap, visible, colormap, colorscale, colorrange,
-        inspectable, transparency)
-
-    scene = parent_scene(plot)
-
-    whiskers = lift(plot, linesegpairs, scene.camera.projectionview, plot.model,
-        scene.viewport, transform_func(plot), whiskerwidth) do endpoints, _, _, _, _, whiskerwidth
-
-        screenendpoints = plot_to_screen(plot, endpoints)
-
-        screenendpoints_shifted_pairs = map(screenendpoints) do sep
-            (sep .+ f_if(is_in_y_direction[], reverse, Point(0, -whiskerwidth/2)),
-            sep .+ f_if(is_in_y_direction[], reverse, Point(0,  whiskerwidth/2)))
+function _plot_bars!(plot)
+    map!(to_ydirection, plot.attributes, [:direction], :is_in_y_direction)
+    map!(generate_segments, plot.attributes, [:val_low_high, :is_in_y_direction], :linesegpairs)
+    attr = plot.attributes
+    map!(attr, [:linewidth, :whiskerwidth, :is_in_y_direction], [:whisker_size, :whisker_visible]) do linewidth, whiskerwidth, dir
+        isvisible = !(linewidth == 0 || whiskerwidth == 0)
+        widths = reverse_if.(!dir, Vec2f.(whiskerwidth, linewidth))
+        if widths isa Vec2f
+            return widths, isvisible
         end
-
-        return [p for pair in screenendpoints_shifted_pairs for p in pair]
+        [widths[i] for i in 1:length(widths) for j in 1:2], isvisible
     end
-    whiskercolors = Observable{RGBColors}()
-    lift!(plot, whiskercolors, color) do color
+
+    map!(attr, [:color], :whiskercolors) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -231,26 +184,14 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
             return to_color(color)::RGBAf
         end
     end
-    whiskerlinewidths = Observable{Union{Float32, Vector{Float32}}}()
-    lift!(plot, whiskerlinewidths, linewidth) do linewidth
-        # same for linewidth
-        if linewidth isa AbstractVector
-            return repeat(convert(Vector{Float32}, linewidth), inner = 2)::Vector{Float32}
-        else
-            return convert(Float32, linewidth)
-        end
-    end
+    lattr = shared_attributes(plot, LineSegments; drop=[:fxaa])
+    linesegments!(plot, lattr, attr.linesegpairs)
+    sattr = shared_attributes(plot, Scatter; drop=[:fxaa])
 
-    linesegments!(
-        plot, linesegpairs, color = color, linewidth = linewidth, linecap = linecap, visible = visible,
-        colormap = colormap, colorscale = colorscale, colorrange = colorrange, inspectable = inspectable,
-        transparency = transparency
-    )
-    linesegments!(
-        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, linecap = linecap,
-        visible = visible, colormap = colormap, colorscale = colorscale, colorrange = colorrange,
-        inspectable = inspectable, transparency = transparency, space = :pixel,
-        model = Mat4f(I) # overwrite scale!() / translate!() / rotate!()
+    scatter!(
+        plot, sattr, attr.linesegpairs; color=attr.whiskercolors,
+        markersize = attr.whisker_size, marker=Rect, visible=attr.whisker_visible,
+        markerspace=:pixel,
     )
     plot
 end
@@ -261,8 +202,9 @@ function plot_to_screen(plot, points::AbstractVector)
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
 
+    transfunc = transform_func(plot)
     return map(points) do p
-        transformed = apply_transform(transform_func(plot), p, space)
+        transformed = apply_transform(transfunc, p)
         p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         return Point2f(p4d) / p4d[4]
     end
@@ -273,34 +215,11 @@ function plot_to_screen(plot, p::VecTypes)
     space = to_value(get(plot, :space, :data))
     spvm = clip_to_space(cam, :pixel) * space_to_clip(cam, space) *
         f32_convert_matrix(plot, space) * transformationmatrix(plot)[]
-    transformed = apply_transform(transform_func(plot), p, space)
+    transformed = apply_transform(transform_func(plot), p)
     p4d = spvm * to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
     return Point2f(p4d) / p4d[4]
 end
 
-function screen_to_plot(plot, points::AbstractVector)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
-        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
-    itf = inverse_transform(transform_func(plot))
-
-    return map(points) do p
-        pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
-        p3 = Point3d(pre_transform) / pre_transform[4]
-        return apply_transform(itf, p3, space)
-    end
-end
-
-function screen_to_plot(plot, p::VecTypes)
-    cam = parent_scene(plot).camera
-    space = to_value(get(plot, :space, :data))
-    mvps = inv(transformationmatrix(plot)[]) * inv_f32_convert_matrix(plot, space) *
-        clip_to_space(cam, space) * space_to_clip(cam, :pixel)
-    pre_transform = mvps * to_ndim(Vec4d, to_ndim(Vec3d, p, 0.0), 1.0)
-    p3 = Point3d(pre_transform) / pre_transform[4]
-    return apply_transform(itf, p3, space)
-end
 
 # ignore whiskers when determining data limits
 data_limits(bars::Union{Errorbars, Rangebars}) = data_limits(bars.plots[1])

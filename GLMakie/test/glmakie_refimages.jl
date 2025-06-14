@@ -95,10 +95,11 @@ end
     ]
 
     scene = Scene(size = (400, 400), camera = cam3d!, lights = lights)
-    mesh!(
+    @test Makie.get_shading_mode(scene) == MultiLightShading
+    p = mesh!(
         scene,
         Rect3f(Point3f(-10, -10, -2.99), Vec3f(20, 20, 0.02)),
-        color = :white, shading = MultiLightShading, specular = Vec3f(0)
+        color = :white, specular = Vec3f(0)
     )
     center!(scene)
     update_cam!(scene, Vec3f(0, 0, 10), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
@@ -115,8 +116,9 @@ end
     ]
 
     scene = Scene(size = (400, 400), camera = cam3d!, center = false, lights = lights, backgroundcolor = :black)
+    @test Makie.get_shading_mode(scene) == MultiLightShading
     mesh!(
-        scene, Sphere(Point3f(0), 1f0), color = :white, shading = MultiLightShading,
+        scene, Sphere(Point3f(0), 1f0), color = :white,
         specular = Vec3f(1), shininess = 16f0
     )
     update_cam!(scene, Vec3f(0, 0, 3), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
@@ -132,10 +134,11 @@ end
         RectLight(RGBf(0.5, 0.5, 0.5), Point3f( 1, -1, 2), Vec3f(3, 0, 0), Vec3f(0, 3, 0), Vec3f(-0.3, 0.3, -1)),
     ]
     # Test transformations
-    translate!(lights[2], Vec3f(-1, 1, 2)) # translate to by default
-    scale!(lights[2], 3, 1)
+    lights[2] = Makie.translate(lights[2], Vec3f(-1, 1, 2)) # translate to by default
+    lights[2] = Makie.scale(lights[2], 3, 1)
 
     scene = Scene(lights = lights, camera = cam3d!, size = (400, 400))
+    @test Makie.get_shading_mode(scene) == MultiLightShading
     p = mesh!(scene, Rect3f(Point3f(-10, -10, 0.01), Vec3f(20, 20, 0.02)), color = :white)
     update_cam!(scene, Vec3f(0, 0, 7), Vec3f(0, 0, 0), Vec3f(0, 1, 0))
 

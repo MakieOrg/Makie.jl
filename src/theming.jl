@@ -45,6 +45,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     markercolor = :black,
     markerstrokecolor = :black,
     markerstrokewidth = 0,
+    markerfont = "TeX Gyre Heros Makie",
     linecolor = :black,
     linewidth = 1.5,
     linestyle = nothing,
@@ -122,7 +123,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
         transparency_weight_scale = 1000f0,
-        # maximum number of lights with shading = :verbose
+        # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
     ),
@@ -263,13 +264,13 @@ Nested attributes are either also updated incrementally, or replaced if they are
 # Example
 To change the default colormap to `:greys`, you can pass that attribute as
 a keyword argument to `update_theme!` as demonstrated below.
-```
+```julia
 update_theme!(colormap=:greys)
 ```
 
 This can also be achieved by passing an object of types `Attributes` or `Theme`
 as the first and only positional argument:
-```
+```julia
 update_theme!(Attributes(colormap=:greys))
 update_theme!(Theme(colormap=:greys))
 ```

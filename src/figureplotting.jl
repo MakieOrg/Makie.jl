@@ -73,10 +73,10 @@ preferred_axis_type(::Union{Image,Heatmap}) = Axis
 
 function preferred_axis_type(p::Plot{F}) where F
     # Otherwise, we check the arguments
-    input_args = map(to_value, p.args)
+    input_args = p.args[]
     result = args_preferred_axis(Plot{F}, input_args...)
     isnothing(result) || return result
-    conv_args = map(to_value, p.converted)
+    conv_args = p.converted[]
     result = args_preferred_axis(Plot{F}, conv_args...)
     isnothing(result) && return Axis # Fallback to Axis if nothing found
     return result
@@ -110,11 +110,11 @@ end
 const PlotOrNot = Union{AbstractPlot, Nothing}
 
 # For recipes (plot!(plot_object, ...)))
-MakieCore.create_axis_like!(::Dict, s::Union{Plot, Scene}) = s
+create_axis_like!(::Dict, s::Union{Plot, Scene}) = s
 
 # For plotspec
-# MakieCore.create_axis_like!(::PlotSpecPlot, ::Dict, fig::Figure) = fig
-MakieCore.create_axis_like!(::Dict, f::Figure) = f
+# create_axis_like!(::PlotSpecPlot, ::Dict, fig::Figure) = fig
+create_axis_like!(::Dict, f::Figure) = f
 
 """
     create_axis_like!(attributes::Dict, ax::AbstractAxis)
@@ -135,7 +135,7 @@ Method to plot to an axis defined at a given sub-grid position.
 
 E.g.: `plot!(fig[1, 1][1, 1], 1:4)` which needs an axis to exist at f[1, 1][1, 1].
 """
-function MakieCore.create_axis_like!(attributes::Dict, gsp::GridSubposition)
+function create_axis_like!(attributes::Dict, gsp::GridSubposition)
     _disallow_keyword(:figure, attributes)
     layout = GridLayoutBase.get_layout_at!(gsp.parent; createmissing=false)
     gp = layout[gsp.rows, gsp.cols, gsp.side]
@@ -154,7 +154,7 @@ Method to plot to the last created axis.
 
 E.g.: `plot!(1:4)` which requires a current figure and axis.
 """
-function MakieCore.create_axis_like!(attributes::Dict, ::Nothing)
+function create_axis_like!(attributes::Dict, ::Nothing)
     figure = current_figure()
     isnothing(figure) && error("There is no current figure to plot into.")
     _disallow_keyword(:figure, attributes)
@@ -171,7 +171,7 @@ Method to plot to an axis defined at a given grid position.
 
 E.g.: `plot!(fig[1, 1], 1:4)` which requires an axis to exist at `f[1, 1]`.
 """
-function MakieCore.create_axis_like!(attributes::Dict, gp::GridPosition)
+function create_axis_like!(attributes::Dict, gp::GridPosition)
     _disallow_keyword(:figure, attributes)
     c = contents(gp; exact=true)
     if !(length(c) == 1 && can_be_current_axis(c[1]))
@@ -298,7 +298,7 @@ default_plot_func(f::F, args) where {F} = f
 default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args)...))
 
 # Don't inline these, since they will get called from `scatter!(args...; kw...)` which gets specialized to all kw args
-@noinline function MakieCore._create_plot(F, attributes::Dict, args...)
+@noinline function _create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
     if haskey(figkws, :axis)
@@ -340,7 +340,7 @@ const PlotSpecPlot = Plot{plot, Tuple{<: GridLayoutSpec}}
 get_conversions(scene::Scene) = scene.conversions
 get_conversions(fig::Figure) = get_conversions(fig.scene)
 
-@noinline function MakieCore._create_plot!(F, attributes::Dict, args...)
+@noinline function _create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
         if args[1] isa FigureAxisPlot
             throw(ArgumentError("""
@@ -382,7 +382,7 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
     return figurelike_return!(ax, plot)
 end
 
-@noinline function MakieCore._create_plot!(F, attributes::Dict, scene::SceneLike, args...)
+@noinline function _create_plot!(F, attributes::Dict, scene::SceneLike, args...)
     conversion = get_conversions(scene)
     if !isnothing(conversion)
         get!(attributes, :dim_conversions, conversion)

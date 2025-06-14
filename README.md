@@ -1,9 +1,9 @@
 <div align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)" 
-        srcset="/assets/makie_logo_canvas_dark.svg" >
+        srcset="/assets/logo_with_text_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" width="350">
+        src="/assets/logo_with_text.svg" height="100">
     </picture>
 </div>
 
@@ -116,7 +116,7 @@ Therefore, dev'ing Makie almost works as with other Julia packages, just, that o
 
 ```julia
 ]dev --local Makie # local will clone the repository at ./dev/Makie
-]dev dev/Makie/MakieCore dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
+]dev dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
 ```
 
 To run the tests, you also should add:

@@ -49,12 +49,9 @@ to_rpr_light(ctx, rpr_scene, light, scene) = to_rpr_light(ctx, rpr_scene, light)
 # TODO attenuation
 function to_rpr_light(context::RPR.Context, matsys, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
-    map(light.position) do pos
-        transform!(pointlight, Makie.translationmatrix(pos))
-    end
-    map(light.color) do c
-        setradiantpower!(pointlight, red(c), green(c), blue(c))
-    end
+    transform!(pointlight, Makie.translationmatrix(light.position))
+    c = light.color
+    setradiantpower!(pointlight, red(c), green(c), blue(c))
     return pointlight
 end
 
@@ -67,19 +64,17 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalLight, scene)
     directionallight = RPR.DirectionalLight(context)
-    map(light.direction) do dir
-        if light.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            dir = normalize(T * dir)
-        else
-            dir = normalize(dir)
-        end
-        quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
-        transform!(directionallight, Makie.rotationmatrix4(quart))
+    dir = light.direction
+    if light.camera_relative
+        T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
+        dir = normalize(T * dir)
+    else
+        dir = normalize(dir)
     end
-    map(light.color) do c
-        setradiantpower!(directionallight, red(c), green(c), blue(c))
-    end
+    quart = Makie.rotation_between(Vec3f(dir), Vec3f(0,0,-1))
+    transform!(directionallight, Makie.rotationmatrix4(quart))
+    c = light.color
+    setradiantpower!(directionallight, red(c), green(c), blue(c))
     return directionallight
 end
 
@@ -116,8 +111,8 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.SpotLight)
     return spotlight
 end
 
-function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.AmbientLight)
-    env_img = fill(light.color[], 1, 1)
+function to_rpr_light(context::RPR.Context, rpr_scene, color::Colorant)
+    env_img = fill(color, 1, 1)
     img = RPR.Image(context, env_img)
     env_light = RPR.EnvironmentLight(context)
     set!(env_light, img)
@@ -126,7 +121,7 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.EnvironmentLight)
     env_light = RPR.EnvironmentLight(context)
-    last_img = RPR.Image(context, light.image[]')
+    last_img = RPR.Image(context, light.image')
     set!(env_light, last_img)
     setintensityscale!(env_light, light.intensity[])
     # exchange y and z axis to align Makie's and RPR's representations
@@ -137,15 +132,15 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.EnvironmentL
         0, 0, 0, 1,
     )
     transform!(env_light, flipmat)
-    on(light.intensity) do i
-        setintensityscale!(env_light, i)
-    end
-    on(light.image) do img
-        new_img = RPR.Image(context, img)
-        set!(env_light, new_img)
-        RPR.release(last_img)
-        last_img = new_img
-    end
+    # on(light.intensity) do i
+    #     setintensityscale!(env_light, i)
+    # end
+    # on(light.image) do img
+    #     new_img = RPR.Image(context, img)
+    #     set!(env_light, new_img)
+    #     RPR.release(last_img)
+    #     last_img = new_img
+    # end
     return env_light
 end
 
@@ -154,15 +149,19 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     set!(context, scene)
     # Only set background image if it isn't set by env light, since
     # background image takes precedence
-    if !any(x-> x isa Makie.EnvironmentLight, mscene.lights)
+    lights = mscene.compute.lights[]
+    if !any(x-> x isa Makie.EnvironmentLight, lights)
         env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
         img = RPR.Image(context, env_img)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
-    for light in mscene.lights
+    for light in lights
+        @show typeof(light)
         rpr_light = to_rpr_light(context, scene, light, mscene)
         push!(scene, rpr_light)
     end
+    push!(scene, to_rpr_light(context, scene, mscene.compute.ambient_color[]))
+
 
     for plot in mscene.plots
         insert_plots!(context, matsys, scene, mscene, plot)

@@ -10,18 +10,10 @@ macro compile(block)
 end
 
 precompile(Makie.initialize_block!, (Axis,))
-precompile(_get_glyphcollection_and_linesegments,
-           (LaTeXStrings.LaTeXString, Int64, Float32,
-            FreeTypeAbstraction.FTFont, Attributes,
-            Tuple{Symbol,Symbol}, Quaternion{Float64},
-            MakieCore.Automatic, Float64,
-            ColorTypes.RGBA{Float32}, ColorTypes.RGBA{Float32},
-            Int64, Int64, Vec{2,Float32}))
-
-precompile(Makie.apply_alignment_and_justification!, (Vector{Vector{Makie.GlyphInfo}}, MakieCore.Automatic,
+precompile(Makie.apply_alignment_and_justification!, (Vector{Vector{Makie.GlyphInfo}}, Automatic,
                                                     Tuple{Symbol,Symbol}))
 
-precompile(MakieCore.convert_arguments, (Type{Scatter}, UnitRange{Int64}))
+precompile(convert_arguments, (Type{Scatter}, UnitRange{Int64}))
 precompile(Makie.assemble_colors, (UnitRange{Int64}, Any, Any))
 let
     @compile_workload begin
@@ -51,8 +43,8 @@ precompile(translate, (MoveTo, Vec2{Float64}))
 precompile(scale, (MoveTo, Vec{2,Float32}))
 precompile(append!, (Vector{FreeType.FT_Vector_}, Vector{FreeType.FT_Vector_}))
 precompile(convert_command, (MoveTo,))
-precompile(plot!, (MakieCore.Text{Tuple{Vector{Point{2, Float32}}}},))
+precompile(plot!, (Text{Tuple{Vector{Point{2, Float32}}}},))
 precompile(Vec2{Float64}, (Tuple{Int64,Int64},))
-precompile(MakieCore._create_plot, (typeof(scatter), Dict{Symbol,Any}, UnitRange{Int64}))
+precompile(_create_plot, (typeof(scatter), Dict{Symbol,Any}, UnitRange{Int64}))
 precompile(BezierPath, (String,))
 precompile(BezierPath, (String, Bool, Nothing, Bool, Bool, Bool))

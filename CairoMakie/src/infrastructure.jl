@@ -26,8 +26,8 @@ function cairo_draw(screen::Screen, scene::Scene)
         end || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
-        pparent = Makie.parent_scene(p)
-        pparent.visible[] || continue
+        pparent = Makie.parent_scene(p)::Scene
+        pparent.visible[]::Bool || continue
         if pparent != last_scene
             Cairo.restore(screen.context)
             Cairo.save(screen.context)
@@ -64,7 +64,7 @@ CairoMakie can treat them as atomic plots and render them directly.
 Plots with children are by default recursed into.  This can be overridden
 by defining specific dispatches for `is_cairomakie_atomic_plot` for a given plot type.
 """
-is_cairomakie_atomic_plot(plot::Plot) = isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
+is_cairomakie_atomic_plot(plot::Plot) = Makie.is_atomic_plot(plot) || isempty(plot.plots) || to_value(get(plot, :rasterize, false)) != false
 
 """
     check_parent_plots(f, plot::Plot)::Bool
@@ -130,11 +130,12 @@ end
 
 function draw_plot(scene::Scene, screen::Screen, primitive::Plot)
     if to_value(get(primitive, :visible, true))
-        if isempty(primitive.plots)
+        if is_cairomakie_atomic_plot(primitive)
             Cairo.save(screen.context)
             draw_atomic(scene, screen, primitive)
             Cairo.restore(screen.context)
-        else
+        end
+        if !isempty(primitive.plots)
             zvals = Makie.zvalue2d.(primitive.plots)
             for idx in sortperm(zvals)
                 draw_plot(scene, screen, primitive.plots[idx])

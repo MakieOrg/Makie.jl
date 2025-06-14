@@ -6,8 +6,11 @@ import GridLayoutBase: GridPosition, Side, ContentSize, GapSize, AlignMode, Inne
 function symbol_to_specable(sym::Symbol)
     block = symbol_to_block(sym)
     isnothing(block) || return block
-    return MakieCore.symbol_to_plot(sym)
+    return symbol_to_plot(sym)
 end
+
+deref(x) = x
+deref(x::Base.RefValue) = x[]
 
 """
     PlotSpec(plottype, args...; kwargs...)
@@ -48,7 +51,7 @@ struct PlotSpec
                     # So on error we don't convert for now via try catch
                     # Since we also dont have an API to figure out if a convert is defined correctly
                     # TODO, I think we can do this more elegantly but will need a bit of a convert_attribute refactor
-                    kw[k] = convert_attribute(v, Key{k}(), Key{type}())
+                    kw[k] = deref(convert_attribute(v, Key{k}(), Key{type}()))
                 catch e
                     kw[k] = v
                 end
@@ -150,7 +153,7 @@ end
 const Layoutable = Union{GridLayout,Block}
 const LayoutableSpec = Union{GridLayoutSpec,BlockSpec}
 const LayoutEntry = Pair{GridLayoutPosition,LayoutableSpec}
-# We use this to decide if we can re-use a plot.
+# We use this to decide if we can reuse a plot.
 # (nesting_level_in_layout, position_in_layout, spec)
 const LayoutableKey = Tuple{Int,GridLayoutPosition,LayoutableSpec}
 
@@ -167,7 +170,7 @@ function to_plotspec(::Type{P}, p::PlotSpec; kwargs...) where {P}
     return PlotSpec(plotsym(plottype(P, S)), p.args...; p.kwargs..., kwargs...)
 end
 
-plottype(p::PlotSpec) = MakieCore.symbol_to_plot(p.type)
+plottype(p::PlotSpec) = symbol_to_plot(p.type)
 
 function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
@@ -255,16 +258,15 @@ end
 # pessimistic about what's updatable and to avoid issues with
 # Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
 # TODO when focussing better performance, this is one of the first things we want to try
-function distance_score(a::PlotSpec, b::PlotSpec, scores_dict)
+function distance_score(a::PlotSpec, b::PlotSpec, scores_dict; maxscore=Inf)
     (a.type !== b.type) && return 100.0
-    scores = Float64[
-        distance_score(a.args, b.args, scores_dict),
-        distance_score(a.kwargs, b.kwargs, scores_dict)
-    ]
-    return norm(scores)
+    return hypot(
+        distance_score(a.args, b.args, scores_dict; maxscore),
+        distance_score(a.kwargs, b.kwargs, scores_dict; maxscore)
+    ) |> Float64
 end
 
-function distance_score(a::Any, b::Any, scores)
+function distance_score(a::Any, b::Any, scores; maxscore=Inf)
     a === b && return 0.0
     a == b && return 0.0
     typeof(a) == typeof(b) && return 0.01
@@ -275,60 +277,73 @@ _has_index(a::Tuple, i) = i <= length(a)
 _has_index(a::AbstractVector, i) = checkbounds(Bool, a, i)
 _has_index(a::Dict, i) = haskey(a, i)
 
-function distance_score(a::T, b::T, scores_dict) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:AbstractVector{<:Union{Colorant,Real,Point,Vec}}}
     a === b && return 0.0
     a == b && return 0.0
     return 0.1 # we can always update a vector of colors/reals/vecs
 end
 
-function distance_score(a::T, b::T, scores_dict) where {T<:Union{AbstractVector,Tuple,Dict{Symbol,Any}}}
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:Dict{Symbol,Any}}
     a === b && return 0.0
     isempty(a) && isempty(b) && return 0.0
     all_keys = collect(union(keys(a), keys(b)))
-    scores = map(all_keys) do key
+    score = 0.0
+    for key in all_keys
+        score > maxscore && break
         if _has_index(a, key) && _has_index(b, key)
-            return distance_score(a[key], b[key], scores_dict)
+            score = hypot(score, distance_score(a[key], b[key], scores_dict; maxscore))
         else
-            return 1.0
+            score = hypot(score, 1)
         end
     end
-    return norm(scores)
+    return score
 end
 
-function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores)
+function distance_score(a::T, b::T, scores_dict; maxscore=Inf) where {T<:Union{Tuple,AbstractVector}}
     a === b && return 0.0
-    return norm(distance_score.(a, b, Ref(scores)))
+    isempty(a) && isempty(b) && return 0.0
+    common_keys = max(firstindex(a), firstindex(b)):min(lastindex(a), lastindex(b))
+    n_different_keys = abs(firstindex(a) - firstindex(b)) + abs(lastindex(a) - lastindex(b))
+    score = √n_different_keys
+    for key in common_keys
+        score > maxscore && break
+        score = hypot(score, distance_score(a[key], b[key], scores_dict; maxscore))
+    end
+    return score
 end
 
-function distance_score(a::BlockSpec, b::BlockSpec, scores_dict)
+function distance_score(a::GridLayoutPosition, b::GridLayoutPosition, scores; maxscore=Inf)
+    a === b && return 0.0
+    return norm(distance_score.(a, b, Ref(scores); maxscore=Inf))
+end
+
+function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore=Inf)
     a === b && return 0.0
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     get!(scores_dict, (a, b)) do
-        scores = Float64[
+        hypot(
             # keyword arguments are cheap to change
-            distance_score(a.kwargs, b.kwargs, scores_dict) * 0.1,
+            distance_score(a.kwargs, b.kwargs, scores_dict; maxscore=maxscore/0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
-            distance_score(a.plots, b.plots, scores_dict),
-        ]
-        return norm(scores)
+            distance_score(a.plots, b.plots, scores_dict; maxscore),
+        ) |> Float64
     end
 end
 
 function distance_score(at::Tuple{Int,GP,BS}, bt::Tuple{Int,GP,BS},
-                        scores_dict) where {GP<:GridLayoutPosition,BS<:BlockSpec}
+                        scores_dict; maxscore=Inf) where {GP<:GridLayoutPosition,BS<:BlockSpec}
     at === bt && return 0.0
     (anesting, ap, a) = at
     (bnesting, bp, b) = bt
-    scores = Float64[
+    hypot(
         abs(anesting - bnesting) * 0.5,
-        distance_score(ap, bp, scores_dict) * 0.5,
-        distance_score(a, b, scores_dict)
-    ]
-    return norm(scores)
+        distance_score(ap, bp, scores_dict; maxscore=maxscore/0.5) * 0.5,
+        distance_score(a, b, scores_dict; maxscore)
+    ) |> Float64
 end
 
 function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridLayoutSpec},
-                        scores) where {GP<:GridLayoutPosition}
+                        scores; maxscore=Inf) where {GP<:GridLayoutPosition}
     at === bt && return 0.0
     anesting, ap, a = at
     bnesting, bp, b = bt
@@ -336,8 +351,8 @@ function distance_score(at::Tuple{Int,GP,GridLayoutSpec}, bt::Tuple{Int,GP,GridL
         anested = map(ac -> (anesting + 1, ac[1], ac[2]), a.content)
         bnested = map(bc -> (anesting + 1, bc[1], bc[2]), b.content)
         return norm([abs(anesting - bnesting),
-                     distance_score(ap, bp, scores),
-                     distance_score(anested, bnested, scores)])
+                     distance_score(ap, bp, scores; maxscore),
+                     distance_score(anested, bnested, scores; maxscore)])
     end
 end
 
@@ -346,7 +361,7 @@ function find_min_distance(f, to_compare, list, scores, penalty=(key, score)-> s
     minscore = 2.0
     idx = -1
     for key in keys(list)
-        score = distance_score(to_compare, f(list[key], key), scores)
+        score = distance_score(to_compare, f(list[key], key), scores; maxscore=minscore)
         score = penalty(key, score) # apply custom penalty
         if score ≈ 0.0 # shortcuircit for exact matches
             return key
@@ -369,10 +384,12 @@ function find_layoutable(
     return (idx, layoutables[idx]...)
 end
 
-function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::IdDict{PlotSpec,Plot}, scores)
-    idx = find_min_distance((_, spec) -> spec, plotspec, plots, scores)
-    idx == -1 && return nothing, nothing
-    return plots[idx], idx
+function find_reusable_plot(scene::Scene, plotspec::PlotSpec, plots::Vector{Pair{PlotSpec,Plot}}, scores)
+    idx = find_min_distance(plotspec, plots, scores) do (spec, p), _
+        return spec
+    end
+    idx == -1 && return nothing, nothing, nothing
+    return plots[idx][2], plots[idx][1], idx
 end
 
 to_span(range::UnitRange{Int}, span::UnitRange{Int}) = (range.start < span.start || range.stop > span.stop) ? error("Range $range not completely covered by spanning range $span.") : range
@@ -400,7 +417,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # It seems impossible to merge the recipes from all modules
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
-    # The names are loaded from cache and dont contain anything after MakieCore.
+    # The names are loaded from cache and dont contain anything after 
     func = symbol_to_specable(field)
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
@@ -420,16 +437,15 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     # Update args in plot `input_args` list
+    updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        arg_obs = plot.args[i]
         prev_val = oldspec.args[i]
         if is_different(prev_val, spec.args[i]) # only update if different
-            arg_obs.val = spec.args[i]
-            push!(obs_to_notify, arg_obs)
+            updates[Symbol(:arg, i)] = spec.args[i]
         end
     end
     scene = parent_scene(plot)
@@ -438,13 +454,7 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
         old_attr = plot[attribute]
         # only update if different
         if is_different(old_attr[], new_value)
-            if new_value isa Cycled
-                old_attr.val = to_color(scene, attribute, new_value)
-            else
-                @debug("updating kw $attribute")
-                old_attr.val = new_value
-            end
-            push!(obs_to_notify, old_attr)
+            updates[attribute] = new_value
         end
     end
 
@@ -452,41 +462,18 @@ function update_plot!(obs_to_notify, plot::AbstractPlot, oldspec::PlotSpec, spec
     filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
     if !isempty(reset_to_default)
         for k in reset_to_default
-            old_attr = plot[k]
-            new_value = MakieCore.lookup_default(typeof(plot), parent_scene(plot), k)
+            old_attr = plot[k][]
+            new_value = lookup_default(typeof(plot), parent_scene(plot), k)
             # In case of e.g. dim_conversions
             isnothing(new_value) && continue
             # only update if different
-            if is_different(old_attr[], new_value)
-                old_attr.val = new_value
-                push!(obs_to_notify, old_attr)
+            if is_different(old_attr, new_value)
+                updates[k] = new_value
             end
         end
     end
-    # Cycling needs to be handled separately sadly,
-    # since they're implicitly mutating attributes, e.g. if I re-use a plot
-    # that has been on cycling position 2, and now I re-use it for the first plot in the list
-    # it will need to change to the color of cycling position 1
-    if haskey(plot, :cycle)
-        cycle = get_cycle_for_plottype(plot.cycle[])
-        uncycled = Set{Symbol}()
-        for (attr_vec, _) in cycle.cycle
-            for attr in attr_vec
-                if !haskey(spec.kwargs, attr)
-                    push!(uncycled, attr)
-                end
-            end
-        end
-        if !isempty(uncycled)
-            # remove all attributes that don't need cycling
-            for (attr_vec, _) in cycle.cycle
-                filter!(x -> x in uncycled, attr_vec)
-            end
-            add_cycle_attribute!(plot, scene, cycle)
-            append!(obs_to_notify, (plot[k] for k in uncycled))
-        end
-    end
-    return
+    update!(plot, updates)
+    return updates
 end
 
 
@@ -534,7 +521,7 @@ function Base.propertynames(pl::PlotList)
     else
         ()
     end
-    return Tuple(unique([keys(pl.attributes)..., inner_pnames...]))
+    return Tuple(unique([keys(pl.attributes.inputs)..., inner_pnames...]))
 end
 
 function Base.getproperty(pl::PlotList, property::Symbol)
@@ -574,34 +561,55 @@ end
 
 
 function push_without_add!(scene::Scene, plot)
-    MakieCore.validate_attribute_keys(plot)
+    validate_attribute_keys(plot)
     for screen in scene.current_screens
         Base.invokelatest(insert!, screen, scene, plot)
     end
 end
 
+function get_plot_position(specs, spec::PlotSpec, plot::Plot)
+    # TODO, this may not reproduce the exact same cycle index as on master
+    cycle = plot.cycle[]
+    isnothing(cycle) && return 0
+    syms = [s for ps in attrsyms(cycle) for s in ps]
+    pos = 1
+    for p in specs
+        p === spec && return pos
+        if haskey(p.kwargs, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(spec)
+            is_cycling = any(syms) do x
+                return haskey(p.kwargs, x) && isnothing(p[x])
+            end
+            if  is_cycling
+                pos += 1
+            end
+        end
+    end
+    # not inserted yet
+    return pos
+end
+
 function diff_plotlist!(
         scene::Scene, plotspecs::Vector{PlotSpec},
-        obs_to_notify,
         plotlist::Union{Nothing,PlotList}=nothing,
         reusable_plots = IdDict{PlotSpec, Plot}(),
         new_plots = IdDict{PlotSpec,Plot}())
-     # needed to be mutated
-    empty!(scene.cycler.counters)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
-    for plotspec in plotspecs
+    reusable_plots_sorted = [Pair{PlotSpec,Plot}(k, v) for (k, v) in reusable_plots]
+    sort!(reusable_plots_sorted, by=((k, v),)-> v.plot_position[], rev=true)
+    for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
-        reused_plot, old_spec = find_reusable_plot(scene, plotspec, reusable_plots, scores)
+        reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
+        # Forward kw arguments from Plotlist
+        if !isnothing(plotlist)
+            merge!(plotspec.kwargs, plotlist.kw)
+        end
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-            # Forward kw arguments from Plotlist
-            if !isnothing(plotlist)
-                merge!(plotspec.kwargs, plotlist.kw)
-            end
+
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
             # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
@@ -618,9 +626,15 @@ function diff_plotlist!(
             new_plots[plotspec] = plot_obj
         else
             @debug("updating old plot with spec")
-            # Delete the plots from reusable_plots, so that we don't re-use it multiple times!
+            # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
-            update_plot!(obs_to_notify, reused_plot, old_spec, plotspec)
+            deleteat!(reusable_plots_sorted, idx)
+            # Update the position of the plot!
+            pos = get_plot_position(plotspecs, plotspec, reused_plot)
+            if pos != reused_plot.plot_position[]
+                reused_plot.plot_position = pos
+            end
+            update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
 
         end
@@ -639,16 +653,14 @@ function update_plotspecs!(
     # if a plot still exists from last time, update it accordingly.
     # If the plot is removed from `plotspecs`, we'll delete it from here
     # and re-create it if it ever returns.
-    obs_to_notify = Observable[]
     update_plotlist(spec::PlotSpec) = update_plotlist([spec])
     function update_plotlist(plotspecs)
         # Global list of observables that need updating
         # Updating them all at once in the end avoids problems with triggering updates while updating
         # And at some point we may be able to optimize notify(list_of_observables)
-        empty!(scene.cycler.counters) # Reset Cycler
-        # diff_plotlist! deletes all plots that get re-used from unused_plots
+        # diff_plotlist! deletes all plots that get reused from unused_plots
         # so, this will become our list of unused plots!
-        diff_plotlist!(scene, plotspecs, obs_to_notify, plotlist, unused_plots, new_plots)
+        diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
         # Next, delete all plots that we haven't used
         # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
         if own_plots
@@ -663,10 +675,7 @@ function update_plotspecs!(
             empty!(unused_plots)
             merge!(unused_plots, new_plots)
             empty!(new_plots)
-            # finally, notify all changes at once
         end
-        foreach(notify, obs_to_notify)
-        empty!(obs_to_notify)
         return
     end
     l = Base.ReentrantLock()
@@ -681,7 +690,9 @@ end
 
 function Makie.plot!(p::PlotList{<: Tuple{<: Union{PlotSpec, AbstractArray{PlotSpec}}}})
     scene = Makie.parent_scene(p)
-    update_plotspecs!(scene, p[1], p)
+    arg_obs = ComputePipeline.get_observable!(p.converted; use_deepcopy=false)
+    obs = map(first, arg_obs)
+    update_plotspecs!(scene, obs, p)
     return p
 end
 
@@ -731,7 +742,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
                         return nan_extrema(color)
                     end
                 else
-                    MakieCore.lookup_default(pt, scene, k)
+                    lookup_default(pt, scene, k)
                 end
             end
         end
@@ -806,10 +817,6 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         if is_different(val, prev_val)
             setproperty!(block, key, val)
         end
-    end
-    # Reset the cycler
-    if hasproperty(block, :scene)
-        empty!(block.scene.cycler.counters)
     end
     if T <: AbstractAxis
         plot_obs[] = spec.plots
@@ -940,7 +947,7 @@ function update_gridlayout!(gridlayout::GridLayout, nesting::Int, oldgridspec::U
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
             @debug("updating old block with spec")
-            # Make sure we don't double re-use a layoutable
+            # Make sure we don't double reuse a layoutable
             splice!(previous_contents, idx)
             (_, _, old_spec) = old_key
             (layoutable, plot_obs) = layoutable_obs
@@ -975,8 +982,8 @@ end
 
 function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSpec, unused_layoutables,
                             new_layoutables)
-    # For each update we look into `unused_layoutables` to see if we can re-use a layoutable (GridLayout/Block).
-    # Every re-used layoutable and every newly created gets pushed into `new_layoutables`,
+    # For each update we look into `unused_layoutables` to see if we can reuse a layoutable (GridLayout/Block).
+    # Every reused layoutable and every newly created gets pushed into `new_layoutables`,
     # while it gets removed from `unused_layoutables`.
     empty!(new_layoutables)
     update_gridlayout!(
@@ -1013,7 +1020,7 @@ function update_gridlayout!(target_layout::GridLayout, layout_spec::GridLayoutSp
     #     return
     # end
     # Finally transfer all new_layoutables into reusable_layoutables,
-    # since in the next update they will be the once we re-use
+    # since in the next update they will be the once we reuse
     append!(unused_layoutables, new_layoutables)
     unique!(unused_layoutables)
     return
@@ -1039,11 +1046,13 @@ end
 
 args_preferred_axis(::GridLayoutSpec) = FigureOnly
 
-plot!(plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}}) = plot
+plot!(plot::Plot{plot,Tuple{GridLayoutSpec}}) = plot
 
-function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{MakieCore.plot,Tuple{GridLayoutSpec}})
+function plot!(fig::Union{Figure, GridLayoutBase.GridPosition}, plot::Plot{plot,Tuple{GridLayoutSpec}})
     figure = fig isa Figure ? fig : get_top_parent(fig)
     connect_plot!(figure.scene, plot)
-    update_fig!(fig, plot.converted[1])
+    obs = ComputePipeline.get_observable!(plot.converted; use_deepcopy=false)
+    grid = map(first, obs)
+    update_fig!(fig, grid)
     return fig
 end

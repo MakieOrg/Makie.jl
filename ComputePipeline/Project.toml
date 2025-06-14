@@ -1,0 +1,18 @@
+name = "ComputePipeline"
+uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
+authors = ["Simon Danisch", "MakieOrg"]
+version = "0.1.0"
+
+[deps]
+Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
+
+[compat]
+Observables = "0.5.5"
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[targets]
+test = ["Test", "Random"]

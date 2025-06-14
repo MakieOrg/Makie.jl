@@ -43,25 +43,16 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         return atlas_texture_cache[(atlas, context)][1]
     else
         require_context(context)
-        tex = Texture(
-            context, atlas.data,
-            minfilter = :linear,
-            magfilter = :linear,
-            # TODO: Consider alternatives to using the builtin anisotropic
-            # samplers for signed distance fields; the anisotropic
-            # filtering should happen *after* the SDF thresholding, but
-            # with the builtin sampler it happens before.
-            anisotropic = 16f0,
-            mipmap = true
-        )
+        # anisotropic filtering sometimes creates artifacts with aspect/distortion
+        # corrected anti-aliasing radius, mipmap seems irrelevant
+        tex = Texture(context, atlas.data, minfilter = :linear, magfilter = :linear)
 
         function callback(distance_field, rectangle)
             ctx = tex.context
             if GLAbstraction.context_alive(ctx)
-                prev_ctx = GLAbstraction.current_context()
-                ShaderAbstractions.switch_context!(ctx)
-                tex[rectangle] = distance_field
-                ShaderAbstractions.switch_context!(prev_ctx)
+                GLAbstraction.with_context(ctx) do
+                    tex[rectangle] = distance_field
+                end
             end
         end
         Makie.font_render_callback!(callback, atlas)
@@ -85,4 +76,5 @@ include("picking.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
+include("new-primitives.jl")
 include("display.jl")

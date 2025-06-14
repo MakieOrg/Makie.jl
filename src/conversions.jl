@@ -194,8 +194,8 @@ end
 function convert_arguments(::Type{<: Lines}, rect::Rect3{T}) where {T}
     PT = Point3{float_type(T)}
     points = decompose(PT, rect)
-    push!(points, PT(NaN)) # use to seperate linesegments
-    return (points[[1, 2, 3, 4, 1, 5, 6, 2, 9, 6, 8, 3, 9, 5, 7, 4, 9, 7, 8]],)
+    push!(points, PT(NaN)) # use to separate linesegments
+    return (points[[1, 3, 4, 2, 1, 5, 6, 2, 9, 6, 8, 7, 5, 9, 8, 4, 9, 7, 3]],)
 end
 """
 
@@ -539,7 +539,7 @@ creates indices under the assumption, that each triplet in `xyz` forms a triangl
 """
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector
+        xyz::AbstractVector{<: VecTypes}
     )
     faces = connect(UInt32.(0:length(xyz)-1), GLTriangleFace)
     # TODO support faceview natively
@@ -559,11 +559,15 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
 end
 
 function convert_arguments(
-        ::Type{<:Mesh},
-        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
-    )
-    # TODO: clear faceviews
-    return (meshes,)
+        T::Type{<:Mesh},
+        meshes::AbstractVector{<: GeometryBasics.AbstractGeometry{DIM}}
+    ) where DIM
+
+    if isempty(meshes)
+        return (GeometryBasics.Mesh(Point{DIM, Float32}[], GLTriangleFace[]),)
+    end
+    converted = [convert_arguments(T, m)[1] for m in meshes]
+    return (merge(converted),)
 end
 
 function convert_arguments(MT::Type{<:Mesh}, xyz::AbstractPolygon)
@@ -582,7 +586,7 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, geom::GeometryPrimitive{N, T}) where {N, T <: Real}
-    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # we convert to UV mesh as default, because otherwise the uv information gets lost
     # - we can still drop them, but we can't add them later on
     m = GeometryBasics.expand_faceviews(GeometryBasics.uv_normal_mesh(
         geom; pointtype = Point{N, float_type(T)},
@@ -633,23 +637,6 @@ end
 ################################################################################
 #                             Function Conversions                             #
 ################################################################################
-
-
-# Allow the user to pass a function to `arrows` which determines the direction
-# and magnitude of the arrows.  The function must accept `Point2f` as input.
-# and return Point2f or Vec2f or some array like structure as output.
-function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, f::Function)
-    points = Point2{float_type(x, y)}.(x, y')
-    f_out = Vec2{float_type(x, y)}.(f.(points))
-    return (vec(points), vec(f_out))
-end
-
-function convert_arguments(::Type{<:Arrows}, x::RealVector, y::RealVector, z::RealVector,
-                           f::Function)
-    points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
-    f_out = Vec3{float_type(x, y, z)}.(f.(points))
-    return (vec(points), vec(f_out))
-end
 
 # Note: AbstractRange must be linear
 is_regularly_spaced(x::AbstractRange) = true
@@ -770,8 +757,10 @@ float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::AbstractArray{T}) where T = float32type(T)
 float32type(::T) where {T} = float32type(T)
+float32type(T::Type) = MethodError(float32type, (T,))
 
 el32convert(x::ClosedInterval) = Float32(minimum(x)) .. Float32(maximum(x))
+el32convert(x::Base.ReinterpretArray) = collect(elconvert(float32type(x), x))
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 el32convert(x::AbstractArray{T}) where {T<:Real} = elconvert(float32type(T), x)
 el32convert(x::AbstractArray{<:Union{Missing,T}}) where {T<:Real} = elconvert(float32type(T), x)
@@ -898,21 +887,37 @@ end
 
 
 
+# convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+# convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-convert_attribute(color, ::key"color") = to_color(color)
+# Normalize for cycle to be nothing if there's nothing to cycle!
+convert_attribute(cycle::Vector, ::key"cycle") = isempty(cycle) ? nothing : Cycle(cycle)
+convert_attribute(cycle::Nothing, ::key"cycle") = cycle
+convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
-convert_attribute(colormap, ::key"colormap") = to_colormap(colormap)
+
 convert_attribute(font, ::key"font") = to_font(font)
 convert_attribute(align, ::key"align") = to_align(align)
 
-convert_attribute(p, ::key"highclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"highclip") = p
-convert_attribute(p, ::key"lowclip") = to_color(p)
-convert_attribute(p::Nothing, ::key"lowclip") = p
+convert_attribute(x::Automatic, ::key"color") = x
+convert_attribute(color, ::key"color") = to_color(color)
+
+convert_attribute(colormap, ::key"colormap") = Ref{Any}(colormap)
+
+convert_attribute(c, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic, Nothing}, ::key"highclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+convert_attribute(c, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(to_color(c))
+convert_attribute(::Union{Automatic,Nothing}, ::key"lowclip") = Ref{Union{Automatic, RGBAf}}(automatic)
+
+convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
+
+# TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
+convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
+to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
+
 convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette
@@ -943,6 +948,7 @@ function to_color(c::Tuple{<: Any,  <: Number})
     return RGBAf(Colors.color(col), alpha(col) * c[2])
 end
 
+convert_attribute(r, ::key"rotation", ::key"scatter") = Ref{Any}(r)
 convert_attribute(b::Billboard{Float32}, ::key"rotation") = to_rotation(b.rotation)
 convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotation") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotation") = to_rotation.(r)
@@ -981,8 +987,11 @@ convert_attribute(::Automatic, ::key"uv_transform", ::key"mesh") = Mat{2, 3, Flo
 convert_attribute(::Automatic, ::key"uv_transform", ::key"surface") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 convert_attribute(::Automatic, ::key"uv_transform", ::key"image") = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
 
-convert_attribute(x::Vector, k::key"uv_transform") = convert_attribute.(x, (k,))
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+convert_attribute(x::Array, k::key"uv_transform") = convert_attribute.(x, Ref(k))
 convert_attribute(x, k::key"uv_transform") = convert_attribute(uv_transform(x), k)
+convert_attribute(x::Mat{3, 3}, k::key"uv_transform") = convert_attribute(Mat3f(x), k)
+convert_attribute(x::Mat{2, 3}, k::key"uv_transform") = convert_attribute(Mat{2, 3, Float32}(x), k)
 convert_attribute(x::Mat3f, ::key"uv_transform") = x[Vec(1,2), Vec(1,2,3)]
 convert_attribute(x::Mat{2, 3, Float32}, ::key"uv_transform") = x
 convert_attribute(x::Nothing, ::key"uv_transform") = x
@@ -992,24 +1001,48 @@ function convert_attribute(angle::Real, ::key"uv_transform")
     # rotate, translate back.
     # For patterns and in terms of what's actually happening to the uvs we
     # should not translate at all.
-    error("A uv_transform corresponding to a rotation by $(angle)rad is not implemented directly. Use :rotr90, :rotl90, :rot180 or Makie.uv_transform(angle).")
+    error(
+        "Creating a uv_transform from a rotation angle is not implemented directly because one usually " *
+        "needs to translate as well to deal with the 0..1 value range. Use :rotr90, :rotl90, :rot180, " *
+        "Makie.uv_transform(angle) or multi-step expression (tuple) instead."
+    )
 end
 
 """
     uv_transform(args::Tuple)
     uv_transform(args...)
 
-Returns a 3x3 uv transformation matrix combinign all the given arguments. This
+Returns a 3x3 uv transformation matrix combining all the given arguments. This
 lowers to `mapfoldl(uv_transform, *, args)` so operations act from right to left
 like matrices `(op3, op2, op1)`.
 
 Note that `Tuple{VecTypes{2, <:Real}, VecTypes{2, <:Real}}` maps to
 `uv_transform(translation, scale)` as a special case.
 """
-uv_transform(packed::Tuple) = mapfoldl(uv_transform, *, packed)
-uv_transform(packed...) = uv_transform(packed)
-uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+function uv_transform(packed::Tuple)
+    combine(a::Mat3f, b::Mat3f) = a * b
+    # The arrays have already been copied by uv_transform(array)
+    combine(a::Array, b::Mat3f) = a .= a .* Ref(b)
+    combine(a::Mat3f, b::Array) = b .= Ref(a) .* b
+    combine(a::Array, b::Array) = a .= a .* b
 
+    return mapfoldl(uv_transform, combine, packed)
+end
+uv_transform(packed...) = uv_transform(packed)
+
+"""
+    uv_transform(::UniformScaling)
+    uv_transform(::typeof(identity))
+
+Returns a 3x3 identity matrix When passing `I` or `identity`.
+"""
+uv_transform(::UniformScaling) = Mat{3, 3, Float32}(I)
+uv_transform(::typeof(identity)) = Mat{3, 3, Float32}(I)
+
+# repeated for packed uv_transforms
+# Careful: Mat <: AbstractArray, which should be handled by other methods
+uv_transform(x::Array) = uv_transform.(x)
+uv_transform(M::Mat{2, 3}) = Mat3f(M[1], M[2], 0, M[3], M[4], 0, M[5], M[6], 1)
 
 # prefer scale as single argument since it may be useful for patterns
 # while just translation is mostly useless
@@ -1049,14 +1082,15 @@ Creates a 3x3 uv transformation matrix from a given named action. They assume
 - `:swap_xy, :transpose` which corresponds to transposing the texture
 - `:flip_x, :flip_y, :flip_xy` which flips the x/y/both axis of a texture
 - `:mesh, :meshscatter, :surface, :image` which grabs the default of the corresponding plot type
+- `:identity` corresponding to no change/identity
 """
 function uv_transform(action::Symbol)
     # TODO: do some explicitly named operations
-    if action == :rotr90
-        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
-    elseif action == :rotl90
+    if action === :rotr90
         return Mat3f(0,1,0, -1,0,0, 1,0,1)
-    elseif action == :rot180
+    elseif action === :rotl90
+        return Mat3f(0,-1,0, 1,0,0, 0,1,1)
+    elseif action === :rot180
         return Mat3f(-1,0,0, 0,-1,0, 1,1,1)
     elseif action in (:swap_xy, :transpose)
         return Mat3f(0,1,0, 1,0,0, 0,0,1)
@@ -1071,6 +1105,8 @@ function uv_transform(action::Symbol)
         return Mat3f(M[1,1], M[2,1], 0, M[1,2], M[2,2], 0, M[1,3], M[2,3], 1)
     # elseif action == :surface
         # return Mat3f(I)
+    elseif action === :identity
+        return Mat3f(I)
     else
         error("Transformation :$action not recognized.")
     end
@@ -1220,7 +1256,7 @@ end
 
 function convert_attribute(value::Symbol, ::key"linecap")
     # TODO: make this an enum?
-    vals = Dict(:butt => 0, :square => 1, :round => 2)
+    vals = Dict(:butt => Int32(0), :square => Int32(1), :round => Int32(2))
     return get(vals, value) do
         error("$value is not a valid cap style. It must be one of $(keys(vals)).")
     end
@@ -1229,7 +1265,7 @@ end
 function convert_attribute(value::Symbol, ::key"joinstyle")
     # TODO: make this an enum?
     # 0 and 2 are shared between this and linecap. 1 has no equivalent here
-    vals = Dict(:miter => 0, :round => 2, :bevel => 3)
+    vals = (miter = Int32(0), round = Int32(2), bevel = Int32(3))
     return get(vals, value) do
         error("$value is not a valid joinstyle. It must be one of $(keys(vals)).")
     end
@@ -1281,6 +1317,7 @@ component `Tuple`s with `Real` and `Symbol` elements.
 To specify a custom error message you can add an `error_prefix` or use
 `halign2num(value, error_msg)` and `valign2num(value, error_msg)` respectively.
 """
+to_align(x::AbstractVector) = to_align.(x)
 to_align(x::Tuple) = Vec2f(halign2num(x[1]), valign2num(x[2]))
 to_align(x::VecTypes{2, <:Real}) = Vec2f(x)
 
@@ -1412,6 +1449,8 @@ end
 
 to_font(fonts::Attributes, x) = to_font(x)
 
+to_font(::Automatic) = defaultfont()
+
 
 """
     rotation accepts:
@@ -1438,9 +1477,6 @@ to_rotation(s::Tuple{VecTypes, Number}) = qrotation(to_ndim(Vec3f, s[1], 0.0), s
 to_rotation(angle::Number) = qrotation(Vec3f(0, 0, 1), angle)
 to_rotation(r::AbstractVector) = to_rotation.(r)
 to_rotation(r::AbstractVector{<: Quaternionf}) = r
-
-convert_attribute(x, ::key"colorrange") = to_colorrange(x)
-to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
 convert_attribute(x, ::key"fontsize") = to_fontsize(x)
 to_fontsize(x::Number) = Float32(x)
@@ -1578,14 +1614,30 @@ function to_colormap(cg::PlotUtils.ColorGradient)::Vector{RGBAf}
     return to_colormap(getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), 256)))
 end
 
+"""
+    to_colormapping_type(colormap)
+Returns `continuous`, `categorical` or `banded` according to the type of the
+colormap passed.
+Note: Currently recognizes all named colormaps as continuous. To recognize them
+as categorical they need to be wrapped in `Categorical(colormap)`.
+"""
+to_colormapping_type(::Any) = continuous
+to_colormapping_type(::Categorical) = categorical
+to_colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
+to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
+to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
+# TODO: some Symbols should probably be considered categorical?
+# TODO: Would be nice if we could extract more information like colorscale from
+#       PlotUtils, colormapping types from ColorSchemes, ...
+
 # Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
-    elseif isa(value, Int32) && value in 0:5
-        return value
+    elseif isa(value, Integer) && value in 0:5
+        return Int32(value)
     elseif value == 7
-        return value # makie internal contour implementation
+        return Int32(value) # makie internal contour implementation
     else
         error("$value is not a valid volume algorithm. Please have a look at the docstring of `to_volume_algorithm` (in the REPL, `?to_volume_algorithm`).")
     end
@@ -1910,6 +1962,7 @@ to_spritemarker(b::BezierPath) = b
 to_spritemarker(b::Polygon) = BezierPath(b)
 to_spritemarker(b) = error("Not a valid scatter marker: $(typeof(b))")
 to_spritemarker(x::Shape) = x
+to_spritemarker(x::UInt32) = x # Texture atlas hash
 
 function to_spritemarker(str::String)
     error("Using strings for multiple char markers is deprecated. Use `collect(string)` or `['x', 'o', ...]` instead. Found: $(str)")
@@ -1945,8 +1998,6 @@ function to_spritemarker(marker::Symbol)
 end
 
 
-
-
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
 convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
 convert_attribute(value, ::key"isorange", ::key"volume") = Float32(value)
@@ -1970,6 +2021,17 @@ convert_attribute(value, ::key"specular") = Vec3f(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 
+convert_attribute(value::Automatic, ::key"shading") = true
+function convert_attribute(value::ShadingAlgorithm, ::key"shading")
+    if value != NoShading
+        @warn "`shading = $value` is deprecated in favor of `shading = true` as a plot attribute. To switch between `FastShading` and `MultiLightShading` explicitly, use scene attributes."
+    end
+    return value != NoShading
+end
+
+
+convert_attribute(value, ::key"depth_shift") = Float32(value)
+
 
 # SAMPLER overloads
 
@@ -1977,7 +2039,7 @@ convert_attribute(s::ShaderAbstractions.Sampler{RGBAf}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T,N}, k::key"color") where {T,N}
     return ShaderAbstractions.Sampler(el32convert(s.data); minfilter=s.minfilter, magfilter=s.magfilter,
                                       x_repeat=s.repeat[1], y_repeat=s.repeat[min(2, N)],
-                                      z_repeat=s.repeat[min(3, N)],
+                                      z_repeat=s.repeat[min(3, N)], mipmap = s.mipmap,
                                       anisotropic=s.anisotropic, color_swizzel=s.color_swizzel)
 end
 
@@ -1987,7 +2049,7 @@ function el32convert(x::ShaderAbstractions.Sampler{T,N}) where {T,N}
     data = el32convert(x.data)
     return ShaderAbstractions.Sampler{T32,N,typeof(data)}(data, x.minfilter, x.magfilter,
                                        x.repeat,
-                                       x.anisotropic,
+                                       x.anisotropic, mipmap = s.mipmap,
                                        x.color_swizzel,
                                        ShaderAbstractions.ArrayUpdater(data, x.updates.update))
 end
@@ -2004,3 +2066,6 @@ GeometryBasics.collect_with_eltype(::Type{T}, vec::ShaderAbstractions.Buffer{T})
 to_lrbt_padding(x::Real) = Vec4f(x)
 to_lrbt_padding(xy::VecTypes{2}) = Vec4f(xy[1], xy[1], xy[2], xy[2])
 to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
+
+convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
+convert_attribute(x::Vector{<: Plane}, ::key"clip_planes") = Plane3f.(x)

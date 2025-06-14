@@ -278,6 +278,7 @@ function create_app_content(root_path::String)
             for image in marked_for_deletion[]
                 @info "Deleting $image"
                 target = joinpath(tmpdir, normpath(image))
+                @show target
                 if isfile(target)
                     rm(target)
                 else
@@ -297,7 +298,7 @@ function create_app_content(root_path::String)
             @error "Upload failed: " exception = (e, catch_backtrace())
         finally
             @info "Deleting temp directory..."
-            rm(tmpdir)
+            rm(tmpdir; force=true, recursive = true)
             @info "Done. You can ctrl+c out now."
         end
         return

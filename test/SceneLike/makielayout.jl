@@ -1,3 +1,5 @@
+using InteractiveUtils: subtypes
+
 # Minimal sanity checks for Makie Layout
 @testset "Blocks constructors" begin
     fig = Figure()
@@ -16,6 +18,13 @@
     tb = fig[end + 1, :] = Textbox(fig)
     is = fig[end + 1, :] = IntervalSlider(fig)
     @test true
+end
+
+@testset "Generic Block functionality" begin
+    for T in subtypes(Makie.Block)
+        T === Makie.AbstractAxis && continue
+        @test propertynames(T) isa Vector{Symbol}
+    end
 end
 
 @testset "deleting from axis" begin
@@ -42,7 +51,7 @@ end
     _, hm = heatmap(fig[1, 1], xs, ys, zs)
     cb = Colorbar(fig[1, 2], hm)
 
-    @test hm.calculated_colors[].colorrange[] == Vec(-0.5, 0.5)
+    @test hm.scaled_colorrange[] == Vec(-0.5, 0.5)
     @test cb.limits[] == Vec(-.5, .5)
 
     hm.colorrange = Float32.((-1, 1))
@@ -250,7 +259,7 @@ end
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
         cbar = Colorbar(fig[1,1], colormap=:viridis, colorrange=Vec2f(0, 1))
-        ticklabel_strings = first.(cbar.axis.elements[:ticklabels][1][])
+        ticklabel_strings = first.(cbar.axis.elements[:ticklabels].arg1[])
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
@@ -498,6 +507,26 @@ end
     @test_nowarn Legend(f[1, 1], [[]], ["No legend elements"])
 end
 
+@testset "Legend data gathering" begin
+    function make_fig(plot_func, args...)
+        f = Figure()
+        ax = Axis(f[1, 1])
+        plot_func(ax, args..., label="test")
+        Legend(f[1, 2], ax)
+        return f
+    end
+
+    @test make_fig(density!, rand(100)) isa Figure
+    @test make_fig(poly!, Rect2f(0,0,1,1)) isa Figure
+    @test make_fig(band!, rand(3), rand(3), rand(3)) isa Figure
+    @test make_fig(violin!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig(boxplot!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig(crossbar!, rand(3), rand(3), rand(3) .-1, rand(3) .+1) isa Figure
+    @test make_fig(scatter!, rand(3)) isa Figure
+    @test make_fig(lines!, rand(3)) isa Figure
+    @test make_fig(linesegments!, rand(8)) isa Figure
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
@@ -570,4 +599,12 @@ end
     Toggle(f[1,1])
     Toggle(f[2,1], orientation=:vertical)
     Toggle(f[3,1], orientation=pi/4)
+end
+
+@testset "Textbox set! & unsafe_set!" begin
+    f = Figure()
+    tb = Textbox(f[1,1], validator = isequal("hi"))
+    @test isnothing(Makie.set!(tb, "hi"))
+    @test_throws ErrorException Makie.set!(tb, "there")
+    @test isnothing(Makie.unsafe_set!(tb, "there"))
 end

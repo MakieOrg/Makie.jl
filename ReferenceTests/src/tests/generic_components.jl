@@ -11,18 +11,17 @@
     l2 = lines!(scene, [20, 50, NaN, 20, 50], [200, 200, NaN, 230, 230], linewidth = 20, linecap = :round)
     ls = linesegments!(scene, [20, 50, NaN, NaN, 20, 50], [260, 260, NaN, NaN, 290, 290], linewidth = 20, linecap = :square)
     tp = text!(scene, Point2f[(15, 320), (NaN, NaN), (15, 350)], text = ["█ ●", "hi", "●"], fontsize = 20, align = (:left, :center))
-    t = tp.plots[1]
 
-    i = image!(scene, 80..140, 20..50, rand(RGBf, 3, 2), interpolate = false)
-    s = surface!(scene, 80..140, 80..110, rand(3, 2), interpolate = false)
+    i = image!(scene, 80..140, 20..50, to_color.([:red :blue; :green :orange; :black :lightblue]), interpolate = false)
+    s = surface!(scene, 80..140, 80..110, [1 2; 3 4; 5 6], interpolate = false)
     hm = heatmap!(scene, [80, 110, 140], [140, 170], [1 4; 2 5; 3 6])
     # mesh coloring should match triangle placements
     m = mesh!(scene, Point2f.([80, 80, 110, 110], [200, 230, 200, 230]), [1 2 3; 2 3 4], color = [1,1,1,2])
     vx = voxels!(scene, (65, 155), (245, 305), (-1, 1), reshape([1,2,3,4,5,6], (3,2,1)), shading = NoShading)
-    vol = volume!(scene, 80..110, 320..350, -1..1, rand(2,2,2))
+    vol = volume!(scene, 80..110, 320..350, -1..1, reshape(1:8, 2,2,2))
 
     # reversed axis
-    i2 = image!(scene, 210..180, 20..50, rand(RGBf, 2, 2))
+    i2 = image!(scene, 210..180, 20..50, to_color.([:red :green; :blue :orange]))
     s2 = surface!(scene, 210..180, 80..110, [1 2; 3 4], interpolate = false)
     hm2 = heatmap!(scene, [210, 180], [140, 170], [1 2; 3 4])
 
@@ -39,8 +38,9 @@
 
     # verify that heatmap path is used for heatmaps
     if Symbol(Makie.current_backend()) == :WGLMakie
-        @test length(WGLMakie.create_shader(scene, hm).vertexarray.buffers[:faces]) > 2
-        @test length(WGLMakie.create_shader(scene, hm2).vertexarray.buffers[:faces]) > 2
+        # / 3 since its already flattened
+        @test (length(WGLMakie.create_shader(scene, hm)[:faces]) / 3) > 2
+        @test (length(WGLMakie.create_shader(scene, hm2)[:faces]) / 3) > 2
     elseif Symbol(Makie.current_backend()) == :GLMakie
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
@@ -109,18 +109,18 @@
         end
 
         @testset "text" begin
-            @test pick(scene, 15, 320) == (t, 1)
+            @test pick(scene, 15, 320) == (tp, 1)
             @test pick(scene, 13, 320) == (nothing, 0)
             # edge checks, further outside due to AA
             @test pick(scene, 20, 306) == (nothing, 0)
-            @test pick(scene, 20, 320) == (t, 1)
+            @test pick(scene, 20, 320) == (tp, 1)
             @test pick(scene, 20, 333) == (nothing, 0)
             # space is counted
-            @test pick(scene, 43, 320) == (t, 3)
-            @test pick(scene, 48, 324) == (t, 3)
+            @test pick(scene, 43, 320) == (tp, 3)
+            @test pick(scene, 48, 324) == (tp, 3)
             @test pick(scene, 49, 326) == (nothing, 0)
             # characters at nan position are counted
-            @test pick(scene, 20, 350) == (t, 6)
+            @test pick(scene, 20, 350) == (tp, 6)
         end
 
         @testset "image" begin
@@ -304,8 +304,8 @@
             @test pick(scene,  5, 280, 10) == (ls, 6)
         end
         @testset "text" begin
-            @test pick(scene, 32, 320, 10) == (t, 1)
-            @test pick(scene, 35, 320, 10) == (t, 3)
+            @test pick(scene, 32, 320, 10) == (tp, 1)
+            @test pick(scene, 35, 320, 10) == (tp, 3)
         end
         @testset "image" begin
             @test pick(scene,  98, 15, 10) == (i, 1)
@@ -393,7 +393,7 @@
     end
 
     #=
-    For Verfication
+    For Verification
     Note that the text only marks the index in the picking list. The position
     that is closest (that pick_sorted used) is somewhere else in the marked
     element. Check scene2 to see the pickable regions if unsure
@@ -423,4 +423,128 @@
     campixel!(scene2)
     image!(scene2, full_screen, colormap = :viridis)
     scene2
+end
+
+@reference_test "Transformations and space" begin
+    transforms = [:automatic, :inherit, :inherit_transform_func, :inherit_model, :nothing]
+    spaces = [:data, :pixel, :relative, :clip]
+
+    t = Transformation(
+        x -> 2 * x,
+        scale = Vec3f(0.75,2,1),
+        rotation = qrotation(Vec3f(0,0,1), 0.3)
+    )
+
+    grid = vcat(
+        [Point2f(x, y) for x in -1:6 for y in (-1, 6)],
+        [Point2f(x, y) for y in -1:6 for x in (-1, 6)]
+    )
+
+    f = Figure(size = (450, 550))
+    for (i, transform) in enumerate(transforms)
+        Label(f[i, 0], [":automatic", ":inherit", "transform_func", "model", ":nothing"][i], rotation = pi/2, tellheight = false)
+        for (j, space, scale) in zip(eachindex(spaces), spaces, [1, 20, 0.2, 0.2])
+            a = LScene(f[i, j], show_axis = false, scenekw = (camera = cam2d!, transformation = t))
+            linesegments!(a, grid, transformation = :nothing, color = :lightgray)
+            # text!(a, Point2f(6,6), text = "$space", align = (:right, :top), transformation = :nothing)
+            scatter!(a,
+                [scale * Point2f(cos(x), sin(x)) for x in range(0.2, 1.3, length = 11)],
+                transformation = transform, space = space
+            )
+        end
+    end
+    for (j, space) in enumerate(spaces)
+        Label(f[0, j], ":space", tellwidth = false)
+    end
+
+    f
+end
+
+@reference_test "DataInspector" begin
+    scene = Scene(camera = campixel!, size = (290, 140))
+
+    p1 = scatter!(scene, Point2f(20), markersize = 30)
+    p2 = meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
+    p3 = lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
+    p4 = linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
+    p5 = mesh!(scene, Rect2f(10, 80, 40, 40))
+    p6 = surface!(scene, 60..100, 80..120, [1 2; 3 4])
+    p7 = heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
+    p8 = image!(scene, 120..160, 60..100, [1 2; 3 4])
+
+    # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
+    p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
+    p10 = arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
+    p11 = arrows3d!(scene, Point3f[(220, 80, 0)], Vec3f[(-48, -16, 0)],
+        shaftradius = 2.5, tiplength = 15, tipradius = 7, markerscale = 1.0)
+    p12 = contourf!(scene, 240..280, 10..50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
+    p13 = spy!(scene, 240..280, 60..100, [1 2 1; 2 0 2; 1 2 1])
+    p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+
+    e = events(scene)
+    # Prevent the hover event Channel getting closed
+    e.window_open[] = true
+    # blocking = true forces immediately resolution of DataInspector updates
+    di = DataInspector(scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
+        textpadding = (2,2,2,2), blocking = true)
+    # force indicator plots to be created for WGLMakie
+    Makie.get_indicator_plot(di, scene, Lines)
+    Makie.get_indicator_plot(di, scene, LineSegments)
+    Makie.get_indicator_plot(di, scene, Scatter)
+    scene
+
+    st = Makie.Stepper(scene)
+
+    mps = [
+        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
+        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35), (200, 45),
+        (217, 79), (181, 67), (260, 30), (260, 90), (205, 110)
+    ]
+
+    # record
+    for mp in mps
+        # remove tooltip so we don't select it
+        e.mouseposition[] = (289, 139)
+        colorbuffer(scene) # force update of picking buffer
+        sleep(0.15) # wait for WGLMakie
+        @test isempty(di.temp_plots) # verify cleanup
+        e.mouseposition[] = mp
+        sleep(0.15) # wait for WGLMakie
+        Makie.step!(st)
+    end
+
+    st
+end
+
+@reference_test "DataInspector 2" begin
+    f = Figure(size = (500, 500))
+    a,p = volumeslices(f[1,1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
+    x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
+    y = sin.(2:2:20000) .* sin.(5:5:50000)
+    a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
+    a, p3 = heatmap(f[2, 2], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
+    Colorbar(f[1,3], p2)
+    e = events(f)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
+    di = DataInspector(f, blocking = true)
+    # force indicator plots to be created for WGLMakie
+    Makie.get_indicator_plot(di, a.scene, LineSegments)
+    Makie.get_indicator_plot(di, a.scene, Lines)
+    Makie.get_indicator_plot(di, a.scene, Scatter)
+    f
+
+    st = Makie.Stepper(f)
+
+    mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
+    for (i, mp) in enumerate(mps)
+        e.mouseposition[] = (1, 1)
+        colorbuffer(f) # force update of picking buffer
+        sleep(0.15) # wait for WGLMakie
+        @test isempty(di.temp_plots) # verify cleanup
+        e.mouseposition[] = mp
+        sleep(0.2 + (i==2)) # wait for WGLMakie, datashader extra slow
+        Makie.step!(st)
+    end
+
+    st
 end

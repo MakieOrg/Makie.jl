@@ -1,27 +1,15 @@
 # NOTE: This file is reused by ReferenceUpdater
-
 function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
 
-rgbf_convert(x::AbstractMatrix{<:RGB}) = convert(Matrix{RGBf}, x)
-rgbf_convert(x::AbstractMatrix{<:RGBA}) = convert(Matrix{RGBAf}, x)
-
-if @isdefined Makie
-    using Makie: extract_frames
-else
-    # pulled from Makie so we don't need to include it
-    function extract_frames(video, frame_folder; loglevel="quiet")
-        path = joinpath(frame_folder, "frame%04d.png")
-        run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
-    end
-end
+rgbaf_convert(x::AbstractMatrix{<:Union{RGB,RGBA}}) = convert(Matrix{RGBAf}, x)
 
 function get_frames(video::AbstractString)
     mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
-        extract_frames(video, afolder)
+        Makie.extract_frames(video, afolder)
         aframes = joinpath.(afolder, readdir(afolder))
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly
@@ -37,8 +25,8 @@ end
 
 function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{<:Union{RGB,RGBA}})
 
-    a = rgbf_convert(a)
-    b = rgbf_convert(b)
+    a = rgbaf_convert(a)
+    b = rgbaf_convert(b)
 
     if size(a) != size(b)
         @warn "images don't have the same size, difference will be Inf"
@@ -54,7 +42,6 @@ function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{
 
     _norm(rgb1::RGBf, rgb2::RGBf) = sqrt(sum(((rgb1.r - rgb2.r)^2, (rgb1.g - rgb2.g)^2, (rgb1.b - rgb2.b)^2)))
     _norm(rgba1::RGBAf, rgba2::RGBAf) = sqrt(sum(((rgba1.r - rgba2.r)^2, (rgba1.g - rgba2.g)^2, (rgba1.b - rgba2.b)^2, (rgba1.alpha - rgba2.alpha)^2)))
-    _norm(c1::Colorant, c2::Colorant) = _norm(RGBAf(c1), RGBAf(c2))
 
     # compute the difference score as the maximum of the mean squared differences over the color
     # values of tiles over the image. using tiles is a simple way to increase the local sensitivity

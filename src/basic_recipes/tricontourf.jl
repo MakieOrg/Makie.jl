@@ -22,6 +22,8 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     colormap = @inherit colormap
     "Color transform function"
     colorscale = identity
+    "The alpha value of the colormap or color attribute."
+    alpha = 1.0
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
@@ -50,7 +52,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     triangulation = DelaunayTriangulation()
     edges = nothing
-    MakieCore.mixin_generic_plot_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
@@ -78,78 +80,13 @@ function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real
     return (tri, z)
 end
 
-function compute_contourf_colormap(levels, cmap, elow, ehigh)
-    levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
-    n = length(levels_scaled)
-
-    _cmap = to_colormap(cmap)
-
-    if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
-    else
-        cm = cgrad(_cmap, levels_scaled; categorical=true)
-    end
-    return cm
-end
-
-function compute_lowcolor(el, cmap)
-    if isnothing(el)
-        return RGBAf(0, 0, 0, 0)
-    elseif el === automatic || el === :auto
-        return RGBAf(to_colormap(cmap)[begin])
-    else
-        return to_color(el)::RGBAf
-    end
-end
-
-function compute_highcolor(eh, cmap)
-    if isnothing(eh)
-        return RGBAf(0, 0, 0, 0)
-    elseif eh === automatic || eh === :auto
-        return RGBAf(to_colormap(cmap)[end])
-    else
-        return to_color(eh)::RGBAf
-    end
-end
-
 function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
-    tri, zs = c[1:2]
+    graph = c.attributes
 
-    c.attributes[:_computed_levels] = lift(c, zs, c.levels, c.mode) do zs, levels, mode
-        return _get_isoband_levels(Val(mode), levels, vec(zs))
-    end
+    # prepare levels, colormap related nodes
+    register_contourf_computations!(graph, :converted_2)
 
-    colorrange = lift(extrema_nan, c, c._computed_levels)
-    computed_colormap = lift(compute_contourf_colormap, c, c._computed_levels, c.colormap, c.extendlow,
-                             c.extendhigh)
-    c.attributes[:_computed_colormap] = computed_colormap
-
-    lowcolor = Observable{RGBAf}()
-    lift!(compute_lowcolor, c, lowcolor, c.extendlow, c.colormap)
-    c.attributes[:_computed_extendlow] = lowcolor
-    is_extended_low = lift(!isnothing, c, c.extendlow)
-
-    highcolor = Observable{RGBAf}()
-    lift!(compute_highcolor, c, highcolor, c.extendhigh, c.colormap)
-    c.attributes[:_computed_extendhigh] = highcolor
-    is_extended_high = lift(!isnothing, c, c.extendhigh)
-
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
-
-    polys = Observable(PolyType[])
-    colors = Observable(Float64[])
-
-    function calculate_polys(triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
-        empty!(polys[])
-        empty!(colors[])
-
+    function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         levels = copy(levels)
         # adjust outer levels to be inclusive
         levels[1] = prevfloat(levels[1])
@@ -178,28 +115,39 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
 
             for pointvec in pointvecs
                 p = Makie.Polygon(pointvec)
-                push!(polys[], p)
-                push!(colors[], lc)
+                push!(polys, p)
+                push!(colors, lc)
             end
         end
-        notify(polys)
         return
     end
 
-    onany(calculate_polys, c, tri, zs, c._computed_levels, is_extended_low, is_extended_high)
-    # onany doesn't get called without a push, so we call
-    # it on a first run!
-    calculate_polys(tri[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
+    register_computation!(graph,
+            [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+            [:polys, :computed_colors]
+        ) do (tri, zs, levels, low, high), changed, cached
+        is_extended_low = !isnothing(low)
+        is_extended_high = !isnothing(high)
+        if isnothing(cached)
+            polys = Polygon{2, Float32}[]
+            colors = Float64[]
+        else
+            polys, colors = empty!.(values(cached))
+        end
+        calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
+        return (polys, colors)
+    end
 
     poly!(c,
-        polys,
-        colormap = c._computed_colormap,
+        c.polys,
+        colormap = c.computed_colormap,
         colorscale = c.colorscale,
-        colorrange = colorrange,
-        highclip = highcolor,
-        lowclip = lowcolor,
+        colorrange = c.computed_colorrange,
+        alpha = c.alpha,
+        highclip = c.computed_highcolor,
+        lowclip = c.computed_lowcolor,
         nan_color = c.nan_color,
-        color = colors,
+        color = c.computed_colors,
         strokewidth = 0,
         strokecolor = :transparent,
         inspectable = c.inspectable,

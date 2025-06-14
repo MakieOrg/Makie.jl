@@ -39,15 +39,15 @@ end
 
 Plots a barplot.
 """
-@recipe BarPlot (x, y) begin
+@recipe BarPlot (positions,) begin
     """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
     With a log scale, the automatic default is half the minimum value because zero is an invalid value for a log scale.
     """
     fillto = automatic
     offset = 0.0
     color = @inherit patchcolor
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
     dodge = automatic
     n_dodge = automatic
     """

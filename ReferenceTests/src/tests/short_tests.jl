@@ -302,6 +302,15 @@ end
     root
 end
 
+@reference_test "matcap" begin
+    img = [HSV(rad2deg(atan(y, x)), sqrt(x*x + y*y) / 32, ceil(1.05 - sqrt(x*x + y*y) / 32)) for x in -32:32, y in -32:32]
+    r = range(-2, 1, length = 31)
+    f,a,p = surface(-2..1, -2..1, [0.25 * (x*x + y*y) - 1 for x in r, y in r], matcap = img)
+    mesh!(a, Sphere(Point3f(0), 1f0), matcap = img)
+    meshscatter!(a, [Point3f(x, y, 0.25 * (x*x + y*y) - 1.5) for x in (-2.25, 1.25) for y in (-2.25, 1.25)], matcap = img, markersize = 0.5)
+    f
+end
+
 
 # Needs a way to disable autolimits on show
 # @reference_test "interactions after close" begin

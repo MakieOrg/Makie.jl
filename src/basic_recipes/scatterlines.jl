@@ -3,7 +3,7 @@
 
 Plots `scatter` markers and `lines` between them.
 """
-@recipe ScatterLines begin
+@recipe ScatterLines (positions,) begin
     "The color of the line, and by default also of the scatter markers."
     color = @inherit linecolor
     "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
@@ -24,57 +24,65 @@ Plots `scatter` markers and `lines` between them.
     strokewidth = @inherit markerstrokewidth
     "Sets the scatter marker."
     marker = @inherit marker
-    MakieCore.mixin_generic_plot_attributes()...
-    MakieCore.mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
     cycle = [:color]
 end
 
 conversion_trait(::Type{<: ScatterLines}) = PointBased()
 
+function plot!(p::ScatterLines)
 
-function plot!(p::Plot{scatterlines, <:NTuple{N, Any}}) where N
+    attr = p.attributes
 
     # markercolor is the same as linecolor if left automatic
-    real_markercolor = Observable{Any}()
-    lift!(p, real_markercolor, p.color, p.markercolor) do col, mcol
-        if mcol === automatic
-            return to_color(col)
-        else
-            return to_color(mcol)
-        end
+    register_computation!(attr,
+            [:color, :markercolor],
+            [:real_markercolor]
+        ) do (color, markercolor), changed, last
+        return (to_color(markercolor === automatic ? color : markercolor),)
     end
 
-    real_markercolormap = Observable{Any}()
-    lift!(p, real_markercolormap, p.colormap, p.markercolormap) do col, mcol
-        mcol === automatic ? col : mcol
+    register_computation!(attr,
+            [:colormap, :markercolormap],
+            [:real_markercolormap]
+        ) do (colormap, markercolormap), changed, last
+        return (markercolormap === automatic ? colormap : markercolormap,)
     end
 
-    real_markercolorrange = Observable{Any}()
-    lift!(p, real_markercolorrange, p.colorrange, p.markercolorrange) do col, mcol
-        mcol === automatic ? col : mcol
+    register_computation!(attr,
+            [:colorrange, :markercolorrange],
+            [:real_markercolorrange]
+        ) do (colorrange, markercolorrange), changed, last
+
+        return (markercolorrange === automatic ? colorrange : markercolorrange,)
     end
 
-    lines!(p, p[1:N]...;
-        color = p.color,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        linecap = p.linecap,
-        joinstyle = p.joinstyle,
+    lines!(p, p.positions;
+
+        color       = p.color,
+        linestyle   = p.linestyle,
+        linewidth   = p.linewidth,
+        linecap     = p.linecap,
+        joinstyle   = p.joinstyle,
         miter_limit = p.miter_limit,
-        colormap = p.colormap,
-        colorscale = p.colorscale,
-        colorrange = p.colorrange,
-        inspectable = p.inspectable
+        colormap    = p.colormap,
+        colorscale  = p.colorscale,
+        colorrange  = p.colorrange,
+        inspectable = p.inspectable,
+        clip_planes = p.clip_planes,
     )
-    scatter!(p, p[1:N]...;
-        color = real_markercolor,
+    scatter!(p, p.positions;
+
+        color       = p.real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
-        marker = p.marker,
-        markersize = p.markersize,
-        colormap = real_markercolormap,
-        colorscale = p.colorscale,
-        colorrange = real_markercolorrange,
-        inspectable = p.inspectable
+        marker      = p.marker,
+        markersize  = p.markersize,
+        colormap    = p.real_markercolormap,
+        colorscale  = p.colorscale,
+        colorrange  = p.real_markercolorrange,
+        inspectable = p.inspectable,
+        clip_planes = p.clip_planes,
     )
 end

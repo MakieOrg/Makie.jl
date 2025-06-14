@@ -28,13 +28,21 @@ function initialize_block!(ax::Axis3)
 
     scene = Scene(blockscene, scenearea, clear = false, backgroundcolor = ax.backgroundcolor)
     ax.scene = scene
+    # transfer conversions from axis to scene if there are any
+    # or the other way around
+    connect_conversions!(scene.conversions, ax)
+
     cam = Axis3Camera()
     cameracontrols!(scene, cam)
-    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits) do model, lims
-        _planes = planes(lims)
-        _planes = apply_transform.(Ref(model), _planes)
-        nudge = 1f0 + 1f-5 # clip slightly outside to avoid float precision issues with 0 margin
-        return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+    scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits, ax.clip) do model, lims, clip
+        if clip
+            _planes = planes(lims)
+            _planes = apply_transform.(Ref(model), _planes)
+            nudge = 1f0 + 1f-5 # clip slightly outside to avoid float precision issues with 0 margin
+            return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
+        else
+            return Plane3f[]
+        end
     end
 
     mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
@@ -80,17 +88,17 @@ function initialize_block!(ax::Axis3)
 
     ticknode_1 = Observable{Any}()
     map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+        get_ticks(ax.scene.conversions[1], ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
     ticknode_2 = Observable{Any}()
     map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+        get_ticks(ax.scene.conversions[2], ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
     ticknode_3 = Observable{Any}()
     map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+        get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
     add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
@@ -352,8 +360,8 @@ function getlimits(ax::Axis3, dim)
 
     filtered_plots = filter(ax.scene.plots) do p
         attr = p.attributes
-        to_value(get(attr, :visible, true)) &&
-        is_data_space(to_value(get(attr, :space, :data))) &&
+        p.visible[] &&
+        is_data_space(p) &&
         ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
         ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
         ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
