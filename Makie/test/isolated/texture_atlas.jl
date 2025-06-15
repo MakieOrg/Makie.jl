@@ -25,7 +25,8 @@ using Makie.FreeTypeAbstraction
 
     bb, ext = FreeTypeAbstraction.metrics_bb(
         FreeTypeAbstraction.glyph_index(font, glyph),
-        font, atlas.pix_per_glyph * atlas.downsample)
+        font, atlas.pix_per_glyph * atlas.downsample
+    )
     downsampled_size = ceil.(Int, ext.scale ./ atlas.downsample .+ 2 * atlas.glyph_padding)
     @test downsampled_size == widths(rect)
 end

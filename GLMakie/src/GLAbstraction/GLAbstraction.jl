@@ -33,8 +33,8 @@ function require_context(ctx, current = ShaderAbstractions.current_context())
     error(msg)
 end
 
-function gl_switch_context!(context=nothing)
-    lock(CONTEXT_LOCK1) do
+function gl_switch_context!(context = nothing)
+    return lock(CONTEXT_LOCK1) do
         if isnothing(context)
             ShaderAbstractions.switch_context!()
         elseif ShaderAbstractions.context_alive(context)
@@ -55,7 +55,7 @@ function with_context(f, context)
         old_ctx = isassigned(CTX) ? CTX[] : nothing
         ShaderAbstractions.switch_context!(context)
     end
-    try
+    return try
         f()
     finally
         if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)

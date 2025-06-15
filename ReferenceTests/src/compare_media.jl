@@ -3,10 +3,10 @@ function get_frames(a, b)
     return (get_frames(a), get_frames(b))
 end
 
-rgbaf_convert(x::AbstractMatrix{<:Union{RGB,RGBA}}) = convert(Matrix{RGBAf}, x)
+rgbaf_convert(x::AbstractMatrix{<:Union{RGB, RGBA}}) = convert(Matrix{RGBAf}, x)
 
 function get_frames(video::AbstractString)
-    mktempdir() do folder
+    return mktempdir() do folder
         afolder = joinpath(folder, "a")
         mkpath(afolder)
         Makie.extract_frames(video, afolder)
@@ -14,7 +14,7 @@ function get_frames(video::AbstractString)
         if length(aframes) > 10
             # we don't want to compare too many frames since it's time costly
             # so we just compare 10 random frames if more than 10
-            samples = range(1, stop=length(aframes), length=10)
+            samples = range(1, stop = length(aframes), length = 10)
             istep = round(Int, length(aframes) / 10)
             samples = 1:istep:length(aframes)
             aframes = aframes[samples]
@@ -23,7 +23,7 @@ function get_frames(video::AbstractString)
     end
 end
 
-function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{<:Union{RGB,RGBA}})
+function compare_images(a::AbstractMatrix{<:Union{RGB, RGBA}}, b::AbstractMatrix{<:Union{RGB, RGBA}})
 
     a = rgbaf_convert(a)
     b = rgbaf_convert(b)
@@ -38,7 +38,7 @@ function compare_images(a::AbstractMatrix{<:Union{RGB,RGBA}}, b::AbstractMatrix{
     range_dim1 = round.(Int, range(0, size(a, 1), length = ceil(Int, size(a, 1) / approx_tile_size_px)))
     range_dim2 = round.(Int, range(0, size(a, 2), length = ceil(Int, size(a, 2) / approx_tile_size_px)))
 
-    boundary_iter(boundaries) = zip(boundaries[1:end-1] .+ 1, boundaries[2:end])
+    boundary_iter(boundaries) = zip(boundaries[1:(end - 1)] .+ 1, boundaries[2:end])
 
     _norm(rgb1::RGBf, rgb2::RGBf) = sqrt(sum(((rgb1.r - rgb2.r)^2, (rgb1.g - rgb2.g)^2, (rgb1.b - rgb2.b)^2)))
     _norm(rgba1::RGBAf, rgba2::RGBAf) = sqrt(sum(((rgba1.r - rgba2.r)^2, (rgba1.g - rgba2.g)^2, (rgba1.b - rgba2.b)^2, (rgba1.alpha - rgba2.alpha)^2)))
@@ -76,7 +76,7 @@ function compare_media(a::AbstractString, b::AbstractString)
 end
 
 function get_all_relative_filepaths_recursively(dir)
-    mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
+    return mapreduce(vcat, walkdir(dir)) do (root, dirs, files)
         relpath.(joinpath.(root, files), dir)
     end
 end

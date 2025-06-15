@@ -1,7 +1,7 @@
 # guard against some future changes silently making simple vector graphics be
 # rasterized if they are using features unsupported by the SVG spec
 function svg_has_image(x)
-    mktempdir() do path
+    return mktempdir() do path
         path = joinpath(path, "test.svg")
         save(path, x)
         # this is rough but an easy way to catch rasterization,
@@ -12,9 +12,9 @@ end
 
 @testset "Internal rasterization" begin
     fig = Figure()
-    ax = Axis(fig[1,1])
+    ax = Axis(fig[1, 1])
     lp = lines!(ax, vcat(1:10, 10:-1:1))
-    pts = Makie.GeometryBasics.Point2f[(0,0), (1,0), (0,1)]
+    pts = Makie.GeometryBasics.Point2f[(0, 0), (1, 0), (0, 1)]
     pl = poly!(ax, Makie.GeometryBasics.Polygon(pts))
 
     @testset "Unrasterized SVG" begin

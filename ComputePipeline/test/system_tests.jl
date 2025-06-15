@@ -3,7 +3,7 @@
     add_input!(parent, :pin1, 1)
     add_input!(parent, :pin2, nothing)
     f32(x) = Float32.(x) # wrong on purpose
-    add_input!(f32, parent, :pin3, [1,2,3])
+    add_input!(f32, parent, :pin3, [1, 2, 3])
 
     foo1((i, v), changed, outputs) = (v .- i, v .+ i)
     register_computation!(foo1, parent, [:pin1, :pin3], [:pout1, :pout3])
@@ -22,7 +22,7 @@
         @testset "Inputs" begin
             @test length(parent.inputs) == 3
 
-            for (name, val) in [(:pin1, 1), (:pin2, nothing), (:pin3, [1,2,3])]
+            for (name, val) in [(:pin1, 1), (:pin2, nothing), (:pin3, [1, 2, 3])]
                 @test haskey(parent.inputs, name)
                 @test haskey(parent.outputs, name)
 
@@ -129,7 +129,7 @@
         output_names = [
             :in1, :in2, :in3, :in4,
             :trans1, :trans2, :trans3,
-            :inputs324, :changed1324, :cached14, :discard10, :merged
+            :inputs324, :changed1324, :cached14, :discard10, :merged,
         ]
 
         @testset "Outputs" begin
@@ -214,24 +214,24 @@
     end
 
     # graph & parent
-    @test_throws ResolveException graph[:merged][] == [2,4,6]
+    @test_throws ResolveException graph[:merged][] == [2, 4, 6]
     # needs to be in the same scope as previous f32 definition
     f32(key, x) = Float32.(x)
 
     @testset "Updates continued" begin
 
         @testset "child graph resolve state" begin
-            @test graph.outputs[:merged][] == [2,4,6]
+            @test graph.outputs[:merged][] == [2, 4, 6]
             @test !isdirty(graph.outputs[:trans1])
             @test !isdirty(graph.outputs[:trans3])
             @test !isdirty(parent.outputs[:pout1])
             @test !isdirty(parent.outputs[:pout3])
             @test !isdirty(parent.outputs[:pin3])
-            @test graph.outputs[:trans1].value[] == Int64[0,1,2]
-            @test graph.outputs[:trans3].value[] == Int64[2,3,4]
-            @test parent.outputs[:pout1].value[] == Float32[0,1,2]
-            @test parent.outputs[:pout3].value[] == Float32[2,3,4]
-            @test parent.outputs[:pin3].value[] == Float32[1,2,3]
+            @test graph.outputs[:trans1].value[] == Int64[0, 1, 2]
+            @test graph.outputs[:trans3].value[] == Int64[2, 3, 4]
+            @test parent.outputs[:pout1].value[] == Float32[0, 1, 2]
+            @test parent.outputs[:pout3].value[] == Float32[2, 3, 4]
+            @test parent.outputs[:pin3].value[] == Float32[1, 2, 3]
         end
 
         @testset "callback function" begin
@@ -265,7 +265,7 @@
             @test isdirty(graph.outputs[:cached14])
             @test isdirty(graph.outputs[:changed1324])
 
-            update!(parent, pin3 = [3,2,1])
+            update!(parent, pin3 = [3, 2, 1])
             @test isdirty(parent.inputs[:pin3])
             @test isdirty(parent.outputs[:pin3])
             @test isdirty(parent.outputs[:pout1])
@@ -279,7 +279,7 @@
         # should tests dirty -> resolved state:
         @testset "child resolve after invalidation" begin
             # partial
-            @test graph[:trans3][] == [4,3,2]
+            @test graph[:trans3][] == [4, 3, 2]
             @test !isdirty(graph.outputs[:trans3])
             @test !isdirty(parent.outputs[:pout3])
             @test !isdirty(parent.outputs[:pout1]) # same edge as pout3, so updated with pout3
@@ -290,7 +290,7 @@
             @test isdirty(graph.outputs[:merged])
 
             # the rest
-            @test graph[:merged][] == [6,4,2]
+            @test graph[:merged][] == [6, 4, 2]
             @test !isdirty(graph.outputs[:merged])
             @test !isdirty(graph.outputs[:trans1])
             @test !isdirty(graph.outputs[:trans3])

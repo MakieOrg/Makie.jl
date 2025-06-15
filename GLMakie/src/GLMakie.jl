@@ -32,7 +32,7 @@ using Base.Iterators: repeated, drop
 using LinearAlgebra
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)
@@ -78,6 +78,7 @@ function load_all_shaders(folder)
             loadshader(replace(path, "\\" => "/"))
         end
     end
+    return
 end
 
 
@@ -94,7 +95,7 @@ WARN_ON_LOAD[] = true
 function __init__()
     activate!()
     # trigger OpenGL cleanup to avoid errors in debug mode
-    atexit(GLMakie.closeall)
+    return atexit(GLMakie.closeall)
 end
 
 include("precompiles.jl")

@@ -28,9 +28,11 @@ end
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)
 signal2point(signal::Point2, start) = signal
-signal2point(signal, start) = error(""" Signal needs to be of type Number or Point.
-Found: $(typeof(signal))
-""")
+signal2point(signal, start) = error(
+    """ Signal needs to be of type Number or Point.
+    Found: $(typeof(signal))
+    """
+)
 
 
 function Makie.plot!(plot::TimeSeries)
@@ -47,5 +49,5 @@ function Makie.plot!(plot::TimeSeries)
         buffer = points[]
         points[] = buff_ref
     end
-    plot
+    return plot
 end

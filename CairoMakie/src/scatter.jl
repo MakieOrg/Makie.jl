@@ -16,7 +16,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
         :markersize, :strokewidth, :cairo_marker, :marker_offset,
         :converted_rotation, :billboard, :transform_marker, :size_model, :markerspace,
         :space, :clip_planes, :unclipped_indices, :font,
-        :strokecolor, :computed_color, :resolution
+        :strokecolor, :computed_color, :resolution,
     ]
     extract_attributes!(attr, inputs, :cairo_attributes)
     ctx = screen.context
@@ -45,7 +45,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     ]
     extract_attributes!(attr, inputs, :cairo_attributes)
     ctx = screen.context
-    draw_text(ctx, attr[:cairo_attributes][])
+    return draw_text(ctx, attr[:cairo_attributes][])
 end
 
 
@@ -187,10 +187,12 @@ function draw_text(ctx, attr::NamedTuple)
 
         Cairo.restore(ctx)  # Block restore
     end
+    return
 end
 
 function cairo_unclipped_indices!(attr::Makie.ComputeGraph)
-    Makie.register_computation!(attr,
+    return Makie.register_computation!(
+        attr,
         [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
         [:unclipped_indices]
     ) do (transformed, model, space, clip_planes), changed, outputs
@@ -199,8 +201,8 @@ function cairo_unclipped_indices!(attr::Makie.ComputeGraph)
 end
 
 function size_model!(attr)
-    map!(attr, [:f32c_scale, :model, :markerspace, :transform_marker], :size_model) do f32c_scale, model, markerspace, transform_marker
-        size_model = transform_marker ? model[Vec(1,2,3), Vec(1,2,3)] : Mat3d(I)
+    return map!(attr, [:f32c_scale, :model, :markerspace, :transform_marker], :size_model) do f32c_scale, model, markerspace, transform_marker
+        size_model = transform_marker ? model[Vec(1, 2, 3), Vec(1, 2, 3)] : Mat3d(I)
         return Mat3d(f32c_scale[1], 0, 0, 0, f32c_scale[2], 0, 0, 0, f32c_scale[3]) * size_model
     end
 end
@@ -219,7 +221,7 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
     proj_pos = project_flipped(pv, resolution, origin, true)
     if billboard && Makie.is_data_space(markerspace)
         p4d = cam.view * to_ndim(Point4d, origin, 1)
-        p4d_clip = p4d[Vec(1,2,3)] / p4d[4]
+        p4d_clip = p4d[Vec(1, 2, 3)] / p4d[4]
         xproj = project_flipped(cam.eye_to_clip, resolution, p4d_clip + xvec, true)
         yproj = project_flipped(cam.eye_to_clip, resolution, p4d_clip + yvec, true)
     else
@@ -245,7 +247,7 @@ function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bo
     p4d = to_ndim(Vec4d, to_ndim(Vec3d, point, 0.0), 1.0)
     clip = trans * p4d
     # between -1 and 1
-    p = clip[Vec(1,2)] ./ clip[4]
+    p = clip[Vec(1, 2)] ./ clip[4]
     # flip y to match cairo
     p_yflip = Vec2d(p[1], (1.0 - 2.0 * yflip) * p[2])
     # normalize to between 0 and 1
@@ -255,7 +257,7 @@ function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bo
 end
 
 function project_to_markerspace!(attr)
-    map!(attr, [:preprojection, :model_f32c, :positions_transformed_f32c], :positions_in_markerspace) do prepro, model, positions
+    return map!(attr, [:preprojection, :model_f32c, :positions_transformed_f32c], :positions_in_markerspace) do prepro, model, positions
         mat = prepro * model
         return project_position(Point3d, mat, positions, eachindex(positions))
     end
@@ -301,11 +303,11 @@ function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_
     return
 end
 
-function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
+function draw_marker(ctx, ::Type{<:Circle}, pos, strokecolor, strokewidth, mat)
     # There are already active transforms so we can't Cairo.set_matrix() here
     Cairo.translate(ctx, pos[1], pos[2])
     cairo_transform(ctx, mat)
-    Cairo.arc(ctx, 0, 0, 0.5, 0, 2*pi)
+    Cairo.arc(ctx, 0, 0, 0.5, 0, 2 * pi)
     Cairo.fill_preserve(ctx)
     Cairo.set_line_width(ctx, Float64(strokewidth))
     sc = to_color(strokecolor)
@@ -314,7 +316,7 @@ function draw_marker(ctx, ::Type{<: Circle}, pos, strokecolor, strokewidth, mat)
     return
 end
 
-function draw_marker(ctx, ::Union{Makie.FastPixel,<:Type{<:Rect}}, pos, strokecolor, strokewidth, mat)
+function draw_marker(ctx, ::Union{Makie.FastPixel, <:Type{<:Rect}}, pos, strokecolor, strokewidth, mat)
     # There are already active transforms so we can't Cairo.set_matrix() here
     Cairo.translate(ctx, pos[1], pos[2])
     cairo_transform(ctx, mat)
@@ -358,6 +360,7 @@ function draw_path(ctx, bp::BezierPath)
             path_command(ctx, command)
         end
     end
+    return
 end
 path_command(ctx, c::MoveTo) = Cairo.move_to(ctx, c.p...)
 path_command(ctx, c::LineTo) = Cairo.line_to(ctx, c.p...)
@@ -373,16 +376,18 @@ function path_command(ctx, c::EllipticalArc)
     else
         Cairo.arc_negative(ctx, 0, 0, c.r1, c.a1, c.a2)
     end
-    Cairo.restore(ctx)
+    return Cairo.restore(ctx)
 end
 
 
-function draw_marker(ctx, marker::Matrix{T}, pos,
-    strokecolor #= unused =#, strokewidth #= unused =#,
-    mat) where T<:Colorant
+function draw_marker(
+        ctx, marker::Matrix{T}, pos,
+        strokecolor #= unused =#, strokewidth #= unused =#,
+        mat
+    ) where {T <: Colorant}
 
     # convert marker to Cairo compatible image data
-    marker = permutedims(marker, (2,1))
+    marker = permutedims(marker, (2, 1))
     marker_surf = to_cairo_image(marker)
 
     w, h = size(marker)
@@ -391,7 +396,7 @@ function draw_marker(ctx, marker::Matrix{T}, pos,
     Cairo.translate(ctx, pos[1], pos[2])
     cairo_transform(ctx, mat)
     Cairo.scale(ctx, 1.0 / w, 1.0 / h)
-    Cairo.set_source_surface(ctx, marker_surf, -w/2, -h/2)
+    Cairo.set_source_surface(ctx, marker_surf, -w / 2, -h / 2)
     Cairo.paint(ctx)
     return
 end

@@ -2,21 +2,23 @@ using CUDA, GLMakie, NVTX
 using GLMakie.GLAbstraction
 # from https://discourse.julialang.org/t/cuarray-glmakie/52461/11?u=maleadt
 
-function cu_plot(; T=Float32, N=1024, resolution=(800, 600))
+function cu_plot(; T = Float32, N = 1024, resolution = (800, 600))
     t = CUDA.rand(T, N)
     X = CUDA.rand(T, N)
 
     #      so that we can create a GLBuffer before having rendered anything.
     fig = Figure(; resolution)
-    ax = Axis(fig[1, 1]; limits=(0, 1, 0, 1))
+    ax = Axis(fig[1, 1]; limits = (0, 1, 0, 1))
     screen = display(fig)
 
     # get a buffer object and register it with CUDA
     buffer = GLAbstraction.GLBuffer(Point2f, N)
     resource = let
         ref = Ref{CUDA.CUgraphicsResource}()
-        CUDA.cuGraphicsGLRegisterBuffer(ref, buffer.id,
-                                        CUDA.CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD)
+        CUDA.cuGraphicsGLRegisterBuffer(
+            ref, buffer.id,
+            CUDA.CU_GRAPHICS_MAP_RESOURCE_FLAGS_WRITE_DISCARD
+        )
         ref[]
     end
 
@@ -53,7 +55,7 @@ function cu_plot(; T=Float32, N=1024, resolution=(800, 600))
         NVTX.@range "Makie" begin
             scatter!(ax, buffer)
             # force everything to render (for benchmarking purposes)
-            GLMakie.render_frame(screen; resize_buffers=false)
+            GLMakie.render_frame(screen; resize_buffers = false)
             GLMakie.glFinish()
         end
     end

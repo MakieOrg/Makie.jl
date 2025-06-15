@@ -1,0 +1,5 @@
+[deps]
+Runic = "62bfec6d-59d7-401d-8490-b29ee721c001"
+
+[compat]
+Runic = "1.4"

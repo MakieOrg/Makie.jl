@@ -2,7 +2,7 @@ using Makie
 
 @testset "Camera space_to_space matrices" begin
     # Sanity check - these should all be mat * inv
-    f,a,p = scatter(rand(Point2f, 10));
+    f, a, p = scatter(rand(Point2f, 10))
     Makie.update_state_before_display!(f)
     cam = a.scene.compute
     spaces = [:world, :pixel, :clip, :relative, :eye]
@@ -18,7 +18,7 @@ end
 @testset "Projection math" begin
     @testset "Rotation matrix" begin
         @test eltype(Makie.rotationmatrix_x(1)) == Float64
-        @test eltype(Makie.rotationmatrix_x(1f0)) == Float32
+        @test eltype(Makie.rotationmatrix_x(1.0f0)) == Float32
     end
 
     @testset "Projection between spaces in 3D" begin
@@ -37,13 +37,13 @@ end
             @test ntr_px == Point3f(650, 400, -10_000)
 
             ipv = inv(sc.camera.projectionview[])
-            div4(p) = p[Vec(1,2,3)] / p[4]
+            div4(p) = p[Vec(1, 2, 3)] / p[4]
             bottom_left_data = div4(ipv * Point4d(-1, -1, 0, 1))
-            top_right_data    = div4(ipv * Point4d(+1, +1, 0, 1))
-            @test Makie.project(sc, bottom_left_data) ≈ Point2f(0, 0)     atol = 1e-4
-            @test Makie.project(sc, top_right_data)    ≈ Point2f(650, 400) atol = 1e-4
+            top_right_data = div4(ipv * Point4d(+1, +1, 0, 1))
+            @test Makie.project(sc, bottom_left_data) ≈ Point2f(0, 0)     atol = 1.0e-4
+            @test Makie.project(sc, top_right_data) ≈ Point2f(650, 400) atol = 1.0e-4
 
-            @test Makie.project(sc, :pixel, :data, Vec2f(0, 0))     ≈ bottom_left_data
+            @test Makie.project(sc, :pixel, :data, Vec2f(0, 0)) ≈ bottom_left_data
             @test Makie.project(sc, :pixel, :data, Vec2f(650, 400)) ≈ top_right_data
         end
 
@@ -62,8 +62,8 @@ end
 
 @testset "transformation matrix decomposition" begin
     for _ in 1:10
-        v1 = normalize(2f0 .* rand(Vec3f) .- 1.0)
-        v2 = normalize(2f0 .* rand(Vec3f) .- 1.0)
+        v1 = normalize(2.0f0 .* rand(Vec3f) .- 1.0)
+        v2 = normalize(2.0f0 .* rand(Vec3f) .- 1.0)
         rot = Makie.rotation_between(v1, v2)
         trans = 10.0 .* (2.0 .* rand(Vec3f) .- 1.0)
         scale = 10.0 .* rand(Vec3f) # avoid negative because decomposition puts negative into rotation

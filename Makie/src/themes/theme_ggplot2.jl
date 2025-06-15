@@ -1,5 +1,5 @@
 function theme_ggplot2()
-    Theme(
+    return Theme(
         Axis = (
             backgroundcolor = :gray92,
             xgridcolor = :white,
@@ -26,7 +26,7 @@ function theme_ggplot2()
             xgridwidth = 1.5,
             ygridwidth = 1.5,
             xlabelpadding = 3,
-            ylabelpadding = 3
+            ylabelpadding = 3,
         ),
         Legend = (
             framevisible = false,

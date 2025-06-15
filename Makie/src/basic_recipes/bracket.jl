@@ -59,15 +59,17 @@ function plot!(pl::Bracket)
 
     textoffset_vec = Observable(Vec2f[])
     bp = Observable(BezierPath[])
-    text_tuples = Observable(Tuple{Any,Point2f}[])
+    text_tuples = Observable(Tuple{Any, Point2f}[])
 
     realtextoffset = lift(pl, pl.textoffset, pl.fontsize) do to, fs
         return to === automatic ? Float32.(0.75 .* fs) : Float32.(to)
     end
 
-    onany(pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
-          scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
-          pl.style, pl.text; update=true) do points, _, _, _, _, offset, width, orientation, textoff, style, text
+    onany(
+        pl, points, scene.camera.projectionview, pl.model, transform_func(pl),
+        scene.viewport, pl.offset, pl.width, pl.orientation, realtextoffset,
+        pl.style, pl.text; update = true
+    ) do points, _, _, _, _, offset, width, orientation, textoff, style, text
 
         empty!(bp[])
         empty!(textoffset_vec[])
@@ -113,13 +115,17 @@ function plot!(pl::Bracket)
     end
 
     # Avoid scale!() / translate!() / rotate!() to affect these
-    series!(pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
+    series!(
+        pl, bp; space = :pixel, solid_color = pl.color, linewidth = pl.linewidth,
         linestyle = pl.linestyle, linecap = pl.linecap, joinstyle = pl.joinstyle,
-        miter_limit = pl.miter_limit, transformation = Transformation())
-    text!(pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
+        miter_limit = pl.miter_limit, transformation = Transformation()
+    )
+    text!(
+        pl, text_tuples, space = :pixel, align = pl.align, offset = textoffset_vec,
         fontsize = pl.fontsize, font = pl.font, rotation = autorotations, color = pl.textcolor,
-        justification = pl.justification, model = Mat4f(I))
-    pl
+        justification = pl.justification, model = Mat4f(I)
+    )
+    return pl
 end
 
 data_limits(pl::Bracket) = mapreduce(ps -> Rect3d([ps...]), union, pl.positions[])
@@ -134,11 +140,13 @@ function bracket_bezierpath(::Val{:curly}, p1, p2, d, width)
     c2 = p12 - width * d
     c3 = p2 + width * d
 
-    b = BezierPath([
-        MoveTo(p1),
-        CurveTo(c1, c2, p12),
-        CurveTo(c2, c3, p2),
-    ])
+    b = BezierPath(
+        [
+            MoveTo(p1),
+            CurveTo(c1, c2, p12),
+            CurveTo(c2, c3, p2),
+        ]
+    )
     return b, p12
 end
 
@@ -148,11 +156,13 @@ function bracket_bezierpath(::Val{:square}, p1, p2, d, width)
     c1 = p1 + width * d
     c2 = p2 + width * d
 
-    b = BezierPath([
-        MoveTo(p1),
-        LineTo(c1),
-        LineTo(c2),
-        LineTo(p2),
-    ])
+    b = BezierPath(
+        [
+            MoveTo(p1),
+            LineTo(c1),
+            LineTo(c2),
+            LineTo(p2),
+        ]
+    )
     return b, p12
 end

@@ -1,7 +1,7 @@
 const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
-convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
+convert_arguments(::Type{<:Poly}, v::AbstractVector{<:PolyElements}) = (v,)
+convert_arguments(::Type{<:Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
 
 function convert_pointlike(args...)
@@ -28,10 +28,10 @@ function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::Abs
     return convert_arguments(Mesh, vertices, indices)
 end
 
-convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
-convert_arguments(::Type{<: Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
+convert_arguments(::Type{<:Poly}, m::GeometryBasics.Mesh) = (m,)
+convert_arguments(::Type{<:Poly}, m::GeometryBasics.GeometryPrimitive) = (m,)
 
-function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
+function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot.color,
@@ -50,44 +50,44 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
         space = plot.space,
         depth_shift = plot.depth_shift
     )
-    wireframe!(
+    return wireframe!(
         plot, plot[1],
         color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
         linewidth = plot.strokewidth, linecap = plot.linecap,
         visible = plot.visible, overdraw = plot.overdraw,
         inspectable = plot.inspectable, transparency = plot.transparency,
-        colormap = plot.strokecolormap, depth_shift=plot.stroke_depth_shift
+        colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
     )
 end
 
 # Poly conversion
-function poly_convert(geometries::AbstractVector, transform_func=identity)
+function poly_convert(geometries::AbstractVector, transform_func = identity)
     isempty(geometries) && return GeometryBasics.SimpleMesh{2, Float64, GLTriangleFace}[]
     return poly_convert.(geometries, (transform_func,))
 end
 
-function poly_convert(geometry::AbstractGeometry{N, T}, transform_func=identity) where {N, T}
-    return GeometryBasics.mesh(geometry; pointtype=Point{N,float_type(T)}, facetype=GLTriangleFace)
+function poly_convert(geometry::AbstractGeometry{N, T}, transform_func = identity) where {N, T}
+    return GeometryBasics.mesh(geometry; pointtype = Point{N, float_type(T)}, facetype = GLTriangleFace)
 end
 
-poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func=identity) = poly_convert.(meshes, (transform_func,))
+poly_convert(meshes::AbstractVector{<:AbstractMesh}, transform_func = identity) = poly_convert.(meshes, (transform_func,))
 
-function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func=identity) where {N, T}
+function poly_convert(polys::AbstractVector{<:Polygon{N, T}}, transform_func = identity) where {N, T}
     MeshType = GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
     return isempty(polys) ? MeshType[] : poly_convert.(polys, (transform_func,))
 end
 
-function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func=identity)
+function poly_convert(multipolygons::AbstractVector{<:MultiPolygon}, transform_func = identity)
     return [merge(poly_convert.(multipoly.polygons, (transform_func,))) for multipoly in multipolygons]
 end
 
-function poly_convert(multipolygon::MultiPolygon, transform_func=identity)
+function poly_convert(multipolygon::MultiPolygon, transform_func = identity)
     return poly_convert.(multipolygon.polygons, (transform_func,))
 end
 
-poly_convert(mesh::GeometryBasics.Mesh, transform_func=identity) = mesh
+poly_convert(mesh::GeometryBasics.Mesh, transform_func = identity) = mesh
 
-function poly_convert(polygon::Polygon, transform_func=identity)
+function poly_convert(polygon::Polygon, transform_func = identity)
     outer = coordinates(polygon.exterior)
     # TODO consider applying f32 convert here too. We would need to identify this though...
     PT = float_type(outer)
@@ -108,7 +108,7 @@ function poly_convert(polygon::Polygon, transform_func=identity)
     return GeometryBasics.Mesh(points_flat, faces)
 end
 
-function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func=identity) where {N, T}
+function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func = identity) where {N, T}
     points2d = convert(Vector{Point2{float_type(T)}}, polygon)
     points_transformed = apply_transform(transform_func, points2d)
     faces = GeometryBasics.earcut_triangulate([points_transformed])
@@ -117,7 +117,7 @@ function poly_convert(polygon::AbstractVector{<:VecTypes{N, T}}, transform_func=
     return GeometryBasics.Mesh(points, faces)::GeometryBasics.SimpleMesh{N, float_type(T), GLTriangleFace}
 end
 
-function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func=identity)
+function poly_convert(polygons::AbstractVector{<:AbstractVector{<:VecTypes}}, transform_func = identity)
     return map(polygons) do poly
         return poly_convert(poly, transform_func)
     end
@@ -128,7 +128,7 @@ to_lines(polygon) = (convert_arguments(Lines, polygon)[1], [typemax(Int)])
 to_lines(polygon::GeometryBasics.Mesh) = (convert_arguments(PointBased(), polygon)[1], [typemax(Int)])
 
 function to_lines(meshes::AbstractVector)
-    get_dim(::AbstractVector{<: VecTypes{N}}) where N = N
+    get_dim(::AbstractVector{<:VecTypes{N}}) where {N} = N
     get_dim(::Any) = 3
     N = mapreduce(get_dim, max, meshes, init = 2)
     line = Point{N, Float64}[]
@@ -146,7 +146,7 @@ function to_lines(meshes::AbstractVector)
     return (line, separation_indices)
 end
 
-function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
+function to_lines(polygon::AbstractVector{<:VecTypes{N}}) where {N}
     result = Point{N, Float64}.(polygon)
     if !isempty(result) && result[1] != result[end]
         push!(result, polygon[1])
@@ -154,12 +154,13 @@ function to_lines(polygon::AbstractVector{<: VecTypes{N}}) where {N}
     return (result, [typemax(Int)])
 end
 
-function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<: PolyElements}}}})
+function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<:PolyElements}}}})
     geometries = plot.polygon
     transform_func = plot.transformation.transform_func
     meshes = lift(poly_convert, plot, geometries, transform_func)
 
-    mesh!(plot, meshes;
+    mesh!(
+        plot, meshes;
         visible = plot.visible,
         shading = plot.shading,
         color = plot.color,
@@ -168,8 +169,8 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle
         colorrange = plot.colorrange,
         lowclip = plot.lowclip,
         highclip = plot.highclip,
-        nan_color=plot.nan_color,
-        alpha=plot.alpha,
+        nan_color = plot.nan_color,
+        alpha = plot.alpha,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
         transparency = plot.transparency,
@@ -192,7 +193,7 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, MultiPolygon, Rect2, Circle
             return sc
         end
     end
-    lines!(
+    return lines!(
         plot, lift(first, outline_idxs), visible = plot.visible,
         color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,

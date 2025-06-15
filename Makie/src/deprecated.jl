@@ -3,13 +3,13 @@
 ##
 
 function DiscreteSurface(args...; kwargs...)
-    @warn "Makie.DiscreteSurface() is deprecated, use Makie.CellGrid() instead" maxlog=1
-    CellGrid(args...; kwargs...)
+    @warn "Makie.DiscreteSurface() is deprecated, use Makie.CellGrid() instead" maxlog = 1
+    return CellGrid(args...; kwargs...)
 end
 
 function ContinuousSurface(args...; kwargs...)
-    @warn "Makie.ContinuousSurface() is deprecated, use Makie.VertexGrid() instead" maxlog=1
-    VertexGrid(args...; kwargs...)
+    @warn "Makie.ContinuousSurface() is deprecated, use Makie.VertexGrid() instead" maxlog = 1
+    return VertexGrid(args...; kwargs...)
 end
 
 function Base.getproperty(scene::Scene, field::Symbol)
@@ -23,6 +23,6 @@ end
 @deprecate pixelarea viewport true
 
 function Combined(args...; kwargs...)
-    @warn "Makie.Combined() is deprecated, use Makie.Plot() instead" maxlog=1
-    Plot(args...; kwargs...)
+    @warn "Makie.Combined() is deprecated, use Makie.Plot() instead" maxlog = 1
+    return Plot(args...; kwargs...)
 end

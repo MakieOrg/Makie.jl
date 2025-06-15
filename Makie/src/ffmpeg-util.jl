@@ -36,10 +36,10 @@
 struct VideoStreamOptions
     format::String
     framerate::Int
-    compression::Union{Nothing,Int}
-    profile::Union{Nothing,String}
-    pixel_format::Union{Nothing,String}
-    loop::Union{Nothing,Int}
+    compression::Union{Nothing, Int}
+    profile::Union{Nothing, String}
+    pixel_format::Union{Nothing, String}
+    loop::Union{Nothing, Int}
 
     loglevel::String
     input::String
@@ -47,7 +47,8 @@ struct VideoStreamOptions
 
     function VideoStreamOptions(
             format::AbstractString, framerate::Real, compression, profile,
-            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool=true)
+            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool = true
+        )
 
         if !isa(framerate, Integer)
             @warn "The given framefrate is not a subtype of `Integer`, and will be rounded to the nearest integer. To suppress this warning, provide an integer as the framerate."
@@ -66,18 +67,22 @@ struct VideoStreamOptions
         (loop === nothing) && (loop = 0)
 
         # items are name, value, allowed_formats
-        allowed_kwargs = [("compression", compression, ("mp4", "webm")),
-                          ("profile", profile, ("mp4",)),
-                          ("pixel_format", pixel_format, ("mp4",))]
+        allowed_kwargs = [
+            ("compression", compression, ("mp4", "webm")),
+            ("profile", profile, ("mp4",)),
+            ("pixel_format", pixel_format, ("mp4",)),
+        ]
 
         for (name, value, allowed_formats) in allowed_kwargs
             if !(format in allowed_formats) && value !== nothing
-                @warn("""`$name`, with value $(repr(value))
+                @warn(
+                    """`$name`, with value $(repr(value))
                     was passed as a keyword argument to `record` or `VideoStream`,
                     which only has an effect when the output video's format is one of: $(collect(allowed_formats)).
                     But the actual video format was $(repr(format)).
                     Keyword arg `$name` will be ignored.
-                    """)
+                    """
+                )
             end
         end
 
@@ -85,15 +90,18 @@ struct VideoStreamOptions
             error("file needs to be \"pipe:0\" or a valid file path")
         end
 
-        loglevels = Set([
-            "quiet",
-            "panic",
-            "fatal",
-            "error",
-            "warning",
-            "info",
-            "verbose",
-            "debug"])
+        loglevels = Set(
+            [
+                "quiet",
+                "panic",
+                "fatal",
+                "error",
+                "warning",
+                "info",
+                "verbose",
+                "debug",
+            ]
+        )
 
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
@@ -102,11 +110,11 @@ struct VideoStreamOptions
     end
 end
 
-function VideoStreamOptions(; format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing, loglevel="quiet", input="pipe:0", rawvideo=true)
+function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
     return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
 end
 
-function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer=0, ydim::Integer=0)
+function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
     # explanation of ffmpeg args. note that the order of args is important; args pertaining
     # to the input have to go before -i and args pertaining to the output have to go after.
     # -y: "yes", overwrite any existing without confirmation
@@ -247,16 +255,18 @@ $(Base.doc(VideoStreamOptions))
 
 * `filter_ticks`: When true, tick events other than `tick.state = Makie.OneTimeRenderTick` are removed until `save()` is called or the VideoStream object gets deleted.
 """
-function VideoStream(fig::FigureLike;
-        format="mp4", framerate=24, compression=nothing, profile=nothing, pixel_format=nothing, loop=nothing,
-        loglevel="quiet", visible=false, update=true, filter_ticks=true,
-        backend=current_backend(), screen_config...)
+function VideoStream(
+        fig::FigureLike;
+        format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing,
+        loglevel = "quiet", visible = false, update = true, filter_ticks = true,
+        backend = current_backend(), screen_config...
+    )
 
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).$(format)")
     scene = get_scene(fig)
     update && update_state_before_display!(fig)
-    config = Dict{Symbol,Any}(screen_config)
+    config = Dict{Symbol, Any}(screen_config)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, scene, config, GLNative)
@@ -277,7 +287,7 @@ function VideoStream(fig::FigureLike;
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
     result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
     finalizer(result) do x
-        @async rm(x.path; force=true)
+        @async rm(x.path; force = true)
         stop!(x.tick_controller)
     end
     return result
@@ -321,7 +331,7 @@ function save(path::String, io::VideoStream; video_options...)
         # Maybe warn?
         convert_video(io.path, path; video_options...)
     else
-        cp(io.path, path; force=true)
+        cp(io.path, path; force = true)
     end
     return path
 end
@@ -329,12 +339,12 @@ end
 function convert_video(input_path, output_path; video_options...)
     p, typ = splitext(output_path)
     format = lstrip(typ, '.')
-    vso = VideoStreamOptions(; format=format, input=input_path, rawvideo=false, video_options...)
+    vso = VideoStreamOptions(; format = format, input = input_path, rawvideo = false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
     return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
 end
 
-function extract_frames(video, frame_folder; loglevel="quiet")
+function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
+    return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end

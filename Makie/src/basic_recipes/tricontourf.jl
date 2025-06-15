@@ -59,8 +59,10 @@ function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, 
     return (:triangulation,)
 end
 
-function Makie.convert_arguments(::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
-    triangulation=DelaunayTriangulation())
+function Makie.convert_arguments(
+        ::Type{<:Tricontourf}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real};
+        triangulation = DelaunayTriangulation()
+    )
     T = float_type(x, y, z)
     z = elconvert(T, z)
     points = [elconvert(T, x)'; elconvert(T, y)']
@@ -94,7 +96,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
@@ -122,10 +124,11 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         return
     end
 
-    register_computation!(graph,
-            [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
-            [:polys, :computed_colors]
-        ) do (tri, zs, levels, low, high), changed, cached
+    register_computation!(
+        graph,
+        [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+        [:polys, :computed_colors]
+    ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)
         is_extended_high = !isnothing(high)
         if isnothing(cached)
@@ -138,7 +141,8 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         return (polys, colors)
     end
 
-    poly!(c,
+    return poly!(
+        c,
         c.polys,
         colormap = c.computed_colormap,
         colorscale = c.colorscale,
@@ -162,17 +166,17 @@ end
 # FIXME: TriplotBase augments levels so here the implementation is just repeated without that step
 function filled_tricontours(x, y, z, t, levels)
     m = TriplotBase.TriMesh(x, y, t)
-    filled_tricontours(m, z, levels)
+    return filled_tricontours(m, z, levels)
 end
 
 function filled_tricontours(m::TriplotBase.TriMesh, z, levels)
     @assert issorted(levels)
     nlevels = length(levels)
     filled_contours = TriplotBase.FilledContour{eltype(levels)}[]
-    for i=1:nlevels-1
+    for i in 1:(nlevels - 1)
         lower = levels[i]
-        upper = levels[i+1]
+        upper = levels[i + 1]
         push!(filled_contours, TriplotBase.generate_filled_contours(m, z, lower, upper))
     end
-    filled_contours
+    return filled_contours
 end

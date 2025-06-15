@@ -102,7 +102,6 @@ function process_interaction(f::Function, event, parent)
 end
 
 
-
 ############################################################################
 #                            Axis interactions                            #
 ############################################################################
@@ -152,7 +151,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     inv_transf = Makie.inverse_transform(transf)
 
     if isnothing(inv_transf)
-        @warn "Can't rectangle zoom without inverse transform" maxlog=1
+        @warn "Can't rectangle zoom without inverse transform" maxlog = 1
         # TODO, what can we do without inverse?
         return Consume(false)
     end
@@ -180,7 +179,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         try
             r.callback(r.rectnode[])
         catch e
-            @warn "error in rectangle zoom" exception=(e, Base.catch_backtrace())
+            @warn "error in rectangle zoom" exception = (e, Base.catch_backtrace())
         end
         r.active[] = false
         return Consume(true)
@@ -253,7 +252,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         mp_axscene = Vec4d((e.mouseposition[] .- pa.origin)..., 0, 1)
 
         # first to normal -1..1 space
-        mp_axfraction =  (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
+        mp_axfraction = (cam.pixel_space[] * mp_axscene)[Vec(1, 2)] .*
             # now to 1..-1 if an axis is reversed to correct zoom point
             (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
             # now to 0..1
@@ -316,10 +315,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     mp_axfraction, mp_axfraction_prev = map((mp_axscene, mp_axscene_prev)) do mp
         # first to normal -1..1 space
         (cam.pixel_space[] * mp)[Vec(1, 2)] .*
-        # now to 1..-1 if an axis is reversed to correct zoom point
-        (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
-        # now to 0..1
-        0.5 .+ 0.5
+            # now to 1..-1 if an axis is reversed to correct zoom point
+            (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
+            # now to 0..1
+            0.5 .+ 0.5
     end
 
     xscale = ax.xscale[]
@@ -364,7 +363,7 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d::Axis3)
     dpx = event.px - event.prev_px
 
     ax3d.azimuth[] += -dpx[1] * 0.01
-    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
+    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi / 2 + 0.001, pi / 2 - 0.001)
 
     return Consume(true)
 end
@@ -421,7 +420,7 @@ function process_interaction(interaction::DragPan, event::MouseEvent, ax::Axis3)
         p0 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.prev_px))
         p1 = ray_plane_intersection(plane, ray_from_projectionview(ax.scene, event.px))
         delta = p1 - p0
-        translation = isfinite(delta) ? - inv(model[Vec(1,2,3), Vec(1,2,3)]) * delta : Point3d(0)
+        translation = isfinite(delta) ? - inv(model[Vec(1, 2, 3), Vec(1, 2, 3)]) * delta : Point3d(0)
 
         tlimits[] = Rect3f(mini + xyz_translate .* translation, ws)
     end
@@ -454,7 +453,7 @@ function process_interaction(interaction::ScrollZoom, event::ScrollEvent, ax::Ax
         xyz_zoom = (x_zoom, y_zoom, z_zoom)
     end
 
-    zoom_mult = (1f0 - interaction.speed)^zoom
+    zoom_mult = (1.0f0 - interaction.speed)^zoom
 
     if ax.viewmode[] == :free
 
@@ -518,7 +517,7 @@ function process_interaction(::LimitReset, event::MouseEvent, ax::Axis3)
         end
         if ispressed(ax.scene, Keyboard.left_shift)
             ax.axis_offset[] = Vec2d(0)
-            ax.elevation[] = pi/8
+            ax.elevation[] = pi / 8
             ax.azimuth[] = 1.275 * pi
             consumed = true
         end

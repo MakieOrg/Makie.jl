@@ -1,10 +1,10 @@
-function scalematrix(s::Vec{3, T}) where T
+function scalematrix(s::Vec{3, T}) where {T}
     T0, T1 = zero(T), one(T)
-    Mat{4}(
-        s[1],T0,  T0,  T0,
-        T0,  s[2],T0,  T0,
-        T0,  T0,  s[3],T0,
-        T0,  T0,  T0,  T1,
+    return Mat{4}(
+        s[1], T0, T0, T0,
+        T0, s[2], T0, T0,
+        T0, T0, s[3], T0,
+        T0, T0, T0, T1,
     )
 end
 
@@ -12,13 +12,13 @@ translationmatrix_x(x::T) where {T} = translationmatrix(Vec{3, T}(x, 0, 0))
 translationmatrix_y(y::T) where {T} = translationmatrix(Vec{3, T}(0, y, 0))
 translationmatrix_z(z::T) where {T} = translationmatrix(Vec{3, T}(0, 0, z))
 
-function translationmatrix(t::Vec{3, T}) where T
+function translationmatrix(t::Vec{3, T}) where {T}
     T0, T1 = zero(T), one(T)
-    Mat{4}(
-        T1,  T0,  T0,  T0,
-        T0,  T1,  T0,  T0,
-        T0,  T0,  T1,  T0,
-        t[1],t[2],t[3],T1,
+    return Mat{4}(
+        T1, T0, T0, T0,
+        T0, T1, T0, T0,
+        T0, T0, T1, T0,
+        t[1], t[2], t[3], T1,
     )
 end
 
@@ -27,17 +27,17 @@ rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), conv
 
 function rotationmatrix_x(angle::Number)
     T0, T1 = (0, 1)
-    Mat{4}(
+    return Mat{4}(
         T1, T0, T0, T0,
         T0, cos(angle), sin(angle), T0,
-        T0, -sin(angle), cos(angle),  T0,
+        T0, -sin(angle), cos(angle), T0,
         T0, T0, T0, T1
     )
 end
 function rotationmatrix_y(angle::Number)
     T0, T1 = (0, 1)
-    Mat{4}(
-        cos(angle), T0, -sin(angle),  T0,
+    return Mat{4}(
+        cos(angle), T0, -sin(angle), T0,
         T0, T1, T0, T0,
         sin(angle), T0, cos(angle), T0,
         T0, T0, T0, T1
@@ -45,9 +45,9 @@ function rotationmatrix_y(angle::Number)
 end
 function rotationmatrix_z(angle::Number)
     T0, T1 = (0, 1)
-    Mat{4}(
+    return Mat{4}(
         cos(angle), sin(angle), T0, T0,
-        -sin(angle), cos(angle),  T0, T0,
+        -sin(angle), cos(angle), T0, T0,
         T0, T0, T1, T0,
         T0, T0, T0, T1
     )
@@ -76,8 +76,8 @@ end
         M : array
          View frustum matrix (4x4).
 """
-function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where T
-    (right == left || bottom == top || znear == zfar) && return Mat{4,4,T}(I)
+function frustum(left::T, right::T, bottom::T, top::T, znear::T, zfar::T) where {T}
+    (right == left || bottom == top || znear == zfar) && return Mat{4, 4, T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
     return Mat{4}(
         T2 * znear / (right - left), T0, T0, T0,
@@ -94,7 +94,7 @@ the y-axis (measured in degrees), the specified `aspect` ratio, and
 near and far clipping planes `znear`, `zfar`. Optionally specify the
 element type `T` of the matrix.
 """
-function perspectiveprojection(fovy::T, aspect::T, znear::T, zfar::T) where T
+function perspectiveprojection(fovy::T, aspect::T, znear::T, zfar::T) where {T}
     (znear == zfar) && error("znear ($znear) must be different from tfar ($zfar)")
     h = T(tan(fovy / 360.0 * pi) * znear)
     w = T(h * aspect)
@@ -103,22 +103,22 @@ end
 
 function perspectiveprojection(
         ::Type{T}, fovy::Number, aspect::Number, znear::Number, zfar::Number
-    ) where T
-    perspectiveprojection(T(fovy), T(aspect), T(znear), T(zfar))
+    ) where {T}
+    return perspectiveprojection(T(fovy), T(aspect), T(znear), T(zfar))
 end
 """
 `proj = perspectiveprojection([T], rect, fov, near, far)` defines the
 projection ratio in terms of the rectangular view size `rect` rather
 than the aspect ratio.
 """
-function perspectiveprojection(wh::Rect2, fov::T, near::T, far::T) where T
-    perspectiveprojection(fov, T(wh.w/wh.h), near, far)
+function perspectiveprojection(wh::Rect2, fov::T, near::T, far::T) where {T}
+    return perspectiveprojection(fov, T(wh.w / wh.h), near, far)
 end
 
 function perspectiveprojection(
         ::Type{T}, wh::Rect2, fov::Number, near::Number, far::Number
-    ) where T
-    perspectiveprojection(T(fov), T(wh.w/wh.h), T(near), T(far))
+    ) where {T}
+    return perspectiveprojection(T(fov), T(wh.w / wh.h), T(near), T(far))
 end
 
 """
@@ -129,72 +129,73 @@ the component of `up` that is perpendicular to the vector pointing
 from `eyeposition` to `lookat` will be used.  All inputs must be
 supplied as 3-vectors.
 """
-function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
+function lookat(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where {T}
     return lookat_basis(eyePos, lookAt, up) * translationmatrix(-eyePos)
 end
-function lookat_basis(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where T
-    zaxis  = normalize(eyePos-lookAt)
-    xaxis  = normalize(cross(up,    zaxis))
-    yaxis  = normalize(cross(zaxis, xaxis))
+function lookat_basis(eyePos::Vec{3, T}, lookAt::Vec{3, T}, up::Vec{3, T}) where {T}
+    zaxis = normalize(eyePos - lookAt)
+    xaxis = normalize(cross(up, zaxis))
+    yaxis = normalize(cross(zaxis, xaxis))
     T0, T1 = zero(T), one(T)
     return Mat{4}(
         xaxis[1], yaxis[1], zaxis[1], T0,
         xaxis[2], yaxis[2], zaxis[2], T0,
         xaxis[3], yaxis[3], zaxis[3], T0,
-        T0,       T0,       T0,       T1
+        T0, T0, T0, T1
     )
 end
 
-function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
-    lookat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
+function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where {T}
+    return lookat(Vec{3, T}(eyePos), Vec{3, T}(lookAt), Vec{3, T}(up))
 end
 
-function orthographicprojection(wh::Rect2, near::T, far::T) where T
+function orthographicprojection(wh::Rect2, near::T, far::T) where {T}
     w, h = widths(wh)
-    orthographicprojection(zero(T), T(w), zero(T), T(h), near, far)
+    return orthographicprojection(zero(T), T(w), zero(T), T(h), near, far)
 end
 
 function orthographicprojection(
         ::Type{T}, wh::Rect2, near::Number, far::Number
-    ) where T
-    orthographicprojection(wh, T(near), T(far))
+    ) where {T}
+    return orthographicprojection(wh, T(near), T(far))
 end
 
 function orthographicprojection(
         left::T, right::T,
         bottom::T, top::T,
         znear::T, zfar::T
-    ) where T
-    (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
+    ) where {T}
+    (right == left || bottom == top || znear == zfar) && return Mat{4, 4, T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
-    Mat{4}(
-        T2/(right-left), T0, T0,  T0,
-        T0, T2/(top-bottom), T0,  T0,
-        T0, T0, -T2/(zfar-znear), T0,
-        -(right+left)/(right-left), -(top+bottom)/(top-bottom), -(zfar+znear)/(zfar-znear), T1
+    return Mat{4}(
+        T2 / (right - left), T0, T0, T0,
+        T0, T2 / (top - bottom), T0, T0,
+        T0, T0, -T2 / (zfar - znear), T0,
+        -(right + left) / (right - left), -(top + bottom) / (top - bottom), -(zfar + znear) / (zfar - znear), T1
     )
 end
 
-function orthographicprojection(::Type{T},
-        left  ::Number, right::Number,
-        bottom::Number, top  ::Number,
-        znear ::Number, zfar ::Number
-    ) where T
-    orthographicprojection(
-        T(left),   T(right),
+function orthographicprojection(
+        ::Type{T},
+        left::Number, right::Number,
+        bottom::Number, top::Number,
+        znear::Number, zfar::Number
+    ) where {T}
+    return orthographicprojection(
+        T(left), T(right),
         T(bottom), T(top),
-        T(znear),  T(zfar)
+        T(znear), T(zfar)
     )
 end
 
 mutable struct Pivot{T}
-    origin      ::Vec{3, T}
-    xaxis       ::Vec{3, T}
-    yaxis       ::Vec{3, T}
-    zaxis       ::Vec{3, T}
-    rotation    ::Quaternion
-    translation ::Vec{3, T}
-    scale       ::Vec{3, T}
+    origin::Vec{3, T}
+    xaxis::Vec{3, T}
+    yaxis::Vec{3, T}
+    zaxis::Vec{3, T}
+    rotation::Quaternion
+    translation::Vec{3, T}
+    scale::Vec{3, T}
 end
 
 GeometryBasics.origin(p::Pivot) = p.origin
@@ -202,30 +203,30 @@ GeometryBasics.origin(p::Pivot) = p.origin
 rotationmatrix4(q::Quaternion{T}) where {T} = Mat4{T}(q)
 
 function transformationmatrix(p::Pivot)
-    translationmatrix(p.origin) * #go to origin
-    rotationmatrix4(p.rotation) * #apply rotation
-    translationmatrix(-p.origin)* # go back to origin
-    translationmatrix(p.translation) #apply translation
+    return translationmatrix(p.origin) * #go to origin
+        rotationmatrix4(p.rotation) * #apply rotation
+        translationmatrix(-p.origin) * # go back to origin
+        translationmatrix(p.translation) #apply translation
 end
 
 function transformationmatrix(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
     return Mat{4}(
-        scale[1],T0,  T0,  T0,
-        T0,  scale[2],T0,  T0,
-        T0,  T0,  scale[3],T0,
+        scale[1], T0, T0, T0,
+        T0, scale[2], T0, T0,
+        T0, T0, scale[3], T0,
         translation[1], translation[2], translation[3], T1
     )
 end
 
-function transformationmatrix(translation, scale, rotation::Quaternion{T}) where T
+function transformationmatrix(translation, scale, rotation::Quaternion{T}) where {T}
     trans_scale = transformationmatrix(translation, scale)
     rotation = Mat4{T}(rotation)
-    trans_scale*rotation
+    return trans_scale * rotation
 end
 
-function is_translation_scale_matrix(mat::Mat4{T}) where T
+function is_translation_scale_matrix(mat::Mat4{T}) where {T}
     # Checks that matrix has form: (* being any number)
     #   *  0  0  *
     #   0  *  0  *
@@ -233,9 +234,9 @@ function is_translation_scale_matrix(mat::Mat4{T}) where T
     #   0  0  0  1
     T0 = zero(T)
     return (mat[2, 1] == T0) && (mat[3, 1] == T0) && (mat[4, 1] == T0) &&
-           (mat[1, 2] == T0) && (mat[3, 2] == T0) && (mat[4, 2] == T0) &&
-           (mat[1, 3] == T0) && (mat[2, 3] == T0) && (mat[4, 3] == T0) &&
-           (mat[4, 4] == one(T))
+        (mat[1, 2] == T0) && (mat[3, 2] == T0) && (mat[4, 2] == T0) &&
+        (mat[1, 3] == T0) && (mat[2, 3] == T0) && (mat[4, 3] == T0) &&
+        (mat[4, 4] == one(T))
 end
 
 """
@@ -247,9 +248,9 @@ created with matching order, i.e.
 `transform = translation_matrix * scale_matrix * rotation_matrix`. The model
 matrix created by `Transformation` is one such matrix.
 """
-function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where T
-    trans = Vec3{T}(model[Vec(1,2,3), 4])
-    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+function decompose_translation_scale_rotation_matrix(model::Mat4{T}) where {T}
+    trans = Vec3{T}(model[Vec(1, 2, 3), 4])
+    m33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
         scale = Vec3{T}(diag(m33))
         rot = Quaternion{T}(0, 0, 0, 1)
@@ -293,9 +294,9 @@ extraction of the rotation component. This still works if a rotation is involved
 and requires the same order of operations, i.e.
 `transform = translation_matrix * scale_matrix * rotation_matrix`.
 """
-function decompose_translation_scale_matrix(model::Mat4{T}) where T
-    trans = Vec3{T}(model[Vec(1,2,3), 4])
-    m33 = model[Vec(1,2,3), Vec(1,2,3)]
+function decompose_translation_scale_matrix(model::Mat4{T}) where {T}
+    trans = Vec3{T}(model[Vec(1, 2, 3), 4])
+    m33 = model[Vec(1, 2, 3), Vec(1, 2, 3)]
     if m33[1, 2] ≈ m33[1, 3] ≈ m33[2, 3] ≈ 0
         scale = Vec3{T}(diag(m33))
         return trans, scale
@@ -307,7 +308,7 @@ function decompose_translation_scale_matrix(model::Mat4{T}) where T
 end
 
 #Calculate rotation between two vectors
-function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
+function rotation(u::Vec{3, T}, v::Vec{3, T}) where {T}
     # It is important that the inputs are of equal length when
     # calculating the half-way vector.
     u, v = normalize(u), normalize(v)
@@ -315,10 +316,10 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     # in this case will be (0, 0, 0), which cannot be normalized.
     if (u == -v)
         # 180 degree rotation around any orthogonal vector
-        other = (abs(dot(u, Vec{3, T}(1,0,0))) < 1.0) ? Vec{3, T}(1,0,0) : Vec{3, T}(0,1,0)
+        other = (abs(dot(u, Vec{3, T}(1, 0, 0))) < 1.0) ? Vec{3, T}(1, 0, 0) : Vec{3, T}(0, 1, 0)
         return qrotation(normalize(cross(u, other)), T(180))
     end
-    half = normalize(u+v)
+    half = normalize(u + v)
     return Quaternion(cross(u, half)..., dot(u, half))
 end
 
@@ -358,11 +359,11 @@ function _to_world(
         prj_view_inv::Mat4,
         cam_res::StaticVector
     ) where {N, T}
-    to_world(Point(p), prj_view_inv, cam_res) .-
+    return to_world(Point(p), prj_view_inv, cam_res) .-
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
-function _project(matrix::Mat4{T1}, ps::AbstractArray{<: VecTypes{N, T2}}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+function _project(matrix::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
     T = promote_type(Float32, T1, T2)
     matrix == Mat4{T1}(I) && return to_ndim.(Point3{T}, ps, 0)
     ps4 = to_ndim.(Point4{T}, to_ndim.(Point3{T}, ps, 0.0), dim4)
@@ -375,7 +376,7 @@ function _project(matrix::Mat4{T1}, p::VecTypes{N, T2}, dim4::Real = 1.0) where 
     matrix == Mat4{T1}(I) && return to_ndim(Point3{T}, p, 0)
     p4 = to_ndim(Point4{T}, to_ndim(Point3{T}, p, 0.0), dim4)
     p4 = matrix * p4
-    return Point3{T}(p4[Vec(1,2,3)] / p4[4])
+    return Point3{T}(p4[Vec(1, 2, 3)] / p4[4])
 end
 
 function _project(matrix::Mat4{T1}, r::Rect3{T2}, dim4::Real = 1.0) where {T1 <: Real, T2 <: Real}
@@ -393,7 +394,7 @@ function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real
     T = promote_type(Float32, T1, T2)
     p = to_ndim(Vec4{T}, to_ndim(Vec3{T}, p, 0.0), dim4)
     p = matrix * p
-    to_ndim(VT, p, 0.0)
+    return to_ndim(VT, p, 0.0)
 end
 
 function project(scene::Scene, point::VecTypes)
@@ -403,8 +404,8 @@ function project(scene::Scene, point::VecTypes)
     # Which would be semi breaking at this point though, I suppose
     return project(
         cam.projectionview[] *
-        f32_convert_matrix(scene.float32convert, :data) *
-        transformationmatrix(scene)[],
+            f32_convert_matrix(scene.float32convert, :data) *
+            transformationmatrix(scene)[],
         Vec2f(widths(area)),
         Point(point)
     )
@@ -424,21 +425,21 @@ end
 # TODO: consider warning here to discourage risky functions
 function project_point2(mat4::Mat4{T1}, point2::Point2{T2}) where {T1, T2}
     T = promote_type(Float32, T1, T2)
-    Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
+    return Point2{T2}(mat4 * to_ndim(Point4{T}, to_ndim(Point3{T}, point2, 0), 1))
 end
 
 # TODO: consider warning here to discourage risky functions
-function transform(model::Mat4{T1}, x::VT) where {T1, VT<:VecTypes}
+function transform(model::Mat4{T1}, x::VT) where {T1, VT <: VecTypes}
     T = promote_type(Float32, T1, eltype(VT))
     # TODO: no w = 1? Is this meant to skip translations?
     x4d = to_ndim(Vec4{T}, x, 0.0)
-    to_ndim(VT, model * x4d, 0.0)
+    return to_ndim(VT, model * x4d, 0.0)
 end
 
 ################################################################################
 
 # project between different coordinate systems/spaces
-function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool=true)
+function space_to_clip(cam::Camera, space::Symbol, projectionview::Bool = true)
     if is_data_space(space)
         return projectionview ? cam.projectionview[] : cam.projection[]
     elseif space == :eye
@@ -473,7 +474,7 @@ end
 
 function get_space(scene::Scene)
     space = get_space(cameracontrols(scene))::Symbol
-    Makie.is_data_space(space) ? (:data,) : (:data, space)
+    return Makie.is_data_space(space) ? (:data,) : (:data, space)
 end
 get_space(::AbstractCamera) = :data
 function get_space(plot::Plot)
@@ -489,7 +490,7 @@ is_space_compatible(a, b) = is_space_compatible(get_space(a), get_space(b))
 is_space_compatible(a::Symbol, b::Symbol) = a === b
 is_space_compatible(a::Symbol, b::Union{Tuple, Vector}) = a in b
 function is_space_compatible(a::Union{Tuple, Vector}, b::Union{Tuple, Vector})
-    any(x -> is_space_compatible(x, b), a)
+    return any(x -> is_space_compatible(x, b), a)
 end
 is_space_compatible(a::Union{Tuple, Vector}, b::Symbol) = is_space_compatible(b, a)
 
@@ -521,7 +522,7 @@ end
 
 function transform_and_project(
         scenelike::SceneLike, input_space::Symbol, output_space::Symbol,
-        pos::Vector{<: VecTypes{N, T1}}, target_type = Point{N, promote_type(Float32, T1)}
+        pos::Vector{<:VecTypes{N, T1}}, target_type = Point{N, promote_type(Float32, T1)}
     ) where {N, T1}
 
     T = promote_type(Float32, T1) # always float, maybe Float64
@@ -534,6 +535,6 @@ function transform_and_project(
     projection_matrix = clip_to_space(cam, output_space) * space_to_clip(cam, input_space)
     return map(transformed_f32) do point
         p4d = projection_matrix * to_ndim(Point4{T}, point, 1)
-        return target_type(p4d[Vec(1,2,3)] / p4d[4])
+        return target_type(p4d[Vec(1, 2, 3)] / p4d[4])
     end
 end

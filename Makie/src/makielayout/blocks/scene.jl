@@ -8,7 +8,7 @@ tightlimits!(::LScene) = nothing # TODO implement!?
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
     # pick a camera and draw axis.
-    scenekw = merge((clear = false, camera=cam3d!), scenekw)
+    scenekw = merge((clear = false, camera = cam3d!), scenekw)
     ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); scenekw...)
 
     on(blockscene, ls.show_axis) do show_axis
@@ -31,7 +31,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
                 end
                 Makie.axis3d!(ls.scene, limits)
                 # Make sure axis is always in pos 1
-                sort!(ls.scene.plots, by=!Makie.isaxis)
+                sort!(ls.scene.plots, by = !Makie.isaxis)
             else
                 ax.visible = true
             end
@@ -47,7 +47,7 @@ end
 
 function Base.delete!(ax::LScene, plot::AbstractPlot)
     delete!(ax.scene, plot)
-    ax
+    return ax
 end
 
 Makie.cam2d!(ax::LScene; kwargs...) = Makie.cam2d!(ax.scene; kwargs...)

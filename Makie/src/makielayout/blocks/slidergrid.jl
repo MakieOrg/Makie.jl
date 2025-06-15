@@ -25,8 +25,10 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
         remaining_pairs = filter(pair -> pair[1] ∉ (:label, :range, :format), pairs(nt))
         l = Label(sg.layout[i, 1], label, halign = :left)
         slider = Slider(sg.layout[i, 2]; range = range, remaining_pairs...)
-        vl = Label(sg.layout[i, 3],
-            lift(x -> apply_format(x, format), slider.value), halign = :right)
+        vl = Label(
+            sg.layout[i, 3],
+            lift(x -> apply_format(x, format), slider.value), halign = :right
+        )
         push!(sg.valuelabels, vl)
         push!(sg.sliders, slider)
         push!(sg.labels, l)

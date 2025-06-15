@@ -15,14 +15,15 @@ function safe_off(o::Observables.AbstractObservable, f)
             return
         end
     end
+    return
 end
 
-function on_latest(f, observable::Observable; update=false, spawn=false, throttle=0.0)
-    return on_latest(f, nothing, observable; update=update, spawn=spawn, throttle=throttle)
+function on_latest(f, observable::Observable; update = false, spawn = false, throttle = 0.0)
+    return on_latest(f, nothing, observable; update = update, spawn = spawn, throttle = throttle)
 end
 
 
-function on_latest(f, to_track, observable::Observable; update=false, spawn=false, throttle=0.0)
+function on_latest(f, to_track, observable::Observable; update = false, spawn = false, throttle = 0.0)
     task_lock = Threads.ReentrantLock()
     last_task = nothing
     has_changed = Threads.Atomic{Bool}(false)
@@ -43,14 +44,14 @@ function on_latest(f, to_track, observable::Observable; update=false, spawn=fals
         # But `==` would be better, considering, that one could arrive at an old value.
         # This should be configurable, but since async_latest is needed for working on big data as input
         # we assume for now that `==` is prohibitive as the default
-        if has_changed[]
+        return if has_changed[]
             has_changed[] = false
             run_f(observable[]) # needs to be recursive
         end
     end
 
     function on_callback(new_value)
-        lock(task_lock) do
+        return lock(task_lock) do
             if isnothing(last_task) || istaskdone(last_task)
                 if spawn
                     last_task = Threads.@spawn run_f(new_value)
@@ -73,20 +74,20 @@ function on_latest(f, to_track, observable::Observable; update=false, spawn=fals
     end
 end
 
-function onany_latest(f, observables...; update=false, spawn=false, throttle=0.0)
+function onany_latest(f, observables...; update = false, spawn = false, throttle = 0.0)
     result = Observable{Any}(map(to_value, observables))
-    onany((args...)-> (result[] = args), observables...)
-    return on_latest((args) -> f(args...), result; update=update, spawn=spawn, throttle=throttle)
+    onany((args...) -> (result[] = args), observables...)
+    return on_latest((args) -> f(args...), result; update = update, spawn = spawn, throttle = throttle)
 end
 
-function map_latest!(f, result::Observable, observables...; update=false, spawn=false, throttle=0.0)
+function map_latest!(f, result::Observable, observables...; update = false, spawn = false, throttle = 0.0)
     callback = Observables.MapCallback(f, result, observables)
-    return onany_latest(callback, observables...; update=update, spawn=spawn, throttle=throttle)
+    return onany_latest(callback, observables...; update = update, spawn = spawn, throttle = throttle)
 end
 
-function map_latest(f, observables...; spawn=false, ignore_equal_values=false, throttle=0.0)
+function map_latest(f, observables...; spawn = false, ignore_equal_values = false, throttle = 0.0)
     first_value = f(map(to_value, observables)...)
-    result = Observable(first_value; ignore_equal_values=ignore_equal_values)
-    map_latest!(f, result, observables..., spawn=spawn, throttle=throttle)
+    result = Observable(first_value; ignore_equal_values = ignore_equal_values)
+    map_latest!(f, result, observables..., spawn = spawn, throttle = throttle)
     return result
 end

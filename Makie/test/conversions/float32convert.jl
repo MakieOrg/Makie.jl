@@ -18,7 +18,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
     @testset "Initialization" begin
         @test f32c.scaling[] == unit_scaling
-        @test f32c.resolution == 1f4 # this may be subject to change
+        @test f32c.resolution == 1.0f4 # this may be subject to change
     end
 
     @testset "Modification" begin
@@ -29,7 +29,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         @test f32c.scaling[] == unit_scaling
         @test !update_limits!(f32c, Rect(-f32min, -f32min, 2 * f32min, 2 * f32min))
         @test f32c.scaling[] == unit_scaling
-        @test !update_limits!(f32c, Rect(1e6, 1e6, 2e6 * f32eps, 2e6 * f32eps))
+        @test !update_limits!(f32c, Rect(1.0e6, 1.0e6, 2.0e6 * f32eps, 2.0e6 * f32eps))
         @test f32c.scaling[] == unit_scaling
 
         # should trigger updates based on  abs(extrema) > floatmax(Float32)
@@ -57,14 +57,14 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         prev = f32c.scaling[]
 
         # widths < resolution * eps(extrema)
-        @test update_limits!(f32c, Rect(2e6, 2e6, 1e6 * f32eps, 1e6 * f32eps))
+        @test update_limits!(f32c, Rect(2.0e6, 2.0e6, 1.0e6 * f32eps, 1.0e6 * f32eps))
         @test f32c.scaling[] != prev
-        @test approx(f32_convert(f32c,Rect(2e6, 2e6, 1e6 * f32eps, 1e6 * f32eps)), unit_rect)
+        @test approx(f32_convert(f32c, Rect(2.0e6, 2.0e6, 1.0e6 * f32eps, 1.0e6 * f32eps)), unit_rect)
         prev = f32c.scaling[]
     end
 
     # some random scaling
-    f32c.scaling[] = LinearScaling(Vec3f(1e-5, 2.35e3, 1), Vec3f(3.6e20, 9.2e-50, 0))
+    f32c.scaling[] = LinearScaling(Vec3f(1.0e-5, 2.35e3, 1), Vec3f(3.6e20, 9.2e-50, 0))
 
 
     @testset "f32_convert & matrix" begin
@@ -74,7 +74,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             @test eltype(output) == Float32
             @test typeof(output)(f32m * to_ndim(Point4d, to_ndim(Point3d, input, 0), 1)) ≈ output
             D = length(input)
-            @test isapprox(output, f32c.scaling[].scale[1:D] .* input + f32c.scaling[].offset[1:D], rtol = 1e-7)
+            @test isapprox(output, f32c.scaling[].scale[1:D] .* input + f32c.scaling[].offset[1:D], rtol = 1.0e-7)
         end
 
         for input in (rand(Vec2d, 10), rand(Vec3d, 10))
@@ -89,7 +89,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             trans = t .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
             scale = s .* (2.0 .* rand(Vec2{Float64}) .- 1.0)
 
-            rotate && Makie.rotate!(plot, Vec3f(0,0,1), 2pi * rand())
+            rotate && Makie.rotate!(plot, Vec3f(0, 0, 1), 2pi * rand())
             # z is not considered in Axis, so keep its scaling at unit values
             # for easier debugging
             Makie.scale!(plot, scale..., 1)
@@ -99,8 +99,8 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         end
 
         function is_f32_safe(t)
-            scale = Vec3f(t.model[] * Vec4f(1,1,1,0))
-            return abs.(scale) .> 1e4 * eps(Float32) .* abs.(t.translation[])
+            scale = Vec3f(t.model[] * Vec4f(1, 1, 1, 0))
+            return abs.(scale) .> 1.0e4 * eps(Float32) .* abs.(t.translation[])
         end
 
         # TODO: nothing conversions get treated as unit conversions atm, which
@@ -122,7 +122,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             @test p.positions_transformed_f32c[] ≈ p.positions[]
 
             # unsafe model
-            apply_random_transform!(p, 1e50, 1e50)
+            apply_random_transform!(p, 1.0e50, 1.0e50)
             @test is_identity_transform(p.f32c[])
             # @test p.model_f32c[] == Mat4f(p.model[])
             # @test apply_transform_and_f32_conversion(p, f32c, p.converted[1])[] ≈ p.converted[1][]
@@ -157,7 +157,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
         # Note that we just increase precision from Float32 to Float64 so if
         # these values are too large we'll see Float64 precision issues here
-        for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
+        for (data_scale, model_scale) in ((10.0, 1.0e9), (1.0e9, 10.0), (1.0e9, 1.0e9))
             data_info = data_scale == 10.0 ? "safe" : "unsafe"
             model_info = model_scale == 10.0 ? "safe" : "unsafe"
             @testset "$data_info data + $model_info rotation-free model" begin
@@ -167,7 +167,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
                     apply_random_transform!(p, 10.0, model_scale, false)
                     if model_scale != 10.0
-                        while any(is_f32_safe(p.transformation)[Vec(1,2)])
+                        while any(is_f32_safe(p.transformation)[Vec(1, 2)])
                             apply_random_transform!(p, 10.0, model_scale, false)
                         end
                     else
@@ -212,7 +212,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     r3 = @test p.f32c[].scale == input_f32c.scale
                     r4 = @test p.f32c[].offset == input_f32c.offset
                     r5 = @test p.model_f32c[] == Mat4f(I)
-                    r6 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1e-6 atol = sqrt(eps(Float32))
+                    r6 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1.0e-6 atol = sqrt(eps(Float32))
 
                     # For debugging
                     if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5, r6))
@@ -233,7 +233,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
         # Note that we just increase precision from Float32 to Float64 so if
         # these values are too large we'll see Float64 precision issues here
-        for (data_scale, model_scale) in ((10.0, 1e9), (1e9, 10.0), (1e9, 1e9))
+        for (data_scale, model_scale) in ((10.0, 1.0e9), (1.0e9, 10.0), (1.0e9, 1.0e9))
             data_info = data_scale == 10.0 ? "safe" : "unsafe"
             model_info = model_scale == 10.0 ? "safe" : "unsafe"
             @testset "$data_info data + $model_info rotation model" begin
@@ -243,7 +243,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                     f, a, p = scatter(rand(10) .+ data_scale, rand(10) .+ data_scale)
                     apply_random_transform!(p, 10.0, model_scale, true)
                     if model_scale != 10.0
-                        while any(is_f32_safe(p.transformation)[Vec(1,2)])
+                        while any(is_f32_safe(p.transformation)[Vec(1, 2)])
                             apply_random_transform!(p, 10.0, model_scale, true)
                         end
                     else
@@ -270,7 +270,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
                     r3 = @test p.f32c[] == input_f32c
                     r4 = @test p.model_f32c[] == Mat4f(I)
-                    r5 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1e-6
+                    r5 = @test p.positions_transformed_f32c[] ≈ transformed rtol = 1.0e-6
 
                     # For debugging
                     if any(r -> r isa Test.Fail, (r1, r2, r3, r4, r5))
@@ -291,7 +291,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
                 # Prepare example
                 # COV_EXCL_START
                 scale = rand(Vec2d) .+ 1.0
-                trans = 1e9 .* rand(Vec2d) .- 1
+                trans = 1.0e9 .* rand(Vec2d) .- 1
                 f, a, p = scatter([scale .* (rand(Point2d) .+ trans) for _ in 1:10])
                 scale!(p, (1.0 ./ scale)..., 1.0)
                 translate!(p, -trans..., 0.0)
@@ -314,7 +314,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
 
                 @test p.f32c[] == input_f32c
                 @test p.model_f32c[] == Mat4f(I)
-                @test to_ndim.(Point3f, p.positions_transformed_f32c[], 0) ≈ transformed rtol = 1e-6
+                @test to_ndim.(Point3f, p.positions_transformed_f32c[], 0) ≈ transformed rtol = 1.0e-6
             end
         end
     end

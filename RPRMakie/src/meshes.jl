@@ -1,7 +1,7 @@
 function extract_material(matsys, plot)
     if haskey(plot, :material) && !isnothing(to_value(plot.material))
         if plot.material isa Attributes
-            return RPR.Material(matsys, Dict(map(((k,v),)-> k => to_value(v), plot.material)))
+            return RPR.Material(matsys, Dict(map(((k, v),) -> k => to_value(v), plot.material)))
         else
             return plot.material[]
         end
@@ -28,7 +28,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.scaled_color)
             tex.data = img
             return tex
         end
-    elseif color isa Colorant || color isa Union{String,Symbol}
+    elseif color isa Colorant || color isa Union{String, Symbol}
         lift(to_color, plot, color_obs)
     elseif color isa Nothing
         # ignore!
@@ -38,7 +38,7 @@ function mesh_material(context, matsys, plot, color_obs = plot.scaled_color)
     end
 
     material = extract_material(matsys, plot)
-    on(plot, color_signal; update=true) do color
+    on(plot, color_signal; update = true) do color
         if !isnothing(color) && hasproperty(material, :color)
             material.color = color
         end
@@ -70,18 +70,18 @@ function to_rpr_object(context, matsys, scene, plot::Makie.MeshScatter)
     RPR.rprShapeSetObjectID(marker, 0)
     material = extract_material(matsys, plot)
     set!(marker, material)
-    for i in 1:(n_instances-1)
+    for i in 1:(n_instances - 1)
         inst = RPR.Shape(context, marker)
         RPR.rprShapeSetObjectID(inst, i)
         push!(instances, inst)
     end
 
     color = Makie.compute_colors(plot)
-    if color isa AbstractVector{<:Union{Number,Colorant}}
+    if color isa AbstractVector{<:Union{Number, Colorant}}
         object_id = RPR.InputLookupMaterial(matsys)
         object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
-        uv = object_id * Vec3f(0, 1 / (n_instances-1), 0)
-        tex = RPR.Texture(matsys, reverse(color)'; uv=uv)
+        uv = object_id * Vec3f(0, 1 / (n_instances - 1), 0)
+        tex = RPR.Texture(matsys, reverse(color)'; uv = uv)
         material.color = tex
     elseif color isa Union{Colorant, AbstractMatrix{<:Colorant}}
         material.color = color
@@ -124,7 +124,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Voxels)
     RPR.rprShapeSetObjectID(marker, 0)
     material = extract_material(matsys, plot)
     set!(marker, material)
-    for i in 1:(n_instances-1)
+    for i in 1:(n_instances - 1)
         inst = RPR.Shape(context, marker)
         RPR.rprShapeSetObjectID(inst, i)
         push!(instances, inst)
@@ -133,7 +133,7 @@ function to_rpr_object(context, matsys, scene, plot::Makie.Voxels)
     color_from_num = Makie.voxel_colors(plot)
     object_id = RPR.InputLookupMaterial(matsys)
     object_id.value = RPR.RPR_MATERIAL_NODE_LOOKUP_OBJECT_ID
-    uv = object_id * Vec3f(0, 1/n_instances, 0)
+    uv = object_id * Vec3f(0, 1 / n_instances, 0)
     tex = RPR.Texture(matsys, collect(color_from_num'); uv = uv)
     material.color = tex
 
@@ -194,7 +194,7 @@ function Makie.plot!(plot::Matball)
         mat = getproperty(plot, name)[]
         mat = mat isa Makie.Automatic ? base : mat
         mesh = load(assetpath("matball_$(name).obj"))
-        mesh!(plot, mesh, material=mat, color=plot.color)
+        mesh!(plot, mesh, material = mat, color = plot.color)
     end
     return plot
 end

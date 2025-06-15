@@ -5,7 +5,7 @@ GLMakie.activate!()
 
 function copy_scene_settings(s)
     cc = cameracontrols(s)
-    (
+    return (
         viewport = s.viewport[],
         eyeposition = cc.eyeposition[],
         lookat = cc.lookat[],
@@ -37,8 +37,10 @@ end
 ##
 s = Scene(camera = cam3d!, show_axis = false, center = false)
 r = range(-2, 15, length = 60)
-wireframe!(s, r, r, ((x, y) -> sin(x) * cos(y) * max((x - 2) / 7, 0)).(r, (r)'),
-    transparency = true)
+wireframe!(
+    s, r, r, ((x, y) -> sin(x) * cos(y) * max((x - 2) / 7, 0)).(r, (r)'),
+    transparency = true
+)
 
 apply_camera_settings!(s, settings)
 
@@ -48,7 +50,6 @@ s
 
 
 settings = copy_scene_settings(s)
-
 
 
 ##

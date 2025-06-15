@@ -43,7 +43,7 @@ Creates a tooltip pointing at `position` displaying the given `string
     "Sets the color of the tooltip outline."
     outline_color = :black
     "Sets the linewidth of the tooltip outline."
-    outline_linewidth = 2f0
+    outline_linewidth = 2.0f0
     "Sets the linestyle of the tooltip outline."
     outline_linestyle = nothing
 
@@ -51,16 +51,16 @@ Creates a tooltip pointing at `position` displaying the given `string
     inspectable = false
 end
 
-function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real, str::AbstractString)
+function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
     return (Point2{float_type(x, y)}(x, y), str)
 end
-function convert_arguments(::Type{<: Tooltip}, x::Real, y::Real)
+function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
     return (Point2{float_type(x, y)}(x, y),)
 end
 
 function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
     tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
-    plot
+    return plot
 end
 
 struct ToolTipShape
@@ -80,42 +80,42 @@ function (tt::ToolTipShape)(origin::VecTypes{2}, size::VecTypes{2})
     if tt.placement === :left
         return Point2f[
             (l, b), (l, t), (r, t),
-            (r,     b + tt.align * h + 0.5s),
-            (r + s, b + tt.align * h       ),
-            (r,     b + tt.align * h - 0.5s),
-            (r, b), (l, b)
+            (r, b + tt.align * h + 0.5s),
+            (r + s, b + tt.align * h),
+            (r, b + tt.align * h - 0.5s),
+            (r, b), (l, b),
         ]
     elseif tt.placement === :right
         return Point2f[
             (l, b),
-            (l,   b + tt.align * h - 0.5s),
-            (l-s, b + tt.align * h       ),
-            (l,   b + tt.align * h + 0.5s),
+            (l, b + tt.align * h - 0.5s),
+            (l - s, b + tt.align * h),
+            (l, b + tt.align * h + 0.5s),
             (l, t), (r, t), (r, b), (l, b),
         ]
     elseif tt.placement in (:below, :down, :bottom)
         return Point2f[
             (l, b), (l, t),
-            (l + tt.align * w - 0.5s, t  ),
-            (l + tt.align * w,        t+s),
-            (l + tt.align * w + 0.5s, t  ),
+            (l + tt.align * w - 0.5s, t),
+            (l + tt.align * w, t + s),
+            (l + tt.align * w + 0.5s, t),
             (r, t), (r, b), (l, b),
         ]
     elseif tt.placement in (:above, :up, :top)
         return Point2f[
             (l, b), (l, t), (r, t), (r, b),
-            (l + tt.align * w + 0.5s, b  ),
-            (l + tt.align * w,        b-s),
-            (l + tt.align * w - 0.5s, b  ),
+            (l + tt.align * w + 0.5s, b),
+            (l + tt.align * w, b - s),
+            (l + tt.align * w - 0.5s, b),
             (l, b),
         ]
     else
         @error "Tooltip placement $placement invalid. Assuming :above"
         return Point2f[
             (l, b), (l, t), (r, t), (r, b),
-            (l + tt.align * w + 0.5s, b  ),
-            (l + tt.align * w,        b-s),
-            (l + tt.align * w - 0.5s, b  ),
+            (l + tt.align * w + 0.5s, b),
+            (l + tt.align * w, b - s),
+            (l + tt.align * w - 0.5s, b),
             (l, b),
         ]
     end
@@ -149,11 +149,11 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         if placement === :left
             return Vec2f(-o - r - ts, b - align * (b + t))
         elseif placement === :right
-            return Vec2f( o + l + ts, b - align * (b + t))
+            return Vec2f(o + l + ts, b - align * (b + t))
         elseif placement in (:below, :down, :bottom)
             return Vec2f(l - align * (l + r), -o - t - ts)
         elseif placement in (:above, :up, :top)
-            return Vec2f(l - align * (l + r),  o + b + ts)
+            return Vec2f(l - align * (l + r), o + b + ts)
         else
             @error "Tooltip placement $placement invalid. Assuming :above"
             return Vec2f(0, o + b + ts)
@@ -176,7 +176,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         strokewidth = p.outline_linewidth,
         strokecolor = p.outline_color,
         linestyle = p.outline_linestyle,
-        miter_limit = pi/18,
+        miter_limit = pi / 18,
 
         transparency = p.transparency, visible = p.visible,
         overdraw = p.overdraw, depth_shift = p.depth_shift,

@@ -26,13 +26,13 @@ function Makie.plot!(p::ABLines)
         return points
     end
     linesegments!(p, Attributes(p), p.points)
-    p
+    return p
 end
 
 data_limits(::ABLines) = Rect3d(Point3f(NaN), Vec3f(NaN))
 boundingbox(::ABLines, space::Symbol = :data) = Rect3d(Point3f(NaN), Vec3f(NaN))
 
 function abline!(args...; kwargs...)
-    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead." , :abline!, force = true)
-    ablines!(args...; kwargs...)
+    Base.depwarn("abline! is deprecated and will be removed in the future. Use ablines / ablines! instead.", :abline!, force = true)
+    return ablines!(args...; kwargs...)
 end

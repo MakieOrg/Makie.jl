@@ -8,7 +8,7 @@ Heatmap:
 
 function image_grid!(::typeof(heatmap), attr)
     Makie.add_computation!(attr, nothing, Val(:heatmap_transform))
-    register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y]) do (x, y), _, _
+    return register_computation!(attr, [:x_transformed_f32c, :y_transformed_f32c], [:grid_x, :grid_y]) do (x, y), _, _
         xs = regularly_spaced_array_to_range(x)
         ys = regularly_spaced_array_to_range(y)
         return (xs, ys)
@@ -17,7 +17,7 @@ end
 
 function image_grid!(::typeof(image), attr)
     # Rect vertices
-    register_computation!(attr, [:positions_transformed_f32c, :image], [:grid_x, :grid_y]) do (positions, image), _, _
+    return register_computation!(attr, [:positions_transformed_f32c, :image], [:grid_x, :grid_y]) do (positions, image), _, _
         (x0, y0), _, (x1, y1), _ = positions
         xs = range(x0, x1, length = size(image, 1) + 1)
         ys = range(y0, y1, length = size(image, 2) + 1)
@@ -27,7 +27,7 @@ end
 
 
 # Note: Changed very little here
-function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Image}) where RT
+function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Image}) where {RT}
     attr = plot.attributes
     image_grid!(Makie.plotfunc(plot), attr)
     add_constant!(attr, :is_image, plot isa Image)
@@ -39,17 +39,17 @@ function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Imag
     inputs = [
         :grid_x, :grid_y, :image,
         :interpolate, :space, :projectionview, :model_f32c,
-        :clip_planes, :cairo_uv_transform, :resolution, :computed_color
+        :clip_planes, :cairo_uv_transform, :resolution, :computed_color,
     ]
     extract_attributes!(attr, inputs, :cairo_attributes)
     ctx = screen.context
     not_svg = RT !== SVG
-    draw_image(ctx, not_svg, attr[:cairo_attributes][])
+    return draw_image(ctx, not_svg, attr[:cairo_attributes][])
 end
 
 function imagelike_uv_transform!(attr)
 
-    map!(attr, [:uv_transform, :image, :is_image], :cairo_uv_transform) do T, image, is_image
+    return map!(attr, [:uv_transform, :image, :is_image], :cairo_uv_transform) do T, image, is_image
         if is_image
             # Cairo uses pixel units so we need to transform those to a 0..1 range,
             # then apply uv_transform, then scale them back to pixel units.
@@ -57,10 +57,10 @@ function imagelike_uv_transform!(attr)
             # invert y.
             T3 = Mat3f(T[1], T[2], 0, T[3], T[4], 0, T[5], T[6], 1)
             T3 = Makie.uv_transform(Vec2f(size(image))) * T3 *
-                Makie.uv_transform(Vec2f(0, 1), 1f0 ./ Vec2f(size(image, 1), -size(image, 2)))
-            return T3[Vec(1, 2), Vec(1,2,3)]
+                Makie.uv_transform(Vec2f(0, 1), 1.0f0 ./ Vec2f(size(image, 1), -size(image, 2)))
+            return T3[Vec(1, 2), Vec(1, 2, 3)]
         else
-            return Mat{2, 3, Float32}(1,0,0,1,0,0)
+            return Mat{2, 3, Float32}(1, 0, 0, 1, 0, 0)
         end
     end
 end
@@ -105,7 +105,7 @@ function draw_image(ctx, not_svg, attr)
         (interpolate || is_xy_aligned) && isempty(clip_planes)
 
 
-    if can_use_fast_path
+    return if can_use_fast_path
         s = to_cairo_image(color_image)
 
         weird_cairo_limit = (2^15) - 23
@@ -172,13 +172,13 @@ If not, returns array unchanged.
 function regularly_spaced_array_to_range(arr)
     diffs = unique!(sort!(diff(arr)))
     step = sum(diffs) ./ length(diffs)
-    if all(x-> x ≈ step, diffs)
+    if all(x -> x ≈ step, diffs)
         m, M = extrema(arr)
         if step < zero(step)
             m, M = M, m
         end
         # don't use stop=M, since that may not include M
-        return range(m; step=step, length=length(arr))
+        return range(m; step = step, length = length(arr))
     else
         return arr
     end
@@ -187,11 +187,11 @@ end
 regularly_spaced_array_to_range(arr::AbstractRange) = arr
 
 function _draw_rect_heatmap(ctx, xys, ni, nj, colors)
-    @inbounds for i in 1:ni, j in 1:nj
+    return @inbounds for i in 1:ni, j in 1:nj
         p1 = xys[i, j]
-        p2 = xys[i+1, j]
-        p3 = xys[i+1, j+1]
-        p4 = xys[i, j+1]
+        p2 = xys[i + 1, j]
+        p3 = xys[i + 1, j + 1]
+        p4 = xys[i, j + 1]
         if isnan(p1) || isnan(p2) || isnan(p3) || isnan(p4)
             continue
         end
