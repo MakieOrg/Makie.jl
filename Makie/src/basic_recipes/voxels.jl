@@ -1,5 +1,5 @@
-
-function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
+# expand_dimensions would require conversion trait
+function convert_arguments(::Type{<: Voxels}, chunk::Array{<: Real, 3})
     X, Y, Z = map(x -> EndPoints(Float32(-0.5*x), Float32(0.5*x)), size(chunk))
     return (X, Y, Z, chunk)
 end
