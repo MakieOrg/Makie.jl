@@ -22,6 +22,7 @@ end
 
 include("local_server.jl")
 include("image_download.jl")
+include("bonito-app.jl")
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 
