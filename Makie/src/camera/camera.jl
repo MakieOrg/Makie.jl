@@ -161,17 +161,16 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     # constants
-    # TODO: consider aliasing identities
-    register_computation!(
-            graph, Symbol[],
-            [:world_to_world, :eye_to_eye, :pixel_to_pixel, :relative_to_relative, :clip_to_clip,
-                :clip_to_relative, :relative_to_clip]
-        ) do input, changed, cached
-        id = Mat4d(I)
-        clip_to_relative = Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
-        relative_to_clip = Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
-        return (id, id, id, id, id, clip_to_relative, relative_to_clip)
-    end
+    id = Mat4d(I)
+    add_constants!(graph,
+        world_to_world = id,
+        eye_to_eye = id,
+        pixel_to_pixel = id,
+        relative_to_relative = id,
+        clip_to_clip = id,
+        clip_to_relative = Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1),
+        relative_to_clip = Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1),
+    )
 
     # pixel
 
