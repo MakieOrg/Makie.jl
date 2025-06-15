@@ -852,8 +852,8 @@ end
 
 function check_boxed_values(f)
     names = propertynames(f)
-    values = map(x-> getfield(f, x), names)
-    boxed = filter(x -> x isa Core.Box, values)
+    name_values = map(x -> x => getfield(f, x), names)
+    boxed = filter(p -> p[2] isa Core.Box, name_values)
     if !isempty(boxed)
         boxed_str = map(boxed) do (k, v)
             box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
