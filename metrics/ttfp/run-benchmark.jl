@@ -59,7 +59,7 @@ Pkg.activate(project1)
 if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
-pkgs = NamedTuple[(; path="."), (; path="./$Package"), (; path="./ComputePipeline")]
+pkgs = NamedTuple[(; path="./Makie"), (; path="./$Package"), (; path="./ComputePipeline")]
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 Pkg.add([(; name="JSON")])

@@ -33,7 +33,7 @@ ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 DocumenterVitepress = "0.2.4"
 
 [sources]
-Makie = { path = ".." }
+Makie = { path = "../Makie" }
 CairoMakie = { path = "../CairoMakie" }
 GLMakie = { path = "../GLMakie" }
 WGLMakie = { path = "../WGLMakie" }
