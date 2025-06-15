@@ -7,12 +7,12 @@ plotsym(x) = :plot
 
 func2string(func::Function) = string(nameof(func))
 
-plotfunc(::Plot{F}) where F = F
-plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
-plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
+plotfunc(::Plot{F}) where {F} = F
+plotfunc(::Type{<:AbstractPlot{Func}}) where {Func} = Func
+plotfunc(::T) where {T <: AbstractPlot} = plotfunc(T)
 function plotfunc(f::Function)
     if endswith(string(nameof(f)), "!")
-        name = Symbol(string(nameof(f))[begin:end-1])
+        name = Symbol(string(nameof(f))[begin:(end - 1)])
         return getproperty(parentmodule(f), name)
     else
         return f
@@ -31,12 +31,12 @@ function plotfunc!(x)
     return getproperty(parentmodule(F), name)
 end
 
-func2type(x::T) where T = func2type(T)
-func2type(x::Type{<: AbstractPlot}) = x
+func2type(x::T) where {T} = func2type(T)
+func2type(x::Type{<:AbstractPlot}) = x
 func2type(f::Function) = Plot{plotfunc(f)}
 
-@generated plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = QuoteNode(Symbol(lowercase(func2string(Typ))))
-plotkey(::T) where T <: AbstractPlot = plotkey(T)
+@generated plotkey(::Type{<:AbstractPlot{Typ}}) where {Typ} = QuoteNode(Symbol(lowercase(func2string(Typ))))
+plotkey(::T) where {T <: AbstractPlot} = plotkey(T)
 plotkey(::Nothing) = :scatter
 plotkey(any) = nothing
 
@@ -50,27 +50,26 @@ function _create_plot end
 function _create_plot! end
 
 
-
 plot(args...; kw...) = _create_plot(plot, Dict{Symbol, Any}(kw), args...)
 plot!(args...; kw...) = _create_plot!(plot, Dict{Symbol, Any}(kw), args...)
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
-function argument_names(plot::P) where {P<:AbstractPlot}
-    argument_names(P, length(plot.converted[]))
+function argument_names(plot::P) where {P <: AbstractPlot}
+    return argument_names(P, length(plot.converted[]))
 end
 
 function argument_names(::Type{<:AbstractPlot}, num_args::Integer)
     # this is called in the indexing function, so let's be a bit efficient
-    ntuple(i -> Symbol("converted_$i"), num_args)
+    return ntuple(i -> Symbol("converted_$i"), num_args)
 end
 
 # Since we can use Plot like a scene in some circumstances, we define this alias
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::AbstractScene) = x.theme
-theme(x::AbstractScene, key; default=nothing) = deepcopy(get(x.theme, key, default))
-theme(x::AbstractPlot, key; default=nothing) = deepcopy(get(x.attributes, key, default))
+theme(x::AbstractScene, key; default = nothing) = deepcopy(get(x.theme, key, default))
+theme(x::AbstractPlot, key; default = nothing) = deepcopy(get(x.attributes, key, default))
 
 Attributes(x::AbstractPlot) = x.attributes
 
@@ -185,7 +184,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname_sym)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
-        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
+        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
@@ -202,7 +201,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
             ),
         )
     end
-    expr
+    return expr
 end
 
 function attribute_names end
@@ -211,7 +210,7 @@ function documented_attributes end # this can be used for inheriting from other 
 attribute_names(_) = nothing
 
 Base.@kwdef struct AttributeMetadata
-    docstring::Union{Nothing,String}
+    docstring::Union{Nothing, String}
     default_value::Any
     default_expr::String # stringified expression, just needed for docs purposes
 end
@@ -223,7 +222,7 @@ update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetad
 )
 
 struct DocumentedAttributes
-    d::Dict{Symbol,AttributeMetadata}
+    d::Dict{Symbol, AttributeMetadata}
 end
 
 struct Inherit
@@ -319,12 +318,14 @@ macro DocumentedAttributes(expr::Expr)
             # and is inserted at the start of the final code block
             gsym = gensym("mixin")
             mixin = only(attr.args)
-            push!(mixin_exprs, quote
-                $gsym = $(esc(mixin))
-                if !($gsym isa DocumentedAttributes)
-                    error("Mixin was not a DocumentedAttributes but $($gsym)")
+            push!(
+                mixin_exprs, quote
+                    $gsym = $(esc(mixin))
+                    if !($gsym isa DocumentedAttributes)
+                        error("Mixin was not a DocumentedAttributes but $($gsym)")
+                    end
                 end
-            end)
+            )
 
             # docstrings and default expressions of the mixed in
             # DocumentedAttributes are inserted
@@ -342,24 +343,24 @@ macro DocumentedAttributes(expr::Expr)
         end
     end
 
-    quote
+    return quote
         $(mixin_exprs...)
-        d = Dict{Symbol,AttributeMetadata}()
+        d = Dict{Symbol, AttributeMetadata}()
         $(metadata_exprs...)
         DocumentedAttributes(d)
     end
 end
 
 function is_attribute(T::Type{<:Plot}, sym::Symbol)
-    sym in attribute_names(T)
+    return sym in attribute_names(T)
 end
 
 function attribute_default_expressions(T::Type{<:Plot})
-    Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
+    return Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
 end
 
 function _attribute_docs(T::Type{<:Plot})
-    Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
+    return Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
 end
 
 
@@ -376,11 +377,11 @@ function create_args_type_expr(PlotType, args)
         throw(ArgumentError("All fields need to be of type `name::Type` or `name`. Found: $(all_fields)"))
     end
     types = []; names = Symbol[]
-    if all(x-> x isa Symbol, all_fields)
+    if all(x -> x isa Symbol, all_fields)
         return all_fields, :()
     end
     for field in all_fields
-        if  field isa Symbol
+        if field isa Symbol
             error("All fields need to be typed if one is. Please either type  all fields or none. Found: $(all_fields)")
         end
         push!(names, field.args[1])
@@ -420,7 +421,7 @@ function plot_attributes(scene, T)
     end
 end
 
-function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
+function lookup_default(::Type{T}, scene, attribute::Symbol) where {T <: Plot}
     thm = theme(scene)
     metas = plot_attributes(scene, T)
     psym = plotsym(T)
@@ -437,7 +438,7 @@ function lookup_default(::Type{T}, scene, attribute::Symbol) where {T<:Plot}
     end
 end
 
-function default_theme(scene, T::Type{<: Plot})
+function default_theme(scene, T::Type{<:Plot})
     metas = documented_attributes(T)
     attr = Attributes()
     isnothing(metas) && return attr
@@ -495,7 +496,7 @@ function create_recipe_expr(Tsym, args, attrblock)
 
 
         $(funcname)() = not_implemented_for($funcname)
-        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname,$(esc(:ArgType))}
+        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
 
         # This weird syntax is so that the output of the macrocall can be escaped because it
         # contains user expressions, without escaping what's passed to the macro because that
@@ -513,11 +514,11 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         function ($funcname)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
-            _create_plot($funcname, kwdict, args...)
+            return _create_plot($funcname, kwdict, args...)
         end
         function ($funcname!)(args...; kw...)
             kwdict = Dict{Symbol, Any}(kw)
-            _create_plot!($funcname, kwdict, args...)
+            return _create_plot!($funcname, kwdict, args...)
         end
 
         $(arg_type_func)
@@ -541,7 +542,6 @@ function create_recipe_expr(Tsym, args, attrblock)
 
     return q
 end
-
 
 
 function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
@@ -573,13 +573,13 @@ end
 isline(ex) = (ex isa Expr && ex.head === :line) || isa(ex, LineNumberNode)
 rmlines(x) = x
 function rmlines(x::Expr)
-  # Do not strip the first argument to a macrocall, which is
-  # required.
-  if x.head === :macrocall && length(x.args) >= 2
-    Expr(x.head, x.args[1], nothing, filter(x->!isline(x), x.args[3:end])...)
-  else
-    Expr(x.head, filter(x->!isline(x), x.args)...)
-  end
+    # Do not strip the first argument to a macrocall, which is
+    # required.
+    return if x.head === :macrocall && length(x.args) >= 2
+        Expr(x.head, x.args[1], nothing, filter(x -> !isline(x), x.args[3:end])...)
+    else
+        Expr(x.head, filter(x -> !isline(x), x.args)...)
+    end
 end
 
 default_expr_string(x) = string(rmlines(x))
@@ -612,11 +612,11 @@ function extract_attribute_metadata(arg)
         type = left.args[2]
     end
 
-    (docs = docs, symbol = attr_symbol, type = type, default = default)
+    return (docs = docs, symbol = attr_symbol, type = type, default = default)
 end
 
 function expand_mixins(attrblock::Expr)
-    Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
+    return Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
 end
 
 expand_mixin(x) = x
@@ -656,16 +656,16 @@ end
 plot(MyType(...))
 ```
 """
-function Plot(args::Vararg{DataType,N}) where {N}
-    Plot{plot, <:Tuple{args...}}
+function Plot(args::Vararg{DataType, N}) where {N}
+    return Plot{plot, <:Tuple{args...}}
 end
 
 function Plot(::Type{T}) where {T}
-    Plot{plot, <:Tuple{T}}
+    return Plot{plot, <:Tuple{T}}
 end
 
-function Plot(::Type{T1}, ::Type{T2}) where {T1,T2}
-    Plot{plot, <:Tuple{T1,T2}}
+function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
+    return Plot{plot, <:Tuple{T1, T2}}
 end
 
 """
@@ -708,9 +708,9 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
     ncols = 1
     while true
         widths = col_widths(ncols; rows_first)
-        aggregated_width = (sum(widths) + (ncols-1) * gapsize)
+        aggregated_width = (sum(widths) + (ncols - 1) * gapsize)
         if aggregated_width > cols
-            ncols = max(1, ncols-1)
+            ncols = max(1, ncols - 1)
             break
         end
         ncols += 1
@@ -729,7 +729,7 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
                 remaining = widths[icol]
             end
             remaining += !(icol == ncols) * gapsize
-            print(io, ' ' ^ remaining)
+            print(io, ' '^remaining)
         end
         println(io)
     end
@@ -742,11 +742,11 @@ function _levenshtein_matrix(s1, s2)
     a, b = collect(s1), collect(s2)
     m, n = length(a), length(b)
     d = Matrix{Int}(undef, m + 1, n + 1)
-    d[1:m+1, 1] = 0:m
-    d[1, 1:n+1] = 0:n
+    d[1:(m + 1), 1] = 0:m
+    d[1, 1:(n + 1)] = 0:n
     for i in 1:m
         for j in 1:n
-            d[i+1, j+1] = min(d[i, j+1] + 1, d[i+1, j] + 1, d[i, j] + (a[i] != b[j]))
+            d[i + 1, j + 1] = min(d[i, j + 1] + 1, d[i + 1, j] + 1, d[i, j] + (a[i] != b[j]))
         end
     end
     return d
@@ -762,8 +762,8 @@ function _fuzzyscore(needle, haystack)
     is, acro = _bestmatch(needle, haystack)
     score += (acro ? 2 : 1) * length(is)                # Matched characters
     score -= 2(length(needle) - length(is))             # Missing characters
-    !acro && (score -= _avgdistance(is)/10)             # Contiguous
-    !isempty(is) && (score -= sum(is)/length(is)/100)   # Closer to beginning
+    !acro && (score -= _avgdistance(is) / 10)             # Contiguous
+    return !isempty(is) && (score -= sum(is) / length(is) / 100)   # Closer to beginning
 end
 function _matchinds(needle, haystack; acronym::Bool = false)
     # https://github.com/JuliaLang/julia/blob/6f3fdf7b36250fb95f512a2b927ad2518c07d2b5/stdlib/REPL/src/docview.jl#L602
@@ -835,16 +835,16 @@ function textdiff(X::String, Y::String)
             push!(results, (b[j], :normal))
             i -= 1
             j -= 1
-        elseif i > 0 && j > 0 && d[i+1, j+1] == d[i, j] + 1
+        elseif i > 0 && j > 0 && d[i + 1, j + 1] == d[i, j] + 1
             # Substitution (different characters between `X` and `Y`)
             push!(results, (b[j], :orange))  # Highlighting the new character. Not showing the old one
             i -= 1
             j -= 1
-        elseif j > 0 && d[i+1, j+1] == d[i+1, j] + 1
+        elseif j > 0 && d[i + 1, j + 1] == d[i + 1, j] + 1
             # Insertion in `Y` (character in `Y` but not in `X`)
             push!(results, (b[j], :red))  # Highlighting the added character
             j -= 1
-        elseif i > 0 && d[i+1, j+1] == d[i, j+1] + 1
+        elseif i > 0 && d[i + 1, j + 1] == d[i, j + 1] + 1
             # Deletion in `X` (character in `X` but not in `Y`)
             i -= 1  # Just move the index for X. Not showing the deletion here.
         end
@@ -873,7 +873,7 @@ function Base.showerror(io::IO, err::InvalidAttributeError)
         printstyled(io, att; color = :red, bold = true)
     end
     print(io, " for $(err.object_name) type ")
-    printstyled(io, err.type; color=:blue, bold=true)
+    printstyled(io, err.type; color = :blue, bold = true)
     println(io, ".")
     nameset = sort(string.(collect(attribute_names(err.type))))
     attrs = string.(collect(err.attributes))
@@ -886,7 +886,7 @@ function Base.showerror(io::IO, err::InvalidAttributeError)
         print(io, "Did you mean:")
         for (id, (passed, (suggestion, close))) in enumerate(zip(attrs, possible_cands))
             close || continue
-            any_next = any(x -> x[2], view(possible_cands, id+1:length(possible_cands)))
+            any_next = any(x -> x[2], view(possible_cands, (id + 1):length(possible_cands)))
             if (id == length(err.attributes)) || (id < length(err.attributes) && !any_next)
                 print(io, " and")
             end
@@ -910,15 +910,17 @@ function Base.showerror(io::IO, err::InvalidAttributeError)
         println(io)
         print_columns(io, sort([string(a) for a in allowlist]); cols = displaysize(stderr)[2], rows_first = true)
     end
-    println(io)
+    return println(io)
 end
 
 function attribute_name_allowlist()
-    return (:xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
-            :dim_conversions, :cycle, :clip_planes)
+    return (
+        :xautolimits, :yautolimits, :zautolimits, :label, :rasterize, :model, :transformation,
+        :dim_conversions, :cycle, :clip_planes,
+    )
 end
 
-function validate_attribute_keys(plot::P) where {P<:Plot}
+function validate_attribute_keys(plot::P) where {P <: Plot}
     nameset = attribute_names(P)
     nameset === nothing && return
     allowlist = attribute_name_allowlist()

@@ -29,59 +29,64 @@ Plots `scatter` markers and `lines` between them.
     cycle = [:color]
 end
 
-conversion_trait(::Type{<: ScatterLines}) = PointBased()
+conversion_trait(::Type{<:ScatterLines}) = PointBased()
 
 function plot!(p::ScatterLines)
 
     attr = p.attributes
 
     # markercolor is the same as linecolor if left automatic
-    register_computation!(attr,
-            [:color, :markercolor],
-            [:real_markercolor]
-        ) do (color, markercolor), changed, last
+    register_computation!(
+        attr,
+        [:color, :markercolor],
+        [:real_markercolor]
+    ) do (color, markercolor), changed, last
         return (to_color(markercolor === automatic ? color : markercolor),)
     end
 
-    register_computation!(attr,
-            [:colormap, :markercolormap],
-            [:real_markercolormap]
-        ) do (colormap, markercolormap), changed, last
+    register_computation!(
+        attr,
+        [:colormap, :markercolormap],
+        [:real_markercolormap]
+    ) do (colormap, markercolormap), changed, last
         return (markercolormap === automatic ? colormap : markercolormap,)
     end
 
-    register_computation!(attr,
-            [:colorrange, :markercolorrange],
-            [:real_markercolorrange]
-        ) do (colorrange, markercolorrange), changed, last
+    register_computation!(
+        attr,
+        [:colorrange, :markercolorrange],
+        [:real_markercolorrange]
+    ) do (colorrange, markercolorrange), changed, last
 
         return (markercolorrange === automatic ? colorrange : markercolorrange,)
     end
 
-    lines!(p, p.positions;
+    lines!(
+        p, p.positions;
 
-        color       = p.color,
-        linestyle   = p.linestyle,
-        linewidth   = p.linewidth,
-        linecap     = p.linecap,
-        joinstyle   = p.joinstyle,
+        color = p.color,
+        linestyle = p.linestyle,
+        linewidth = p.linewidth,
+        linecap = p.linecap,
+        joinstyle = p.joinstyle,
         miter_limit = p.miter_limit,
-        colormap    = p.colormap,
-        colorscale  = p.colorscale,
-        colorrange  = p.colorrange,
+        colormap = p.colormap,
+        colorscale = p.colorscale,
+        colorrange = p.colorrange,
         inspectable = p.inspectable,
         clip_planes = p.clip_planes,
     )
-    scatter!(p, p.positions;
+    return scatter!(
+        p, p.positions;
 
-        color       = p.real_markercolor,
+        color = p.real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
-        marker      = p.marker,
-        markersize  = p.markersize,
-        colormap    = p.real_markercolormap,
-        colorscale  = p.colorscale,
-        colorrange  = p.real_markercolorrange,
+        marker = p.marker,
+        markersize = p.markersize,
+        colormap = p.real_markercolormap,
+        colorscale = p.colorscale,
+        colorrange = p.real_markercolorrange,
         inspectable = p.inspectable,
         clip_planes = p.clip_planes,
     )

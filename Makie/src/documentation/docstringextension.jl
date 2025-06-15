@@ -12,7 +12,7 @@ const ATTRIBUTES = DocThemer()
 
 function DocStringExtensions.format(::DocThemer, buf, doc)
     binding = doc.data[:binding] |> Docs.resolve
-    help_attributes(buf, binding; extended=true)
+    return help_attributes(buf, binding; extended = true)
 end
 
 ############################################################
@@ -41,7 +41,7 @@ function DocStringExtensions.format(::DocInstances, buf, doc)
     end
 
     # print the Markdown table into the buffer
-    show(buf, Markdown.MD(Markdown.Table(rows, [:l, :l])))
+    return show(buf, Markdown.MD(Markdown.Table(rows, [:l, :l])))
 end
 
 # """

@@ -7,21 +7,21 @@ to each other.
 """
 @recipe Waterfall begin
     color = @inherit patchcolor
-    dodge=automatic
-    n_dodge=automatic
-    gap=0.2
-    dodge_gap=0.03
-    width=automatic
-    cycle=[:color => :patchcolor]
-    stack=automatic
-    show_direction=false
-    marker_pos=:utriangle
-    marker_neg=:dtriangle
-    direction_color= @inherit backgroundcolor
-    show_final=false
-    final_color=plot_color(:grey90, 0.5)
-    final_gap=automatic
-    final_dodge_gap=0
+    dodge = automatic
+    n_dodge = automatic
+    gap = 0.2
+    dodge_gap = 0.03
+    width = automatic
+    cycle = [:color => :patchcolor]
+    stack = automatic
+    show_direction = false
+    marker_pos = :utriangle
+    marker_neg = :dtriangle
+    direction_color = @inherit backgroundcolor
+    show_final = false
+    final_color = plot_color(:grey90, 0.5)
+    final_gap = automatic
+    final_dodge_gap = 0
 end
 
 conversion_trait(::Type{<:Waterfall}) = PointBased()
@@ -37,14 +37,14 @@ function Makie.plot!(p::Waterfall)
         xy = similar(xy)
         fillto = similar(x)
         final = similar(xy)
-        groupby = StructArray(; grp=i_group)
+        groupby = StructArray(; grp = i_group)
         for (grp, inds) in StructArrays.finduniquesorted(groupby)
             fromto = stack_from_to_final(i_stack[inds], y[inds])
             fillto[inds] .= fromto.from
             xy[inds] .= Point2f.(x[inds], fromto.to)
             final[inds] .= Point2f.(x[inds], fromto.final)
         end
-        return (xy=xy, fillto=fillto, final=final)
+        return (xy = xy, fillto = fillto, final = final)
     end
 
     fromto = lift(stack_bars, p, p[1], p.dodge, p.stack)
@@ -54,31 +54,31 @@ function Makie.plot!(p::Waterfall)
         barplot!(
             p,
             lift(x -> x.final, p, fromto);
-            dodge=p.dodge,
-            color=p.final_color,
-            dodge_gap=p.final_dodge_gap,
-            gap=final_gap,
+            dodge = p.dodge,
+            color = p.final_color,
+            dodge_gap = p.final_dodge_gap,
+            gap = final_gap,
         )
     end
 
     barplot!(
         p, Attributes(p),
         lift(x -> x.xy, p, fromto);
-        fillto=lift(x -> x.fillto, p, fromto),
-        stack=automatic,
+        fillto = lift(x -> x.fillto, p, fromto),
+        stack = automatic,
     )
 
     if p.show_direction[]
         function direction_markers(
-            fromto,
-            marker_pos,
-            marker_neg,
-            width,
-            gap,
-            dodge,
-            n_dodge,
-            dodge_gap,
-        )
+                fromto,
+                marker_pos,
+                marker_neg,
+                width,
+                gap,
+                dodge,
+                n_dodge,
+                dodge_gap,
+            )
             xs = first(
                 compute_x_and_width(first.(fromto.xy), width, gap, dodge, n_dodge, dodge_gap)
             )
@@ -97,7 +97,7 @@ function Makie.plot!(p::Waterfall)
                     push!(shapes, marker_pos)
                 end
             end
-            return (xy=xy, shapes=shapes)
+            return (xy = xy, shapes = shapes)
         end
 
         markers = lift(
@@ -116,8 +116,9 @@ function Makie.plot!(p::Waterfall)
         scatter!(
             p,
             lift(x -> x.xy, p, markers);
-            marker=lift(x -> x.shapes, p, markers),
-            color=p.direction_color)
+            marker = lift(x -> x.shapes, p, markers),
+            color = p.direction_color
+        )
     end
 
     return p
@@ -128,5 +129,5 @@ function stack_from_to_final(i_stack, y)
     perm = sortperm(i_stack) # sort by i_stack
     inv_perm = sortperm(order[perm]) # restore original order
     from, to = stack_from_to_sorted(view(y, perm))
-    return (from=view(from, inv_perm), to=view(to, inv_perm), final=last(to))
+    return (from = view(from, inv_perm), to = view(to, inv_perm), final = last(to))
 end

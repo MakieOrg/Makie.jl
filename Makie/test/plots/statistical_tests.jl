@@ -15,7 +15,7 @@ seed!(0)
 
     @test plt isa BarPlot
     x = h.edges[1]
-    @test plt[1][] ≈ Point{2, Float32}.(x[1:end-1] .+ step(x)/2, h.weights)
+    @test plt[1][] ≈ Point{2, Float32}.(x[1:(end - 1)] .+ step(x) / 2, h.weights)
 
     v = (randn(1000), randn(1000))
     h = fit(Histogram, v, nbins = 30)
@@ -23,16 +23,16 @@ seed!(0)
     @test plt isa Heatmap
     x = h.edges[1]
     y = h.edges[2]
-    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
-    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
+    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
+    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
     @test plt[3][] ≈ h.weights
 
     fig, ax, plt = surface(h)
     @test plt isa Surface
     x = h.edges[1]
     y = h.edges[2]
-    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
-    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
+    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
+    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
     @test plt[3][] ≈ h.weights
 
     v = (randn(1000), randn(1000), randn(1000))
@@ -43,9 +43,9 @@ seed!(0)
     x = h.edges[1]
     y = h.edges[2]
     z = h.edges[3]
-    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
-    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
-    @test plt[3][] ≈ z[1:end-1] .+ step(z)/2
+    @test plt[1][] ≈ x[1:(end - 1)] .+ step(x) / 2
+    @test plt[2][] ≈ y[1:(end - 1)] .+ step(y) / 2
+    @test plt[3][] ≈ z[1:(end - 1)] .+ step(z) / 2
     @test plt[4][] == h.weights
 end
 
@@ -83,11 +83,11 @@ end
     fix, ax, plt = plot(d)
     @test plt isa Lines
     @test !Makie.isdiscrete(d)
-    @test first(plt[1][][1]) ≈ minimum(rg) rtol = 1f-6
-    @test first(plt[1][][end]) ≈ maximum(rg) rtol = 1f-6
+    @test first(plt[1][][1]) ≈ minimum(rg) rtol = 1.0f-6
+    @test first(plt[1][][end]) ≈ maximum(rg) rtol = 1.0f-6
 
     for (x, pd) in plt[1][]
-        @test pd ≈ Distributions.pdf(d, x) rtol = 1f-6
+        @test pd ≈ Distributions.pdf(d, x) rtol = 1.0f-6
     end
 
     d = Distributions.Poisson()
@@ -110,28 +110,28 @@ end
     @test length(p.plots) == 2
     plt = p.plots[1]
     @test plt isa Scatter
-    @test first.(plt[1][]) ≈ q.qx rtol = 1e-6
-    @test last.(plt[1][]) ≈ q.qy rtol = 1e-6
+    @test first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
+    @test last.(plt[1][]) ≈ q.qy rtol = 1.0e-6
 
     plt = p.plots[2]
     @test plt isa LineSegments
-    @test first.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1e-6
-    @test last.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1e-6
+    @test first.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
+    @test last.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1.0e-6
 
     fig, ax, p = qqnorm(v, qqline = nothing)
     @test length(p.plots) == 1
     plt = p.plots[1]
     @test plt isa Scatter
-    @test first.(plt[1][]) ≈ q.qx rtol = 1e-6
-    @test last.(plt[1][]) ≈ q.qy rtol = 1e-6
+    @test first.(plt[1][]) ≈ q.qx rtol = 1.0e-6
+    @test last.(plt[1][]) ≈ q.qy rtol = 1.0e-6
 
     fig, ax, p = qqnorm(v, qqline = :fit)
     plt = p.plots[2]
     itc, slp = hcat(fill!(similar(q.qx), 1), q.qx) \ q.qy
     xs = [extrema(q.qx)...]
     ys = slp .* xs .+ itc
-    @test first.(plt[1][]) ≈ xs rtol = 1e-6
-    @test last.(plt[1][]) ≈ ys rtol = 1e-6
+    @test first.(plt[1][]) ≈ xs rtol = 1.0e-6
+    @test last.(plt[1][]) ≈ ys rtol = 1.0e-6
 
     fig, ax, p = qqnorm(v, qqline = :quantile)
     plt = p.plots[2]
@@ -139,8 +139,8 @@ end
     quantx, quanty = quantile(q.qx, [0.25, 0.75]), quantile(q.qy, [0.25, 0.75])
     slp = diff(quanty) ./ diff(quantx)
     ys = quanty .+ slp .* (xs .- quantx)
-    @test first.(plt[1][]) ≈ xs rtol = 1e-6
-    @test last.(plt[1][]) ≈ ys rtol = 1e-6
+    @test first.(plt[1][]) ≈ xs rtol = 1.0e-6
+    @test last.(plt[1][]) ≈ ys rtol = 1.0e-6
 end
 
 @testset "ecdfplot" begin
@@ -152,17 +152,17 @@ end
     fig, ax, p2 = ecdfplot(v)
     @test p2 isa ECDFPlot
     xunique = [vmin - eps(vmin); unique(d.sorted_values)]
-    fig, ax, p3 = stairs(xunique, d(xunique); step=:post)
+    fig, ax, p3 = stairs(xunique, d(xunique); step = :post)
     @test p1[1][] == p3[1][]
     @test p2.plots[1][1][] == p3[1][]
 
-    fig, ax, p4 = ecdfplot(v; npoints=10)
+    fig, ax, p4 = ecdfplot(v; npoints = 10)
     pts = p4.plots[1][1][]
     @test length(pts) == 11
     @test pts[1] == Point2f0(vmin - eps(vmin), 0)
     @test pts[11][2] == 1
 
-    fig, ax, p5 = plot(2..3, ecdf(1:10))
+    fig, ax, p5 = plot(2 .. 3, ecdf(1:10))
     pts = p5[1][]
     @test pts[1] == Point2f0(2 - eps(2.0), 0.1)
     @test pts[2] == Point2f0(2, 0.2)
@@ -179,19 +179,21 @@ end
     fig, ax, p = crossbar(1, 3, 2, 4)
     @test p isa CrossBar
     @test p.plots[1] isa Poly
-    @test p.plots[1][1][] == [Rect2f(Float32[0.6, 2.0], Float32[0.8, 2.0]),]
+    @test p.plots[1][1][] == [Rect2f(Float32[0.6, 2.0], Float32[0.8, 2.0])]
     @test p.plots[2] isa LineSegments
-    @test p.plots[2][1][] == Point{2,Float32}[Float32[0.6, 3.0], Float32[1.4, 3.0]]
+    @test p.plots[2][1][] == Point{2, Float32}[Float32[0.6, 3.0], Float32[1.4, 3.0]]
 
-    fig, ax, p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5);
+    fig, ax, p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5)
     @test p isa CrossBar
     @test p.plots[1] isa Poly
     @test p.plots[1][1][][1] isa Makie.AbstractMesh
-    poly = Point{2,Float32}[[0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
-                            [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5]]
+    poly = Point{2, Float32}[
+        [0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
+        [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5],
+    ]
     @test map(Point2f, p.plots[1][1][][1].position) == poly
     @test p.plots[2] isa LineSegments
-    @test p.plots[2][1][] == Point{2,Float32}[Float32[0.8, 3.0], Float32[1.2, 3.0]]
+    @test p.plots[2][1][] == Point{2, Float32}[Float32[0.8, 3.0], Float32[1.2, 3.0]]
 end
 
 @testset "boxplot" begin
@@ -221,7 +223,7 @@ end
         [3.0, 55.25], [3.0, 60.0], [3.4, 60.0], [2.6, 60.0], [4.0, 65.75],
         [4.0, 61.0], [3.6, 61.0], [4.4, 61.0], [4.0, 75.25], [4.0, 80.0],
         [4.4, 80.0], [3.6, 80.0], [5.0, 85.75], [5.0, 81.0], [4.6, 81.0],
-        [5.4, 81.0], [5.0, 95.25], [5.0, 100.0], [5.4, 100.0], [4.6, 100.0]
+        [5.4, 81.0], [5.0, 95.25], [5.0, 100.0], [5.4, 100.0], [4.6, 100.0],
     ]
     @test plts[2][1][] == pts
 
@@ -239,12 +241,12 @@ end
     @test plts[3].plots[1][1][] == poly
 
     #notch
-    fig, ax, p = boxplot(a, b, show_notch=true)
+    fig, ax, p = boxplot(a, b, show_notch = true)
     plts = p.plots
 
     @test length(plts) == 3
 
-    pts = Point{2,Float32}[
+    pts = Point{2, Float32}[
         [1.0, 5.75], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 15.25],
         [1.0, 20.0], [1.0, 20.0], [1.0, 20.0], [2.0, 25.75], [2.0, 21.0],
         [2.0, 21.0], [2.0, 21.0], [2.0, 35.25], [2.0, 40.0], [2.0, 40.0],
@@ -261,11 +263,13 @@ end
     @test plts[3] isa CrossBar
     @test plts[3].plots[1] isa Poly
 
-    notch_boxes = Vector{Point{2,Float32}}[map(Point2f, [[0.6, 5.75], [1.4, 5.75], [1.4, 7.14366], [1.2, 10.5], [1.4, 13.8563], [1.4, 15.25], [0.6, 15.25], [0.6, 13.8563], [0.8, 10.5], [0.6, 7.14366]]),
-                                           map(Point2f, [[1.6, 25.75], [2.4, 25.75], [2.4, 27.1437], [2.2, 30.5], [2.4, 33.8563], [2.4, 35.25], [1.6, 35.25], [1.6, 33.8563], [1.8, 30.5], [1.6, 27.1437]]),
-                                           map(Point2f, [[2.6, 45.75], [3.4, 45.75], [3.4, 47.1437], [3.2, 50.5], [3.4, 53.8563], [3.4, 55.25], [2.6, 55.25], [2.6, 53.8563], [2.8, 50.5], [2.6, 47.1437]]),
-                                           map(Point2f, [[3.6, 65.75], [4.4, 65.75], [4.4, 67.1437], [4.2, 70.5], [4.4, 73.8563], [4.4, 75.25], [3.6, 75.25], [3.6, 73.8563], [3.8, 70.5], [3.6, 67.1437]]),
-                                           map(Point2f, [[4.6, 85.75], [5.4, 85.75], [5.4, 87.1437], [5.2, 90.5], [5.4, 93.8563], [5.4, 95.25], [4.6, 95.25], [4.6, 93.8563], [4.8, 90.5], [4.6, 87.1437]])]
+    notch_boxes = Vector{Point{2, Float32}}[
+        map(Point2f, [[0.6, 5.75], [1.4, 5.75], [1.4, 7.14366], [1.2, 10.5], [1.4, 13.8563], [1.4, 15.25], [0.6, 15.25], [0.6, 13.8563], [0.8, 10.5], [0.6, 7.14366]]),
+        map(Point2f, [[1.6, 25.75], [2.4, 25.75], [2.4, 27.1437], [2.2, 30.5], [2.4, 33.8563], [2.4, 35.25], [1.6, 35.25], [1.6, 33.8563], [1.8, 30.5], [1.6, 27.1437]]),
+        map(Point2f, [[2.6, 45.75], [3.4, 45.75], [3.4, 47.1437], [3.2, 50.5], [3.4, 53.8563], [3.4, 55.25], [2.6, 55.25], [2.6, 53.8563], [2.8, 50.5], [2.6, 47.1437]]),
+        map(Point2f, [[3.6, 65.75], [4.4, 65.75], [4.4, 67.1437], [4.2, 70.5], [4.4, 73.8563], [4.4, 75.25], [3.6, 75.25], [3.6, 73.8563], [3.8, 70.5], [3.6, 67.1437]]),
+        map(Point2f, [[4.6, 85.75], [5.4, 85.75], [5.4, 87.1437], [5.2, 90.5], [5.4, 93.8563], [5.4, 95.25], [4.6, 95.25], [4.6, 93.8563], [4.8, 90.5], [4.6, 87.1437]]),
+    ]
     meshes = plts[3].plots[1][1][]
     @testset for (i, mesh) in enumerate(meshes)
         @test mesh isa Makie.AbstractMesh
@@ -296,8 +300,8 @@ end
     @test p2.plots[2][:visible][] === :false
 
     # median edge case #4675
-    @test violin(fill(1, 1000), push!(fill(0, 999), 1), show_median=true, datalimits=(-0.001,Inf)) !== nothing
+    @test violin(fill(1, 1000), push!(fill(0, 999), 1), show_median = true, datalimits = (-0.001, Inf)) !== nothing
     # And some others
-    @test violin(fill(1, 1000),fill(0, 1000), show_median=true) !== nothing
-    @test violin([1], [1], show_median=true) !== nothing
+    @test violin(fill(1, 1000), fill(0, 1000), show_median = true) !== nothing
+    @test violin([1], [1], show_median = true) !== nothing
 end

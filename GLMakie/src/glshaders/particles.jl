@@ -1,29 +1,29 @@
 using Makie: RectanglePacker
 
-function to_meshcolor(context, color::TOrSignal{Vector{T}}) where T <: Colorant
-    TextureBuffer(context, color)
+function to_meshcolor(context, color::TOrSignal{Vector{T}}) where {T <: Colorant}
+    return TextureBuffer(context, color)
 end
 
-function to_meshcolor(context, color::TOrSignal{Matrix{T}}) where T <: Colorant
-    Texture(context, color)
+function to_meshcolor(context, color::TOrSignal{Matrix{T}}) where {T <: Colorant}
+    return Texture(context, color)
 end
 function to_meshcolor(context, color)
-    color
+    return color
 end
 
 GLAbstraction.gl_convert(::GLAbstraction.GLContext, rotation::Makie.Quaternion) = Vec4f(rotation.data)
 
 
 intensity_convert(cotnext, intensity, verts) = intensity
-function intensity_convert(context, intensity::VecOrSignal{T}, verts) where T
-    if length(to_value(intensity)) == length(to_value(verts))
+function intensity_convert(context, intensity::VecOrSignal{T}, verts) where {T}
+    return if length(to_value(intensity)) == length(to_value(verts))
         GLBuffer(context, intensity)
     else
         Texture(context, intensity)
     end
 end
-function intensity_convert_tex(context, intensity::VecOrSignal{T}, verts) where T
-    if length(to_value(intensity)) == length(to_value(verts))
+function intensity_convert_tex(context, intensity::VecOrSignal{T}, verts) where {T}
+    return if length(to_value(intensity)) == length(to_value(verts))
         TextureBuffer(context, intensity)
     else
         Texture(context, intensity)
@@ -32,15 +32,15 @@ end
 
 function position_calc(
         position_xyz::VectorTypes{T}, target::Type{TextureBuffer}
-    ) where T <: StaticVector
+    ) where {T <: StaticVector}
     return "pos = texelFetch(position, index).xyz;"
 end
 
 function position_calc(
         position_xyz::VectorTypes{T}, target::Type{GLBuffer}
-    ) where T <: StaticVector
+    ) where {T <: StaticVector}
     len = length(T)
-    filler = join(ntuple(x->0, 3-len), ", ")
+    filler = join(ntuple(x -> 0, 3 - len), ", ")
     needs_comma = len != 3 ? ", " : ""
     return "pos = vec3(position $needs_comma $filler);"
 end
@@ -55,7 +55,7 @@ function draw_mesh_particle(screen, p, data)
     @gen_defaults! data begin
         position = p[2] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
-        rotation = Quaternionf(0,0,0,1) => TextureBuffer
+        rotation = Quaternionf(0, 0, 0, 1) => TextureBuffer
         f32c_scale = Vec3f(1) # drawing_primitives.jl
         texturecoordinates = nothing
     end
@@ -72,11 +72,11 @@ function draw_mesh_particle(screen, p, data)
         fetch_pixel = false
         scale_primitive = false
         interpolate_in_fragment_shader = false
-        backlight = 0f0
+        backlight = 0.0f0
 
         instances = const_lift(length, position)
         transparency = false
-        px_per_unit = 1f0
+        px_per_unit = 1.0f0
         shader = GLVisualizeShader(
             screen,
             "util.vert", "particles.vert",
@@ -104,16 +104,16 @@ This is supposed to be the fastest way of displaying particles!
 """
 function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
     @gen_defaults! data begin
-        vertex       = position => GLBuffer
-        color_map    = nothing => Texture
-        color        = nothing => GLBuffer
+        vertex = position => GLBuffer
+        color_map = nothing => Texture
+        color = nothing => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer
-        color_norm   = nothing
-        scale        = 2f0
-        f32c_scale   = Vec3f(1)
+        color_norm = nothing
+        scale = 2.0f0
+        f32c_scale = Vec3f(1)
         transparency = false
-        px_per_unit = 1f0
-        shader       = GLVisualizeShader(
+        px_per_unit = 1.0f0
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
             view = Dict(
@@ -123,7 +123,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = ()-> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
+    data[:prerender] = () -> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     return assemble_shader(data)
 end
 
@@ -133,36 +133,36 @@ Sprites are anything like distance fields, images and simple geometries
 """
 function draw_scatter(screen, position, data)
     @gen_defaults! data begin
-        shape       = Cint(0)
-        position    = position => GLBuffer
+        shape = Cint(0)
+        position = position => GLBuffer
         marker_offset = Vec3f(0) => GLBuffer
-        scale       = Vec2f(0) => GLBuffer
-        rotation    = Quaternionf(0,0,0,1) => GLBuffer
-        image       = nothing => Texture
+        scale = Vec2f(0) => GLBuffer
+        rotation = Quaternionf(0, 0, 0, 1) => GLBuffer
+        image = nothing => Texture
     end
 
     @gen_defaults! data begin
-        quad_offset     = Vec2f(0) => GLBuffer
-        intensity       = nothing => GLBuffer
-        color_map       = nothing => Texture
-        color_norm      = nothing
-        color           = nothing => GLBuffer
+        quad_offset = Vec2f(0) => GLBuffer
+        intensity = nothing => GLBuffer
+        color_map = nothing => Texture
+        color_norm = nothing
+        color = nothing => GLBuffer
 
-        glow_color      = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_width    = 0f0
-        glow_width      = 0f0
+        glow_color = RGBA{Float32}(0, 0, 0, 0) => GLBuffer
+        stroke_color = RGBA{Float32}(0, 0, 0, 0) => GLBuffer
+        stroke_width = 0.0f0
+        glow_width = 0.0f0
         uv_offset_width = Vec4f(0) => GLBuffer
-        f32c_scale      = Vec3f(1)
+        f32c_scale = Vec3f(1)
 
-        distancefield   = nothing => Texture
-        indices         = const_lift(length, position) => to_index_buffer
+        distancefield = nothing => Texture
+        indices = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
-        billboard        = rotation == Vec4f(0,0,0,1) => "if `billboard` == true, particles will always face camera"
-        fxaa             = false
-        transparency     = false
-        px_per_unit = 1f0
-        shader           = GLVisualizeShader(
+        billboard = rotation == Vec4f(0, 0, 0, 1) => "if `billboard` == true, particles will always face camera"
+        fxaa = false
+        transparency = false
+        px_per_unit = 1.0f0
+        shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",

@@ -63,7 +63,7 @@ end
 
 function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
-    farclip  =  10_000f0
+    farclip = 10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
     tlims = Makie.apply_transform(t, lims)
@@ -72,14 +72,15 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
     left, bottom = minimum(lims32)
-    right, top   = maximum(lims32)
+    right, top = maximum(lims32)
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
     projection = Makie.orthographicprojection(
         Float32,
         leftright...,
-        bottomtop..., nearclip, farclip)
+        bottomtop..., nearclip, farclip
+    )
 
     Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
     return
@@ -100,22 +101,24 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
     local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
         boundingbox(subtitlet, :data).widths[2] + subtitlegap
     else
-        0f0
+        0.0f0
     end
 
-    local yoffset::Float32 = top(area) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0) +
+    local yoffset::Float32 = top(area) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0.0f0) +
         subtitlespace
 
     return Point2f(x, yoffset)
 end
 
-function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
+function compute_protrusions(
+        title, titlesize, titlegap, titlevisible, spinewidth,
         topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
         xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition,
         subtitle, subtitlevisible, subtitlesize, subtitlegap, titlelineheight, subtitlelineheight,
-        subtitlet, titlet)
+        subtitlet, titlet
+    )
 
-    local left::Float32, right::Float32, bottom::Float32, top::Float32 = 0f0, 0f0, 0f0, 0f0
+    local left::Float32, right::Float32, bottom::Float32, top::Float32 = 0.0f0, 0.0f0, 0.0f0, 0.0f0
 
     if xaxisposition === :bottom
         bottom = xaxisprotrusion
@@ -127,12 +130,12 @@ function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidt
     subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
 
     titlespace = if !titlevisible || iswhitespace(title)
-        0f0
+        0.0f0
     else
         titleheight
     end
     subtitlespace = if !subtitlevisible || iswhitespace(subtitle)
-        0f0
+        0.0f0
     else
         subtitleheight
     end
@@ -157,7 +160,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # initialize either with user limits, or pick defaults based on scales
     # so that we don't immediately error
     targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values=true)
+    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values = true)
     setfield!(ax, :targetlimits, targetlimits)
     setfield!(ax, :finallimits, finallimits)
 
@@ -173,7 +176,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, viewport=scenearea)
+    scene = Scene(blockscene, viewport = scenearea)
     ax.scene = scene
     # transfer conversions from axis to scene if there are any
     # or the other way around
@@ -189,7 +192,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color=ax.backgroundcolor, inspectable=false, shading=NoShading, strokecolor=:transparent)
+    background = poly!(blockscene, scenearea; color = ax.backgroundcolor, inspectable = false, shading = NoShading, strokecolor = :transparent)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
@@ -199,7 +202,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.xaxislinks = Axis[]
     ax.yaxislinks = Axis[]
 
-    xgridnode = Observable(Point2f[]; ignore_equal_values=true)
+    xgridnode = Observable(Point2f[]; ignore_equal_values = true)
     xgridlines = linesegments!(
         blockscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
         color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
@@ -208,7 +211,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xgridlines, 0, 0, -10)
     elements[:xgridlines] = xgridlines
 
-    xminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
+    xminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
     xminorgridlines = linesegments!(
         blockscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
         color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
@@ -217,7 +220,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xminorgridlines, 0, 0, -10)
     elements[:xminorgridlines] = xminorgridlines
 
-    ygridnode = Observable(Point2f[]; ignore_equal_values=true)
+    ygridnode = Observable(Point2f[]; ignore_equal_values = true)
     ygridlines = linesegments!(
         blockscene, ygridnode, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
         color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
@@ -226,7 +229,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(ygridlines, 0, 0, -10)
     elements[:ygridlines] = ygridlines
 
-    yminorgridnode = Observable(Point2f[]; ignore_equal_values=true)
+    yminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
     yminorgridlines = linesegments!(
         blockscene, yminorgridnode, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
         color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
@@ -251,13 +254,17 @@ function initialize_block!(ax::Axis; palette = nothing)
     notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
-    onany(blockscene, scene.transformation.transform_func, finallimits,
-          ax.xreversed, ax.yreversed; priority=-2) do args...
+    onany(
+        blockscene, scene.transformation.transform_func, finallimits,
+        ax.xreversed, ax.yreversed; priority = -2
+    ) do args...
         update_axis_camera(scene, args...)
     end
 
-    xaxis_endpoints = lift(blockscene, ax.xaxisposition, scene.viewport;
-                           ignore_equal_values=true) do xaxisposition, area
+    xaxis_endpoints = lift(
+        blockscene, ax.xaxisposition, scene.viewport;
+        ignore_equal_values = true
+    ) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -267,8 +274,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(blockscene, ax.yaxisposition, scene.viewport;
-                           ignore_equal_values=true) do yaxisposition, area
+    yaxis_endpoints = lift(
+        blockscene, ax.yaxisposition, scene.viewport;
+        ignore_equal_values = true
+    ) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -278,46 +287,63 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xaxis_flipped = lift(x -> x === :top, blockscene, ax.xaxisposition; ignore_equal_values=true)
-    yaxis_flipped = lift(x -> x === :right, blockscene, ax.yaxisposition; ignore_equal_values=true)
+    xaxis_flipped = lift(x -> x === :top, blockscene, ax.xaxisposition; ignore_equal_values = true)
+    yaxis_flipped = lift(x -> x === :right, blockscene, ax.yaxisposition; ignore_equal_values = true)
 
-    xspinevisible = lift(blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-                         ignore_equal_values=true) do xflip, bv, tv
+    xspinevisible = lift(
+        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
+        ignore_equal_values = true
+    ) do xflip, bv, tv
         xflip ? tv : bv
     end
-    xoppositespinevisible = lift(blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-                                 ignore_equal_values=true) do xflip, bv, tv
+    xoppositespinevisible = lift(
+        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
+        ignore_equal_values = true
+    ) do xflip, bv, tv
         xflip ? bv : tv
     end
-    yspinevisible = lift(blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-                         ignore_equal_values=true) do yflip, lv, rv
+    yspinevisible = lift(
+        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
+        ignore_equal_values = true
+    ) do yflip, lv, rv
         yflip ? rv : lv
     end
-    yoppositespinevisible = lift(blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-                                 ignore_equal_values=true) do yflip, lv, rv
+    yoppositespinevisible = lift(
+        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
+        ignore_equal_values = true
+    ) do yflip, lv, rv
         yflip ? lv : rv
     end
-    xspinecolor = lift(blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-                       ignore_equal_values=true) do xflip, bc, tc
+    xspinecolor = lift(
+        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
+        ignore_equal_values = true
+    ) do xflip, bc, tc
         xflip ? tc : bc
     end
-    xoppositespinecolor = lift(blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-                               ignore_equal_values=true) do xflip, bc, tc
+    xoppositespinecolor = lift(
+        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
+        ignore_equal_values = true
+    ) do xflip, bc, tc
         xflip ? bc : tc
     end
-    yspinecolor = lift(blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-                       ignore_equal_values=true) do yflip, lc, rc
+    yspinecolor = lift(
+        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
+        ignore_equal_values = true
+    ) do yflip, lc, rc
         yflip ? rc : lc
     end
-    yoppositespinecolor = lift(blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-                               ignore_equal_values=true) do yflip, lc, rc
+    yoppositespinecolor = lift(
+        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
+        ignore_equal_values = true
+    ) do yflip, lc, rc
         yflip ? lc : rc
     end
 
-    xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values=true)
-    ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values=true)
+    xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values = true)
+    ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values = true)
 
-    xaxis = LineAxis(blockscene, endpoints = xaxis_endpoints, limits = xlims,
+    xaxis = LineAxis(
+        blockscene, endpoints = xaxis_endpoints, limits = xlims,
         flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
@@ -328,11 +354,12 @@ function initialize_block!(ax::Axis; palette = nothing)
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         minorticksused = ax.xminorgridvisible,
-        )
+    )
 
     ax.xaxis = xaxis
 
-    yaxis = LineAxis(blockscene, endpoints = yaxis_endpoints, limits = ylims,
+    yaxis = LineAxis(
+        blockscene, endpoints = yaxis_endpoints, limits = ylims,
         flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
@@ -340,15 +367,17 @@ function initialize_block!(ax::Axis; palette = nothing)
         ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
         ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
-            tickcolor = ax.ytickcolor,
+        tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
-        )
+    )
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
-                               ignore_equal_values=true) do r, sw, xaxpos
+    xoppositelinepoints = lift(
+        blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
+        ignore_equal_values = true
+    ) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
             p1 = Point2f(left(r) - 0.5sw, y)
@@ -362,8 +391,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
-                               ignore_equal_values=true) do r, sw, yaxpos
+    yoppositelinepoints = lift(
+        blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
+        ignore_equal_values = true
+    ) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
             p1 = Point2f(x, bottom(r) - 0.5sw)
@@ -377,36 +408,56 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xticksmirrored = lift(mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-                          scene.viewport, :x, ax.xaxisposition[], ax.spinewidth)
-    xticksmirrored_lines = linesegments!(blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
-        linewidth = ax.xtickwidth, color = ax.xtickcolor)
+    xticksmirrored = lift(
+        mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
+        scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+    )
+    xticksmirrored_lines = linesegments!(
+        blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+        linewidth = ax.xtickwidth, color = ax.xtickcolor
+    )
     translate!(xticksmirrored_lines, 0, 0, 10)
-    yticksmirrored = lift(mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-                          scene.viewport, :y, ax.yaxisposition[], ax.spinewidth)
-    yticksmirrored_lines = linesegments!(blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
-        linewidth = ax.ytickwidth, color = ax.ytickcolor)
+    yticksmirrored = lift(
+        mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
+        scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+    )
+    yticksmirrored_lines = linesegments!(
+        blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+        linewidth = ax.ytickwidth, color = ax.ytickcolor
+    )
     translate!(yticksmirrored_lines, 0, 0, 10)
-    xminorticksmirrored = lift(mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-                               ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[], ax.spinewidth)
-    xminorticksmirrored_lines = linesegments!(blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
-        linewidth = ax.xminortickwidth, color = ax.xminortickcolor)
+    xminorticksmirrored = lift(
+        mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
+        ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+    )
+    xminorticksmirrored_lines = linesegments!(
+        blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor
+    )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
-    yminorticksmirrored = lift(mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-                               ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[], ax.spinewidth)
-    yminorticksmirrored_lines = linesegments!(blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
-        linewidth = ax.yminortickwidth, color = ax.yminortickcolor)
+    yminorticksmirrored = lift(
+        mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
+        ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+    )
+    yminorticksmirrored_lines = linesegments!(
+        blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor
+    )
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
-    xoppositeline = linesegments!(blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
+    xoppositeline = linesegments!(
+        blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
-        linestyle = nothing)
+        linestyle = nothing
+    )
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
-    yoppositeline = linesegments!(blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
+    yoppositeline = linesegments!(
+        blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
-        linestyle = nothing)
+        linestyle = nothing
+    )
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
@@ -434,20 +485,22 @@ function initialize_block!(ax::Axis; palette = nothing)
         update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
-                       xaxis.protrusion;
-                       ignore_equal_values=true) do a,
-        titlegap, align, xaxisposition, xaxisprotrusion
+    subtitlepos = lift(
+        blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
+        xaxis.protrusion;
+        ignore_equal_values = true
+    ) do a,
+            titlegap, align, xaxisposition, xaxisprotrusion
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
 
-        yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0f0)
+        yoffset = top(a) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0.0f0)
 
         return Point2f(x, yoffset)
     end
 
-    titlealignnode = lift(blockscene, ax.titlealign; ignore_equal_values=true) do align
+    titlealignnode = lift(blockscene, ax.titlealign; ignore_equal_values = true) do align
         (align, :bottom)
     end
 
@@ -461,10 +514,13 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.subtitlecolor,
         lineheight = ax.subtitlelineheight,
         markerspace = :data,
-        inspectable = false)
+        inspectable = false
+    )
 
-    titlepos = lift(calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
-        ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values=true)
+    titlepos = lift(
+        calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
+        ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values = true
+    )
 
     titlet = text!(
         blockscene, titlepos,
@@ -476,15 +532,18 @@ function initialize_block!(ax::Axis; palette = nothing)
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
         markerspace = :data,
-        inspectable = false)
+        inspectable = false
+    )
     elements[:title] = titlet
 
-    map!(compute_protrusions, blockscene, ax.layoutobservables.protrusions, ax.title, ax.titlesize,
-         ax.titlegap, ax.titlevisible, ax.spinewidth,
-            ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-            xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
-            ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
-            ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet)
+    map!(
+        compute_protrusions, blockscene, ax.layoutobservables.protrusions, ax.title, ax.titlesize,
+        ax.titlegap, ax.titlevisible, ax.spinewidth,
+        ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
+        xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
+        ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
+        ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet
+    )
     # trigger first protrusions with one of the observables
     notify(ax.title)
 
@@ -528,29 +587,29 @@ function add_axis_limits!(plot)
     if !haskey(scene.compute, :axis_limits)
         error("add_axis_limits! can only be used with `Axis`, not with any other Axis type or a pure scene!")
     end
-    add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
+    return add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
 end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)
     a = viewport
     if side === :x
         opp = axisposition === :bottom ? top(a) : bottom(a)
-        sign =  axisposition === :bottom ? 1 : -1
+        sign = axisposition === :bottom ? 1 : -1
     else
         opp = axisposition === :left ? right(a) : left(a)
         sign = axisposition === :left ? 1 : -1
     end
     d = ticksize * sign
-    points = Vector{Point2f}(undef, 2*length(tickpositions))
+    points = Vector{Point2f}(undef, 2 * length(tickpositions))
     spineoffset = sign * (0.5 * spinewidth)
     if side === :x
         for (i, (x, _)) in enumerate(tickpositions)
-            points[2i-1] = Point2f(x, opp - d * tickalign + spineoffset)
+            points[2i - 1] = Point2f(x, opp - d * tickalign + spineoffset)
             points[2i] = Point2f(x, opp + d - d * tickalign + spineoffset)
         end
     else
         for (i, (_, y)) in enumerate(tickpositions)
-            points[2i-1] = Point2f(opp - d * tickalign + spineoffset, y)
+            points[2i - 1] = Point2f(opp - d * tickalign + spineoffset, y)
             points[2i] = Point2f(opp + d - d * tickalign + spineoffset, y)
         end
     end
@@ -650,18 +709,18 @@ function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
         )
     end
     ax.targetlimits[] = tlims
-    nothing
+    return nothing
 end
 
 # this is so users can do limits = (left, right, bottom, top)
 function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
-    (lims[1:2], lims[3:4])
+    return (lims[1:2], lims[3:4])
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any})
     _convert_single_limit(x) = x
     _convert_single_limit(x::Interval) = endpoints(x)
-    map(_convert_single_limit, lims)
+    return map(_convert_single_limit, lims)
 end
 
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
@@ -676,7 +735,7 @@ function validate_limits_for_scales(lims::Rect, xsc, ysc)
     if !validate_limits_for_scale(ylims, ysc)
         error("Invalid y-limits $ylims for scale $ysc which is defined on the interval $(defined_interval(ysc))")
     end
-    nothing
+    return nothing
 end
 
 validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
@@ -701,7 +760,7 @@ function needs_tight_limits(p::Voronoiplot)
 end
 
 function expandbboxwithfractionalmargins(bb, margins)
-    newwidths = bb.widths .* (1f0 .+ margins)
+    newwidths = bb.widths .* (1.0f0 .+ margins)
     diffs = newwidths .- bb.widths
     neworigin = bb.origin .- (0.5f0 .* diffs)
     return Rect2f(neworigin, newwidths)
@@ -736,7 +795,7 @@ function expandlimits(lims, margin_low, margin_high, scale)
             lims = inverse.(scale.(lims) .+ (-zerodist, zerodist))
         end
     end
-    lims
+    return lims
 end
 
 function getlimits(la::Axis, dim)
@@ -793,7 +852,7 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 
     # only change linked axis if not prohibited from doing so because
     # we're currently being updated by another axis' link
-    if !block_limit_linking[]
+    return if !block_limit_linking[]
 
         bothlinks = intersect(xaxislinks, yaxislinks)
         xlinks = setdiff(xaxislinks, yaxislinks)
@@ -846,7 +905,7 @@ end
 function autolimits!()
     curr_ax = current_axis()
     isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
-    autolimits!(curr_ax)
+    return autolimits!(curr_ax)
 end
 
 function autolimits(ax::Axis, dim::Integer)
@@ -892,11 +951,11 @@ Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
 function linkaxes!(axes::Vector{<:Axis})
     linkxaxes!(axes)
-    linkyaxes!(axes)
+    return linkyaxes!(axes)
 end
 
 function linkaxes!(a::Axis, others...)
-    linkaxes!([a, others...])
+    return linkaxes!([a, others...])
 end
 
 function adjustlimits!(la)
@@ -994,8 +1053,10 @@ value. If that value is Makie.automatic, the reset will trigger new
 protrusions for the axis and the layout will adjust. This is so the layout doesn't
 immediately readjust during interaction, which would let the whole layout jitter around.
 """
-function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
-        prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real)
+function timed_ticklabelspace_reset(
+        ax::Axis, reset_timer::Ref,
+        prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real
+    )
 
     if !isnothing(reset_timer[])
         close(reset_timer[])
@@ -1007,7 +1068,7 @@ function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
         ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
     end
 
-    reset_timer[] = Timer(threshold_sec) do t
+    return reset_timer[] = Timer(threshold_sec) do t
         reset_timer[] = nothing
 
         ax.xticklabelspace = prev_xticklabelspace[]
@@ -1024,8 +1085,10 @@ end
 Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hidexdecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
-        minorgrid = true, minorticks = true)
+function hidexdecorations!(
+        la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true
+    )
     if label
         la.xlabelvisible = false
     end
@@ -1041,7 +1104,7 @@ function hidexdecorations!(la::Axis = current_axis(); label = true, ticklabels =
     if minorgrid
         la.xminorgridvisible = false
     end
-    if minorticks
+    return if minorticks
         la.xminorticksvisible = false
     end
 end
@@ -1053,8 +1116,10 @@ end
 Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hideydecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
-        minorgrid = true, minorticks = true)
+function hideydecorations!(
+        la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true
+    )
     if label
         la.ylabelvisible = false
     end
@@ -1070,7 +1135,7 @@ function hideydecorations!(la::Axis = current_axis(); label = true, ticklabels =
     if minorgrid
         la.yminorgridvisible = false
     end
-    if minorticks
+    return if minorticks
         la.yminorticksvisible = false
     end
 end
@@ -1084,12 +1149,18 @@ Keyword arguments can be used to disable hiding of certain types of decorations.
 
 See also [`hidexdecorations!`], [`hideydecorations!`], [`hidezdecorations!`]
 """
-function hidedecorations!(la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
-        minorgrid = true, minorticks = true)
-    hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
-        minorgrid = minorgrid, minorticks = minorticks)
-    hideydecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
-        minorgrid = minorgrid, minorticks = minorticks)
+function hidedecorations!(
+        la::Axis = current_axis(); label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true
+    )
+    hidexdecorations!(
+        la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
+        minorgrid = minorgrid, minorticks = minorticks
+    )
+    return hideydecorations!(
+        la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
+        minorgrid = minorgrid, minorticks = minorticks
+    )
 end
 
 """
@@ -1113,6 +1184,7 @@ function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
             error("Invalid spine identifier $s. Valid options are :l, :r, :b and :t.")
         end
     end
+    return
 end
 hidespines!(spines::Symbol...) = hidespines!(current_axis(), spines...)
 
@@ -1154,11 +1226,12 @@ function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
     for (i, p) in enumerate(ax.scene.plots)
         println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
     end
+    return
 end
 
 function Base.show(io::IO, ax::Axis)
     nplots = length(ax.scene.plots)
-    print(io, "Axis ($nplots plots)")
+    return print(io, "Axis ($nplots plots)")
 end
 
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
@@ -1180,7 +1253,7 @@ function Makie.xlims!(ax::Axis, xlims)
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
     reset_limits!(ax, yauto = false)
-    nothing
+    return nothing
 end
 
 function Makie.ylims!(ax::Axis, ylims)
@@ -1198,7 +1271,7 @@ function Makie.ylims!(ax::Axis, ylims)
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (mlims[1], ylims)
     reset_limits!(ax, xauto = false)
-    nothing
+    return nothing
 end
 
 """
@@ -1296,7 +1369,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, xlims, ylims)
     Makie.xlims!(ax, xlims)
-    Makie.ylims!(ax, ylims)
+    return Makie.ylims!(ax, ylims)
 end
 
 """
@@ -1307,7 +1380,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, x1, x2, y1, y2)
     Makie.xlims!(ax, x1, x2)
-    Makie.ylims!(ax, y1, y2)
+    return Makie.ylims!(ax, y1, y2)
 end
 
 """
@@ -1320,13 +1393,13 @@ function limits!(ax::Axis, rect::Rect2)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
     Makie.xlims!(ax, xmin, xmax)
-    Makie.ylims!(ax, ymin, ymax)
+    return Makie.ylims!(ax, ymin, ymax)
 end
 
 function limits!(args::Union{Nothing, Real, HyperRectangle}...)
     axis = current_axis()
     axis isa Nothing && error("There is no currently active axis!")
-    limits!(axis, args...)
+    return limits!(axis, args...)
 end
 
 Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
@@ -1334,7 +1407,7 @@ Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 # these functions pick limits for different x and y scales, so that
 # we don't pick values that are invalid, such as 0 for log etc.
 function defaultlimits(userlimits::Tuple{Real, Real, Real, Real}, xscale, yscale)
-    BBox(Float64.(userlimits)...)
+    return BBox(Float64.(userlimits)...)
 end
 
 defaultlimits(l::Tuple{Any, Any, Any, Any}, xscale, yscale) = defaultlimits(((l[1], l[2]), (l[3], l[4])), xscale, yscale)
@@ -1363,70 +1436,70 @@ defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 defined_interval(scale::ReversibleScale) = scale.interval
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::LogFunctions) = OpenInterval(0.0, Inf)
-defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
+defined_interval(::typeof(sqrt)) = Interval{:closed, :open}(0, Inf)
 defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)
 
 
 function attribute_examples(::Type{Axis})
-    Dict(
+    return Dict(
         :xticks => [
             Example(
                 code = """
-                    fig = Figure()
-                    Axis(fig[1, 1], xticks = 1:10)
-                    Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
-                    Axis(fig[3, 1], xticks = WilkinsonTicks(5))
-                    fig
-                    """
-            )
+                fig = Figure()
+                Axis(fig[1, 1], xticks = 1:10)
+                Axis(fig[2, 1], xticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                Axis(fig[3, 1], xticks = WilkinsonTicks(5))
+                fig
+                """
+            ),
         ],
         :yticks => [
             Example(
                 code = """
-                    fig = Figure()
-                    Axis(fig[1, 1], yticks = 1:10)
-                    Axis(fig[1, 2], yticks = (1:2:9, ["A", "B", "C", "D", "E"]))
-                    Axis(fig[1, 3], yticks = WilkinsonTicks(5))
-                    fig
-                    """
-            )
+                fig = Figure()
+                Axis(fig[1, 1], yticks = 1:10)
+                Axis(fig[1, 2], yticks = (1:2:9, ["A", "B", "C", "D", "E"]))
+                Axis(fig[1, 3], yticks = WilkinsonTicks(5))
+                fig
+                """
+            ),
         ],
         :aspect => [
             Example(
                 code = """
-                    using FileIO
+                using FileIO
 
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
-                    ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
-                    ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
-                    ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
+                ax1 = Axis(f[1, 1], aspect = nothing, title = "nothing")
+                ax2 = Axis(f[1, 2], aspect = DataAspect(), title = "DataAspect()")
+                ax3 = Axis(f[2, 1], aspect = AxisAspect(1), title = "AxisAspect(1)")
+                ax4 = Axis(f[2, 2], aspect = AxisAspect(2), title = "AxisAspect(2)")
 
-                    img = rotr90(load(assetpath("cow.png")))
-                    for ax in [ax1, ax2, ax3, ax4]
-                        image!(ax, img)
-                    end
+                img = rotr90(load(assetpath("cow.png")))
+                for ax in [ax1, ax2, ax3, ax4]
+                    image!(ax, img)
+                end
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :autolimitaspect => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1], autolimitaspect = nothing)
-                    ax2 = Axis(f[1, 2], autolimitaspect = 1)
+                ax1 = Axis(f[1, 1], autolimitaspect = nothing)
+                ax2 = Axis(f[1, 2], autolimitaspect = 1)
 
-                    for ax in [ax1, ax2]
-                        lines!(ax, 0..10, sin)
-                    end
+                for ax in [ax1, ax2]
+                    lines!(ax, 0..10, sin)
+                end
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :backgroundcolor => [
             Example(
@@ -1438,7 +1511,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :xautolimitmargin => [
             Example(
@@ -1457,7 +1530,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :yautolimitmargin => [
             Example(
@@ -1476,7 +1549,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :xticklabelpad => [
             Example(
@@ -1489,7 +1562,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :yticklabelpad => [
             Example(
@@ -1502,7 +1575,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :xticklabelspace => [
             Example(
@@ -1515,7 +1588,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :yticklabelspace => [
             Example(
@@ -1528,7 +1601,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :xlabelpadding => [
             Example(
@@ -1541,7 +1614,7 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :ylabelpadding => [
             Example(
@@ -1554,334 +1627,334 @@ function attribute_examples(::Type{Axis})
 
                     f
                 """
-            )
+            ),
         ],
         :title => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], title = "Title")
-                    Axis(f[2, 1], title = L"\\sum_i{x_i \\times y_i}")
-                    Axis(f[3, 1], title = rich(
-                        "Rich text title",
-                        subscript(" with subscript", color = :slategray)
-                    ))
+                Axis(f[1, 1], title = "Title")
+                Axis(f[2, 1], title = L"\\sum_i{x_i \\times y_i}")
+                Axis(f[3, 1], title = rich(
+                    "Rich text title",
+                    subscript(" with subscript", color = :slategray)
+                ))
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :titlealign => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], titlealign = :left, title = "Left aligned title")
-                    Axis(f[2, 1], titlealign = :center, title = "Center aligned title")
-                    Axis(f[3, 1], titlealign = :right, title = "Right aligned title")
+                Axis(f[1, 1], titlealign = :left, title = "Left aligned title")
+                Axis(f[2, 1], titlealign = :center, title = "Center aligned title")
+                Axis(f[3, 1], titlealign = :right, title = "Right aligned title")
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :subtitle => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], title = "Title", subtitle = "Subtitle")
-                    Axis(f[2, 1], title = "Title", subtitle = L"\\sum_i{x_i \\times y_i}")
-                    Axis(f[3, 1], title = "Title", subtitle = rich(
-                        "Rich text subtitle",
-                        subscript(" with subscript", color = :slategray)
-                    ))
+                Axis(f[1, 1], title = "Title", subtitle = "Subtitle")
+                Axis(f[2, 1], title = "Title", subtitle = L"\\sum_i{x_i \\times y_i}")
+                Axis(f[3, 1], title = "Title", subtitle = rich(
+                    "Rich text subtitle",
+                    subscript(" with subscript", color = :slategray)
+                ))
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :xlabel => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], xlabel = "X Label")
-                    Axis(f[2, 1], xlabel = L"\\sum_i{x_i \\times y_i}")
-                    Axis(f[3, 1], xlabel = rich(
-                        "X Label",
-                        subscript(" with subscript", color = :slategray)
-                    ))
+                Axis(f[1, 1], xlabel = "X Label")
+                Axis(f[2, 1], xlabel = L"\\sum_i{x_i \\times y_i}")
+                Axis(f[3, 1], xlabel = rich(
+                    "X Label",
+                    subscript(" with subscript", color = :slategray)
+                ))
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :ylabel => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], ylabel = "Y Label")
-                    Axis(f[2, 1], ylabel = L"\\sum_i{x_i \\times y_i}")
-                    Axis(f[3, 1], ylabel = rich(
-                        "Y Label",
-                        subscript(" with subscript", color = :slategray)
-                    ))
+                Axis(f[1, 1], ylabel = "Y Label")
+                Axis(f[2, 1], ylabel = L"\\sum_i{x_i \\times y_i}")
+                Axis(f[3, 1], ylabel = rich(
+                    "Y Label",
+                    subscript(" with subscript", color = :slategray)
+                ))
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :xtrimspine => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1], xtrimspine = false)
-                    ax2 = Axis(f[2, 1], xtrimspine = true)
-                    ax3 = Axis(f[3, 1], xtrimspine = (true, false))
-                    ax4 = Axis(f[4, 1], xtrimspine = (false, true))
+                ax1 = Axis(f[1, 1], xtrimspine = false)
+                ax2 = Axis(f[2, 1], xtrimspine = true)
+                ax3 = Axis(f[3, 1], xtrimspine = (true, false))
+                ax4 = Axis(f[4, 1], xtrimspine = (false, true))
 
-                    for ax in [ax1, ax2, ax3, ax4]
-                        ax.xgridvisible = false
-                        ax.ygridvisible = false
-                        ax.rightspinevisible = false
-                        ax.topspinevisible = false
-                        xlims!(ax, 0.5, 5.5)
-                    end
+                for ax in [ax1, ax2, ax3, ax4]
+                    ax.xgridvisible = false
+                    ax.ygridvisible = false
+                    ax.rightspinevisible = false
+                    ax.topspinevisible = false
+                    xlims!(ax, 0.5, 5.5)
+                end
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :ytrimspine => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1], ytrimspine = false)
-                    ax2 = Axis(f[1, 2], ytrimspine = true)
-                    ax3 = Axis(f[1, 3], ytrimspine = (true, false))
-                    ax4 = Axis(f[1, 4], ytrimspine = (false, true))
+                ax1 = Axis(f[1, 1], ytrimspine = false)
+                ax2 = Axis(f[1, 2], ytrimspine = true)
+                ax3 = Axis(f[1, 3], ytrimspine = (true, false))
+                ax4 = Axis(f[1, 4], ytrimspine = (false, true))
 
-                    for ax in [ax1, ax2, ax3, ax4]
-                        ax.xgridvisible = false
-                        ax.ygridvisible = false
-                        ax.rightspinevisible = false
-                        ax.topspinevisible = false
-                        ylims!(ax, 0.5, 5.5)
-                    end
+                for ax in [ax1, ax2, ax3, ax4]
+                    ax.xgridvisible = false
+                    ax.ygridvisible = false
+                    ax.rightspinevisible = false
+                    ax.topspinevisible = false
+                    ylims!(ax, 0.5, 5.5)
+                end
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :xaxisposition => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], xaxisposition = :bottom)
-                    Axis(f[1, 2], xaxisposition = :top)
+                Axis(f[1, 1], xaxisposition = :bottom)
+                Axis(f[1, 2], xaxisposition = :top)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :yaxisposition => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], yaxisposition = :left)
-                    Axis(f[2, 1], yaxisposition = :right)
+                Axis(f[1, 1], yaxisposition = :left)
+                Axis(f[2, 1], yaxisposition = :right)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :limits => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1], limits = (nothing, nothing), title = "(nothing, nothing)")
-                    ax2 = Axis(f[1, 2], limits = (0, 4pi, -1, 1), title = "(0, 4pi, -1, 1)")
-                    ax3 = Axis(f[2, 1], limits = ((0, 4pi), nothing), title = "((0, 4pi), nothing)")
-                    ax4 = Axis(f[2, 2], limits = (nothing, 4pi, nothing, 1), title = "(nothing, 4pi, nothing, 1)")
+                ax1 = Axis(f[1, 1], limits = (nothing, nothing), title = "(nothing, nothing)")
+                ax2 = Axis(f[1, 2], limits = (0, 4pi, -1, 1), title = "(0, 4pi, -1, 1)")
+                ax3 = Axis(f[2, 1], limits = ((0, 4pi), nothing), title = "((0, 4pi), nothing)")
+                ax4 = Axis(f[2, 2], limits = (nothing, 4pi, nothing, 1), title = "(nothing, 4pi, nothing, 1)")
 
-                    for ax in [ax1, ax2, ax3, ax4]
-                        lines!(ax, 0..4pi, sin)
-                    end
+                for ax in [ax1, ax2, ax3, ax4]
+                    lines!(ax, 0..4pi, sin)
+                end
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :yscale => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
-                        row, col = fldmod1(i, 3)
-                        Axis(f[row, col], yscale = scale, title = string(scale),
-                            yminorticksvisible = true, yminorgridvisible = true,
-                            yminorticks = IntervalsBetween(5))
+                for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                    row, col = fldmod1(i, 3)
+                    Axis(f[row, col], yscale = scale, title = string(scale),
+                        yminorticksvisible = true, yminorgridvisible = true,
+                        yminorticks = IntervalsBetween(5))
 
-                        lines!(range(0.01, 0.99, length = 200))
-                    end
+                    lines!(range(0.01, 0.99, length = 200))
+                end
 
-                    f
-                    """
+                f
+                """
             ),
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1],
-                        yscale = Makie.pseudolog10,
-                        title = "Pseudolog scale",
-                        yticks = [-100, -10, -1, 0, 1, 10, 100]
-                    )
+                ax1 = Axis(f[1, 1],
+                    yscale = Makie.pseudolog10,
+                    title = "Pseudolog scale",
+                    yticks = [-100, -10, -1, 0, 1, 10, 100]
+                )
 
-                    ax2 = Axis(f[2, 1],
-                        yscale = Makie.Symlog10(10.0),
-                        title = "Symlog10 with linear scaling between -10 and 10",
-                        yticks = [-100, -10, 0, 10, 100]
-                    )
+                ax2 = Axis(f[2, 1],
+                    yscale = Makie.Symlog10(10.0),
+                    title = "Symlog10 with linear scaling between -10 and 10",
+                    yticks = [-100, -10, 0, 10, 100]
+                )
 
-                    for ax in [ax1, ax2]
-                        lines!(ax, -100:0.1:100)
-                    end
+                for ax in [ax1, ax2]
+                    lines!(ax, -100:0.1:100)
+                end
 
-                    f
-                    """
+                f
+                """
             ),
         ],
         :xscale => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
-                        row, col = fldmod1(i, 2)
-                        Axis(f[row, col], xscale = scale, title = string(scale),
-                            xminorticksvisible = true, xminorgridvisible = true,
-                            xminorticks = IntervalsBetween(5))
+                for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+                    row, col = fldmod1(i, 2)
+                    Axis(f[row, col], xscale = scale, title = string(scale),
+                        xminorticksvisible = true, xminorgridvisible = true,
+                        xminorticks = IntervalsBetween(5))
 
-                        lines!(range(0.01, 0.99, length = 200), 1:200)
-                    end
+                    lines!(range(0.01, 0.99, length = 200), 1:200)
+                end
 
-                    f
-                    """
+                f
+                """
             ),
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    ax1 = Axis(f[1, 1],
-                        xscale = Makie.pseudolog10,
-                        title = "Pseudolog scale",
-                        xticks = [-100, -10, -1, 0, 1, 10, 100]
-                    )
+                ax1 = Axis(f[1, 1],
+                    xscale = Makie.pseudolog10,
+                    title = "Pseudolog scale",
+                    xticks = [-100, -10, -1, 0, 1, 10, 100]
+                )
 
-                    ax2 = Axis(f[1, 2],
-                        xscale = Makie.Symlog10(10.0),
-                        title = "Symlog10 with linear scaling\nbetween -10 and 10",
-                        xticks = [-100, -10, 0, 10, 100]
-                    )
+                ax2 = Axis(f[1, 2],
+                    xscale = Makie.Symlog10(10.0),
+                    title = "Symlog10 with linear scaling\nbetween -10 and 10",
+                    xticks = [-100, -10, 0, 10, 100]
+                )
 
-                    for ax in [ax1, ax2]
-                        lines!(ax, -100:0.1:100, -100:0.1:100)
-                    end
+                for ax in [ax1, ax2]
+                    lines!(ax, -100:0.1:100, -100:0.1:100)
+                end
 
-                    f
-                    """
+                f
+                """
             ),
         ],
         :xtickformat => [
             Example(
                 code = """
-                    f = Figure(figure_padding = 50)
+                f = Figure(figure_padding = 50)
 
-                    Axis(f[1, 1], xtickformat = values -> ["\$(value)kg" for value in values])
-                    Axis(f[2, 1], xtickformat = "{:.2f}ms")
-                    Axis(f[3, 1], xtickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
-                    Axis(f[4, 1], xtickformat = values -> [rich("\$value", superscript("XY", color = :red))
-                                                           for value in values])
+                Axis(f[1, 1], xtickformat = values -> ["\$(value)kg" for value in values])
+                Axis(f[2, 1], xtickformat = "{:.2f}ms")
+                Axis(f[3, 1], xtickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                Axis(f[4, 1], xtickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                       for value in values])
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :ytickformat => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], ytickformat = values -> ["\$(value)kg" for value in values])
-                    Axis(f[1, 2], ytickformat = "{:.2f}ms")
-                    Axis(f[1, 3], ytickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
-                    Axis(f[1, 4], ytickformat = values -> [rich("\$value", superscript("XY", color = :red))
-                                                           for value in values])
+                Axis(f[1, 1], ytickformat = values -> ["\$(value)kg" for value in values])
+                Axis(f[1, 2], ytickformat = "{:.2f}ms")
+                Axis(f[1, 3], ytickformat = values -> [L"\\sqrt{%\$(value^2)}" for value in values])
+                Axis(f[1, 4], ytickformat = values -> [rich("\$value", superscript("XY", color = :red))
+                                                       for value in values])
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :xticksmirrored => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], xticksmirrored = false, xminorticksvisible = true)
-                    Axis(f[1, 2], xticksmirrored = true, xminorticksvisible = true)
+                Axis(f[1, 1], xticksmirrored = false, xminorticksvisible = true)
+                Axis(f[1, 2], xticksmirrored = true, xminorticksvisible = true)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :yticksmirrored => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
-                    Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
+                Axis(f[1, 1], yticksmirrored = false, yminorticksvisible = true)
+                Axis(f[2, 1], yticksmirrored = true, yminorticksvisible = true)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :xminorticks => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    kwargs = (; xminorticksvisible = true, xminorgridvisible = true)
-                    Axis(f[1, 1]; xminorticks = IntervalsBetween(2), kwargs...)
-                    Axis(f[2, 1]; xminorticks = IntervalsBetween(5), kwargs...)
-                    Axis(f[3, 1]; xminorticks = [1, 2, 3, 4], kwargs...)
+                kwargs = (; xminorticksvisible = true, xminorgridvisible = true)
+                Axis(f[1, 1]; xminorticks = IntervalsBetween(2), kwargs...)
+                Axis(f[2, 1]; xminorticks = IntervalsBetween(5), kwargs...)
+                Axis(f[3, 1]; xminorticks = [1, 2, 3, 4], kwargs...)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
         :yminorticks => [
             Example(
                 code = """
-                    f = Figure()
+                f = Figure()
 
-                    kwargs = (; yminorticksvisible = true, yminorgridvisible = true)
-                    Axis(f[1, 1]; yminorticks = IntervalsBetween(2), kwargs...)
-                    Axis(f[1, 2]; yminorticks = IntervalsBetween(5), kwargs...)
-                    Axis(f[1, 3]; yminorticks = [1, 2, 3, 4], kwargs...)
+                kwargs = (; yminorticksvisible = true, yminorgridvisible = true)
+                Axis(f[1, 1]; yminorticks = IntervalsBetween(2), kwargs...)
+                Axis(f[1, 2]; yminorticks = IntervalsBetween(5), kwargs...)
+                Axis(f[1, 3]; yminorticks = [1, 2, 3, 4], kwargs...)
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
     )
 end
@@ -1898,12 +1971,12 @@ end
 Gets the colorbuffer of the `Axis` in `JuliaNative` image format.
 If `include_decorations=false`, only the inside of the axis is fetched.
 """
-function colorbuffer(ax::Axis; include_decorations=true, update=true, colorbuffer_kws...)
+function colorbuffer(ax::Axis; include_decorations = true, update = true, colorbuffer_kws...)
     if update
         update_state_before_display!(ax)
     end
     root_scene = root(ax.scene)
-    img = colorbuffer(root_scene; update=false, colorbuffer_kws...)
+    img = colorbuffer(root_scene; update = false, colorbuffer_kws...)
     scale_factor = first(size(img) ./ reverse(size(root_scene)))
     bb = if include_decorations
         bb = axis_bounds_with_decoration(ax)

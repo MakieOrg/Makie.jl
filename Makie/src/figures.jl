@@ -30,7 +30,6 @@ get_scene(gp::GridLayoutBase.GridPosition) = get_scene(get_figure(gp))
 get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
 
 
-
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 
@@ -40,7 +39,7 @@ const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
 Returns the current active figure (or the last figure created).
 Returns `nothing` if there is no current active figure.
 """
-current_figure() = lock(()-> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
+current_figure() = lock(() -> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 
 """
     current_figure!(fig)
@@ -67,11 +66,11 @@ function current_axis!(fig::Figure, ax)
         error("This axis' parent is not the given figure")
     end
     fig.current_axis[] = ax
-    ax
+    return ax
 end
 
 function current_axis!(fig::Figure, ::Nothing)
-    fig.current_axis[] = nothing
+    return fig.current_axis[] = nothing
 end
 
 """
@@ -89,7 +88,7 @@ function current_axis!(ax)
     # if the current axis is in a different figure, we switch to that as well
     # so that current_axis and current_figure are not out of sync
     current_figure!(fig)
-    ax
+    return ax
 end
 
 to_rectsides(n::Number) = to_rectsides((n, n, n, n))
@@ -109,7 +108,7 @@ function Figure(; kwargs...)
 
     kwargs_dict = Dict(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
-    scene = Scene(; camera=campixel!, clear = true, kwargs_dict...)
+    scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
 
@@ -131,24 +130,24 @@ function Figure(; kwargs...)
     # set figure as layout parent so GridPositions can refer to the figure
     # if connected correctly
     layout.parent = f
-    f
+    return f
 end
 
 export Figure, current_axis, current_figure, current_axis!, current_figure!
 
 
 function Base.getindex(fig::Figure, rows, cols, side = GridLayoutBase.Inner())
-    fig.layout[rows, cols, side]
+    return fig.layout[rows, cols, side]
 end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
-    obj
+    return obj
 end
 
 function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
     fig.layout[rows, cols] = obj
-    obj
+    return obj
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
@@ -163,7 +162,7 @@ Base.show(io::IO, ::MIME"text/plain", fig::Figure) = print(io, "Figure()")
 get_figure(gsp::GridLayoutBase.GridSubposition) = get_figure(gsp.parent)
 function get_figure(gp::GridLayoutBase.GridPosition)
     top_parent = GridLayoutBase.top_parent(gp.layout)
-    if top_parent isa Figure
+    return if top_parent isa Figure
         top_parent
     else
         nothing
@@ -190,7 +189,7 @@ function resize_to_layout!(fig::Figure = current_figure())
     bbox = GridLayoutBase.tight_bbox(fig.layout)
     new_size = (widths(bbox)...,)
     resize!(fig.scene, widths(bbox)...)
-    new_size
+    return new_size
 end
 
 function Base.empty!(fig::Figure)

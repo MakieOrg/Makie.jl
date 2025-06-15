@@ -66,16 +66,16 @@ function Ray(scene::Scene, cam::Camera2D, xy::VecTypes{2})
     m = Vec2f(pv[1, 1], pv[2, 2])
     b = Vec2f(pv[1, 4], pv[2, 4])
     origin = (2 * rel_pos .- 1 - b) ./ m
-    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0, 0, -1))
 end
 
 function Ray(::Scene, ::PixelCamera, xy::VecTypes{2})
-    return Ray(to_ndim(Point3f, xy, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, xy, 10_000f0), Vec3f(0, 0, -1))
 end
 
 function Ray(scene::Scene, ::RelativeCamera, xy::VecTypes{2})
     origin = xy ./ widths(scene)
-    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0,0,-1))
+    return Ray(to_ndim(Point3f, origin, 10_000f0), Vec3f(0, 0, -1))
 end
 
 Ray(scene::Scene, cam, xy::VecTypes{2}) = ray_from_projectionview(scene, xy)
@@ -88,16 +88,16 @@ function ray_from_projectionview(scene::Scene, xy::VecTypes{2})
     # This figures out the camera view direction from the projectionview matrix
     # and computes a ray from a near and a far point.
     # Based on ComputeCameraRay from ImGuizmo
-    mp = 2f0 .* xy ./ widths(area) .- 1f0
+    mp = 2.0f0 .* xy ./ widths(area) .- 1.0f0
     v = inv_view_proj * Vec4f(0, 0, -10, 1)
     reversed = v[3] < v[4]
-    near = reversed ? 1f0 - 1e-6 : 0f0
-    far = reversed ? 0f0 : 1f0 - 1e-6
+    near = reversed ? 1.0f0 - 1.0e-6 : 0.0f0
+    far = reversed ? 0.0f0 : 1.0f0 - 1.0e-6
 
-    origin = inv_view_proj * Vec4f(mp[1], mp[2], near, 1f0)
+    origin = inv_view_proj * Vec4f(mp[1], mp[2], near, 1.0f0)
     origin = origin[Vec(1, 2, 3)] ./ origin[4]
 
-    p = inv_view_proj * Vec4f(mp[1], mp[2], far, 1f0)
+    p = inv_view_proj * Vec4f(mp[1], mp[2], far, 1.0f0)
     p = p[Vec(1, 2, 3)] ./ p[4]
 
     dir = normalize(p .- origin)
@@ -107,9 +107,9 @@ end
 
 
 function transform(M::Mat4{T}, ray::Ray) where {T}
-    p4d = M * to_ndim(Point4{T}, ray.origin, 1f0)
-    dir = normalize(M[Vec(1,2,3), Vec(1,2,3)] * ray.direction)
-    return Ray(p4d[Vec(1,2,3)] / p4d[4], dir)
+    p4d = M * to_ndim(Point4{T}, ray.origin, 1.0f0)
+    dir = normalize(M[Vec(1, 2, 3), Vec(1, 2, 3)] * ray.direction)
+    return Ray(p4d[Vec(1, 2, 3)] / p4d[4], dir)
 end
 
 f32_convert(::Nothing, ray::Ray) = ray
@@ -146,7 +146,7 @@ function closest_point_on_line(A::Point3, B::Point3, ray::Ray)
     return A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
-function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1e-6)
+function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1.0e-6)
     return ray_triangle_intersection(
         to_ndim(Point3d, A, 0), to_ndim(Point3d, B, 0), to_ndim(Point3d, C, 0),
         ray, ϵ
@@ -154,7 +154,7 @@ function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::R
 end
 
 function ray_triangle_intersection(
-        A::VecTypes{3, T1}, B::VecTypes{3, T2}, C::VecTypes{3, T3}, ray::Ray{T4}, ϵ = 1e-6
+        A::VecTypes{3, T1}, B::VecTypes{3, T2}, C::VecTypes{3, T3}, ray::Ray{T4}, ϵ = 1.0e-6
     ) where {T1, T2, T3, T4}
     T = promote_type(T1, T2, T3, T4, Float32)
     # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
@@ -177,7 +177,7 @@ end
 function ray_rect_intersection(rect::Rect2, ray::Ray)
     possible_hit = ray.origin - ray.origin[3] / ray.direction[3] * ray.direction
     min = minimum(rect); max = maximum(rect)
-    if all(min <= possible_hit[Vec(1,2)] <= max)
+    if all(min <= possible_hit[Vec(1, 2)] <= max)
         return possible_hit
     end
     return Point3f(NaN)
@@ -207,7 +207,7 @@ function is_point_on_ray(p::Point3{T1}, ray::Ray{T2}) where {T1 <: Real, T2 <: R
 end
 
 
-function ray_plane_intersection(plane::Plane3{T1}, ray::Ray{T2}, epsilon = 1e-6) where {T1 <: Real, T2 <: Real}
+function ray_plane_intersection(plane::Plane3{T1}, ray::Ray{T2}, epsilon = 1.0e-6) where {T1 <: Real, T2 <: Real}
     # --- p ---   plane with normal (assumed normalized)
     #     ↓
     #     :  distance d along plane normal direction
@@ -298,7 +298,7 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     if idx == 1
         idx = 2
     end
-    p0, p1 = apply_transform_and_model(plot, plot[1][][(idx-1):idx])
+    p0, p1 = apply_transform_and_model(plot, plot[1][][(idx - 1):idx])
 
     pos = closest_point_on_line(f32_convert(plot, p0), f32_convert(plot, p1), ray)
 
@@ -360,11 +360,11 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
 end
 
 # Handling indexing into different surface input types
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i - 1) / (N - 1)
 surface_x(xs, i, j, N) = xs[i]
 surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
 
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j - 1) / (N - 1)
 surface_y(ys, i, j, N) = ys[j]
 surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
 
@@ -378,21 +378,21 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     ys = plot[2][]
     zs = plot[3][]
     w, h = size(zs)
-    _i = mod1(idx, w); _j = div(idx-1, w)
+    _i = mod1(idx, w); _j = div(idx - 1, w)
 
     ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
     tf = transform_func(plot)
 
     # This isn't the most accurate so we include some neighboring faces
     pos = Point3f(NaN)
-    for i in _i-1:_i+1, j in _j-1:_j+1
+    for i in (_i - 1):(_i + 1), j in (_j - 1):(_j + 1)
         (1 <= i <= w) && (1 <= j < h) || continue
 
         if i - 1 > 0
             # transforms only apply to x and y coordinates of surfaces
-            A = surface_pos(xs, ys, zs, i,   j)
-            B = surface_pos(xs, ys, zs, i-1, j)
-            C = surface_pos(xs, ys, zs, i, j+1)
+            A = surface_pos(xs, ys, zs, i, j)
+            B = surface_pos(xs, ys, zs, i - 1, j)
+            C = surface_pos(xs, ys, zs, i, j + 1)
             A, B, C = map((A, B, C)) do p
                 xy = Makie.apply_transform(tf, Point2d(p))
                 Point3d(xy[1], xy[2], p[3])
@@ -401,9 +401,9 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
         end
 
         if i + 1 <= w && isnan(pos)
-            A = surface_pos(xs, ys, zs, i,   j)
-            B = surface_pos(xs, ys, zs, i,   j+1)
-            C = surface_pos(xs, ys, zs, i+1, j+1)
+            A = surface_pos(xs, ys, zs, i, j)
+            B = surface_pos(xs, ys, zs, i, j + 1)
+            C = surface_pos(xs, ys, zs, i + 1, j + 1)
             A, B, C = map((A, B, C)) do p
                 xy = Makie.apply_transform(tf, Point2d(p))
                 Point3d(xy[1], xy[2], p[3])
@@ -442,10 +442,12 @@ function position_on_plot(plot::Volume, idx, ray::Ray; apply_transform = true)
         # TODO: After GeometryBasics refactor this can just use triangle_mesh(Rect3d(min, max - min))
         w = max - min
         ps = Point3d[min + (x, y, z) .* w for x in (0, 1) for y in (0, 1) for z in (0, 1)]
-        fs = decompose(GLTriangleFace, QuadFace{Int}[
-            (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1),
-            (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2)
-        ])
+        fs = decompose(
+            GLTriangleFace, QuadFace{Int}[
+                (1, 2, 4, 3), (7, 8, 6, 5), (5, 6, 2, 1),
+                (3, 4, 8, 7), (1, 3, 7, 5), (6, 8, 4, 2),
+            ]
+        )
 
         if apply_transform
             ps = apply_transform_and_model(plot, ps)

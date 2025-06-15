@@ -16,16 +16,16 @@
 @inline (ls::LinearScaling)(p::VecTypes{3}) = ls.scale .* p + ls.offset
 
 
-@inline function f32_convert(ls::LinearScaling, p::VecTypes{N}) where N
+@inline function f32_convert(ls::LinearScaling, p::VecTypes{N}) where {N}
     # TODO Point{N, Float32}(::Point{N, Int}) doesn't work
     return to_ndim(Point{N, Float32}, ls(p), 0)
 end
-@inline function f32_convert(ls::LinearScaling, ps::AbstractArray{<: VecTypes{N}}) where N
+@inline function f32_convert(ls::LinearScaling, ps::AbstractArray{<:VecTypes{N}}) where {N}
     return [to_ndim(Point{N, Float32}, ls(p), 0) for p in ps]
 end
 
 @inline f32_convert(ls::LinearScaling, x::Union{Real, VecTypes}, dim::Integer) = Float32(ls(x, dim))
-@inline function f32_convert(ls::LinearScaling, xs::AbstractArray{<: Union{Real, VecTypes}}, dim::Integer)
+@inline function f32_convert(ls::LinearScaling, xs::AbstractArray{<:Union{Real, VecTypes}}, dim::Integer)
     return [Float32(ls(x, dim)) for x in xs]
 end
 
@@ -75,7 +75,7 @@ is_identity_transform(ls::Nothing) = true # Float32Convert with scaling == nothi
 
 # TODO: How do we actually judge this well?
 function is_float_safe(scale, trans)
-    resolution = 1e4
+    resolution = 1.0e4
     return all(abs.(scale) .> resolution .* eps.(Float32.(trans)))
 end
 
@@ -99,9 +99,9 @@ available. I.e. the conversion ensures that
 `(max - min) > resolution * max(eps(min), eps(max))` whenever `update_limits!`
 is called. Note that resolution must be smaller than `1 / eps(Float32)`.
 """
-function Float32Convert(resolution = 1e4)
+function Float32Convert(resolution = 1.0e4)
     scaling = LinearScaling(Vec{3, Float64}(1.0), Vec{3, Float64}(0.0))
-    return Float32Convert(Observable(scaling; ignore_equal_values=true), resolution)
+    return Float32Convert(Observable(scaling; ignore_equal_values = true), resolution)
 end
 
 # transformed space limits
@@ -127,7 +127,7 @@ function always returns false.
 function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::VecTypes{3, Float64})
     linscale = c.scaling[]
 
-    low  = linscale(mini)
+    low = linscale(mini)
     high = linscale(maxi)
     @assert all(low .<= high) # TODO: Axis probably does that
 
@@ -147,7 +147,7 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
     if needs_update
         # Vec{N}(+1) = scale * maxi + offset
         # Vec{N}(-1) = scale * mini + offset
-        scale  = 2.0 ./ (maxi - mini)
+        scale = 2.0 ./ (maxi - mini)
         offset = 1.0 .- scale * maxi
         c.scaling[] = LinearScaling(scale, offset)
 
@@ -158,7 +158,7 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
 end
 
 @inline f32_convert(::Nothing, x::Real) = Float32(x)
-@inline f32_convert(::Nothing, x::VecTypes{N}) where N = to_ndim(Point{N, Float32}, x, 0)
+@inline f32_convert(::Nothing, x::VecTypes{N}) where {N} = to_ndim(Point{N, Float32}, x, 0)
 @inline f32_convert(::Nothing, x::AbstractArray) = f32_convert.(nothing, x)
 
 @inline f32_convert(::Nothing, x::Real, dim::Integer) = Float32(x)
@@ -173,11 +173,11 @@ end
 
 @inline inv_f32_convert(c::Nothing, args...) = inv_f32_convert(c::Nothing, args)
 @inline inv_f32_convert(::Nothing, x::Real) = Float64(x)
-@inline inv_f32_convert(::Nothing, x::VecTypes{N}) where N = to_ndim(Point{N, Float64}, x, 0)
+@inline inv_f32_convert(::Nothing, x::VecTypes{N}) where {N} = to_ndim(Point{N, Float64}, x, 0)
 
 
 @inline inv_f32_convert(c::Float32Convert, x::Real) = inv(c.scaling[])(Float64(x))
-@inline inv_f32_convert(c::Float32Convert, x::VecTypes{N}) where N = inv(c.scaling[])(to_ndim(Point{N, Float64}, x, 0))
+@inline inv_f32_convert(c::Float32Convert, x::VecTypes{N}) where {N} = inv(c.scaling[])(to_ndim(Point{N, Float64}, x, 0))
 @inline inv_f32_convert(c::Union{Nothing, Float32Convert}, x::AbstractArray) = inv_f32_convert.((c,), x)
 @inline inv_f32_convert(ls::Float32Convert, r::Rect) = inv_f32_convert(ls.scaling[], r)
 @inline inv_f32_convert(x::SceneLike, args...) = inv_f32_convert(f32_conversion(x), args...)
@@ -232,7 +232,8 @@ require shader rewrites if it's not too niche to ignore.
 =#
 function add_f32c_scale!(uniforms, scene::Scene, plot::Plot, f32c)
     if !isnothing(scene.float32convert)
-        uniforms[:f32c_scale] = lift(plot,
+        uniforms[:f32c_scale] = lift(
+            plot,
             f32c, scene.float32convert.scaling,
             plot.transform_marker, get(plot, :markerspace, plot.space)
         ) do new_f32c, old_f32c, transform_marker, markerspace

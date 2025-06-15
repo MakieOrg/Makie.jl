@@ -38,19 +38,19 @@ function initialize_block!(ax::Axis3)
         if clip
             _planes = planes(lims)
             _planes = apply_transform.(Ref(model), _planes)
-            nudge = 1f0 + 1f-5 # clip slightly outside to avoid float precision issues with 0 margin
+            nudge = 1.0f0 + 1.0f-5 # clip slightly outside to avoid float precision issues with 0 margin
             return map(plane -> Plane3f(plane.normal, nudge * plane.distance), _planes)
         else
             return Plane3f[]
         end
     end
 
-    mi1 = Observable(!(pi/2 <= mod1(ax.azimuth[], 2pi) < 3pi/2))
+    mi1 = Observable(!(pi / 2 <= mod1(ax.azimuth[], 2pi) < 3pi / 2))
     mi2 = Observable(0 <= mod1(ax.azimuth[], 2pi) < pi)
     mi3 = Observable(ax.elevation[] > 0)
 
     on(scene, ax.azimuth) do x
-        b = !(pi/2 <= mod1(x, 2pi) < 3pi/2)
+        b = !(pi / 2 <= mod1(x, 2pi) < 3pi / 2)
         mi1.val == b || (mi1[] = b)
         return
     end
@@ -67,10 +67,12 @@ function initialize_block!(ax::Axis3)
     setfield!(ax, :axis_offset, Observable(Vec2d(0)))
     setfield!(ax, :zoom_mult, Observable(1.0))
 
-    matrices = lift(calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions,
-                    ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode,
-                    ax.xreversed, ax.yreversed, ax.zreversed,
-                    ax.zoom_mult, ax.axis_offset, ax.near)
+    matrices = lift(
+        calculate_matrices, scene, finallimits, scene.viewport, ax.protrusions,
+        ax.elevation, ax.azimuth, ax.perspectiveness, ax.aspect, ax.viewmode,
+        ax.xreversed, ax.yreversed, ax.zreversed,
+        ax.zoom_mult, ax.axis_offset, ax.near
+    )
 
     on(scene, matrices) do (model, view, proj, lookat, eyepos)
         cam = camera(scene)
@@ -108,17 +110,21 @@ function initialize_block!(ax::Axis3)
     # This exists as a bandaid for WGLMakie. See add_gridlines_and_frames!()
     overlay = Scene(
         blockscene, scenearea, clear = false, backgroundcolor = :transparent,
-        camera = scene.camera, transformation = scene.transformation)
+        camera = scene.camera, transformation = scene.transformation
+    )
 
     xgridline1, xgridline2, xframelines = add_gridlines_and_frames!(
         blockscene, scene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
-        ax.xreversed, ax.yreversed, ax.zreversed)
+        ax.xreversed, ax.yreversed, ax.zreversed
+    )
     ygridline1, ygridline2, yframelines = add_gridlines_and_frames!(
         blockscene, scene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
-        ax.xreversed, ax.yreversed, ax.zreversed)
+        ax.xreversed, ax.yreversed, ax.zreversed
+    )
     zgridline1, zgridline2, zframelines = add_gridlines_and_frames!(
         blockscene, scene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
-        ax.xreversed, ax.yreversed, ax.zreversed)
+        ax.xreversed, ax.yreversed, ax.zreversed
+    )
 
     xticks, xticklabels, xlabel =
         add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
@@ -150,7 +156,8 @@ function initialize_block!(ax::Axis3)
         font = ax.titlefont,
         color = ax.titlecolor,
         markerspace = :data,
-        inspectable = false)
+        inspectable = false
+    )
 
     ax.mouseeventhandle = addmouseevents!(scene)
     scrollevents = Observable(ScrollEvent(0, 0))
@@ -211,8 +218,10 @@ function initialize_block!(ax::Axis3)
     return
 end
 
-function calculate_matrices(limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
-    viewmode, xreversed, yreversed, zreversed, zoom_mult, scene_offset, near)
+function calculate_matrices(
+        limits, viewport, protrusions, elev, azim, perspectiveness, aspect,
+        viewmode, xreversed, yreversed, zreversed, zoom_mult, scene_offset, near
+    )
 
     ori = limits.origin
     ws = widths(limits)
@@ -273,29 +282,30 @@ function calculate_matrices(limits, viewport, protrusions, elev, azim, perspecti
         lookat = Vec3d(0)
     end
 
-    lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0,0,1))
+    lookat_matrix = Makie.lookat(eyepos, lookat, Vec3d(0, 0, 1))
 
     w = width(viewport)
     h = height(viewport)
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, radius, fov,
-        w, h, to_protrusions(protrusions), viewmode, near)
+        w, h, to_protrusions(protrusions), viewmode, near
+    )
 
     return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protrusions, viewmode, near_limit)
+function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protrusions, viewmode, near_limit)
     # model normalizes the the longest axis of the axis bbox to -1..1, so its
     # bounding sphere has a radius of sqrt(3)
     # The distance of the camera to the center of the bounding sphere is "radius"
     near_limit > 0.0 || error("near value must be > 0, but is $near_limit.")
-    near = max(near_limit,        radius - sqrt(3))
-    far  = max((1 + 1e-3) * near, radius + sqrt(3))
+    near = max(near_limit, radius - sqrt(3))
+    far = max((1 + 1.0e-3) * near, radius + sqrt(3))
 
     aspect_ratio = width / height
 
-    projection_matrix = if viewmode in (:free, :fit, :fitzoom, :stretch)
+    return projection_matrix = if viewmode in (:free, :fit, :fitzoom, :stretch)
         if height > width
             fov = fov / aspect_ratio
         end
@@ -317,7 +327,7 @@ function projectionmatrix(viewmatrix, limits, radius,  fov, width, height, protr
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4d, points, 1)
 
             # convert to effective viewport
-            w = w/width; h = h/height
+            w = w / width; h = h / height
             maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
             maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
 
@@ -361,10 +371,10 @@ function getlimits(ax::Axis3, dim)
     filtered_plots = filter(ax.scene.plots) do p
         attr = p.attributes
         p.visible[] &&
-        is_data_space(p) &&
-        ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
-        ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
-        ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
+            is_data_space(p) &&
+            ifelse(dim == 1, to_value(get(attr, :xautolimits, true)), true) &&
+            ifelse(dim == 2, to_value(get(attr, :yautolimits, true)), true) &&
+            ifelse(dim == 3, to_value(get(attr, :zautolimits, true)), true)
     end
 
     bboxes = Makie.data_limits.(filtered_plots)
@@ -378,11 +388,11 @@ function getlimits(ax::Axis3, dim)
         templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
     end
 
-    templim
+    return templim
 end
 
 function dimpoint(dim, v, v1, v2)
-    if dim == 1
+    return if dim == 1
         Point(v, v1, v2)
     elseif dim == 2
         Point(v1, v, v2)
@@ -392,7 +402,7 @@ function dimpoint(dim, v, v1, v2)
 end
 
 function dim1(dim)
-    if dim == 1
+    return if dim == 1
         2
     elseif dim == 2
         1
@@ -402,7 +412,7 @@ function dim1(dim)
 end
 
 function dim2(dim)
-    if dim == 1
+    return if dim == 1
         3
     elseif dim == 2
         3
@@ -435,10 +445,12 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
             dpoint(t, f1, mi[d2]), dpoint(t, f1, ma[d2])
         end
     end
-    gridline1 = linesegments!(scene, endpoints, color = attr(:gridcolor),
+    gridline1 = linesegments!(
+        scene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false)
+        visible = attr(:gridvisible), inspectable = false
+    )
 
     endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
         rev1 = (xrev, yrev, zrev)[d1]
@@ -452,14 +464,17 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
             dpoint(t, mi[d1], f2), dpoint(t, ma[d1], f2)
         end
     end
-    gridline2 = linesegments!(scene, endpoints2, color = attr(:gridcolor),
+    gridline2 = linesegments!(
+        scene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false)
+        visible = attr(:gridvisible), inspectable = false
+    )
 
 
-    framepoints = lift(limits, min1, min2, xreversed, yreversed, zreversed
-            ) do lims, mi1, mi2, xrev, yrev, zrev
+    framepoints = lift(
+        limits, min1, min2, xreversed, yreversed, zreversed
+    ) do lims, mi1, mi2, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -477,8 +492,9 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
 
         return [p1, p2, p3, p4, p5, p6]
     end
-    framepoints_front_spines = lift(limits, min1, min2, xreversed, yreversed, zreversed
-            ) do lims, mi1, mi2, xrev, yrev, zrev
+    framepoints_front_spines = lift(
+        limits, min1, min2, xreversed, yreversed, zreversed
+    ) do lims, mi1, mi2, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -496,14 +512,18 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     colors = Observable{Any}()
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
 
-    framelines = linesegments!(scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+    framelines = linesegments!(
+        scene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
+        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+    )
 
-    front_framelines = linesegments!(overlay, framepoints_front_spines, color = attr(:spinecolor_4),
-        linewidth = attr(:spinewidth), visible = map((a,b) -> a && b, ax.front_spines, attr(:spinesvisible)),
+    front_framelines = linesegments!(
+        overlay, framepoints_front_spines, color = attr(:spinecolor_4),
+        linewidth = attr(:spinewidth), visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
         transparency = true, inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[])
+        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+    )
 
     #= On transparency and render order
     We have transparency = true here mostly for render order and depth testing
@@ -549,9 +569,11 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     ticksize = attr(:ticksize)
 
-    tick_segments = lift(topscene, limits, tickvalues, miv, min1, min2,
-            scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed) do lims, ticks, miv, min1, min2,
-                pview, pxa, tsize, xrev, yrev, zrev
+    tick_segments = lift(
+        topscene, limits, tickvalues, miv, min1, min2,
+        scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed
+    ) do lims, ticks, miv, min1, min2,
+            pview, pxa, tsize, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -585,18 +607,22 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
-         end
+        end
     end
 
-    ticks = linesegments!(topscene, tick_segments,
+    ticks = linesegments!(
+        topscene, tick_segments,
         transparency = true, inspectable = false,
-        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible))
+        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible)
+    )
     # move ticks behind plots, -10000 is the far value in campixel
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
-    map!(topscene, labels_positions, scene.viewport, scene.camera.projectionview,
-            tick_segments, ticklabels, attr(:ticklabelpad)) do pxa, pv, ticksegs, ticklabs, pad
+    map!(
+        topscene, labels_positions, scene.viewport, scene.camera.projectionview,
+        tick_segments, ticklabels, attr(:ticklabelpad)
+    ) do pxa, pv, ticksegs, ticklabs, pad
 
         o = (origin(pxa) - origin(topscene.viewport[]))
 
@@ -606,7 +632,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
 
         N = min(length(ticklabs), length(points))
-        Tuple{Any,Point2f}[(ticklabs[i], points[i]) for i in 1:N]
+        Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
@@ -619,7 +645,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
     end
 
-    ticklabels_text = text!(topscene, labels_positions, align = align,
+    ticklabels_text = text!(
+        topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
     )
@@ -627,13 +654,14 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     translate!(ticklabels_text, 0, 0, 1000)
 
     label_position = Observable(Point2f(0))
-    label_rotation = Observable(0f0)
+    label_rotation = Observable(0.0f0)
     label_align = Observable((:center, :top))
 
-    onany(topscene,
-            scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
-            attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
-            ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
+    onany(
+        topscene,
+        scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+    ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         o = (origin(pxa) - origin(topscene.viewport[]))
 
@@ -667,18 +695,20 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
             (min1 ⊻ min2 ⊻ revdim) ? 1 : -1
         end
 
-        a = pi/2
+        a = pi / 2
 
         # get the vector pointing from the axis in the direction of the label anchor
-        offset_vec = (Makie.Mat2f(cos(a), sin(a), -sin(a), cos(a)) *
-            Makie.GeometryBasics.normalize(diffsign * diff))
+        offset_vec = (
+            Makie.Mat2f(cos(a), sin(a), -sin(a), cos(a)) *
+                Makie.GeometryBasics.normalize(diffsign * diff)
+        )
 
         # calculate the label offset from the axis midpoint
         plus_offset = midpoint + labeloffset * offset_vec
 
         offset_ang = atan(offset_vec[2], offset_vec[1])
-        offset_ang_90deg = offset_ang + pi/2
-        offset_ang_90deg_alwaysup = ((offset_ang + pi/2 + pi/2) % pi) - pi/2
+        offset_ang_90deg = offset_ang + pi / 2
+        offset_ang_90deg_alwaysup = ((offset_ang + pi / 2 + pi / 2) % pi) - pi / 2
 
         # # prefer rotated left 90deg to rotated right 90deg
         slight_flip = offset_ang_90deg_alwaysup < -deg2rad(88)
@@ -707,7 +737,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(topscene, label_position,
+    label = text!(
+        topscene, label_position,
         text = attr(:label),
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
@@ -722,7 +753,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
-    if (dim1, dim2, dim3) == (1, 2, 3)
+    return if (dim1, dim2, dim3) == (1, 2, 3)
         Point(v1, v2, v3)
     elseif (dim1, dim2, dim3) == (2, 3, 1)
         Point(v3, v1, v2)
@@ -735,19 +766,23 @@ end
 
 function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim1]) *
-        string((:x, :y, :z)[dim2]) * string(sym))
+    dimsym(sym) = Symbol(
+        string((:x, :y, :z)[dim1]) *
+            string((:x, :y, :z)[dim2]) * string(sym)
+    )
     attr(sym) = getproperty(ax, dimsym(sym))
 
     rect = lift(limits) do lims
         mi = minimum(lims)
         ma = maximum(lims)
-        Polygon([
-            Point2(mi[dim1], mi[dim2]),
-            Point2(ma[dim1], mi[dim2]),
-            Point2(ma[dim1], ma[dim2]),
-            Point2(mi[dim1], ma[dim2])
-        ])
+        Polygon(
+            [
+                Point2(mi[dim1], mi[dim2]),
+                Point2(ma[dim1], mi[dim2]),
+                Point2(ma[dim1], ma[dim2]),
+                Point2(mi[dim1], ma[dim2]),
+            ]
+        )
     end
 
     plane_offset = lift(limits, min3) do lims, mi3
@@ -759,7 +794,8 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
 
     plane = Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2])
 
-    panel = poly!(scene, rect, inspectable = false,
+    panel = poly!(
+        scene, rect, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
@@ -778,8 +814,10 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
     return panel
 end
 
-function hidexdecorations!(ax::Axis3;
-    label = true, ticklabels = true, ticks = true, grid = true)
+function hidexdecorations!(
+        ax::Axis3;
+        label = true, ticklabels = true, ticks = true, grid = true
+    )
 
     if label
         ax.xlabelvisible = false
@@ -800,11 +838,13 @@ function hidexdecorations!(ax::Axis3;
     #     ax.xminorticksvisible = false
     # end
 
-    ax
+    return ax
 end
 
-function hideydecorations!(ax::Axis3;
-    label = true, ticklabels = true, ticks = true, grid = true)
+function hideydecorations!(
+        ax::Axis3;
+        label = true, ticklabels = true, ticks = true, grid = true
+    )
 
     if label
         ax.ylabelvisible = false
@@ -825,7 +865,7 @@ function hideydecorations!(ax::Axis3;
     #     ax.yminorticksvisible = false
     # end
 
-    ax
+    return ax
 end
 
 """
@@ -834,8 +874,10 @@ end
 Hide decorations of the z-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
 """
-function hidezdecorations!(ax::Axis3;
-    label = true, ticklabels = true, ticks = true, grid = true)
+function hidezdecorations!(
+        ax::Axis3;
+        label = true, ticklabels = true, ticks = true, grid = true
+    )
 
     if label
         ax.zlabelvisible = false
@@ -856,40 +898,47 @@ function hidezdecorations!(ax::Axis3;
     #     ax.zminorticksvisible = false
     # end
 
-    ax
+    return ax
 end
 
-function hidedecorations!(ax::Axis3;
-    label = true, ticklabels = true, ticks = true, grid = true)
+function hidedecorations!(
+        ax::Axis3;
+        label = true, ticklabels = true, ticks = true, grid = true
+    )
 
-    hidexdecorations!(ax; label = label, ticklabels = ticklabels,
-        ticks = ticks, grid = grid)
-    hideydecorations!(ax; label = label, ticklabels = ticklabels,
-        ticks = ticks, grid = grid)
-    hidezdecorations!(ax; label = label, ticklabels = ticklabels,
-        ticks = ticks, grid = grid)
+    hidexdecorations!(
+        ax; label = label, ticklabels = ticklabels,
+        ticks = ticks, grid = grid
+    )
+    hideydecorations!(
+        ax; label = label, ticklabels = ticklabels,
+        ticks = ticks, grid = grid
+    )
+    hidezdecorations!(
+        ax; label = label, ticklabels = ticklabels,
+        ticks = ticks, grid = grid
+    )
 
-    ax
+    return ax
 end
 
 function hidespines!(ax::Axis3)
     ax.xspinesvisible = false
     ax.yspinesvisible = false
     ax.zspinesvisible = false
-    ax
+    return ax
 end
-
 
 
 # this is so users can do limits = (x1, x2, y1, y2, z1, z2)
 function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
-    (lims[1:2], lims[3:4], lims[5:6])
+    return (lims[1:2], lims[3:4], lims[5:6])
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any, Any})
     _convert_single_limit(x) = x
     _convert_single_limit(x::Interval) = endpoints(x)
-    map(_convert_single_limit, lims)
+    return map(_convert_single_limit, lims)
 end
 
 
@@ -899,12 +948,14 @@ function xautolimits(ax::Axis3)
     if isnothing(xlims)
         xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
     else
-        xlims = expandlimits(xlims,
+        xlims = expandlimits(
+            xlims,
             ax.xautolimitmargin[][1],
             ax.xautolimitmargin[][2],
-            identity)
+            identity
+        )
     end
-    xlims
+    return xlims
 end
 
 function yautolimits(ax::Axis3)
@@ -913,12 +964,14 @@ function yautolimits(ax::Axis3)
     if isnothing(ylims)
         ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
     else
-        ylims = expandlimits(ylims,
+        ylims = expandlimits(
+            ylims,
             ax.yautolimitmargin[][1],
             ax.yautolimitmargin[][2],
-            identity)
+            identity
+        )
     end
-    ylims
+    return ylims
 end
 
 function zautolimits(ax::Axis3)
@@ -927,12 +980,14 @@ function zautolimits(ax::Axis3)
     if isnothing(zlims)
         zlims = (ax.targetlimits[].origin[3], ax.targetlimits[].origin[3] + ax.targetlimits[].widths[3])
     else
-        zlims = expandlimits(zlims,
+        zlims = expandlimits(
+            zlims,
             ax.zautolimitmargin[][1],
             ax.zautolimitmargin[][2],
-            identity)
+            identity
+        )
     end
-    zlims
+    return zlims
 end
 
 Makie.xlims!(ax::Axis3, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
@@ -954,7 +1009,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
 
     ax.limits.val = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
-    nothing
+    return nothing
 end
 
 function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, Nothing}})
@@ -972,7 +1027,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
 
     ax.limits.val = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
-    nothing
+    return nothing
 end
 
 function Makie.zlims!(ax::Axis3, zlims)
@@ -990,7 +1045,7 @@ function Makie.zlims!(ax::Axis3, zlims)
 
     ax.limits.val = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
-    nothing
+    return nothing
 end
 
 
@@ -1003,7 +1058,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis3, xlims, ylims, zlims)
     Makie.xlims!(ax, xlims)
     Makie.ylims!(ax, ylims)
-    Makie.zlims!(ax, zlims)
+    return Makie.zlims!(ax, zlims)
 end
 
 """
@@ -1016,7 +1071,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis3, x1, x2, y1, y2, z1, z2)
     Makie.xlims!(ax, x1, x2)
     Makie.ylims!(ax, y1, y2)
-    Makie.zlims!(ax, z1, z2)
+    return Makie.zlims!(ax, z1, z2)
 end
 
 """
@@ -1030,107 +1085,107 @@ function limits!(ax::Axis3, rect::Rect3)
     xmax, ymax, zmax = maximum(rect)
     Makie.xlims!(ax, xmin, xmax)
     Makie.ylims!(ax, ymin, ymax)
-    Makie.zlims!(ax, zmin, zmax)
+    return Makie.zlims!(ax, zmin, zmax)
 end
 
 function attribute_examples(::Type{Axis3})
-    Dict(
+    return Dict(
         :aspect => [
             Example(
                 code = """
-                    fig = Figure()
+                fig = Figure()
 
-                    Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
-                    Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
-                    Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
-                    Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
+                Axis3(fig[1, 1], aspect = (1, 1, 1), title = "aspect = (1, 1, 1)")
+                Axis3(fig[1, 2], aspect = (2, 1, 1), title = "aspect = (2, 1, 1)")
+                Axis3(fig[2, 1], aspect = (1, 2, 1), title = "aspect = (1, 2, 1)")
+                Axis3(fig[2, 2], aspect = (1, 1, 2), title = "aspect = (1, 1, 2)")
 
-                    fig
-                    """
+                fig
+                """
             ),
             Example(
                 code = """
-                    using FileIO
+                using FileIO
 
-                    fig = Figure()
+                fig = Figure()
 
-                    brain = load(assetpath("brain.stl"))
+                brain = load(assetpath("brain.stl"))
 
-                    ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
-                    ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
+                ax1 = Axis3(fig[1, 1], aspect = :equal, title = "aspect = :equal")
+                ax2 = Axis3(fig[1, 2], aspect = :data, title = "aspect = :data")
 
-                    for ax in [ax1, ax2]
-                        mesh!(ax, brain, color = :gray80)
-                    end
+                for ax in [ax1, ax2]
+                    mesh!(ax, brain, color = :gray80)
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :viewmode => [
             Example(
                 code = """
-                    fig = Figure()
+                fig = Figure()
 
-                    for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
-                        for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
+                for (i, viewmode) in enumerate([:fit, :fitzoom, :stretch])
+                    for (j, elevation) in enumerate([0.1, 0.2, 0.3] .* pi)
 
-                            Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
+                        Label(fig[i, 1:3, Top()], "viewmode = \$(repr(viewmode))", font = :bold)
 
-                            # show the extent of each cell using a box
-                            Box(fig[i, j], strokewidth = 0, color = :gray95)
+                        # show the extent of each cell using a box
+                        Box(fig[i, j], strokewidth = 0, color = :gray95)
 
-                            ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
-                            hidedecorations!(ax)
+                        ax = Axis3(fig[i, j]; viewmode, elevation, protrusions = 0, aspect = :equal)
+                        hidedecorations!(ax)
 
-                        end
                     end
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :perspectiveness => [
             Example(
                 code = """
-                    fig = Figure()
+                fig = Figure()
 
-                    for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
-                        ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
-                            title = ":perspectiveness = \$(perspectiveness)")
-                        hidedecorations!(ax)
-                    end
+                for (i, perspectiveness) in enumerate(range(0, 1, length = 6))
+                    ax = Axis3(fig[fldmod1(i, 3)...]; perspectiveness, protrusions = (0, 0, 0, 15),
+                        title = ":perspectiveness = \$(perspectiveness)")
+                    hidedecorations!(ax)
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :azimuth => [
             Example(
                 code = """
-                    fig = Figure()
+                fig = Figure()
 
-                    for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
-                        Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
-                            title = "azimuth = \$(azimuth)π", viewmode = :fit)
-                    end
+                for (i, azimuth) in enumerate([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+                    Axis3(fig[fldmod1(i, 3)...], azimuth = azimuth * pi,
+                        title = "azimuth = \$(azimuth)π", viewmode = :fit)
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :elevation => [
             Example(
                 code = """
-                    fig = Figure()
+                fig = Figure()
 
-                    for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
-                        Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
-                            title = "elevation = \$(elevation)π", viewmode = :fit)
-                    end
+                for (i, elevation) in enumerate([0, 0.05, 0.1, 0.15, 0.2, 0.25])
+                    Axis3(fig[fldmod1(i, 3)...], elevation = elevation * pi,
+                        title = "elevation = \$(elevation)π", viewmode = :fit)
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :xreversed => [
@@ -1155,39 +1210,39 @@ function attribute_examples(::Type{Axis3})
         :yreversed => [
             Example(
                 code = """
-                    using FileIO
+                using FileIO
 
-                    fig = Figure()
+                fig = Figure()
 
-                    brain = load(assetpath("brain.stl"))
+                brain = load(assetpath("brain.stl"))
 
-                    ax1 = Axis3(fig[1, 1], title = "yreversed = false")
-                    ax2 = Axis3(fig[2, 1], title = "yreversed = true", yreversed = true)
-                    for ax in [ax1, ax2]
-                        mesh!(ax, brain, color = getindex.(brain.position, 2))
-                    end
+                ax1 = Axis3(fig[1, 1], title = "yreversed = false")
+                ax2 = Axis3(fig[2, 1], title = "yreversed = true", yreversed = true)
+                for ax in [ax1, ax2]
+                    mesh!(ax, brain, color = getindex.(brain.position, 2))
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :zreversed => [
             Example(
                 code = """
-                    using FileIO
+                using FileIO
 
-                    fig = Figure()
+                fig = Figure()
 
-                    brain = load(assetpath("brain.stl"))
+                brain = load(assetpath("brain.stl"))
 
-                    ax1 = Axis3(fig[1, 1], title = "zreversed = false")
-                    ax2 = Axis3(fig[2, 1], title = "zreversed = true", zreversed = true)
-                    for ax in [ax1, ax2]
-                        mesh!(ax, brain, color = getindex.(brain.position, 3))
-                    end
+                ax1 = Axis3(fig[1, 1], title = "zreversed = false")
+                ax2 = Axis3(fig[2, 1], title = "zreversed = true", zreversed = true)
+                for ax in [ax1, ax2]
+                    mesh!(ax, brain, color = getindex.(brain.position, 3))
+                end
 
-                    fig
-                    """
+                fig
+                """
             ),
         ],
         :protrusions => [

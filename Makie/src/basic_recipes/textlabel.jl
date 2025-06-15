@@ -147,31 +147,31 @@ Plots the given text(s) with a background(s) at the given position(s).
     depth_shift = 0.0
 end
 
-convert_arguments(::Type{<: TextLabel}, args...) = convert_arguments(Text, args...)
-convert_arguments(::Type{<: TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
-convert_arguments(::Type{<: TextLabel}, p::VecTypes, str) = ([(str, p)],)
-convert_arguments(::Type{<: TextLabel}, ps::AbstractVector{<: VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
-convert_arguments(::Type{<: TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]), )
-convert_arguments(::Type{<: TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]), )
+convert_arguments(::Type{<:TextLabel}, args...) = convert_arguments(Text, args...)
+convert_arguments(::Type{<:TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
+convert_arguments(::Type{<:TextLabel}, p::VecTypes, str) = ([(str, p)],)
+convert_arguments(::Type{<:TextLabel}, ps::AbstractVector{<:VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
+convert_arguments(::Type{<:TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]),)
+convert_arguments(::Type{<:TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]),)
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractString}})
     textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
-    plot
+    return plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
     textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
-    plot
+    return plot
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
-    register_computation!(plot.attributes, [:converted_1], [:real_text, :real_position]) do (str_pos, ), changed, cached
+    register_computation!(plot.attributes, [:converted_1], [:real_text, :real_position]) do (str_pos,), changed, cached
         text = first.(str_pos)
         pos = last.(str_pos)
         return (text, pos)
     end
     textlabel!(plot, Attributes(plot), plot.real_position, text = plot.real_text)
-    plot
+    return plot
 end
 
 
@@ -179,7 +179,7 @@ function text_boundingbox_transforms(string_bbs::Vector, limits, padding, keep_a
     (l, r, b, t) = padding
     transformations = map(string_bbs) do bbox
         z = Float64(minimum(bbox)[3])
-        bbox = Rect2d(minimum(bbox)[Vec(1,2)] .- (l, b), widths(bbox)[Vec(1,2)] .+ (l, b) .+ (r, t))
+        bbox = Rect2d(minimum(bbox)[Vec(1, 2)] .- (l, b), widths(bbox)[Vec(1, 2)] .+ (l, b) .+ (r, t))
         scale = widths(bbox) ./ widths(limits)
         if keep_aspect
             scale = Vec2d(maximum(scale))
@@ -194,7 +194,7 @@ function text_boundingbox_transforms(string_bbs::Vector, limits, padding, keep_a
 end
 
 
-function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
+function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
     # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
 
     # Coerce poly to generate the correct mesh type
@@ -222,7 +222,7 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
         stroke_depth_shift = plot.depth_shift,
         # move poly slightly behind - this is unnecessary atm because we also
         # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 2f-7, plot, plot.depth_shift),
+        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
         fxaa = plot.fxaa,
         visible = plot.visible,
         transparency = plot.transparency,
@@ -243,19 +243,19 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     pixel_pos = Observable(Point3f[])
     pixel_z = Observable(0.0)
     onany(
-            plot, plot[1],
-            camera(scene).projectionview, viewport(scene),
-            plot.model, plot.transformation.transform_func,
-            plot.space, plot.draw_on_top, #, native_tp.markerspace,
-            update = true
-        ) do positions, pv, vp, m, tf, s, draw_on_top #, ms
+        plot, plot[1],
+        camera(scene).projectionview, viewport(scene),
+        plot.model, plot.transformation.transform_func,
+        plot.space, plot.draw_on_top, #, native_tp.markerspace,
+        update = true
+    ) do positions, pv, vp, m, tf, s, draw_on_top #, ms
         cam = Ref(camera(parent_scene(plot)))
         transformed = apply_transform_and_model(plot, positions)
         # Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
         px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
         if draw_on_top
             N = length(px_pos)
-            pixel_pos[] = [Point3f(p[1], p[2], (i-N) * 0.02) for (i, p) in enumerate(px_pos)]
+            pixel_pos[] = [Point3f(p[1], p[2], (i - N) * 0.02) for (i, p) in enumerate(px_pos)]
             pixel_z[] = 10_000
         else
             # help CairoMakie a bit by moving the minimum z to translate
@@ -310,12 +310,12 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
     end
 
     translation_scale_z = map(
-            plot,
-            plot.shape_limits, plot.padding, plot.keep_aspect,
-            pixel_pos, fast_string_boundingboxes_obs(tp),
-            # these are difficult because they are not in markerspace but always pixel space...
-            tp.strokewidth, tp.glowwidth
-        ) do limits, padding, keep_aspect, positions, bbs, sw, gw
+        plot,
+        plot.shape_limits, plot.padding, plot.keep_aspect,
+        pixel_pos, fast_string_boundingboxes_obs(tp),
+        # these are difficult because they are not in markerspace but always pixel space...
+        tp.strokewidth, tp.glowwidth
+    ) do limits, padding, keep_aspect, positions, bbs, sw, gw
 
         # fast_string_boundingboxes() skips positions which we add here manually
         # without the z translation so that we can translate!() the plot instead
@@ -335,17 +335,17 @@ function plot!(plot::TextLabel{<: Tuple{<: AbstractVector{<: Point}}})
             translation, scale, z = transformations[i]
 
             if shape isa Rect && cornerradius > 0
-                mini = scale .* minimum(shape) .+ translation[Vec(1,2)]
+                mini = scale .* minimum(shape) .+ translation[Vec(1, 2)]
                 ws = scale .* widths(shape)
                 element = roundedrectvertices(Rect(mini, ws), cornerradius, cornervertices)
             elseif hasmethod(shape, (Vec2d, Vec2d))
                 element = shape(translation, scale)
             else
                 verts = convert_arguments(PointBased(), shape)[1]
-                element = Point2f[scale .* p .+ translation[Vec(1,2)] for p in verts]
+                element = Point2f[scale .* p .+ translation[Vec(1, 2)] for p in verts]
             end
 
-            elements[i] = [to_ndim(Point3f, p, 0) + Point3f(0,0,z) for p in coordinates(element)]
+            elements[i] = [to_ndim(Point3f, p, 0) + Point3f(0, 0, z) for p in coordinates(element)]
         end
 
         return elements
@@ -356,5 +356,5 @@ end
 
 # TODO: maybe back-transform?
 data_limits(p::TextLabel) = data_limits(p.plots[end])
-data_limits(p::TextLabel{<: Tuple{<: AbstractVector{<: Point}}}) = Rect3d(p[1][])
+data_limits(p::TextLabel{<:Tuple{<:AbstractVector{<:Point}}}) = Rect3d(p[1][])
 boundingbox(p::TextLabel, space::Symbol) = apply_transform_and_model(p, data_limits(p))

@@ -10,11 +10,11 @@ abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
 # for print_array because we defined it as <: Base.AbstractArray
 function Base.show(io::IO, p::AbstractPattern)
-    print(io, typeof(p), "()")
+    return print(io, typeof(p), "()")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
-    print(io, typeof(p), "()")
+    return print(io, typeof(p), "()")
 end
 
 struct ImagePattern <: AbstractPattern{RGBAf}
@@ -32,10 +32,10 @@ Creates an `ImagePattern` from an `image` (a matrix of colors) or a `mask`
 texture it. If a `mask` is passed, one can specify to colors between which colors are
 interpolated.
 """
-Pattern(img::Array{<: Colorant, 2}) = ImagePattern(img)
+Pattern(img::Array{<:Colorant, 2}) = ImagePattern(img)
 
-function Pattern(mask::Matrix{<: Real}; color1=RGBAf(0,0,0,1), color2=RGBAf(1,1,1,0))
-    img = map(x -> to_color(color1) * x + to_color(color2) * (1-x), mask)
+function Pattern(mask::Matrix{<:Real}; color1 = RGBAf(0, 0, 0, 1), color2 = RGBAf(1, 1, 1, 0))
+    img = map(x -> to_color(color1) * x + to_color(color2) * (1 - x), mask)
     return ImagePattern(img)
 end
 
@@ -67,8 +67,8 @@ tiles next to each other. This effectively controls the gap between lines.
 - `backgroundcolor`: The background color.
 """
 function LinePattern(;
-        direction = Vec2f(1), width = 2f0, tilesize = (10,10), origin = Vec2f(0),
-        linecolor = RGBAf(0,0,0,1), backgroundcolor = RGBAf(1,1,1,0),
+        direction = Vec2f(1), width = 2.0f0, tilesize = (10, 10), origin = Vec2f(0),
+        linecolor = RGBAf(0, 0, 0, 1), backgroundcolor = RGBAf(1, 1, 1, 0),
         background_color = nothing, shift = nothing
     )
     if !isnothing(background_color)
@@ -106,18 +106,18 @@ to the keyword arguments for `LinePattern`.
 """
 Pattern(style::String; kwargs...) = Pattern(style[1]; kwargs...)
 function Pattern(style::Char = '/'; kwargs...)
-    if style == '/'
-        LinePattern(direction=Vec2f(1); kwargs...)
+    return if style == '/'
+        LinePattern(direction = Vec2f(1); kwargs...)
     elseif style == '\\'
-        LinePattern(direction=Vec2f(1, -1); kwargs...)
+        LinePattern(direction = Vec2f(1, -1); kwargs...)
     elseif style == '-'
-        LinePattern(direction=Vec2f(1, 0); kwargs...)
+        LinePattern(direction = Vec2f(1, 0); kwargs...)
     elseif style == '|'
-        LinePattern(direction=Vec2f(0, 1); kwargs...)
+        LinePattern(direction = Vec2f(0, 1); kwargs...)
     elseif style == 'x'
-        LinePattern(direction=[Vec2f(1), Vec2f(1, -1)]; kwargs...)
+        LinePattern(direction = [Vec2f(1), Vec2f(1, -1)]; kwargs...)
     elseif style == '+'
-        LinePattern(direction=[Vec2f(1, 0), Vec2f(0, 1)]; kwargs...)
+        LinePattern(direction = [Vec2f(1, 0), Vec2f(0, 1)]; kwargs...)
     else
         throw(ArgumentError("Pattern('$style') not defined, use one of ['/', '\\', '-', '|', 'x', '+']"))
     end
@@ -146,7 +146,7 @@ function to_image(p::LinePattern)
         end
     end
 
-    AA_radius = 1/sqrt(2)
+    AA_radius = 1 / sqrt(2)
     c1 = p.colors[1]; c2 = p.colors[2]
     # If both colors are at the same alpha we want to do: c1 * (1-f) + c2 * f
     # If c2 is at alpha = 0 we want: RGBAf(c1.rgb, c1.a * (1-f)) (or - f?)
@@ -155,17 +155,17 @@ function to_image(p::LinePattern)
     c2 = ifelse(c2.alpha == 0, RGBAf(c1.r, c1.g, c1.b, 0), c2)
     return map(sdf) do dist
         f = Float32(clamp((dist + AA_radius) / (2 * AA_radius), 0, 1))
-        return c1 * (1f0 - f) + c2 * f
+        return c1 * (1.0f0 - f) + c2 * f
     end
 end
 
 
 # Consider applying model[] here too, so that patterns move with translate too
 function pattern_offset(projectionview::Mat4, resolution::Vec2, yflip = false)
-    clip = projectionview * Point4f(0,0,0,1)
+    clip = projectionview * Point4f(0, 0, 0, 1)
     # clip space is -1..1, screen space 0..w so we need 0.5 prefactor
-    maybe_flip = (1f0, ifelse(yflip, -1f0, 1f0))
-    return 0.5f0 .* maybe_flip .* resolution .* clip[Vec(1,2)] / clip[4]
+    maybe_flip = (1.0f0, ifelse(yflip, -1.0f0, 1.0f0))
+    return 0.5f0 .* maybe_flip .* resolution .* clip[Vec(1, 2)] / clip[4]
 end
 
 function pattern_uv_transform(uv_transform, projectionview::Mat4, resolution::Vec2, pattern::AbstractPattern)

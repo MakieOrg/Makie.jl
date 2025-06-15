@@ -2,11 +2,11 @@ using Makie
 using Makie.GeometryBasics
 
 @testset "poly_convert with empty Float64 polygon vector" begin
-    polygons = Observable(Polygon{2,Float64}[])
+    polygons = Observable(Polygon{2, Float64}[])
 
     @testset "Unit test: poly_convert" begin
-        @test Makie.poly_convert(Polygon{2,Float64}[], identity) isa Vector{<: GeometryBasics.Mesh{2,Float64}}
-    end    
+        @test Makie.poly_convert(Polygon{2, Float64}[], identity) isa Vector{<:GeometryBasics.Mesh{2, Float64}}
+    end
 
     @testset "Integration test: do this with `poly`" begin
         poly(polygons)

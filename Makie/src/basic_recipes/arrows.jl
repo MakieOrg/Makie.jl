@@ -10,26 +10,26 @@ convert_arguments(::ArrowLike, pos::VecTypes{N}, dir::VecTypes{N}) where {N} = (
 function convert_arguments(::ArrowLike, pos::AbstractArray, dir::AbstractArray)
     return (
         convert_arguments(PointBased(), vec(pos))[1],
-        convert_arguments(PointBased(), vec(dir))[1]
+        convert_arguments(PointBased(), vec(dir))[1],
     )
 end
 
 function convert_arguments(::ArrowLike, x, y, u, v)
     return (
         convert_arguments(PointBased(), vec(x), vec(y))[1],
-        convert_arguments(PointBased(), vec(u), vec(v))[1]
+        convert_arguments(PointBased(), vec(u), vec(v))[1],
     )
 end
 function convert_arguments(::ArrowLike, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     return (
         vec(Point{2, float_type(x, y)}.(x, y')),
-        convert_arguments(PointBased(), vec(u), vec(v))[1]
+        convert_arguments(PointBased(), vec(u), vec(v))[1],
     )
 end
 function convert_arguments(::ArrowLike, x, y, z, u, v, w)
     return (
         convert_arguments(PointBased(), vec(x), vec(y), vec(z))[1],
-        convert_arguments(PointBased(), vec(u), vec(v), vec(w))[1]
+        convert_arguments(PointBased(), vec(u), vec(v), vec(w))[1],
     )
 end
 
@@ -45,8 +45,10 @@ function convert_arguments(::ArrowLike, x::RealVector, y::RealVector, f::Functio
     return (vec(points), vec(f_out))
 end
 
-function convert_arguments(::ArrowLike, x::RealVector, y::RealVector, z::RealVector,
-                           f::Function)
+function convert_arguments(
+        ::ArrowLike, x::RealVector, y::RealVector, z::RealVector,
+        f::Function
+    )
     points = [Point3{float_type(x, y, z)}(x, y, z) for x in x, y in y, z in z]
     f_out = Point3{float_type(x, y, z)}.(f.(points))
     return (vec(points), vec(f_out))
@@ -92,7 +94,7 @@ function _process_arrow_arguments(pos, pos_or_dir, align, lengthscale, norm, arg
 end
 
 function mixin_arrow_attributes()
-    @DocumentedAttributes begin
+    return @DocumentedAttributes begin
         "Sets the color of the arrow. Can be overridden separately using `tailcolor`, `shaftcolor` and `tipcolor`."
         color = :black
         "Sets the color of the arrow tail. Defaults to `color`"
@@ -120,7 +122,7 @@ function mixin_arrow_attributes()
         """
         Scales the length of the arrow (as calculated from directions) by some factor.
         """
-        lengthscale = 1f0
+        lengthscale = 1.0f0
         "If set to true, normalizes `directions`."
         normalize = false
         "Controls whether the second argument is interpreted as a :direction or as an :endpoint."
@@ -151,12 +153,12 @@ export quiver, quiver!
 _is_3d_arrows(::Union{Scene, Block, GridLayoutBase.GridPosition}, args...) = _is_3d_arrows(args...)
 _is_3d_arrows(::VecTypes{2}, ::VecTypes{2}) = false
 _is_3d_arrows(::VecTypes{3}, ::VecTypes{3}) = true
-_is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::AbstractArray{<: VecTypes{2}}) = false
-_is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::AbstractArray{<: VecTypes{3}}) = true
+_is_3d_arrows(::AbstractArray{<:VecTypes{2}}, ::AbstractArray{<:VecTypes{2}}) = false
+_is_3d_arrows(::AbstractArray{<:VecTypes{3}}, ::AbstractArray{<:VecTypes{3}}) = true
 _is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray) = false
 _is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray, ::AbstractArray) = true
-_is_3d_arrows(::AbstractArray{<: VecTypes{2}}, ::Function) = false
-_is_3d_arrows(::AbstractArray{<: VecTypes{3}}, ::Function) = true
+_is_3d_arrows(::AbstractArray{<:VecTypes{2}}, ::Function) = false
+_is_3d_arrows(::AbstractArray{<:VecTypes{3}}, ::Function) = true
 _is_3d_arrows(::AbstractArray, ::AbstractArray, ::Function) = false
 _is_3d_arrows(::AbstractArray, ::AbstractArray, ::AbstractArray, ::Function) = true
 
@@ -178,7 +180,7 @@ function resolve_arrows_deprecation(mutating, args, kwargs)
 
         # Old 2d defaults
         theme = current_default_theme()
-        get!(kwargs,:shaftwidth, 1.0)
+        get!(kwargs, :shaftwidth, 1.0)
         get!(kwargs, :tipwidth, 0.45 * theme[:markersize][])
         get!(kwargs, :tiplength, 0.45 * theme[:markersize][])
     end
@@ -210,7 +212,7 @@ function resolve_arrows_deprecation(mutating, args, kwargs)
 
     # Set up some old defaults
     if is3d
-        get!(kwargs, :shaftradius, map(x -> 0.5*x, kwargs[:tipradius]))
+        get!(kwargs, :shaftradius, map(x -> 0.5 * x, kwargs[:tipradius]))
     end
     get!(kwargs, :minshaftlength, 0.0)
 
@@ -224,8 +226,8 @@ end
 function arrowtail2d(l, W, metrics)
     w = metrics.shaftwidth
     return Point2f[
-        (0, 0), (-0.3W, -0.5W), (l - 0.3W, -0.5W), (l, 0-.5w),
-        (l, 0.5w), (l - 0.3W, 0.5W), (-0.3W, 0.5W)
+        (0, 0), (-0.3W, -0.5W), (l - 0.3W, -0.5W), (l, 0 - 0.5w),
+        (l, 0.5w), (l - 0.3W, 0.5W), (-0.3W, 0.5W),
     ]
 end
 
@@ -250,7 +252,7 @@ $_arrow_args_docs
     The arrow shape extends left to right (towards increasing x) and should be defined
     in a 0..1 by -0.5..0.5 range.
     """
-    shaft = Rect2f(0,-0.5,1,1)
+    shaft = Rect2f(0, -0.5, 1, 1)
     """
     Sets the shape of the arrow tip in units relative to the tipwidth and tiplength.
     The arrow shape extends left to right (towards increasing x) and should be defined
@@ -310,7 +312,7 @@ $_arrow_args_docs
     mixin_colormap_attributes()...
 end
 
-conversion_trait(::Type{<: Arrows2D}) = ArrowLike()
+conversion_trait(::Type{<:Arrows2D}) = ArrowLike()
 
 function _get_arrow_shape(f::Function, length, width, metrics)
     nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)
@@ -348,10 +350,11 @@ function Makie.plot!(plot::Arrows2D)
     )
 
     scene = parent_scene(plot)
-    arrowpoints_px = map(plot,
-            startpoints_directions, transform_func_obs(plot), plot.model, plot.space,
-            plot.markerspace, scene.camera.projectionview, scene.viewport
-        ) do (ps, dirs), tf, model, space, markerspace, pv, vp
+    arrowpoints_px = map(
+        plot,
+        startpoints_directions, transform_func_obs(plot), plot.model, plot.space,
+        plot.markerspace, scene.camera.projectionview, scene.viewport
+    ) do (ps, dirs), tf, model, space, markerspace, pv, vp
 
         startpoints = transform_and_project(plot, space, markerspace, ps, Point2f)
         endpoints = transform_and_project(plot, space, markerspace, ps .+ dirs, Point2f)
@@ -364,8 +367,8 @@ function Makie.plot!(plot::Arrows2D)
         shaftlength, minshaftlength, maxshaftlength, shaftwidth,
         tiplength, tipwidth,
     ) do (startpoints, directions), taillength, tailwidth,
-        shaftlength, minshaftlength, maxshaftlength, shaftwidth,
-        tiplength, tipwidth
+            shaftlength, minshaftlength, maxshaftlength, shaftwidth,
+            tiplength, tipwidth
 
         metrics = Vector{NTuple{6, Float64}}(undef, length(startpoints))
         for i in eachindex(metrics)
@@ -392,7 +395,7 @@ function Makie.plot!(plot::Arrows2D)
         should_render = (
             taillength[] > 0 && tailwidth[] > 0,
             shaftwidth[] > 0,
-            tiplength[] > 0 && tipwidth[] > 0
+            tiplength[] > 0 && tipwidth[] > 0,
         )
 
         for i in eachindex(metrics)
@@ -405,7 +408,7 @@ function Makie.plot!(plot::Arrows2D)
 
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
-                mesh  = _get_arrow_shape(shape, len, max(0, width - mask), metrics[i])
+                mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics[i])
                 _apply_arrow_transform!(mesh, R, startpoint, offset)
                 push!(meshes, mesh)
 
@@ -421,11 +424,12 @@ function Makie.plot!(plot::Arrows2D)
     map!(to_color, plot.attributes, :nan_color, :converted_nan_color)
 
     for key in [:tailcolor, :shaftcolor, :tipcolor]
-        map!(plot.attributes, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
-                ) do maybe_color, default, colorscale, alpha
+        map!(
+            plot.attributes, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
+        ) do maybe_color, default, colorscale, alpha
 
             color = to_color(default_automatic(maybe_color, default))
-            return if color isa Union{Real, AbstractArray{<: Real}}
+            return if color isa Union{Real, AbstractArray{<:Real}}
                 clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
             elseif color isa AbstractArray
                 add_alpha.(color, alpha)
@@ -435,8 +439,10 @@ function Makie.plot!(plot::Arrows2D)
         end
     end
 
-    map!(plot.attributes, [:colorrange, :colorscale, :scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor],
-            :scaled_colorrange) do colorrange, colorscale, colors...
+    map!(
+        plot.attributes, [:colorrange, :colorscale, :scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor],
+        :scaled_colorrange
+    ) do colorrange, colorscale, colors...
 
         if !any(c -> c isa Union{Real, AbstractArray{<:Real}}, colors)
             return nothing
@@ -456,20 +462,23 @@ function Makie.plot!(plot::Arrows2D)
 
     # Convert to actual RGBA colors
     for key in [:tailcolor, :shaftcolor, :tipcolor]
-        add_computation!(plot.attributes, Val(:computed_color), Symbol(:scaled_, key),
-            output_name = Symbol(:calculated_, key), nan_color = :converted_nan_color)
+        add_computation!(
+            plot.attributes, Val(:computed_color), Symbol(:scaled_, key),
+            output_name = Symbol(:calculated_, key), nan_color = :converted_nan_color
+        )
     end
 
     # map to poly vertices
-    calc_colors = map(plot,
-            arrow_metrics, plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor
-        ) do metrics, colors...
+    calc_colors = map(
+        plot,
+        arrow_metrics, plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor
+    ) do metrics, colors...
 
         output = RGBA[]
         should_render = (
             taillength[] > 0 && tailwidth[] > 0,
             shaftwidth[] > 0,
-            tiplength[] > 0 && tipwidth[] > 0
+            tiplength[] > 0 && tipwidth[] > 0,
         )
         for i in eachindex(metrics)
             for j in 1:3
@@ -484,9 +493,11 @@ function Makie.plot!(plot::Arrows2D)
     # mesh anti-aliasing in GLMakie gets pretty bad when the mesh becomes very
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
-    poly!(plot, plot.attributes, meshes, space = plot.markerspace, color = calc_colors,
+    poly!(
+        plot, plot.attributes, meshes, space = plot.markerspace, color = calc_colors,
         strokecolor = calc_colors, strokewidth = plot.strokemask;
-        transformation = :nothing, alpha = 1)
+        transformation = :nothing, alpha = 1
+    )
 
     return plot
 end
@@ -522,19 +533,19 @@ $_arrow_args_docs
     Rect3(-0.5, -0.5, 0.0, 1, 1, 1) where +z is direction of the arrow. Anything
     outside this box will extend outside the area designated to the arrow tail.
     """
-    tail = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+    tail = Cylinder(Point3f(0, 0, 0), Point3f(0, 0, 1), 0.5)
     """
     Sets the mesh of the arrow shaft. The mesh should be defined in a
     Rect3(-0.5, -0.5, 0.0, 1, 1, 1) where +z is direction of the arrow. Anything
     outside this box will extend outside the area designated to the arrow shaft.
     """
-    shaft = Cylinder(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+    shaft = Cylinder(Point3f(0, 0, 0), Point3f(0, 0, 1), 0.5)
     """
     Sets the mesh of the arrow tip. The mesh should be defined in a
     Rect3(-0.5, -0.5, 0.0, 1, 1, 1) where +z is direction of the arrow. Anything
     outside this box will extend outside the area designated to the arrow tip.
     """
-    tip = Cone(Point3f(0,0,0), Point3f(0,0,1), 0.5)
+    tip = Cone(Point3f(0, 0, 0), Point3f(0, 0, 1), 0.5)
 
     """
     Sets the width of the arrow tail. This width may get scaled down if the total arrow length
@@ -591,7 +602,7 @@ $_arrow_args_docs
     mixin_colormap_attributes()...
 end
 
-conversion_trait(::Type{<: Arrows3D}) = ArrowLike()
+conversion_trait(::Type{<:Arrows3D}) = ArrowLike()
 
 to_mesh(m::GeometryBasics.Mesh, n) = m
 function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
@@ -608,7 +619,7 @@ function Makie.plot!(plot::Arrows3D)
         tail, taillength, tailradius,
         shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
         tip, tiplength, tipradius,
-        visible
+        visible,
     )
 
     tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
@@ -621,9 +632,9 @@ function Makie.plot!(plot::Arrows3D)
     )
 
     startpoints_directions = map(
-            plot, _startpoints_directions,
-            transform_func_obs(plot), transformationmatrix(plot)
-        ) do (ps, dirs), tf, model
+        plot, _startpoints_directions,
+        transform_func_obs(plot), transformationmatrix(plot)
+    ) do (ps, dirs), tf, model
 
         startpoints = apply_transform_and_model(plot, ps)
         endpoints = apply_transform_and_model(plot, ps .+ dirs)
@@ -704,15 +715,18 @@ function Makie.plot!(plot::Arrows3D)
     shaft_m = map(to_mesh, plot, shaft, quality)
     tip_m = map(to_mesh, plot, tip, quality)
 
-    meshscatter!(plot, plot.attributes,
+    meshscatter!(
+        plot, plot.attributes,
         map(first, plot, startpoints_directions), marker = tail_m, markersize = tail_scale, rotation = rot,
         color = tailcolor, visible = tail_visible, transformation = :nothing, transform_marker = false,
     )
-    meshscatter!(plot, plot.attributes,
+    meshscatter!(
+        plot, plot.attributes,
         shaft_pos, marker = shaft_m, markersize = shaft_scale, rotation = rot,
         color = shaftcolor, visible = visible, transformation = :nothing, transform_marker = false,
     )
-    meshscatter!(plot, plot.attributes,
+    meshscatter!(
+        plot, plot.attributes,
         tip_pos, marker = tip_m, markersize = tip_scale, rotation = rot,
         color = tipcolor, visible = tip_visible, transformation = :nothing, transform_marker = false,
     )

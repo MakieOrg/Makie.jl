@@ -12,9 +12,11 @@ end
 @testset "Parsing Q/q" begin
     x0, y0, x1, y1, x, y = 5.0, 0.0, 14.6, 5.2, 13.0, 15.9
     C = Makie.quadratic_curve_to(x0, y0, x1, y1, x, y)
-    C2 = Makie.CurveTo(x0 + 2 / 3 * (x1 - x0), y0 + 2 / 3 * (y1 - y0), x + 2 / 3 * (x1 - x),
-                       y + 2 / 3 * (y1 - y),
-                       x, y)
+    C2 = Makie.CurveTo(
+        x0 + 2 / 3 * (x1 - x0), y0 + 2 / 3 * (y1 - y0), x + 2 / 3 * (x1 - x),
+        y + 2 / 3 * (y1 - y),
+        x, y
+    )
     @test C == C2
     path = BezierPath("M 5.0 0.0 Q 14.6 5.2 13.0 15.9")
     @test path.commands[2] == C2

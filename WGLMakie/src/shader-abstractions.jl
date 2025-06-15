@@ -5,7 +5,7 @@ to_vertex_dict(dict::Dict) = dict
 
 to_face_buffer(xx::Vector{UInt32}) = xx
 function to_face_buffer(xx)
-    collect(reinterpret(UInt32, xx))
+    return collect(reinterpret(UInt32, xx))
 end
 
 function to_vertex_dict(mesh::AbstractGeometry)
@@ -41,7 +41,7 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
         for (name, v) in uniforms
             endswith(string(name), "_getter") && continue
             t_str = try
-               SA.type_string(context, v)
+                SA.type_string(context, v)
             catch e
                 @error("Type $(typeof(v)) isn't supported for uniform: $(name)")
                 rethrow(e)
@@ -75,7 +75,7 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
     vert = SA.vertex_header(context) * src
     frag = SA.fragment_header(context) * uniform_block * fragshader
     up(x) = replace(x, "#version 300 es" => "")
-    filter!(((name,_),)-> !endswith(string(name), "_getter"), uniforms)
+    filter!(((name, _),) -> !endswith(string(name), "_getter"), uniforms)
     return Dict(
         :vertexarrays => serialize_named_buffer(vertex_dict),
         :faces => to_face_buffer(vertex_dict[:faces]),
@@ -86,7 +86,7 @@ function create_shader(vertex_attr, uniforms, vertshader, fragshader)
 end
 
 function create_instanced_shader(per_instance, vertexbuffers, uniforms, vertshader, fragshader)
-   instance_attributes = sprint() do io
+    instance_attributes = sprint() do io
         println(io, "\n// Per instance attributes: ")
         for (name, element) in per_instance
             SA.input_element(WebGL(), SA.Vertex(), io, element, name, uniforms)

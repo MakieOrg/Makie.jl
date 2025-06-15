@@ -52,12 +52,12 @@ end
 # _computed_extendlow
 # _computed_extendhigh
 
-_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels+1))
+_get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
     @assert issorted(edges)
-    edges
+    return edges
 end
 
 conversion_trait(::Type{<:Contourf}) = VertexGrid()
@@ -166,16 +166,16 @@ function compute_contourf_colormap(levels, cmap, elow, ehigh)
     _cmap = to_colormap(cmap)
 
     if elow === :auto && ehigh !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[2:end]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[2:end]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow !== :auto
-        cm_base = cgrad(_cmap, n + 1; categorical=true)[1:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 1; categorical = true)[1:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     elseif ehigh === :auto && elow === :auto
-        cm_base = cgrad(_cmap, n + 2; categorical=true)[2:(end - 1)]
-        cm = cgrad(cm_base, levels_scaled; categorical=true)
+        cm_base = cgrad(_cmap, n + 2; categorical = true)[2:(end - 1)]
+        cm = cgrad(cm_base, levels_scaled; categorical = true)
     else
-        cm = cgrad(_cmap, levels_scaled; categorical=true)
+        cm = cgrad(_cmap, levels_scaled; categorical = true)
     end
     return cm
 end
@@ -214,7 +214,7 @@ function register_contourf_computations!(graph, argname)
     return
 end
 
-function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <: Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
+function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}, <:Tuple{<:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}, <:AbstractMatrix{<:Real}}}})
     graph = c.attributes
 
     register_contourf_computations!(graph, :z)
@@ -224,17 +224,18 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         @assert issorted(levels)
         is_extended_low && pushfirst!(levels, -Inf)
         is_extended_high && push!(levels, Inf)
-        lows = levels[1:end-1]
+        lows = levels[1:(end - 1)]
         highs = levels[2:end]
 
         calculate_contourf_polys!(polys, colors, xs, ys, zs, lows, highs)
         return
     end
 
-    register_computation!(graph,
-            [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
-            [:polys, :computed_colors]
-        ) do (xs, ys, zs, levels, _low, _high), changed, cached
+    register_computation!(
+        graph,
+        [:x, :y, :z, :computed_levels, :extendlow, :extendhigh],
+        [:polys, :computed_colors]
+    ) do (xs, ys, zs, levels, _low, _high), changed, cached
         is_extended_low = !isnothing(_low)
         is_extended_high = !isnothing(_high)
         if isnothing(cached)
@@ -247,7 +248,8 @@ function Makie.plot!(c::Contourf{<:Union{<: Tuple{<:AbstractVector{<:Real}, <:Ab
         return (polys, colors)
     end
 
-    poly!(c,
+    return poly!(
+        c,
         c.polys,
         colormap = c.computed_colormap,
         colorrange = c.computed_colorrange,
@@ -283,8 +285,9 @@ function _group_polys(points, ids)
     # check if a single point is contained, saving some computation time
     containment_matrix = [
         p1 != p2 &&
-        PolygonOps.inpolygon(first(p1), p2) == 1
-        for p1 in polys_lastdouble, p2 in polys_lastdouble]
+            PolygonOps.inpolygon(first(p1), p2) == 1
+            for p1 in polys_lastdouble, p2 in polys_lastdouble
+    ]
 
     unclassified_polyindices = collect(1:size(containment_matrix, 1))
     # @show unclassified_polyindices
@@ -333,5 +336,5 @@ function _group_polys(points, ids)
         unclassified_polyindices = unclassified_polyindices[to_keep]
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
-    groups
+    return groups
 end

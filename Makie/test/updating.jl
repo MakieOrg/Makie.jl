@@ -1,4 +1,3 @@
-
 function test_updates(obs)
     updates = Ref(0)
     on(obs) do _
@@ -9,16 +8,18 @@ end
 
 points = Point2f.(1:4, 1:4)
 
-plot_types = [(f=scatter, args=(points,), new_kw=(; color=2:5), kw=(; color=1:4)),
-              (f=lines, args=(points,), new_kw=(; color=2:5), kw=(; color=1:4)),
-              (f=linesegments, args=(points,), new_kw=(; color=2:5), kw=(; color=1:4)),
-              (f=meshscatter, args=(points,), new_kw=(; color=2:5), kw=(; color=1:4)),
-              (f=text, args=(points,), new_kw=(; color=2:5), kw=(; text=fill("aa", 4), color=1:4)),
-              (f=mesh, args=(Rect2f(0, 0, 1, 1),), new_kw=(; color=2:5), kw=(; color=1:4)),
-              (f=heatmap, args=(rand(4, 4),), new_args=(rand(4, 4),)),
-              (f=image, args=(rand(4, 4),), new_args=(rand(4, 4),)),
-              (f=surface, args=(rand(4, 4),), new_args=(rand(4, 4),)),
-              (f=volume, args=(rand(4, 4, 4),), new_args=(rand(4, 4, 4),))]
+plot_types = [
+    (f = scatter, args = (points,), new_kw = (; color = 2:5), kw = (; color = 1:4)),
+    (f = lines, args = (points,), new_kw = (; color = 2:5), kw = (; color = 1:4)),
+    (f = linesegments, args = (points,), new_kw = (; color = 2:5), kw = (; color = 1:4)),
+    (f = meshscatter, args = (points,), new_kw = (; color = 2:5), kw = (; color = 1:4)),
+    (f = text, args = (points,), new_kw = (; color = 2:5), kw = (; text = fill("aa", 4), color = 1:4)),
+    (f = mesh, args = (Rect2f(0, 0, 1, 1),), new_kw = (; color = 2:5), kw = (; color = 1:4)),
+    (f = heatmap, args = (rand(4, 4),), new_args = (rand(4, 4),)),
+    (f = image, args = (rand(4, 4),), new_args = (rand(4, 4),)),
+    (f = surface, args = (rand(4, 4),), new_args = (rand(4, 4),)),
+    (f = volume, args = (rand(4, 4, 4),), new_args = (rand(4, 4, 4),)),
+]
 
 @testset "checking updates" begin
     for nt in plot_types
@@ -42,7 +43,7 @@ plot_types = [(f=scatter, args=(points,), new_kw=(; color=2:5), kw=(; color=1:4)
 end
 
 @testset "text updating colormap" begin
-    f, a, p = text(fill("aa", 10); position=rand(Point2f, 10), color=1:10)
+    f, a, p = text(fill("aa", 10); position = rand(Point2f, 10), color = 1:10)
     p.colormap = :blues
     colors = to_colormap(:blues)
     @test p.text_color[][1] == colors[1]

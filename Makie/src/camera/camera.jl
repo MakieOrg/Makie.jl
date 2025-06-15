@@ -1,13 +1,15 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(9) do i
-        getfield(x, i)
-    end...)
+    return Camera(
+        ntuple(9) do i
+            getfield(x, i)
+        end...
+    )
 end
 
 function Base.:(==)(a::Camera, b::Camera)
-    to_value(a.view) == to_value(b.view) &&
-    to_value(a.projection) == to_value(b.projection) &&
-    to_value(a.resolution) == to_value(b.resolution)
+    return to_value(a.view) == to_value(b.view) &&
+        to_value(a.projection) == to_value(b.projection) &&
+        to_value(a.resolution) == to_value(b.resolution)
 end
 
 function Base.show(io::IO, camera::Camera)
@@ -19,7 +21,7 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
     println(io, "  eyeposition: ", camera.eyeposition[])
-    println(io, "  view direction: ", camera.view_direction[])
+    return println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
@@ -48,7 +50,7 @@ struct CameraLift{F, Args}
 end
 
 function (cl::CameraLift{F, Args})(val) where {F, Args}
-    cl.f(map(to_value, cl.args)...)
+    return cl.f(map(to_value, cl.args)...)
 end
 
 """
@@ -57,12 +59,12 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=0)
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority = 0)
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = on(cl, n, priority=priority)
+        obs = on(cl, n, priority = priority)
         push!(camera.steering_nodes, obs)
     end
     return f
@@ -83,7 +85,7 @@ function Camera(viewport)
         view,
         proj,
         proj_view,
-        lift(a-> Vec2f(widths(a)), viewport),
+        lift(a -> Vec2f(widths(a)), viewport),
         Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
         Observable(Vec3f(0, 1, 0)),
@@ -97,7 +99,7 @@ function set_proj_view!(camera::Camera, projection, view)
     # But nobody should do that, right?
     # GLMakie uses map on view
     camera.view[] = view
-    camera.projection[] = projection
+    return camera.projection[] = projection
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -138,21 +140,21 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     register_computation!(graph, [:viewport], [:scene_origin, :resolution]) do (viewport,), changed, cached
-        return (Vec2d(origin(viewport)), Vec2d(widths(viewport)),)
+        return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))
     end
 
     # Camera matrices
     # TODO: consider aliasing view, projection
     register_computation!(
-            graph, [:projection, :view], [:world_to_clip, :world_to_eye, :eye_to_clip]
-        ) do (projection, view), changed, cached
+        graph, [:projection, :view], [:world_to_clip, :world_to_eye, :eye_to_clip]
+    ) do (projection, view), changed, cached
 
         return (projection * view, view, projection)
     end
     register_computation!(
-            graph, [:projection, :view],
-            [:clip_to_world, :eye_to_world, :clip_to_eye]
-        ) do (projection, view), changed, cached
+        graph, [:projection, :view],
+        [:clip_to_world, :eye_to_world, :clip_to_eye]
+    ) do (projection, view), changed, cached
 
         # are there accuracy issues with inv first?
         iview = inv(view)
@@ -163,10 +165,12 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     # constants
     # TODO: consider aliasing identities
     register_computation!(
-            graph, Symbol[],
-            [:world_to_world, :eye_to_eye, :pixel_to_pixel, :relative_to_relative, :clip_to_clip,
-                :clip_to_relative, :relative_to_clip]
-        ) do input, changed, cached
+        graph, Symbol[],
+        [
+            :world_to_world, :eye_to_eye, :pixel_to_pixel, :relative_to_relative, :clip_to_clip,
+            :clip_to_relative, :relative_to_clip,
+        ]
+    ) do input, changed, cached
         id = Mat4d(I)
         clip_to_relative = Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1)
         relative_to_clip = Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1)
@@ -176,9 +180,9 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     # pixel
 
     register_computation!(
-            graph, [:resolution],
-            [:pixel_to_clip, :clip_to_pixel, :pixel_to_relative, :relative_to_pixel]
-        ) do (resolution,), changed, cached
+        graph, [:resolution],
+        [:pixel_to_clip, :clip_to_pixel, :pixel_to_relative, :relative_to_pixel]
+    ) do (resolution,), changed, cached
         nearclip = -10_000.0
         farclip = 10_000.0
         w, h = resolution
@@ -188,28 +192,28 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         co = (farclip + nearclip) * id
         # Same as orthographicprojection(w, h, nearclip, farclip) but inlined
         # so we don't need to recalculate 1 / w etc
-        pixel_to_clip     = Mat4d(2iw,0,0,0,  0,2ih,0,0,  0,0,2id,0,  -1,-1,co,1)
-        clip_to_pixel     = Mat4d(0.5w,0,0,0, 0,0.5h,0,0, 0,0,0.5d,0, 0.5w,0.5h,0,1)
-        pixel_to_relative = Mat4d(iw,0,0,0,   0,ih,0,0,   0,0,id,0,   0,0,co,1)
-        relative_to_pixel = Mat4d(w,0,0,0,    0,h,0,0,    0,0,d,0,   0,0,co,1)
+        pixel_to_clip = Mat4d(2iw, 0, 0, 0, 0, 2ih, 0, 0, 0, 0, 2id, 0, -1, -1, co, 1)
+        clip_to_pixel = Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, 0.5d, 0, 0.5w, 0.5h, 0, 1)
+        pixel_to_relative = Mat4d(iw, 0, 0, 0, 0, ih, 0, 0, 0, 0, id, 0, 0, 0, co, 1)
+        relative_to_pixel = Mat4d(w, 0, 0, 0, 0, h, 0, 0, 0, 0, d, 0, 0, 0, co, 1)
         return (pixel_to_clip, clip_to_pixel, pixel_to_relative, relative_to_pixel)
     end
 
     # Pretty common for scatter (space to markerspace = pixel, markerspace to clip)
     # So let's keep it separated
     register_computation!(
-            graph, [:world_to_clip, :clip_to_pixel],
-            [:world_to_pixel]
-        ) do (world_to_clip, clip_to_pixel), changed, cached
+        graph, [:world_to_clip, :clip_to_pixel],
+        [:world_to_pixel]
+    ) do (world_to_clip, clip_to_pixel), changed, cached
         world_to_pixel = clip_to_pixel * world_to_clip
         return (world_to_pixel,)
     end
 
     # Uncommon cases
     register_computation!(
-            graph, [:world_to_clip, :eye_to_clip, :clip_to_pixel, :clip_to_relative],
-            [:world_to_relative, :eye_to_relative, :eye_to_pixel]
-        ) do (world_to_clip, eye_to_clip, clip_to_pixel, clip_to_relative), changed, cached
+        graph, [:world_to_clip, :eye_to_clip, :clip_to_pixel, :clip_to_relative],
+        [:world_to_relative, :eye_to_relative, :eye_to_pixel]
+    ) do (world_to_clip, eye_to_clip, clip_to_pixel, clip_to_relative), changed, cached
         world_to_relative = clip_to_relative * world_to_clip
         eye_to_relative = clip_to_relative * eye_to_clip
         eye_to_pixel = clip_to_pixel * eye_to_clip
@@ -217,9 +221,9 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     register_computation!(
-            graph, [:clip_to_world, :clip_to_eye, :relative_to_clip, :pixel_to_clip],
-            [:relative_to_world, :relative_to_eye, :pixel_to_world, :pixel_to_eye]
-        ) do (clip_to_world, clip_to_eye, relative_to_clip, pixel_to_clip), changed, cached
+        graph, [:clip_to_world, :clip_to_eye, :relative_to_clip, :pixel_to_clip],
+        [:relative_to_world, :relative_to_eye, :pixel_to_world, :pixel_to_eye]
+    ) do (clip_to_world, clip_to_eye, relative_to_clip, pixel_to_clip), changed, cached
         relative_to_world = clip_to_world * relative_to_clip
         relative_to_eye = clip_to_eye * relative_to_clip
         pixel_to_world = clip_to_world * pixel_to_clip

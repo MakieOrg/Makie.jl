@@ -13,7 +13,7 @@
     scene = Scene()
     pick(scene, (50, 50))
     pick(scene)
-    pick(scene, Rect2i(10,10,20,20))
+    pick(scene, Rect2i(10, 10, 20, 20))
     pick(scene, 10, 20, 5)
     Makie.pick_sorted(scene, (10, 20), 5)
     @test Makie._PICK_COUNTER[] == init + 5
@@ -24,7 +24,7 @@
         prev = Makie._PICK_COUNTER[]
 
         f = Figure(size = (600, 450))
-        m = Menu(f[1,1], options = string.(1:10))
+        m = Menu(f[1, 1], options = string.(1:10))
         Makie.update_state_before_display!(f)
 
         # open menu

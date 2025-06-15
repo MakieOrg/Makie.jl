@@ -18,7 +18,7 @@ end
 
 Makie.set_active_backend!(VideoBackend)
 # We need a screenconfig in the theme for every backend!
-set_theme!(VideoBackend=Attributes())
+set_theme!(VideoBackend = Attributes())
 
 
 mktempdir() do tempdir
@@ -54,10 +54,10 @@ mktempdir() do tempdir
                 (:compression, 20, ["mkv", "gif"], ["mp4", "webm"]),
                 (:profile, "high422", ["mkv", "webm", "gif"], ["mp4"]),
                 (
-                    kwarg=:pixel_format,
-                    value="yuv420p",
-                    warn_fmts=["mkv", "webm", "gif"],
-                    no_warn_fmts=["mp4"],
+                    kwarg = :pixel_format,
+                    value = "yuv420p",
+                    warn_fmts = ["mkv", "webm", "gif"],
+                    no_warn_fmts = ["mp4"],
                 ),
             ]
 

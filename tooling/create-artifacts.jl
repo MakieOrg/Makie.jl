@@ -23,20 +23,20 @@ function upload_release(tag, path)
 end
 
 function create_tar_gz(source_dir::AbstractString, output_path::AbstractString)
-    open(GzipCompressorStream, output_path, "w") do io
+    return open(GzipCompressorStream, output_path, "w") do io
         Tar.create(source_dir, io)
     end
 end
 
 function sha256sum(path::AbstractString)
-    open(path, "r") do io
+    return open(path, "r") do io
         bytes2hex(sha256(io))
     end
 end
 
 function upload_artifact(folder, name, tag, repo)
     artifact_hash = create_artifact() do artifact_path
-        cp(folder, artifact_path; force=true)
+        cp(folder, artifact_path; force = true)
     end
     @info "Created artifact $(name) with hash $(artifact_hash)"
     targz = abspath("$(name).tar.gz")
@@ -44,13 +44,13 @@ function upload_artifact(folder, name, tag, repo)
     sha256 = sha256sum(targz)
 
     @info "Created tar.gz archive for $(name)"
-    cd(repo) do
+    return cd(repo) do
         artifact_url = upload_release(tag, targz)
         bind_artifact!(
             "Artifact.toml",
             name, artifact_hash;
             download_info = [(artifact_url, sha256)],
-            force=true
+            force = true
         )
     end
 end

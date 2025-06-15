@@ -1,4 +1,3 @@
-
 """
     volumeslices(x, y, z, v)
 
@@ -21,15 +20,15 @@ function Makie.plot!(plot::VolumeSlices)
         mx, Mx = extrema(x)
         my, My = extrema(y)
         mz, Mz = extrema(z)
-        Rect3(mx, my, mz, Mx-mx, My-my, Mz-mz)
+        Rect3(mx, my, mz, Mx - mx, My - my, Mz - mz)
     end
 
     axes = :x, :y, :z
     parent_vis = ComputePipeline.get_observable!(plot.visible)
-    for (ax, p, r, (X, Y)) ∈ zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
+    for (ax, p, r, (X, Y)) in zip(axes, (:yz, :xz, :xy), (x, y, z), ((y, z), (x, z), (x, y)))
         hmap = heatmap!(
             plot, Attributes(plot), X, Y, zeros(length(X[]), length(Y[])),
-            colorrange = plot.computed_colorrange, visible=parent_vis
+            colorrange = plot.computed_colorrange, visible = parent_vis
         )
         update = i -> begin
             transform!(hmap, (p, r[][i]))
@@ -45,5 +44,5 @@ function Makie.plot!(plot::VolumeSlices)
 
     linesegments!(plot, bbox, color = plot.bbox_color, visible = plot.bbox_visible, inspectable = false)
 
-    plot
+    return plot
 end

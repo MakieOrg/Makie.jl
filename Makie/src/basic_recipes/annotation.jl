@@ -23,7 +23,7 @@ baremodule Ann # bare for cleanest tab-completion behavior
             length::Float64 = 8.0
             angle::Float64 = deg2rad(60)
             color = Makie.automatic
-            linewidth::Union{Makie.Automatic,Float64} = Makie.automatic
+            linewidth::Union{Makie.Automatic, Float64} = Makie.automatic
         end
 
         Base.@kwdef struct Head
@@ -156,7 +156,7 @@ function closest_point_on_rectangle(r::Rect2, p)
         Point2(clamped_x, y1),
         Point2(clamped_x, y2),
         Point2(x1, clamped_y),
-        Point2(x2, clamped_y)
+        Point2(x2, clamped_y),
     ]
 
     return argmin(c -> norm(c - p), candidates)
@@ -235,7 +235,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
 
     text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace, transform_func(p)) do _, _, _, labelspace, _
         string_bbs = Rect2f.(fast_string_boundingboxes(txt))
-        @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0,0))
+        @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0, 0))
         points = plot_to_screen(p, textpositions[])
         screenpoints_target[] = points
         screenpoints_label[] = if labelspace === :data
@@ -281,15 +281,15 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     end
 
     plotspecs = lift(
-            p,
-            text_bbs,
-            p.path,
-            p.clipstart,
-            p.shrink,
-            p.style,
-            p.color,
-            p.linewidth,
-        ) do text_bbs, pth, clipstart, shrink, style, color, linewidth
+        p,
+        text_bbs,
+        p.path,
+        p.clipstart,
+        p.shrink,
+        p.style,
+        p.color,
+        p.linewidth,
+    ) do text_bbs, pth, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]
         broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, offsets[]) do text_bb, p2, conn, clipstart, offset
             offset_bb = text_bb + offset
@@ -335,7 +335,7 @@ function distance_point_outside_rect(p::Point2, rect::Rect2)
     elseif px >= rr
         px - rr
     else
-       zero(px)
+        zero(px)
     end
 
     dy = if py < rb
@@ -380,19 +380,22 @@ Base.@kwdef struct LabelRepel
     padding::Vec2d = Vec2d(6, 5)
 end
 
-function calculate_best_offsets!(::Automatic, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-    maxiter::Union{Automatic,Int},
-    reset::Bool,
-    labelspace::Symbol,
-)
+function calculate_best_offsets!(
+        ::Automatic, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+        maxiter::Union{Automatic, Int},
+        reset::Bool,
+        labelspace::Symbol,
+    )
     if !(length(offsets) == length(textpositions) == length(textpositions_offset) == length(text_bbs))
-        error("""
-        Mismatching array sizes:
-            - offsets: $(length(offsets))
-            - textpositions: $(length(textpositions))
-            - textpositions_offset: $(length(textpositions_offset))
-            - text_bbs: $(length(text_bbs))
-        """)
+        error(
+            """
+            Mismatching array sizes:
+                - offsets: $(length(offsets))
+                - textpositions: $(length(textpositions))
+                - textpositions_offset: $(length(textpositions_offset))
+                - text_bbs: $(length(text_bbs))
+            """
+        )
     end
 
     if reset
@@ -407,11 +410,12 @@ function calculate_best_offsets!(::Automatic, offsets::Vector{<:Vec2}, textposit
     # giving one component of the position could be cool, like only x in data space, but this
     # doesn't really work because projection into screen space needs x and y together
 
-    calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, labelspace)
+    return calculate_best_offsets!(LabelRepel(), offsets, textpositions, textpositions_offset, text_bbs, bbox; maxiter, labelspace)
 end
 
-function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        maxiter::Union{Automatic,Int},
+function calculate_best_offsets!(
+        algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+        maxiter::Union{Automatic, Int},
         labelspace::Symbol,
     )
 
@@ -427,7 +431,7 @@ function calculate_best_offsets!(algorithm::LabelRepel, offsets::Vector{<:Vec2},
 
         # Compute repulsive forces between bounding boxes
         for i in 1:length(offset_bbs)
-            for j in i+1:length(offset_bbs)
+            for j in (i + 1):length(offset_bbs)
                 bb1 = offset_bbs[i]
                 bb2 = offset_bbs[j]
                 overlap = algorithm.repel * rect_overlap(bb1, bb2)
@@ -490,7 +494,7 @@ function interval_overlap(al, ar, bl, br)
             -(rr - rl)
         end
     end
-    a_is_left ? vl : -vl
+    return a_is_left ? vl : -vl
 end
 
 function rect_overlap(r1, r2)
@@ -532,31 +536,37 @@ Makie.data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1
 Makie.boundingbox(p::Annotation, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
-    BezierPath([
-        MoveTo(p1),
-        LineTo(p2),
-    ])
+    return BezierPath(
+        [
+            MoveTo(p1),
+            LineTo(p2),
+        ]
+    )
 end
 
 function connection_path(::Ann.Paths.Corner, p1, p2)
     dir = p2 - p1
-    if abs(dir[1]) > abs(dir[2])
-        BezierPath([
-            MoveTo(p1),
-            LineTo(p1[1], p2[2]),
-            LineTo(p2),
-        ])
+    return if abs(dir[1]) > abs(dir[2])
+        BezierPath(
+            [
+                MoveTo(p1),
+                LineTo(p1[1], p2[2]),
+                LineTo(p2),
+            ]
+        )
     else
-        BezierPath([
-            MoveTo(p1),
-            LineTo(p2[1], p1[2]),
-            LineTo(p2),
-        ])
+        BezierPath(
+            [
+                MoveTo(p1),
+                LineTo(p2[1], p1[2]),
+                LineTo(p2),
+            ]
+        )
     end
 end
 
 function startpoint(::Ann.Paths.Arc, text_bb, p2)
-    center(text_bb)
+    return center(text_bb)
 end
 
 function circle_centers(p1::Point2, p2::Point2, r)
@@ -566,7 +576,7 @@ function circle_centers(p1::Point2, p2::Point2, r)
     end
 
     m = (p1 + p2) / 2
-    h = sqrt(r^2 - (d/2)^2)
+    h = sqrt(r^2 - (d / 2)^2)
 
     # Perpendicular direction
     dir = p2 - p1
@@ -600,9 +610,9 @@ function arc_center_radius(p1::Point2, p2::Point2, x::Real)
 end
 
 function connection_path(ca::Ann.Paths.Arc, p1, p2)
-    abs(ca.height) < 1e-4 && return connection_path(Ann.Paths.Line(), p1, p2)
+    abs(ca.height) < 1.0e-4 && return connection_path(Ann.Paths.Line(), p1, p2)
     radius, center = arc_center_radius(p1, p2, ca.height)
-    BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
+    return BezierPath([MoveTo(p1), EllipticalArc(center, radius, radius, 0.0, atan(reverse(p1 - center)...), atan(reverse(p2 - center)...))])
 end
 
 function shrink_path(path, shrink)
@@ -615,7 +625,7 @@ function shrink_path(path, shrink)
 
     if shrink[1] > 0
         for i in 2:length(path.commands)
-            p_prev = endpoint(path.commands[i-1])
+            p_prev = endpoint(path.commands[i - 1])
             intersects, moveto, newcommand = circle_intersection(start.p, shrink[1], p_prev, path.commands[i])
             if !intersects # should mean that the command is contained in the circle because we start at its center
                 if i == length(path.commands)
@@ -624,11 +634,13 @@ function shrink_path(path, shrink)
                 end
                 continue
             else
-                path = BezierPath([
-                    moveto;
-                    newcommand;
-                    @view(path.commands[i+1:end])
-                ])
+                path = BezierPath(
+                    [
+                        moveto;
+                        newcommand;
+                        @view(path.commands[(i + 1):end])
+                    ]
+                )
                 break
             end
         end
@@ -636,7 +648,7 @@ function shrink_path(path, shrink)
 
     if shrink[2] > 0
         for i in length(path.commands):-1:2
-            p_prev = endpoint(path.commands[i-1])
+            p_prev = endpoint(path.commands[i - 1])
             p_end, reversed = reversed_command(p_prev, path.commands[i])
             intersects, moveto, newcommand = circle_intersection(stop, shrink[2], p_end, reversed)
             if !intersects
@@ -647,10 +659,12 @@ function shrink_path(path, shrink)
                 continue
             else
                 _, new_reversed = reversed_command(moveto.p, newcommand)
-                path = BezierPath([
-                    @view(path.commands[1:i-1]);
-                    new_reversed
-                ])
+                path = BezierPath(
+                    [
+                        @view(path.commands[1:(i - 1)]);
+                        new_reversed
+                    ]
+                )
                 break
             end
         end
@@ -689,7 +703,7 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
     c = x1^2 + y1^2 - r^2
 
     # Discriminant
-    discriminant = b^2 - 4*a*c
+    discriminant = b^2 - 4 * a * c
 
     if discriminant < 0
         return false, nothing, nothing
@@ -697,8 +711,8 @@ function circle_intersection(center::Point2, r, p1::Point2, command::LineTo)
 
     # Two solutions for t
     sqrt_discriminant = sqrt(discriminant)
-    t1 = (-b - sqrt_discriminant) / (2*a)
-    t2 = (-b + sqrt_discriminant) / (2*a)
+    t1 = (-b - sqrt_discriminant) / (2 * a)
+    t2 = (-b + sqrt_discriminant) / (2 * a)
 
     # Check if the solutions are within the segment
     t = if 0 <= t2 <= 1
@@ -785,16 +799,18 @@ function clip_path_from_start(path::BezierPath, bbox::Rect2)
     end
 
     for i in 2:length(path.commands)
-        p_prev = endpoint(path.commands[i-1])
+        p_prev = endpoint(path.commands[i - 1])
         is_contained = bbox_containment(bbox, p_prev, path.commands[i])
         is_contained && continue
         intersects, moveto, newcommand = bbox_intersection(bbox, p_prev, path.commands[i])
         if intersects
-            path = BezierPath([
-                moveto;
-                newcommand;
-                @view(path.commands[i+1:end])
-            ])
+            path = BezierPath(
+                [
+                    moveto;
+                    newcommand;
+                    @view(path.commands[(i + 1):end])
+                ]
+            )
             break
         end
     end
@@ -833,7 +849,7 @@ function bbox_intersection(bbox::Rect2, p_prev::Point2, comm::EllipticalArc)
             (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2])),           # Bottom edge
             (Point2d(bbox.origin[1], bbox.origin[2]), Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2])),           # Left edge
             (Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2])), # Right edge
-            (Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2]))  # Top edge
+            (Point2d(bbox.origin[1], bbox.origin[2] + bbox.widths[2]), Point2d(bbox.origin[1] + bbox.widths[1], bbox.origin[2] + bbox.widths[2])),  # Top edge
         )
 
         for (p1, p2) in edges
@@ -872,7 +888,7 @@ function circle_line_intersection(cx, cy, r, p1::Point2, p2::Point2)
 
     discriminant = b^2 - 4 * a * c
     if discriminant < 0
-    return false, nothing, nothing
+        return false, nothing, nothing
     end
 
     sqrt_discriminant = sqrt(discriminant)
@@ -894,7 +910,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
         (Point2d(rx, ry), Point2d(rx + rw, ry)),           # Bottom edge
         (Point2d(rx, ry), Point2d(rx, ry + rh)),           # Left edge
         (Point2d(rx + rw, ry), Point2d(rx + rw, ry + rh)), # Right edge
-        (Point2d(rx, ry + rh), Point2d(rx + rw, ry + rh))  # Top edge
+        (Point2d(rx, ry + rh), Point2d(rx + rw, ry + rh)),  # Top edge
     )
 
     # Helper function to find intersection of two line segments
@@ -979,7 +995,7 @@ function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p
 end
 
 function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2; color, linewidth)
-    [
+    return [
         PlotSpec(:Lines, path; color, linewidth, space = :pixel),
     ]
 end
@@ -990,104 +1006,104 @@ _auto(x, default) = x
 shrinksize(other) = 0.0
 
 function shrinksize(l::Ann.Arrows.Head)
-    l.length * (1 - l.notch)
+    return l.length * (1 - l.notch)
 end
 
 function plotspecs(l::Ann.Arrows.Line, pos; rotation, color, linewidth)
     color = _auto(l.color, color)
     linewidth = _auto(l.linewidth, linewidth)
-    sidelen = l.length / cos(l.angle/2)
-    dir1 = Point2(-cos(l.angle/2 + rotation), -sin(l.angle/2 + rotation))
-    dir2 = Point2(-cos(-l.angle/2 + rotation), -sin(-l.angle/2 + rotation))
+    sidelen = l.length / cos(l.angle / 2)
+    dir1 = Point2(-cos(l.angle / 2 + rotation), -sin(l.angle / 2 + rotation))
+    dir2 = Point2(-cos(-l.angle / 2 + rotation), -sin(-l.angle / 2 + rotation))
     p1 = pos + dir1 * sidelen
     p2 = pos + dir2 * sidelen
-    [
-        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth)
+    return [
+        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
     ]
 end
 
 function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
     color = _auto(h.color, color)
     len = h.length
-    L = 1 / cos(h.angle/2)
-    p1 = L * Point2(-cos(h.angle/2), -sin(h.angle/2))
+    L = 1 / cos(h.angle / 2)
+    p1 = L * Point2(-cos(h.angle / 2), -sin(h.angle / 2))
     p2 = Point2(-(1 - h.notch), 0)
-    p3 = L * Point2(-cos(-h.angle/2), -sin(-h.angle/2))
+    p3 = L * Point2(-cos(-h.angle / 2), -sin(-h.angle / 2))
 
     marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
-    [
-        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len)
+    return [
+        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
     ]
 end
 
 function attribute_examples(::Type{Annotation})
-    Dict(
+    return Dict(
         :shrink => [
             Example(
                 code = raw"""
-                    fig = Figure()
-                    ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false)
-                    shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
-                    for (i, shrink) in enumerate(shrinks)
-                        annotation!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
-                        scatter!(ax, 0, i)
-                    end
-                    fig
-                    """
-            )
+                fig = Figure()
+                ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false)
+                shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
+                for (i, shrink) in enumerate(shrinks)
+                    annotation!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
+                    scatter!(ax, 0, i)
+                end
+                fig
+                """
+            ),
         ],
         :style => [
             Example(
                 code = raw"""
-                    fig = Figure()
-                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                    annotation!(-200, 0, 0, 0, style = Ann.Styles.Line())
-                    annotation!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
-                    annotation!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
-                    annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
-                    fig
-                    """
-            )
+                fig = Figure()
+                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
+                annotation!(-200, 0, 0, 0, style = Ann.Styles.Line())
+                annotation!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
+                annotation!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
+                annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
+                fig
+                """
+            ),
         ],
         :path => [
             Example(
                 code = raw"""
-                    fig = Figure()
-                    ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                    scatter!(ax, fill(0, 4), 0:-1:-3)
-                    annotation!(-200, 0, 0, 0, path = Ann.Paths.Line(), text = "Line()")
-                    annotation!(-200, 0, 0, -1, path = Ann.Paths.Arc(height = 0.1), text = "Arc(height = 0.1)")
-                    annotation!(-200, 0, 0, -2, path = Ann.Paths.Arc(height = 0.3), text = "Arc(height = 0.3)")
-                    annotation!(-200, 30, 0, -3, path = Ann.Paths.Corner(), text = "Corner()")
-                    fig
-                    """
-            )
+                fig = Figure()
+                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
+                scatter!(ax, fill(0, 4), 0:-1:-3)
+                annotation!(-200, 0, 0, 0, path = Ann.Paths.Line(), text = "Line()")
+                annotation!(-200, 0, 0, -1, path = Ann.Paths.Arc(height = 0.1), text = "Arc(height = 0.1)")
+                annotation!(-200, 0, 0, -2, path = Ann.Paths.Arc(height = 0.3), text = "Arc(height = 0.3)")
+                annotation!(-200, 30, 0, -3, path = Ann.Paths.Corner(), text = "Corner()")
+                fig
+                """
+            ),
         ],
         :labelspace => [
             Example(
                 code = raw"""
-                    g(x) = cos(6x) * exp(x)
-                    xs = 0:0.01:4
-                    ys = g.(xs)
+                g(x) = cos(6x) * exp(x)
+                xs = 0:0.01:4
+                ys = g.(xs)
 
-                    f, ax, _ = lines(xs, ys; axis = (; xgridvisible = false, ygridvisible = false))
+                f, ax, _ = lines(xs, ys; axis = (; xgridvisible = false, ygridvisible = false))
 
-                    annotation!(ax, 1, 20, 2.1, g(2.1),
-                        text = "(1, 20)\nlabelspace = :data",
-                        path = Ann.Paths.Arc(0.3),
-                        style = Ann.Styles.LineArrow(),
-                        labelspace = :data
-                    )
+                annotation!(ax, 1, 20, 2.1, g(2.1),
+                    text = "(1, 20)\nlabelspace = :data",
+                    path = Ann.Paths.Arc(0.3),
+                    style = Ann.Styles.LineArrow(),
+                    labelspace = :data
+                )
 
-                    annotation!(ax, -100, -100, 2.65, g(2.65),
-                        text = "(-100, -100)\nlabelspace = :relative_pixel",
-                        path = Ann.Paths.Arc(-0.3),
-                        style = Ann.Styles.LineArrow()
-                    )
+                annotation!(ax, -100, -100, 2.65, g(2.65),
+                    text = "(-100, -100)\nlabelspace = :relative_pixel",
+                    path = Ann.Paths.Arc(-0.3),
+                    style = Ann.Styles.LineArrow()
+                )
 
-                    f
-                    """
-            )
+                f
+                """
+            ),
         ],
     )
 end

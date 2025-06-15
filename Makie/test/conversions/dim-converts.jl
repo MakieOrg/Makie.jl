@@ -6,7 +6,7 @@ using Makie.Dates
     @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
     f, ax, pl = scatter(Categorical(["a", "b", "c"]))
     @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
-    f, ax, pl = scatter(now() .+ range(Second(0); step=Second(5), length=10))
+    f, ax, pl = scatter(now() .+ range(Second(0); step = Second(5), length = 10))
     @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
 end
 
@@ -24,7 +24,7 @@ end
     ax_conversion = Makie.get_conversions(ax)
     @test pl_conversion[2] isa Makie.UnitfulConversion
     @test ax_conversion[2] isa Makie.UnitfulConversion
-    @test pl.plots[1][1][] == Point{2,Float32}.(1:5, 1:5)
+    @test pl.plots[1][1][] == Point{2, Float32}.(1:5, 1:5)
 end
 
 
@@ -56,14 +56,13 @@ end
 end
 
 @testset "Conversion with implicit axis" begin
-    conversion = Makie.CategoricalConversion(; sortby=identity)
-    f, ax, pl = barplot([:a, :b, :c], 1:3; axis=(dim1_conversion=conversion,))
+    conversion = Makie.CategoricalConversion(; sortby = identity)
+    f, ax, pl = barplot([:a, :b, :c], 1:3; axis = (dim1_conversion = conversion,))
     @test ax.dim1_conversion[] == Makie.get_conversions(pl)[1]
     @test conversion == Makie.get_conversions(pl)[1]
     @test ax.scene.conversions[1] == Makie.get_conversions(pl)[1]
     @test pl[1][] == Point.(1:3, 1:3)
 end
-
 
 
 @testset "unit switching" begin
@@ -80,7 +79,7 @@ function test_cleanup(arg)
     f, ax, pl = scatter(obs)
     @test length(obs.listeners) == 1
     delete!(ax, pl)
-    @test length(obs.listeners) == 0
+    return @test length(obs.listeners) == 0
 end
 
 @testset "clean up observables" begin
@@ -91,7 +90,7 @@ end
         test_cleanup(Categorical(["a", "b", "c"]))
     end
     @testset "DateTimeConversion" begin
-        dates = now() .+ range(Second(0); step=Second(5), length=10)
+        dates = now() .+ range(Second(0); step = Second(5), length = 10)
         test_cleanup(dates)
     end
 end

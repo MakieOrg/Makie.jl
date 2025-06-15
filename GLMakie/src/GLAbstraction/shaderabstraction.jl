@@ -1,4 +1,3 @@
-
 const GLContext = Any
 # struct GLContext{T} <: ShaderAbstractions.AbstractContext
 #     context::T

@@ -2,11 +2,11 @@ module Formatters
     using Showoff
 
     function scientific(ticks::AbstractVector)
-        Showoff.showoff(ticks, :scientific)
+        return Showoff.showoff(ticks, :scientific)
     end
 
     function plain(ticks::AbstractVector)
-        try
+        return try
             Showoff.showoff(ticks, :plain)
         catch e
             bt = Base.catch_backtrace()
@@ -22,10 +22,10 @@ using .Formatters
 
 
 to_3tuple(x) = ntuple(i -> x, Val(3))
-to_3tuple(x::NTuple{3,Any}) = x
+to_3tuple(x::NTuple{3, Any}) = x
 
 to_2tuple(x) = ntuple(i -> x, Val(2))
-to_2tuple(x::NTuple{2,Any}) = x
+to_2tuple(x::NTuple{2, Any}) = x
 
 """
     $(SIGNATURES)
@@ -37,12 +37,12 @@ $(ATTRIBUTES)
 """
 @recipe(Axis3D) do scene
 
-    q1 = qrotation(Vec3f(1, 0, 0), -0.5f0*pi)
-    q2 = qrotation(Vec3f(0, 0, 1), 1f0*pi)
+    q1 = qrotation(Vec3f(1, 0, 0), -0.5f0 * pi)
+    q2 = qrotation(Vec3f(0, 0, 1), 1.0f0 * pi)
     tickrotations3d = (
-        qrotation(Vec3f(0,0,1), -1.5pi),
+        qrotation(Vec3f(0, 0, 1), -1.5pi),
         q2,
-        qrotation(Vec3f(1, 0, 0), -0.5pi) * q2
+        qrotation(Vec3f(1, 0, 0), -0.5pi) * q2,
     )
     axisnames_rotation3d = tickrotations3d
     tickalign3d = (
@@ -55,8 +55,8 @@ $(ATTRIBUTES)
     grid_color = RGBAf(0.5, 0.5, 0.5, 0.4)
     grid_thickness = 1
     axis_linewidth = 1.5
-    gridthickness = ntuple(x-> 1f0, Val(3))
-    axislinewidth = ntuple(x->1.5f0, Val(3))
+    gridthickness = ntuple(x -> 1.0f0, Val(3))
+    axislinewidth = ntuple(x -> 1.5f0, Val(3))
     tsize = 5 # in percent
     return Attributes(
         visible = true,
@@ -103,19 +103,19 @@ end
 isaxis(x) = false
 isaxis(x::Axis3D) = true
 
-const Limits{N} = NTuple{N, <:Tuple{<: Number, <: Number}}
+const Limits{N} = NTuple{N, <:Tuple{<:Number, <:Number}}
 
 function default_ticks(limits::Limits, ticks, scale_func::Function)
-    default_ticks.(limits, (ticks,), scale_func)
+    return default_ticks.(limits, (ticks,), scale_func)
 end
 
 default_ticks(limits::Tuple{Number, Number}, ticks, scale_func::Function) = default_ticks(limits..., ticks, scale_func)
 
 function default_ticks(
         lmin::Number, lmax::Number,
-        ticks::AbstractVector{<: Number}, scale_func::Function
+        ticks::AbstractVector{<:Number}, scale_func::Function
     )
-    scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
+    return scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
 end
 
 function default_ticks(
@@ -129,7 +129,7 @@ function default_ticks(
         k_max = 8, # maximum number of ticks
     )
     length(scaled_ticks) == 1 && isnan(scaled_ticks[1]) && return [-Inf, Inf]
-    scaled_ticks
+    return scaled_ticks
 end
 
 function default_ticks(
@@ -145,30 +145,30 @@ function default_ticks(
         # chosen  ticks is not too much bigger than amin - amax:
         strict_span = false,
     )
-    scaled_ticks
+    return scaled_ticks
 end
 
 function default_ticks(x::Automatic, limits::Tuple, n)
-    default_ticks(limits, n, identity)
+    return default_ticks(limits, n, identity)
 end
 
 function default_ticks(ticks::Tuple, limits::Tuple, n::Tuple)
-    default_ticks.(ticks, (limits,), n)
+    return default_ticks.(ticks, (limits,), n)
 end
 
 default_ticks(ticks::Tuple, limits::Limits, n) = default_ticks.(ticks, limits, (n,))
 
 default_ticks(ticks::Tuple, limits::Limits, n::Tuple) = default_ticks.(ticks, limits, n)
 
-default_ticks(ticks::AbstractVector{<: Number}, limits, n) = ticks
+default_ticks(ticks::AbstractVector{<:Number}, limits, n) = ticks
 
 
-function default_labels(x::NTuple{N, Any}, formatter::Function) where N
-    default_labels.(x, formatter)
+function default_labels(x::NTuple{N, Any}, formatter::Function) where {N}
+    return default_labels.(x, formatter)
 end
 
 function default_labels(x::AbstractVector, y::AbstractVector, formatter::Function = Formatters.plain)
-    default_labels.((x, y), formatter)
+    return default_labels.((x, y), formatter)
 end
 
 function default_labels(ticks::AbstractVector, formatter::Function = Formatters.plain)
@@ -184,10 +184,10 @@ end
 default_labels(x::Automatic, ranges, formatter) = default_labels(ranges, formatter)
 default_labels(x::Tuple, ranges::Tuple, formatter) = default_labels.(x, ranges, (formatter,))
 default_labels(x::Tuple, ranges, formatter) = default_labels.(x, (ranges,), (formatter,))
-default_labels(x::AbstractVector{<: AbstractString}, ranges, formatter::Function) = x
-default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, formatter::Function) = x
+default_labels(x::AbstractVector{<:AbstractString}, ranges, formatter::Function) = x
+default_labels(x::AbstractVector{<:AbstractString}, ranges::AbstractVector, formatter::Function) = x
 
-function convert_arguments(::Type{<: Axis3D}, limits::Rect)
+function convert_arguments(::Type{<:Axis3D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
     return (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
 end
@@ -195,7 +195,7 @@ end
 a_length(x::AbstractVector) = length(x)
 a_length(x::Automatic) = x
 
-function calculated_attributes!(::Type{<: Axis3D}, plot)
+function calculated_attributes!(::Type{<:Axis3D}, plot)
     ticks = plot.ticks[]
     args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
     ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
@@ -207,21 +207,21 @@ function calculated_attributes!(::Type{<: Axis3D}, plot)
     return
 end
 
-function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
+function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where {N}
     a, b = extrema(ranges[dim])
     whalf = Float32(((b - a) / 2))
     halfaxis = GeometryBasics.unit(Point{N, Float32}, dim) .* whalf
 
-    origin .+ (halfaxis .+ (normalize(dir) * tgap))
+    return origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
 
-_widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
+_widths(x::Tuple{<:Number, <:Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
 to3tuple(x::Tuple{Any}) = (x[1], x[1], x[1])
 to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
-to3tuple(x) = ntuple(i-> x, Val(3))
+to3tuple(x) = ntuple(i -> x, Val(3))
 
 function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts, args...)
     # make sure we extend all args to 3D
@@ -240,9 +240,9 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     start!(textbuffer)
     start!(linebuffer)
 
-    limit_widths = map(x-> x[2] - x[1], limits)
+    limit_widths = map(x -> x[2] - x[1], limits)
     # pad the drawn limits and use them as the ranges
-    limits = map((lim, p)-> (lim[1] - p, lim[2] + p), limits, limit_widths .* padding)
+    limits = map((lim, p) -> (lim[1] - p, lim[2] + p), limits, limit_widths .* padding)
 
     mini, maxi = first.(limits), last.(limits)
 
@@ -253,7 +253,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
-    offset_indices = Vec(ntuple(i-> ifelse(i != 2, mod1(i + 1, N), 1), N))
+    offset_indices = Vec(ntuple(i -> ifelse(i != 2, mod1(i + 1, N), 1), N))
     # These need the real limits, not (%), to be scale-aware
     titlegap = 0.01limit_widths[offset_indices] .* titlegap
     tgap = 0.01limit_widths[offset_indices] .* tgap
@@ -300,7 +300,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         if showgrid[i]
             c = gridcolors[i]
             thickness = gridthickness[i]
-            for _j = (i + 1):(i + N - 1)
+            for _j in (i + 1):(i + N - 1)
                 j = mod1(_j, N)
                 dir = GeometryBasics.unit(Point{N, Float32}, j)
                 range = ranges[j]
@@ -322,10 +322,14 @@ function plot!(axis::Axis3D)
     scene = get_scene(axis)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point3, transparency = true, markerspace = :data,
-        inspectable = axis.inspectable, visible = axis.visible)
-    linebuffer = LinesegmentBuffer(axis, Point3, transparency = true, inspectable = axis.inspectable,
-        visible = axis.visible)
+    textbuffer = TextBuffer(
+        axis, Point3, transparency = true, markerspace = :data,
+        inspectable = axis.inspectable, visible = axis.visible
+    )
+    linebuffer = LinesegmentBuffer(
+        axis, Point3, transparency = true, inspectable = axis.inspectable,
+        visible = axis.visible
+    )
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))
@@ -333,16 +337,16 @@ function plot!(axis::Axis3D)
     tvals = getindex.((ticks,), (:textcolor, :rotation, :fontsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
-        titlevals..., framevals..., tvals..., axis.padding
+        titlevals..., framevals..., tvals..., axis.padding,
     )
     onany(
         draw_axis3d,
         Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks[].ranges_labels, Observable(axis.fonts), args...; update=true
+        axis[1], axis.ticks[].ranges_labels, Observable(axis.fonts), args...; update = true
     )
     return axis
 end
 
 function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
-    axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
+    return axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
 end

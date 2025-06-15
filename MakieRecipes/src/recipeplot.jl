@@ -1,4 +1,3 @@
-
 @recipe(RecipePlot) do scene
     th = merge(
         default_theme(scene),
@@ -8,7 +7,7 @@
     return th
 end
 
-function plot!(p::T) where T <: RecipePlot
+function plot!(p::T) where {T <: RecipePlot}
 
     # What happens here is that I want to lift on every available observable,
     # so they need to be splatted.  This also means that nested attributes
