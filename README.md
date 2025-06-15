@@ -1,9 +1,9 @@
 <div align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)" 
-        srcset="/assets/logo_with_text_dark.svg" >
+        srcset="/Makie/assets/logo_with_text_dark.svg" >
       <img alt="Makie.jl logo" 
-        src="/assets/logo_with_text.svg" height="100">
+        src="/Makie/assets/logo_with_text.svg" height="100">
     </picture>
 </div>
 
@@ -138,11 +138,11 @@ fig = lines(x, x.^2; label = "Parabola",
     axis = (; xlabel = "x", ylabel = "y", title ="Title"),
     figure = (; size = (800,600), fontsize = 22))
 axislegend(; position = :lt)
-save("./assets/parabola.png", fig)
+save("./Makie/assets/parabola.png", fig)
 fig
 ```
 
-<img src="./assets/parabola.png" width="600">
+<img src="./Makie/assets/parabola.png" width="600">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -168,13 +168,13 @@ with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
     band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
     limits!(-3.8, 3.8, -1.5, 1.5)
     axislegend(; position = :ct, backgroundcolor = (:white, 0.75), framecolor = :orange)
-    save("./assets/approxsin.png", fig, size = (800, 600))
+    save("./Makie/assets/approxsin.png", fig, size = (800, 600))
     fig
 end
 ```
 </details>
 
-<img src="./assets/approxsin.png" width="600">
+<img src="./Makie/assets/approxsin.png" width="600">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -199,13 +199,13 @@ with_theme(colormap = cmap) do
     colsize!(fig.layout, 1, Aspect(1, 1.0))
     colsize!(fig.layout, 2, Aspect(1, 1.0))
     resize_to_layout!(fig)
-    save("./assets/simpleLayout.png", fig)
+    save("./Makie/assets/simpleLayout.png", fig)
     fig
 end
 ```
 </details>
 
-<img src="./assets/simpleLayout.png" width="600">
+<img src="./Makie/assets/simpleLayout.png" width="600">
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
@@ -219,5 +219,5 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 
 ## Sponsors
 
-<img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
+<img src="./Makie/assets/BMBF_gefoerdert_2017_en.jpg" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020
