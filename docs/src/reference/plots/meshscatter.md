@@ -17,7 +17,7 @@ meshscatter(xs, ys, zs, markersize = 0.1, color = zs)
 
 ```@figure backend=GLMakie
 using FileIO, GeometryBasics
-cow = FileIO.load(joinpath(pkgdir(Makie), "assets", "cow.png"))
+cow = Makie.loadasset("cow.png")
 
 N = 8; M = 10
 f = Figure(size = (500, 400))
@@ -30,7 +30,7 @@ a, p = meshscatter(
         # 2. grab relevant section from image
         # 3. rotate to match view
         (:rotl90, (Vec2f(x, y), Vec2f(1/M, 1/N)), :flip_y)
-        for x in range(0, 1, length = M+1)[1:M] 
+        for x in range(0, 1, length = M+1)[1:M]
         for y in range(0, 1, length = N+1)[1:N]
     ],
     markersize = Vec3f(0.9, 0.9, 1),
