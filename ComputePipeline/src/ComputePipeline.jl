@@ -859,7 +859,7 @@ function check_boxed_values(f)
             box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
             return "$(k)::Core.Box($(box))"
         end
-        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
+        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ",")). This might be caused by a variable of the same name existing inside and outside a `do ... end` block.")
     end
 end
 
