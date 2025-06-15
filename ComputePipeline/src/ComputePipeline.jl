@@ -782,6 +782,25 @@ function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
     return attr
 end
 
+"""
+    add_constant!(graph, name::Symbol, value)
+
+Adds a constant to the Graph. A constant is not connected to an `Input` and thus
+can't change through compute graph resolution.
+"""
+function add_constant!(attr::ComputeGraph, k::Symbol, value)
+    haskey(attr, k) && return
+    map!(() -> value, attr, Symbol[], [k])
+    return attr
+end
+
+function add_constants!(attr::ComputeGraph; kw...)
+    for (k, v) in pairs(kw)
+        add_constant!(attr, k, v)
+    end
+    return attr
+end
+
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
 """
@@ -1128,6 +1147,10 @@ end
 
 include("io.jl")
 
-export Computed, Computed, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
+export Computed, ComputeEdge
+export ComputeGraph
+export register_computation!
+export add_input!, add_inputs!, add_constant!, add_constants!
+export update!
 
 end
