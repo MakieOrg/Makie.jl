@@ -12,7 +12,7 @@ Pkg.update()
 
 using JSON, AlgebraOfGraphics, CairoMakie, DataFrames, Bootstrap
 using Statistics: median
-Package = ARGS[1]
+Package = length(ARGS) > 0 ? ARGS[1] : "CairoMakie"
 n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
 # base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
 base_branch = "master"
@@ -69,8 +69,9 @@ Pkg.add([(; name="JSON")])
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
 pkgs = [
-    (; url="https://github.com/MakieOrg/Makie.jl", subdir="ComputePipeline", rev=base_branch), # TODO: adjust once ComputePipeline is released
-    (; rev=base_branch, name="Makie"),
+    (; rev=base_branch, name="Makie", subdir="Makie"),
+    (; rev=base_branch, name=Package),
+    (; path="./ComputePipeline"),
     (; rev=base_branch, name="$Package"),
     (;name="JSON")
 ]
