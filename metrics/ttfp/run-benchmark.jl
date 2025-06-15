@@ -59,7 +59,10 @@ Pkg.activate(project1)
 if Package == "WGLMakie"
     Pkg.add([(; name="Electron")])
 end
-pkgs = NamedTuple[(; path="./Makie"), (; path="./$Package"), (; path="./ComputePipeline")]
+pkgs = map(["ComputePipeline", "Makie", Package]) do name
+    path = joinpath(@__DIR__, "..", "..", name)
+    (; path=path)
+end
 # cd("dev/Makie")
 Pkg.develop(pkgs)
 Pkg.add([(; name="JSON")])
@@ -69,10 +72,9 @@ Pkg.add([(; name="JSON")])
 project2 = make_project_folder(base_branch)
 Pkg.activate(project2)
 pkgs = [
+    (; url="https://github.com/MakieOrg/Makie.jl/", subdir="ComputePipeline", rev=base_branch),
     (; rev=base_branch, name="Makie", subdir="Makie"),
     (; rev=base_branch, name=Package),
-    (; path="./ComputePipeline"),
-    (; rev=base_branch, name="$Package"),
     (;name="JSON")
 ]
 Package == "WGLMakie" && push!(pkgs, (; name="Electron"))
