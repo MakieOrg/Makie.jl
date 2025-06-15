@@ -44,6 +44,7 @@ Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 PNGFiles = "f57f5aa1-a3ce-4bc8-8ab9-96f992907883"
 Packing = "19eb6ba3-879d-56ad-ad62-d5c202156566"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 PolygonOps = "647866c9-e3ac-4575-94e7-e3d426903924"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
@@ -63,6 +64,9 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[sources]
+ComputePipeline = {path = "./ComputePipeline/"}
 
 [compat]
 Animations = "0.4"
@@ -103,6 +107,7 @@ Observables = "0.5.5"
 OffsetArrays = "1"
 PNGFiles = "0.4.4"
 Packing = "0.5"
+Pkg = "1.10, 1.11.0"
 PlotUtils = "1.4.2"
 PolygonOps = "0.1.1"
 PrecompileTools = "1.0"
@@ -123,6 +128,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources]
-ComputePipeline = {path = "./ComputePipeline/"}
