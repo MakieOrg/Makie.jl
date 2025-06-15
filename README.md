@@ -1,8 +1,8 @@
 <div align="center">
     <picture>
-      <source media="(prefers-color-scheme: dark)" 
+      <source media="(prefers-color-scheme: dark)"
         srcset="/Makie/assets/logo_with_text_dark.svg" >
-      <img alt="Makie.jl logo" 
+      <img alt="Makie.jl logo"
         src="/Makie/assets/logo_with_text.svg" height="100">
     </picture>
 </div>
@@ -115,8 +115,9 @@ This makes it easier to change code across all packages.
 Therefore, dev'ing Makie almost works as with other Julia packages, just, that one needs to also dev the sub packages:
 
 ```julia
-]dev --local Makie # local will clone the repository at ./dev/Makie
-]dev dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
+# local will clone the repository at ./dev/Makie
+# Pkg is smart enough to dev the backends at `/dev/Makie/GLMakie` for the below
+]dev --local Makie GLMakie CairoMakie WGLMakie RPRMakie
 ```
 
 To run the tests, you also should add:
@@ -138,11 +139,11 @@ fig = lines(x, x.^2; label = "Parabola",
     axis = (; xlabel = "x", ylabel = "y", title ="Title"),
     figure = (; size = (800,600), fontsize = 22))
 axislegend(; position = :lt)
-save("./Makie/assets/parabola.png", fig)
+save("./images/parabola.png", fig)
 fig
 ```
 
-<img src="./Makie/assets/parabola.png" width="600">
+<img src="./images/parabola.png" width="600">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -168,13 +169,13 @@ with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
     band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
     limits!(-3.8, 3.8, -1.5, 1.5)
     axislegend(; position = :ct, backgroundcolor = (:white, 0.75), framecolor = :orange)
-    save("./Makie/assets/approxsin.png", fig, size = (800, 600))
+    save("./images/approxsin.png", fig, size = (800, 600))
     fig
 end
 ```
 </details>
 
-<img src="./Makie/assets/approxsin.png" width="600">
+<img src="./images/approxsin.png" width="600">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -199,13 +200,13 @@ with_theme(colormap = cmap) do
     colsize!(fig.layout, 1, Aspect(1, 1.0))
     colsize!(fig.layout, 2, Aspect(1, 1.0))
     resize_to_layout!(fig)
-    save("./Makie/assets/simpleLayout.png", fig)
+    save("./images/simpleLayout.png", fig)
     fig
 end
 ```
 </details>
 
-<img src="./Makie/assets/simpleLayout.png" width="600">
+<img src="./images/simpleLayout.png" width="600">
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
@@ -219,5 +220,5 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 
 ## Sponsors
 
-<img src="./Makie/assets/BMBF_gefoerdert_2017_en.jpg" width="300"/>
+<img src="./images/BMBF_gefoerdert_2017_en.jpg" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020

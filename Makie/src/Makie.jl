@@ -85,14 +85,13 @@ export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
-
+using Pkg.Artifacts
+assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
+loadasset(files...) = FileIO.load(assetpath(files...))
 
 const RGBAf = RGBA{Float32}
 const RGBf = RGB{Float32}
 const NativeFont = FreeTypeAbstraction.FTFont
-
-const ASSETS_DIR = RelocatableFolders.@path joinpath(@__DIR__, "..", "assets")
-assetpath(files...) = normpath(joinpath(ASSETS_DIR, files...))
 
 
 # 1.6 compatible way to disable constprop for compile time improvements (and also disable inlining)
