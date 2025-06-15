@@ -15,8 +15,8 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
-[sources]
-Makie = {path = ".."}
+[sources.Makie]
+path = ".."
 
 [compat]
 CRC32c = "1.0, 1.6"
@@ -27,7 +27,7 @@ FileIO = "1.1"
 FreeType = "3, 4.0"
 GeometryBasics = "0.5"
 LinearAlgebra = "1.0, 1.6"
-Makie = "=0.24.0"
+Makie = "=0.24.0, 0.23"
 PrecompileTools = "1.0"
 julia = "1.3"
 
