@@ -30,7 +30,7 @@ function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<
 end
 
 function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
-    x, y, z = map(x-> (0f0, Float32(x)), size(data))
+    x, y, z = map(x-> EndPoints(0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
 

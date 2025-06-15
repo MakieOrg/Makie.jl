@@ -30,7 +30,7 @@ end
     )
 
     # data conversion pipeline
-    @test p.args[][4] === data
+    @test p.args[][end] === data
     @test p.converted[][1] == (-3.0, 3.0)
     @test p.converted[][2] == (-2.5, 2.5)
     @test p.converted[][3] == (-2.0, 2.0)

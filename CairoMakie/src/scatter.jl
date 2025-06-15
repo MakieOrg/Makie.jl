@@ -27,7 +27,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     # :text_strokewidth # TODO: missing, but does per-glyph strokewidth even work? Same for strokecolor?
     attr = plot.attributes
     # input -> markerspace
-    # TODO: This sucks, we're doing per-string/glyphcollection work per glyph here
+    # TODO: We're doing per-string/glyphcollection work per glyph here
     cairo_unclipped_indices!(attr)
     project_to_markerspace!(attr)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))

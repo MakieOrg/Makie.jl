@@ -91,7 +91,6 @@ end
 
 
 function voxel_program(attr)
-    # TODO: names I guess
     uniforms = Dict(
         :diffuse => attr.diffuse,
         :specular => attr.specular,

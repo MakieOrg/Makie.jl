@@ -1,13 +1,8 @@
-
-# TODO: Bad workaround for now
-argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
-conversion_trait(::Type{Voxels}, args...) = Voxels
-
-function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
+# expand_dimensions would require conversion trait
+function convert_arguments(::Type{<: Voxels}, chunk::Array{<: Real, 3})
     X, Y, Z = map(x -> EndPoints(Float32(-0.5*x), Float32(0.5*x)), size(chunk))
     return (X, Y, Z, chunk)
 end
-
 
 function convert_arguments(::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
     xi = Float32.(to_endpoints(xs, "x", Voxels))

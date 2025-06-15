@@ -712,7 +712,7 @@ function get_glyph_sdf(atlas::TextureAtlas, hash::UInt32)
 end
 
 function glyph_boundingbox(::BezierPath, ::Makie.NativeFont)
-    # TODO, implement this
+    # TODO:, implement this
     # Main blocker is the JS side since this is a bit more complicated.
     return (Vec2f(0), Vec2f(0))
 end

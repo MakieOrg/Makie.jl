@@ -80,7 +80,6 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         pattern             = nothing => Texture
         fxaa                = false
         indices             = 0 => to_index_buffer
-        # TODO update boundingbox
         transparency        = false
         shader              = GLVisualizeShader(
             screen,

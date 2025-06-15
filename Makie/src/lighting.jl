@@ -227,7 +227,6 @@ function add_light_computation!(graph, scene, lights)
         @error("Only one AmbientLights is allowed. Skipping AmbientLights beyond the first.")
     end
 
-    # TODO: defaults
     add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))

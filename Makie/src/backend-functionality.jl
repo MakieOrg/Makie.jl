@@ -193,7 +193,6 @@ function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; kwargs...)
 end
 
 function add_computation!(attr, scene, ::Val{:voxel_uv_transform})
-    # TODO: can this be reused in WGLMakie?
     # TODO: Should this verify that color is a texture?
     register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
         if !isnothing(uvt)
@@ -209,9 +208,6 @@ function add_computation!(attr, scene, ::Val{:voxel_uv_transform})
     end
 end
 
-# TODO: update Makie.Sampler to include lowclip, highclip, nan_color
-#       and maybe also just RGBAf color types?
-#       Or just move this to Makie as a more generic function?
 # Note: This assumes to be called with data from ComputePipeline, i.e.
 #       alpha and colorscale already applied
 function sample_color(
