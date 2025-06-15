@@ -54,8 +54,10 @@ function ComputePipeline.update!(plot::Plot; args...)
 end
 
 function ComputePipeline.update!(plot::Plot, args...; attr...)
-    kw = Dict{Symbol, Any}(Symbol(:arg, i) => arg for (i, arg) in enumerate(args))
-    merge!(kw, attr)
+    kw = [Pair{Symbol, Any}(Symbol(:arg, i), arg) for (i, arg) in enumerate(args)]
+    for (a, v) in attr
+        push!(kw, Pair{Symbol, Any}(a, v))
+    end
     ComputePipeline.update!(plot.attributes, kw)
     return
 end
@@ -544,7 +546,7 @@ function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
 
-    updates = Dict{Symbol, Any}()
+    updates = Pair{Symbol, Any}[]
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
         if !haskey(kw, k)
@@ -552,24 +554,26 @@ function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <
             if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], k)
                 continue
             end
-            if haskey(plot_scene_theme, k)
-                updates[k] = to_value(plot_scene_theme[k])
+            val = if haskey(plot_scene_theme, k)
+                to_value(plot_scene_theme[k])
             elseif v isa Observable
-                updates[k] = v[]
+                v[]
             elseif v isa Attributes
-                updates[k] = v
+                v
             elseif v.default_value isa Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
-                    updates[k] = to_value(scene_theme[default.key])
+                    to_value(scene_theme[default.key])
                 elseif !isnothing(default.fallback)
-                    updates[k] = default.fallback
+                    default.fallback
                 else
                     error("No fallback + theme for $(k)")
                 end
             else
+                continue
                 #  v.default_value  is not a Inherit, so the value should already be set
             end
+            push!(updates, Pair{Symbol, Any}(k, val))
         end
     end
     update!(gattr, updates)
