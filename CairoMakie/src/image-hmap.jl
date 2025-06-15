@@ -30,11 +30,9 @@ end
 function draw_atomic(scene::Scene, screen::Screen{RT}, plot::Union{Heatmap, Image}) where RT
     attr = plot.attributes
     image_grid!(Makie.plotfunc(plot), attr)
-    if !haskey(attr, :is_image)
-        add_input!(attr, :is_image, plot isa Image)
-    end
+    add_constant!(attr, :is_image, plot isa Image)
     if plot isa Heatmap && !haskey(attr, :uv_transform)
-        add_input!(attr, :uv_transform, nothing)
+        add_constant!(attr, :uv_transform, nothing)
     end
     imagelike_uv_transform!(attr)
     Makie.compute_colors!(attr)

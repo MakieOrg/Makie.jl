@@ -1,13 +1,10 @@
 function draw_atomic(::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
     ctx = screen.context
     attr = plot.attributes
-    if !haskey(attr, :is_lines_plot)
-        #TODO, why are these sometimes already added?
-        add_input!(attr, :is_lines_plot, plot isa Lines)
-        if plot isa LineSegments
-            add_input!(attr, :joinstyle, nothing)
-            add_input!(attr, :miter_limit, nothing)
-        end
+    add_constant!(attr, :is_lines_plot, plot isa Lines)
+    if plot isa LineSegments
+        add_constant!(attr, :joinstyle, nothing)
+        add_constant!(attr, :miter_limit, nothing)
     end
 
     Makie.compute_colors!(attr)
