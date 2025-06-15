@@ -30,7 +30,7 @@ using DelaunayTriangulation
 using SparseArrays
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
-loadasset(files...) = FileIO.load(assetpath(files...))
+using Makie: loadasset
 
 # The version in Images.jl throws an error... whyyyyy!?
 # TODO look into error!
