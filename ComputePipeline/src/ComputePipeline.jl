@@ -790,7 +790,7 @@ can't change through compute graph resolution.
 """
 function add_constant!(attr::ComputeGraph, k::Symbol, value)
     haskey(attr, k) && return
-    map!(() -> value, attr, Symbol[], [k])
+    map!(() -> value, attr, Symbol[], k)
     return attr
 end
 
