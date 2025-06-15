@@ -1626,7 +1626,6 @@ to_colormapping_type(::Categorical) = categorical
 to_colormapping_type(::PlotUtils.CategoricalColorGradient) = banded
 to_colormapping_type(x::Tuple{<: Any, <: Real}) = to_colormapping_type(x[1])
 to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
-# TODO: some Symbols should probably be considered categorical?
 # TODO: Would be nice if we could extract more information like colorscale from
 #       PlotUtils, colormapping types from ColorSchemes, ...
 

@@ -105,7 +105,6 @@ function add_color_attributes_lines!(screen, attr, data, color, colormap, colorn
     return nothing
 end
 
-# TODO: Consider separating this from plot (i.e. update this in render using scene graph)
 function register_light_attributes!(screen, scene, attr, uniforms)
     # plot does not support shading
     haskey(attr, :shading) || return
@@ -162,7 +161,6 @@ end
 
 function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
-        # TODO: Do these always exist?
         :ssao => attr[:ssao][],
         :fxaa => attr[:fxaa][],
         :transparency => attr[:transparency][],
@@ -186,7 +184,6 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
 
     # These must always be there!
     push!(uniforms, :uniform_clip_planes, :uniform_num_clip_planes, :depth_shift, :visible, :fxaa)
-    # TODO: resolution should actually be ppu * resolution (do this in shader?)
     push!(uniforms, :resolution, :projection, :projectionview, :view, :upvector, :eyeposition, :view_direction)
     haskey(attr, :preprojection) && push!(uniforms, :preprojection)
     push!(input2glname, :uniform_clip_planes => :clip_planes)
@@ -232,7 +229,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     screen.cache[objectid(plot)] = robj
     push!(screen, scene, robj)
 
-    # TODO: for debugging/checking uniforms, remove later
+    # For debugging/checking uniforms
     # missing_uniforms(robj, [inputs; uniforms;], input2glname)
 
     return robj
@@ -352,9 +349,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
-    # TODO:
-    # - intensity_convert
-
     # To take the human error out of the bookkeeping of two lists
     # Could also consider using this in computation since Dict lookups are
     # O(1) and only takes ~4ns
@@ -437,11 +431,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
-    # TODO:
-    # - intensity_convert
-
-    # TODO:
-    # text_strokewidth doesn't work because the shader only accepts a uniform float
+    # TODO: text_strokewidth doesn't work because the shader only accepts a uniform float
     # this is also true on master
 
     # To take the human error out of the bookkeeping of two lists
@@ -660,19 +650,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     Makie.add_computation!(attr, :gl_miter_limit)
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
 
-    # TODO: just use positions_transformed_f32c
-    # position calculations for patterned lines
-    # is projectionview enough to trigger on scene resize in all cases?
-
+    # TODO: Is this useful for other backends?
+    map!(*, attr, [:projectionview, :model_f32c], :gl_pvm32)
     register_computation!(
-        attr, [:projectionview, :model, :f32c, :space], [:gl_pvm32]
-    ) do (_, model, f32c, space), changed, output
-        pvm = Makie.space_to_clip(scene.camera, space) *
-            Makie.f32_convert_matrix(f32c, space) * model
-        return (pvm,)
-    end
-    register_computation!(
-        attr, [:gl_pvm32, :positions_transformed], [:gl_projected_positions]
+        attr, [:gl_pvm32, :positions_transformed_f32c], [:gl_projected_positions]
     ) do (pvm32, positions), changed, last
         output = isnothing(last) ? Point4f[] : last.gl_projected_positions
         resize!(output, length(positions))
@@ -750,7 +731,7 @@ function assemble_linesegments_robj!(data, screen::Screen, attr, args, input2gln
     if isnothing(attr[:linestyle][])
         data[:pattern] = nothing
     end
-    return draw_linesegments(screen, data[:vertex], data) # TODO: extract positions
+    return draw_linesegments(screen, data[:vertex], data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
@@ -1026,8 +1007,6 @@ function add_mesh_color_attributes!(screen, attr, data, color, colormap, colorno
         end
     end
 
-    # TODO: adjust input2glname[:scaled_color] = colorname
-    # (name of input may change?)
     return colorname
 end
 

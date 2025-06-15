@@ -406,7 +406,10 @@ function draw_scattered_mesh(
         element_scale = Makie.scalematrix(Makie.sv_getindex(scales, i))
         element_transform = element_rotation * element_scale # different order from transformationmatrix()
 
-        # TODO: Should we cache this? Would be a lot of data...
+        # Note: These are not part of the compute graph because the number of
+        # vertices of the mesh * number of positions in meshscatter could become
+        # quite large
+
         # mesh transformations
         # - transform_func does not apply to vertices (only pos)
         # - only scaling from float32convert applies to vertices
@@ -418,7 +421,6 @@ function draw_scattered_mesh(
             return Point3f(p4d) / p4d[4]
         end
 
-        # TODO: And this?
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
 
         draw_mesh3D(

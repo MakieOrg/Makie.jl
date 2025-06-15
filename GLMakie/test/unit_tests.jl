@@ -19,9 +19,6 @@ end
     display(screen, scatter(1:4))
     @test length(cache.shader_cache) == 18
     @test length(cache.template_cache) == 18
-    # TODO, change from 11 -> 12
-    # This comes from having two versions of mesh, with transparency=true/false leading to different shaders for fragment_output
-    # Why did this change?
     @test length(cache.program_cache) == 11
 
     # No new shaders should be added:
