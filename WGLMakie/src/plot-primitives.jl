@@ -496,7 +496,7 @@ function add_uv_mesh!(attr)
     if !haskey(attr, :normals)
         Makie.add_constants!(
             attr, normals = nothing, primitive_shading = false,
-            diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0f0, backlight = 0f0
+            diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0.0f0, backlight = 0.0f0
         )
     end
     if !haskey(attr, :wgl_uv_transform)
