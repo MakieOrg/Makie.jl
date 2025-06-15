@@ -161,13 +161,13 @@ function add_camera_computation!(graph::ComputeGraph, scene)
     end
 
     # constants
-    id = Mat4d(I)
+    identity_matrix = Mat4d(I)
     add_constants!(graph,
-        world_to_world = id,
-        eye_to_eye = id,
-        pixel_to_pixel = id,
-        relative_to_relative = id,
-        clip_to_clip = id,
+        world_to_world = identity_matrix,
+        eye_to_eye = identity_matrix,
+        pixel_to_pixel = identity_matrix,
+        relative_to_relative = identity_matrix,
+        clip_to_clip = identity_matrix,
         clip_to_relative = Mat4d(0.5, 0, 0, 0, 0, 0.5, 0, 0, 0, 0, 1, 0, 0.5, 0.5, 0, 1),
         relative_to_clip = Mat4d(2, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1, 0, -1, -1, 0, 1),
     )
