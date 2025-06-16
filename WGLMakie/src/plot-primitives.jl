@@ -33,6 +33,7 @@ function serialize_three(scene::Scene, plot::Makie.ComputePlots)
 end
 
 function backend_colors!(attr, color_name=:scaled_color)
+    # TODO: Shouldn't this be guaranteed?
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
     end
@@ -267,7 +268,6 @@ function create_shader(scene::Scene, plot::Scatter)
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
 
-    haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :scatter_color)
     inputs =  [
@@ -297,7 +297,7 @@ function get_atlas_tracker(f, scene::Scene)
             Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
         end
         screen = Makie.getscreen(scene, WGLMakie)
-        if isnothing(screen.session)
+        if isnothing(screen) || isnothing(screen.session)
             @warn "No session found, returning empty atlas tracker"
             # TODO, it's not entirely clear in which case this can happen,
             # which is why we don't just error, but just assume there isn't anything tracked
@@ -485,21 +485,16 @@ function add_uv_mesh!(attr)
         Makie.register_position_transforms!(attr, :wgl_positions)
     else
         _rect = Rect2f(0, 0, 1, 1)
-        add_input!(attr, :faces, decompose(GLTriangleFace, _rect))
-        add_input!(attr, :texturecoordinates, decompose_uv(_rect))
+        add_constant!(attr, :faces, decompose(GLTriangleFace, _rect))
+        add_constant!(attr, :texturecoordinates, decompose_uv(_rect))
     end
-    # TODO: Shouldn't these be hidden Compute nodes instead of Inputs?
-    # map!(x -> value, attr, Symbol[], name)
 
     if !haskey(attr, :normals)
-        Makie.register_computation!(attr, Symbol[],
-            [:normals, :diffuse, :specular, :shininess, :backlight, :primitive_shading]
-        ) do inputs, changed, cached
-            return (nothing, Vec3f(0), Vec3f(0), 0f0, 0f0, false)
-        end
+        Makie.add_constants!(attr, normals = nothing, primitive_shading = false,
+            diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0f0, backlight = 0f0)
     end
     if !haskey(attr, :wgl_uv_transform)
-        map!(() -> Makie.uv_transform(:flip_y), attr, Symbol[], :wgl_uv_transform)
+        Makie.add_constant!(attr, :wgl_uv_transform, Makie.uv_transform(:flip_y))
     end
 end
 
