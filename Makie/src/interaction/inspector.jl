@@ -187,18 +187,18 @@ end
 mutable struct DataInspector
     root::Scene
     attributes::Attributes
-
     cached_plots::Dict{Tuple{Scene, Type}, Plot}
     temp_plots::Vector{Plot}
     plot::Tooltip
     selection::Plot
 
     obsfuncs::Vector{Any}
+    hover_channel::Channel{Nothing}
 end
 
 
 function DataInspector(scene::Scene, plot::AbstractPlot, attributes)
-    return DataInspector(scene, attributes, Dict{UInt64, Plot}(), Plot[], plot, plot, Any[])
+    return DataInspector(scene, attributes, Dict{UInt64, Plot}(), Plot[], plot, plot, Any[], Channel{Nothing}())
 end
 
 function cleanup(inspector::DataInspector)
@@ -206,6 +206,7 @@ function cleanup(inspector::DataInspector)
     empty!(inspector.obsfuncs)
     delete!(inspector.root, inspector.plot)
     clear_temporary_plots!(inspector, inspector.selection)
+    close(inspector.hover_channel)
     inspector
 end
 
@@ -283,19 +284,15 @@ function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...
     # We delegate the hover processing to another channel,
     # So that we can skip queued up updates with empty_channel!
     # And also not slow down the processing of e.mouseposition/e.scroll
-    channel = Channel{Nothing}(blocking ? 0 : Inf) do ch
-        while !isclosed(parent)
+    channel= Channel{Nothing}(blocking ? 0 : Inf) do ch
+        while isopen(ch)
             take!(ch) # wait for event
             if isopen(parent)
                 on_hover(inspector)
             end
         end
     end
-    on(parent, parent.events.window_open) do open
-        if !open && isopen(channel)
-            put!(channel, nothing)
-        end
-    end
+    inspector.hover_channel = channel
     listeners = onany(e.mouseposition, e.scroll) do _, _
         empty_channel!(channel) # remove queued up hover requests
         put!(channel, nothing)
