@@ -233,7 +233,7 @@ end
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, plot::ComputeGraph)
-    @get_attribute(plot, (clip_planes, ))
+    clip_planes = plot.clip_planes[]
     uv_transform = plot.pattern_uv_transform[]
 
     # per-element in meshscatter
@@ -263,9 +263,7 @@ function draw_mesh3D(
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
-    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling))
-
-    shading = shading && (scene.compute.shading[] != NoShading)
+    local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
@@ -281,12 +279,13 @@ function draw_mesh3D(
         align_pattern(per_face_col, scene, f32c_model)
     end
 
-    faceculling = to_value(get(plot, :faceculling, -10))
+    local faceculling::Int = to_value(get(plot, :faceculling, -10))
 
     draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes, plot.eyeposition[]
+        model, shading[], plot.diffuse[]::Vec3f,
+        plot.specular[]::Vec3f, plot.shininess[]::Float32, faceculling,
+        clip_planes, plot.eyeposition[]
     )
 end
 
@@ -348,22 +347,18 @@ function draw_mesh3D(
     return
 end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (
-        model_f32c, marker, markersize, rotation, positions_transformed_f32c,
-        clip_planes, transform_marker))
-
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(plot::Makie.MeshScatter))
     # We combine vertices and positions in world space.
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
-    transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
-    colors = compute_colors(primitive)
-    uv_transform = primitive.pattern_uv_transform[]
+    transformed_pos = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
+    colors = compute_colors(plot)
+    uv_transform = plot.pattern_uv_transform[]
 
     draw_scattered_mesh(
-        scene, screen, primitive.attributes, marker,
-        transformed_pos, markersize, rotation, colors,
-        clip_planes, transform_marker, uv_transform
+        scene, screen, plot.attributes, plot.marker[],
+        transformed_pos, plot.markersize[], plot.rotation[], colors,
+        plot.clip_planes[], plot.transform_marker[], uv_transform
     )
 end
 
