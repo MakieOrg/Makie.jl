@@ -495,25 +495,14 @@ update!(graph, first_node = 2)
 update!(graph, :first_node => 2)
 ```
 """
-update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
+update!(attr::ComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in kwargs])
+update!(attr::ComputeGraph, dict::Dict{Symbol}) = _update!(attr, dict)
+update!(attr::ComputeGraph, pairs::Pair{Symbol}...) = _update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in pairs])
+update!(attr::ComputeGraph, pairs::AbstractVector{<:Pair{Symbol}}) = _update!(attr, pairs)
 
-function update!(attr::ComputeGraph, dict::Dict{Symbol})
+function _update!(attr::ComputeGraph, values)
     lock(attr.lock) do
-        for (key, value) in dict
-            if haskey(attr.inputs, key)
-                _setproperty!(attr, key, value)
-            else
-                error("Attribute $key not found in ComputeGraph")
-            end
-        end
-        update_observables!(attr)
-        return attr
-    end
-end
-
-function update!(attr::ComputeGraph, pairs...)
-    lock(attr.lock) do
-        for (key, value) in pairs
+        for (key, value) in values
             if haskey(attr.inputs, key)
                 _setproperty!(attr, key, value)
             else

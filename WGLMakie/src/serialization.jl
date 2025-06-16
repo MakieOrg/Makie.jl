@@ -147,8 +147,12 @@ function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(collect(reinterpret(eltype(T), array)))
 end
 
-const ASSETS_DIR = @path joinpath(@__DIR__, "..", "assets")
-lasset(paths...) = read(joinpath(ASSETS_DIR, paths...), String)
+const ALL_SHADERS = Dict{String, String}()
+function lasset(paths...)
+    get!(ALL_SHADERS, joinpath(paths...)) do
+        read(joinpath(@__DIR__, "..", "assets", paths...), String)
+    end
+end
 
 
 function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
