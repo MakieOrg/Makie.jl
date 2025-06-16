@@ -567,8 +567,7 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
-function plot_scene_position(specs, spec::PlotSpec, plot::Plot)
-    # TODO, this may not reproduce the exact same cycle index as on master
+function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
@@ -598,7 +597,7 @@ function diff_plotlist!(
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec,Plot}(k, v) for (k, v) in reusable_plots]
-    sort!(reusable_plots_sorted, by=((k, v),)-> v.scene_position[], rev=true)
+    sort!(reusable_plots_sorted, by=((k, v),)-> v.cycle_index[], rev=true)
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
@@ -630,9 +629,9 @@ function diff_plotlist!(
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
             # Update the position of the plot!
-            pos = plot_scene_position(plotspecs, plotspec, reused_plot)
-            if pos != reused_plot.scene_position[]
-                reused_plot.scene_position = pos
+            pos = plot_cycle_index(plotspecs, plotspec, reused_plot)
+            if pos != reused_plot.cycle_index[]
+                reused_plot.cycle_index = pos
             end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
