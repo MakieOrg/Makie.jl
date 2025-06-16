@@ -346,9 +346,7 @@ function register_text_computation!(attr, scene)
 end
 
 function create_shader(scene::Scene, plot::Makie.Text)
-    # TODO: color processing incorrect, processed per-glyphcollection/global
-    #       colors instead of per glyph
-    # TODO: billboard is (and was) always false here - do we want to make it settable?
+    # billboard for text causes glyph to not align correctly, should always be false
     attr = plot.attributes
     haskey(attr, :interpolate) || Makie.add_input!(attr, :interpolate, false)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -402,7 +400,7 @@ function meshscatter_program(args)
         :interpolate_in_fragment_shader => false,
         :markersize => args.markersize,
         :f32c_scale => args.f32c_scale,
-        # TODO uv needst o be destructured via register_computation! to allow updates
+        # Note: uv needs to be generated via register_computation! to allow updates
         :uv => Vec2f(0),
     )
     per_instance, uniforms = assemble_particle_robj!(args, data)

@@ -107,7 +107,8 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     return result
 end
 
-# TODO: is this data_limits or boundingbox()?
+# This is data_limits(), not boundingbox()
+# TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
     if space === markerspace
         bb = Rect3d()
@@ -249,15 +250,15 @@ function register_position_transforms!(attr, input_name = :positions)
 end
 
 function register_positions_transformed_f32c!(attr)
-    # TODO: f32c should be identity or not get applied here if space != :data
-    # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
+    # model_f32c is the model matrix after processing f32c. Backends should rely
+    # on it if it applies to :positions_transformed_f32c
+
     register_computation!(attr,
         [:positions_transformed, :model, :f32c, :space],
         [:positions_transformed_f32c, :model_f32c]
     ) do (positions, model, f32c, space), changed, last
 
-        # TODO: this should be done in one nice function
-        # This is simplified, skipping what's commented out
+        # TODO: This is simplified, skipping what's commented out
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
@@ -304,10 +305,10 @@ end
 
 function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false) where P
     # is_merged = true means that multiple arguments are collected in one input, i.e.:
-    # true:  one input where attr[input][] = (arg1, arg2, ...)
-    # false: multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
+    #   true:   one input where attr[input][] = (arg1, arg2, ...)
+    #   false:  multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
     # this is used in text
-    # TODO expand_dims + dim_converts
+
     # Only 2 and 3d conversions are supported, and only
     PTrait = if is_merged
         @assert length(inputs) == 1
@@ -320,8 +321,7 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
-            # TODO, this can change types...
-            # Is Ref any a good idea for this, or should
+            # This can change types, so force Any type in Compute node
             return (Ref{Any}(args),)
         else
             return (Ref{Any}(args_exp),)
@@ -430,7 +430,6 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
 
-    # TODO: Is this dangerous? Scene might update this to LinearScaling later
     add_input!(attr, :f32c, :uninitialized)
 
     return
@@ -450,8 +449,6 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
-# TODO: this won't work because Text is both primitive and not
-# TODO: Also true for mesh (see poly.jl, mesh.jl)
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
@@ -495,7 +492,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
     end
     # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :plot_position, 0)
+    add_input!(attr, :cycle_index, 0)
     add_input!(attr, :palettes, nothing)
     cycle = attr.cycle[]
     if !isnothing(cycle)
@@ -517,7 +514,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                             return value
                         end
                     end
-                    pos = attr.plot_position[]
+                    pos = attr.cycle_index[]
                     cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
                     return convert_attribute(cyc, Key{key}(), Key{name}())
                 end
@@ -615,7 +612,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         # shallow copy with generalized type (avoid changing graph, allow non Computed types)
         attr = Dict{Symbol, Any}(pairs(first(user_args).outputs))
 
-        # TODO: Do we just blacklist these, because they are controlled by Transformations()?
+        # Blacklist these because they are controlled by Transformations()
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
 
         # remove attributes that the parent graph has but don't apply to this plot
@@ -640,8 +637,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
-function get_plot_position(scene::Scene, plot::Plot)
-    # TODO, this may not reproduce the exact same cycle index as on master
+function plot_cycle_index(scene::Scene, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
@@ -660,9 +656,10 @@ function get_plot_position(scene::Scene, plot::Plot)
     # not inserted yet
     return pos
 end
+
 # For recipes we use the recipes position?
-function get_plot_position(parent::Plot, ::Plot)
-    get_plot_position(get_scene(parent), parent)
+function plot_cycle_index(parent::Plot, ::Plot)
+    plot_cycle_index(get_scene(parent), parent)
 end
 
 # should this just be connect_plot?
@@ -684,8 +681,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    # TODO, do this for recipes?
-    plot.plot_position = get_plot_position(parent, plot)
+    plot.cycle_index = plot_cycle_index(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
@@ -737,9 +733,6 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     end
 end
 
-
-# TODO: it may make sense to just remove Mesh in convert_arguments?
-# TODO: this could probably be reused by meshscatter
 
 function color_per_mesh(ccolors, vertes_per_mesh)
     result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
