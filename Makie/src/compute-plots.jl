@@ -173,7 +173,7 @@ function add_alpha(color, alpha)
 end
 
 function register_colormapping_without_color!(attr::ComputeGraph)
-    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do (icm, a), changed, last
+    map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
         # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
         # This only differs from alpha_colormap in that it doesn't resample PlotUtils.ColorGradient...
         raw_colormap = _to_colormap(icm)::Vector{RGBAf}
@@ -194,11 +194,11 @@ function register_colormapping_without_color!(attr::ComputeGraph)
 
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
-        register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
+        map!(attr, [key, :alpha_colormap], sym) do input, cmap
             if input === automatic
-                return (ifelse(key == :lowclip, first(cmap), last(cmap)),)
+                return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
-                return (to_color(input),)
+                return to_color(input)
             end
         end
     end
@@ -241,9 +241,8 @@ end
 
 function register_position_transforms!(attr, input_name = :positions)
     haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
-    register_computation!(attr, [input_name, :transform_func],
-            [:positions_transformed]) do (positions, func), changed, last
-        return (apply_transform(func, positions),)
+    map!(attr, [input_name, :transform_func], :positions_transformed) do positions, func
+        return apply_transform(func, positions)
     end
     register_positions_transformed_f32c!(attr)
     return
@@ -805,10 +804,10 @@ function calculated_attributes!(::Type{Image}, plot::Plot)
     calculated_attributes!(Heatmap, plot)
     # this must not sort to preserve inverse value ranges (e.g. 1..0), data_limits
     # must must sort to generate non-negative widths in that case
-    register_computation!(attr, [:x, :y], [:positions]) do mini_maxi, changed, cached
-        mini = Vec3d(first.(values(mini_maxi))..., 0)
-        maxi = Vec3d(last.(values(mini_maxi))..., 0)
-        return (decompose(Point2d, Rect2d(mini, maxi .- mini)),)
+    map!(attr, [:x, :y], :positions) do x, y
+        mini = Vec3d(first(x), first(y), 0)
+        maxi = Vec3d(last(x), last(y), 0)
+        return decompose(Point2d, Rect2d(mini, maxi .- mini))
     end
     Makie.register_position_transforms!(attr)
     register_position_transforms!(attr)
@@ -817,25 +816,25 @@ end
 function calculated_attributes!(::Type{Heatmap}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr, :image)
-    register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
-        mini = Vec3d(minimum.(values(mini_maxi))..., 0)
-        maxi = Vec3d(maximum.(values(mini_maxi))..., 0)
-        return (Rect3d(mini, maxi .- mini),)
+    map!(attr, [:x, :y], :data_limits) do x, y
+        mini = Vec3d(minimum(x), minimum(y), 0)
+        maxi = Vec3d(maximum(x), maximum(y), 0)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
 function calculated_attributes!(::Type{Surface}, plot::Plot)
     attr = plot.attributes
-    register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
-        return (isnothing(color) ? z : color,)
+    map!(attr, [:z, :color], :color_with_default) do z, color
+        return isnothing(color) ? z : color
     end
     register_colormapping!(attr, :color_with_default)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         xlims = extrema_nan(x)
         ylims = extrema_nan(y)
         zlims = extrema_nan(z)
         mini, maxi = Vec3d.(xlims, ylims, zlims)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
@@ -844,12 +843,11 @@ function calculated_attributes!(::Type{Scatter}, plot::Plot)
     register_marker_computations!(attr)
     register_colormapping!(attr)
     register_position_transforms!(attr)
-    register_computation!(attr, [:rotation], [:converted_rotation, :billboard]) do (rotation,), changed, cached
+    map!(attr, :rotation, [:converted_rotation, :billboard]) do rotation
         return (convert_attribute(rotation, key"rotation"()), rotation isa Billboard)
     end
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation, :marker_offset],
-                          [:data_limits]) do args, changed, last
-        return (scatter_limits(args...),)
+    map!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation, :marker_offset], :data_limits) do args...
+        return scatter_limits(args...)
     end
 
 end
@@ -868,8 +866,8 @@ end
 
 function calculated_attributes!(::PointBased, plot::Plot)
     attr = plot.attributes
-    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions),)
+    map!(attr, :positions, :data_limits) do positions
+        return Rect3d(positions)
     end
     register_position_transforms!(attr)
 end
@@ -902,9 +900,9 @@ function calculated_attributes!(::Type{Volume}, plot::Plot)
     attr = plot.attributes
     ComputePipeline.alias!(attr, :model, :model_f32c)
     register_colormapping!(attr, :volume)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
@@ -954,15 +952,15 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
 end
 
 function register_world_normalmatrix!(attr, modelname = :model_f32c)
-    register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
-        return (Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)]))), )
+    map!(attr, modelname, :world_normalmatrix) do m
+        return Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)])))
     end
 end
 
 function register_view_normalmatrix!(attr, modelname = :model_f32c)
-    register_computation!(attr, [:view, modelname], Symbol[:view_normalmatrix]) do (view, model), _, __
+    map!(attr, [:view, modelname], :view_normalmatrix) do view, model
         i3 = Vec3(1,2,3)
         nm = transpose(inv(view[i3, i3] * Mat3f(model[i3, i3])))
-        return (nm, )
+        return nm
     end
 end

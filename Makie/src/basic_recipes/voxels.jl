@@ -147,9 +147,9 @@ function calculated_attributes!(::Type{Voxels}, plot::Plot)
     attr = plot.attributes
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
     return
 end

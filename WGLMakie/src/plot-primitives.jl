@@ -125,10 +125,10 @@ end
 
 function add_primitive_shading!(scene::Scene, attr)
     scene_shading = Makie.get_shading_mode(scene)
-    register_computation!(attr, [:shading], [:primitive_shading]) do (shading,), _, _
+    map!(attr, :shading, :primitive_shading) do shading
         s = (shading ? scene_shading : shading)
         shading = s isa Bool ? s : (s !== NoShading)
-        return (shading,)
+        return shading
     end
 end
 
@@ -242,8 +242,8 @@ function create_shader(scene::Scene, plot::Scatter)
     markersym = :marker
     if attr[:marker][] isa FastPixel
         # TODO, can we do this more elegantly?
-        register_computation!(attr, [:marker], [:fast_pixel_marker]) do (marker,), changed, last
-            return (Rect,)
+        map!(attr, :marker, :fast_pixel_marker) do marker
+            return Rect
         end
         markersym = :fast_pixel_marker
     end
@@ -255,11 +255,11 @@ function create_shader(scene::Scene, plot::Scatter)
         return (dict,)
     end
 
-    register_computation!(attr, [:marker, :scaled_color], [:scatter_color]) do (marker, color), changed, last
+    map!(attr, [:marker, :scaled_color], :scatter_color) do marker, color
         if marker isa AbstractMatrix
-            return (to_color(marker),)
+            return to_color(marker)
         else
-            return (color,)
+            return color
         end
     end
     # For image markers (should this be a plot attribute?)
@@ -331,8 +331,8 @@ function get_glyph_data(scene::Scene, glyphs, fonts)
 end
 
 function register_text_computation!(attr, scene)
-    register_computation!(attr, [:text_blocks, :text_scales], [:glyph_scales]) do (text_blocks, fontsize), changed, last
-        return (Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize)),)
+    map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
+        return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
     register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs,fonts,glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
@@ -750,8 +750,8 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :uniform_clip_planes, :uniform_num_clip_planes
     ]
 
-    register_computation!(attr, [:uniform_color, :vertex_color], [:line_color]) do (uc, vc), changed, last
-        return vc == false ? (uc,) : (vc,)
+    map!(attr, [:uniform_color, :vertex_color], :line_color) do uc, vc
+        return vc == false ? uc : vc
     end
     if islines
         Makie.add_computation!(attr, :gl_miter_limit)
