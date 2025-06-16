@@ -47,7 +47,6 @@ end
     @test haskey(graph.outputs, :in1) && haskey(graph.outputs, :in2) && haskey(graph.outputs, :merged)
 
     @testset "Graph Access" begin
-        # TODO: These may need some cleanup
         @test graph.in1 === graph.outputs[:in1]
         @test graph.in2 === graph.outputs[:in2]
         @test graph.merged === graph.outputs[:merged]
