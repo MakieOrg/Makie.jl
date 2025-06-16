@@ -54,9 +54,10 @@ mutable struct Screen <: Makie.MakieScreen
     config::ScreenConfig
     canvas::Union{Nothing,Bonito.HTMLElement}
     tick_clock::Makie.BudgetedTimer
+    lock::ReentrantLock
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
-        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
+        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer, Base.ReentrantLock())
     end
 end
 
@@ -255,28 +256,35 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
+
 function Base.close(screen::Screen; from_close=false)
-    Makie.stop!(screen.tick_clock)
-    if !isnothing(screen.scene)
-        events(screen.scene).window_open[] = false
-        scene = screen.scene
-        delete_js_objects!(screen, scene)
-        if !isnothing(screen.canvas)
-            # If called from session.on_close, we're already closing the screen
-            if isopen(screen.session) && !from_close
-                evaljs_value(screen.session, js"""$(WGL).then(WGL => {
-                    const canvas = $(screen.canvas);
-                    const screen = canvas?.children?.[1]?.wglmakie_screen
-                    if (screen) {
-                        WGL.dispose_screen(screen)
-                    }
-                })
-                """)
-            end
+    lock(screen.lock) do
+        if !screen.tick_clock.running && isnothing(screen.scene) && !isopen(screen.session)
+            # If the screen is already closed, we don't need to do anything
+            return
         end
-        Makie.delete_screen!(scene, screen)
+        Makie.stop!(screen.tick_clock)
+        if !isnothing(screen.scene)
+            events(screen.scene).window_open[] = false
+            scene = screen.scene
+            delete_js_objects!(screen, scene)
+            if !isnothing(screen.canvas)
+                # If called from session.on_close, we're already closing the screen
+                if isopen(screen.session) && !from_close
+                    evaljs_value(screen.session, js"""$(WGL).then(WGL => {
+                        const canvas = $(screen.canvas);
+                        const screen = canvas?.children?.[1]?.wglmakie_screen
+                        if (screen) {
+                            WGL.dispose_screen(screen)
+                        }
+                    })
+                    """)
+                end
+            end
+            Makie.delete_screen!(scene, screen)
+        end
+        return
     end
-    return
 end
 
 function Base.size(screen::Screen)
