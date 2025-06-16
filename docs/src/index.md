@@ -59,8 +59,8 @@ end
 
 attractor = Lorenz()
 
-points = Observable(Point3f[])
-colors = Observable(Int[])
+points = Point3f[]
+colors = Int[]
 
 set_theme!(theme_black())
 
@@ -71,12 +71,11 @@ fig, ax, l = lines(points, color = colors,
 
 record(fig, "lorenz.mp4", 1:120) do frame
     for i in 1:50
-        push!(points[], step!(attractor))
-        push!(colors[], frame)
+        push!(points, step!(attractor))
+        push!(colors, frame)
     end
     ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120)
-    notify(points)
-    notify(colors)
+    Makie.update!(l, arg1 = points, color = colors)
     l.colorrange = (0, frame)
 end
 set_theme!() # hide
