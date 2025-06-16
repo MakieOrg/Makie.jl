@@ -266,11 +266,9 @@ function Base.close(screen::Screen; from_close=false)
             if isopen(screen.session) && !from_close
                 evaljs_value(screen.session, js"""$(WGL).then(WGL => {
                     const canvas = $(screen.canvas);
-                    if (canvas) {
-                        const screen = canvas.childNodes[1].wglmakie_screen;
-                        if (screen) {
-                            WGL.dispose_screen(screen)
-                        }
+                    const screen = canvas?.children?.[1]?.wglmakie_screen
+                    if (screen) {
+                        WGL.dispose_screen(screen)
                     }
                 })
                 """)
