@@ -75,7 +75,7 @@ record(fig, "lorenz.mp4", 1:120) do frame
         push!(colors, frame)
     end
     ax.azimuth[] = 1.7pi + 0.3 * sin(2pi * frame / 120)
-    Makie.update!(l, arg1 = points, color = colors)
+    Makie.update!(l, arg1 = points, color = colors) # Makie 0.24+
     l.colorrange = (0, frame)
 end
 set_theme!() # hide
