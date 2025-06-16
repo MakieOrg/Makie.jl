@@ -548,3 +548,44 @@ end
 
     st
 end
+
+function create_test_plot()
+    # Grid scatter
+    x, y = repeat(1:10, 8), repeat(1:8, inner=10)
+    f, ax, pl = scatter(x, y, color=x.*y, markersize=25)
+    # Text with uncommon chars (no custom fonts)
+    text!(ax, 5, 6, text="∫∂∇αβγ←→€¥", fontsize=40, align=(:center, :center))
+    text!(ax, 5, 4, text="◆●▲½⅓∞≈", fontsize=40, color=:darkred, strokewidth=2,strokecolor=:white, align=(:center, :center))
+    text!(ax, 5, 2, text="abcdefg", color=1:8, colormap=:turbo, fontsize=60, align=(:center, :center), font=assetpath("fonts", "blkchcry.ttf"))
+    return f
+end
+
+@reference_test "Threading Test" begin
+    ref = copy(colorbuffer(create_test_plot()))
+    chan = Channel{Matrix{RGBAf}}(Inf)
+    runs = Channel{Int}(100)
+    Threads.@threads for i in 1:100
+        f = create_test_plot()
+        fetch(Makie.spawnat(1) do
+            thread_ref = copy(colorbuffer(f))
+            if !(ref ≈ thread_ref)
+                put!(chan, thread_ref)
+            end
+            put!(runs, i)
+        end)
+    end
+    close(chan)
+    close(runs)
+    vals = collect(chan)
+    runs_vals = collect(runs)
+    @test Set(runs_vals) == Set(1:100)
+    s = Scene(size=reverse(size(ref)))
+    if isempty(vals)
+        image!(s, -1..1, -1..1, rotr90(ref))
+    else
+        val, idx = findmax(x-> ReferenceTests.compare_images(x, ref), vals)
+        println("Failing with comparison value: ", val)
+        image!(s, -1..1, -1..1, rotr90(vals[idx]))
+    end
+    s
+end

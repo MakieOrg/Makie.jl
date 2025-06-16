@@ -619,3 +619,17 @@ isscalar(x::AbstractArray) = false
 isscalar(x::Billboard) = isscalar(x.rotation)
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
+
+# Stolen from StableTasks.jl
+# So we can better test threading
+# Putting it here, in case we want to start using it!
+function set_task_tid!(task::Task, tid::Integer)
+    task.sticky = true
+    ccall(:jl_set_task_tid, Cint, (Any, Cint), task, tid-1)
+end
+function spawnat(f, tid)
+    task = Task(f)
+    set_task_tid!(task, tid)
+    schedule(task)
+    task
+end

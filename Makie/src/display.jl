@@ -445,6 +445,9 @@ end
 isvisible(screen::MakieScreen) = true
 isvisible(::Nothing) = false
 
+# Make colorbuffer(fig) thread safe
+const COLORBUFFER_LOCK = ReentrantLock()
+
 """
     colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
 
@@ -460,19 +463,21 @@ or RGBA.
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
 """
 function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update=true, backend = current_backend(), screen_config...)
-    scene = get_scene(fig)
-    update && update_state_before_display!(fig)
-    # if already has a screen, use their visibility value, if no screen, returns false
-    visible = isvisible(getscreen(scene))
-    config = Dict{Symbol,Any}(screen_config)
-    get!(config, :visible, visible)
-    get!(config, :start_renderloop, false)
-    screen = getscreen(backend, scene, config)
-    img = colorbuffer(screen, format)
-    if !isroot(scene)
-        return get_sub_picture(img, format, viewport(scene)[])
-    else
-        return img
+    lock(COLORBUFFER_LOCK) do
+        scene = get_scene(fig)
+        update && update_state_before_display!(fig)
+        # if already has a screen, use their visibility value, if no screen, returns false
+        visible = isvisible(getscreen(scene))
+        config = Dict{Symbol,Any}(screen_config)
+        get!(config, :visible, visible)
+        get!(config, :start_renderloop, false)
+        screen = getscreen(backend, scene, config)
+        img = colorbuffer(screen, format)
+        if !isroot(scene)
+            return get_sub_picture(img, format, viewport(scene)[])
+        else
+            return img
+        end
     end
 end
 
