@@ -227,7 +227,6 @@ function add_light_computation!(graph, scene, lights)
         @error("Only one AmbientLights is allowed. Skipping AmbientLights beyond the first.")
     end
 
-    # TODO: defaults
     add_input!((k, c) -> RGBf(to_color(c)), graph, :ambient_color, ambient_color)
     add_input!(graph, :lights, convert(Vector{AbstractLight}, filtered_lights))
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
@@ -252,12 +251,9 @@ function add_light_computation!(graph, scene, lights)
 
     # Split this to avoid updating WGLMakie
     # camera view matrix, not space adjusted plot matrix (right?)
-    register_computation!(graph,
-        [:dirlight_direction, :dirlight_cam_relative, :eye_to_world],
-        [:dirlight_final_direction]
-    ) do (dir, cam_relative, iview), changed, cached
+    map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, iview
         final_dir = cam_relative ? Vec3f(iview[Vec(1,2,3), Vec(1,2,3)] * dir) : dir
-        return (final_dir,)
+        return final_dir
     end
 
     return

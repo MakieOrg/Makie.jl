@@ -9,20 +9,6 @@ deref(x) = x
 
 abstract type AbstractEdge end
 
-#=
-TODO, use this for Ref{NamedTuple} ?
-@generated function _setindex(nt::T, value, field::Symbol)::T where {T<:NamedTuple}
-    names = Base.fieldnames(T)
-    result = Expr(:tuple)
-    for name in names
-        qn = QuoteNode(name)
-        expr = Expr(:(=), name, :(($(qn) === field ? value : getfield(nt, $(qn)))::fieldtype(T, $(qn))))
-        push!(result.args, expr)
-    end
-    return result
-end
-=#
-
 """
     struct Computed
 
@@ -514,9 +500,7 @@ function _update!(attr::ComputeGraph, values)
     end
 end
 
-# TODO: should this check inputs, outputs, both?
-# Note: WGLMakie relies on this checking output to avoid double-defining
-Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key) || haskey(attr.outputs, key)
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key)
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
@@ -633,8 +617,6 @@ function resolve!(edge::ComputeEdge)
     lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
-        # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
-        # TODO, can/should we store this tuple?
         if !isassigned(edge.typed_edge)
             # constructor does first resolve to determine fully typed outputs
             edge.typed_edge[] = TypedEdge(edge)
@@ -904,7 +886,6 @@ macro if_enabled(expr)
 end
 
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
-    # TODO make the checks a compile time variable, so we can turn them on for tests!
     @if_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)

@@ -1,13 +1,8 @@
-
-# TODO: Bad workaround for now
-argument_names(::Type{Voxels}, N::Integer) = (:x, :y, :z, :chunk)
-conversion_trait(::Type{Voxels}, args...) = Voxels
-
-function expand_dimensions(::Type{<: Voxels}, chunk::Array{<: Real, 3})
+# expand_dimensions would require conversion trait
+function convert_arguments(::Type{<: Voxels}, chunk::Array{<: Real, 3})
     X, Y, Z = map(x -> EndPoints(Float32(-0.5*x), Float32(0.5*x)), size(chunk))
     return (X, Y, Z, chunk)
 end
-
 
 function convert_arguments(::Type{<:Voxels}, xs, ys, zs, chunk::Array{<: Real, 3})
     xi = Float32.(to_endpoints(xs, "x", Voxels))
@@ -147,9 +142,9 @@ function calculated_attributes!(::Type{Voxels}, plot::Plot)
     attr = plot.attributes
     register_voxel_conversions!(attr)
     register_voxel_colormapping!(attr)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
     return
 end
