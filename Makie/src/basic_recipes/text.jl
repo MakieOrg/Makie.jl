@@ -359,11 +359,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
 end
 
 function register_text_computations!(attr::ComputeGraph)
-    if !haskey(attr, :atlas)
-        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
-            (get_texture_atlas(),)
-        end
-    end
+    add_constant!(attr, :atlas, get_texture_atlas())
 
     register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
         return (to_font(fs, f),)
@@ -427,7 +423,7 @@ get_text_type(::T) where T = T
 function calculated_attributes!(::Type{Text}, plot::Plot)
     attr = plot.attributes
 
-    register_computation!((args...) -> (Cint(DISTANCEFIELD), ), attr, Symbol[], [:sdf_marker_shape])
+    add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
 
     register_colormapping!(attr)
     register_text_computations!(attr)

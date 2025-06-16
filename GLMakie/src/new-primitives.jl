@@ -663,7 +663,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
         return (output,)
     end
 
-    haskey(attr, :debug) || add_input!(attr, :debug, false)
+    # TODO: This is a compile time constant that should be settable from the plot.
+    # No point in making it an input here, since this is just before compilation.
+    # Keeping `haskey()` in case add_constant is handled differently in the future
+    haskey(attr, :debug) || add_constant!(attr, :debug, false)
 
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
 
@@ -739,7 +742,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
 
     # linestyle/pattern handling
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
-    haskey(attr, :debug) || add_input!(attr, :debug, false)
+    haskey(attr, :debug) || add_constant!(attr, :debug, false) # see Lines
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
 
     register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached

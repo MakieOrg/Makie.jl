@@ -559,11 +559,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
 end
 
 function all_marker_computations!(attr, markername=:marker)
-    if !haskey(attr, :atlas)
-        register_computation!(attr, Symbol[], [:atlas]) do _, changed, last
-            (get_texture_atlas(),)
-        end
-    end
+    add_constant!(attr, :atlas, get_texture_atlas())
     inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     register_computation!(

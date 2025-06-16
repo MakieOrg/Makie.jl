@@ -764,6 +764,25 @@ function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
     return attr
 end
 
+"""
+    add_constant!(graph, name::Symbol, value)
+
+Adds a constant to the Graph. A constant is not connected to an `Input` and thus
+can't change through compute graph resolution.
+"""
+function add_constant!(attr::ComputeGraph, k::Symbol, value)
+    haskey(attr, k) && return
+    map!(() -> value, attr, Symbol[], k)
+    return attr
+end
+
+function add_constants!(attr::ComputeGraph; kw...)
+    for (k, v) in pairs(kw)
+        add_constant!(attr, k, v)
+    end
+    return attr
+end
+
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
 """
@@ -815,14 +834,14 @@ end
 
 function check_boxed_values(f)
     names = propertynames(f)
-    values = map(x-> getfield(f, x), names)
-    boxed = filter(x -> x isa Core.Box, values)
+    name_values = map(x -> x => getfield(f, x), names)
+    boxed = filter(p -> p[2] isa Core.Box, name_values)
     if !isempty(boxed)
         boxed_str = map(boxed) do (k, v)
             box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
             return "$(k)::Core.Box($(box))"
         end
-        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
+        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ",")). This might be caused by a variable of the same name existing inside and outside a `do ... end` block.")
     end
 end
 
@@ -1109,6 +1128,10 @@ end
 
 include("io.jl")
 
-export Computed, Computed, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
+export Computed, ComputeEdge
+export ComputeGraph
+export register_computation!
+export add_input!, add_inputs!, add_constant!, add_constants!
+export update!
 
 end
