@@ -417,7 +417,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     # It seems impossible to merge the recipes from all modules
     # Since precompilation will cache only MakieCore's state
     # And once everything is compiled, and MakieCore is loaded into a package
-    # The names are loaded from cache and dont contain anything after 
+    # The names are loaded from cache and dont contain anything after
     func = symbol_to_specable(field)
     if isnothing(func)
         error("$(field) neither a recipe, Makie plotting object or a Block (like Axis, Legend, etc).")
@@ -567,7 +567,7 @@ function push_without_add!(scene::Scene, plot)
     end
 end
 
-function get_plot_position(specs, spec::PlotSpec, plot::Plot)
+function plot_scene_position(specs, spec::PlotSpec, plot::Plot)
     # TODO, this may not reproduce the exact same cycle index as on master
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
@@ -598,7 +598,7 @@ function diff_plotlist!(
     # And at some point we may be able to optimize notify(list_of_observables)
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec,Plot}(k, v) for (k, v) in reusable_plots]
-    sort!(reusable_plots_sorted, by=((k, v),)-> v.plot_position[], rev=true)
+    sort!(reusable_plots_sorted, by=((k, v),)-> v.scene_position[], rev=true)
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
@@ -630,9 +630,9 @@ function diff_plotlist!(
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
             # Update the position of the plot!
-            pos = get_plot_position(plotspecs, plotspec, reused_plot)
-            if pos != reused_plot.plot_position[]
-                reused_plot.plot_position = pos
+            pos = plot_scene_position(plotspecs, plotspec, reused_plot)
+            if pos != reused_plot.scene_position[]
+                reused_plot.scene_position = pos
             end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot

@@ -491,7 +491,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
     end
     # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :plot_position, 0)
+    add_input!(attr, :scene_position, 0)
     add_input!(attr, :palettes, nothing)
     cycle = attr.cycle[]
     if !isnothing(cycle)
@@ -513,7 +513,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                             return value
                         end
                     end
-                    pos = attr.plot_position[]
+                    pos = attr.scene_position[]
                     cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
                     return convert_attribute(cyc, Key{key}(), Key{name}())
                 end
@@ -635,7 +635,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
-function get_plot_position(scene::Scene, plot::Plot)
+function plot_scene_position(scene::Scene, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
@@ -654,9 +654,10 @@ function get_plot_position(scene::Scene, plot::Plot)
     # not inserted yet
     return pos
 end
+
 # For recipes we use the recipes position?
-function get_plot_position(parent::Plot, ::Plot)
-    get_plot_position(get_scene(parent), parent)
+function plot_scene_position(parent::Plot, ::Plot)
+    plot_scene_position(get_scene(parent), parent)
 end
 
 # should this just be connect_plot?
@@ -678,7 +679,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    plot.plot_position = get_plot_position(parent, plot)
+    plot.scene_position = plot_scene_position(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
