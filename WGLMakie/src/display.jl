@@ -103,14 +103,21 @@ function poll_all_plots(scene)
     end
 end
 
-function start_polling_loop!(scene)
-    task = @async while !Makie.isclosed(scene)
-        try
-            poll_all_plots(scene)
-        catch e
-            @error "Error in polling loop" exception=(e, catch_backtrace())
+function start_polling_loop!(screen, session, scene)
+    scene.isclosed = false
+    task = @async begin
+        while !Makie.isclosed(scene)
+            try
+                poll_all_plots(scene)
+            catch e
+                @error "Error in polling loop" exception=(e, catch_backtrace())
+            end
+            sleep(1/100)
         end
-        sleep(1/100)
+        Makie.for_each_atomic_plot(scene) do p
+            delete_wgl_robj!(session, p)
+        end
+        Makie.delete_screen!(scene, screen)
     end
     Base.errormonitor(task)
 end
@@ -133,7 +140,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             if initialized == true
                 put!(screen.plot_initialized, true)
                 mark_as_displayed!(screen, scene)
-                start_polling_loop!(scene)
+                start_polling_loop!(screen, session, scene)
                 connect_post_init_events(screen, scene)
             else
                 # Will be an error from WGLMakie.js
@@ -254,7 +261,9 @@ end
 
 function Base.close(screen::Screen)
     Makie.stop!(screen.tick_clock)
-    events(screen.scene).window_open[] = false
+    if !isnothing(screen.scene)
+        events(screen.scene).window_open[] = false
+    end
     return
 end
 
@@ -455,6 +464,23 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plots=Plot[])
     return scene_uuids, plots
 end
 
+function delete_wgl_robj!(session::Union{Nothing, Session}, plot::Plot)
+    # Delete the renderobject, so that we can free the memory
+    if haskey(plot.attributes, :wgl_renderobject)
+        delete!(plot.attributes, :wgl_renderobject, force=true)
+    end
+    if haskey(plot.attributes, :wgl_update_obs)
+        obs = plot.attributes[:wgl_update_obs][]
+        delete!(plot.attributes, :wgl_update_obs)
+        if !isnothing(session)
+            root = Bonito.root_session(session)
+            Bonito.delete_cached!(root, root, obs.id)
+        end
+    end
+    return
+end
+
+
 function delete_js_objects!(screen::Screen, scene::Scene)
     session = get_screen_session(screen)
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
@@ -463,10 +489,7 @@ function delete_js_objects!(screen::Screen, scene::Scene)
     isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
-        delete!(plot.attributes, :wgl_renderobject)
-        obs = plot.attributes[:wgl_update_obs][]
-        delete!(plot.attributes, :wgl_update_obs)
-        Bonito.delete_cached!(root, root, obs.id)
+        delete_wgl_robj!(root, plot)
     end
 
     Bonito.evaljs(root, js"""
@@ -536,19 +559,13 @@ const DISABLE_JS_FINALZING = Base.RefValue(false)
 const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String},Union{Session,Nothing}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
+# Can be called from finalizer!
 function Base.delete!(screen::Screen, ::Scene, plot::Plot)
     # # only queue atomics to actually delete on js
     atomics = Makie.collect_atomic_plots(plot)
     session = screen.session
     for plot in atomics
-        if haskey(plot.attributes.outputs, :wgl_update_obs)
-            # This plot was never rendered, so we don't need to delete it
-            # obs = plot.attributes.outputs[:wgl_update_obs].value[]
-            delete!(plot.attributes, :wgl_update_obs; force=true, recursive=true)
-            # if !isnothing(session)
-            #     Bonito.delete_cached!(session, session, obs.id)
-            # end
-        end
+        delete_wgl_robj!(nothing, plot)
     end
     if !DISABLE_JS_FINALZING[]
         plot_uuids = map(js_uuid, atomics)
