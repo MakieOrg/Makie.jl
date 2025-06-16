@@ -157,22 +157,34 @@ function polypath(ctx, polygon)
     isempty(polygon) && return nothing
     ext = decompose(Point2f, polygon.exterior)
     Cairo.set_fill_type(ctx, Cairo.CAIRO_FILL_RULE_EVEN_ODD)
-    Cairo.move_to(ctx, ext[1]...)
-    for point in ext[2:end]
-        Cairo.line_to(ctx, point...)
-    end
-    Cairo.close_path(ctx)
+      
+    ctx = screen.context
+    w, h = screen.surface.width, screen.surface.height
+
     interiors = decompose.(Point2f, polygon.interiors)
     for interior in interiors
-        # Cairo needs to have interiors counter clockwise
-        n = length(interior)
+        # establish an 'exterior' clip by surrounding the actual clip with a rectangle
+        # of the size of the surface
+        Cairo.move_to(ctx, 0, 0)
+        Cairo.line_to(ctx, w, 0)
+        Cairo.line_to(ctx, w, h)
+        Cairo.line_to(ctx, 0, h)
+        Cairo.close_path(ctx)
         Cairo.move_to(ctx, interior[1]...)
         for idx in 2:n
             point = interior[idx]
             Cairo.line_to(ctx, point...)
         end
         Cairo.close_path(ctx)
+        Cairo.clip(ctx)
     end
+
+    ext = decompose(Point2f, polygon.exterior)
+    Cairo.move_to(ctx, ext[1]...)
+    for point in ext[2:end]
+        Cairo.line_to(ctx, point...)
+    end
+    Cairo.close_path(ctx)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
@@ -216,7 +228,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
-            polypath(screen.context, po)
+            polypath(screen, po)
             set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
             set_source(screen.context, sc)
@@ -357,7 +369,7 @@ function draw_plot(scene::Scene, screen::Screen, tric::Tricontourf)
 
     function draw_tripolys(polys, colornumbers, colors)
         for (i, (pol, colnum, col)) in enumerate(zip(polys, colornumbers, colors))
-            polypath(screen.context, pol)
+            polypath(screen, pol)
             if i == length(colornumbers) || colnum != colornumbers[i+1]
                 set_source(screen.context, col)
                 Cairo.fill(screen.context)
