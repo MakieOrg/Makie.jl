@@ -56,9 +56,7 @@ mutable struct Screen <: Makie.MakieScreen
     tick_clock::Makie.BudgetedTimer
     function Screen(scene::Union{Nothing,Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
-        screen = new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
-        finalizer(close, screen)
-        return screen
+        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
     end
 end
 
@@ -114,10 +112,7 @@ function start_polling_loop!(screen, session, scene)
             end
             sleep(1/100)
         end
-        Makie.for_each_atomic_plot(scene) do p
-            delete_wgl_robj!(session, p)
-        end
-        Makie.delete_screen!(scene, screen)
+        close(screen; from_close=true)
     end
     Base.errormonitor(task)
 end
@@ -150,7 +145,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         end
         on(session, session.on_close) do closed
             if closed == true
-                close(screen)
+                scene.events.window_open[] = false
             end
             return
         end
@@ -162,7 +157,8 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
 end
 
 function Bonito.jsrender(session::Session, scene::Scene)
-    screen = Screen(scene)
+    screen = Screen()
+    screen.scene = scene
     return render_with_init(screen, session, scene)
 end
 
@@ -259,10 +255,28 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T<:MIME}
     return T in Makie.WEB_MIMES
 end
 
-function Base.close(screen::Screen)
+function Base.close(screen::Screen; from_close=false)
     Makie.stop!(screen.tick_clock)
     if !isnothing(screen.scene)
         events(screen.scene).window_open[] = false
+        scene = screen.scene
+        delete_js_objects!(screen, scene)
+        if !isnothing(screen.canvas)
+            # If called from session.on_close, we're already closing the screen
+            if isopen(screen.session) && !from_close
+                evaljs_value(screen.session, js"""$(WGL).then(WGL => {
+                    const canvas = $(screen.canvas);
+                    if (canvas) {
+                        const screen = canvas.childNodes[1].wglmakie_screen;
+                        if (screen) {
+                            WGL.dispose_screen(screen)
+                        }
+                    }
+                })
+                """)
+            end
+        end
+        Makie.delete_screen!(scene, screen)
     end
     return
 end
@@ -320,10 +334,21 @@ end
 # TODO, create optimized screens, forward more options to JS/WebGL
 function Screen(scene::Scene; kw...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol,Any}(kw))
-    return Screen(scene, config)
+    screen = Screen(scene, config)
+    display(screen, scene)
+    return screen
 end
-Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
-Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
+function Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME)
+    screen = Screen(scene, config)
+    display(screen, scene)
+    return screen
+end
+
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
+    screen = Screen(scene, config)
+    display(screen, scene)
+    return screen
+end
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
@@ -409,12 +434,12 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     js = js"""
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
-    })"""
-    Bonito.evaljs_value(session, js; timeout=50)
-    return
-end
+        })"""
+        Bonito.evaljs_value(session, js; timeout=50)
+        return
+    end
 
-function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
+    function Base.insert!(::Screen, ::Scene, @nospecialize(plot::PlotList))
     return nothing
 end
 
@@ -439,8 +464,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
-function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
-                            session::Union{Nothing,Session})
+function delete_js_objects!(screen::Screen, plot_uuids::Vector{String})
     main_session = get_screen_session(screen)
     isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
     # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
@@ -451,7 +475,6 @@ function delete_js_objects!(screen::Screen, plot_uuids::Vector{String},
     $(WGL).then(WGL=> {
         WGL.delete_plots($(plot_uuids));
     })""")
-    !isnothing(session) && close(session)
     return
 end
 
@@ -556,7 +579,7 @@ function Base.push!(queue::LockfreeQueue, item)
 end
 
 const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String},Union{Session,Nothing}}}(delete_js_objects!)
+const DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Vector{String}}}(delete_js_objects!)
 const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen,Scene}}(delete_js_objects!)
 
 # Can be called from finalizer!
@@ -569,7 +592,7 @@ function Base.delete!(screen::Screen, ::Scene, plot::Plot)
     end
     if !DISABLE_JS_FINALZING[]
         plot_uuids = map(js_uuid, atomics)
-        push!(DELETE_QUEUE, (screen, plot_uuids, nothing))
+        push!(DELETE_QUEUE, (screen, plot_uuids))
     end
     return
 end

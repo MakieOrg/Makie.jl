@@ -1019,9 +1019,11 @@ If `recursive = true` all child nodes of the selected node are deleted. If
 If either exists without the respective option being true an error will be thrown.
 """
 function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
-    haskey(attr.outputs, key) || throw(KeyError(key))
-    _delete!(attr, attr.outputs[key], force, recursive)
-    return attr
+    lock(attr.lock) do
+        haskey(attr.outputs, key) || throw(KeyError(key))
+        _delete!(attr, attr.outputs[key], force, recursive)
+        return attr
+    end
 end
 
 function _delete!(attr::ComputeGraph, node::Computed, force::Bool, recursive::Bool)

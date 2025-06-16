@@ -466,6 +466,7 @@ function Base.empty!(scene::Scene; free=false)
     empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
+
     # conditional, since in free we dont want this!
     free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
 

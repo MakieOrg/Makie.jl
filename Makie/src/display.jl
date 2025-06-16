@@ -407,7 +407,9 @@ function getscreen(scene::Scene, backend=current_backend())
     end
     isnothing(idx) && return nothing
     # TODO, when would we actually want to get a specific screen?
-    return scene.current_screens[idx]
+    screen = scene.current_screens[idx]
+    isopen(screen) && return screen
+    return screen
 end
 
 getscreen(scene::SceneLike, backend=current_backend()) = getscreen(get_scene(scene), backend)

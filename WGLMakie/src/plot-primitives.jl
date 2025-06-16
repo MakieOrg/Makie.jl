@@ -6,7 +6,6 @@ js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
 function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
-    println("SERIALIZING PLOTY $(typeof(plot))")
     mesh = create_shader(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
