@@ -8,6 +8,8 @@ const TRACKED_TASKS = TrackedTask[]
 const TRACKED_TASKS_LOCK = Base.ReentrantLock()
 const HAS_ATEXIT = Base.RefValue(false)
 
+Base.wait(t::TrackedTask) = wait(t.task)
+
 function Base.close(t::TrackedTask)
     t.isrunning[] = false
     yield()
