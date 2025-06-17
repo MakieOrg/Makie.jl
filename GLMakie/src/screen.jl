@@ -502,6 +502,9 @@ end
 
 function display_scene!(screen::Screen, scene::Scene)
     @debug("display scene on screen")
+    if any(screen -> screen isa Screen, scene.current_screens)
+        error("GLMakie can not display a scene in multiple Screens.")
+    end
     resize!(screen, size(scene)...)
     insertplots!(screen, scene)
     Makie.push_screen!(scene, screen)
