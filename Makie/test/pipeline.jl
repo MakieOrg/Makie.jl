@@ -193,7 +193,7 @@ end
 
 @testset "recipe attribute checking" begin
     # TODO, this has become harder since attributes(p) contains now more than just the attributes
-    # And if p.colour isn't explicitely part of the attribute, it won't get passed
+    # And if p.colour isn't explicitly part of the attribute, it won't get passed
     # @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
     @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
 end

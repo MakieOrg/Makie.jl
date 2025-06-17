@@ -515,7 +515,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
         add_input!(attr, :palette_lookup, lookup)
         for (k, p) in lookup
-            # If user explicitely passes values, we should not do anything
+            # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
                 add_input!(attr, k, get(kwargs, k, nothing)) do key, value
                     palettes = attr.palettes[]
