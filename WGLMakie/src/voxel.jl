@@ -31,9 +31,9 @@ function create_shader(scene::Scene, plot::Voxels)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
 
     if haskey(attr, :voxel_colormap)
-        register_computation!(attr, [:voxel_colormap], [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
+        map!(attr, :voxel_colormap, [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do colormap
             # colormap is synchronized with the 255 values possible
-            return (Sampler(inputs[1], minfilter = :nearest), false, false)
+            return (Sampler(colormap, minfilter = :nearest), false, false)
         end
     elseif haskey(attr, :voxel_color)
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
@@ -91,7 +91,6 @@ end
 
 
 function voxel_program(attr)
-    # TODO: names I guess
     uniforms = Dict(
         :diffuse => attr.diffuse,
         :specular => attr.specular,

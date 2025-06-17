@@ -54,8 +54,10 @@ function ComputePipeline.update!(plot::Plot; args...)
 end
 
 function ComputePipeline.update!(plot::Plot, args...; attr...)
-    kw = Dict{Symbol, Any}(Symbol(:arg, i) => arg for (i, arg) in enumerate(args))
-    merge!(kw, attr)
+    kw = [Pair{Symbol, Any}(Symbol(:arg, i), arg) for (i, arg) in enumerate(args)]
+    for (a, v) in attr
+        push!(kw, Pair{Symbol, Any}(a, v))
+    end
     ComputePipeline.update!(plot.attributes, kw)
     return
 end
@@ -105,7 +107,8 @@ function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
     return result
 end
 
-# TODO: is this data_limits or boundingbox()?
+# This is data_limits(), not boundingbox()
+# TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
     if space === markerspace
         bb = Rect3d()
@@ -171,7 +174,7 @@ function add_alpha(color, alpha)
 end
 
 function register_colormapping_without_color!(attr::ComputeGraph)
-    register_computation!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do (icm, a), changed, last
+    map!(attr, [:colormap, :alpha], [:alpha_colormap, :raw_colormap, :color_mapping, :color_mapping_type]) do icm, a
         # Raw colormap from ColorGradient, which isn't scaled. We need to preserve this for later steps
         # This only differs from alpha_colormap in that it doesn't resample PlotUtils.ColorGradient...
         raw_colormap = _to_colormap(icm)::Vector{RGBAf}
@@ -192,11 +195,11 @@ function register_colormapping_without_color!(attr::ComputeGraph)
 
     for key in (:lowclip, :highclip)
         sym = Symbol(key, :_color)
-        register_computation!(attr, [key, :alpha_colormap], [sym]) do (input, cmap), changed, _
+        map!(attr, [key, :alpha_colormap], sym) do input, cmap
             if input === automatic
-                return (ifelse(key == :lowclip, first(cmap), last(cmap)),)
+                return ifelse(key == :lowclip, first(cmap), last(cmap))
             else
-                return (to_color(input),)
+                return to_color(input)
             end
         end
     end
@@ -239,24 +242,23 @@ end
 
 function register_position_transforms!(attr, input_name = :positions)
     haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
-    register_computation!(attr, [input_name, :transform_func],
-            [:positions_transformed]) do (positions, func), changed, last
-        return (apply_transform(func, positions),)
+    map!(attr, [input_name, :transform_func], :positions_transformed) do positions, func
+        return apply_transform(func, positions)
     end
     register_positions_transformed_f32c!(attr)
     return
 end
 
 function register_positions_transformed_f32c!(attr)
-    # TODO: f32c should be identity or not get applied here if space != :data
-    # TODO: backends should rely on model_f32c if they use :positions_transformed_f32c
+    # model_f32c is the model matrix after processing f32c. Backends should rely
+    # on it if it applies to :positions_transformed_f32c
+
     register_computation!(attr,
         [:positions_transformed, :model, :f32c, :space],
         [:positions_transformed_f32c, :model_f32c]
     ) do (positions, model, f32c, space), changed, last
 
-        # TODO: this should be done in one nice function
-        # This is simplified, skipping what's commented out
+        # TODO: This is simplified, skipping what's commented out
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
@@ -303,10 +305,10 @@ end
 
 function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false) where P
     # is_merged = true means that multiple arguments are collected in one input, i.e.:
-    # true:  one input where attr[input][] = (arg1, arg2, ...)
-    # false: multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
+    #   true:   one input where attr[input][] = (arg1, arg2, ...)
+    #   false:  multiple inputs where map(k -> attr[k][], inputs) = [arg1, arg2, ...]
     # this is used in text
-    # TODO expand_dims + dim_converts
+
     # Only 2 and 3d conversions are supported, and only
     PTrait = if is_merged
         @assert length(inputs) == 1
@@ -319,8 +321,7 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
-            # TODO, this can change types...
-            # Is Ref any a good idea for this, or should
+            # This can change types, so force Any type in Compute node
             return (Ref{Any}(args),)
         else
             return (Ref{Any}(args_exp),)
@@ -429,7 +430,6 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
 
-    # TODO: Is this dangerous? Scene might update this to LinearScaling later
     add_input!(attr, :f32c, :uninitialized)
 
     return
@@ -449,8 +449,6 @@ function register_marker_computations!(attr::ComputeGraph)
     end
 end
 
-# TODO: this won't work because Text is both primitive and not
-# TODO: Also true for mesh (see poly.jl, mesh.jl)
 const PrimitivePlotTypes = Union{Scatter, Lines, LineSegments, Text, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume}
 
@@ -494,7 +492,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
     end
     # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :plot_position, 0)
+    add_input!(attr, :cycle_index, 0)
     add_input!(attr, :palettes, nothing)
     cycle = attr.cycle[]
     if !isnothing(cycle)
@@ -516,7 +514,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                             return value
                         end
                     end
-                    pos = attr.plot_position[]
+                    pos = attr.cycle_index[]
                     cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
                     return convert_attribute(cyc, Key{key}(), Key{name}())
                 end
@@ -539,14 +537,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
 end
 
-# function gscatter end
-
-# const GScatter{ARGS} = Scatter{gscatter, ARGS}
-
 function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
     plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
+
+    updates = Pair{Symbol, Any}[]
     for (k, v) in plot_attr
         # attributes from user (kw), are already set
         if !haskey(kw, k)
@@ -554,26 +550,29 @@ function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <
             if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], k)
                 continue
             end
-            if haskey(plot_scene_theme, k)
-                setproperty!(gattr, k, to_value(plot_scene_theme[k]))
+            val = if haskey(plot_scene_theme, k)
+                to_value(plot_scene_theme[k])
             elseif v isa Observable
-                setproperty!(gattr, k, v[])
+                v[]
             elseif v isa Attributes
-                setproperty!(gattr, k, v)
+                v
             elseif v.default_value isa Inherit
                 default = v.default_value
                 if haskey(scene_theme, default.key)
-                    setproperty!(gattr, k, to_value(scene_theme[default.key]))
+                    to_value(scene_theme[default.key])
                 elseif !isnothing(default.fallback)
-                    setproperty!(gattr, k, default.fallback)
+                    default.fallback
                 else
                     error("No fallback + theme for $(k)")
                 end
             else
+                continue
                 #  v.default_value  is not a Inherit, so the value should already be set
             end
+            push!(updates, Pair{Symbol, Any}(k, val))
         end
     end
+    update!(gattr, updates)
     return
 end
 
@@ -613,7 +612,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         # shallow copy with generalized type (avoid changing graph, allow non Computed types)
         attr = Dict{Symbol, Any}(pairs(first(user_args).outputs))
 
-        # TODO: Do we just blacklist these, because they are controlled by Transformations()?
+        # Blacklist these because they are controlled by Transformations()
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
 
         # remove attributes that the parent graph has but don't apply to this plot
@@ -638,8 +637,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc,ArgTyp}(user_attributes, attr)
 end
 
-function get_plot_position(scene::Scene, plot::Plot)
-    # TODO, this may not reproduce the exact same cycle index as on master
+function plot_cycle_index(scene::Scene, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
@@ -658,9 +656,10 @@ function get_plot_position(scene::Scene, plot::Plot)
     # not inserted yet
     return pos
 end
+
 # For recipes we use the recipes position?
-function get_plot_position(parent::Plot, ::Plot)
-    get_plot_position(get_scene(parent), parent)
+function plot_cycle_index(parent::Plot, ::Plot)
+    plot_cycle_index(get_scene(parent), parent)
 end
 
 # should this just be connect_plot?
@@ -682,8 +681,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    # TODO, do this for recipes?
-    plot.plot_position = get_plot_position(parent, plot)
+    plot.cycle_index = plot_cycle_index(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
@@ -735,9 +733,6 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
     end
 end
 
-
-# TODO: it may make sense to just remove Mesh in convert_arguments?
-# TODO: this could probably be reused by meshscatter
 
 function color_per_mesh(ccolors, vertes_per_mesh)
     result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
@@ -802,10 +797,10 @@ function calculated_attributes!(::Type{Image}, plot::Plot)
     calculated_attributes!(Heatmap, plot)
     # this must not sort to preserve inverse value ranges (e.g. 1..0), data_limits
     # must must sort to generate non-negative widths in that case
-    register_computation!(attr, [:x, :y], [:positions]) do mini_maxi, changed, cached
-        mini = Vec3d(first.(values(mini_maxi))..., 0)
-        maxi = Vec3d(last.(values(mini_maxi))..., 0)
-        return (decompose(Point2d, Rect2d(mini, maxi .- mini)),)
+    map!(attr, [:x, :y], :positions) do x, y
+        mini = Vec3d(first(x), first(y), 0)
+        maxi = Vec3d(last(x), last(y), 0)
+        return decompose(Point2d, Rect2d(mini, maxi .- mini))
     end
     Makie.register_position_transforms!(attr)
     register_position_transforms!(attr)
@@ -814,25 +809,25 @@ end
 function calculated_attributes!(::Type{Heatmap}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr, :image)
-    register_computation!(attr, [:x, :y], [:data_limits]) do mini_maxi, changed, _
-        mini = Vec3d(minimum.(values(mini_maxi))..., 0)
-        maxi = Vec3d(maximum.(values(mini_maxi))..., 0)
-        return (Rect3d(mini, maxi .- mini),)
+    map!(attr, [:x, :y], :data_limits) do x, y
+        mini = Vec3d(minimum(x), minimum(y), 0)
+        maxi = Vec3d(maximum(x), maximum(y), 0)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
 function calculated_attributes!(::Type{Surface}, plot::Plot)
     attr = plot.attributes
-    register_computation!(attr, [:z, :color], [:color_with_default]) do (z, color), changed, cached
-        return (isnothing(color) ? z : color,)
+    map!(attr, [:z, :color], :color_with_default) do z, color
+        return isnothing(color) ? z : color
     end
     register_colormapping!(attr, :color_with_default)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, _
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         xlims = extrema_nan(x)
         ylims = extrema_nan(y)
         zlims = extrema_nan(z)
         mini, maxi = Vec3d.(xlims, ylims, zlims)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
@@ -841,12 +836,11 @@ function calculated_attributes!(::Type{Scatter}, plot::Plot)
     register_marker_computations!(attr)
     register_colormapping!(attr)
     register_position_transforms!(attr)
-    register_computation!(attr, [:rotation], [:converted_rotation, :billboard]) do (rotation,), changed, cached
+    map!(attr, :rotation, [:converted_rotation, :billboard]) do rotation
         return (convert_attribute(rotation, key"rotation"()), rotation isa Billboard)
     end
-    register_computation!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation, :marker_offset],
-                          [:data_limits]) do args, changed, last
-        return (scatter_limits(args...),)
+    map!(attr, [:positions, :space, :markerspace, :quad_scale, :quad_offset, :converted_rotation, :marker_offset], :data_limits) do args...
+        return scatter_limits(args...)
     end
 
 end
@@ -865,8 +859,8 @@ end
 
 function calculated_attributes!(::PointBased, plot::Plot)
     attr = plot.attributes
-    register_computation!(attr, [:positions], [:data_limits]) do (positions,), changed, last
-        return (Rect3d(positions),)
+    map!(attr, :positions, :data_limits) do positions
+        return Rect3d(positions)
     end
     register_position_transforms!(attr)
 end
@@ -899,9 +893,9 @@ function calculated_attributes!(::Type{Volume}, plot::Plot)
     attr = plot.attributes
     ComputePipeline.alias!(attr, :model, :model_f32c)
     register_colormapping!(attr, :volume)
-    register_computation!(attr, [:x, :y, :z], [:data_limits]) do (x, y, z), changed, last
+    map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
-        return (Rect3d(mini, maxi .- mini),)
+        return Rect3d(mini, maxi .- mini)
     end
 end
 
@@ -951,15 +945,15 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
 end
 
 function register_world_normalmatrix!(attr, modelname = :model_f32c)
-    register_computation!(attr, [modelname], [:world_normalmatrix]) do (m,), _, __
-        return (Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)]))), )
+    map!(attr, modelname, :world_normalmatrix) do m
+        return Mat3f(transpose(inv(m[Vec(1,2,3), Vec(1,2,3)])))
     end
 end
 
 function register_view_normalmatrix!(attr, modelname = :model_f32c)
-    register_computation!(attr, [:view, modelname], Symbol[:view_normalmatrix]) do (view, model), _, __
+    map!(attr, [:view, modelname], :view_normalmatrix) do view, model
         i3 = Vec3(1,2,3)
         nm = transpose(inv(view[i3, i3] * Mat3f(model[i3, i3])))
-        return (nm, )
+        return nm
     end
 end

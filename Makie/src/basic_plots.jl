@@ -628,7 +628,7 @@ representation and may behave a bit differently than usual.
 Note that `voxels` is currently considered experimental and may still see breaking
 changes in patch releases.
 """
-@recipe Voxels begin
+@recipe Voxels (x, y, z, chunk) begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
     is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     """

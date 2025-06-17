@@ -623,22 +623,13 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-function destroy!(rob::RenderObject, has_cached_camera = false)
-    # With camera caching these must not be cleaned up. If they do get cleared
-    # here, the cached Observable will continue to exist in camera and be used
-    # for future plots, but not be connected to the parent values.
-    # TODO, remove has_cached_camera + keep_alive
-    keep_alive = (:view, :projection, :projectionview, :resolution, :eyeposition, :lookat, :viewdirection, :upvector)
+function destroy!(rob::RenderObject)
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     with_context(rob.context) do
         # Get texture for texture atlas directly, to not trigger a new texture creation
         tex = get(atlas_texture_cache, (gl_texture_atlas(), rob.context), (nothing,))[1]
         for (k, v) in rob.uniforms
-            if has_cached_camera && in(k, keep_alive)
-                continue
-            end
-
             if v isa Observable
                 Observables.clear(v)
             elseif v isa GPUArray && v !== tex
@@ -655,12 +646,8 @@ function destroy!(rob::RenderObject, has_cached_camera = false)
         end
         GLAbstraction.free(rob.vertexarray)
     end
-    keep_alive_vals = [rob[k] for k in keep_alive if haskey(rob, k)]
     for obs in rob.observables
-        if has_cached_camera && in(obs, keep_alive_vals)
-        else
-            Observables.clear(obs)
-        end
+        Observables.clear(obs)
     end
     GLAbstraction.free(rob.vertexarray)
 end
@@ -678,7 +665,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isnothing(renderobject)
         # Switch to context, so we can delete the renderobjects
         with_context(screen.glscreen) do
-            destroy!(renderobject, plot isa Makie.ComputePlots)
+            destroy!(renderobject)
             filter!(x-> x[3] !== renderobject, screen.renderlist)
             delete!(screen.cache2plot, renderobject.id)
         end
@@ -838,8 +825,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         end
         screen.size = (winw, winh)
     else
-        # TODO: This should be the size of the target framebuffer... But what is
-        #       that?
+        # TODO: This should be the size of the target framebuffer... But what is that?
         screen.size = (fbw, fbh)
     end
 
@@ -890,7 +876,8 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
-    pollevents(screen, Makie.BackendTick) # TODO: consider triggering update on pollevents since we generally poll before rendering
+    pollevents(screen, Makie.BackendTick)
+    # TODO: consider triggering update on pollevents since we generally poll before rendering
     poll_updates(screen)
     # keep current buffer size to allows larger-than-window renders
     render_frame(screen, resize_buffers=false) # let it render

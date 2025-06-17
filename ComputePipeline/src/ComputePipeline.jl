@@ -9,20 +9,6 @@ deref(x) = x
 
 abstract type AbstractEdge end
 
-#=
-TODO, use this for Ref{NamedTuple} ?
-@generated function _setindex(nt::T, value, field::Symbol)::T where {T<:NamedTuple}
-    names = Base.fieldnames(T)
-    result = Expr(:tuple)
-    for name in names
-        qn = QuoteNode(name)
-        expr = Expr(:(=), name, :(($(qn) === field ? value : getfield(nt, $(qn)))::fieldtype(T, $(qn))))
-        push!(result.args, expr)
-    end
-    return result
-end
-=#
-
 """
     struct Computed
 
@@ -495,11 +481,14 @@ update!(graph, first_node = 2)
 update!(graph, :first_node => 2)
 ```
 """
-update!(attr::ComputeGraph; kwargs...) = update!(attr, kwargs...)
+update!(attr::ComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in kwargs])
+update!(attr::ComputeGraph, dict::Dict{Symbol}) = _update!(attr, dict)
+update!(attr::ComputeGraph, pairs::Pair{Symbol}...) = _update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in pairs])
+update!(attr::ComputeGraph, pairs::AbstractVector{<:Pair{Symbol}}) = _update!(attr, pairs)
 
-function update!(attr::ComputeGraph, dict::Dict{Symbol})
+function _update!(attr::ComputeGraph, values)
     lock(attr.lock) do
-        for (key, value) in dict
+        for (key, value) in values
             if haskey(attr.inputs, key)
                 _setproperty!(attr, key, value)
             else
@@ -511,23 +500,7 @@ function update!(attr::ComputeGraph, dict::Dict{Symbol})
     end
 end
 
-function update!(attr::ComputeGraph, pairs...)
-    lock(attr.lock) do
-        for (key, value) in pairs
-            if haskey(attr.inputs, key)
-                _setproperty!(attr, key, value)
-            else
-                error("Attribute $key not found in ComputeGraph")
-            end
-        end
-        update_observables!(attr)
-        return attr
-    end
-end
-
-# TODO: should this check inputs, outputs, both?
-# Note: WGLMakie relies on this checking output to avoid double-defining
-Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.inputs, key) || haskey(attr.outputs, key)
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key)
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
@@ -644,8 +617,6 @@ function resolve!(edge::ComputeEdge)
     lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
-        # We pass the refs, so that no boxing accours and code that actually needs Ref{T}(value) can directly use those (ccall/opengl)
-        # TODO, can/should we store this tuple?
         if !isassigned(edge.typed_edge)
             # constructor does first resolve to determine fully typed outputs
             edge.typed_edge[] = TypedEdge(edge)
@@ -782,6 +753,25 @@ function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
     return attr
 end
 
+"""
+    add_constant!(graph, name::Symbol, value)
+
+Adds a constant to the Graph. A constant is not connected to an `Input` and thus
+can't change through compute graph resolution.
+"""
+function add_constant!(attr::ComputeGraph, k::Symbol, value)
+    haskey(attr, k) && return
+    map!(() -> value, attr, Symbol[], k)
+    return attr
+end
+
+function add_constants!(attr::ComputeGraph; kw...)
+    for (k, v) in pairs(kw)
+        add_constant!(attr, k, v)
+    end
+    return attr
+end
+
 get_callback(computed::Computed) = hasparent(computed) ? computed.parent.callback : nothing
 
 """
@@ -833,14 +823,14 @@ end
 
 function check_boxed_values(f)
     names = propertynames(f)
-    values = map(x-> getfield(f, x), names)
-    boxed = filter(x -> x isa Core.Box, values)
+    name_values = map(x -> x => getfield(f, x), names)
+    boxed = filter(p -> p[2] isa Core.Box, name_values)
     if !isempty(boxed)
         boxed_str = map(boxed) do (k, v)
             box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
             return "$(k)::Core.Box($(box))"
         end
-        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ","))")
+        error("Cannot register computation: Callback function cannot use boxed values: $(first(methods(f))), $(join(boxed_str, ",")). This might be caused by a variable of the same name existing inside and outside a `do ... end` block.")
     end
 end
 
@@ -896,7 +886,6 @@ macro if_enabled(expr)
 end
 
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
-    # TODO make the checks a compile time variable, so we can turn them on for tests!
     @if_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
@@ -1128,6 +1117,10 @@ end
 
 include("io.jl")
 
-export Computed, Computed, ComputeEdge, ComputeGraph, register_computation!, add_input!, add_inputs!, update!
+export Computed, ComputeEdge
+export ComputeGraph
+export register_computation!
+export add_input!, add_inputs!, add_constant!, add_constants!
+export update!
 
 end
