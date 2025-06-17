@@ -47,7 +47,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./CairoMakie ./ReferenceTests ./ComputePipeline"
+          pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -62,6 +62,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -98,7 +100,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./GLMakie ./ReferenceTests ./ComputePipeline"
+          pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -115,6 +117,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -150,7 +154,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./WGLMakie ./ReferenceTests ./ComputePipeline"
+          pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -170,6 +174,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info

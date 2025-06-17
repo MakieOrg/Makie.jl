@@ -31,14 +31,16 @@ function create_shader(scene::Scene, plot::Voxels)
     Makie.add_computation!(attr, scene, Val(:voxel_model))
 
     if haskey(attr, :voxel_colormap)
-        register_computation!(attr, [:voxel_colormap], [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
+        map!(attr, :voxel_colormap, [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do colormap
             # colormap is synchronized with the 255 values possible
-            return (Sampler(inputs[1], minfilter = :nearest), false, false)
+            return (Sampler(colormap, minfilter = :nearest), false, false)
         end
     elseif haskey(attr, :voxel_color)
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
-        register_computation!(attr, [:voxel_color, :packed_uv_transform, :interpolate],
-                [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
+        register_computation!(
+            attr, [:voxel_color, :packed_uv_transform, :interpolate],
+            [:wgl_colormap, :wgl_uv_transform, :wgl_color]
+        ) do inputs, changed, cached
             # how interpolate?
             color, uvt, interpolate = inputs
             filter = ifelse(interpolate, :linear, :nearest)
@@ -83,7 +85,7 @@ function create_shader(scene::Scene, plot::Voxels)
 
         :diffuse, :specular, :shininess, # :backlight,
         :depthsorting, :primitive_shading,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
 
     return create_wgl_renderobject(voxel_program, attr, inputs)
@@ -91,7 +93,6 @@ end
 
 
 function voxel_program(attr)
-    # TODO: names I guess
     uniforms = Dict(
         :diffuse => attr.diffuse,
         :specular => attr.specular,

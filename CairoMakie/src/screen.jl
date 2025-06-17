@@ -2,7 +2,7 @@ using Base.Docs: doc
 
 @enum RenderType SVG IMAGE PDF EPS HTML
 
-Base.convert(::Type{RenderType}, ::MIME{SYM}) where SYM = mime_to_rendertype(SYM)
+Base.convert(::Type{RenderType}, ::MIME{SYM}) where {SYM} = mime_to_rendertype(SYM)
 function Base.convert(::Type{RenderType}, type::String)
     if type == "png"
         return IMAGE
@@ -45,12 +45,12 @@ function mime_to_rendertype(mime::Symbol)::RenderType
     end
 end
 
-function surface_from_output_type(mime::MIME{M}, io, w, h) where M
-    surface_from_output_type(M, io, w, h)
+function surface_from_output_type(mime::MIME{M}, io, w, h) where {M}
+    return surface_from_output_type(M, io, w, h)
 end
 
 function surface_from_output_type(mime::Symbol, io, w, h)
-    surface_from_output_type(mime_to_rendertype(mime), io, w, h)
+    return surface_from_output_type(mime_to_rendertype(mime), io, w, h)
 end
 
 function surface_from_output_type(type::RenderType, io, w, h)
@@ -104,11 +104,13 @@ struct ScreenConfig
     start_renderloop::Bool # Only used to satisfy the interface for record using `Screen(...; start_renderloop=false)` for GLMakie
     pdf_version::Union{Nothing, PDFVersion}
 
-    function ScreenConfig(px_per_unit::Real, pt_per_unit::Real,
+    function ScreenConfig(
+            px_per_unit::Real, pt_per_unit::Real,
             antialias::Symbol, visible::Bool, start_renderloop::Bool,
-            pdf_version::Union{Nothing, AbstractString})
+            pdf_version::Union{Nothing, AbstractString}
+        )
         v = isnothing(pdf_version) ? nothing : pdfversion(pdf_version)
-        new(px_per_unit, pt_per_unit, antialias, visible, start_renderloop, v)
+        return new(px_per_unit, pt_per_unit, antialias, visible, start_renderloop, v)
     end
 end
 
@@ -125,7 +127,7 @@ function device_scaling_factor(surface::Cairo.CairoSurface, sc::ScreenConfig)
     return device_scaling_factor(get_render_type(surface), sc)
 end
 
-const LAST_INLINE = Ref{Union{Makie.Automatic,Bool}}(Makie.automatic)
+const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(Makie.automatic)
 
 """
     CairoMakie.activate!(; screen_config...)
@@ -137,7 +139,7 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline=LAST_INLINE[], type="png", screen_config...)
+function activate!(; inline = LAST_INLINE[], type = "png", screen_config...)
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_screen_config!(CairoMakie, screen_config)
@@ -211,7 +213,7 @@ function Base.empty!(screen::Screen)
     Cairo.set_operator(ctx, Cairo.OPERATOR_CLEAR)
     Cairo.rectangle(ctx, 0, 0, size(screen)...)
     Cairo.paint_with_alpha(ctx, 1.0)
-    Cairo.restore(ctx)
+    return Cairo.restore(ctx)
 end
 
 Base.close(screen::Screen) = empty!(screen)
@@ -219,7 +221,7 @@ Base.close(screen::Screen) = empty!(screen)
 function destroy!(screen::Screen)
     isdefined(screen, :surface) || return
     Cairo.destroy(screen.surface)
-    Cairo.destroy(screen.context)
+    return Cairo.destroy(screen.context)
 end
 
 function Base.isopen(screen::Screen)
@@ -228,7 +230,7 @@ end
 
 function Base.size(screen::Screen)
     isdefined(screen, :surface) || return (0, 0)
-    round.(Int, (screen.surface.width, screen.surface.height))
+    return round.(Int, (screen.surface.width, screen.surface.height))
 end
 # we render the scene directly, since we have
 # no screen dependent state like in e.g. opengl
@@ -241,8 +243,8 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     # do something here.
 end
 
-function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where S
-    println(io, "CairoMakie.Screen{$S}")
+function Base.show(io::IO, ::MIME"text/plain", screen::Screen{S}) where {S}
+    return println(io, "CairoMakie.Screen{$S}")
 end
 
 function path_to_type(path)
@@ -282,7 +284,8 @@ function scaled_scene_resolution(typ::RenderType, config::ScreenConfig, scene::S
 end
 
 function Makie.apply_screen_config!(
-        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing, IO}, m::MIME{SYM}) where {SYM, SCREEN_RT}
+        screen::Screen{SCREEN_RT}, config::ScreenConfig, scene::Scene, io::Union{Nothing, IO}, m::MIME{SYM}
+    ) where {SYM, SCREEN_RT}
     # the surface size is the scene size scaled by the device scaling factor
     new_rendertype = mime_to_rendertype(SYM)
     # we need to re-create the screen if the rendertype changes, or for all vector backends
@@ -302,7 +305,7 @@ end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     # No mime as an argument implies we want an image based surface
-    Makie.apply_screen_config!(screen, config, scene, nothing, MIME"image/png"())
+    return Makie.apply_screen_config!(screen, config, scene, nothing, MIME"image/png"())
 end
 
 function Makie.px_per_unit(s::Screen)::Float64

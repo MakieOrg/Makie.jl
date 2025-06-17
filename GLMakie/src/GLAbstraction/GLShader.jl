@@ -1,30 +1,30 @@
 # Different shader string literals- usage: e.g. frag" my shader code"
 macro frag_str(source::AbstractString)
-    quote
+    return quote
         ($source, GL_FRAGMENT_SHADER)
     end
 end
 macro vert_str(source::AbstractString)
-    quote
+    return quote
         ($source, GL_VERTEX_SHADER)
     end
 end
 macro geom_str(source::AbstractString)
-    quote
+    return quote
         ($source, GL_GEOMETRY_SHADER)
     end
 end
 macro comp_str(source::AbstractString)
-    quote
+    return quote
         ($source, GL_COMPUTE_SHADER)
     end
 end
 
 function getinfolog(obj::GLuint)
     # Return the info log for obj, whether it be a shader or a program.
-    isShader    = glIsShader(obj)
-    getiv       = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
-    get_log     = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
+    isShader = glIsShader(obj)
+    getiv = isShader == GL_TRUE ? glGetShaderiv : glGetProgramiv
+    get_log = isShader == GL_TRUE ? glGetShaderInfoLog : glGetProgramInfoLog
 
     # Get the maximum possible length for the descriptive error message
     maxlength = GLint[0]
@@ -52,12 +52,12 @@ islinked(program::GLuint) = glGetProgramiv(program, GL_LINK_STATUS) == GL_TRUE
 function createshader(shadertype::GLenum)
     shaderid = glCreateShader(shadertype)
     @assert shaderid > 0 "opengl context is not active or shader type not accepted. Shadertype: $(GLENUM(shadertype).name)"
-    shaderid::GLuint
+    return shaderid::GLuint
 end
 function createprogram()
     program = glCreateProgram()
     @assert program > 0 "couldn't create program. Most likely, opengl context is not active"
-    program::GLuint
+    return program::GLuint
 end
 
 shadertype(s::Shader) = s.typ
@@ -95,7 +95,7 @@ struct ShaderCache
 end
 
 function ShaderCache(context)
-    ShaderCache(
+    return ShaderCache(
         context,
         Dict{String, Vector{String}}(),
         Dict{String, Dict{Any, Shader}}(),
@@ -126,7 +126,7 @@ struct LazyShader <: AbstractLazyShader
     function LazyShader(cache::ShaderCache, paths::ShaderSource...; kw_args...)
         args = Dict{Symbol, Any}(kw_args)
         get!(args, :view, Dict{String, String}())
-        new(cache, [paths...], args)
+        return new(cache, [paths...], args)
     end
 end
 
@@ -185,7 +185,7 @@ function compile_program(shaders::Vector{Shader}, fragdatalocation)
     if !GLAbstraction.islinked(program)
         error(
             "program $program not linked. Error in: \n",
-            join(map(x-> string(x.name), shaders), " or "), "\n", getinfolog(program)
+            join(map(x -> string(x.name), shaders), " or "), "\n", getinfolog(program)
         )
     end
     # Can be deleted, as they will still be linked to Program and released after program gets released
@@ -199,14 +199,14 @@ end
 function get_view(kw_dict)
     _view = kw_dict[:view]
     extension = Sys.isapple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
-    _view["GLSL_EXTENSION"] = extension*get(_view, "GLSL_EXTENSIONS", "")
+    _view["GLSL_EXTENSION"] = extension * get(_view, "GLSL_EXTENSIONS", "")
     _view["GLSL_VERSION"] = glsl_version_string()
-    _view
+    return _view
 end
 
 gl_convert(::GLContext, lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
 function gl_convert(ctx::GLContext, lazyshader::LazyShader, data)
-    gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
+    return gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
 end
 
 function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, data)
@@ -241,14 +241,14 @@ end
 
 function insert_from_view(io, replace_view::Function, keyword::AbstractString)
     print(io, replace_view(keyword))
-    nothing
+    return nothing
 end
 
 function insert_from_view(io, replace_view::Dict, keyword::AbstractString)
     if haskey(replace_view, keyword)
         print(io, replace_view[keyword])
     end
-    nothing
+    return nothing
 end
 """
 Replaces
@@ -273,7 +273,7 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
             if char == '}'
                 closed_mustaches += 1
                 if closed_mustaches == 2 # we found a complete mustache!
-                    insert_from_view(io, replace_view, SubString(string, replace_begin+1, i-2))
+                    insert_from_view(io, replace_view, SubString(string, replace_begin + 1, i - 2))
                     open_mustaches = 0
                     closed_mustaches = 0
                     replace_started = false
@@ -298,7 +298,7 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
         end
         last_char = char
     end
-    String(take!(io))
+    return String(take!(io))
 end
 
 
@@ -312,7 +312,8 @@ function mustache2replacement(mustache_key, view, attributes)
             if !isa(val, AbstractString)
                 if postfix == "_type"
                     return toglsltype_string(val)::String
-                else  postfix == "_calculation"
+                else
+                    postfix == "_calculation"
                     return glsl_variable_access(keystring, val)
                 end
             end

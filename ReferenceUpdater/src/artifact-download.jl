@@ -89,23 +89,25 @@ function download_artifacts(; commit = nothing, pr = nothing)
         end
     end
 
-    error("""
-        No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
-        This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
-        Artifacts are only available for complete runs.
-    """)
+    error(
+        """
+            No \"ReferenceImages\" artifact found for commit $headsha and job id $(check["id"]).
+            This could be because the job's workflow run ($(job["run_url"])) has not completed, yet.
+            Artifacts are only available for complete runs.
+        """
+    )
 end
 
 function unzip(file, exdir = "")
-    fileFullPath = isabspath(file) ?  file : joinpath(pwd(),file)
+    fileFullPath = isabspath(file) ? file : joinpath(pwd(), file)
     basePath = dirname(fileFullPath)
-    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(),exdir)))
+    outPath = (exdir == "" ? basePath : (isabspath(exdir) ? exdir : joinpath(pwd(), exdir)))
     isdir(outPath) ? "" : mkdir(outPath)
     @info "Extracting zip file $file to $outPath"
     zarchive = ZipFile.Reader(fileFullPath)
     for f in zarchive.files
-        fullFilePath = joinpath(outPath,f.name)
-        if (endswith(f.name,"/") || endswith(f.name,"\\"))
+        fullFilePath = joinpath(outPath, f.name)
+        if (endswith(f.name, "/") || endswith(f.name, "\\"))
             mkdir(fullFilePath)
         else
             mkpath(dirname(fullFilePath))
@@ -113,5 +115,5 @@ function unzip(file, exdir = "")
         end
     end
     close(zarchive)
-    @info "Extracted zip file"
+    return @info "Extracted zip file"
 end

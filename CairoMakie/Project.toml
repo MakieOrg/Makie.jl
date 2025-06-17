@@ -16,7 +16,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 
 [sources]
-Makie = {path = ".."}
+Makie = {path = "../Makie"}
 
 [compat]
 CRC32c = "1.0, 1.6"

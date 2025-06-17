@@ -15,12 +15,14 @@ function cairo_project_to_screen_impl(projectionview, resolution, model, pos::Ve
 end
 
 
-function cairo_project_to_screen(attr;
+function cairo_project_to_screen(
+        attr;
         input_name = :positions_transformed_f32c, yflip = true, output_type = Point2f
     )
-    Makie.register_computation!(attr,
-            [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
-        ) do inputs, changed, cached
+    Makie.register_computation!(
+        attr,
+        [:projectionview, :resolution, :model_f32c, input_name], [:cairo_screen_pos]
+    ) do inputs, changed, cached
 
         output = cairo_project_to_screen_impl(values(inputs)..., output_type, yflip)
         return (output,)
@@ -57,7 +59,7 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
 end
 
 
-function draw_mesh2D(screen, color, vs::Vector{<: Point2}, fs::Vector{GLTriangleFace})
+function draw_mesh2D(screen, color, vs::Vector{<:Point2}, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
 end
 
@@ -67,7 +69,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
 
     for i in indices
         c1, c2, c3 = per_face_cols[i]
-        t1, t2, t3 =  vs[fs[i]] #triangle points
+        t1, t2, t3 = vs[fs[i]] #triangle points
 
         # don't draw any mesh faces with NaN components.
         if isnan(t1) || isnan(t2) || isnan(t3)
@@ -117,7 +119,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
         Cairo.line_to(ctx, t2[1], t2[2])
         Cairo.line_to(ctx, t3[1], t3[2])
         Cairo.close_path(ctx)
-        Cairo.fill(ctx);
+        Cairo.fill(ctx)
     end
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     return nothing
@@ -125,7 +127,7 @@ end
 
 function average_z(positions, face)
     vs = positions[face]
-    sum(v -> v[3], vs) / length(vs)
+    return sum(v -> v[3], vs) / length(vs)
 end
 
 function strip_translation(M::Mat4{T}) where {T}
@@ -139,14 +141,14 @@ end
 
 function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
     L = lightdir
-    diff_coeff = max(dot(L, -N), 0f0)
+    diff_coeff = max(dot(L, -N), 0.0f0)
     H = normalize(L + v)
-    spec_coeff = max(dot(H, -N), 0f0)^shininess
+    spec_coeff = max(dot(H, -N), 0.0f0)^shininess
     c = RGBAf(c)
     # if this is one expression it introduces allocations??
     new_c_part1 = (ambient .+ light_color .* diff_coeff .* diffuse) .* Vec3f(c.r, c.g, c.b) #.+
     new_c = new_c_part1 .+ light_color .* specular * spec_coeff
-    RGBAf(new_c..., c.alpha)
+    return RGBAf(new_c..., c.alpha)
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
@@ -174,7 +176,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
                 # Vec3f(0) to be used to give a vertex no weight on the normal
                 # direction. To reproduce this here we mix in a tiny amount of
                 # the mean normal direction.
-                N = normalize(ns[f[i]] + 1e-20 * mean_normal)
+                N = normalize(ns[f[i]] + 1.0e-20 * mean_normal)
                 v = vs[f[i]]
                 c = facecolors[i]
                 _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient, diffuse, specular, shininess)
@@ -210,6 +212,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
     end
 
+    return
 end
 
 # Still used for voxels
@@ -226,14 +229,14 @@ function _transform_to_world(f32_model, tf, pos)
         transformed = Makie.apply_transform(tf, p)
         p4d = to_ndim(Point4d, to_ndim(Point3d, transformed, 0), 1)
         p4d = f32_model * p4d
-        return p4d[Vec(1,2,3)] / p4d[4]
+        return p4d[Vec(1, 2, 3)] / p4d[4]
     end
 end
 
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, plot::ComputeGraph)
-    @get_attribute(plot, (clip_planes, ))
+    clip_planes = plot.clip_planes[]
     uv_transform = plot.pattern_uv_transform[]
 
     # per-element in meshscatter
@@ -246,11 +249,11 @@ function draw_mesh3D(scene, screen, plot::ComputeGraph)
     if (_meshuvs isa AbstractVector{<:Vec3})
         error("Only 2D texture coordinates are supported right now. Use GLMakie for 3D textures.")
     end
-    meshuvs::Union{Nothing,Vector{Vec2f}} = _meshuvs
+    meshuvs::Union{Nothing, Vector{Vec2f}} = _meshuvs
 
     color = compute_colors(plot)
 
-    draw_mesh3D(
+    return draw_mesh3D(
         scene, screen, plot,
         world_points, screen_points, meshfaces, meshnormals, meshuvs,
         uv_transform, color, clip_planes
@@ -263,9 +266,7 @@ function draw_mesh3D(
         uv_transform, color, clip_planes, model = plot.model_f32c[]::Mat4f
     )
 
-    @get_attribute(plot, (shading, diffuse, specular, shininess, faceculling))
-
-    shading = shading && (scene.compute.shading[] != NoShading)
+    local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
 
     if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
@@ -281,12 +282,13 @@ function draw_mesh3D(
         align_pattern(per_face_col, scene, f32c_model)
     end
 
-    faceculling = to_value(get(plot, :faceculling, -10))
+    local faceculling::Int = to_value(get(plot, :faceculling, -10))
 
-    draw_mesh3D(
+    return draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading::Bool, diffuse::Vec3f,
-        specular::Vec3f, shininess::Float32, faceculling::Int, clip_planes, plot.eyeposition[]
+        model, shading[], plot.diffuse[]::Vec3f,
+        plot.specular[]::Vec3f, plot.shininess[]::Float32, faceculling,
+        clip_planes, plot.eyeposition[]
     )
 end
 
@@ -343,27 +345,24 @@ function draw_mesh3D(
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
-        light_direction, light_color, shininess, diffuse, ambient, specular)
+        light_direction, light_color, shininess, diffuse, ambient, specular
+    )
 
     return
 end
 
-function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.MeshScatter))
-    @get_attribute(primitive, (
-        model_f32c, marker, markersize, rotation, positions_transformed_f32c,
-        clip_planes, transform_marker))
-
+function draw_atomic(scene::Scene, screen::Screen, @nospecialize(plot::Makie.MeshScatter))
     # We combine vertices and positions in world space.
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
-    transformed_pos = Makie.apply_model(model_f32c, positions_transformed_f32c)
-    colors = compute_colors(primitive)
-    uv_transform = primitive.pattern_uv_transform[]
+    transformed_pos = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
+    colors = compute_colors(plot)
+    uv_transform = plot.pattern_uv_transform[]
 
-    draw_scattered_mesh(
-        scene, screen, primitive.attributes, marker,
-        transformed_pos, markersize, rotation, colors,
-        clip_planes, transform_marker, uv_transform
+    return draw_scattered_mesh(
+        scene, screen, plot.attributes, plot.marker[],
+        transformed_pos, plot.markersize[], plot.rotation[], colors,
+        plot.clip_planes[], plot.transform_marker[], uv_transform
     )
 end
 
@@ -389,11 +388,13 @@ function draw_scattered_mesh(
     # Z sorting based on meshscatter arguments
     # For correct z-ordering we need to be in view/camera or screen space
     view = plot.view[]
-    zorder = sortperm(positions, by = p -> begin
-        p4d = to_ndim(Vec4d, p, 1)
-        cam_pos = view[Vec(3,4), Vec(1,2,3,4)] * p4d
-        cam_pos[1] / cam_pos[2]
-    end, rev=false)
+    zorder = sortperm(
+        positions, by = p -> begin
+            p4d = to_ndim(Vec4d, p, 1)
+            cam_pos = view[Vec(3, 4), Vec(1, 2, 3, 4)] * p4d
+            cam_pos[1] / cam_pos[2]
+        end, rev = false
+    )
 
     proj_mat = cairo_viewport_matrix(plot.resolution[]) * plot.projectionview[]
 
@@ -406,7 +407,10 @@ function draw_scattered_mesh(
         element_scale = Makie.scalematrix(Makie.sv_getindex(scales, i))
         element_transform = element_rotation * element_scale # different order from transformationmatrix()
 
-        # TODO: Should we cache this? Would be a lot of data...
+        # Note: These are not part of the compute graph because the number of
+        # vertices of the mesh * number of positions in meshscatter could become
+        # quite large
+
         # mesh transformations
         # - transform_func does not apply to vertices (only pos)
         # - only scaling from float32convert applies to vertices
@@ -418,7 +422,6 @@ function draw_scattered_mesh(
             return Point3f(p4d) / p4d[4]
         end
 
-        # TODO: And this?
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
 
         draw_mesh3D(
@@ -440,7 +443,6 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Makie.Surface)
     draw_mesh3D(scene, screen, attr)
     return nothing
 end
-
 
 
 function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Makie.Voxels))
@@ -466,7 +468,7 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
 
     draw_scattered_mesh(
         scene, screen, primitive.attributes, marker,
-        transformed_pos, scale, Quaternionf(0,0,0,1), colors,
+        transformed_pos, scale, Quaternionf(0, 0, 0, 1), colors,
         Plane3f[], true, primitive.uv_transform[]
     )
 

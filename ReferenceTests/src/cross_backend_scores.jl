@@ -23,13 +23,14 @@ function generate_backend_comparison_scores(target_dir, reference_dir)
 
     target_files = get_all_relative_filepaths_recursively(target_dir)
 
-    open(joinpath(target_dir, "../../cross_backend_scores.tsv"), "w") do file
+    return open(joinpath(target_dir, "../../cross_backend_scores.tsv"), "w") do file
         for filepath in target_files
             isfile(joinpath(reference_dir, filepath)) || continue
-            diff = compare_media(joinpath(target_dir, filepath),
-                                    joinpath(reference_dir, filepath))
+            diff = compare_media(
+                joinpath(target_dir, filepath),
+                joinpath(reference_dir, filepath)
+            )
             println(file, diff, '\t', filepath)
         end
     end
 end
-

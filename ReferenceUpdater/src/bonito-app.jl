@@ -12,7 +12,8 @@ function create_app_content(root_path::String)
     # TODO: font size ignored?
     button_style = Styles(
         CSS("font-size" => "12", "font-weight" => "normal"),
-        CSS("width" => "fit-content",
+        CSS(
+            "width" => "fit-content",
             "padding-right" => "6px", "padding-left" => "6px",
             "padding-bottom" => "2px", "padding-top" => "2px",
         ),
@@ -21,7 +22,8 @@ function create_app_content(root_path::String)
 
     score_style = Styles(
         CSS("font-size" => "12", "font-weight" => "normal"),
-        CSS("width" => "fit-content",
+        CSS(
+            "width" => "fit-content",
             "padding-right" => "6px", "padding-left" => "6px",
             "padding-bottom" => "2px", "padding-top" => "2px",
             "margin" => "0.25em"
@@ -74,9 +76,9 @@ function create_app_content(root_path::String)
     function check_all_checkbox()
         checked = Observable(false) # maps to individual checkboxes which update marked
         return DOM.div(
-            Checkbox(checked, Dict{Symbol, Any}(:style => checkbox_style)),
-            " Toggle All"
-        ), checked
+                Checkbox(checked, Dict{Symbol, Any}(:style => checkbox_style)),
+                " Toggle All"
+            ), checked
     end
 
     function media_element(img_name, local_path)
@@ -85,7 +87,7 @@ function create_app_content(root_path::String)
             return DOM.img(src = local_path, style = max_width)
         else
             return DOM.video(
-                DOM.source(; src = local_path, type="video/mp4"),
+                DOM.source(; src = local_path, type = "video/mp4"),
                 autoplay = false, controls = true, style = max_width
             )
         end
@@ -93,9 +95,11 @@ function create_app_content(root_path::String)
 
     function create_simple_grid_content(filename, image_folder)
         files = readlines(joinpath(root_path, filename))
-        refimages = unique(map(files) do img
-            replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-        end)
+        refimages = unique(
+            map(files) do img
+                replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+            end
+        )
 
         marked = Observable(Set{String}())
 
@@ -143,9 +147,11 @@ function create_app_content(root_path::String)
     imgs = scores_imgs[:, 2]
     lookup = Dict(imgs .=> scores)
 
-    imgs_with_score = unique(map(imgs) do img
-        replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-    end)
+    imgs_with_score = unique(
+        map(imgs) do img
+            replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+        end
+    )
 
     function get_score(img_name)
         scores = map(backends) do backend
@@ -159,11 +165,11 @@ function create_app_content(root_path::String)
         return maximum(scores)
     end
 
-    sort!(imgs_with_score; by=get_score, rev=true)
+    sort!(imgs_with_score; by = get_score, rev = true)
 
     update_multi_check = Observable(false)
     update_multi_textinput = Bonito.TextField("0.05", style = textfield_style)
-    update_multi_checkbox  = DOM.div(
+    update_multi_checkbox = DOM.div(
         Checkbox(update_multi_check, Dict{Symbol, Any}(:style => checkbox_style)),
         " Toggle All with Score ≥",
         update_multi_textinput
@@ -176,7 +182,7 @@ function create_app_content(root_path::String)
             current_file = backend * "/" * img_name
             if haskey(lookup, current_file)
 
-                score = round(lookup[current_file]; digits=3)
+                score = round(lookup[current_file]; digits = 3)
 
                 local_marked = map(update_multi_check) do active
                     try
@@ -201,17 +207,19 @@ function create_app_content(root_path::String)
                 checkbox_obs[current_file] = local_marked
 
                 # TODO: Is there a better way to handle default with overwrites?
-                card_style = Styles(card_css, CSS(
-                    "background-color" => if score > score_thresholds[1]
-                        "#ffbbbb"
-                    elseif score > score_thresholds[2]
-                        "#ffddbb"
-                    elseif score > score_thresholds[3]
-                        "#ffffdd"
-                    else
-                        "#eeeeee"
-                    end
-                ))
+                card_style = Styles(
+                    card_css, CSS(
+                        "background-color" => if score > score_thresholds[1]
+                            "#ffbbbb"
+                        elseif score > score_thresholds[2]
+                            "#ffddbb"
+                        elseif score > score_thresholds[3]
+                            "#ffffdd"
+                        else
+                            "#eeeeee"
+                        end
+                    )
+                )
 
                 path_button = Bonito.Button("recorded", style = button_style)
                 selection = 2 # Recorded (new), Reference (old)
@@ -298,7 +306,7 @@ function create_app_content(root_path::String)
             @error "Upload failed: " exception = (e, catch_backtrace())
         finally
             @info "Deleting temp directory..."
-            rm(tmpdir; force=true, recursive = true)
+            rm(tmpdir; force = true, recursive = true)
             @info "Done. You can ctrl+c out now."
         end
         return
@@ -315,9 +323,11 @@ function create_app_content(root_path::String)
     glmakie_compare_grid = Observable{Any}(DOM.div())
     on(compare_button.value) do _
 
-        without_backend = unique(map(collect(marked_for_upload[])) do img
-            replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
-        end)
+        without_backend = unique(
+            map(collect(marked_for_upload[])) do img
+                replace(img, r"(GLMakie|CairoMakie|WGLMakie)/" => "")
+            end
+        )
         file2score = compare_selection(root_path, marked_for_upload[])
 
         function get_score(img_name)
@@ -331,7 +341,7 @@ function create_app_content(root_path::String)
             end
             return maximum(scores)
         end
-        sort!(without_backend; by=get_score, rev=true)
+        sort!(without_backend; by = get_score, rev = true)
 
         updated_cards = Any[]
         for img_name in without_backend
@@ -343,21 +353,23 @@ function create_app_content(root_path::String)
                     obs = checkbox_obs[current_file]
                     cb = refimage_selection_checkbox(marked_for_upload, current_file, obs)
 
-                    score = round(get(file2score, current_file, -1.0); digits=3)
+                    score = round(get(file2score, current_file, -1.0); digits = 3)
                     # TODO: Is there a better way to handle default with overwrites?
-                    card_style = Styles(card_css, CSS(
-                        "background-color" => if score > score_thresholds[1]
-                            "#ffbbbb"
-                        elseif score > score_thresholds[2]
-                            "#ffddbb"
-                        elseif score > score_thresholds[3]
-                            "#ffffdd"
-                        elseif score < -0.1
-                            "#bbbbff"
-                        else
-                            "#eeeeee"
-                        end
-                    ))
+                    card_style = Styles(
+                        card_css, CSS(
+                            "background-color" => if score > score_thresholds[1]
+                                "#ffbbbb"
+                            elseif score > score_thresholds[2]
+                                "#ffddbb"
+                            elseif score > score_thresholds[3]
+                                "#ffffdd"
+                            elseif score < -0.1
+                                "#bbbbff"
+                            else
+                                "#eeeeee"
+                            end
+                        )
+                    )
 
                     path_button = Bonito.Button("", style = button_style)
                     selection = 2 # Recorded (new), Reference (old)
