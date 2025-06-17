@@ -245,6 +245,7 @@ end
     click(e, 300, 125)
     click(e, 300, 100)
     click(e, 300, 75)
+    sleep(0.5) # wait for animations to finish
     Makie.step!(st)
 
     st
