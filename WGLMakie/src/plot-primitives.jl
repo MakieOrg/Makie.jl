@@ -1,6 +1,6 @@
 using Makie: register_computation!
 
-# Javascipt Plot type (there are only three right now)
+# Javascript Plot type (there are only three right now)
 js_plot_type(plot::Makie.AbstractPlot) = "Mesh"
 js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"

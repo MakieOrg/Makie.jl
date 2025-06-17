@@ -666,7 +666,7 @@ function Makie.plot!(plot::Arrows3D)
 
         constlength = taillength + tiplength
 
-        # scale arrow matrics to direction, either by scaling shaftlength or all metrics
+        # scale arrow metrics to direction, either by scaling shaftlength or all metrics
         metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
         for i in eachindex(metrics)
             target_length = norm(directions[i])

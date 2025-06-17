@@ -421,7 +421,7 @@ end
 
 
 function get_text_type(x::AbstractVector{Any})
-    isempty(x) && error("Cant determine text type from empty vector")
+    isempty(x) && error("Cannot determine text type from empty vector")
     return mapreduce(typeof, (a, b) -> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
 end
 
