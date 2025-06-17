@@ -198,7 +198,7 @@ end
 # TODO
 # We never really supported move_to! and GLMakie actually has didn't even move the plots in the reference image on master.
 # We can now implement move_to! with the compute graph more easily, but it will require some more work.
-# Untill then, it's not a regression to disable this test.
+# Until then, it's not a regression to disable this test.
 
 # @reference_test "Moving plots with move_to" begin
 #     f, ax, pl1 = scatter(5:-1:1; markersize=20, axis=(; title="Axis 1"))
