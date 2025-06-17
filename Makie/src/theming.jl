@@ -17,7 +17,7 @@ end
 
 const DEFAULT_PALETTES = Attributes(
     color = wong_colors(1),
-    patchcolor = wong_colors(0.8),
+    patchcolor = map(c -> lerp(RGBAf(1,1,1,1), c, 0.8), wong_colors(1)),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
     linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
     side = [:left, :right]
@@ -52,7 +52,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     linecap = :butt,
     joinstyle = :miter,
     miter_limit = pi / 3,
-    patchcolor = RGBAf(0, 0, 0, 0.6),
+    patchcolor = RGBf(0.4, 0.4, 0.4),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
     size = (600, 450), # 4/3 aspect ratio
