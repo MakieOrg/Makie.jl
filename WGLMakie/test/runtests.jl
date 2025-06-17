@@ -285,3 +285,8 @@ edisplay = Bonito.use_electron_display(devtools = true)
     end
 
 end
+
+println("###########################")
+println("WGLMakie tests DONE")
+println("Open Tasks: ", length(Makie.TRACKED_TASKS))
+println("###########################")

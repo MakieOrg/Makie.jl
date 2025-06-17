@@ -9,7 +9,7 @@ signal = Observable(1.0)
 scene = timeseries(signal)
 display(scene)
 # @async is optional, but helps to continue evaluating more code
-@async while isopen(scene)
+@async while Makie.isclosed(scene)
     # acquire data from e.g. a sensor:
     data = rand()
     # update the signal
