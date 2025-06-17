@@ -687,6 +687,9 @@ struct Figure
     current_axis::Ref{Any}
 
     function Figure(args...)
+        total = Sys.total_memory()
+        mem = round((total - Sys.free_memory()) / 10^9; digits = 3)
+        println(stderr, "Used $(mem)gb of $(round(total / 10^9; digits = 3))gb RAM")
         f = new(args...)
         current_figure!(f)
         return f
