@@ -6,7 +6,7 @@
 
     f = Figure(size = (400, 400))
     a = Axis3(f[1, 1])
-    p = scatter!(a, Rect3f(Point3f(1,2,3), Vec3f(1,2,3)))
+    p = scatter!(a, Rect3f(Point3f(1, 2, 3), Vec3f(1, 2, 3)))
     Makie.update_state_before_display!(f)
     e = events(f)
 

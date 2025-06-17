@@ -1,6 +1,4 @@
-
-
-function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
+function to_image(image::AbstractMatrix{<:AbstractFloat}, colormap::AbstractVector{<:Colorant}, colorrange)
     return interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
 end
 
@@ -10,7 +8,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    return interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
+    return interpolated_getindex.((A,), range(0.0, stop = 1.0, length = len))
 end
 
 
@@ -21,9 +19,9 @@ end
 * ncolors: number of desired colors
 * alpha: additional alpha applied to each color. Can also be an array, matching `colors`, or a tuple giving a start + stop alpha value.
 """
-function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+function resample_cmap(cmap, ncolors::Integer; alpha = 1.0)
     cols = to_colormap(cmap)
-    r = range(0.0, stop=1.0, length=ncolors)
+    r = range(0.0, stop = 1.0, length = ncolors)
     if alpha isa Tuple{Number, Number}
         alphas = LinRange(alpha..., ncolors)
     else
@@ -31,7 +29,7 @@ function resample_cmap(cmap, ncolors::Integer; alpha=1.0)
     end
     return broadcast(r, alphas) do i, a
         c = interpolated_getindex(cols, i)
-        return RGBAf(Colors.color(c), Colors.alpha(c) *  a)
+        return RGBAf(Colors.color(c), Colors.alpha(c) * a)
     end
 end
 
@@ -55,9 +53,9 @@ default_automatic(default) = x -> default_automatic(x, default)
 
 function replace_automatic!(args...)
     error(
-    "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
-    "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
-    "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
+        "`replace_automatic!(f, plot_or_attributes, key)` has been removed. " *
+            "Instead of `replace_automatic(() -> default_obs, plot, key)` you can use `map(default_automatic, plot[key], default_obs)` or `map(default_automatic(default_val), plot[key])`. " *
+            "Within a compute graph you can use `map!(default_automatic, plot.attributes, [:maybe_automatic, :default], :output)` or `map!(default_automatic(default_val), plot.attributes, :maybe_automatic, :output)`."
     )
 end
 
@@ -77,9 +75,9 @@ function is_unitrange(x::AbstractVector)
 end
 
 function ngrid(x::AbstractVector, y::AbstractVector)
-    xgrid = [Float32(x[i]) for i = 1:length(x), j = 1:length(y)]
-    ygrid = [Float32(y[j]) for i = 1:length(x), j = 1:length(y)]
-    xgrid, ygrid
+    xgrid = [Float32(x[i]) for i in 1:length(x), j in 1:length(y)]
+    ygrid = [Float32(y[j]) for i in 1:length(x), j in 1:length(y)]
+    return xgrid, ygrid
 end
 
 function nan_extrema(array)
@@ -89,7 +87,7 @@ function nan_extrema(array)
         mini = min(mini, elem)
         maxi = max(maxi, elem)
     end
-    Vec2f(mini, maxi)
+    return Vec2f(mini, maxi)
 end
 
 function extract_expr(extract_func, dictlike, args)
@@ -101,7 +99,7 @@ function extract_expr(extract_func, dictlike, args)
         push!(expr.args, :($(esc(elem)) = $(extract_func)($(esc(dictlike)), $(QuoteNode(elem)))))
     end
     push!(expr.args, esc(args))
-    expr
+    return expr
 end
 
 """
@@ -120,7 +118,7 @@ end
 ```
 """
 macro extract(scene, args)
-    extract_expr(getindex, scene, args)
+    return extract_expr(getindex, scene, args)
 end
 
 """
@@ -141,13 +139,13 @@ end
 ```
 """
 macro get_attribute(scene, args)
-    extract_expr(get_attribute, scene, args)
+    return extract_expr(get_attribute, scene, args)
 end
 
 # a few shortcut functions to make attribute conversion easier
-function converted_attribute(dict, key, default=nothing)
+function converted_attribute(dict, key, default = nothing)
     if haskey(dict, key)
-        return lift(x-> convert_attribute(x, Key{key}()), dict[key])
+        return lift(x -> convert_attribute(x, Key{key}()), dict[key])
     else
         return default
     end
@@ -158,7 +156,7 @@ macro converted_attribute(dictlike, args)
 end
 
 
-@inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
+@inline getindex_value(x::Union{Dict, Attributes, AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
 """
@@ -174,7 +172,7 @@ end
 ```
 """
 macro extractvalue(scene, args)
-    extract_expr(getindex_value, scene, args)
+    return extract_expr(getindex_value, scene, args)
 end
 
 
@@ -188,7 +186,7 @@ attr_broadcast_length(x::ScalarOrVector) = x.sv isa Vector ? length(x.sv) : 1
 attr_broadcast_getindex(x::NativeFont, i) = x
 attr_broadcast_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 attr_broadcast_getindex(x::AbstractVector, i) = x[i]
-attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where T = x[1]
+attr_broadcast_getindex(x::AbstractArray{T, 0}, i) where {T} = x[1]
 attr_broadcast_getindex(x::AbstractPattern, i) = x
 attr_broadcast_getindex(x, i) = x
 attr_broadcast_getindex(x::Ref, i) = x[] # unwrap Refs just like in normal broadcasting, for protecting iterables
@@ -214,7 +212,7 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
 """
 @generated function broadcast_foreach(f, args...)
     N = length(args)
-    quote
+    return quote
         lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
         maxlen = maximum(lengths)
         any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
@@ -249,7 +247,7 @@ end
 """
 @generated function broadcast_foreach_index(f, indices, args...)
     N = length(args)
-    quote
+    return quote
         lengths = Base.Cartesian.@ntuple $N i -> attr_broadcast_length(args[i])
         maxlen = maximum(lengths)
         any_wrong_length = Base.Cartesian.@nany $N i -> lengths[i] ∉ (0, 1, maxlen)
@@ -277,10 +275,12 @@ end
 Creates the type `T` from the fields in dict.
 Automatically converts to the correct types.
 """
-function from_dict(::Type{T}, dict) where T
-    T(map(fieldnames(T)) do name
-        convert(fieldtype(T, name), dict[name])
-    end...)
+function from_dict(::Type{T}, dict) where {T}
+    return T(
+        map(fieldnames(T)) do name
+            convert(fieldtype(T, name), dict[name])
+        end...
+    )
 end
 
 same_length_array(array, value::NativeFont) = repeated(value, length(array))
@@ -289,15 +289,17 @@ function same_length_array(arr, value::Vector)
     if length(arr) != length(value)
         error("Array lengths do not match. Found: $(length(arr)) of $(eltype(arr)) but $(length(value)) $(eltype(value))")
     end
-    value
+    return value
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
-function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
-    T(ntuple(Val(N)) do i
-        i > N2 && return ET(fillval)
-        @inbounds return vec[i]
-    end)
+function to_ndim(T::Type{<:VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
+    return T(
+        ntuple(Val(N)) do i
+            i > N2 && return ET(fillval)
+            @inbounds return vec[i]
+        end
+    )
 end
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
@@ -331,10 +333,9 @@ function _replace!(target::Attributes, overwrite::Attributes)
 end
 
 
-
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
 function to_vector(x::AbstractArray, len, T)
-    if length(x) in size(x) # assert that just one dim != 1
+    return if length(x) in size(x) # assert that just one dim != 1
         to_vector(vec(x), len, T)
     else
         error("Can't convert to a Vector. Please supply a range/vector/interval")
@@ -342,7 +343,7 @@ function to_vector(x::AbstractArray, len, T)
 end
 function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
-    range(a, stop=b, length=len)
+    return range(a, stop = b, length = len)
 end
 
 # This function was copied from GR.jl,
@@ -352,10 +353,10 @@ end
 
 Return a nonlinear function on a grid.  Useful for test cases.
 """
-function peaks(n=49)
+function peaks(n = 49)
     x = LinRange(-3, 3, n)
     y = LinRange(-3, 3, n)
-    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
+    return 3 * (1 .- x') .^ 2 .* exp.(-(x' .^ 2) .- (y .+ 1) .^ 2) .- 10 * (x' / 5 .- x' .^ 3 .- y .^ 5) .* exp.(-x' .^ 2 .- y .^ 2) .- 1 / 3 * exp.(-(x' .+ 1) .^ 2 .- y .^ 2)
 end
 
 
@@ -382,7 +383,7 @@ function surface_normals(x, y, z)
             s = size(z)
             return Vec3f(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
         end
-        return normalize(mapreduce(offsets, +, init=Vec3f(0), of))
+        return normalize(mapreduce(offsets, +, init = Vec3f(0), of))
     end
     return vec(map(normal, CartesianIndices(z)))
 end
@@ -411,7 +412,7 @@ which ignores all contributions from points with `NaN` components.
 
 Equivalent in application to `GeometryBasics.normals`.
 """
-function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{3, T}}, faces::AbstractVector{F}) where {T, F <: NgonFace}
     normals_result = zeros(Vec3{T}, length(vertices))
 
     for face in faces
@@ -427,7 +428,7 @@ function nan_aware_normals(vertices::AbstractVector{<:Point{3,T}}, faces::Abstra
     return convert(Vector{Vec3f}, normals_result)
 end
 
-function nan_aware_normals(vertices::AbstractVector{<:Point{2,T}}, faces::AbstractVector{F}) where {T,F<:NgonFace}
+function nan_aware_normals(vertices::AbstractVector{<:Point{2, T}}, faces::AbstractVector{F}) where {T, F <: NgonFace}
     return Vec2f.(nan_aware_normals(map(v -> Point3{T}(v..., 0), vertices), faces))
 end
 
@@ -465,16 +466,16 @@ function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
 end
 
 function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+    return matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
 end
 
 function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
+    return matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
 end
 
 function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
     if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
-        ps = Point3.(x[[1,2,2,1]], y[[1,1,2,2]], z[:])
+        ps = Point3.(x[[1, 2, 2, 1]], y[[1, 1, 2, 2]], z[:])
     else
         ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
     end
@@ -505,22 +506,22 @@ sv_getindex(x, ::Integer) = x
 sv_getindex(x::VecTypes, ::Integer) = x
 sv_getindex(x::Mat, ::Integer) = x
 # for CairoMakie meshscatter we don't want images and patterns to get indexed
-sv_getindex(x::AbstractMatrix{<: Colorant}, ::Integer) = x
+sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
 # TODO: move to GeometryBasics
-function corners(rect::Rect2{T}) where T
+function corners(rect::Rect2{T}) where {T}
     o = minimum(rect)
     w = widths(rect)
     T0 = zero(T)
-    return Point{3,T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
+    return Point{3, T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
 end
 
-function corners(rect::Rect3{T}) where T
+function corners(rect::Rect3{T}) where {T}
     o = minimum(rect)
     w = widths(rect)
     T0 = zero(T)
-    return Point{3,T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
+    return Point{3, T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
 end
 
 """
@@ -582,9 +583,9 @@ end
 
 # points[end] should still represent the full length of the pattern though,
 # so we need rescaling by ((resolution + 1) / resolution)
-function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real=100)
+function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real = 100)
     scaled = ((resolution + 1) / resolution) .* linestyle
-    r = range(first(scaled); stop=last(scaled), length=resolution + 1)[1:(end - 1)]
+    r = range(first(scaled); stop = last(scaled), length = resolution + 1)[1:(end - 1)]
     return Float16[-gappy(x, scaled) for x in r]
 end
 
@@ -593,7 +594,7 @@ end
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol}=Symbol[])
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol} = Symbol[])
     # TODO: This currently happens for ComputeGraph passthrough already
     valid_attributes = attribute_names(target)
     existing_attributes = keys(plot.attributes.outputs)
@@ -625,11 +626,11 @@ isscalar(x) = true
 # Putting it here, in case we want to start using it!
 function set_task_tid!(task::Task, tid::Integer)
     task.sticky = true
-    ccall(:jl_set_task_tid, Cint, (Any, Cint), task, tid-1)
+    return ccall(:jl_set_task_tid, Cint, (Any, Cint), task, tid - 1)
 end
 function spawnat(f, tid)
     task = Task(f)
     set_task_tid!(task, tid)
     schedule(task)
-    task
+    return task
 end

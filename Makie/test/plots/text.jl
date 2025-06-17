@@ -49,16 +49,18 @@ end
 
     # This is just repeating code from Makie
     unit_extents = [FreeTypeAbstraction.get_extent(font, char) for char in chars]
-    origins = cumsum(20f0 * Float32[
-        0,
-        unit_extents[1].advance[1],
-        unit_extents[2].advance[1],
-        unit_extents[3].advance[1]
-    ])
+    origins = cumsum(
+        20.0f0 * Float32[
+            0,
+            unit_extents[1].advance[1],
+            unit_extents[2].advance[1],
+            unit_extents[3].advance[1],
+        ]
+    )
 
     @test p.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, chars)
     @test p.font_per_char[] == [font for _ in 1:4]
-    @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol=1e-10))
+    @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
     @test all(s -> s == Vec2f(p.fontsize[]), p.text_scales[])
     @test all(r -> r == Quaternionf(0, 0, 0, 1), p.text_rotation[])
     @test all(c -> c == RGBAf(0, 0, 0, 1), p.text_color[])
@@ -102,7 +104,7 @@ end
     @test all(pos -> pos == p.arg1[], positions)
     @test char_offsets == p.glyph_origins[]
     @test quad_offsets == fta_quad_offsets
-    @test scales  == fta_scales
+    @test scales == fta_scales
 end
 
 

@@ -1,5 +1,5 @@
 function theme_light()
-    Theme(
+    return Theme(
         textcolor = :gray50,
         Axis = (
             backgroundcolor = :transparent,
@@ -14,7 +14,7 @@ function theme_light()
             xticksvisible = false,
             yticksvisible = false,
             xlabelpadding = 3,
-            ylabelpadding = 3
+            ylabelpadding = 3,
         ),
         Legend = (
             framevisible = false,

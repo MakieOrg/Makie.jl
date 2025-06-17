@@ -1,4 +1,3 @@
-
 """
     Stepper(scene, path; format = :jpg)
 
@@ -26,21 +25,21 @@ mutable struct RamStepper
     format::Symbol
 end
 
-function Stepper(figlike::FigureLike; backend=current_backend(), format=:png, visible=false, connect=false, screen_kw...)
-    config = Dict{Symbol,Any}(screen_kw)
+function Stepper(figlike::FigureLike; backend = current_backend(), format = :png, visible = false, connect = false, screen_kw...)
+    config = Dict{Symbol, Any}(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
-    display(screen, figlike; connect=connect)
+    display(screen, figlike; connect = connect)
     return RamStepper(figlike, screen, Matrix{RGBf}[], format)
 end
 
-function Stepper(figlike::FigureLike, path::String, step::Int; format=:png, backend=current_backend(), visible=false, connect=false, screen_kw...)
-    config = Dict{Symbol,Any}(screen_kw)
+function Stepper(figlike::FigureLike, path::String, step::Int; format = :png, backend = current_backend(), visible = false, connect = false, screen_kw...)
+    config = Dict{Symbol, Any}(screen_kw)
     get!(config, :visible, visible)
     get!(config, :start_renderloop, false)
     screen = getscreen(backend, get_scene(figlike), config, JuliaNative)
-    display(screen, figlike; connect=connect)
+    display(screen, figlike; connect = connect)
     return FolderStepper(figlike, screen, path, format, step)
 end
 
@@ -76,6 +75,7 @@ function FileIO.save(dir::String, s::RamStepper)
     for (i, img) in enumerate(s.images)
         FileIO.save(joinpath(dir, "step-$i.$(s.format)"), img)
     end
+    return
 end
 
 """
@@ -145,14 +145,14 @@ end
 """
 function record(func, figlike::FigureLike, path::AbstractString; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike; format=format, visible=true, kw_args...)
-    save(path, io)
+    io = Record(func, figlike; format = format, visible = true, kw_args...)
+    return save(path, io)
 end
 
 function record(func, figlike::FigureLike, path::AbstractString, iter; kw_args...)
     format = lstrip(splitext(path)[2], '.')
-    io = Record(func, figlike, iter; format=format, kw_args...)
-    save(path, io)
+    io = Record(func, figlike, iter; format = format, kw_args...)
+    return save(path, io)
 end
 
 
@@ -172,7 +172,7 @@ function Record(func, figlike, iter; kw_args...)
     for i in iter
         func(i)
         recordframe!(io)
-        @debug "Recording" progress=i/length(iter)
+        @debug "Recording" progress = i / length(iter)
         yield()
     end
     return io
@@ -184,7 +184,7 @@ function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
         error("Expected Screen to hold a reference to a Scene but got $(repr(scene))")
     end
     w, h = size(scene)
-    mktempdir() do dir
+    return mktempdir() do dir
         path = save(joinpath(dir, "video.mp4"), vs)
         # <video> only supports infinite looping, so we loop forever even when a finite number is requested
         loopoption = vs.options.loop ≥ 0 ? "loop" : ""

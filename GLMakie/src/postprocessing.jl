@@ -16,7 +16,7 @@ function (sp::PostprocessPrerender)()
     return
 end
 
-rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
+rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 
 struct PostProcessor{F}
     robjs::Vector{RenderObject}
@@ -25,7 +25,7 @@ struct PostProcessor{F}
 end
 
 function empty_postprocessor(args...; kwargs...)
-    PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
+    return PostProcessor(RenderObject[], screen -> nothing, empty_postprocessor)
 end
 
 
@@ -72,7 +72,7 @@ function OIT_postprocessor(framebuffer, shader_cache)
         GLAbstraction.render(pass)
     end
 
-    PostProcessor(RenderObject[pass], full_render, OIT_postprocessor)
+    return PostProcessor(RenderObject[pass], full_render, OIT_postprocessor)
 end
 
 
@@ -197,7 +197,7 @@ function ssao_postprocessor(framebuffer, shader_cache)
 
     require_context(shader_cache.context)
 
-    PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
+    return PostProcessor(RenderObject[pass1, pass2], full_render, ssao_postprocessor)
 end
 
 """
@@ -214,7 +214,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             color_luma_buffer = Texture(
-                shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter=:linear, x_repeat=:clamp_to_edge
+                shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter = :linear, x_repeat = :clamp_to_edge
             )
             luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
         else
@@ -268,7 +268,7 @@ function fxaa_postprocessor(framebuffer, shader_cache)
 
     require_context(shader_cache.context)
 
-    PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
+    return PostProcessor(RenderObject[pass1, pass2], full_render, fxaa_postprocessor)
 end
 
 
@@ -303,7 +303,7 @@ function to_screen_postprocessor(framebuffer, shader_cache, screen_fb_id = nothi
         GLAbstraction.render(pass) # copy postprocess
     end
 
-    PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
+    return PostProcessor(RenderObject[pass], full_render, to_screen_postprocessor)
 end
 
 function destroy!(pp::PostProcessor)

@@ -4,12 +4,12 @@ abstract type AbstractLight end
 
 # These need to match up with light shaders to differentiate light types
 module LightType
-    const UNDEFINED        = 0
+    const UNDEFINED = 0
     # const Ambient          = 1
-    const PointLight       = 2
+    const PointLight = 2
     const DirectionalLight = 3
-    const SpotLight        = 4
-    const RectLight        = 5
+    const SpotLight = 4
+    const RectLight = 5
 end
 
 # Each light should implement
@@ -69,8 +69,8 @@ light_color(l::PointLight) = l.color
 # fit of values used on learnopengl/ogre3d
 function default_attenuation(range::Real)
     return Vec2f(
-        4.690507869767646 * range ^ -1.009712247799057,
-        82.4447791934059 * range ^ -2.0192061630628966
+        4.690507869767646 * range^-1.009712247799057,
+        82.4447791934059 * range^-2.0192061630628966
     )
 end
 
@@ -167,13 +167,13 @@ function RectLight(color, r::Rect2)
     position = to_ndim(Point3f, mini + 0.5 * ws, 0)
     u1 = Vec3f(ws[1], 0, 0)
     u2 = Vec3f(0, ws[2], 0)
-    return RectLight(color, position, u1, u2, normalize(Vec3f(0,0,-1)))
+    return RectLight(color, position, u1, u2, normalize(Vec3f(0, 0, -1)))
 end
 
 # Implement Transformable interface (more or less) to simplify working with
 # RectLights
 
-function translate(::Type{T}, l::RectLight, v) where T
+function translate(::Type{T}, l::RectLight, v) where {T}
     offset = to_ndim(Vec3f, Float32.(v), 0)
     pos = l.position
     if T === Accum
@@ -195,7 +195,7 @@ function rotate(l::RectLight, q...)
     return RectLight(l.color, l.position, u1, u2, direction)
 end
 
-function scale(::Type{T}, l::RectLight, s) where T
+function scale(::Type{T}, l::RectLight, s) where {T}
     scale = to_ndim(Vec2f, Float32.(s), 0)
     u1 = l.u1; u2 = l.u2
     if T === Accum
@@ -220,7 +220,7 @@ light_color(l::RectLight) = l.color
 
 function add_light_computation!(graph, scene, lights)
     idx = findfirst(light -> light isa AmbientLight, lights)
-    ambient_color = isnothing(idx) ? RGBf(0,0,0) : lights[idx].color
+    ambient_color = isnothing(idx) ? RGBf(0, 0, 0) : lights[idx].color
 
     filtered_lights = filter(light -> !isa(light, AmbientLight), lights)
     if length(lights) - length(filtered_lights) > 1
@@ -232,13 +232,14 @@ function add_light_computation!(graph, scene, lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
-    register_computation!(graph, [:lights],
+    register_computation!(
+        graph, [:lights],
         [:dirlight_color, :dirlight_direction, :dirlight_cam_relative]
     ) do (lights,), changed, cached
         local idx
         idx = findfirst(light -> light isa DirectionalLight, lights)
         if idx === nothing && cached === nothing
-            return (RGBf(0,0,0), Vec3f(0), true)
+            return (RGBf(0, 0, 0), Vec3f(0), true)
         else
             light = lights[idx]::DirectionalLight
             color = light.color
@@ -252,7 +253,7 @@ function add_light_computation!(graph, scene, lights)
     # Split this to avoid updating WGLMakie
     # camera view matrix, not space adjusted plot matrix (right?)
     map!(graph, [:dirlight_direction, :dirlight_cam_relative, :eye_to_world], :dirlight_final_direction) do dir, cam_relative, iview
-        final_dir = cam_relative ? Vec3f(iview[Vec(1,2,3), Vec(1,2,3)] * dir) : dir
+        final_dir = cam_relative ? Vec3f(iview[Vec(1, 2, 3), Vec(1, 2, 3)] * dir) : dir
         return final_dir
     end
 
@@ -283,23 +284,23 @@ end
 push_parameters!(parameters, light::AbstractLight, iview) = push_parameters!(parameters, light)
 
 function push_parameters!(parameters, light::PointLight)
-    push!(parameters, light.position..., light.attenuation...)
+    return push!(parameters, light.position..., light.attenuation...)
 end
 
 function push_parameters!(parameters, light::DirectionalLight, iview)
     dir = light.direction
     if light.camera_relative
-        dir = iview[Vec(1,2,3), Vec(1,2,3)] * dir
+        dir = iview[Vec(1, 2, 3), Vec(1, 2, 3)] * dir
     end
-    push!(parameters, normalize(dir)...)
+    return push!(parameters, normalize(dir)...)
 end
 
 function push_parameters!(parameters, light::SpotLight)
-    push!(parameters, light.position..., normalize(light.direction)..., cos.(light.angles)...)
+    return push!(parameters, light.position..., normalize(light.direction)..., cos.(light.angles)...)
 end
 
 function push_parameters!(parameters, light::RectLight)
-    push!(parameters, light.position..., light.u1..., light.u2..., normalize(light.direction)...)
+    return push!(parameters, light.position..., light.u1..., light.u2..., normalize(light.direction)...)
 end
 
 light_parameter_count(::PointLight) = 5
@@ -311,9 +312,9 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
     # TODO: Maybe be smarter with view and DirectionalLight?
     # I.e. only apply and update them, not all lights?
     # Though the array will need to be pushed to the gpu as long as any are present anyway...
-    register_computation!(
-            scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
-        ) do (lights, iview), changed, cached
+    return register_computation!(
+        scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
+    ) do (lights, iview), changed, cached
 
         n_lights = 0
         n_params = 0

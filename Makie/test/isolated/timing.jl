@@ -17,7 +17,7 @@
         for _ in 1:100
             sleep(timer)
         end
-        real_dt = 1e-9 * (time_ns() - t)
+        real_dt = 1.0e-9 * (time_ns() - t)
 
         @test 98 * dt < real_dt < 102 * dt
     end
@@ -39,7 +39,7 @@
         for _ in 1:100
             Makie.busysleep(timer)
         end
-        real_dt = 1e-9 * (time_ns() - t)
+        real_dt = 1.0e-9 * (time_ns() - t)
 
         @test 99.9 * dt < real_dt < 100.1 * dt
     end
@@ -56,7 +56,7 @@
         Makie.start!(timer)
         sleep(1.0)
         Makie.stop!(timer)
-        real_dt = 1e-9 * (time_ns() - t)
+        real_dt = 1.0e-9 * (time_ns() - t)
         wait(timer.task)
         N = counter[]
 

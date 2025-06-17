@@ -15,11 +15,11 @@ using LinearAlgebra
         end
 
         pattern = Pattern(
-            width = 5f0, tilesize = (20, 20), shift = Vec2f(0),
+            width = 5.0f0, tilesize = (20, 20), shift = Vec2f(0),
             linecolor = :blue, background_color = :red
         )
         @test pattern.dirs == [Vec2f(1)]
-        @test pattern.widths == 5f0
+        @test pattern.widths == 5.0f0
         @test pattern.shifts == [Vec2f(0)]
         @test pattern.tilesize == (20, 20)
         @test pattern.colors == [to_color(:blue), to_color(:red)]
@@ -28,11 +28,11 @@ using LinearAlgebra
     end
 
     @test "Image Generation" begin
-        pattern = Pattern(linecolor = :black, backgroundcolor = RGBAf(1,1,1,0))
+        pattern = Pattern(linecolor = :black, backgroundcolor = RGBAf(1, 1, 1, 0))
         img = Makie.to_image(pattern)
-        @test diag(img) == [RGBAf(0,0,0,1) for _ in 1:10]
-        @test diag(img, +3) == [RGBAf(1,1,1,0) for _ in 1:7]
-        @test diag(img, -3) == [RGBAf(1,1,1,0) for _ in 1:7]
+        @test diag(img) == [RGBAf(0, 0, 0, 1) for _ in 1:10]
+        @test diag(img, +3) == [RGBAf(1, 1, 1, 0) for _ in 1:7]
+        @test diag(img, -3) == [RGBAf(1, 1, 1, 0) for _ in 1:7]
     end
 
 end

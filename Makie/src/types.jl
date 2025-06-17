@@ -164,6 +164,7 @@ function Base.show(io::IO, events::Events)
         pad = maxlen - length(string(field)) + 1
         println(io, "  $field:", " "^pad, to_value(getproperty(events, field)))
     end
+    return
 end
 
 function Events()
@@ -255,7 +256,7 @@ abstract type BooleanOperator end
 
 Union containing possible input types for `ispressed`.
 """
-const IsPressedInputType = Union{Bool,BooleanOperator,Mouse.Button,Keyboard.Button,Set,Vector,Tuple}
+const IsPressedInputType = Union{Bool, BooleanOperator, Mouse.Button, Keyboard.Button, Set, Vector, Tuple}
 
 """
     Camera(pixel_area)
@@ -340,34 +341,42 @@ struct Transformation <: Transformable
             return p * transformationmatrix(t + o - s .* (r * o), s, r)
         end
         transform_func_o = convert(Observable{Any}, transform_func)
-        return new(RefValue{Transformation}(),
-                   translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o)
+        return new(
+            RefValue{Transformation}(),
+            translation_o, scale_o, rotation_o, origin_o, model, parent_model, transform_func_o
+        )
     end
 end
 
-function Transformation(transform_func=identity;
-                        scale=Vec3d(1),
-                        translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        origin=Vec3d(0))
+function Transformation(
+        transform_func = identity;
+        scale = Vec3d(1),
+        translation = Vec3d(0),
+        rotation = Quaternionf(0, 0, 0, 1),
+        origin = Vec3d(0)
+    )
     return Transformation(translation, scale, rotation, transform_func, origin)
 end
 
-function Transformation(parent::Transformable;
-                        scale=Vec3d(1),
-                        translation=Vec3d(0),
-                        rotation=Quaternionf(0, 0, 0, 1),
-                        origin=Vec3d(0),
-                        transform_func=nothing)
+function Transformation(
+        parent::Transformable;
+        scale = Vec3d(1),
+        translation = Vec3d(0),
+        rotation = Quaternionf(0, 0, 0, 1),
+        origin = Vec3d(0),
+        transform_func = nothing
+    )
     connect_func = isnothing(transform_func)
     trans = isnothing(transform_func) ? identity : transform_func
 
-    trans = Transformation(translation,
-                           scale,
-                           rotation,
-                           trans,
-                           origin)
-    connect!(transformation(parent), trans; connect_func=connect_func)
+    trans = Transformation(
+        translation,
+        scale,
+        rotation,
+        trans,
+        origin
+    )
+    connect!(transformation(parent), trans; connect_func = connect_func)
     return trans
 end
 
@@ -379,19 +388,19 @@ function Base.show(io::IO, ::MIME"text/plain", t::Transformation)
     println(io, "        rotation = ", t.rotation[])
     println(io, "          origin = ", t.origin[])
     println(io, "           model = ", t.model[])
-    println(io, "  transform_func = ", t.transform_func[])
+    return println(io, "  transform_func = ", t.transform_func[])
 end
 
 struct ScalarOrVector{T}
     sv::Union{T, Vector{T}}
 end
 
-Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where T = ScalarOrVector{T}(collect(v))
-Base.convert(::Type{<:ScalarOrVector}, x::T) where T = ScalarOrVector{T}(x)
-Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where T = x
+Base.convert(::Type{<:ScalarOrVector}, v::AbstractVector{T}) where {T} = ScalarOrVector{T}(collect(v))
+Base.convert(::Type{<:ScalarOrVector}, x::T) where {T} = ScalarOrVector{T}(x)
+Base.convert(::Type{<:ScalarOrVector{T}}, x::ScalarOrVector{T}) where {T} = x
 Base.:(==)(a::ScalarOrVector, b::ScalarOrVector) = a.sv == b.sv
 function collect_vector(sv::ScalarOrVector, n::Int)
-    if sv.sv isa Vector
+    return if sv.sv isa Vector
         if length(sv.sv) != n
             error("Requested collected vector with $n elements, contained vector had $(length(sv.sv)) elements.")
         end
@@ -451,8 +460,10 @@ struct GlyphCollection
     strokecolors::ScalarOrVector{RGBAf}
     strokewidths::ScalarOrVector{Float32}
 
-    function GlyphCollection(glyphs, fonts, origins, extents, scales, rotations,
-            colors, strokecolors, strokewidths)
+    function GlyphCollection(
+            glyphs, fonts, origins, extents, scales, rotations,
+            colors, strokecolors, strokewidths
+        )
 
         n = length(glyphs)
         # @assert length(fonts) == n
@@ -467,7 +478,7 @@ struct GlyphCollection
             to_font(fonts),
             origins,
             extents,
-            ScalarOrVector{Vec{2,Float32}}(to_2d_scale(scales)),
+            ScalarOrVector{Vec{2, Float32}}(to_2d_scale(scales)),
             to_rotation(rotations),
             to_color(colors),
             to_color(strokecolors),
@@ -477,15 +488,15 @@ struct GlyphCollection
 end
 
 function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
-    a.glyphs == b.glyphs &&
-    a.fonts == b.fonts &&
-    a.origins == b.origins &&
-    a.extents == b.extents &&
-    a.scales == b.scales &&
-    a.rotations == b.rotations &&
-    a.colors == b.colors &&
-    a.strokecolors == b.strokecolors &&
-    a.strokewidths == b.strokewidths
+    return a.glyphs == b.glyphs &&
+        a.fonts == b.fonts &&
+        a.origins == b.origins &&
+        a.extents == b.extents &&
+        a.scales == b.scales &&
+        a.rotations == b.rotations &&
+        a.colors == b.colors &&
+        a.strokecolors == b.strokecolors &&
+        a.strokewidths == b.strokewidths
 end
 
 
@@ -514,17 +525,19 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
     """
     default limits (optional)
     """
-    limits::NTuple{2,Float32}
+    limits::NTuple{2, Float32}
     """
     valid limits interval (optional)
     """
     interval::T
     name::Symbol
-    function ReversibleScale(forward, inverse = Automatic(); limits = (0f0, 10f0), interval = (-Inf32, Inf32), name=Symbol(forward))
+    function ReversibleScale(forward, inverse = Automatic(); limits = (0.0f0, 10.0f0), interval = (-Inf32, Inf32), name = Symbol(forward))
         inverse isa Automatic && (inverse = inverse_transform(forward))
-        isnothing(inverse) && throw(ArgumentError(
-            "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."
-        ))
+        isnothing(inverse) && throw(
+            ArgumentError(
+                "Cannot determine inverse transform: you can use `ReversibleScale($(forward), inverse($(forward)))` instead."
+            )
+        )
         interval isa AbstractInterval || (interval = OpenInterval(Float32.(interval)...))
 
         lft, rgt = limits = Tuple(Float32.(limits))
@@ -533,7 +546,7 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
         lft ≈ Id(lft) || throw(ArgumentError("Invalid inverse transform: $lft !≈ $(Id(lft))"))
         rgt ≈ Id(rgt) || throw(ArgumentError("Invalid inverse transform: $rgt !≈ $(Id(rgt))"))
 
-        return new{typeof(forward),typeof(inverse),typeof(interval)}(forward, inverse, limits, interval, name)
+        return new{typeof(forward), typeof(inverse), typeof(interval)}(forward, inverse, limits, interval, name)
     end
 end
 

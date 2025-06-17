@@ -28,7 +28,7 @@ convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0
 convert_arguments(PT::Type{<:Pie}, point::VecTypes{2}, values::RealVector) = convert_arguments(PT, point[1], point[2], values)
 convert_arguments(PT::Type{<:Pie}, ps::AbstractVector{<:VecTypes{2}}, values::RealVector) = convert_arguments(PT, getindex.(ps, 1), getindex.(ps, 2), values)
 
-function convert_arguments(::Type{<:Pie}, xs::Union{Real,RealVector}, ys::Union{Real,RealVector}, values::RealVector)
+function convert_arguments(::Type{<:Pie}, xs::Union{Real, RealVector}, ys::Union{Real, RealVector}, values::RealVector)
     xs = length(xs) == 1 ? fill(only(xs), length(values)) : xs
     ys = length(ys) == 1 ? fill(only(ys), length(values)) : ys
     return (float_convert(xs), float_convert(ys), float_convert(values))
@@ -55,7 +55,7 @@ function plot!(plot::Pie)
         end
 
         # create vector of a vector of points for each piece
-        vertex_arrays = map(boundaries[1:end-1], boundaries[2:end], xs, ys, radius, inner_radius, offset_radius) do sta, en, x, y, r, inner_r, offset_r
+        vertex_arrays = map(boundaries[1:(end - 1)], boundaries[2:end], xs, ys, radius, inner_radius, offset_radius) do sta, en, x, y, r, inner_r, offset_r
             x += cos((en + sta) / 2 + offset) * offset_r
             y += sin((en + sta) / 2 + offset) * offset_r
             distance = en - sta
@@ -89,5 +89,5 @@ function plot!(plot::Pie)
         visible = plot.visible, transparency = plot.transparency
     )
 
-    plot
+    return plot
 end
