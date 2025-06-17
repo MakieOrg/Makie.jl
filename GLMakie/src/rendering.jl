@@ -26,7 +26,7 @@ end
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen; resize_buffers=true)
+function render_frame(screen::Screen; resize_buffers = true)
     isnothing(screen.scene) && return
 
     nw = to_native(screen)
@@ -42,7 +42,7 @@ function render_frame(screen::Screen; resize_buffers=true)
         # return Makie.zvalue2d(plot)
     end
 
-    sort!(screen.renderlist; by=sortby)
+    sort!(screen.renderlist; by = sortby)
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the

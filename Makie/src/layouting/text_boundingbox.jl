@@ -20,8 +20,8 @@ end
 
 # Utility
 function text_bb(str, font, size)
-    rot = Quaternionf(0,0,0,1)
-    layout = glyph_collection(str, font, size, 0f0, 0f0, 0f0, 0f0, -1, rot)
+    rot = Quaternionf(0, 0, 0, 1)
+    layout = glyph_collection(str, font, size, 0.0f0, 0.0f0, 0.0f0, 0.0f0, -1, rot)
     return unchecked_boundingbox(layout.glyphindices, layout.char_origins, size, layout.glyph_extents, rot)
 end
 
@@ -42,7 +42,7 @@ function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
 end
 
 function gl_bboxes(glyphs, scales, extents)
-    broadcast(glyphs, extents, scales) do c, ext, scale
+    return broadcast(glyphs, extents, scales) do c, ext, scale
         hi_bb = height_insensitive_boundingbox_with_advance(ext)
         # TODO c != 0 filters out all non renderables, which is not always desired
         return Rect2d(origin(hi_bb) * scale, (c != 0) * widths(hi_bb) * scale)

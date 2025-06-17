@@ -35,7 +35,7 @@ end
 
 @testset "Menu" begin
     f = Figure()
-    m = Menu(f[1,1], options = string.(1:10))
+    m = Menu(f[1, 1], options = string.(1:10))
     display(edisplay, App(f))
     # open menu
     all_messages, summary_str = Bonito.collect_messages() do

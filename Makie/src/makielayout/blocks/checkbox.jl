@@ -13,7 +13,7 @@ function initialize_block!(c::Checkbox)
     end
 
     shape = lift(c.size, c.roundness) do size, roundness
-        r = Float64(roundness * size/2)
+        r = Float64(roundness * size / 2)
         roundedrectpath(Float64.((size, size)), (r, r, r, r))
     end
 
@@ -79,16 +79,18 @@ end
 function roundedrectpath(size, radii)
     # radii go top right, bottom right, bottom left, top left
     rw, rh = size ./ 2
-    BezierPath([
-        MoveTo(rw, rh-radii[1]),
-        LineTo(rw, -rh+radii[2]),
-        EllipticalArc(Point(rw-radii[2], -rh+radii[2]), radii[2], radii[2], 0, 0, -pi/2),
-        LineTo(-rw+radii[3], -rh),
-        EllipticalArc(Point(-rw+radii[3], -rh+radii[3]), radii[3], radii[3], 0, -pi/2, -pi),
-        LineTo(-rw, rh-radii[4]),
-        EllipticalArc(Point(-rw+radii[4], rh-radii[4]), radii[4], radii[4], 0, -pi, -3pi/2),
-        LineTo(rw-radii[1], rh),
-        EllipticalArc(Point(rw-radii[1], rh-radii[1]), radii[1], radii[1], 0, -3pi/2, -2pi),
-        ClosePath(),
-    ])
+    return BezierPath(
+        [
+            MoveTo(rw, rh - radii[1]),
+            LineTo(rw, -rh + radii[2]),
+            EllipticalArc(Point(rw - radii[2], -rh + radii[2]), radii[2], radii[2], 0, 0, -pi / 2),
+            LineTo(-rw + radii[3], -rh),
+            EllipticalArc(Point(-rw + radii[3], -rh + radii[3]), radii[3], radii[3], 0, -pi / 2, -pi),
+            LineTo(-rw, rh - radii[4]),
+            EllipticalArc(Point(-rw + radii[4], rh - radii[4]), radii[4], radii[4], 0, -pi, -3pi / 2),
+            LineTo(rw - radii[1], rh),
+            EllipticalArc(Point(rw - radii[1], rh - radii[1]), radii[1], radii[1], 0, -3pi / 2, -2pi),
+            ClosePath(),
+        ]
+    )
 end

@@ -2,7 +2,7 @@
 struct DNode
     idx::Int
     position::Point2d
-    children::Union{Tuple{Int,Int}, Nothing}
+    children::Union{Tuple{Int, Int}, Nothing}
 end
 
 """
@@ -93,7 +93,7 @@ function recursive_dendrogram_points!(ret_points, ret_colors, node, nodes, branc
 end
 
 resample_for_transform(tf, args...; step = nothing) = args
-function resample_for_transform(tf::Polar, ps, args...; step = 2pi/180)
+function resample_for_transform(tf::Polar, ps, args...; step = 2pi / 180)
     isempty(ps) && return (ps, args...)
 
     interpolated_points = similar(ps, 0)
@@ -105,7 +105,7 @@ function resample_for_transform(tf::Polar, ps, args...; step = 2pi/180)
 
     dim = ifelse(tf.theta_as_x, 1, 2)
     for i in 2:length(ps)
-        p0 = ps[i-1]
+        p0 = ps[i - 1]
         p1 = ps[i]
 
         if isnan(p0) || isnan(p1)
@@ -125,10 +125,10 @@ function resample_for_transform(tf::Polar, ps, args...; step = 2pi/180)
         else
             append!(interpolated_points, range(p0, p1, length = N)[2:N])
             for (old, new) in zip(args, interpolated_args)
-                if isnan(old[i-1]) || isnan(old[i])
-                    append!(new, (old[i-1] for _ in 2:N))
+                if isnan(old[i - 1]) || isnan(old[i])
+                    append!(new, (old[i - 1] for _ in 2:N))
                 else
-                    append!(new, range(old[i-1], old[i], length = N)[2:N])
+                    append!(new, range(old[i - 1], old[i], length = N)[2:N])
                 end
             end
         end
@@ -177,16 +177,16 @@ function Makie.plot!(plot::Dendrogram)
         end
 
         # parse rotation, construct rotation matrix
-        if rotation isa Real;
+        if rotation isa Real
             rot_angle = rotation
         elseif rotation === :down
             rot_angle = 0.0
         elseif rotation === :right
-            rot_angle = pi/2
+            rot_angle = pi / 2
         elseif rotation === :up
             rot_angle = pi
         elseif rotation === :left
-            rot_angle = 3pi/2
+            rot_angle = 3pi / 2
         else
             error("Rotation $rotation is not valid. Must be a <: Real or :down, :right, :up or :left.")
         end
@@ -215,21 +215,21 @@ function Makie.plot!(plot::Dendrogram)
 
     attr = shared_attributes(plot, Lines)
 
-    lines!(plot, attr, plot.line_points, color=plot.line_colors, nan_color = plot.ungrouped_color)
+    return lines!(plot, attr, plot.line_points, color = plot.line_colors, nan_color = plot.ungrouped_color)
 end
 
 
 # branching styles
 
 function dendrogram_connectors!(::Val{:tree}, points, parent, child1, child2)
-    push!(points, child1.position, parent.position, child2.position)
+    return push!(points, child1.position, parent.position, child2.position)
 end
 
 function dendrogram_connectors!(::Val{:box}, points, parent::DNode, child1::DNode, child2::DNode)
     yp = parent.position[2]
     x1 = child1.position[1]
     x2 = child2.position[1]
-    push!(points, child1.position, Point2d(x1, yp), Point2d(x2, yp), child2.position)
+    return push!(points, child1.position, Point2d(x1, yp), Point2d(x2, yp), child2.position)
 end
 
 # Note: If wanted curved connections might be fairly easy to implemented with
@@ -237,36 +237,36 @@ end
 
 # convert utils
 
-function find_merge(n1, n2; height=1)
+function find_merge(n1, n2; height = 1)
     newx = min(n1[1], n2[1]) + abs((n1[1] - n2[1])) / 2
     newy = max(n1[2], n2[2]) + height
     return Point2d(newx, newy)
 end
 
-function find_merge(n1::DNode, n2::DNode; height=1, index=max(n1.idx, n2.idx)+1)
+function find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx) + 1)
     newx = min(n1.position[1], n2.position[1]) + 0.5 * abs((n1.position[1] - n2.position[1]))
     newy = max(n1.position[2], n2.position[2]) + height
 
     return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
-function convert_arguments(::Type{<: Dendrogram}, leaves::Vector{<: VecTypes{2}}, merges::Vector{<: Tuple{<: Integer, <: Integer}})
-    nodes = [DNode(i, n, nothing) for (i,n) in enumerate(leaves)]
+function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
+    nodes = [DNode(i, n, nothing) for (i, n) in enumerate(leaves)]
     for m in merges
-        push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes)+1))
+        push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes) + 1))
     end
     return (nodes,)
 end
 
 # TODO: PackageExtension?
-function hcl_nodes(hcl; useheight=false)
+function hcl_nodes(hcl; useheight = false)
     nleaves = length(hcl.order)
-    nodes = [DNode(i, Point2d(x, 0), nothing) for (i,x) in enumerate(invperm(hcl.order))]
+    nodes = [DNode(i, Point2d(x, 0), nothing) for (i, x) in enumerate(invperm(hcl.order))]
 
     for (m1, m2) in eachrow(hcl.merges)
         m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
         m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
-        push!(nodes, find_merge(nodes[m1], nodes[m2]; index = length(nodes)+1))
+        push!(nodes, find_merge(nodes[m1], nodes[m2]; index = length(nodes) + 1))
     end
 
     return nodes

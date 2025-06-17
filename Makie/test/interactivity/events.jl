@@ -54,9 +54,9 @@ end
     @test !ispressed(events, Mouse.right)
 
     # Collections
-    @test ispressed(events, (Keyboard.a, ))
-    @test ispressed(events, [Keyboard.a, ])
-    @test ispressed(events, Set((Keyboard.a, )))
+    @test ispressed(events, (Keyboard.a,))
+    @test ispressed(events, [Keyboard.a])
+    @test ispressed(events, Set((Keyboard.a,)))
 
     @test !ispressed(events, (Keyboard.a, Keyboard.b))
     @test !ispressed(events, [Keyboard.a, Keyboard.b])
@@ -139,8 +139,8 @@ end
         clipboard() = CLIP[]
     end
 
-    f = Figure(size=(640,480))
-    tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+    f = Figure(size = (640, 480))
+    tb = Textbox(f[1, 1], placeholder = "Copy/paste into me")
     e = events(f.scene)
 
     # Initial state
@@ -170,8 +170,8 @@ end
     # Refresh figure to test right control + v combination
     empty!(f)
 
-    f = Figure(size=(640,480))
-    tb = Textbox(f[1,1], placeholder="Copy/paste into me")
+    f = Figure(size = (640, 480))
+    tb = Textbox(f[1, 1], placeholder = "Copy/paste into me")
     e = events(f.scene)
 
     # Initial state

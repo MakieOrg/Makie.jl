@@ -4,21 +4,21 @@ using ImageShow
 using Makie: orthographicprojection
 
 @inline function edge_function(a, b, c)
-    (c[1] - a[1]) * (b[2] - a[2]) - (c[2] - a[2]) * (b[1] - a[1])
+    return (c[1] - a[1]) * (b[2] - a[2]) - (c[2] - a[2]) * (b[1] - a[1])
 end
 
-@inline function src_alpha(c::T) where T <: Colorant
+@inline function src_alpha(c::T) where {T <: Colorant}
     a = alpha(c)
     a == 0.0 && return zero(T)
-    c ./ a
+    return c ./ a
 end
 
 one_minus_alpha(c::T) where {T <: Colorant} = one(T) .- src_alpha(c)
 blend(source, dest, src_func, dest_func) = clamp01(src_func(source) .+ dest_func(dest))
 ColorTypes.alpha(x::StaticVector) = x[4]
 
-function standard_transparency(source, dest::T) where T
-    (alpha(source) .* source) .+ ((one(eltype(T)) - alpha(source)) .* dest)
+function standard_transparency(source, dest::T) where {T}
+    return (alpha(source) .* source) .+ ((one(eltype(T)) - alpha(source)) .* dest)
 end
 
 mutable struct FixedGeomView{GeomOut, VT}
@@ -36,9 +36,9 @@ Base.size(x::TriangleStripView) = (2,)
 
 function Base.getindex(x::TriangleStripView, i)
     if i === 1
-        return ntuple(i-> x.parent[i], 3)
+        return ntuple(i -> x.parent[i], 3)
     elseif i === 2
-        return map(i-> x.parent[i], (3, 2, 4))
+        return map(i -> x.parent[i], (3, 2, 4))
     else
         error("Out of bounds")
     end
@@ -60,7 +60,7 @@ function FixedGeomView(T, max_primitives, primitive_in, primitive_out)
 end
 
 function reset!(A::FixedGeomView)
-    A.idx = 1
+    return A.idx = 1
 end
 
 function Base.push!(A::FixedGeomView, element)
@@ -88,7 +88,7 @@ function JLRasterizer{Vertex, Args, FragN}(
         geometry_view::GV,
         emit::EF
     ) where {Vertex, Args, FragN, VS, FS, GS, GV, EF}
-    JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}(
+    return JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}(
         vertexshader,
         fragmentshader,
         geometryshader,
@@ -105,7 +105,7 @@ function geometry_return_type(vertex_array, vertexshader, geometryshader, unifor
         vertexshader(f, uniforms...)
     end
     geometryshader(emit_t, vertex_stage, uniforms...) # figure out typ
-    typ
+    return typ
 end
 
 arglength(::Type{T}) where {T <: Tuple} = length(T.parameters)
@@ -148,26 +148,26 @@ function rasterizer(
         geometry_view,
         emit
     )
-    raster, (vertexarray, uniforms)
+    return raster, (vertexarray, uniforms)
 end
 
 
 Base.@pure Next(::Val{N}) where {N} = Val(N - 1)
 
 function interpolate(bary, face::NTuple{N, T}, vn::Val{0}, aggregate) where {N, T}
-    if T <: Tuple
+    return if T <: Tuple
         aggregate
     else
         T(aggregate...)
     end
 end
 
-function interpolate(bary, face, vn::Val{N}, aggregate = ()) where N
+function interpolate(bary, face, vn::Val{N}, aggregate = ()) where {N}
     @inbounds begin
         res = (
             bary[1] * getfield(face[1], N) .+
-            bary[2] * getfield(face[2], N) .+
-            bary[3] * getfield(face[3], N)
+                bary[2] * getfield(face[2], N) .+
+                bary[3] * getfield(face[3], N)
         )
     end
     return interpolate(bary, face, Next(vn), (res, aggregate...))
@@ -179,7 +179,7 @@ broadcastmax(a, b) = max.(a, b)
 function clip2pixel_space(position, resolution)
     clipspace = position ./ position[4]
     p = clipspace[Vec(1, 2)]
-    (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0, clipspace[3]
+    return (((p .+ 1.0f0) / 2.0f0) .* (resolution .- 1.0f0)) .+ 1.0f0, clipspace[3]
 end
 
 
@@ -216,11 +216,11 @@ function (r::JLRasterizer{Vert, Args, FragN})(
             depths = map(last, fdepth)
             vertex_out = map(last, geom_face)
             # Bounding rectangle
-            mini = max.(reduce(broadcastmin, f), 1f0)
+            mini = max.(reduce(broadcastmin, f), 1.0f0)
             maxi = min.(reduce(broadcastmax, f), resolution)
             area = edge_function(f[1], f[2], f[3])
-            for y = mini[2]:maxi[2]
-                for x = mini[1]:maxi[1]
+            for y in mini[2]:maxi[2]
+                for x in mini[1]:maxi[1]
                     p = Vec(x, y)
                     w = Vec(
                         edge_function(f[2], f[3], p),
@@ -228,7 +228,7 @@ function (r::JLRasterizer{Vert, Args, FragN})(
                         edge_function(f[1], f[2], p)
                     )
                     yi, xi = round(Int, y), round(Int, x)
-                    if all(w-> w >= 0f0, w) && checkbounds(Bool, framebuffers[1], yi, xi)
+                    if all(w -> w >= 0.0f0, w) && checkbounds(Bool, framebuffers[1], yi, xi)
 
                         bary = w / area
                         depth = bary[1] * depths[1] + bary[2] * depths[2] + bary[3] * depths[3]
@@ -237,7 +237,7 @@ function (r::JLRasterizer{Vert, Args, FragN})(
                             depthbuffer[yi, xi] = depth
                             fragment_in = interpolate(bary, vertex_out, FragNVal)
                             fragment_out = fshader(fragment_in, uniforms...)
-                            for i = eachindex(fragment_out)
+                            for i in eachindex(fragment_out)
                                 src_color = framebuffers[i][yi, xi]
                                 dest_color = fragment_out[i]
                                 fragments_drawn += 1
@@ -264,21 +264,21 @@ smoothstep performs smooth Hermite interpolation between 0 and 1 when edge0 < x 
 ```
 Results are undefined if edge0 ≥ edge1.
 """
-function smoothstep(edge0, edge1, x::T) where T
+function smoothstep(edge0, edge1, x::T) where {T}
     t = clamp.((x .- edge0) ./ (edge1 .- edge0), T(0), T(1))
     return t * t * (T(3) - T(2) * t)
 end
 
-function aastep(threshold1::T, value) where T
-    afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05);
-    smoothstep(threshold1 - afwidth, threshold1 + afwidth, value)
+function aastep(threshold1::T, value) where {T}
+    afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05)
+    return smoothstep(threshold1 - afwidth, threshold1 + afwidth, value)
 end
 
-function aastep(threshold1::T, threshold2::T, value::T) where T
-    afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05);
+function aastep(threshold1::T, threshold2::T, value::T) where {T}
+    afwidth = norm(Vec2f(dFdx(value), dFdy(value))) * T(1.05)
     return (
         smoothstep(threshold1 - afwidth, threshold1 + afwidth, value) -
-        smoothstep(threshold2 - afwidth, threshold2 + afwidth, value)
+            smoothstep(threshold2 - afwidth, threshold2 + afwidth, value)
     )
 end
 
@@ -318,7 +318,7 @@ function vert_particles(vertex, uniforms)
     p = vertex.position
     scale = vertex.scale
     return Vertex2Geom(
-        Vec4f(0,0,1,1),
+        Vec4f(0, 0, 1, 1),
         vertex.color,
         Vec4f(p[1], p[2], scale[1], scale[2])
     )
@@ -355,7 +355,7 @@ function geom_particles(emit!, vertex_out, uniforms)
     pos_scale = arg.rect
     pos = pos_scale[Vec(1, 2)]
     scale = pos_scale[Vec(3, 4)]
-    quad = Vec4f(0f0, 0f0, scale[1], scale[2])
+    quad = Vec4f(0.0f0, 0.0f0, scale[1], scale[2])
     uv = arg.uvrect
     emit_vertex(emit!, quad[Vec(1, 2)], uv[Vec(1, 4)], arg, pos, uniforms)
     emit_vertex(emit!, quad[Vec(1, 4)], uv[Vec(1, 2)], arg, pos, uniforms)
@@ -366,23 +366,23 @@ end
 
 
 function sdf2color(dist, bg_color, color)
-    inside = aastep(0f0, dist)
-    mix(bg_color, color, inside)
+    inside = aastep(0.0f0, dist)
+    return mix(bg_color, color, inside)
 end
 
 function frag_particles(geom_out, uniforms, image)
     uv = geom_out[1]; color = geom_out[2]
     dist = -image[uv][1]
-    bg_color = Vec4f(0f0, 0f0, 0f0, 0f0)
-    (sdf2color(dist, bg_color, color), )
+    bg_color = Vec4f(0.0f0, 0.0f0, 0.0f0, 0.0f0)
+    return (sdf2color(dist, bg_color, color),)
 end
 
 function frag_particles(geom_out, uniforms)
     uv = geom_out[1]; color = geom_out[2]
     dist = uniforms.distance_func(uv)
-    bg_color = Vec4f(0f0, 0f0, 0f0, 0f0)
+    bg_color = Vec4f(0.0f0, 0.0f0, 0.0f0, 0.0f0)
     # col = Vec4f(norm(uv .- 0.5), 0, 0, 1)
-    (sdf2color(dist, bg_color, color), )
+    return (sdf2color(dist, bg_color, color),)
 end
 
 resolution = (1024, 1024)
@@ -400,13 +400,17 @@ uniforms = Uniforms(
 
 
 N = 10
-middle = Vec2f(resolution) / 2f0
-radius = (min(resolution...) / 2f0) - 50
-vertices = [(VertexCS(
-    Vec2f((sin(2pi * (i / N)) , cos(2pi * (i / N))) .* radius) .+ middle,
-    Vec4f(1, i/N, 0, 1),
-    Vec2f(40, 40)
-),) for i = 1:N]
+middle = Vec2f(resolution) / 2.0f0
+radius = (min(resolution...) / 2.0f0) - 50
+vertices = [
+    (
+            VertexCS(
+                Vec2f((sin(2pi * (i / N)), cos(2pi * (i / N))) .* radius) .+ middle,
+                Vec4f(1, i / N, 0, 1),
+                Vec2f(40, 40)
+            ),
+        ) for i in 1:N
+]
 
 
 raster, rest = rasterizer(
@@ -426,7 +430,7 @@ struct Canvas{N}
 end
 
 function Canvas(xdim::Integer, ydim::Integer)
-    color = fill(RGBA{Float32}(0,0,0,0), xdim, ydim)
+    color = fill(RGBA{Float32}(0, 0, 0, 0), xdim, ydim)
     depth = ones(Float32, xdim, ydim)
     return Canvas((color,), depth)
 end

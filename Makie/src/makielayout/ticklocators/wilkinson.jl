@@ -14,20 +14,22 @@
 $(@doc PlotUtils.optimize_ticks)
 """
 function WilkinsonTicks(
-    k_ideal::Int;
-    k_min = 2, k_max = 10,
-    Q = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)],
-    granularity_weight = 1/4,
-    simplicity_weight = 1/6,
-    coverage_weight = 1/3,
-    niceness_weight = 1/4
-)
+        k_ideal::Int;
+        k_min = 2, k_max = 10,
+        Q = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)],
+        granularity_weight = 1 / 4,
+        simplicity_weight = 1 / 6,
+        coverage_weight = 1 / 3,
+        niceness_weight = 1 / 4
+    )
     if !(0 < k_min <= k_ideal <= k_max)
         error("Invalid tick number specifications k_ideal $k_ideal, k_min $k_min, k_max $k_max")
     end
 
-    WilkinsonTicks(k_ideal, k_min, k_max, Q, granularity_weight,
-                   simplicity_weight, coverage_weight, niceness_weight)
+    return WilkinsonTicks(
+        k_ideal, k_min, k_max, Q, granularity_weight,
+        simplicity_weight, coverage_weight, niceness_weight
+    )
 end
 
 get_tickvalues(ticks::WilkinsonTicks, vmin, vmax) = get_tickvalues(ticks, Float64(vmin), Float64(vmax))
@@ -47,5 +49,5 @@ function get_tickvalues(ticks::WilkinsonTicks, vmin::Float64, vmax::Float64)
         niceness_weight = ticks.niceness_weight
     )
 
-    ticklocations
+    return ticklocations
 end

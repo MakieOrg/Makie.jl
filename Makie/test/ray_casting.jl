@@ -12,7 +12,7 @@
                 ref_ray = Makie.ray_from_projectionview(scene, xy)
                 # Direction matches and is normalized
                 @test ref_ray.direction ≈ ray.direction
-                @test norm(ray.direction) ≈ 1f0
+                @test norm(ray.direction) ≈ 1.0f0
                 # origins are on the same ray
                 @test Makie.is_point_on_ray(ray.origin, ref_ray)
             end
@@ -29,7 +29,7 @@
 
     # Generate rate that passes through transformed point
     transformed = Point3f(model * Point4f(point..., 1))
-    direction = (1 + 10*rand()) * rand(Vec3f)
+    direction = (1 + 10 * rand()) * rand(Vec3f)
     ray = Makie.Ray(transformed + direction, normalize(direction))
 
     @test Makie.is_point_on_ray(transformed, ray)
@@ -88,12 +88,12 @@
         end
 
         transform = Transformation(
-            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1),
+            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1, 0.5, 0.1), 0.1),
             ScaleTransform(Vec3d(1.1, 0.8, 1.2))
         )
         # Some plots don't support transform_funcs
         simple_transform = Transformation(
-            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1,0.5,0.1), 0.1),
+            Vec3d(0.2, -0.3, 0.2), Vec3d(1), Makie.qrotation(Vec3f(1, 0.5, 0.1), 0.1),
             identity
         )
 
@@ -117,14 +117,14 @@
 
             # Heatmap (2D) & Image (3D)
             scene = Scene(size = (400, 400))
-            p = heatmap!(scene, 0..1, -1..1, rand(10, 10), transformation = transform)
+            p = heatmap!(scene, 0 .. 1, -1 .. 1, rand(10, 10), transformation = transform)
             cam2d!(scene)
             ray = Makie.Ray(scene, (344.0, 156.0))
             pos = Makie.position_on_plot(p, 0, ray, apply_transform = true)
             @test pos ≈ Point3f(0.72, -0.22000003, 0.18368815)
 
             scene = Scene(size = (400, 400))
-            p = image!(scene, -1..1, -1..1, rand(10, 10), transformation = transform)
+            p = image!(scene, -1 .. 1, -1 .. 1, rand(10, 10), transformation = transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (201.0, 244.0))
             pos = Makie.position_on_plot(p, 3, ray, apply_transform = true)
@@ -140,8 +140,10 @@
 
             # Surface (3D)
             scene = Scene(size = (400, 400))
-            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
-                transformation = simple_transform)
+            p = surface!(
+                scene, -2 .. 2, -2 .. 2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
+                transformation = simple_transform
+            )
             cam3d!(scene)
             ray = Makie.Ray(scene, (129.0, 188.0))
             pos = Makie.position_on_plot(p, 332, ray, apply_transform = true)
@@ -166,13 +168,12 @@
             @test pos ≈ Point3f(0.7764834, -0.22643188, 0.18056774)
 
             scene = Scene(size = (400, 400))
-            p = scatter!(scene, Sphere(Point3f(0), 1f0), transformation = transform)
+            p = scatter!(scene, Sphere(Point3f(0), 1.0f0), transformation = transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (160.0, 279.0))
             pos = Makie.position_on_plot(p, 102, ray, apply_transform = true)
             @test pos ≈ Point3f(0.5577118, 0.0673411, 1.1521214)
         end
-
 
 
         @testset "apply_transform = false" begin
@@ -195,14 +196,14 @@
 
             # Heatmap (2D) & Image (3D)
             scene = Scene(size = (400, 400))
-            p = heatmap!(scene, 0..1, -1..1, rand(10, 10), transformation = transform)
+            p = heatmap!(scene, 0 .. 1, -1 .. 1, rand(10, 10), transformation = transform)
             cam2d!(scene)
             ray = Makie.Ray(scene, (334.0, 80.0))
             pos = Makie.position_on_plot(p, 0, ray, apply_transform = true)
             @test pos ≈ Point3f(0.66999996, -0.6, 0.1520533)
 
             scene = Scene(size = (400, 400))
-            p = image!(scene, -1..1, -1..1, rand(10, 10), transformation = transform)
+            p = image!(scene, -1 .. 1, -1 .. 1, rand(10, 10), transformation = transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (136.0, 172.0))
             pos = Makie.position_on_plot(p, 4, ray, apply_transform = true)
@@ -218,8 +219,10 @@
 
             # Surface (3D)
             scene = Scene(size = (400, 400))
-            p = surface!(scene, -2..2, -2..2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
-                transformation = simple_transform)
+            p = surface!(
+                scene, -2 .. 2, -2 .. 2, [sin(x) * cos(y) for x in -10:10, y in -10:10],
+                transformation = simple_transform
+            )
             cam3d!(scene)
             ray = Makie.Ray(scene, (118.0, 208.0))
             pos = Makie.position_on_plot(p, 310, ray, apply_transform = true)
@@ -244,7 +247,7 @@
             @test pos ≈ Point3f(0.5164561, -0.009674309, 0.21162316)
 
             scene = Scene(size = (400, 400))
-            p = scatter!(scene, Sphere(Point3f(0), 1f0), transformation = transform)
+            p = scatter!(scene, Sphere(Point3f(0), 1.0f0), transformation = transform)
             cam3d!(scene)
             ray = Makie.Ray(scene, (166.0, 132.0))
             pos = Makie.position_on_plot(p, 527, ray, apply_transform = true)

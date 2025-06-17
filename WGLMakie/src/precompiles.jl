@@ -9,7 +9,7 @@ macro compile(block)
             # while precompiling
             # So we just do all parts of the stack we can do without browser
             session = Session()
-            app = App(()-> DOM.div(figlike))
+            app = App(() -> DOM.div(figlike))
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
             close(session)

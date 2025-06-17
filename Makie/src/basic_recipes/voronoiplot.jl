@@ -11,28 +11,28 @@ DelaunayTriangulation.jl.
 """
 @recipe Voronoiplot (vorn,) begin
     "Determines whether to plot the individual generators."
-    show_generators=true
-    smooth=false
+    show_generators = true
+    smooth = false
 
     # Point settings
     "Sets the size of the points."
-    markersize= @inherit markersize
+    markersize = @inherit markersize
     "Sets the shape of the points."
-    marker= @inherit marker
+    marker = @inherit marker
     "Sets the color of the points."
-    markercolor= @inherit markercolor
+    markercolor = @inherit markercolor
 
     # Polygon settings
     "Sets the strokecolor of the polygons."
-    strokecolor= @inherit patchstrokecolor
+    strokecolor = @inherit patchstrokecolor
     "Sets the width of the polygon stroke."
-    strokewidth=1.0
+    strokewidth = 1.0
     "Sets the color of the polygons. If `automatic`, the polygons will be individually colored according to the colormap."
-    color=automatic
+    color = automatic
     "Sets the extension factor for the unbounded edges, used in `DelaunayTriangulation.polygon_bounds`."
-    unbounded_edge_extension_factor=0.1
+    unbounded_edge_extension_factor = 0.1
     "Sets the clipping area for the generated polygons which can be a `Rect2` (or `BBox`), `Tuple` with entries `(xmin, xmax, ymin, ymax)` or as a `Circle`. Anything outside the specified area will be removed. If the `clip` is not set it is automatically determined using `unbounded_edge_extension_factor` as a `Rect`."
-    clip=automatic
+    clip = automatic
     mixin_colormap_attributes()...
 end
 
@@ -140,8 +140,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    clip = map(p, p.clip, p.unbounded_edge_extension_factor,
-                              transform_func_obs(p), ps) do bb, ext, tf, ps
+    clip = map(
+        p, p.clip, p.unbounded_edge_extension_factor,
+        transform_func_obs(p), ps
+    ) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(p -> p[1 + tf.theta_as_x], ps) * (1 + ext)
             return Circle(Point2f(0), rscaled)
@@ -150,8 +152,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
         end
     end
 
-    return voronoiplot!(p, Attributes(p), vorn, transformation = :inherit_model,
-        color = color, clip = clip)
+    return voronoiplot!(
+        p, Attributes(p), vorn, transformation = :inherit_model,
+        color = color, clip = clip
+    )
 end
 
 function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
@@ -178,8 +182,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
             return cs
         elseif color isa AbstractArray
-            @assert(length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
-                    "Color vector must have the same length as the number of generators, including any not yet in the tessellation.")
+            @assert(
+                length(color) == DelTri.num_points(DelTri.get_triangulation(vorn)),
+                "Color vector must have the same length as the number of generators, including any not yet in the tessellation."
+            )
             return [color[i] for i in DelTri.each_generator(vorn)] # this matches the polygon order
         else
             return color # constant color
@@ -191,7 +197,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
             bbox = nothing
         elseif p.clip[] === automatic
             extent = p.unbounded_edge_extension_factor[]
-            bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices=false)
+            bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices = false)
         else
             bbox = p.clip[]
         end
@@ -202,23 +208,27 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     onany(update_plot, p, p[1])
     update_plot(p[1][])
 
-    poly!(p, polygons;
-          strokecolor=p.strokecolor,
-          strokewidth=p.strokewidth,
-          color=calculated_colors,
-          colormap=p.colormap,
-          colorscale=p.colorscale,
-          colorrange=p.colorrange,
-          lowclip=p.lowclip,
-          highclip=p.highclip,
-          nan_color=p.nan_color)
+    poly!(
+        p, polygons;
+        strokecolor = p.strokecolor,
+        strokewidth = p.strokewidth,
+        color = calculated_colors,
+        colormap = p.colormap,
+        colorscale = p.colorscale,
+        colorrange = p.colorrange,
+        lowclip = p.lowclip,
+        highclip = p.highclip,
+        nan_color = p.nan_color
+    )
 
-    scatter!(p, generators_2f;
-             markersize=p.markersize,
-             marker=p.marker,
-             color=p.markercolor,
-             visible=p.show_generators,
-             depth_shift=-2.0f-5)
+    scatter!(
+        p, generators_2f;
+        markersize = p.markersize,
+        marker = p.marker,
+        color = p.markercolor,
+        visible = p.show_generators,
+        depth_shift = -2.0f-5
+    )
 
     return p
 end

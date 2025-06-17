@@ -1,13 +1,15 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(9) do i
-        getfield(x, i)
-    end...)
+    return Camera(
+        ntuple(9) do i
+            getfield(x, i)
+        end...
+    )
 end
 
 function Base.:(==)(a::Camera, b::Camera)
-    to_value(a.view) == to_value(b.view) &&
-    to_value(a.projection) == to_value(b.projection) &&
-    to_value(a.resolution) == to_value(b.resolution)
+    return to_value(a.view) == to_value(b.view) &&
+        to_value(a.projection) == to_value(b.projection) &&
+        to_value(a.resolution) == to_value(b.resolution)
 end
 
 function Base.show(io::IO, camera::Camera)
@@ -19,7 +21,7 @@ function Base.show(io::IO, camera::Camera)
     println(io, "  projectionview: ", camera.projectionview[])
     println(io, "  resolution: ", camera.resolution[])
     println(io, "  eyeposition: ", camera.eyeposition[])
-    println(io, "  view direction: ", camera.view_direction[])
+    return println(io, "  view direction: ", camera.view_direction[])
 end
 
 function disconnect!(c::Camera)
@@ -48,7 +50,7 @@ struct CameraLift{F, Args}
 end
 
 function (cl::CameraLift{F, Args})(val) where {F, Args}
-    cl.f(map(to_value, cl.args)...)
+    return cl.f(map(to_value, cl.args)...)
 end
 
 """
@@ -57,12 +59,12 @@ end
 When mapping over observables for the camera, we store them in the `steering_node` vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority=0)
+function Observables.on(f, camera::Camera, observables::AbstractObservable...; priority = 0)
     # PriorityObservables don't implement on_any, because that would replace
     # the method in Observables. CameraLift acts as a workaround for now.
     cl = CameraLift(f, observables)
     for n in observables
-        obs = on(cl, n, priority=priority)
+        obs = on(cl, n, priority = priority)
         push!(camera.steering_nodes, obs)
     end
     return f
@@ -83,7 +85,7 @@ function Camera(viewport)
         view,
         proj,
         proj_view,
-        lift(a-> Vec2f(widths(a)), viewport),
+        lift(a -> Vec2f(widths(a)), viewport),
         Observable(Vec3f(0, 0, -1)),
         Observable(Vec3f(1)),
         Observable(Vec3f(0, 1, 0)),
@@ -97,7 +99,7 @@ function set_proj_view!(camera::Camera, projection, view)
     # But nobody should do that, right?
     # GLMakie uses map on view
     camera.view[] = view
-    camera.projection[] = projection
+    return camera.projection[] = projection
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -155,7 +157,8 @@ function add_camera_computation!(graph::ComputeGraph, scene)
 
     # constants
     identity_matrix = Mat4d(I)
-    add_constants!(graph,
+    add_constants!(
+        graph,
         world_to_world = identity_matrix,
         eye_to_eye = identity_matrix,
         pixel_to_pixel = identity_matrix,
@@ -177,10 +180,10 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         co = (farclip + nearclip) * id
         # Same as orthographicprojection(w, h, nearclip, farclip) but inlined
         # so we don't need to recalculate 1 / w etc
-        pixel_to_clip     = Mat4d(2iw,0,0,0,  0,2ih,0,0,  0,0,2id,0,  -1,-1,co,1)
-        clip_to_pixel     = Mat4d(0.5w,0,0,0, 0,0.5h,0,0, 0,0,0.5d,0, 0.5w,0.5h,0,1)
-        pixel_to_relative = Mat4d(iw,0,0,0,   0,ih,0,0,   0,0,id,0,   0,0,co,1)
-        relative_to_pixel = Mat4d(w,0,0,0,    0,h,0,0,    0,0,d,0,   0,0,co,1)
+        pixel_to_clip = Mat4d(2iw, 0, 0, 0, 0, 2ih, 0, 0, 0, 0, 2id, 0, -1, -1, co, 1)
+        clip_to_pixel = Mat4d(0.5w, 0, 0, 0, 0, 0.5h, 0, 0, 0, 0, 0.5d, 0, 0.5w, 0.5h, 0, 1)
+        pixel_to_relative = Mat4d(iw, 0, 0, 0, 0, ih, 0, 0, 0, 0, id, 0, 0, 0, co, 1)
+        relative_to_pixel = Mat4d(w, 0, 0, 0, 0, h, 0, 0, 0, 0, d, 0, 0, 0, co, 1)
         return (pixel_to_clip, clip_to_pixel, pixel_to_relative, relative_to_pixel)
     end
 

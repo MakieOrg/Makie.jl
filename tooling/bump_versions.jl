@@ -4,9 +4,9 @@ using Pkg
 
 dictmap(f, d) = Dict(key => f(key, value) for (key, value) in d)
 
-bump_patch(v::VersionNumber) = VersionNumber(v.major, v.minor, v.patch+1)
-bump_minor(v::VersionNumber) = VersionNumber(v.major, v.minor+1, 0)
-bump_major(v::VersionNumber) = VersionNumber(v.major+1, 0, 0)
+bump_patch(v::VersionNumber) = VersionNumber(v.major, v.minor, v.patch + 1)
+bump_minor(v::VersionNumber) = VersionNumber(v.major, v.minor + 1, 0)
+bump_major(v::VersionNumber) = VersionNumber(v.major + 1, 0, 0)
 
 function bump_versions()
 
@@ -40,15 +40,17 @@ function bump_versions()
 
     has_changed_src = dictmap((key, changes) -> !isempty(changes), src_changes)
 
-    selected = findall(map(names) do name
-        if has_changed_src["MakieCore"]
-            true
-        elseif has_changed_src["Makie"]
-            name != "MakieCore"
-        else
-            has_changed_src[name]
+    selected = findall(
+        map(names) do name
+            if has_changed_src["MakieCore"]
+                true
+            elseif has_changed_src["Makie"]
+                name != "MakieCore"
+            else
+                has_changed_src[name]
+            end
         end
-    end)
+    )
 
     println("Which packages' versions do you want to bump? All packages with nonempty git diffs in their `src` directory are preselected, or those who depend on others that have changes.")
     bumps_requested = request(MultiSelectMenu(names; selected))
@@ -82,12 +84,14 @@ function bump_versions()
         end
     end
 
-    new_versions = Dict(map(zip(bumps_requested, version_types)) do (i, vtype)
-        name = names[i]
-        version = versions[name]
-        new_version = (bump_patch, bump_minor, bump_major)[vtype](version)
-        name => new_version
-    end)
+    new_versions = Dict(
+        map(zip(bumps_requested, version_types)) do (i, vtype)
+            name = names[i]
+            version = versions[name]
+            new_version = (bump_patch, bump_minor, bump_major)[vtype](version)
+            name => new_version
+        end
+    )
 
     for (name, new_version) in new_versions
         new_toml = deepcopy(tomls[name])
@@ -106,7 +110,7 @@ function bump_versions()
             Pkg.Types.write_project(io, new_toml)
         end
     end
-    println("Done")
+    return println("Done")
 end
 
 bump_versions()

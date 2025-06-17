@@ -44,7 +44,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     correct_ratio!(scene, cam)
     selection_rect!(scene, cam, cam_attributes.selectionbutton)
     cameracontrols!(scene, cam)
-    cam
+    return cam
 end
 
 get_space(::Camera2D) = :data
@@ -76,7 +76,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = Rect2d(area3d)
     area = positive_widths(area)
     # ignore rects with width almost 0
-    any(x-> x ≈ 0.0, widths(area)) && return
+    any(x -> x ≈ 0.0, widths(area)) && return
 
     pa = viewport(scene)[]
     px_wh = normalize(widths(pa))
@@ -91,7 +91,7 @@ function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
         newwh = s .* widths(area)
         cam.area[] = Rect2d(minimum(area), newwh)
     end
-    update_cam!(scene, cam)
+    return update_cam!(scene, cam)
 end
 
 function update_cam!(scene::SceneLike, cam::Camera2D)
@@ -107,7 +107,7 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
 end
 
 function correct_ratio!(scene, cam)
-    on(camera(scene), viewport(scene)) do area
+    return on(camera(scene), viewport(scene)) do area
         neww = widths(area)
         change = neww .- cam.last_area[]
         if !(change ≈ Vec(0.0, 0.0))
@@ -150,7 +150,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
         return Consume(false)
     end
 
-    on(
+    return on(
         camera(scene),
         Observable.((scene, cam, startpos, drag_active))...,
         e.mouseposition
@@ -170,7 +170,7 @@ end
 
 function add_zoom!(scene::SceneLike, cam::Camera2D)
     e = events(scene)
-    on(camera(scene), e.scroll) do x
+    return on(camera(scene), e.scroll) do x
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float64(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
@@ -216,7 +216,7 @@ function selection_rect!(scene, cam, key)
         scene_unscaled,
         rect[],
         linestyle = :dot,
-        linewidth = 2f0,
+        linewidth = 2.0f0,
         color = (:black, 0.4),
         visible = false
     )
@@ -315,7 +315,7 @@ function add_restriction!(cam, window, rarea::Rect2, minwidths::Vec)
         end
         return
     end
-    restrict_action
+    return restrict_action
 end
 
 struct PixelCamera <: AbstractCamera end
@@ -331,7 +331,7 @@ end
 function (cam::UpdatePixelCam)(window_size)
     w, h = Float64.(widths(window_size))
     projection = orthographicprojection(0.0, w, 0.0, h, cam.near, cam.far)
-    set_proj_view!(cam.camera, projection, Mat4d(I))
+    return set_proj_view!(cam.camera, projection, Mat4d(I))
 end
 
 """
@@ -341,7 +341,7 @@ Creates a pixel camera for the given `scene`. This means that the positional
 data of a plot will be interpreted in pixel units. This camera does not feature
 controls.
 """
-function campixel!(scene::Scene; nearclip=-10_000.0, farclip=10_000.0)
+function campixel!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
     disconnect!(camera(scene))
     camera(scene).view_direction[] = Vec3f(0, 0, -1)
     update_once = Observable(false)
@@ -364,14 +364,14 @@ get_space(::RelativeCamera) = :relative
 Creates a camera for the given `scene` which maps the scene area to a 0..1 by
 0..1 range. This camera does not feature controls.
 """
-function cam_relative!(scene::Scene; nearclip=-10_000.0, farclip=10_000.0)
+function cam_relative!(scene::Scene; nearclip = -10_000.0, farclip = 10_000.0)
     disconnect!(camera(scene))
     camera(scene).view_direction[] = Vec3f(0, 0, -1)
     projection = orthographicprojection(0.0, 1.0, 0.0, 1.0, nearclip, farclip)
     set_proj_view!(camera(scene), projection, Mat4d(I))
     cam = RelativeCamera()
     cameracontrols!(scene, cam)
-    cam
+    return cam
 end
 
 # disconnect!(::Makie.PixelCamera) = nothing

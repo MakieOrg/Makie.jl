@@ -66,32 +66,32 @@ end
     @testset "Graph Update" begin
         update!(graph, in1 = 5)
         @test graph.inputs[:in1].value[] == 5
-        @test get_state(graph) == [1,0,1,0,1]
+        @test get_state(graph) == [1, 0, 1, 0, 1]
         @test graph[:merged][] == 7
 
         @test_throws ErrorException update!(graph, merged = 2)
-        @test get_state(graph) == [0,0,0,0,0]
+        @test get_state(graph) == [0, 0, 0, 0, 0]
         @test graph[:merged][] == 7
 
         update!(graph, in2 = 4, in1 = 7)
-        @test get_state(graph) == [1,1,1,1,1]
+        @test get_state(graph) == [1, 1, 1, 1, 1]
         @test graph[:merged][] == 11
 
         graph.in2 = 0
         @test graph.inputs[:in2].value[] == 0
-        @test get_state(graph) == [0,1,0,1,1]
+        @test get_state(graph) == [0, 1, 0, 1, 1]
         @test graph[:merged][] == 7
 
         graph.in1[] = 3
         @test graph.inputs[:in1].value[] == 3
         @test graph.outputs[:in1].value[] == 7
-        @test get_state(graph) == [1,0,1,0,1]
+        @test get_state(graph) == [1, 0, 1, 0, 1]
         @test graph[:merged][] == 3
     end
 
     @testset "Graph resolve" begin
         update!(graph, in1 = 2, in2 = 1)
-        @test get_state(graph) == [1,1,1,1,1]
+        @test get_state(graph) == [1, 1, 1, 1, 1]
         @test graph.inputs[:in1].value[] == 2
         @test graph.inputs[:in2].value[] == 1
         @test graph.outputs[:in1].value[] == 3
@@ -100,16 +100,16 @@ end
         # getproperty interface
         @test graph.in1[] == 2
         @test graph.outputs[:in1].value[] == 2
-        @test get_state(graph) == [0,1,0,1,1]
+        @test get_state(graph) == [0, 1, 0, 1, 1]
 
         @test graph.in2[] == 1
         @test graph.outputs[:in2].value[] == 1
-        @test get_state(graph) == [0,0,0,0,1]
+        @test get_state(graph) == [0, 0, 0, 0, 1]
 
         @test graph.merged === graph.outputs[:merged]
 
         update!(graph, in1 = -1, in2 = -2)
-        @test get_state(graph) == [1,1,1,1,1]
+        @test get_state(graph) == [1, 1, 1, 1, 1]
         @test graph.inputs[:in1].value[] == -1
         @test graph.inputs[:in2].value[] == -2
         @test graph.outputs[:in1].value[] == 2
@@ -118,18 +118,18 @@ end
         # getindex interface
         @test graph[:in1][] == -1
         @test graph.outputs[:in1].value[] == -1
-        @test get_state(graph) == [0,1,0,1,1]
+        @test get_state(graph) == [0, 1, 0, 1, 1]
 
         @test graph[:in2][] == -2
         @test graph.outputs[:in2].value[] == -2
-        @test get_state(graph) == [0,0,0,0,1]
+        @test get_state(graph) == [0, 0, 0, 0, 1]
 
         # verify that this isn't a multi-step resolve
         graph.inputs[:in1].value = 7
 
         @test graph[:merged][] == -3
         @test graph.outputs[:merged].value[] == -3
-        @test get_state(graph) == [0,0,0,0,0]
+        @test get_state(graph) == [0, 0, 0, 0, 0]
 
         # verify with parent being another compute edge too
         register_computation!(graph, [:merged], [:output]) do inputs, changed, cached
@@ -138,16 +138,16 @@ end
         graph.outputs[:in1].value[] = 12
         @test graph[:output][] == -3
         @test graph.outputs[:output].value[] == -3
-        @test get_state(graph) == [0,0,0,0,0]
+        @test get_state(graph) == [0, 0, 0, 0, 0]
         @test !isdirty(graph[:output])
 
         # multi-step with compute edge
         update!(graph, in1 = 10)
-        @test get_state(graph) == [1,0,1,0,1]
+        @test get_state(graph) == [1, 0, 1, 0, 1]
         @test isdirty(graph[:output])
         @test graph[:output][] == 8
         @test graph.outputs[:output].value[] == 8
-        @test get_state(graph) == [0,0,0,0,0]
+        @test get_state(graph) == [0, 0, 0, 0, 0]
         @test !isdirty(graph[:output])
     end
 
@@ -156,7 +156,7 @@ end
     graph = ComputeGraph()
     add_input!(graph, :in1, 1)
     add_input!(graph, :in2, 2)
-    add_input!(graph, :in3, [1,2,3])
+    add_input!(graph, :in3, [1, 2, 3])
     # bitstype
     register_computation!(graph, [:in1, :in2], [:merged]) do inputs, changed, cached
         counter[:merged] += 1
@@ -169,30 +169,30 @@ end
     # Array recreate
     register_computation!(graph, [:in1, :in3], [:zipped]) do inputs, changed, cached
         counter[:zipped] += 1
-        return (inputs.in1 .+ inputs.in3, )
+        return (inputs.in1 .+ inputs.in3,)
     end
     register_computation!(graph, [:zipped], [:summed]) do inputs, changed, cached
         counter[:summed] += 1
-        return (sum(inputs.zipped), )
+        return (sum(inputs.zipped),)
     end
     register_computation!(graph, [:summed], [:plus_one]) do inputs, changed, cached
         counter[:plus_one] += 1
-        return (inputs.summed + 1, )
+        return (inputs.summed + 1,)
     end
     # Array overwrite/reuse
     register_computation!(graph, [:in1, :in3], [:zipped2]) do inputs, changed, cached
-        output = isnothing(cached) ? [0,0,0] : cached.zipped2
+        output = isnothing(cached) ? [0, 0, 0] : cached.zipped2
         output .= inputs.in1 .+ inputs.in3
         counter[:zipped2] += 1
-        return (output, )
+        return (output,)
     end
     register_computation!(graph, [:zipped2], [:summed2]) do inputs, changed, cached
         counter[:summed2] += 1
-        return (sum(inputs.zipped2), )
+        return (sum(inputs.zipped2),)
     end
     register_computation!(graph, [:summed2], [:plus_one2]) do inputs, changed, cached
         counter[:plus_one2] += 1
-        return (inputs.summed2 + 1, )
+        return (inputs.summed2 + 1,)
     end
 
     @testset "update skipping and changed" begin
@@ -278,7 +278,7 @@ end
             @test counter[:plus_one2] == 3
 
             # from in3
-            graph.in3 = [0,1,2]
+            graph.in3 = [0, 1, 2]
             @test graph.plus_one[] == 16
             @test counter[:zipped] == 3
             @test counter[:summed] == 3
@@ -290,7 +290,7 @@ end
             @test counter[:plus_one2] == 3
 
             # delayed same value
-            graph.in3 = [2,1,0]
+            graph.in3 = [2, 1, 0]
             @test graph.plus_one[] == 16
             @test counter[:zipped] == 4     # input: [2,1,0] != [0,1,2]
             @test counter[:summed] == 4     # input: [2,1,0] .+ 4 != [0,1,2] .+ 4
@@ -303,7 +303,7 @@ end
         end
 
         @testset "Array edge case" begin
-            graph.in3 = [3,2,1] # .+ 1
+            graph.in3 = [3, 2, 1] # .+ 1
             graph.in1 = 3       #  - 1
 
             # new array generated, values match, update skipped
@@ -392,7 +392,9 @@ end
 
         @test_throws KeyError delete!(graph, :unknown)
 
-        @test begin delete!(graph, :out); true end
+        @test begin
+            delete!(graph, :out); true
+        end
     end
 
     @testset "Input" begin
@@ -544,12 +546,12 @@ end
         g = ComputeGraph()
         add_input!((k, x) -> Float32.(x), g, :input1, [0])
         add_input!((k, x) -> Float32.(x), g, :input2, [1])
-        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x, y), changed, cached
             return ([x; y], [y; x])
         end
         map!(x -> [x; 1], g, :xy, :out1)
         map!(x -> [x; 1], g, :yx, :out2)
-        map!((x,y) -> tuple.(x,y), g, [:out1, :out2], :zipped)
+        map!((x, y) -> tuple.(x, y), g, [:out1, :out2], :zipped)
         foreach(key -> ComputePipeline.get_observable!(g, key), keys(g.outputs))
 
         @testset "Initialization" begin
@@ -567,7 +569,7 @@ end
             @test g.observables[:yx][] == Float32[1, 0]
             @test g.observables[:out1][] == Float32[0, 1, 1]
             @test g.observables[:out2][] == Float32[1, 0, 1]
-            @test g.observables[:zipped][] == [(0f0, 1f0), (1f0, 0f0), (1f0, 1f0)]
+            @test g.observables[:zipped][] == [(0.0f0, 1.0f0), (1.0f0, 0.0f0), (1.0f0, 1.0f0)]
         end
 
         @testset "Update" begin
@@ -587,12 +589,12 @@ end
         g = ComputeGraph()
         add_input!((k, x) -> Float64.(x), g, :input1, 0)
         add_input!((k, x) -> Float64.(x), g, :input2, 4)
-        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x,y), changed, cached
-            return (x-y, y-x)
+        register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x, y), changed, cached
+            return (x - y, y - x)
         end
         map!(x -> x + 1, g, :xy, :out1)
         map!(x -> x + 1, g, :yx, :out2)
-        map!((x,y) -> x * y, g, [:out1, :out2], :mult)
+        map!((x, y) -> x * y, g, [:out1, :out2], :mult)
 
         @test isempty(g.observables)
 

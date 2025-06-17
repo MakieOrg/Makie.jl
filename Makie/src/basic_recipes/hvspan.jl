@@ -48,13 +48,13 @@ function Makie.plot!(p::Union{HSpan, VSpan})
             if p isa HSpan
                 x_mi = min_x + (max_x - min_x) * mi
                 x_ma = min_x + (max_x - min_x) * ma
-                low  = _apply_y_transform(transf, low)
+                low = _apply_y_transform(transf, low)
                 high = _apply_y_transform(transf, high)
                 push!(rects, Rect2d(Point2(x_mi, low), Vec2(x_ma - x_mi, high - low)))
             elseif p isa VSpan
                 y_mi = min_y + (max_y - min_y) * mi
                 y_ma = min_y + (max_y - min_y) * ma
-                low  = _apply_x_transform(transf, low)
+                low = _apply_x_transform(transf, low)
                 high = _apply_x_transform(transf, high)
                 push!(rects, Rect2d(Point2(low, y_mi), Vec2(high - low, y_ma - y_mi)))
             end
@@ -63,7 +63,7 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     end
 
     poly!(p, Attributes(p), p.rects, transformation = :inherit_model)
-    p
+    return p
 end
 
 _apply_x_transform(t::Tuple, v) = apply_transform(t[1], v)

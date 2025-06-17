@@ -1,4 +1,3 @@
-
 @enum ProjectionEnum Perspective Orthographic
 
 struct OldCamera3D <: AbstractCamera
@@ -50,7 +49,7 @@ function old_cam3d_cad!(scene::Scene; kw_args...)
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
-    cam
+    return cam
 end
 
 get_space(::OldCamera3D) = :data
@@ -88,7 +87,7 @@ function old_cam3d_turntable!(scene::Scene; kw_args...)
         # update cam when screen ratio changes
         update_cam!(scene, cam)
     end
-    cam
+    return cam
 end
 
 """
@@ -109,19 +108,19 @@ function projection_switch(
         wh::Rect2,
         fov::T, near::T, far::T,
         projectiontype::ProjectionEnum, zoom::T
-    ) where T <: Real
+    ) where {T <: Real}
     aspect = T((/)(widths(wh)...))
     h = T(tan(fov / 360.0 * pi) * near)
     w = T(h * aspect)
     projectiontype == Perspective && return frustum(-w, w, -h, h, near, far)
     h, w = h * zoom, w * zoom
-    orthographicprojection(-w, w, -h, h, near, far)
+    return orthographicprojection(-w, w, -h, h, near, far)
 end
 
 function rotate_cam(
         theta::Vec{3, T},
         cam_right::Vec{3, T}, cam_up::Vec{3, T}, cam_dir::Vec{3, T}
-    ) where T
+    ) where {T}
     rotation = Quaternion{T}(0, 0, 0, 1)
     if !all(isfinite.(theta))
         # We can only rotate for finite values
@@ -140,7 +139,7 @@ function rotate_cam(
     if theta[3] != 0
         rotation *= qrotation(cam_dir, theta[3])
     end
-    rotation
+    return rotation
 end
 
 # TODO switch button and key because this is the wrong order
@@ -176,11 +175,11 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
         return Consume(false)
     end
 
-    on(camera(scene), scene.events.scroll) do scroll
+    return on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
             cam_res = Vec2d(widths(scene))
             mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
-            mouse_pos_normalized = 2*mouse_pos_normalized .- 1.0
+            mouse_pos_normalized = 2 * mouse_pos_normalized .- 1.0
             zoom_step = scroll[2]
             zoom!(scene, mouse_pos_normalized, zoom_step, zoom_shift_lookat)
             return Consume(true)
@@ -213,7 +212,7 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
         return Consume(false)
     end
 
-    on(camera(scene), e.mouseposition) do mp
+    return on(camera(scene), e.mouseposition) do mp
         if dragging[] && ispressed(scene, key[])
             mousepos = screen_relative(scene, mp)
             rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
@@ -270,8 +269,8 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
     # split zoom into two components:
     # the offset perpendicular to `eyeposition - lookat`, based on mouse offset ~ ray_dir
     # the offset parallel to `eyeposition - lookat` ~ dir
-    ray_eye = inv(scene.camera.projection[]) * Vec4d(point[1],point[2],0,0)
-    ray_eye = Vec4d(ray_eye[Vec(1, 2)]...,0,0)
+    ray_eye = inv(scene.camera.projection[]) * Vec4d(point[1], point[2], 0, 0)
+    ray_eye = Vec4d(ray_eye[Vec(1, 2)]..., 0, 0)
     ray_dir = Vec3d((inv(scene.camera.view[]) * ray_eye))
 
     dir = eyeposition - lookat
@@ -281,8 +280,8 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
         if projectiontype == Perspective
             ray_dir *= norm(dir)
         end
-        cam.eyeposition[] = eyeposition + (ray_dir - dir) * (1.0 - 0.9 ^ zoom_step)
-        cam.lookat[] = lookat + (1.0 - 0.9 ^ zoom_step) * ray_dir
+        cam.eyeposition[] = eyeposition + (ray_dir - dir) * (1.0 - 0.9^zoom_step)
+        cam.lookat[] = lookat + (1.0 - 0.9^zoom_step) * ray_dir
     else
         # Rotations need more extreme eyeposition shifts
         step = zoom_step
@@ -293,7 +292,7 @@ function zoom!(scene, point::VecTypes, zoom_step, shift_lookat::Bool)
         end
     end
 
-    update_cam!(scene, cam)
+    return update_cam!(scene, cam)
 end
 
 """
@@ -335,7 +334,7 @@ function update_cam!(scene::Scene, cam::OldCamera3D)
     set_proj_view!(camera(scene), proj, view)
     scene.camera.eyeposition[] = Vec3f(cam.eyeposition[])
     scene.camera.upvector[] = Vec3f(cam.upvector[])
-    scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
+    return scene.camera.view_direction[] = Vec3f(normalize(cam.lookat[] - cam.eyeposition[]))
 end
 
 function update_cam!(scene::Scene, camera::OldCamera3D, area3d::Rect)
@@ -346,9 +345,9 @@ function update_cam!(scene::Scene, camera::OldCamera3D, area3d::Rect)
     middle = maximum(bb) - half_width
     old_dir = normalize(eyeposition .- lookat)
     camera.lookat[] = middle
-    neweyepos = middle .+ (1.2*norm(width) .* old_dir)
+    neweyepos = middle .+ (1.2 * norm(width) .* old_dir)
     camera.eyeposition[] = neweyepos
-    camera.upvector[] = Vec3d(0,0,1)
+    camera.upvector[] = Vec3d(0, 0, 1)
     camera.near[] = 0.1 * norm(widths(bb))
     camera.far[] = 3.0 * norm(widths(bb))
     update_cam!(scene, camera)

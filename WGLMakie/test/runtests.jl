@@ -22,17 +22,19 @@ import Electron
     @test !showable("blaaa", f)
 end
 
-excludes = Set([
-    "Image on Surface Sphere", # TODO: texture rotated 180°
-    "Array of Images Scatter", # scatter does not support texture images
-    "Order Independent Transparency",
-    "3D Contour with 2D contour slices", # looks like a z-fighting issue
-    "Mesh with 3d volume texture", # Not implemented yet
-    "matcap", # not yet implemented
-])
+excludes = Set(
+    [
+        "Image on Surface Sphere", # TODO: texture rotated 180°
+        "Array of Images Scatter", # scatter does not support texture images
+        "Order Independent Transparency",
+        "3D Contour with 2D contour slices", # looks like a z-fighting issue
+        "Mesh with 3d volume texture", # Not implemented yet
+        "matcap", # not yet implemented
+    ]
+)
 
 Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(devtools=true)
+edisplay = Bonito.use_electron_display(devtools = true)
 
 @testset "reference tests" begin
     WGLMakie.activate!()
@@ -57,7 +59,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         # Make sure all sdfs inside texture atlas are send to JS!
         s = Scene()
         cam2d!(s)
-        scatter!(s, positions, marker=marker, markersize=msize, markerspace=:data)
+        scatter!(s, positions, marker = marker, markersize = msize, markerspace = :data)
         center!(s)
         img = colorbuffer(s)
 
@@ -70,12 +72,12 @@ edisplay = Bonito.use_electron_display(devtools=true)
         # ax3, pl = image(f[1, 2], img, uv_transform=Mat{2,3,Float32}(0, 1, 1, 0, 0, 0))
         # hidedecorations!(ax3)
         # f
-        @test atlas.data  ≈ js_atlas_data
+        @test atlas.data ≈ js_atlas_data
     end
 
 
     @testset "window open/closed" begin
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         @test events(f).window_open[] == false
         @test Makie.isclosed(f.scene) == false
         @test isempty(f.scene.current_screens) || !isopen(first(f.scene.current_screens))
@@ -114,12 +116,12 @@ edisplay = Bonito.use_electron_display(devtools=true)
         function check_tick(tick, state, count)
             @test tick.state == state
             @test tick.count == count
-            @test tick.time > 1e-9
-            @test tick.delta_time > 1e-9
+            @test tick.time > 1.0e-9
+            @test tick.delta_time > 1.0e-9
         end
 
         @testset "save()" begin
-            f, a, p = scatter(rand(10));
+            f, a, p = scatter(rand(10))
             @test events(f).tick[] == Makie.Tick()
 
             filename = "$(tempname()).png"
@@ -140,7 +142,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
         end
 
         @testset "record()" begin
-            f, a, p = scatter(rand(10));
+            f, a, p = scatter(rand(10))
             filename = "$(tempname()).mp4"
             try
                 tick_record = Makie.Tick[]
@@ -152,8 +154,8 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
                 for (i, tick) in enumerate(tick_record[start:end])
                     @test tick.state == Makie.OneTimeRenderTick
-                    @test tick.count == i-1
-                    @test tick.time ≈ dt * (i-1)
+                    @test tick.count == i - 1
+                    @test tick.time ≈ dt * (i - 1)
                     @test tick.delta_time ≈ dt
                 end
             finally
@@ -161,7 +163,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
             end
 
             # test destruction of tick overwrite
-            f, a, p = scatter(rand(10));
+            f, a, p = scatter(rand(10))
             colorbuffer(f) # trigger screen creation
 
             let
@@ -176,7 +178,7 @@ edisplay = Bonito.use_electron_display(devtools=true)
 
 
         @testset "normal render()" begin
-            f, a, p = scatter(rand(10));
+            f, a, p = scatter(rand(10))
             tick_record = Makie.Tick[]
             on(t -> push!(tick_record, t), events(f).tick)
             sleep(0.2)
@@ -206,19 +208,19 @@ edisplay = Bonito.use_electron_display(devtools=true)
             # can skip to N+2 or more if other sources delay them too much.
             # Sleep is also fairly inaccurate so the variance is rather large
             # Test: tick.time follow N * 1/30
-            dt = 1/30
+            dt = 1 / 30
             dist_from_target = map(tick -> ((tick.time + 0.5dt) % dt) - 0.5dt, tick_record)
             t0 = mean(dist_from_target)
             dist_from_target .-= t0
-            standard_error = sqrt(mapreduce(t -> t*t, +, dist_from_target) / length(dist_from_target))
+            standard_error = sqrt(mapreduce(t -> t * t, +, dist_from_target) / length(dist_from_target))
             @test standard_error < 0.2dt
 
             # Ticks will usually get increasing delayed (or early) and eventually
             # correct themselves by sleeping less. This will then average out
             # to a lower error over multiple samples
             window = 10
-            windowed_dist = [mean(dist_from_target[i:i+window]) for i in 1:length(dist_from_target)-window]
-            standard_error = sqrt(mapreduce(t -> t*t, +, windowed_dist) / length(windowed_dist))
+            windowed_dist = [mean(dist_from_target[i:(i + window)]) for i in 1:(length(dist_from_target) - window)]
+            standard_error = sqrt(mapreduce(t -> t * t, +, windowed_dist) / length(windowed_dist))
             @test standard_error < 0.05dt
             @info dist_from_target
 
@@ -235,15 +237,15 @@ edisplay = Bonito.use_electron_display(devtools=true)
         Makie.CURRENT_FIGURE[] = nothing
         app = App(nothing)
         display(edisplay, app)
-        GC.gc(true);
+        GC.gc(true)
         # Somehow this may take a while to get emptied completely
         p_key = "Object.keys(WGL.plot_cache)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout=50)
+        value = @time Bonito.wait_for(() -> (GC.gc(true); isempty(run(edisplay.window, p_key))); timeout = 50)
         @show run(edisplay.window, p_key)
         @test value == :success
 
         s_keys = "Object.keys(Bonito.Sessions.SESSIONS)"
-        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout=50)
+        value = @time Bonito.wait_for(() -> (GC.gc(true); length(run(edisplay.window, s_keys)) == 2); timeout = 50)
         @show run(edisplay.window, s_keys)
         @show app.session[].id
         @show app.session[].parent
