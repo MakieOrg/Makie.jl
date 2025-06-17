@@ -1,5 +1,5 @@
 function theme_latexfonts()
-    Theme(
+    return Theme(
         fonts = Attributes(
             :bold => texfont(:bold),
             :bolditalic => texfont(:bolditalic),

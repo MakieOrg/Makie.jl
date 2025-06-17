@@ -32,7 +32,7 @@ function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
     return mesh
 end
 
-function backend_colors!(attr, color_name=:scaled_color)
+function backend_colors!(attr, color_name = :scaled_color)
     # TODO: Shouldn't this be guaranteed?
     if !haskey(attr, :interpolate)
         Makie.add_input!(attr, :interpolate, false)
@@ -41,9 +41,9 @@ function backend_colors!(attr, color_name=:scaled_color)
         filter = interpolate ? :linear : :nearest
         if color isa Sampler
             return (color, is_pattern)
-        elseif color isa AbstractMatrix || color isa AbstractArray{<: Any, 3}
+        elseif color isa AbstractMatrix || color isa AbstractArray{<:Any, 3}
             # TODO, don't construct a sampler every time
-            return (Sampler(color, minfilter=filter), false)
+            return (Sampler(color, minfilter = filter), false)
         elseif color isa Union{Real, Colorant}
             return (color, false)
         else
@@ -57,11 +57,11 @@ function backend_colors!(attr, color_name=:scaled_color)
         return color isa AbstractVector ? (color,) : (false,)
     end
 
-    register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
+    return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
         isnothing(crange) && return (false, false)
         cmap_minfilter = ctype === Makie.continuous ? :linear : :nearest
         cmap_changed = changed.alpha_colormap || changed.color_mapping_type
-        cmap_s = cmap_changed ? Sampler(cmap, minfilter=cmap_minfilter) : nothing
+        cmap_s = cmap_changed ? Sampler(cmap, minfilter = cmap_minfilter) : nothing
         return (cmap_s, Vec2f(crange))
     end
 end
@@ -75,7 +75,7 @@ function handle_color!(data, attr)
     set!(:highclip_color)
     set!(:lowclip_color)
     set!(:nan_color)
-    set!(:pattern)
+    return set!(:pattern)
 end
 
 function update_values!(updater, values::Bonito.LargeUpdate)
@@ -125,7 +125,7 @@ end
 
 function add_primitive_shading!(scene::Scene, attr)
     scene_shading = Makie.get_shading_mode(scene)
-    map!(attr, :shading, :primitive_shading) do shading
+    return map!(attr, :shading, :primitive_shading) do shading
         s = (shading ? scene_shading : shading)
         shading = s isa Bool ? s : (s !== NoShading)
         return shading
@@ -174,16 +174,18 @@ function assemble_particle_robj!(attr, data)
 
     # Uniforms will be set in JavaScript
     data[:model_f32c] = attr.model_f32c
-    data[:px_per_unit] = 0f0
+    data[:px_per_unit] = 0.0f0
     data[:picking] = false
     data[:object_id] = UInt32(0)
 
     data[:depth_shift] = attr.depth_shift
     data[:transform_marker] = attr.transform_marker
-    per_instance_keys = Set([
-        :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
-        :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize
-    ])
+    per_instance_keys = Set(
+        [
+            :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
+            :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize,
+        ]
+    )
 
     per_instance = filter(data) do (k, v)
         return k in per_instance_keys && !(Makie.isscalar(v))
@@ -270,7 +272,7 @@ function create_shader(scene::Scene, plot::Scatter)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :scatter_color)
-    inputs =  [
+    inputs = [
         :positions_transformed_f32c,
 
         :vertex_color, :uniform_color, :uniform_colormap,
@@ -283,7 +285,7 @@ function create_shader(scene::Scene, plot::Scatter)
         :glowcolor, :depth_shift, :atlas,
         :markerspace, :visible, :transform_marker, :f32c_scale,
         :model_f32c, :marker_offset, :glyph_data,
-        :uniform_clip_planes, :uniform_num_clip_planes
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
@@ -292,7 +294,7 @@ const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
 const SCENE_ATLAS_LOCK = ReentrantLock()
 
 function get_atlas_tracker(f, scene::Scene)
-    lock(SCENE_ATLAS_LOCK) do
+    return lock(SCENE_ATLAS_LOCK) do
         for (s, _) in SCENE_ATLASES
             Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
         end
@@ -315,7 +317,7 @@ function get_atlas_tracker(f, scene::Scene)
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)
-    get_atlas_tracker(Makie.root(scene)) do tracker
+    return get_atlas_tracker(Makie.root(scene)) do tracker
         atlas = Makie.get_texture_atlas()
         _, new_glyphs = Makie.get_glyph_data(atlas, tracker, markers, fonts)
         return new_glyphs
@@ -323,7 +325,7 @@ function get_scatter_data(scene::Scene, markers, fonts)
 end
 
 function get_glyph_data(scene::Scene, glyphs, fonts)
-    get_atlas_tracker(Makie.root(scene)) do tracker
+    return get_atlas_tracker(Makie.root(scene)) do tracker
         atlas = Makie.get_texture_atlas()
         glyph_hashes, new_glyphs = Makie.get_glyph_data(atlas, tracker, glyphs, fonts)
         return glyph_hashes, new_glyphs
@@ -334,7 +336,7 @@ function register_text_computation!(attr, scene)
     map!(attr, [:text_blocks, :text_scales], :glyph_scales) do text_blocks, fontsize
         return Makie.map_per_glyph(text_blocks, Vec2f, Makie.to_2d_scale(fontsize))
     end
-    register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs,fonts,glyph_scales), changed, last
+    return register_computation!(attr, [:glyphindices, :font_per_char, :glyph_scales], [:glyph_data]) do (glyphs, fonts, glyph_scales), changed, last
         hashes, updates = get_glyph_data(scene, glyphs, fonts)
         dict = Dict(
             :glyph_hashes => hashes,
@@ -368,7 +370,7 @@ function create_shader(scene::Scene, plot::Makie.Text)
         :depth_shift, :atlas, :markerspace,
 
         :visible, :transform_marker, :f32c_scale, :model_f32c,
-        :uniform_clip_planes, :uniform_num_clip_planes
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
@@ -412,8 +414,8 @@ function meshscatter_program(args)
 end
 
 
-function disassemble_mesh!(attr, mesh_sym=:marker)
-    map!(attr, [mesh_sym], [:position, :faces, :normal, :uv]) do mesh
+function disassemble_mesh!(attr, mesh_sym = :marker)
+    return map!(attr, [mesh_sym], [:position, :faces, :normal, :uv]) do mesh
         faces = decompose(GLTriangleFace, mesh)
         normals = decompose_normals(mesh)
         texturecoordinates = decompose_uv(mesh)
@@ -445,7 +447,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         :space,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :transform_marker, :primitive_shading, :depth_shift,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
     return create_wgl_renderobject(meshscatter_program, attr, inputs)
 end
@@ -462,8 +464,10 @@ import Makie: EndPoints
 
 function add_uv_mesh!(attr)
     if !haskey(attr, :positions)
-        register_computation!(attr, [:data_limits, :x, :y, :image, :transform_func],
-                [:faces, :texturecoordinates, :wgl_positions]) do (rect, x, y, z, t), changed, last
+        register_computation!(
+            attr, [:data_limits, :x, :y, :image, :transform_func],
+            [:faces, :texturecoordinates, :wgl_positions]
+        ) do (rect, x, y, z, t), changed, last
 
             if x isa EndPoints && y isa EndPoints && Makie.is_identity_transform(t)
                 init = isnothing(last) # these are constant after init
@@ -488,10 +492,12 @@ function add_uv_mesh!(attr)
     end
 
     if !haskey(attr, :normals)
-        Makie.add_constants!(attr, normals = nothing, primitive_shading = false,
-            diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0f0, backlight = 0f0)
+        Makie.add_constants!(
+            attr, normals = nothing, primitive_shading = false,
+            diffuse = Vec3f(0), specular = Vec3f(0), shininess = 0.0f0, backlight = 0.0f0
+        )
     end
-    if !haskey(attr, :wgl_uv_transform)
+    return if !haskey(attr, :wgl_uv_transform)
         Makie.add_constant!(attr, :wgl_uv_transform, Makie.uv_transform(:flip_y))
     end
 end
@@ -517,7 +523,7 @@ function mesh_program(attr)
     # id + picking gets filled in JS, needs to be here to emit the correct shader uniforms
     data[:picking] = false
     data[:object_id] = UInt32(0)
-    is_vertex((_,x)) = begin
+    is_vertex((_, x)) = begin
         (x isa AbstractVector) && !Makie.is_scalar_attribute(x) && (length(x) == length(attr.positions_transformed_f32c))
     end
     uniforms = filter(!is_vertex, data)
@@ -556,7 +562,7 @@ function create_shader(::Scene, plot::Union{Heatmap, Image})
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :primitive_shading,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -576,7 +582,7 @@ function create_shader(scene::Scene, plot::Makie.Mesh)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -629,7 +635,7 @@ function create_shader(scene::Scene, plot::Surface)
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix,
         :wgl_uv_transform, :fetch_pixel, :primitive_shading, :color_mapping_type,
         :depth_shift, :positions_transformed_f32c, :faces, :normals, :texturecoordinates,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
     return create_wgl_renderobject(mesh_program, attr, inputs)
 end
@@ -677,7 +683,7 @@ function create_shader(scene::Scene, plot::Volume)
         :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight, :depth_shift,
         :lowclip_color, :highclip_color, :nan_color,
-        :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes, :visible
+        :uniform_model, :uniform_num_clip_planes, :uniform_clip_planes, :visible,
     ]
     return create_wgl_renderobject(create_volume_shader, attr, inputs)
 end
@@ -702,7 +708,7 @@ function create_lines_data(islines, attr)
 
     handle_color!(uniforms, attr)
 
-    attributes = Dict{Symbol,Any}(
+    attributes = Dict{Symbol, Any}(
         :positions_transformed_f32c => serialize_buffer_attribute(attr.positions_transformed_f32c),
     )
 
@@ -745,7 +751,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         :line_color, :uniform_colormap, :uniform_colorrange, :color_mapping_type, :lowclip_color, :highclip_color, :nan_color,
         :linecap, :uniform_linewidth, :uniform_pattern, :uniform_pattern_length,
         :space, :scene_origin, :model_f32c, :depth_shift, :transparency, :visible,
-        :uniform_clip_planes, :uniform_num_clip_planes
+        :uniform_clip_planes, :uniform_num_clip_planes,
     ]
 
     map!(attr, [:uniform_color, :vertex_color], :line_color) do uc, vc
@@ -755,7 +761,7 @@ function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
         Makie.add_computation!(attr, :gl_miter_limit)
         push!(inputs, :joinstyle, :gl_miter_limit)
     end
-    dict = create_wgl_renderobject(args-> create_lines_data(islines, args), attr, inputs)
+    dict = create_wgl_renderobject(args -> create_lines_data(islines, args), attr, inputs)
     dict[:uuid] = js_uuid(plot)
     dict[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
     dict[:updater] = attr[:wgl_update_obs][]

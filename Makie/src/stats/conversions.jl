@@ -1,6 +1,6 @@
 struct SampleBased <: ConversionTrait end
 
-function convert_arguments(::SampleBased, args::NTuple{N,AbstractVector{<:Number}}) where {N}
+function convert_arguments(::SampleBased, args::NTuple{N, AbstractVector{<:Number}}) where {N}
     return args
 end
 

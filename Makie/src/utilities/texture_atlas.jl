@@ -31,7 +31,7 @@ Base.size(atlas::TextureAtlas) = size(atlas.data)
 Base.size(atlas::TextureAtlas, dim) = size(atlas)[dim]
 
 
-function TextureAtlas(; resolution=2048, pix_per_glyph=64, glyph_padding=12, downsample=5)
+function TextureAtlas(; resolution = 2048, pix_per_glyph = 64, glyph_padding = 12, downsample = 5)
     return TextureAtlas(
         RectanglePacker(Rect2{Int32}(0, 0, resolution, resolution)),
         Dict{UInt32, Int}(),
@@ -53,7 +53,7 @@ function Base.show(io::IO, atlas::TextureAtlas)
     println(io, "  pix_per_glyph: ", atlas.pix_per_glyph)
     println(io, "  glyph_padding: ", atlas.glyph_padding)
     println(io, "  downsample: ", atlas.downsample)
-    println(io, "  font_render_callback: ", length(atlas.font_render_callback))
+    return println(io, "  font_render_callback: ", length(atlas.font_render_callback))
 end
 
 # basically a singleton for the textureatlas
@@ -78,7 +78,7 @@ function write_node(io::IO, packer::RectanglePacker)
     end
     r = packer.right
     write(io, isnothing(r) ? UInt8(0) : UInt8(1))
-    if !isnothing(r)
+    return if !isnothing(r)
         write_node(io, r)
     end
 end
@@ -97,7 +97,7 @@ end
 function write_array(io::IO, array::AbstractArray)
     write(io, Int32(ndims(array)))
     write(io, Int32.(size(array))...)
-    write(io, array)
+    return write(io, array)
 end
 
 function read_array(io::IO, T)
@@ -110,7 +110,7 @@ function read_array(io::IO, T)
 end
 
 function store_texture_atlas(path::AbstractString, atlas::TextureAtlas)
-    open(path, "w") do io
+    return open(path, "w") do io
         write_node(io, atlas.rectangle_packer)
         write_array(io, collect(atlas.mapping))
         write_array(io, atlas.data)
@@ -122,7 +122,7 @@ function store_texture_atlas(path::AbstractString, atlas::TextureAtlas)
 end
 
 function load_texture_atlas(path::AbstractString)
-    open(path) do io
+    return open(path) do io
         packer = read_node(io, Int32)
         mapping = read_array(io, Pair{UInt32, Int64})
         data = read_array(io, Float16)
@@ -151,18 +151,18 @@ function cached_load(resolution::Int, pix_per_glyph::Int)
             url = CACHE_DOWNLOAD_URL * basename(path)
             Downloads.download(url, path)
         catch e
-            @warn "downloading texture atlas failed, need to re-create from scratch." exception=(e, Base.catch_backtrace())
+            @warn "downloading texture atlas failed, need to re-create from scratch." exception = (e, Base.catch_backtrace())
         end
     end
     if isfile(path)
         try
             return load_texture_atlas(path)
         catch e
-            @warn "reading texture atlas on disk failed, need to re-create from scratch." exception=(e, Base.catch_backtrace())
-            rm(path; force=true)
+            @warn "reading texture atlas on disk failed, need to re-create from scratch." exception = (e, Base.catch_backtrace())
+            rm(path; force = true)
         end
     end
-    atlas = TextureAtlas(; resolution=resolution, pix_per_glyph=pix_per_glyph)
+    atlas = TextureAtlas(; resolution = resolution, pix_per_glyph = pix_per_glyph)
     @warn("Makie is caching fonts, this may take a while. This should usually not happen, unless you're getting your own texture atlas or are without internet!")
     render_default_glyphs!(atlas)
     store_texture_atlas(path, atlas) # cache it
@@ -174,7 +174,7 @@ const ALTERNATIVE_FONTS = NativeFont[]
 const FONT_LOCK = Base.ReentrantLock()
 
 function defaultfont()
-    lock(FONT_LOCK) do
+    return lock(FONT_LOCK) do
         if isempty(DEFAULT_FONT)
             push!(DEFAULT_FONT, to_font("TeX Gyre Heros Makie"))
         end
@@ -183,14 +183,14 @@ function defaultfont()
 end
 
 function alternativefonts()
-    lock(FONT_LOCK) do
+    return lock(FONT_LOCK) do
         if isempty(ALTERNATIVE_FONTS)
             alternatives = [
                 "TeXGyreHerosMakie-Regular.otf",
                 "DejaVuSans.ttf",
                 "NotoSansCuneiform-Regular.ttf",
                 "NotoSansSymbols-Regular.ttf",
-                "FiraMono-Medium.ttf"
+                "FiraMono-Medium.ttf",
             ]
             for font in alternatives
                 push!(ALTERNATIVE_FONTS, NativeFont(assetpath("fonts", font)))
@@ -202,7 +202,7 @@ end
 
 function render_default_glyphs!(atlas)
     chars = ['a':'z'..., 'A':'Z'..., '0':'9'..., '.', '-', MINUS_SIGN]
-    fonts = map(x-> to_font(to_value(x)), values(MAKIE_DEFAULT_THEME.fonts))
+    fonts = map(x -> to_font(to_value(x)), values(MAKIE_DEFAULT_THEME.fonts))
     for font in fonts
         for c in chars
             insert_glyph!(atlas, c, font)
@@ -216,17 +216,17 @@ end
 
 function regenerate_texture_atlas(resolution, pix_per_glyph)
     path = get_cache_path(resolution, pix_per_glyph)
-    isfile(path) && rm(path; force=true)
-    atlas = TextureAtlas(; resolution=resolution, pix_per_glyph=pix_per_glyph)
+    isfile(path) && rm(path; force = true)
+    atlas = TextureAtlas(; resolution = resolution, pix_per_glyph = pix_per_glyph)
     render_default_glyphs!(atlas)
     store_texture_atlas(path, atlas) # cache it
-    atlas
+    return atlas
 end
 
 function regenerate_texture_atlas()
     empty!(TEXTURE_ATLASES)
     TEXTURE_ATLASES[(1024, 32)] = regenerate_texture_atlas(1024, 32) # for WGLMakie
-    TEXTURE_ATLASES[(2048, 64)] = regenerate_texture_atlas(2048, 64) # for GLMakie
+    return TEXTURE_ATLASES[(2048, 64)] = regenerate_texture_atlas(2048, 64) # for GLMakie
 end
 
 
@@ -316,11 +316,10 @@ function sdf_uv_to_pixel(atlas::TextureAtlas, uv_width::Vec4f)
     px_right_top = ceil.(Int, uv_right_top .* tex_size)
 
     # create pixel ranges
-    x_range = px_left_bottom[1] : px_right_top[1]
-    y_range = px_left_bottom[2] : px_right_top[2]
+    x_range = px_left_bottom[1]:px_right_top[1]
+    y_range = px_left_bottom[2]:px_right_top[2]
     return x_range, y_range
 end
-
 
 
 """
@@ -346,7 +345,7 @@ function sdistancefield(img, downsample, pad)
     in_or_out = fill(false, dividable_size)
     # the size we fill the image up to
     wend, hend = size(img) .+ pad
-    in_or_out[pad+1:wend, pad+1:hend] .= img .> (0.5 * 255)
+    in_or_out[(pad + 1):wend, (pad + 1):hend] .= img .> (0.5 * 255)
 
     yres, xres = dividable_size .÷ downsample
     # divide by downsample to normalize distances!
@@ -354,11 +353,11 @@ function sdistancefield(img, downsample, pad)
 end
 
 function font_render_callback!(f, atlas::TextureAtlas)
-    push!(atlas.font_render_callback, f)
+    return push!(atlas.font_render_callback, f)
 end
 
 function remove_font_render_callback!(atlas::TextureAtlas, f)
-    filter!(f2-> f2 != f, atlas.font_render_callback)
+    return filter!(f2 -> f2 != f, atlas.font_render_callback)
 end
 
 function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFont})
@@ -443,7 +442,7 @@ function marker_to_sdf_shape(arr::AbstractVector)
 end
 
 function marker_to_sdf_shape(marker::Observable)
-    return lift(marker; ignore_equal_values=true) do marker
+    return lift(marker; ignore_equal_values = true) do marker
         return Cint(marker_to_sdf_shape(to_spritemarker(marker)))
     end
 end
@@ -452,31 +451,33 @@ end
 Extracts the offset from a primitive.
 """
 primitive_offset(x, scale::Nothing) = Vec2f(0) # default offset
-primitive_offset(x, scale) = scale ./ -2f0  # default offset
+primitive_offset(x, scale) = scale ./ -2.0f0  # default offset
 
 """
 Extracts the uv offset and width from a primitive.
 """
-primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0,0,1,1)
+primitive_uv_offset_width(atlas::TextureAtlas, x, font) = Vec4f(0, 0, 1, 1)
 primitive_uv_offset_width(atlas::TextureAtlas, b::BezierPath, font) = glyph_uv_width!(atlas, b)
 primitive_uv_offset_width(atlas::TextureAtlas, b::Union{UInt64, Char}, font) = glyph_uv_width!(atlas, b, font)
 primitive_uv_offset_width(atlas::TextureAtlas, hash::UInt32, font) = atlas.uv_rectangles[atlas.mapping[hash]]
 function primitive_uv_offset_width(atlas::TextureAtlas, x::AbstractVector, font)
     dct = Dict{eltype(x), Vec4f}()
-    map(x) do b
+    return map(x) do b
         get!(dct, b) do
             primitive_uv_offset_width(atlas, b, font)
         end
     end
 end
 function primitive_uv_offset_width(atlas::TextureAtlas, marker::Observable, font::Observable)
-    return lift((m, f)-> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values=true)
+    return lift((m, f) -> primitive_uv_offset_width(atlas, m, f), marker, font; ignore_equal_values = true)
 end
 
 function register_sdf_computations!(attr, atlas)
     haskey(attr, :sdf_uv) && haskey(attr, :sdf_marker_shape) && return
-    register_computation!(attr, [:uv_offset_width, :marker, :font],
-                          [:sdf_marker_shape, :sdf_uv]) do (uv_off, m, f), changed, last
+    return register_computation!(
+        attr, [:uv_offset_width, :marker, :font],
+        [:sdf_marker_shape, :sdf_uv]
+    ) do (uv_off, m, f), changed, last
         new_mf = changed[2] || changed[3]
         uv = new_mf ? primitive_uv_offset_width(atlas, m[], f[]) : nothing
         marker = changed[1] ? marker_to_sdf_shape(m[]) : nothing
@@ -491,15 +492,15 @@ function pack_images(images_marker)
     if !all(x -> x == sizes[1], sizes)
         # create texture atlas
         maxdims = sum(map(Vec{2, Int}, sizes))
-        rectangles = map(x->Rect2(0, 0, x...), sizes)
+        rectangles = map(x -> Rect2(0, 0, x...), sizes)
         rpack = RectanglePacker(Rect2(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-        max_xy = mapreduce(maximum, (a,b)-> max.(a, b), uv_coordinates)
-        texture_atlas = fill(eltype(images[1])(RGBAf(0,0,0,0)), max_xy...)
+        max_xy = mapreduce(maximum, (a, b) -> max.(a, b), uv_coordinates)
+        texture_atlas = fill(eltype(images[1])(RGBAf(0, 0, 0, 0)), max_xy...)
         for (area, img) in zip(uv_coordinates, images)
             mini = minimum(area)
             maxi = maximum(area)
-            texture_atlas[mini[1]+1:maxi[1], mini[2]+1:maxi[2]] = img # transfer to texture atlas
+            texture_atlas[(mini[1] + 1):maxi[1], (mini[2] + 1):maxi[2]] = img # transfer to texture atlas
         end
         uvs = map(uv_coordinates) do uv
             m = max_xy .- 1
@@ -509,7 +510,7 @@ function pack_images(images_marker)
         end
         images = texture_atlas
     else
-        uvs = Vec4f(0,0,1,1)
+        uvs = Vec4f(0, 0, 1, 1)
     end
 
     return (uvs, images)
@@ -526,9 +527,9 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
     # TODO, only calculate offset if needed
     # [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
-    if m isa Matrix{<: Colorant} # single image marker
-        return (Cint(RECTANGLE), Vec4f(0,0,1,1), m)
-    elseif m isa Vector{<: Matrix{<: Colorant}} # multiple image markers
+    if m isa Matrix{<:Colorant} # single image marker
+        return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), m)
+    elseif m isa Vector{<:Matrix{<:Colorant}} # multiple image markers
         # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
         if changed[3]
             uvs, images = pack_images(m)
@@ -550,7 +551,7 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
         if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
             uv = Makie.primitive_uv_offset_width(atlas, m, f)
         elseif isnothing(last)
-            uv = Vec4f(0,0,1,1)
+            uv = Vec4f(0, 0, 1, 1)
         else
             uv = nothing # Is this even worth it?
         end
@@ -558,11 +559,11 @@ function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
     end
 end
 
-function all_marker_computations!(attr, markername=:marker)
+function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
     inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
-    register_computation!(
+    return register_computation!(
         compute_marker_attributes, attr, inputs, outputs
     )
 end
@@ -586,7 +587,7 @@ function bezierpath_pad_scale_factor(atlas::TextureAtlas, bp)
     uv_width = Vec(lbrt[3] - lbrt[1], lbrt[4] - lbrt[2])
     full_pixel_size_in_atlas = uv_width * Vec2f(size(atlas))
     # left + right pad - cutoff from pixel centering
-    full_pad = 2f0 * atlas.glyph_padding - 1
+    full_pad = 2.0f0 * atlas.glyph_padding - 1
     # size without padding
     unpadded_pixel_size = full_pixel_size_in_atlas .- full_pad
     # See offset_bezierpath
@@ -602,12 +603,12 @@ function rescale_marker(atlas::TextureAtlas, pathmarker::BezierPath, font, marke
     return markersize .* marker_scale_factor(atlas, pathmarker)
 end
 
-function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where T <: BezierPath
+function rescale_marker(atlas::TextureAtlas, pathmarker::AbstractVector{T}, font, markersize) where {T <: BezierPath}
     dct = Dict{eltype(pathmarker), Vec2f}()
     msf(pathmarker) =
         get!(dct, pathmarker) do
-            marker_scale_factor(atlas, pathmarker)
-        end
+        marker_scale_factor(atlas, pathmarker)
+    end
     return _bcast(markersize) .* msf.(pathmarker)
 end
 
@@ -655,11 +656,11 @@ function offset_bezierpath(atlas::TextureAtlas, bp, scale)
     return offset_bezierpath.(Ref(atlas), bp, Vec2d.(_bcast(scale)))
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: BezierPath
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where {T <: BezierPath}
     return offset_bezierpath(atlas, marker, markersize)
 end
 
-function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where T <: Char
+function offset_marker(atlas::TextureAtlas, marker::Union{T, AbstractVector{T}}, font, markersize) where {T <: Char}
     return rescale_marker(atlas, marker, font, offset_marker(markersize))
 end
 
@@ -668,13 +669,14 @@ offset_marker(markersize) = Vec2f.(_bcast(-0.5 .* markersize))
 
 function marker_attributes(atlas::TextureAtlas, marker, markersize, font, plot_object)
     atlas_obs = Observable(atlas) # for map to work
-    scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values=true)
-    quad_offset = map(offset_marker, plot_object, atlas_obs, marker, font, markersize;
-                      ignore_equal_values=true)
+    scale = map(rescale_marker, plot_object, atlas_obs, marker, font, markersize; ignore_equal_values = true)
+    quad_offset = map(
+        offset_marker, plot_object, atlas_obs, marker, font, markersize;
+        ignore_equal_values = true
+    )
 
     return scale, quad_offset
 end
-
 
 
 """

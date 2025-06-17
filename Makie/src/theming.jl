@@ -4,13 +4,13 @@ https://www.nature.com/articles/nmeth.1618?WT.ec_id=NMETH-201106
 =#
 function wong_colors(alpha = 1.0)
     colors = [
-        RGB(0/255, 114/255, 178/255), # blue
-        RGB(230/255, 159/255, 0/255), # orange
-        RGB(0/255, 158/255, 115/255), # green
-        RGB(204/255, 121/255, 167/255), # reddish purple
-        RGB(86/255, 180/255, 233/255), # sky blue
-        RGB(213/255, 94/255, 0/255), # vermilion
-        RGB(240/255, 228/255, 66/255), # yellow
+        RGB(0 / 255, 114 / 255, 178 / 255), # blue
+        RGB(230 / 255, 159 / 255, 0 / 255), # orange
+        RGB(0 / 255, 158 / 255, 115 / 255), # green
+        RGB(204 / 255, 121 / 255, 167 / 255), # reddish purple
+        RGB(86 / 255, 180 / 255, 233 / 255), # sky blue
+        RGB(213 / 255, 94 / 255, 0 / 255), # vermilion
+        RGB(240 / 255, 228 / 255, 66 / 255), # yellow
     ]
     return RGBAf.(colors, alpha)
 end
@@ -51,7 +51,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     linestyle = nothing,
     linecap = :butt,
     joinstyle = :miter,
-    miter_limit = pi/3,
+    miter_limit = pi / 3,
     patchcolor = RGBAf(0, 0, 0, 0.6),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
@@ -122,7 +122,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
-        transparency_weight_scale = 1000f0,
+        transparency_weight_scale = 1000.0f0,
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
@@ -199,7 +199,7 @@ current_default_theme() = CURRENT_DEFAULT_THEME
 Set the global default theme to `theme` and add / override any attributes given
 as keyword arguments.
 """
-function set_theme!(new_theme=Attributes(); kwargs...)
+function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
         new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
@@ -226,7 +226,7 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    lock(THEME_LOCK) do
+    return lock(THEME_LOCK) do
         previous_theme = fast_deepcopy(CURRENT_DEFAULT_THEME)
         try
             set_theme!(theme; kwargs...)
@@ -239,9 +239,9 @@ function with_theme(f, theme = Theme(); kwargs...)
     end
 end
 
-theme(::Nothing, key::Symbol; default=nothing) = theme(key; default)
+theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
 theme(::Nothing) = CURRENT_DEFAULT_THEME
-function theme(key::Symbol; default=nothing)
+function theme(key::Symbol; default = nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
         val = to_value(CURRENT_DEFAULT_THEME[key])
         if val isa Union{NamedTuple, Attributes}
@@ -276,7 +276,7 @@ update_theme!(Theme(colormap=:greys))
 ```
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
-    lock(THEME_LOCK) do
+    return lock(THEME_LOCK) do
         new_theme = merge!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
@@ -287,10 +287,11 @@ function _update_attrs!(attrs1, attrs2)
     for (key, value) in attrs2
         _update_key!(attrs1, key, value)
     end
+    return
 end
 
 function _update_key!(theme, key::Symbol, content)
-    theme[key] = content
+    return theme[key] = content
 end
 
 function _update_key!(theme, key::Symbol, content::Attributes)
@@ -299,5 +300,5 @@ function _update_key!(theme, key::Symbol, content::Attributes)
     else
         theme[key] = content
     end
-    theme
+    return theme
 end

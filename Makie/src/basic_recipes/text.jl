@@ -1,22 +1,22 @@
 struct RichText
     type::Symbol
-    children::Vector{Union{RichText,String}}
+    children::Vector{Union{RichText, String}}
     attributes::Dict{Symbol, Any}
     function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText,String}[children...]
-        new(type, cs, Dict(kwargs))
+        cs = Union{RichText, String}[children...]
+        return new(type, cs, Dict(kwargs))
     end
 end
 
 function check_textsize_deprecation(@nospecialize(dictlike))
-    if haskey(dictlike, :textsize)
+    return if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
     end
 end
 
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
-conversion_trait(::Type{<: Text}, args...) = PointBased()
+conversion_trait(::Type{<:Text}, args...) = PointBased()
 
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
@@ -48,12 +48,12 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
         # Note: Could add RichText
-        if args isa Tuple{<: AbstractString}
+        if args isa Tuple{<:AbstractString}
             # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), Ref{Any}([args[1]]))
-        elseif args isa Tuple{<: AbstractVector{<: AbstractString}}
+        elseif args isa Tuple{<:AbstractVector{<:AbstractString}}
             return ((a_pos,), Ref{Any}(args[1]))
-        elseif args isa Tuple{<: AbstractVector{<: Tuple{<: Any, <: VecTypes}}}
+        elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
             return ((last.(args[1]),), Ref{Any}(first.(args[1])))
         else # assume position data
@@ -110,6 +110,7 @@ function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
     for block_idx in eachindex(text_blocks)
         f(_getindex.(args, block_idx)...)
     end
+    return
 end
 
 function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
@@ -121,6 +122,7 @@ function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tupl
             glyph_idx += 1
         end
     end
+    return
 end
 
 function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
@@ -184,7 +186,7 @@ function convert_text_string!(
     args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
     nt = glyph_collection(input_text, args...)
     curr = length(outputs.glyphindices)
-    block = (curr+1):(curr + length(nt.glyphindices))
+    block = (curr + 1):(curr + length(nt.glyphindices))
 
     push!(outputs.text_blocks, block)
     append!(outputs.glyphindices, nt.glyphindices)
@@ -232,7 +234,7 @@ function convert_text_string!(
     n = length(gc.glyphs)
 
     push!(outputs.glyphcollections, gc)
-    push!(outputs.text_blocks, (curr+1):(curr + n))
+    push!(outputs.text_blocks, (curr + 1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
     append!(outputs.glyph_extents, gc.extents)
@@ -259,7 +261,7 @@ function convert_text_string!(
     n = length(gc.glyphs)
 
     push!(outputs.glyphcollections, gc)
-    push!(outputs.text_blocks, (curr+1):(curr + n))
+    push!(outputs.text_blocks, (curr + 1):(curr + n))
     append!(outputs.glyphindices, gc.glyphs)
     append!(outputs.glyph_origins, gc.origins)
     append!(outputs.glyph_extents, gc.extents)
@@ -270,15 +272,19 @@ function convert_text_string!(
     append!(outputs.text_rotation, collect_vector(gc.rotations, n))
     append!(outputs.text_scales, collect_vector(gc.scales, n))
 
-    append_tex_linesegment_data!(outputs, tex_offsets, tex_elements,
-            args[1], args[3], args[4], sv_getindex(offset, i))
+    append_tex_linesegment_data!(
+        outputs, tex_offsets, tex_elements,
+        args[1], args[3], args[4], sv_getindex(offset, i)
+    )
     # args = fontsize, rotation, color
 
     return
 end
 
-function append_tex_linesegment_data!(outputs::NamedTuple,
-        tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3})
+function append_tex_linesegment_data!(
+        outputs::NamedTuple,
+        tex_offset, tex_elements, fontsize, rotation::Quaternion, color::RGBAf, offset::VecTypes{3}
+    )
 
     block_idx = length(outputs.text_blocks)
     pos_idx = first(last(outputs.text_blocks))
@@ -312,7 +318,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :fonts,
         :computed_color,
         :strokecolor,
-        :strokewidth
+        :strokewidth,
     ]
     outputs = [
         :glyphcollections, :glyphindices,
@@ -321,9 +327,9 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_blocks,
         :text_color, :text_rotation, :text_scales,
         :text_strokewidth, :text_strokecolor,
-        :linesegments, :linewidths, :linecolors, :lineindices
+        :linesegments, :linewidths, :linecolors, :lineindices,
     ]
-    register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
+    return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         if isnothing(cached)
             _outputs = (
                 glyphcollections = GlyphCollection[],
@@ -340,7 +346,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
                 linesegments = Point3f[],
                 linewidths = Float32[],
                 linecolors = RGBAf[],
-                lineindices = Pair{Int, Int}[]
+                lineindices = Pair{Int, Int}[],
             )
         else
             foreach(empty!, values(cached))
@@ -385,11 +391,13 @@ function register_text_computations!(attr::ComputeGraph)
     end
 
     register_computation!(attr, [:glyph_origins, :offset, :text_blocks], [:marker_offset]) do (origins, offset, blocks), changed, cached
-        return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r], )
+        return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r],)
     end
 
-    register_computation!(attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
-            [:quad_offset, :quad_scale]) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+    register_computation!(
+        attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
+        [:quad_offset, :quad_scale]
+    ) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
 
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
@@ -414,11 +422,11 @@ end
 
 function get_text_type(x::AbstractVector{Any})
     isempty(x) && error("Cant determine text type from empty vector")
-    return mapreduce(typeof, (a, b)-> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
+    return mapreduce(typeof, (a, b) -> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
 end
 
 get_text_type(x::AbstractVector) = eltype(x)
-get_text_type(::T) where T = T
+get_text_type(::T) where {T} = T
 
 function calculated_attributes!(::Type{Text}, plot::Plot)
     attr = plot.attributes
@@ -427,7 +435,7 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-    tex_linesegments!(plot)
+    return tex_linesegments!(plot)
 end
 
 function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
@@ -443,8 +451,10 @@ end
 function tex_linesegments!(plot)
     # Don't user register_markerspace_position() here so we skip calculating them
     # if no linesegments are needed
-    map!(plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :linesgments_shifted) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
+    map!(
+        plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+        :linesgments_shifted
+    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
         isempty(linesegments) && return Point3f[]
         markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
         # TODO: avoid repeated apply_transform and use block_idx?
@@ -453,8 +463,10 @@ function tex_linesegments!(plot)
         end
     end
 
-    linesegments!(plot, plot.linesgments_shifted; linewidth = plot.linewidths,
-        color = plot.linecolors, space = plot.markerspace)
+    return linesegments!(
+        plot, plot.linesgments_shifted; linewidth = plot.linewidths,
+        color = plot.linecolors, space = plot.markerspace
+    )
 end
 
 ################################################################################
@@ -474,9 +486,11 @@ end
 
 function register_markerspace_position!(plot)
     if !haskey(plot.attributes, :markerspace_positions)
-        map!(project_text_positions_to_markerspace, plot.attributes,
+        map!(
+            project_text_positions_to_markerspace, plot.attributes,
             [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :markerspace_positions)
+            :markerspace_positions
+        )
     end
     return plot.markerspace_positions
 end
@@ -504,8 +518,10 @@ function register_fast_glyph_boundingboxes!(plot)
         register_raw_glyph_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
-        map!(plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
-                :fast_glyph_boundingboxes) do bbs, origins, rotations
+        map!(
+            plot.attributes, [:raw_glyph_boundingboxes, :marker_offset, :text_rotation],
+            :fast_glyph_boundingboxes
+        ) do bbs, origins, rotations
 
             return map(bbs, origins, rotations) do bb, o, rot
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
@@ -531,10 +547,11 @@ function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
         register_markerspace_position!(plot)
-        map!(plot.attributes,
-                [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
-                :glyph_boundingboxes
-            ) do bbs, origins, rotations, positions
+        map!(
+            plot.attributes,
+            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
+            :glyph_boundingboxes
+        ) do bbs, origins, rotations, positions
 
             return map(bbs, origins, rotations, positions) do bb, o, rotation, position
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
@@ -565,8 +582,10 @@ function register_fast_string_boundingboxes!(plot)
         register_raw_glyph_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
-        map!(plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
-                :fast_string_boundingboxes) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        map!(
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+            :fast_string_boundingboxes
+        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -600,17 +619,17 @@ fast_string_boundingboxes(plot) = register_fast_string_boundingboxes!(plot)[]::V
 fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fast_string_boundingboxes!(plot))
 
 
-
 # target: contour, textlabel
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
         register_markerspace_position!(plot)
         # project positions to markerspace, add them
-        map!(plot.attributes,
-                [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
-                :string_boundingboxes
-            ) do text_blocks, bbs, positions
+        map!(
+            plot.attributes,
+            [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
+            :string_boundingboxes
+        ) do text_blocks, bbs, positions
 
             return map(enumerate(text_blocks)) do (i, idxs)
                 if isempty(idxs)
@@ -680,10 +699,11 @@ end
 function register_data_limits!(plot)
     if !haskey(plot.attributes, :data_limits)
         register_string_boundingboxes!(plot)
-        map!(plot.attributes,
-                [:markerspace, :space, :string_boundingboxes, :positions],
-                :data_limits
-            ) do markerspace, space, bbs, positions
+        map!(
+            plot.attributes,
+            [:markerspace, :space, :string_boundingboxes, :positions],
+            :data_limits
+        ) do markerspace, space, bbs, positions
 
             if markerspace === space
                 return reduce(update_boundingbox, bbs, init = Rect3d())
@@ -701,8 +721,10 @@ data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limi
 ######################
 
 
-function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
-        rotation, color, strokecolor, strokewidth, word_wrap_width)
+function texelems_and_glyph_collection(
+        str::LaTeXString, fontscale_px, align,
+        rotation, color, strokecolor, strokewidth, word_wrap_width
+    )
     halign, valign = align
     all_els = generate_tex_elements(str)
     els = filter(x -> x[1] isa TeXChar, all_els)
@@ -730,7 +752,7 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
     if word_wrap_width > 0
         last_space_idx = 0
         last_newline_idx = 1
-        newline_offset = Point3f(basepositions[1][1], 0f0, 0)
+        newline_offset = Point3f(basepositions[1][1], 0.0f0, 0)
 
         for i in eachindex(texchars)
             basepositions[i] -= newline_offset
@@ -739,12 +761,12 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
                 if last_space_idx != 0 && right_pos > word_wrap_width
                     section_offset = basepositions[last_space_idx + 1][1]
                     lineheight = maximum((height(bb) for bb in bboxes[last_newline_idx:last_space_idx]))
-                    last_newline_idx = last_space_idx+1
+                    last_newline_idx = last_space_idx + 1
                     newline_offset += Point3f(section_offset, lineheight, 0)
 
                     # TODO: newlines don't really need to represented at all?
                     # chars[last_space_idx] = '\n'
-                    for j in last_space_idx+1:i
+                    for j in (last_space_idx + 1):i
                         basepositions[j] -= Point3f(section_offset, lineheight, 0)
                     end
                 end
@@ -756,13 +778,13 @@ function texelems_and_glyph_collection(str::LaTeXString, fontscale_px, align,
     end
 
     bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
-        mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
-            Rect2f(Rect3f(b) + pos)
+            mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
+                Rect2f(Rect3f(b) + pos)
         end
-    end
+        end
 
     xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
-    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign, default=0f0)
+    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign, default = 0.0f0)
 
     shift = Vec3f(xshift, yshift, 0)
     positions = basepositions .- Ref(shift)
@@ -786,17 +808,16 @@ end
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 
-
 function Base.String(r::RichText)
     fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
     fn(io, s::String) = print(io, s)
-    sprint() do io
+    return sprint() do io
         fn(io, r)
     end
 end
 
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
-    print(io, "RichText: \"$(String(r))\"")
+    return print(io, "RichText: \"$(String(r))\"")
 end
 
 """
@@ -857,31 +878,35 @@ struct GlyphInfo
 end
 
 # Copy constructor, to overwrite a field
-function GlyphInfo(gi::GlyphInfo;
-        glyph=gi.glyph,
-        font=gi.font,
-        origin=gi.origin,
-        extent=gi.extent,
-        size=gi.size,
-        rotation=gi.rotation,
-        color=gi.color,
-        strokecolor=gi.strokecolor,
-        strokewidth=gi.strokewidth)
+function GlyphInfo(
+        gi::GlyphInfo;
+        glyph = gi.glyph,
+        font = gi.font,
+        origin = gi.origin,
+        extent = gi.extent,
+        size = gi.size,
+        rotation = gi.rotation,
+        color = gi.color,
+        strokecolor = gi.strokecolor,
+        strokewidth = gi.strokewidth
+    )
 
-    return GlyphInfo(glyph,
-                     font,
-                     origin,
-                     extent,
-                     size,
-                     rotation,
-                     color,
-                     strokecolor,
-                     strokewidth)
+    return GlyphInfo(
+        glyph,
+        font,
+        origin,
+        extent,
+        size,
+        rotation,
+        color,
+        strokecolor,
+        strokewidth
+    )
 end
 
 
 function GlyphCollection(v::Vector{GlyphInfo})
-    GlyphCollection(
+    return GlyphCollection(
         [i.glyph for i in v],
         [i.font for i in v],
         [Point3f(i.origin..., 0) for i in v],
@@ -918,7 +943,7 @@ function apply_lineheight!(lines, lh)
             l = line[j]
             ox, oy = l.origin
             # TODO: Lineheight
-            l = GlyphInfo(l; origin=Point2f(ox, oy - (i - 1) * 20))
+            l = GlyphInfo(l; origin = Point2f(ox, oy - (i - 1) * 20))
             line[j] = l
         end
     end
@@ -926,7 +951,7 @@ function apply_lineheight!(lines, lh)
 end
 
 function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
-    return maximum(glyph_infos; init=0.0f0) do ginfo
+    return maximum(glyph_infos; init = 0.0f0) do ginfo
         ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
     end
 end
@@ -937,7 +962,7 @@ end
 # results in incorrect limits
 function max_y_ascender(glyph_infos::Vector{GlyphInfo})::Float32
     if isempty(glyph_infos)
-        return 0f0
+        return 0.0f0
     else
         return maximum(glyph_infos) do ginfo
             return ginfo.origin[2] + ginfo.extent.ascender * ginfo.size[2]
@@ -947,7 +972,7 @@ end
 
 function min_y_descender(glyph_infos::Vector{GlyphInfo})::Float32
     if isempty(glyph_infos)
-        return 0f0
+        return 0.0f0
     else
         return minimum(glyph_infos) do ginfo
             return ginfo.origin[2] + ginfo.extent.descender * ginfo.size[2]
@@ -964,8 +989,8 @@ function apply_alignment_and_justification!(lines, ju, al)
     top_y = max_y_ascender(lines[1])
     bottom_y = min_y_descender(lines[end])
 
-    al_offset_x = get_xshift(0f0,      max_x, al[1]; default=0f0)
-    al_offset_y = get_yshift(bottom_y, top_y, al[2]; default=0f0)
+    al_offset_x = get_xshift(0.0f0, max_x, al[1]; default = 0.0f0)
+    al_offset_y = get_yshift(bottom_y, top_y, al[2]; default = 0.0f0)
 
     fju = float_justification(ju, al)
 
@@ -983,10 +1008,10 @@ end
 
 function float_justification(ju, al)::Float32
     halign = al[1]
-    float_justification = if ju === automatic
-        get_xshift(0f0, 1f0, halign)
+    return float_justification = if ju === automatic
+        get_xshift(0.0f0, 1.0f0, halign)
     else
-        get_xshift(0f0, 1f0, ju; default=ju) # errors if wrong symbol is used
+        get_xshift(0.0f0, 1.0f0, ju; default = ju) # errors if wrong symbol is used
     end
 end
 
@@ -1032,7 +1057,7 @@ end
 function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
     xmax1, xmax2 = map((line1, line2)) do line
-        maximum(line; init = 0f0) do ginfo
+        maximum(line; init = 0.0f0) do ginfo
             # TODO: typo?
             GlyphInfo
             ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
@@ -1060,17 +1085,19 @@ function process_rt_node!(lines, gs::GlyphState, s::String, _)
             gi = FreeTypeAbstraction.glyph_index(bestfont, char)
             gext = GlyphExtent(bestfont, char)
             ori = Point2f(x, y)
-            push!(lines[end], GlyphInfo(
-                gi,
-                bestfont,
-                ori,
-                gext,
-                gs.size,
-                to_rotation(0),
-                gs.color,
-                RGBAf(0, 0, 0, 0),
-                0f0,
-            ))
+            push!(
+                lines[end], GlyphInfo(
+                    gi,
+                    bestfont,
+                    ori,
+                    gext,
+                    gs.size,
+                    to_rotation(0),
+                    gs.color,
+                    RGBAf(0, 0, 0, 0),
+                    0.0f0,
+                )
+            )
             x = x + gext.hadvance * gs.size[1]
         end
     end
@@ -1086,7 +1113,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sup}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState(
+    return GlyphState(
         gs.x + offset[1],
         gs.baseline + 0.4 * gs.size[2] + offset[2],
         fontsize,
@@ -1099,7 +1126,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:span}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState(
+    return GlyphState(
         gs.x + offset[1],
         gs.baseline + offset[2],
         fontsize,
@@ -1112,7 +1139,7 @@ function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:sub}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
     offset = _get_offset(att, Vec2f(0)) .* fontsize
-    GlyphState(
+    return GlyphState(
         gs.x + offset[1],
         gs.baseline - 0.25 * gs.size[2] + offset[2],
         fontsize,
@@ -1124,7 +1151,7 @@ end
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sub}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
-    GlyphState(
+    return GlyphState(
         gs.x,
         gs.baseline - 0.25 * gs.size[2],
         fontsize,
@@ -1135,7 +1162,7 @@ end
 function new_glyphstate(gs::GlyphState, rt::RichText, ::Val{:subsup_sup}, fonts)
     att = rt.attributes
     fontsize = _get_fontsize(att, gs.size * 0.66)
-    GlyphState(
+    return GlyphState(
         gs.x,
         gs.baseline + 0.4 * gs.size[2],
         fontsize,
@@ -1146,20 +1173,20 @@ end
 
 iswhitespace(r::RichText) = iswhitespace(String(r))
 
-function get_xshift(lb, ub, align; default=0.5f0)
+function get_xshift(lb, ub, align; default = 0.5f0)
     if align isa Symbol
-        align = align === :left   ? 0.0f0 :
-                align === :center ? 0.5f0 :
-                align === :right  ? 1.0f0 : default
+        align = align === :left ? 0.0f0 :
+            align === :center ? 0.5f0 :
+            align === :right ? 1.0f0 : default
     end
-    lb * (1-align) + ub * align |> Float32
+    return lb * (1 - align) + ub * align |> Float32
 end
 
-function get_yshift(lb, ub, align; default=0.5f0)
+function get_yshift(lb, ub, align; default = 0.5f0)
     if align isa Symbol
         align = align === :bottom ? 0.0f0 :
-                align === :center ? 0.5f0 :
-                align === :top    ? 1.0f0 : default
+            align === :center ? 0.5f0 :
+            align === :top ? 1.0f0 : default
     end
-    lb * (1-align) + ub * align |> Float32
+    return lb * (1 - align) + ub * align |> Float32
 end

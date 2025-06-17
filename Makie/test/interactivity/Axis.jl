@@ -60,19 +60,19 @@
         ax, axbox, lim, e = cleanaxes()
 
         @testset "Center zoom" begin
-            e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+            e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
 
             # zoom in
             e.scroll[] = (0.0, 1.0)
             newlim = ax.finallimits[]
             @test newlim.widths ≈ 0.9 * lim.widths
-            @test newlim.origin ≈ lim.origin + (lim.widths - newlim.widths)/2
+            @test newlim.origin ≈ lim.origin + (lim.widths - newlim.widths) / 2
 
             # zoom out restores original position
             e.scroll[] = (0.0, -1.0)
             newlim = ax.finallimits[]
             @test newlim.widths ≈ lim.widths
-            @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+            @test all(abs.(newlim.origin - lim.origin) .< 1.0e-7 * lim.widths)
         end
 
         @test init == Makie._PICK_COUNTER[]
@@ -85,13 +85,13 @@
             e.scroll[] = (0.0, 1.0)
             newlim = ax.finallimits[]
             @test newlim.widths ≈ 0.9 * lim.widths
-            @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+            @test all(abs.(newlim.origin - lim.origin) .< 1.0e-7 * lim.widths)
 
             # zoom out
             e.scroll[] = (0.0, -1.0)
             newlim = ax.finallimits[]
             @test newlim.widths ≈ lim.widths
-            @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+            @test all(abs.(newlim.origin - lim.origin) .< 1.0e-7 * lim.widths)
         end
 
         @test init == Makie._PICK_COUNTER[]
@@ -107,19 +107,19 @@
 
                 # Zoom with lock
                 lock[] = true
-                e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+                e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
                 e.scroll[] = (0.0, 1.0)
                 newlim = ax.finallimits[]
                 @test newlim.widths[idx] == lim.widths[idx]
-                @test newlim.widths[3-idx] ≈ 0.9 * lim.widths[3-idx]
+                @test newlim.widths[3 - idx] ≈ 0.9 * lim.widths[3 - idx]
                 @test newlim.origin[idx] == lim.origin[idx]
-                @test newlim.origin[3-idx] ≈ lim.origin[3-idx] + (lim.widths[3-idx] - newlim.widths[3-idx])/2
+                @test newlim.origin[3 - idx] ≈ lim.origin[3 - idx] + (lim.widths[3 - idx] - newlim.widths[3 - idx]) / 2
 
                 # Revert zoom
                 e.scroll[] = (0.0, -1.0)
                 newlim = ax.finallimits[]
                 @test newlim.widths ≈ lim.widths
-                @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+                @test all(abs.(newlim.origin - lim.origin) .< 1.0e-7 * lim.widths)
                 ax.finallimits[] = lim
                 lock[] = false
             end
@@ -132,15 +132,15 @@
                 e.scroll[] = (0.0, 1.0)
                 newlim = ax.finallimits[]
                 @test newlim.widths[idx] == lim.widths[idx]
-                @test newlim.widths[3-idx] ≈ 0.9 * lim.widths[3-idx]
+                @test newlim.widths[3 - idx] ≈ 0.9 * lim.widths[3 - idx]
                 @test newlim.origin[idx] == lim.origin[idx]
-                @test newlim.origin[3-idx] ≈ lim.origin[3-idx] + (lim.widths[3-idx] - newlim.widths[3-idx])/2
+                @test newlim.origin[3 - idx] ≈ lim.origin[3 - idx] + (lim.widths[3 - idx] - newlim.widths[3 - idx]) / 2
 
                 # Revert zoom
                 e.scroll[] = (0.0, -1.0)
                 newlim = ax.finallimits[]
                 @test newlim.widths ≈ lim.widths
-                @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
+                @test all(abs.(newlim.origin - lim.origin) .< 1.0e-7 * lim.widths)
             end
         end
 
@@ -161,8 +161,8 @@
             e.mouseposition[] = Tuple(axbox.origin + axbox.widths ./ Vec2(2, 3))
             e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
             newlim = ax.finallimits[]
-            @test newlim.origin ≈ lim.origin atol = 1e-6
-            @test newlim.widths ≈ lim.widths ./ Vec2(2, 3) atol = 1e-6
+            @test newlim.origin ≈ lim.origin atol = 1.0e-6
+            @test newlim.widths ≈ lim.widths ./ Vec2(2, 3) atol = 1.0e-6
         end
 
         @test init == Makie._PICK_COUNTER[]
@@ -188,31 +188,31 @@
         ax, axbox, lim, e = cleanaxes()
 
         # Test default
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
         e.scroll[] = (0.0, 1.0)
         newlim = ax.finallimits[]
 
         e.mouseposition[] = Tuple(axbox.origin)
         e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.press)
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 10)
         e.mousebutton[] = MouseButtonEvent(ax.panbutton[], Mouse.release)
 
         panlim = ax.finallimits[]
         @test ax.panbutton[] == Mouse.right
         @test panlim.widths == newlim.widths
-        @test (5/4)*panlim.origin ≈ -newlim.origin atol = 1e-6
+        @test (5 / 4) * panlim.origin ≈ -newlim.origin atol = 1.0e-6
 
         # Test new button disables old button
         ax, axbox, lim, e = cleanaxes()
 
         ax.panbutton[] = Mouse.middle
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 2)
         e.scroll[] = (0.0, 1.0)
         newlim = ax.finallimits[]
 
         e.mouseposition[] = Tuple(axbox.origin)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 10)
         e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
 
         @test ax.finallimits[] == newlim
@@ -220,12 +220,12 @@
         # ... and enables new button
         e.mouseposition[] = Tuple(axbox.origin)
         e.mousebutton[] = MouseButtonEvent(Mouse.middle, Mouse.press)
-        e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+        e.mouseposition[] = Tuple(axbox.origin + axbox.widths / 10)
         e.mousebutton[] = MouseButtonEvent(Mouse.middle, Mouse.release)
 
         panlim = ax.finallimits[]
         @test panlim.widths == newlim.widths
-        @test (5/4)*panlim.origin ≈ -newlim.origin atol = 1e-6
+        @test (5 / 4) * panlim.origin ≈ -newlim.origin atol = 1.0e-6
     end
 
     @test init == Makie._PICK_COUNTER[]

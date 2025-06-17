@@ -20,4 +20,3 @@ using Makie, Test
     @test sc.plots[1].color[] == 1:54
     @test sc2.plots[1].color[] == setdiff(1:54, 17)
 end
-

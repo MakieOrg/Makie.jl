@@ -1,4 +1,3 @@
-
 # For clipping Planes
 struct Plane{N, T}
     normal::Vec{N, T}
@@ -70,7 +69,7 @@ end
 Returns the smallest absolute distance between the point each clip plane. If
 the point is clipped by any plane, only negative distances are considered.
 """
-function min_clip_distance(planes::Vector{<: Plane}, point::VecTypes)
+function min_clip_distance(planes::Vector{<:Plane}, point::VecTypes)
     min_dist = Inf
     for plane in planes
         d = distance(plane, point)
@@ -93,22 +92,22 @@ function planes(rect::Rect3)
     mini = minimum(rect)
     maxi = maximum(rect)
     return [
-        Plane3f(Vec3f( 1,  0,  0),  mini[1]),
-        Plane3f(Vec3f( 0,  1,  0),  mini[2]),
-        Plane3f(Vec3f( 0,  0,  1),  mini[3]),
-        Plane3f(Vec3f(-1,  0,  0), -maxi[1]),
-        Plane3f(Vec3f( 0, -1,  0), -maxi[2]),
-        Plane3f(Vec3f( 0,  0, -1), -maxi[3])
+        Plane3f(Vec3f(1, 0, 0), mini[1]),
+        Plane3f(Vec3f(0, 1, 0), mini[2]),
+        Plane3f(Vec3f(0, 0, 1), mini[3]),
+        Plane3f(Vec3f(-1, 0, 0), -maxi[1]),
+        Plane3f(Vec3f(0, -1, 0), -maxi[2]),
+        Plane3f(Vec3f(0, 0, -1), -maxi[3]),
     ]
 end
 function planes(rect::Rect2)
     mini = minimum(rect)
     maxi = maximum(rect)
     return [
-        Plane3f(Vec3f( 1,  0,  0),  mini[1]),
-        Plane3f(Vec3f( 0,  1,  0),  mini[2]),
-        Plane3f(Vec3f(-1,  0,  0), -maxi[1]),
-        Plane3f(Vec3f( 0, -1,  0), -maxi[2]),
+        Plane3f(Vec3f(1, 0, 0), mini[1]),
+        Plane3f(Vec3f(0, 1, 0), mini[2]),
+        Plane3f(Vec3f(-1, 0, 0), -maxi[1]),
+        Plane3f(Vec3f(0, -1, 0), -maxi[2]),
     ]
 end
 
@@ -120,7 +119,7 @@ Returns true if the given plane or vector of planes clips the given point.
 function is_clipped(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) < plane.distance
 end
-function is_clipped(planes::Vector{<: Plane3}, p::VecTypes)
+function is_clipped(planes::Vector{<:Plane3}, p::VecTypes)
     return any(plane -> is_clipped(plane, p), planes)
 end
 
@@ -132,7 +131,7 @@ Returns true if the given plane or vector of planes do not clip the given point.
 function is_visible(plane::Plane3, p::VecTypes)
     return dot(plane.normal, to_ndim(Point3f, p, 0)) >= plane.distance
 end
-function is_visible(planes::Vector{<: Plane3}, p::VecTypes)
+function is_visible(planes::Vector{<:Plane3}, p::VecTypes)
     # TODO: this might be worth optimizing for CairoMakie
     return all(plane -> is_visible(plane, p), planes)
 end
@@ -142,7 +141,7 @@ end
 
 Cuts down a axis aligned bounding box to fit into the given clip planes.
 """
-function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where T
+function apply_clipping_planes(planes::Vector{<:Plane3}, rect::Rect3{T}) where {T}
     bb = rect
 
     edges = [
@@ -150,7 +149,7 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
         (2, 4), (2, 6),
         (3, 4), (3, 7),
         (5, 6), (5, 7),
-        (4, 8), (6, 8), (7, 8)
+        (4, 8), (6, 8), (7, 8),
     ]
 
     temp = sizehint!(Point3{T}[], length(edges))
@@ -169,7 +168,7 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
         for (i, j) in edges
             if distances[i] * distances[j] <= 0.0 # sign change
                 # d(t) = m t + b, find t where distance d(t) = 0
-                t = - distances[i] / (distances[j]  - distances[i])
+                t = - distances[i] / (distances[j] - distances[i])
                 p = (ps[j] - ps[i]) * t + ps[i]
                 push!(temp, p)
             end
@@ -189,19 +188,19 @@ function apply_clipping_planes(planes::Vector{<: Plane3}, rect::Rect3{T}) where 
     return bb
 end
 
-function apply_transform(transform::Mat4, plane::Plane3{T}) where T
+function apply_transform(transform::Mat4, plane::Plane3{T}) where {T}
     origin = Point3{T}(transform * to_ndim(Point4{T}, plane.distance * plane.normal, 1))
     target = Point3{T}(transform * to_ndim(Point4{T}, (plane.distance + 1) * plane.normal, 1))
     normal = normalize(target - origin)
     return Plane3{T}(normal, dot(origin, normal))
 end
 
-function to_model_space(model::Mat4, planes::Vector{<: Plane3})
+function to_model_space(model::Mat4, planes::Vector{<:Plane3})
     imodel = inv(model)
     return apply_transform.((imodel,), planes)
 end
 
-function unclipped_indices(clip_planes::Vector{<: Plane3}, positions::AbstractArray, space::Symbol)
+function unclipped_indices(clip_planes::Vector{<:Plane3}, positions::AbstractArray, space::Symbol)
     if Makie.is_data_space(space) && !isempty(clip_planes)
         indices = sizehint!(UInt32[], length(positions))
         for i in eachindex(positions)
@@ -240,18 +239,18 @@ end
 Generates a mesh corresponding to a finite section of the `plane` centered at
 `origin` and extending by `scale` in each direction.
 """
-function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where T
+function to_mesh(plane::Plane3{T}; origin = Point3f(0), scale = 1) where {T}
     _scale = scale isa VecTypes ? scale : Vec2f(scale)
     _origin = origin - plane.normal * distance(plane, origin)
     v1 = _scale[1] * normalize(perpendicular_vector(plane.normal))
     v2 = _scale[2] * normalize(cross(v1, plane.normal))
     ps = Point3f[_origin - v1 - v2, _origin - v1 + v2, _origin + v1 - v2, _origin + v1 + v2]
     ns = [plane.normal for _ in 1:4]
-    fs = GLTriangleFace[(1,2,3), (2, 3, 4)]
+    fs = GLTriangleFace[(1, 2, 3), (2, 3, 4)]
     return GeometryBasics.Mesh(ps, fs; normal = ns)
 end
 
-function to_clip_space(cam::Camera, planes::Vector{<: Plane3})
+function to_clip_space(cam::Camera, planes::Vector{<:Plane3})
     return to_clip_space(cam.projectionview[], planes)
 end
 
@@ -278,14 +277,14 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
 
     distances = distance.((plane,), world_corners)
     w = maximum(distances) - minimum(distances)
-    w = ifelse(abs(w) < 1000.0 * eps(w), 1f0, w)
+    w = ifelse(abs(w) < 1000.0 * eps(w), 1.0f0, w)
 
     # clip plane transformation may fail if plane is too close to bbox corner/line/plane
     # so we handle this explicitly here:
     if all(distances .>= -0.01w) # bbox is not clipped
-        return Plane(Vec3f(0), -1f9) # always pass
+        return Plane(Vec3f(0), -1.0f9) # always pass
     elseif all(distances .< 0.01w) # bbox is clipped
-        return Plane(Vec3f(0),  1f9) # never pass
+        return Plane(Vec3f(0), 1.0f9) # never pass
 
     else
         # edges of the bbox cube
@@ -294,7 +293,7 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
             (2, 4), (2, 6),
             (3, 4), (3, 7),
             (5, 6), (5, 7),
-            (4, 8), (6, 8), (7, 8)
+            (4, 8), (6, 8), (7, 8),
         ]
 
         # find points on the clip plane in clip space
@@ -303,11 +302,11 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         for (i, j) in edges
             if distances[i] * distances[j] <= 0.0 # sign change
                 # d(t) = m t + b, find t where distance d(t) = 0
-                t = - distances[i] / (distances[j]  - distances[i])
+                t = - distances[i] / (distances[j] - distances[i])
 
                 # interpolating in clip_space does not work
                 p = pv * to_ndim(Point4f, (world_corners[j] - world_corners[i]) * t + world_corners[i], 1)
-                push!(zero_points, p[Vec(1,2,3)] / p[4])
+                push!(zero_points, p[Vec(1, 2, 3)] / p[4])
 
                 # normal estimate used to find direction
                 dir += ifelse(distances[i] < distances[j], +1, -1) * normalize(clip_corners[j] - clip_corners[i])
@@ -319,15 +318,15 @@ function to_clip_space(pv::Mat4, ipv::Mat4, plane::Plane3)
         # it should be impossible to get less than 3 points. Should...
         # @assert length(zero_points) > 2
         if length(zero_points) < 3
-            return Plane(Vec3f(0), sum(distances) > 0.0 ? -1f9 : 1f9)
+            return Plane(Vec3f(0), sum(distances) > 0.0 ? -1.0f9 : 1.0f9)
         end
 
         # Get plane normal vectors from zero points (using all points because why not)
         normals = Vec3f[]
         for i in 1:length(zero_points)
-            for j in i+1:length(zero_points)
+            for j in (i + 1):length(zero_points)
                 v1 = zero_points[j] - zero_points[i]
-                for k in j+1:length(zero_points)
+                for k in (j + 1):length(zero_points)
                     v2 = zero_points[k] - zero_points[i]
                     n = normalize(cross(v1, v2))
                     n *= sign(dot(dir, n)) # correct direction (n can be ± the normal we want)

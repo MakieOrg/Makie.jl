@@ -22,7 +22,7 @@ a plot and thus does not include any transformations.
 
 See also: [`boundingbox`](@ref)
 """
-function data_limits(scenelike, exclude::Function = (p)-> false)
+function data_limits(scenelike, exclude::Function = (p) -> false)
     bb_ref = Base.RefValue(Rect3d())
     foreach_plot(scenelike) do plot
         if !exclude(plot)
@@ -53,7 +53,7 @@ end
 
 
 isfinite_rect(x::Rect) = all(isfinite, x.origin) &&  all(isfinite, x.widths)
-function isfinite_rect(x::Rect{N}, dim::Int) where N
+function isfinite_rect(x::Rect{N}, dim::Int) where {N}
     if 0 < dim <= N
         return isfinite(origin(x)[dim]) && isfinite(widths(x)[dim])
     else
@@ -107,12 +107,12 @@ end
 # used in colorsampler.jl, datashader.jl
 function distinct_extrema_nan(x)
     lo, hi = extrema_nan(x)
-    lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
+    return lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
 # TODO: Consider deprecating Ref versions (performance is the same)
 function update_boundingbox!(bb_ref::Base.RefValue, point)
-    bb_ref[] = update_boundingbox(bb_ref[], point)
+    return bb_ref[] = update_boundingbox(bb_ref[], point)
 end
 function update_boundingbox(bb::Rect{N, T1}, point::VecTypes{M, T2}) where {N, T1, M, T2}
     p = to_ndim(Vec{N, promote_type(T1, T2)}, point, 0.0)
@@ -122,17 +122,17 @@ function update_boundingbox(bb::Rect{N, T1}, point::VecTypes{M, T2}) where {N, T
 end
 
 function update_boundingbox!(bb_ref::Base.RefValue, bb::Rect)
-    bb_ref[] = update_boundingbox(bb_ref[], bb)
+    return bb_ref[] = update_boundingbox(bb_ref[], bb)
 end
 
-function update_boundingbox(a::Rect{N}, b::Rect{N}) where N
+function update_boundingbox(a::Rect{N}, b::Rect{N}) where {N}
     mini = finite_min.(minimum(a), minimum(b))
     maxi = finite_max.(maximum(a), maximum(b))
     return Rect{N}(mini, maxi - mini)
 end
 
-function maximum_widths(bounding_boxes::AbstractArray{<: Rect{N, T}}) where {N, T}
-    return mapreduce(widths, (a,b) -> max.(a, b), bounding_boxes, init = Vec{N, T}(0))
+function maximum_widths(bounding_boxes::AbstractArray{<:Rect{N, T}}) where {N, T}
+    return mapreduce(widths, (a, b) -> max.(a, b), bounding_boxes, init = Vec{N, T}(0))
 end
 
 foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
@@ -141,7 +141,7 @@ foreach_plot(f, s::Scene) = foreach_plot(f, s.plots)
 foreach_plot(f, list::AbstractVector) = foreach(f, list)
 
 function foreach_plot(f, plot::Plot)
-    if isempty(plot.plots)
+    return if isempty(plot.plots)
         f(plot)
     else
         foreach_plot(f, plot.plots)
@@ -150,11 +150,11 @@ end
 
 function for_each_atomic_plot(f, plot::Text)
     f(plot)
-    f(plot.plots[1]) # linesegments for latex
+    return f(plot.plots[1]) # linesegments for latex
 end
 
 function for_each_atomic_plot(f, plot::Plot)
-    if is_atomic_plot(plot)
+    return if is_atomic_plot(plot)
         f(plot)
     else
         for child in plot.plots
@@ -170,4 +170,5 @@ function for_each_atomic_plot(f, scene::Scene)
     for child in scene.children
         for_each_atomic_plot(f, child)
     end
+    return
 end

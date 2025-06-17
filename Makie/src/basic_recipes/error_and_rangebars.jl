@@ -64,39 +64,41 @@ function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, erro
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4{T}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low::RealOrVec, error_high::RealOrVec)
     T = float_type(x, y, error_low, error_high)
     xyerr = broadcast(Vec4{T}, x, y, error_low, error_high)
-    (xyerr,)
+    return (xyerr,)
 end
 
 
-function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low_high::AbstractVector{<:VecTypes{2, T}}) where T
+function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_low_high::AbstractVector{<:VecTypes{2, T}}) where {T}
     T_out = float_type(float_type(x, y), T)
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,T}},
-                           error_both::RealOrVec) where {T}
+function convert_arguments(
+        ::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}},
+        error_both::RealOrVec
+    ) where {T}
     T_out = float_type(T, float_type(error_both))
     xyerr = broadcast(xy, error_both) do (x, y), e
         Vec4{T_out}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where T
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T}
     T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
 function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
@@ -104,15 +106,15 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4{T_out}(x, y, el, eh)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where T
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T}
     T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
         Vec4{T_out}(x, y, e, e)
     end
-    (xyerr,)
+    return (xyerr,)
 end
 
 ### conversions for rangebars
@@ -123,14 +125,16 @@ function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, 
     return (val_low_high,)
 end
 
-function convert_arguments(::Type{<:Rangebars}, val::RealOrVec,
-                           low_high::AbstractVector{<:VecTypes{2,T}}) where {T}
+function convert_arguments(
+        ::Type{<:Rangebars}, val::RealOrVec,
+        low_high::AbstractVector{<:VecTypes{2, T}}
+    ) where {T}
     T_out = float_type(float_type(val), T)
     T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
         Vec3{T_out_ref[]}(val, low, high)
     end
-    (val_low_high,)
+    return (val_low_high,)
 end
 
 Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
@@ -140,10 +144,10 @@ Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::Ab
 ### and then hit the same underlying implementation in `_plot_bars!`
 
 function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
-    _plot_bars!(plot)
+    return _plot_bars!(plot)
 end
 function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
-    _plot_bars!(plot)
+    return _plot_bars!(plot)
 end
 
 function to_ydirection(dir)
@@ -184,16 +188,16 @@ function _plot_bars!(plot)
             return to_color(color)::RGBAf
         end
     end
-    lattr = shared_attributes(plot, LineSegments; drop=[:fxaa])
+    lattr = shared_attributes(plot, LineSegments; drop = [:fxaa])
     linesegments!(plot, lattr, attr.linesegpairs)
-    sattr = shared_attributes(plot, Scatter; drop=[:fxaa])
+    sattr = shared_attributes(plot, Scatter; drop = [:fxaa])
 
     scatter!(
-        plot, sattr, attr.linesegpairs; color=attr.whiskercolors,
-        markersize = attr.whisker_size, marker=Rect, visible=attr.whisker_visible,
-        markerspace=:pixel,
+        plot, sattr, attr.linesegpairs; color = attr.whiskercolors,
+        markersize = attr.whisker_size, marker = Rect, visible = attr.whisker_visible,
+        markerspace = :pixel,
     )
-    plot
+    return plot
 end
 
 function plot_to_screen(plot, points::AbstractVector)

@@ -1,23 +1,23 @@
-function scale_range(vmin, vmax, n=1, threshold=100)
+function scale_range(vmin, vmax, n = 1, threshold = 100)
     dv = abs(vmax - vmin)  # > 0 as nonsingular is called before.
     meanv = (vmax + vmin) / 2
     offset = if abs(meanv) / dv < threshold
         0.0
     else
-        copysign(10 ^ (log10(abs(meanv)) ÷ 1), meanv)
+        copysign(10^(log10(abs(meanv)) ÷ 1), meanv)
     end
-    scale = 10 ^ (log10(dv / n) ÷ 1)
-    scale, offset
+    scale = 10^(log10(dv / n) ÷ 1)
+    return scale, offset
 end
 
 function _staircase(steps)
     n = length(steps)
     result = Vector{Float64}(undef, 2n)
-    for i in 1:(n-1)
+    for i in 1:(n - 1)
         @inbounds result[i] = 0.1 * steps[i]
     end
     for i in 1:n
-        @inbounds result[i+(n-1)] = steps[i]
+        @inbounds result[i + (n - 1)] = steps[i]
     end
     result[end] = 10 * steps[2]
     return result
@@ -33,25 +33,25 @@ struct EdgeInteger
         if step <= 0
             error("Step must be positive")
         end
-        new(step, abs(offset))
+        return new(step, abs(offset))
     end
 end
 
 function closeto(e::EdgeInteger, ms, edge)
     tol = if e.offset > 0
         digits = log10(e.offset / e.step)
-        tol = max(1e-10, 10 ^ (digits - 12))
+        tol = max(1.0e-10, 10^(digits - 12))
         min(0.4999, tol)
     else
-        1e-10
+        1.0e-10
     end
-    abs(ms - edge) < tol
+    return abs(ms - edge) < tol
 end
 
 function le(e::EdgeInteger, x)
     # 'Return the largest n: n*step <= x.'
     d, m = divrem(x, e.step)
-    if closeto(e, m / e.step, 1)
+    return if closeto(e, m / e.step, 1)
         d + 1
     else
         d
@@ -61,7 +61,7 @@ end
 function ge(e::EdgeInteger, x)
     # 'Return the smallest n: n*step >= x.'
     d, m = divrem(x, e.step)
-    if closeto(e, m / e.step, 0)
+    return if closeto(e, m / e.step, 0)
         d
     else
         d + 1
@@ -142,12 +142,12 @@ function locateticks(vmin, vmax, n_ideal::Int, _integer::Bool = false, _min_n_ti
     # 0.08000000001 instead of 0.08
     # so here we round off the numbers to the required number of digits after the decimal point
     exponent = floor(Int, minimum(log10.(abs.(diff(vals)))))
-    round.(vals, digits = max(0, -exponent+1))
+    return round.(vals, digits = max(0, -exponent + 1))
 end
 
 
 function locateticks(vmin, vmax, width_px, ideal_tick_distance::Float32, _integer::Bool = false, _min_n_ticks::Int = 2)
     # how many ticks would ideally fit?
     n_ideal = round(Int, width_px / ideal_tick_distance) + 1
-    locateticks(vmin, vmax, n_ideal, _integer, _min_n_ticks)
+    return locateticks(vmin, vmax, n_ideal, _integer, _min_n_ticks)
 end

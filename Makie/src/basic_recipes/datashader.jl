@@ -1,221 +1,165 @@
 # originally from https://github.com/cjdoris/ShadeYourData.jl
 module Aggregation
 
-import Base.Threads: @threads
-import Makie: Makie, (..), Rect2, widths
-abstract type AggOp end
+    import Base.Threads: @threads
+    import Makie: Makie, (..), Rect2, widths
+    abstract type AggOp end
 
-"""
-    Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
-    Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
+    """
+        Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
+        Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
 
-# Example
+    # Example
 
-```Julia
-using Makie
-canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
-aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
-aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
-# Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
-image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
-surface!(canvas; operation=equalize_histogram, local_operation=identity)
-```
-"""
-mutable struct Canvas
-    bounds::Rect2{Float64}
-    resolution::Tuple{Int,Int}
-    op::AggOp
-    # temporaries / results
-    aggbuffer::Vector
-    pixelbuffer::Vector
-    data_extrema::Tuple{Float64,Float64}
-end
-
-"""
-    get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
-
-Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
-simplifies passing a local or global operation.
-Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
-"""
-function get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
-    pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
-    # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
-    if operation === Makie.automatic
-        postfunc = local_operation === identity ? Makie.equalize_histogram : identity
-    else
-        postfunc = operation
+    ```Julia
+    using Makie
+    canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
+    aggregate!(canvas, points; point_transform=reverse, method=AggThreads())
+    aggregated_values = get_aggregation(canvas; operation=equalize_histogram, local_operation=identity)
+    # Recipes are defined for canvas as well and incorporate the `get_aggregation`, but `aggregate!` must be called manually.
+    image!(canvas; operation=equalize_histogram, local_operation=identity, colormap=:viridis, colorrange=(0, 20))
+    surface!(canvas; operation=equalize_histogram, local_operation=identity)
+    ```
+    """
+    mutable struct Canvas
+        bounds::Rect2{Float64}
+        resolution::Tuple{Int, Int}
+        op::AggOp
+        # temporaries / results
+        aggbuffer::Vector
+        pixelbuffer::Vector
+        data_extrema::Tuple{Float64, Float64}
     end
-    return postfunc(map!(local_operation, result, pix_reshaped))
-end
 
-Base.size(c::Canvas) = c.resolution
-Base.:(==)(a::Canvas, b::Canvas) = size(a) == size(b) && (a.bounds == b.bounds) && a.op == b.op
+    """
+        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
 
-@inline update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))
-
-struct AggCount{T} <: AggOp end
-AggCount() = AggCount{Int}()
-null(::AggCount{T}) where {T} = zero(T)
-embed(::AggCount{T}) where {T} = oneunit(T)
-merge(::AggCount{T}, x::T, y::T) where {T} = x + y
-value(::AggCount{T}, x::T) where {T} = x
-
-struct AggAny <: AggOp end
-null(::AggAny) = false
-embed(::AggAny) = true
-merge(::AggAny, x::Bool, y::Bool) = x | y
-value(::AggAny, x::Bool) = x
-
-struct AggSum{T} <: AggOp end
-AggSum() = AggSum{Float64}()
-null(::AggSum{T}) where {T} = zero(T)
-embed(::AggSum{T}, x) where {T} = convert(T, x)
-merge(::AggSum{T}, x::T, y::T) where {T} = x + y
-value(::AggSum{T}, x::T) where {T} = x
-
-struct AggMean{T} <: AggOp end
-AggMean() = AggMean{Float64}()
-null(::AggMean{T}) where {T} = (zero(T), zero(T))
-embed(::AggMean{T}, x) where {T} = (convert(T, x), oneunit(T))
-merge(::AggMean{T}, x::Tuple{T,T}, y::Tuple{T,T}) where {T} = (x[1] + y[1], x[2] + y[2])
-value(::AggMean{T}, x::Tuple{T,T}) where {T} = float(x[1]) / float(x[2])
-
-abstract type AggMethod end
-
-struct AggSerial <: AggMethod end
-struct AggThreads <: AggMethod end
-
-function Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
-    return Canvas(Rect2(xmin, ymin, xmax - xmin, ymax - ymin); args...)
-end
-
-function Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
-    xsize, ysize = resolution
-    n_elements = xsize * ysize
-    o0 = null(op)
-    v0 = value(op, o0)
-    aggbuffer = fill(o0, n_elements)
-    pixelbuffer = fill(v0, n_elements)
-    # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
-end
-
-n_threads(::AggSerial) = 1
-n_threads(::AggThreads) = Threads.nthreads()
-
-function Base.resize!(canvas::Canvas, resolution::Tuple{Int,Int}, nthreads=1)
-    npixel = prod(resolution)
-    n_elements = npixel * nthreads
-    length(canvas.pixelbuffer) == npixel && length(canvas.aggbuffer) == n_elements && return false
-    canvas.resolution = resolution
-    Base.resize!(canvas.pixelbuffer, npixel)
-    Base.resize!(canvas.aggbuffer, n_elements)
-    return true
-end
-
-function change_op!(canvas::Canvas, op::AggOp)
-    op == canvas.op && return false
-    o0 = null(op)
-    v0 = value(op, o0)
-    if eltype(canvas.aggbuffer) != typeof(o0)
-        canvas.aggbuffer = fill(o0, size(c.aggbuffer))
-        canvas.pixelbuffer = fill(v0, size(c.pixelbuffer))
-    end
-    return true
-end
-
-using InteractiveUtils
-
-"""
-    aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
-
-Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
-Method can be `AggSerial()` or `AggThreads()`.
-"""
-function aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
-    resize!(c, c.resolution, n_threads(method)) # make sure we have the right size for the method
-    aggbuffer, pixelbuffer = c.aggbuffer, c.pixelbuffer
-    fill!(aggbuffer, null(c.op))
-    return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, c.op, points, point_transform)
-end
-
-function aggregation_implementation!(::AggSerial,
-                                     aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
-                                     c::Canvas, op::AggOp,
-                                     points, point_transform)
-    (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
-    xsize, ysize = size(c)
-    xwidth, ywidth = widths(c.bounds)
-    xscale = xsize / (xwidth + eps(xwidth))
-    yscale = ysize / (ywidth + eps(ywidth))
-
-    @assert length(aggbuffer) == xsize * ysize
-    @assert length(pixelbuffer) == xsize * ysize
-    @assert eltype(aggbuffer) === typeof(null(op)) "$(eltype(aggbuffer)) !== $(typeof(null(op)))"
-
-    # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
-    for point in points
-        p = point_transform(point)
-        x = p[1]
-        y = p[2]
-        if length(p) > 2 # should compile away
-            z = p[3]
+    Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
+    simplifies passing a local or global operation.
+    Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
+    """
+    function get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = similar(canvas.pixelbuffer, canvas.resolution))
+        pix_reshaped = Base.ReshapedArray(canvas.pixelbuffer, canvas.resolution, ())
+        # we want to make it easy to set local_operation or operation, without them clashing, while also being able to set both!
+        if operation === Makie.automatic
+            postfunc = local_operation === identity ? Makie.equalize_histogram : identity
+        else
+            postfunc = operation
         end
-        xmin ≤ x ≤ xmax || continue
-        ymin ≤ y ≤ ymax || continue
-        i = 1 + floor(Int, xscale * (x - xmin))
-        j = 1 + floor(Int, yscale * (y - ymin))
-        if length(p) == 2 # should compile away
-            out[i, j] = update(op, out[i, j])
-        elseif length(p) == 3
-            out[i, j] = update(op, out[i, j], z)
-        end
+        return postfunc(map!(local_operation, result, pix_reshaped))
     end
 
-    mini, maxi = Inf, -Inf
-    map!(pixelbuffer, aggbuffer) do x
-        final_value = value(op, x)
-        if isfinite(final_value)
-            mini = min(final_value, mini)
-            maxi = max(final_value, maxi)
-        end
-        return final_value
+    Base.size(c::Canvas) = c.resolution
+    Base.:(==)(a::Canvas, b::Canvas) = size(a) == size(b) && (a.bounds == b.bounds) && a.op == b.op
+
+    @inline update(a::AggOp, x, args...) = merge(a, x, embed(a, args...))
+
+    struct AggCount{T} <: AggOp end
+    AggCount() = AggCount{Int}()
+    null(::AggCount{T}) where {T} = zero(T)
+    embed(::AggCount{T}) where {T} = oneunit(T)
+    merge(::AggCount{T}, x::T, y::T) where {T} = x + y
+    value(::AggCount{T}, x::T) where {T} = x
+
+    struct AggAny <: AggOp end
+    null(::AggAny) = false
+    embed(::AggAny) = true
+    merge(::AggAny, x::Bool, y::Bool) = x | y
+    value(::AggAny, x::Bool) = x
+
+    struct AggSum{T} <: AggOp end
+    AggSum() = AggSum{Float64}()
+    null(::AggSum{T}) where {T} = zero(T)
+    embed(::AggSum{T}, x) where {T} = convert(T, x)
+    merge(::AggSum{T}, x::T, y::T) where {T} = x + y
+    value(::AggSum{T}, x::T) where {T} = x
+
+    struct AggMean{T} <: AggOp end
+    AggMean() = AggMean{Float64}()
+    null(::AggMean{T}) where {T} = (zero(T), zero(T))
+    embed(::AggMean{T}, x) where {T} = (convert(T, x), oneunit(T))
+    merge(::AggMean{T}, x::Tuple{T, T}, y::Tuple{T, T}) where {T} = (x[1] + y[1], x[2] + y[2])
+    value(::AggMean{T}, x::Tuple{T, T}) where {T} = float(x[1]) / float(x[2])
+
+    abstract type AggMethod end
+
+    struct AggSerial <: AggMethod end
+    struct AggThreads <: AggMethod end
+
+    function Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
+        return Canvas(Rect2(xmin, ymin, xmax - xmin, ymax - ymin); args...)
     end
-    c.data_extrema = (mini, maxi)
-    return c
-end
 
-function aggregation_implementation!(::AggThreads,
-                                     aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
-                                     c::Canvas, op::AggOp,
-                                     points, point_transform)
-    (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
-    xsize, ysize = size(c)
-    # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
-    xwidth = xmax - xmin
-    xscale = xsize / (xwidth + eps(xwidth))
-    ywidth = ymax - ymin
-    yscale = ysize / (ywidth + eps(ywidth))
-    # each thread reduces some of the data separately
-    @assert length(aggbuffer) == Threads.nthreads() * xsize * ysize
-    @assert length(pixelbuffer) == xsize * ysize
-    @assert eltype(aggbuffer) === typeof(null(op)) "$(eltype(aggbuffer)) !== $(typeof(null(op)))"
+    function Canvas(bounds::Rect2; resolution::Tuple{Int, Int} = (800, 800), op = AggCount())
+        xsize, ysize = resolution
+        n_elements = xsize * ysize
+        o0 = null(op)
+        v0 = value(op, o0)
+        aggbuffer = fill(o0, n_elements)
+        pixelbuffer = fill(v0, n_elements)
+        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+        return Canvas(Rect2{Float64}(bounds), resolution, op, aggbuffer, pixelbuffer, (v0, v0))
+    end
 
-    # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
-    # https://stackoverflow.com/questions/41781621/resizing-a-matrix/41804908#41804908
-    out = Base.ReshapedArray(aggbuffer, (xsize, ysize, Threads.nthreads()), ())
-    out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
+    n_threads(::AggSerial) = 1
+    n_threads(::AggThreads) = Threads.nthreads()
 
-    n = length(points)
-    chunks = round.(Int, range(1, n; length=Threads.nthreads() + 1))
+    function Base.resize!(canvas::Canvas, resolution::Tuple{Int, Int}, nthreads = 1)
+        npixel = prod(resolution)
+        n_elements = npixel * nthreads
+        length(canvas.pixelbuffer) == npixel && length(canvas.aggbuffer) == n_elements && return false
+        canvas.resolution = resolution
+        Base.resize!(canvas.pixelbuffer, npixel)
+        Base.resize!(canvas.aggbuffer, n_elements)
+        return true
+    end
 
-    @threads for t in 1:Threads.nthreads()
-        from = chunks[t]
-        to = chunks[t + 1]
-        @inbounds for idx in from:to
-            p = point_transform(points[idx])
+    function change_op!(canvas::Canvas, op::AggOp)
+        op == canvas.op && return false
+        o0 = null(op)
+        v0 = value(op, o0)
+        if eltype(canvas.aggbuffer) != typeof(o0)
+            canvas.aggbuffer = fill(o0, size(c.aggbuffer))
+            canvas.pixelbuffer = fill(v0, size(c.pixelbuffer))
+        end
+        return true
+    end
+
+    using InteractiveUtils
+
+    """
+        aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
+
+    Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
+    Method can be `AggSerial()` or `AggThreads()`.
+    """
+    function aggregate!(c::Canvas, points; point_transform = identity, method::AggMethod = AggSerial())
+        resize!(c, c.resolution, n_threads(method)) # make sure we have the right size for the method
+        aggbuffer, pixelbuffer = c.aggbuffer, c.pixelbuffer
+        fill!(aggbuffer, null(c.op))
+        return aggregation_implementation!(method, aggbuffer, pixelbuffer, c, c.op, points, point_transform)
+    end
+
+    function aggregation_implementation!(
+            ::AggSerial,
+            aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+            c::Canvas, op::AggOp,
+            points, point_transform
+        )
+        (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
+        xsize, ysize = size(c)
+        xwidth, ywidth = widths(c.bounds)
+        xscale = xsize / (xwidth + eps(xwidth))
+        yscale = ysize / (ywidth + eps(ywidth))
+
+        @assert length(aggbuffer) == xsize * ysize
+        @assert length(pixelbuffer) == xsize * ysize
+        @assert eltype(aggbuffer) === typeof(null(op)) "$(eltype(aggbuffer)) !== $(typeof(null(op)))"
+
+        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+        out = Base.ReshapedArray(aggbuffer, (xsize, ysize), ())
+        for point in points
+            p = point_transform(point)
             x = p[1]
             y = p[2]
             if length(p) > 2 # should compile away
@@ -226,43 +170,103 @@ function aggregation_implementation!(::AggThreads,
             i = 1 + floor(Int, xscale * (x - xmin))
             j = 1 + floor(Int, yscale * (y - ymin))
             if length(p) == 2 # should compile away
-                out[i, j, t] = update(op, out[i, j, t])
+                out[i, j] = update(op, out[i, j])
             elseif length(p) == 3
-                out[i, j, t] = update(op, out[i, j, t], z)
+                out[i, j] = update(op, out[i, j], z)
             end
         end
-    end
-    # reduce along the thread dimension
-    mini, maxi = Inf, -Inf
-    for j in 1:ysize
-        @inbounds for i in 1:xsize
-            val = out[i, j, 1]
-            for t in 2:Threads.nthreads()
-                val = merge(op, val, out[i, j, t])
-            end
-            # update the value in out2 directly in this loop
-            final_value = value(op, val)
+
+        mini, maxi = Inf, -Inf
+        map!(pixelbuffer, aggbuffer) do x
+            final_value = value(op, x)
             if isfinite(final_value)
                 mini = min(final_value, mini)
                 maxi = max(final_value, maxi)
             end
-            out2[i, j] = final_value
+            return final_value
         end
+        c.data_extrema = (mini, maxi)
+        return c
     end
-    c.data_extrema = (mini, maxi)
-    return c
-end
 
-export AggAny, AggCount, AggMean, AggSum, AggSerial, AggThreads
+    function aggregation_implementation!(
+            ::AggThreads,
+            aggbuffer::AbstractVector, pixelbuffer::AbstractVector,
+            c::Canvas, op::AggOp,
+            points, point_transform
+        )
+        (xmin, ymin), (xmax, ymax) = extrema(c.bounds)
+        xsize, ysize = size(c)
+        # by adding eps to width we can use the scaling factor plus floor directly to compute the bin indices
+        xwidth = xmax - xmin
+        xscale = xsize / (xwidth + eps(xwidth))
+        ywidth = ymax - ymin
+        yscale = ysize / (ywidth + eps(ywidth))
+        # each thread reduces some of the data separately
+        @assert length(aggbuffer) == Threads.nthreads() * xsize * ysize
+        @assert length(pixelbuffer) == xsize * ysize
+        @assert eltype(aggbuffer) === typeof(null(op)) "$(eltype(aggbuffer)) !== $(typeof(null(op)))"
+
+        # using ReshapedArray directly like this is not advised, but as it lives only briefly it should be ok
+        # https://stackoverflow.com/questions/41781621/resizing-a-matrix/41804908#41804908
+        out = Base.ReshapedArray(aggbuffer, (xsize, ysize, Threads.nthreads()), ())
+        out2 = Base.ReshapedArray(pixelbuffer, (xsize, ysize), ())
+
+        n = length(points)
+        chunks = round.(Int, range(1, n; length = Threads.nthreads() + 1))
+
+        @threads for t in 1:Threads.nthreads()
+            from = chunks[t]
+            to = chunks[t + 1]
+            @inbounds for idx in from:to
+                p = point_transform(points[idx])
+                x = p[1]
+                y = p[2]
+                if length(p) > 2 # should compile away
+                    z = p[3]
+                end
+                xmin ≤ x ≤ xmax || continue
+                ymin ≤ y ≤ ymax || continue
+                i = 1 + floor(Int, xscale * (x - xmin))
+                j = 1 + floor(Int, yscale * (y - ymin))
+                if length(p) == 2 # should compile away
+                    out[i, j, t] = update(op, out[i, j, t])
+                elseif length(p) == 3
+                    out[i, j, t] = update(op, out[i, j, t], z)
+                end
+            end
+        end
+        # reduce along the thread dimension
+        mini, maxi = Inf, -Inf
+        for j in 1:ysize
+            @inbounds for i in 1:xsize
+                val = out[i, j, 1]
+                for t in 2:Threads.nthreads()
+                    val = merge(op, val, out[i, j, t])
+                end
+                # update the value in out2 directly in this loop
+                final_value = value(op, val)
+                if isfinite(final_value)
+                    mini = min(final_value, mini)
+                    maxi = max(final_value, maxi)
+                end
+                out2[i, j] = final_value
+            end
+        end
+        c.data_extrema = (mini, maxi)
+        return c
+    end
+
+    export AggAny, AggCount, AggMean, AggSum, AggSerial, AggThreads
 
 end
 
 using ..Aggregation
 using ..Aggregation: Canvas, change_op!, aggregate!
 
-function equalize_histogram(matrix; nbins=256)
-    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins=nbins)
-    h_eq = normalize(h_eq; mode=:density)
+function equalize_histogram(matrix; nbins = 256)
+    h_eq = StatsBase.fit(StatsBase.Histogram, vec(matrix); nbins = nbins)
+    h_eq = normalize(h_eq; mode = :density)
     cdf = cumsum(h_eq.weights)
     cdf = cdf / cdf[end]
     edg = h_eq.edges[1]
@@ -316,11 +320,11 @@ For best performance, use `method=Makie.AggThreads()` and make sure to start jul
     """
     Defaults to `Makie.equalize_histogram` function which gets called on the whole get_aggregation array before display (`operation(final_aggregation_result)`).
     """
-    operation=automatic
+    operation = automatic
     """
     Function which gets called on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
     """
-    local_operation=identity
+    local_operation = identity
 
     """
     Function which gets applied to every point before aggregating it.
@@ -363,9 +367,9 @@ end
 
 
 function canvas_computation!(p::DataShader)
-    register_computation!(p, [:axis_limits, :pixel_area, :binsize, :agg], [:canvas]) do (lims, pxarea, binsize, op), _, last
+    return register_computation!(p, [:axis_limits, :pixel_area, :binsize, :agg], [:canvas]) do (lims, pxarea, binsize, op), _, last
         if isnothing(last)
-            canvas = Canvas(lims; resolution=(widths(pxarea)...,), op=op)
+            canvas = Canvas(lims; resolution = (widths(pxarea)...,), op = op)
         else
             canvas = last.canvas
         end
@@ -383,7 +387,7 @@ function canvas_computation!(p::DataShader)
     end
 end
 
-function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
+function Makie.plot!(p::DataShader{<:Tuple{<:AbstractVector{<:Point}}})
     scene = parent_scene(p)
     add_axis_limits!(p)
     add_input!(p.attributes, :pixel_area, scene.viewport)
@@ -394,7 +398,7 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
     end
 
     register_computation!(p, [:canvas, :points, :point_transform, :method, :colorrange], [:canvas_with_aggregation, :raw_colorrange]) do (canvas, points, f, method, crange), changed, _
-        Aggregation.aggregate!(canvas, points; point_transform=f, method=method)
+        Aggregation.aggregate!(canvas, points; point_transform = f, method = method)
         if crange isa Automatic
             cr = Vec2f(distinct_extrema_nan(canvas.data_extrema))
         else
@@ -402,8 +406,9 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
         end
         return (canvas, cr)
     end
-    image!(p, p.canvas_with_aggregation, p.operation, p.local_operation;
-        interpolate=p.interpolate,
+    image!(
+        p, p.canvas_with_aggregation, p.operation, p.local_operation;
+        interpolate = p.interpolate,
         generic_plot_attributes(p)...,
         colormap_attributes(p)...
     )
@@ -411,14 +416,15 @@ function Makie.plot!(p::DataShader{<: Tuple{<: AbstractVector{<: Point}}})
 end
 
 
-function aggregate_categories!(canvases, categories; method=AggThreads())
+function aggregate_categories!(canvases, categories; method = AggThreads())
     for (k, canvas) in canvases
         points = categories[k]
-        Aggregation.aggregate!(canvas, points; method=method)
+        Aggregation.aggregate!(canvas, points; method = method)
     end
+    return
 end
 
-Makie.convert_arguments(::Type{<:DataShader}, x::Dict{String,Vector{<:Point2}}) = (x,)
+Makie.convert_arguments(::Type{<:DataShader}, x::Dict{String, Vector{<:Point2}}) = (x,)
 
 function Makie.convert_arguments(::Type{<:DataShader}, groups::AbstractVector, points::AbstractVector{<:Point2})
     if length(groups) != length(points)
@@ -426,7 +432,7 @@ function Makie.convert_arguments(::Type{<:DataShader}, groups::AbstractVector, p
     end
     categories = Dict{String, Vector{Point2f}}()
     for (g, p) in zip(groups, points)
-        gpoints = get!(()-> Point2f[], categories, string(g))
+        gpoints = get!(() -> Point2f[], categories, string(g))
         push!(gpoints, p)
     end
     return (categories,)
@@ -443,15 +449,17 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     end
     categories = p.points[]
     canvas = p.canvas[]
-    canvases = Dict(k => Canvas(canvas.bounds; resolution=canvas.resolution, op=AggCount{Float32}())
-                    for (k, v) in categories)
+    canvases = Dict(
+        k => Canvas(canvas.bounds; resolution = canvas.resolution, op = AggCount{Float32}())
+            for (k, v) in categories
+    )
 
     register_computation!(p, [:canvas, :points], [:canvas_with_aggregation, :total_value]) do (canvas, cats), _, _
         for (k, c) in canvases
             Base.resize!(c, canvas.resolution)
             c.bounds = canvas.bounds
         end
-        aggregate_categories!(canvases, cats; method=p.method[])
+        aggregate_categories!(canvases, cats; method = p.method[])
         total_value = Float32(maximum(sum(map(x -> x.pixelbuffer, values(canvases)))))
         return (canvases, total_value)
     end
@@ -462,7 +470,7 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
     for (k, canv) in canvases
         color = colors[k]
         cmap = [(color, 0.0), (color, 1.0)]
-        image!(p, canv, identity, op; colorrange=Vec2f(0, 1), colormap=cmap)
+        image!(p, canv, identity, op; colorrange = Vec2f(0, 1), colormap = cmap)
     end
     return p
 end
@@ -470,8 +478,8 @@ end
 data_limits(p::DataShader)::Rect3d = p.data_limits[]
 boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
 
-function convert_arguments(P::Type{<:Union{MeshScatter,Image,Surface,Contour,Contour3d}}, canvas::Canvas, operation=automatic, local_operation=identity)
-    pixel = Aggregation.get_aggregation(canvas; operation=operation, local_operation=local_operation)
+function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
+    pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
     (xmin, ymin), (xmax, ymax) = extrema(canvas.bounds)
     return convert_arguments(P, xmin .. xmax, ymin .. ymax, pixel)
 end
@@ -484,12 +492,12 @@ Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key
 
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
-        return FakePlot(Attributes(; plot=plot, label=name, color=color))
+        return FakePlot(Attributes(; plot = plot, label = name, color = color))
     end
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; plots=plot.attributes.plot[], color=plot.attributes.color, strokecolor=legend.polystrokecolor, strokewidth=legend.polystrokewidth)]
+    return [PolyElement(; plots = plot.attributes.plot[], color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,
@@ -519,7 +527,7 @@ If the array doesn't support this, it will be converted to an interpolation obje
 * `update_while_button_pressed` will update the heatmap while a mouse button is pressed, useful for zooming/panning. Set it to false for e.g. WGLMakie to avoid updating while dragging.
 * `lowres_background` will always show a low resolution background while the high resolution image is being calculated.
 """
-struct Resampler{T<:AbstractMatrix{<:Union{Real,Colorant}}}
+struct Resampler{T <: AbstractMatrix{<:Union{Real, Colorant}}}
     data::T
     max_resolution::Union{Automatic, Tuple{Int, Int}}
     update_while_button_pressed::Bool
@@ -549,13 +557,13 @@ function Resampler(resampler::Resampler, new_data)
 end
 
 function Resampler(
-    data;
-    max_resolution=automatic,
-    method=Interpolations.Linear(),
-    update_while_button_pressed=false,
-    lowres_background=true,
-    resolution=nothing
-)
+        data;
+        max_resolution = automatic,
+        method = Interpolations.Linear(),
+        update_while_button_pressed = false,
+        lowres_background = true,
+        resolution = nothing
+    )
     if resolution !== nothing
         @warn "Resampler(data; resolution=...) got renamed to max_resolution, please update your code"
         max_resolution = resolution
@@ -578,7 +586,7 @@ function Resampler(
     end
 end
 
-const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}}
+const HeatmapShader = Heatmap{<:Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}}
 
 # The things we need to do, to allow the atomic Heatmap plot type to be overloaded as a recipe
 struct HeatmapShaderConversion <: ConversionTrait end
@@ -591,14 +599,14 @@ function conversion_trait(::Type{<:Heatmap}, ::Resampler)
 end
 
 function types_for_plot_arguments(::Type{<:Heatmap}, ::HeatmapShaderConversion)
-    return Tuple{EndPoints{Float32},EndPoints{Float32},<:Resampler}
+    return Tuple{EndPoints{Float32}, EndPoints{Float32}, <:Resampler}
 end
 
 function data_limits(p::HeatmapShader)
     return Rect3d(p.data_limits[])
 end
 
-function boundingbox(p::HeatmapShader, space::Symbol=:data)
+function boundingbox(p::HeatmapShader, space::Symbol = :data)
     return apply_transform_and_model(p, data_limits(p))
 end
 
@@ -654,7 +662,7 @@ function convert_arguments(::Type{Heatmap}, x, y, image::Resampler)
 end
 
 function empty_channel!(channel::Channel)
-    lock(channel.cond_take) do
+    return lock(channel.cond_take) do
         while !isempty(channel)
             take!(channel)
         end
@@ -708,7 +716,7 @@ function Makie.plot!(p::HeatmapShader)
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
         if isnothing(xe_ye_oimg)
             if isnothing(last) # first downsample
-                return (x, x, fill(0f0, 2, 2), false)
+                return (x, x, fill(0.0f0, 2, 2), false)
             else
                 return (nothing, nothing, nothing, false) # simply dont update!
             end
@@ -730,22 +738,22 @@ function Makie.plot!(p::HeatmapShader)
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange)
+    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange)
     translate!(lp, 0, 0, -1)
 
     image!(
         p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
-        gpa..., cpa..., interpolate=p.interpolate, colorrange=p.computed_colorrange, visible=p.l_visible,
+        gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
 
     return p
 end
 
-struct Pyramid{T,M<:AbstractMatrix{T}} <: AbstractMatrix{T}
+struct Pyramid{T, M <: AbstractMatrix{T}} <: AbstractMatrix{T}
     data::Vector{M}
 end
 
-function Pyramid(data::AbstractMatrix; min_resolution=1024, mode=Interpolations.Linear())
+function Pyramid(data::AbstractMatrix; min_resolution = 1024, mode = Interpolations.Linear())
     ranges(d) = (LinRange(1, size(data, 1), size(d, 1)), LinRange(1, size(data, 2), size(d, 2)))
     ET = ImageBase.restrict_eltype(first(data))
     resized = convert(Matrix{ET}, data)

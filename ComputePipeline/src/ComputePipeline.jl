@@ -53,7 +53,7 @@ struct ResolveException{E <: Exception} <: Exception
     error::E
 end
 
-struct TypedEdge{InputTuple,OutputTuple,F}
+struct TypedEdge{InputTuple, OutputTuple, F}
     callback::F
     inputs::InputTuple
     inputs_dirty::Vector{Bool}
@@ -93,7 +93,7 @@ end
 
 function _get_named_change(::NamedTuple{Names}, dirty) where {Names}
     values = ntuple(i -> dirty[i], length(Names))
-    return NamedTuple{Names,NTuple{length(Names),Bool}}(values)
+    return NamedTuple{Names, NTuple{length(Names), Bool}}(values)
 end
 
 function TypedEdge(edge::ComputeEdge)
@@ -132,7 +132,6 @@ function TypedEdge(edge::ComputeEdge)
 end
 
 
-
 """
     struct Input
 
@@ -166,9 +165,9 @@ validate_value(x::RefValue) = isassigned(x) ? validate_value(x[]) : nothing
 validate_value(::Computed) = error("::Computed is not a valid value for a Computed or Input")
 validate_value(::Input) = error("::Input is not a valid value for a Computed or Input")
 validate_value(::Observable) = error("::Observable is not a valid value for a Computed or Input")
-validate_value(::RefValue{<: Computed}) = error("::Computed is not a valid value for a Computed or Input")
-validate_value(::RefValue{<: Input}) = error("::Input is not a valid value for a Computed or Input")
-validate_value(::RefValue{<: Observable}) = error("::Observable is not a valid value for a Computed or Input")
+validate_value(::RefValue{<:Computed}) = error("::Computed is not a valid value for a Computed or Input")
+validate_value(::RefValue{<:Input}) = error("::Input is not a valid value for a Computed or Input")
+validate_value(::RefValue{<:Observable}) = error("::Observable is not a valid value for a Computed or Input")
 
 
 """
@@ -197,12 +196,12 @@ graph[:derived_node][]
 ```
 """
 struct ComputeGraph
-    inputs::Dict{Symbol,Input}
-    outputs::Dict{Symbol,Computed}
+    inputs::Dict{Symbol, Input}
+    outputs::Dict{Symbol, Computed}
     lock::ReentrantLock
 
     onchange::Observable{Set{Symbol}}
-    observables::Dict{Symbol,Observable}
+    observables::Dict{Symbol, Observable}
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
@@ -229,7 +228,7 @@ Setting `use_deepcopy = false` will turn this safeguard off, removing both the
 deepcopy and the equality check. In this case in-place updates of the node will
 always trigger observable updates. Any other duplicate updates will be skipped.
 """
-function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
+function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy = true)
     # Because we allow output arrays to be reused it can be impossible to tell
     # if the data has updated. In this case the data is marked as dirty/changed
     # and added to the `onchange`. If this data is fed into an Observable which
@@ -250,10 +249,10 @@ function get_observable!(attr::ComputeGraph, key::Symbol; use_deepcopy=true)
     end
 end
 
-function get_observable!(c::Computed; use_deepcopy=true)
+function get_observable!(c::Computed; use_deepcopy = true)
     if hasparent(c)
         p = getparent(c)
-        return get_observable!(p.graph, c.name; use_deepcopy=use_deepcopy)
+        return get_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
     else
         error("Cannot get observable for Computed without parent")
     end
@@ -281,14 +280,16 @@ end
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
-    return ComputeEdge{ComputeGraph}(graph, f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
-                       ComputeEdge[], RefValue{TypedEdge}())
+    return ComputeEdge{ComputeGraph}(
+        graph, f, inputs, fill(true, length(inputs)), Computed[], RefValue(false),
+        ComputeEdge[], RefValue{TypedEdge}()
+    )
 end
 
 function ComputeGraph()
     graph = ComputeGraph(
-        Dict{Symbol,ComputeEdge}(), Dict{Symbol,Computed}(), Base.ReentrantLock(),
-        Observable(Set{Symbol}()), Dict{Symbol,Observable}(), Set{Symbol}(),
+        Dict{Symbol, ComputeEdge}(), Dict{Symbol, Computed}(), Base.ReentrantLock(),
+        Observable(Set{Symbol}()), Dict{Symbol, Observable}(), Set{Symbol}(),
         Observables.ObserverFunction[], Observable[]
     )
 
@@ -457,7 +458,7 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
-    lock(attr.lock) do
+    return lock(attr.lock) do
         _setproperty!(attr, key, value)
         foreach(notify, attr.obs_to_update)
         return value
@@ -481,13 +482,13 @@ update!(graph, first_node = 2)
 update!(graph, :first_node => 2)
 ```
 """
-update!(attr::ComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in kwargs])
+update!(attr::ComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in kwargs])
 update!(attr::ComputeGraph, dict::Dict{Symbol}) = _update!(attr, dict)
-update!(attr::ComputeGraph, pairs::Pair{Symbol}...) = _update!(attr, [Pair{Symbol, Any}(k, v) for (k,v) in pairs])
+update!(attr::ComputeGraph, pairs::Pair{Symbol}...) = _update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in pairs])
 update!(attr::ComputeGraph, pairs::AbstractVector{<:Pair{Symbol}}) = _update!(attr, pairs)
 
 function _update!(attr::ComputeGraph, values)
-    lock(attr.lock) do
+    return lock(attr.lock) do
         for (key, value) in values
             if haskey(attr.inputs, key)
                 _setproperty!(attr, key, value)
@@ -528,6 +529,7 @@ function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
+    return
 end
 
 function mark_input_dirty!(parent::Input, edge::ComputeEdge)
@@ -535,6 +537,7 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
+    return
 end
 
 function set_result!(edge::TypedEdge, result, i, value)
@@ -560,7 +563,7 @@ end
 
 is_same(@nospecialize(a), @nospecialize(b)) = false
 is_same(a::Symbol, b::Symbol) = a == b
-function is_same(a::T, b::T) where T
+function is_same(a::T, b::T) where {T}
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`
         return a === b
@@ -576,7 +579,7 @@ end
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function resolve!(edge::TypedEdge)
-    if any(edge.inputs_dirty) # only call if inputs changed
+    return if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
         names = ntuple(length(vals)) do i
@@ -614,7 +617,7 @@ end
 
 function resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
-    lock(edge.graph.lock) do
+    return lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
         if !isassigned(edge.typed_edge)
@@ -735,7 +738,7 @@ function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(attr, k, obs[])
     # typemax-1 so it doesn't get disturbed by other listeners but can still be
     # blocked by a typamax obs
-    of = on(obs, priority = typemax(Int)-1) do new_val
+    of = on(obs, priority = typemax(Int) - 1) do new_val
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
@@ -745,7 +748,7 @@ end
 
 function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(f, attr, k, obs[])
-    of = on(obs, priority = typemax(Int)-1) do new_val
+    of = on(obs, priority = typemax(Int) - 1) do new_val
         setproperty!(attr, k, new_val)
         return Consume(false)
     end
@@ -825,7 +828,7 @@ function check_boxed_values(f)
     names = propertynames(f)
     name_values = map(x -> x => getfield(f, x), names)
     boxed = filter(p -> p[2] isa Core.Box, name_values)
-    if !isempty(boxed)
+    return if !isempty(boxed)
         boxed_str = map(boxed) do (k, v)
             box = isdefined(v, :contents) ? typeof(v.contents) : "#undef"
             return "$(k)::Core.Box($(box))"
@@ -852,7 +855,7 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
         func2, loc2 = edge_callback_to_string(e1)
         error(
             "Cannot register computation: The outputs already have a parent compute edge using " *
-            "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
+                "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
         )
     end
     # We can not rely on e1.inputs.name here because name can be different
@@ -862,13 +865,17 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
         if input in inputs_to_verify
             delete!(inputs_to_verify, input)
         else
-            error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
-            "that uses a different set of inputs. (Failed to find $input in existing)")
+            error(
+                "Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                    "that uses a different set of inputs. (Failed to find $input in existing)"
+            )
         end
     end
     if !isempty(inputs_to_verify)
-        error("Cannot register computation: There already exists a parent compute edge for the given outputs " *
-        "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)")
+        error(
+            "Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)"
+        )
     end
 
     # edge already exists so we can
@@ -987,7 +994,7 @@ function Base.empty!(attr::ComputeGraph)
     for of in attr.observerfunctions
         Observables.off(of)
     end
-    empty!(attr.observerfunctions)
+    return empty!(attr.observerfunctions)
 end
 
 """
@@ -1021,7 +1028,7 @@ function validate_deletion(edge::ComputeEdge, force::Bool, recursive::Bool)
     if !(recursive || isempty(edge.dependents))
         error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
     end
-    foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
+    return foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
 end
 
 function validate_deletion(edge::Input, force::Bool, recursive::Bool)
@@ -1029,7 +1036,7 @@ function validate_deletion(edge::Input, force::Bool, recursive::Bool)
     if !(recursive || isempty(edge.dependents))
         error("Cannot delete node because it has children. Set `recursive = true` to also delete its children.")
     end
-    foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
+    return foreach(e -> validate_deletion(e, force, recursive), edge.dependents)
 end
 
 function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive::Bool)
@@ -1094,6 +1101,7 @@ function unsafe_disconnect_from_parents!(attr::ComputeGraph)
             unsafe_disconnect_parent_graph_nodes!(attr, comp.parent)
         end
     end
+    return
 end
 
 unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
@@ -1103,6 +1111,7 @@ function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Compute
             unsafe_atomic_delete!(edge)
         end
     end
+    return
 end
 
 function unsafe_atomic_delete!(edge::ComputeEdge)

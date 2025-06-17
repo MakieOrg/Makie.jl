@@ -13,8 +13,8 @@ box = Rect2f(0.9, -0.1, 0.2, 0.2)
 
 f = Figure(size = (500, 450))
 a = Axis(f[1, 1], aspect = DataAspect())
-xlims!(a, 0.2, 1.2); a.xticks[] = 0.1:0.2:1.1
-ylims!(a, -0.2, 0.8); a.yticks[] = -0.1:0.2:0.7
+xlims!(a, 0.2, 1.2); a.xticks = 0.1:0.2:1.1
+ylims!(a, -0.2, 0.8); a.yticks = -0.1:0.2:0.7
 
 # Initial plot for reference
 scatterlines!(a, box, color = 1:4, markersize = 20, linewidth = 5)
@@ -37,14 +37,14 @@ To accumulate transformation you need to add `Accum` as the first argument, e.g.
 
 The `transform_func` is a function that gets applied to the input data of a plot after `convert_arguments()` (type normalization) and dim_converts (handling of units and categorical value).
 It is typically managed by an Axis.
-For example, if you set `ax.xscale[] = log`, the underlying `ax.scene` will have it's transformation function set to `(log, identity)` which will propagate to the plots inside the axis/scene.
+For example, if you set `ax.xscale = log`, the underlying `ax.scene` will have it's transformation function set to `(log, identity)` which will propagate to the plots inside the axis/scene.
 
 ```julia
 using Makie
 f, a, p = scatter(1:10);
 Makie.transform_func(a.scene) # (identity, identity)
 Makie.transform_func(p) # (identity, identity)
-a.xscale[] = log
+a.xscale = log
 Makie.transform_func(a.scene) # (log, identity)
 Makie.transform_func(p) # (log, identity)
 ```
