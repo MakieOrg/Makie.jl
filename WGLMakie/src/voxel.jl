@@ -37,8 +37,10 @@ function create_shader(scene::Scene, plot::Voxels)
         end
     elseif haskey(attr, :voxel_color)
         Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
-        register_computation!(attr, [:voxel_color, :packed_uv_transform, :interpolate],
-                [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do inputs, changed, cached
+        register_computation!(
+            attr, [:voxel_color, :packed_uv_transform, :interpolate],
+            [:wgl_colormap, :wgl_uv_transform, :wgl_color]
+        ) do inputs, changed, cached
             # how interpolate?
             color, uvt, interpolate = inputs
             filter = ifelse(interpolate, :linear, :nearest)
@@ -83,7 +85,7 @@ function create_shader(scene::Scene, plot::Voxels)
 
         :diffuse, :specular, :shininess, # :backlight,
         :depthsorting, :primitive_shading,
-        :uniform_clip_planes, :uniform_num_clip_planes, :visible
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
     ]
 
     return create_wgl_renderobject(voxel_program, attr, inputs)

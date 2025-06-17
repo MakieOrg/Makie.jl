@@ -2,7 +2,7 @@ using Dates, Observables
 import Unitful
 using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
 
-const SupportedUnits = Union{Period,Unitful.Quantity,Unitful.LogScaled,Unitful.Units}
+const SupportedUnits = Union{Period, Unitful.Quantity, Unitful.LogScaled, Unitful.Units}
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
@@ -18,12 +18,12 @@ base_unit(::Unitful.FreeUnits{U, DimT, nothing}) where {DimT, U} = U[1]
 base_unit(x::Unitful.Unit) = x
 base_unit(x::Period) = base_unit(Quantity(x))
 
-unit_string(::Type{T}) where T <: Unitful.AbstractQuantity = string(Unitful.unit(T))
-unit_string(unit::Type{<: Unitful.FreeUnits}) = string(unit())
+unit_string(::Type{T}) where {T <: Unitful.AbstractQuantity} = string(Unitful.unit(T))
+unit_string(unit::Type{<:Unitful.FreeUnits}) = string(unit())
 unit_string(unit::Unitful.FreeUnits) = string(unit)
 unit_string(unit::Unitful.Unit) = string(unit)
 unit_string(::Union{Number, Nothing}) = ""
-unit_string(unit::T) where T <: Unitful.MixedUnits = string(unit)
+unit_string(unit::T) where {T <: Unitful.MixedUnits} = string(unit)
 unit_string(unit::Unitful.LogScaled) = ""
 
 unit_string_long(unit) = unit_string_long(base_unit(unit))
@@ -33,8 +33,8 @@ unit_string_long(unit::Unitful.LogScaled) = string(unit)
 is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
 is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
 is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
-is_compound_unit(::Type{<: Unitful.FreeUnits{U}}) where {U} = length(U) != 1
-is_compound_unit(::T) where T <: Union{Unitful.LogScaled, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = false
+is_compound_unit(::Type{<:Unitful.FreeUnits{U}}) where {U} = length(U) != 1
+is_compound_unit(::T) where {T <: Union{Unitful.LogScaled, Quantity{<:Unitful.LogScaled, DimT, U}}} where {DimT, U} = false
 
 function eltype_extrema(values)
     isempty(values) && return (eltype(values), nothing)
@@ -112,19 +112,19 @@ best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} 
 
 unit_convert(::Automatic, x) = x
 
-function unit_convert(unit::T, x::AbstractArray) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
+function unit_convert(unit::T, x::AbstractArray) where {T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}}
     return unit_convert.(Ref(unit), x)
 end
 
 unit_convert(unit::Unitful.MixedUnits, x::AbstractArray) = unit_convert.(Ref(unit), x)
 
 # We always convert to preferred unit!
-function unit_convert(unit::T, value) where T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}
+function unit_convert(unit::T, value) where {T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}}
     conv = uconvert(to_free_unit(unit, value), value)
     return float(ustrip(conv))
 end
 
-unit_convert(unit::T, value) where T <: Union{Unitful.MixedUnits, Quantity{<:Unitful.LogScaled, DimT, U}} where {DimT, U} = Float64(ustrip(value))
+unit_convert(unit::T, value) where {T <: Union{Unitful.MixedUnits, Quantity{<:Unitful.LogScaled, DimT, U}}} where {DimT, U} = Float64(ustrip(value))
 
 # Overload conversion functions for Axis, to properly display units
 
@@ -160,8 +160,8 @@ struct UnitfulConversion <: AbstractDimConversion
     extrema::Dict{String, Tuple{Any, Any}}
 end
 
-function UnitfulConversion(unit=automatic; units_in_label=true)
-    extrema = Dict{String,Tuple{Any,Any}}()
+function UnitfulConversion(unit = automatic; units_in_label = true)
+    extrema = Dict{String, Tuple{Any, Any}}()
     return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
 end
 
@@ -191,7 +191,7 @@ function update_extrema!(conversion::UnitfulConversion, id::String, vals)
     else
         new_unit = best_unit(imini, imaxi)
     end
-    if new_unit != conversion.unit[]
+    return if new_unit != conversion.unit[]
         conversion.unit[] = new_unit
         # TODO, somehow we need another notify to update the axis label
         # The interactions in Lineaxis are too complex to debug this in a sane amount of time

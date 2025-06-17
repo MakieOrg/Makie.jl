@@ -293,7 +293,7 @@ export mouseover, onpick, pick, Events, Keyboard, Mouse, is_mouseinside
 export ispressed, Exclusively
 export connect_screen
 export window_area, window_open, mouse_buttons, mouse_position, mouseposition_px,
-       scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
+    scroll, keyboard_buttons, unicode_input, dropped_files, hasfocus, entered_window
 export disconnect!
 export DataInspector
 export Consume
@@ -346,14 +346,14 @@ export assetpath
 using PNGFiles
 
 # default icon for Makie
-function load_icon(name::String)::Matrix{NTuple{4,UInt8}}
+function load_icon(name::String)::Matrix{NTuple{4, UInt8}}
     img = PNGFiles.load(name)::Matrix{RGBA{Colors.N0f8}}
-    return reinterpret(NTuple{4,UInt8}, img)
+    return reinterpret(NTuple{4, UInt8}, img)
 end
 
 function icon()
     path = assetpath("icons")
-    icons = readdir(path; join=true)
+    icons = readdir(path; join = true)
     return map(load_icon, icons)
 end
 
@@ -368,21 +368,21 @@ function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
     # This mutates module-level state so it could mess up other libraries using
     # GridLayoutBase at the same time as Makie, which is unlikely, though
-    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        return convert(Float64, to_value(Makie.theme(:colgap; default=GridLayoutBase.DEFAULT_COLGAP[])))
+    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function ()
+        return convert(Float64, to_value(Makie.theme(:colgap; default = GridLayoutBase.DEFAULT_COLGAP[])))
     end
-    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        return convert(Float64, to_value(Makie.theme(:rowgap; default=GridLayoutBase.DEFAULT_ROWGAP[])))
+    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function ()
+        return convert(Float64, to_value(Makie.theme(:rowgap; default = GridLayoutBase.DEFAULT_ROWGAP[])))
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
-        "Please include the file manually with `include(\"$cfg_path\")` before plotting."
+            "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
 
-    global makie_cache_dir = @get_scratch!("makie")
+    return global makie_cache_dir = @get_scratch!("makie")
 end
 
 include("figures.jl")
@@ -396,9 +396,9 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
-export Heatmap  , Image  , Lines  , LineSegments  , Mesh  , MeshScatter  , Poly  , Scatter  , Surface  , Text  , Volume  , Wireframe, Voxels
-export heatmap  , image  , lines  , linesegments  , mesh  , meshscatter  , poly  , scatter  , surface  , text  , volume  , wireframe, voxels
-export heatmap! , image! , lines! , linesegments! , mesh! , meshscatter! , poly! , scatter! , surface! , text! , volume! , wireframe!, voxels!
+export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
+export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, wireframe, voxels
+export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, wireframe!, voxels!
 
 export arrows, arrows!
 

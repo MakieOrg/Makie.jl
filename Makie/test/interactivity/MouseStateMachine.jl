@@ -1,10 +1,14 @@
 @testset "mouse state machine" begin
-    scene = Scene(size=(800, 600));
+    scene = Scene(size = (800, 600))
     e = events(scene)
     bbox = Observable(Rect2(200, 200, 400, 300))
-    msm = addmouseevents!(scene, bbox, priority=typemax(Int))
+    msm = addmouseevents!(scene, bbox, priority = typemax(Int))
     eventlog = MouseEvent[]
-    on(x -> begin push!(eventlog, x); false end, msm.obs)
+    on(
+        x -> begin
+            push!(eventlog, x); false
+        end, msm.obs
+    )
 
     e.mouseposition[] = (0, 200)
     @test isempty(eventlog)
@@ -32,11 +36,13 @@
         e.mouseposition[] = (300, 300)
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
         @test length(eventlog) == 3
-        for (i, t) in enumerate((
-                getfield(MouseEventTypes, Symbol(button, :down)),
-                getfield(MouseEventTypes, Symbol(button, :click)),
-                getfield(MouseEventTypes, Symbol(button, :up))
-            ))
+        for (i, t) in enumerate(
+                (
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :click)),
+                    getfield(MouseEventTypes, Symbol(button, :up)),
+                )
+            )
             @test eventlog[i].type == t
             @test eventlog[i].px == Point2f(300, 300)
             @test eventlog[i].prev_px == Point2f(300, 300)
@@ -47,11 +53,13 @@
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
         @test length(eventlog) == 3
-        for (i, t) in enumerate((
-                getfield(MouseEventTypes, Symbol(button, :down)),
-                getfield(MouseEventTypes, Symbol(button, :doubleclick)),
-                getfield(MouseEventTypes, Symbol(button, :up))
-            ))
+        for (i, t) in enumerate(
+                (
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :doubleclick)),
+                    getfield(MouseEventTypes, Symbol(button, :up)),
+                )
+            )
             @test eventlog[i].type == t
             @test eventlog[i].px == Point2f(300, 300)
             @test eventlog[i].prev_px == Point2f(300, 300)
@@ -62,11 +70,13 @@
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
         @test length(eventlog) == 3
-        for (i, t) in enumerate((
-                getfield(MouseEventTypes, Symbol(button, :down)),
-                getfield(MouseEventTypes, Symbol(button, :click)),
-                getfield(MouseEventTypes, Symbol(button, :up))
-            ))
+        for (i, t) in enumerate(
+                (
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :click)),
+                    getfield(MouseEventTypes, Symbol(button, :up)),
+                )
+            )
             @test eventlog[i].type == t
             @test eventlog[i].px == Point2f(300, 300)
             @test eventlog[i].prev_px == Point2f(300, 300)
@@ -80,16 +90,18 @@
         e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
         @test length(eventlog) == 6
         prev_px = Point2f[(300, 300), (300, 300), (300, 300), (500, 300), (700, 200), (700, 200)]
-        px      = Point2f[(300, 300), (500, 300), (500, 300), (700, 200), (700, 200), (700, 200)]
-        for (i, t) in enumerate((
-                getfield(MouseEventTypes, Symbol(button, :down)),
-                getfield(MouseEventTypes, Symbol(button, :dragstart)),
-                getfield(MouseEventTypes, Symbol(button, :drag)),
-                getfield(MouseEventTypes, Symbol(button, :drag)),
-                getfield(MouseEventTypes, Symbol(button, :dragstop)),
-                getfield(MouseEventTypes, :out),
-                # TODO this is kinda missing an "up outside"
-            ))
+        px = Point2f[(300, 300), (500, 300), (500, 300), (700, 200), (700, 200), (700, 200)]
+        for (i, t) in enumerate(
+                (
+                    getfield(MouseEventTypes, Symbol(button, :down)),
+                    getfield(MouseEventTypes, Symbol(button, :dragstart)),
+                    getfield(MouseEventTypes, Symbol(button, :drag)),
+                    getfield(MouseEventTypes, Symbol(button, :drag)),
+                    getfield(MouseEventTypes, Symbol(button, :dragstop)),
+                    getfield(MouseEventTypes, :out),
+                    # TODO this is kinda missing an "up outside"
+                )
+            )
             @test eventlog[i].type == t
             @test eventlog[i].px == px[i]
             @test eventlog[i].prev_px == prev_px[i]

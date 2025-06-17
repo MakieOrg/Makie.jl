@@ -1,5 +1,5 @@
 function Base.show(io::IO, computed::Computed)
-    if isdefined(computed, :value) && isassigned(computed.value)
+    return if isdefined(computed, :value) && isassigned(computed.value)
         print(IOContext(io, :limit => true), "Computed(:", computed.name, ", ", computed.value[], ")")
     else
         print(io, "Computed(:", computed.name, ", #undef)")
@@ -21,7 +21,7 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     v = isdefined(computed, :value) && isassigned(computed.value) ? computed.value[] : "#undef"
     print(io, "  value = ")
     print(IOContext(io, :limit => true), v)
-    print(io, "\n  dirty = ", isdirty(computed))
+    return print(io, "\n  dirty = ", isdirty(computed))
 end
 
 
@@ -117,7 +117,8 @@ function Base.show(io::IO, edge::ComputeEdge)
     N1 = length(edge.inputs)
     N2 = length(edge.outputs)
     N3 = length(edge.dependents)
-    print(io, "ComputeEdge(",
+    return print(
+        io, "ComputeEdge(",
         edge_callback_name(edge.callback), ", ",
         N1, " input$(N1 == 1 ? "" : 's'), ",
         N2, " output$(N2 == 1 ? "" : 's'), ",
@@ -158,12 +159,12 @@ function Base.show(io::IO, ::MIME"text/plain", edge::ComputeEdge)
             print(io, "\n    ✓ ", v)
         end
     end
+    return
 end
 
 
-
 function Base.show(io::IO, input::Input)
-    print(io, "Input(:", input.name, ", ", input.value, ")")
+    return print(io, "Input(:", input.name, ", ", input.value, ")")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", input::Input)
@@ -187,8 +188,8 @@ function Base.show(io::IO, ::MIME"text/plain", input::Input)
             println(io, "\n    ✓ ", v)
         end
     end
+    return
 end
-
 
 
 # TODO: Maybe keep track of edges in Graph?
@@ -222,7 +223,8 @@ function Base.show(io::IO, graph::ComputeGraph)
     N1 = length(graph.inputs)
     N2 = length(graph.outputs)
     N3 = count_edges(graph)
-    print(io, "ComputeGraph(",
+    return print(
+        io, "ComputeGraph(",
         N1, " input$(N1 == 1 ? "" : 's'), ",
         N2, " output$(N2 == 1 ? "" : 's'), ",
         N3, " edge$(N3 == 1 ? "" : 's'))"
@@ -254,7 +256,6 @@ function Base.show(io::IO, ::MIME"text/plain", graph::ComputeGraph)
     end
     return io
 end
-
 
 
 function Base.showerror(io::IO, re::ResolveException)
@@ -343,7 +344,7 @@ function print_root_inputs(io::IO, edge::ComputeEdge)
     for input in edge.inputs
         trace_inputs!(input, root_inputs)
     end
-    println(io, "Triggered by update of:\n  ", join(root_inputs, ", ", " or "))
+    return println(io, "Triggered by update of:\n  ", join(root_inputs, ", ", " or "))
 end
 function trace_inputs!(edge::ComputeEdge, root_inputs)
     foreach(c -> trace_inputs!(c, root_inputs), edge.inputs)
@@ -374,13 +375,14 @@ end
 show_inputs(node::Computed) = show_inputs(stdout, node)
 function show_inputs(io::IO, node::Computed, tab = 0)
     println(io, "    "^tab, node)
-    show_inputs(io, node.parent, tab+1)
+    return show_inputs(io, node.parent, tab + 1)
 end
 function show_inputs(io::IO, node::Input, tab = 0)
-    println(io, "    "^tab, node)
+    return println(io, "    "^tab, node)
 end
 function show_inputs(io::IO, edge::ComputeEdge, tab = 0)
     for node in edge.inputs
         show_inputs(io, node, tab)
     end
+    return
 end

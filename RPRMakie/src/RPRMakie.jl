@@ -35,7 +35,6 @@ function ScreenConfig(iterations::Int, max_recursion::Int, render_resource, rend
 end
 
 
-
 include("scene.jl")
 include("lines.jl")
 include("meshes.jl")
@@ -66,7 +65,7 @@ function __init__()
     return
 end
 
-for name in names(Makie; all=true)
+for name in names(Makie; all = true)
     if Base.isexported(Makie, name)
         @eval using Makie: $(name)
         @eval export $(name)

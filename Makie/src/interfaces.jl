@@ -1,8 +1,8 @@
 const atomic_functions = (
     text, meshscatter, scatter, mesh, linesegments,
-    lines, surface, volume, heatmap, image, voxels
+    lines, surface, volume, heatmap, image, voxels,
 )
-const Atomic{Arg} = Union{map(x-> Plot{x, Arg}, atomic_functions)...}
+const Atomic{Arg} = Union{map(x -> Plot{x, Arg}, atomic_functions)...}
 
 
 """
@@ -20,24 +20,24 @@ expand_dimensions(::PointBased, y::OffsetVector{<:Real}) =
 
 function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
     # Float32, because all ploteable sizes should fit into float32
-    x, y = map(x-> (0f0, Float32(x)), size(data))
+    x, y = map(x -> (0.0f0, Float32(x)), size(data))
     return (x, y, data)
 end
 
-function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real,<:Colorant}})
-    x, y = map(x-> (1f0, Float32(x)), size(data))
+function expand_dimensions(::Union{CellGrid, VertexGrid}, data::AbstractMatrix{<:Union{<:Real, <:Colorant}})
+    x, y = map(x -> (1.0f0, Float32(x)), size(data))
     return (x, y, data)
 end
 
-function expand_dimensions(::VolumeLike, data::Array{<: Any, 3})
-    x, y, z = map(x-> EndPoints(0f0, Float32(x)), size(data))
+function expand_dimensions(::VolumeLike, data::Array{<:Any, 3})
+    x, y, z = map(x -> EndPoints(0.0f0, Float32(x)), size(data))
     return (x, y, z, data)
 end
 
 # Mainly for Voxels, which breaks conversion_trait(Voxels)::ConversionTrait
 got_converted(P, PTrait, result) = nothing
 function got_converted(P::Type, PTrait::ConversionTrait, result)
-    SpecLike = Union{PlotSpec,BlockSpec,GridLayoutSpec,AbstractVector{PlotSpec}}
+    SpecLike = Union{PlotSpec, BlockSpec, GridLayoutSpec, AbstractVector{PlotSpec}}
     if result isa Tuple && length(result) == 1
         if result[1] isa SpecLike
             return SpecApi
@@ -83,7 +83,7 @@ used_attributes(args...) = ()
 # Chose the more specific plot type from arguments or input type
 # Note the plottype(Scatter, Plot{plot}) will return Scatter
 # And plottype(args...) falls back to Plot{plot}
-plottype(P::Type{<: Plot{T}}, argvalues...) where T = plottype(P, plottype(argvalues...))
+plottype(P::Type{<:Plot{T}}, argvalues...) where {T} = plottype(P, plottype(argvalues...))
 plottype(P::Type{<:Plot{T}}) where {T} = P
 plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
@@ -107,8 +107,8 @@ plottype(P::Type{<:Plot{T}}, ::Type{Plot{plot}}) where {T} = P
 plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
-plottype(::AbstractMatrix{<: Real}) = Heatmap
-plottype(::Array{<: AbstractFloat, 3}) = Volume
+plottype(::AbstractMatrix{<:Real}) = Heatmap
+plottype(::Array{<:AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
 
 plottype(::LineString) = Lines
@@ -128,7 +128,7 @@ clip_planes_obs(parent::Scene) = parent.theme[:clip_planes]
 const PlotFunc = Type{<:AbstractPlot}
 
 function plot!(::Plot{F, Args}) where {F, Args}
-    if !(F in atomic_functions)
+    return if !(F in atomic_functions)
         error("No recipe for $(F) with args: $(Args)")
     end
 end
@@ -137,7 +137,7 @@ function handle_transformation!(plot, parent)
     t_user = to_value(pop!(plot.kw, :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation
-    if t_user isa Tuple{Symbol, <: Real} || t_user isa Union{Attributes, AbstractDict, NamedTuple}
+    if t_user isa Tuple{Symbol, <:Real} || t_user isa Union{Attributes, AbstractDict, NamedTuple}
         transform_op = t_user
         t_user = :automatic
     elseif t_user isa Tuple # Allow (t_user, transform_op)
@@ -160,17 +160,17 @@ function handle_transformation!(plot, parent)
                 append!(plot.deregister_callbacks, obsfunc)
             end
 
-        # Connect only transform_func
+            # Connect only transform_func
         elseif t_user === :inherit_transform_func
             obsfunc = connect!(transformation(parent), transformation(plot), connect_model = false)
             append!(plot.deregister_callbacks, obsfunc)
 
-        # Connect only model
+            # Connect only model
         elseif t_user === :inherit_model
             obsfunc = connect!(transformation(parent), transformation(plot), connect_func = false)
             append!(plot.deregister_callbacks, obsfunc)
 
-        # Keep child transform disconnected
+            # Keep child transform disconnected
         elseif t_user === :nothing
 
         else
@@ -197,7 +197,7 @@ function handle_transformation!(plot, parent)
     end
 
     if haskey(plot, :transform_func)
-        on(tf -> update!(plot; transform_func=tf), plot, transform_func_obs(plot); update=true)
+        on(tf -> update!(plot; transform_func = tf), plot, transform_func_obs(plot); update = true)
     else
         add_input!(plot.attributes, :transform_func, transform_func_obs(plot))
     end
@@ -211,7 +211,7 @@ function plot!(scene::SceneLike, plot::Plot)
     return plot
 end
 
-function apply_theme!(scene::Scene, plot::P) where {P<: Plot}
+function apply_theme!(scene::Scene, plot::P) where {P <: Plot}
     raw_attr = attributes(plot.attributes)
     plot_theme = default_theme(scene, P)
     plot_sym = plotsym(P)

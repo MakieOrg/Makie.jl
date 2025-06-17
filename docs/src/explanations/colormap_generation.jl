@@ -17,7 +17,7 @@ function colors_svg(key::Symbol, cs, w, h; categorical)
     if categorical
         for (i, c) in enumerate(cs)
             html *= """
-            <rect width="$(ws)mm" height="$(h)mm" x="$(i-1)" y="0" fill="#$(hex(convert(RGB, c)))" />
+            <rect width="$(ws)mm" height="$(h)mm" x="$(i - 1)" y="0" fill="#$(hex(convert(RGB, c)))" />
             """
         end
     else
@@ -73,4 +73,3 @@ struct ColorTable
 end
 
 Base.show(io::IO, ::MIME"text/html", c::ColorTable) = print(io, generate_colorschemes_table(c.keys))
-

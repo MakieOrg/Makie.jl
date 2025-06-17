@@ -1,5 +1,4 @@
-
-function record_comparison(base_folder::String, backend::String; record_folder_name="recorded", tag=last_major_version())
+function record_comparison(base_folder::String, backend::String; record_folder_name = "recorded", tag = last_major_version())
     record_folder = joinpath(base_folder, record_folder_name)
     @info "Downloading reference images"
     reference_folder = download_refimages(tag)
@@ -42,7 +41,7 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
 end
 
 function test_comparison(scores; threshold)
-    @testset "Comparison scores" begin
+    return @testset "Comparison scores" begin
         for (image, score) in pairs(scores)
             @testset "$image" begin
                 @test score <= threshold
@@ -54,7 +53,7 @@ end
 function compare(
         relative_test_paths::Vector{String}, reference_dir::String, record_dir;
         o_refdir = reference_dir, missing_refimages = String[],
-        scores = Dict{String,Float64}()
+        scores = Dict{String, Float64}()
     )
 
     for relative_test_path in relative_test_paths

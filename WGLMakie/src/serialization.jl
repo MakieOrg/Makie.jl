@@ -23,11 +23,11 @@ end
 function serialize_three(array::Buffer)
     return serialize_three(flatten_buffer(array))
 end
-function serialize_three(array::AbstractVector{T}) where {T<:OffsetInteger}
+function serialize_three(array::AbstractVector{T}) where {T <: OffsetInteger}
     return serialize_three(map(GeometryBasics.raw, array))
 end
-function serialize_three(array::AbstractArray{T}) where {T<:Union{N0f8,UInt8,Int32,UInt32,Float32,Float16,Float64}}
-    vec(convert(Array, array))
+function serialize_three(array::AbstractArray{T}) where {T <: Union{N0f8, UInt8, Int32, UInt32, Float32, Float16, Float64}}
+    return vec(convert(Array, array))
 end
 
 three_format(::Type{<:Integer}) = "RedIntegerFormat"
@@ -35,10 +35,10 @@ three_format(::Type{<:Real}) = "RedFormat"
 three_format(::Type{<:RGB}) = "RGBFormat"
 three_format(::Type{<:RGBA}) = "RGBAFormat"
 
-three_format(::Type{<: Makie.VecTypes{1}}) = "RedFormat"
-three_format(::Type{<: Makie.VecTypes{2}}) = "RGFormat"
-three_format(::Type{<: Makie.VecTypes{3}}) = "RGBFormat"
-three_format(::Type{<: Makie.VecTypes{4}}) = "RGBAFormat"
+three_format(::Type{<:Makie.VecTypes{1}}) = "RedFormat"
+three_format(::Type{<:Makie.VecTypes{2}}) = "RGFormat"
+three_format(::Type{<:Makie.VecTypes{3}}) = "RGBFormat"
+three_format(::Type{<:Makie.VecTypes{4}}) = "RGBAFormat"
 
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
@@ -82,13 +82,13 @@ function serialize_three(fta::NoDataTextureAtlas)
         :minFilter => three_filter(:linear),
         :magFilter => three_filter(:linear),
         :wrapS => "RepeatWrapping",
-        :anisotropy => 16f0
+        :anisotropy => 16.0f0
     )
     tex[:wrapT] = "RepeatWrapping"
     return tex
 end
 
-function serialize_three(color::Sampler{T,N}) where {T,N}
+function serialize_three(color::Sampler{T, N}) where {T, N}
     tex = Dict(
         :type => "Sampler",
         :data => serialize_three(color.data),
@@ -111,7 +111,7 @@ function serialize_three(color::Sampler{T,N}) where {T,N}
 end
 
 function serialize_uniforms(dict::Dict)
-    result = Dict{Symbol,Any}()
+    result = Dict{Symbol, Any}()
     for (k, v) in dict
         # we don't send observables and instead use
         # uniform_updater(dict)
@@ -129,7 +129,7 @@ Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
 """
-function flatten_buffer(array::AbstractArray{<: Number})
+function flatten_buffer(array::AbstractArray{<:Number})
     return array
 end
 function flatten_buffer(array::AbstractArray{<:AbstractFloat})
@@ -139,7 +139,7 @@ function flatten_buffer(array::Buffer)
     return flatten_buffer(getfield(array, :data))
 end
 
-function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
+function flatten_buffer(array::AbstractArray{T}) where {T <: N0f8}
     return collect(reinterpret(UInt8, array))
 end
 
@@ -149,19 +149,23 @@ end
 
 const ALL_SHADERS = Dict{String, String}()
 function lasset(paths...)
-    get!(ALL_SHADERS, joinpath(paths...)) do
+    return get!(ALL_SHADERS, joinpath(paths...)) do
         read(joinpath(@__DIR__, "..", "assets", paths...), String)
     end
 end
 
 
-function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
-                                        ::Type{<:Makie.Quaternion})
+function ShaderAbstractions.type_string(
+        ::ShaderAbstractions.AbstractContext,
+        ::Type{<:Makie.Quaternion}
+    )
     return "vec4"
 end
 
-function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext,
-                                            t::Quaternion)
+function ShaderAbstractions.convert_uniform(
+        ::ShaderAbstractions.AbstractContext,
+        t::Quaternion
+    )
     return convert(Quaternion, t)
 end
 
@@ -179,26 +183,26 @@ end
 function serialize_scene(scene::Scene)
 
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene); ignore_equal_values=true)
+    pixel_area = lift(area -> Int32[minimum(area)..., widths(area)...], scene, viewport(scene); ignore_equal_values = true)
 
     cam_controls = cameracontrols(scene)
 
     cam3d_state = if cam_controls isa Camera3D
         fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
         dict = Dict((f => lift(x -> serialize_three(Float32.(x)), scene, getfield(cam_controls, f)) for f in fields))
-        dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution; ignore_equal_values=true)
+        dict[:resolution] = lift(res -> Int32[res...], scene, scene.camera.resolution; ignore_equal_values = true)
         dict
     else
         nothing
     end
 
-    children = map(child-> serialize_scene(child), scene.children)
+    children = map(child -> serialize_scene(child), scene.children)
 
 
     light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
     cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
-    ambient = Observable(serialize_three(RGBf(0,0,1)), ignore_equal_values = true)
-    light_color = Observable(serialize_three(RGBf(1,0,0)), ignore_equal_values = true)
+    ambient = Observable(serialize_three(RGBf(0, 0, 1)), ignore_equal_values = true)
+    light_color = Observable(serialize_three(RGBf(1, 0, 0)), ignore_equal_values = true)
 
     on(scene.compute.onchange, update = true) do _
         ambient[] = serialize_three(scene.compute[:ambient_color][])
@@ -210,8 +214,8 @@ function serialize_scene(scene::Scene)
 
     serialized = Dict(
         :viewport => pixel_area,
-        :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor; ignore_equal_values=true),
-        :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor; ignore_equal_values=true),
+        :backgroundcolor => lift(hexcolor, scene, scene.backgroundcolor; ignore_equal_values = true),
+        :backgroundcolor_alpha => lift(Colors.alpha, scene, scene.backgroundcolor; ignore_equal_values = true),
         :clearscene => scene.clear,
         :camera => serialize_camera(scene),
         :light_direction => light_dir,
@@ -227,7 +231,7 @@ function serialize_scene(scene::Scene)
     return serialized
 end
 
-function serialize_plots(scene::Scene, plots::Vector{Plot}, result=[])
+function serialize_plots(scene::Scene, plots::Vector{Plot}, result = [])
     for plot in plots
         # if no plots inserted, this truly is an atomic
         if Makie.is_atomic_plot(plot)
@@ -258,7 +262,7 @@ function serialize_camera(scene::Scene)
     last_eyepos = Base.RefValue(Vec3f(0))
     obs = Observable([Float32[], Float32[], Int32[], Float32[]])
 
-    onany(scene, cam.view, cam.projection, cam.resolution, cam.eyeposition; update=true) do view, proj, res, ep
+    onany(scene, cam.view, cam.projection, cam.resolution, cam.eyeposition; update = true) do view, proj, res, ep
         # eyeposition updates with viewmatrix, since an eyepos change will trigger
         # a view matrix change!
         if !(view ≈ last_view[] && proj ≈ last_proj[] && res ≈ last_res[] && ep ≈ last_eyepos[])

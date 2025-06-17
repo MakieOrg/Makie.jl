@@ -1,11 +1,10 @@
-
 @testset "Issues" begin
     @testset "#659 Volume errors if data is not a cube" begin
-        fig, ax, vplot = volume(1..8, 1..8, 1..10, rand(8, 8, 10))
+        fig, ax, vplot = volume(1 .. 8, 1 .. 8, 1 .. 10, rand(8, 8, 10))
         lims = Makie.data_limits(vplot)
         lo, hi = extrema(lims)
         @test all(lo .<= 1)
-        @test all(hi .>= (8,8,10))
+        @test all(hi .>= (8, 8, 10))
     end
 
     @testset "#3979 lossy matrix multiplication" begin
@@ -18,7 +17,7 @@
         @test !(M ≈ I)
         # this should not
         M = Makie.clip_to_space(a.scene.camera, :data) * Makie.space_to_clip(a.scene.camera, :data)
-        @test M ≈ I atol = 1e-4
+        @test M ≈ I atol = 1.0e-4
     end
 
     @testset "#4416 Merging attributes" begin
@@ -68,7 +67,7 @@
         end
 
         @testset "Poly" begin
-            poly1 = Makie.GeometryBasics.Polygon(Point2f[(0,0), (0, 1), (1, 1), (1, 0), (0, 0)])
+            poly1 = Makie.GeometryBasics.Polygon(Point2f[(0, 0), (0, 1), (1, 1), (1, 0), (0, 0)])
             multipoly1 = Makie.GeometryBasics.MultiPolygon([poly1, poly1])
 
             f, a, p1 = poly(poly1; alpha = 1)
