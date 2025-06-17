@@ -103,7 +103,7 @@ function poll_all_plots(scene)
     end
 end
 
-function start_polling_loop!(screen, session, scene)
+function start_polling_loop!(screen, scene)
     scene.isclosed = false
     return Makie.async_tracked() do isrunning
         while !Makie.isclosed(scene) && isrunning[]
@@ -136,7 +136,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             if initialized == true
                 put!(screen.plot_initialized, true)
                 mark_as_displayed!(screen, scene)
-                start_polling_loop!(screen, session, scene)
+                start_polling_loop!(screen, scene)
                 connect_post_init_events(screen, scene)
             else
                 # Will be an error from WGLMakie.js
@@ -346,18 +346,16 @@ end
 function Screen(scene::Scene; kw...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(kw))
     screen = Screen(scene, config)
-    display(screen, scene)
     return screen
 end
+
 function Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME)
     screen = Screen(scene, config)
-    display(screen, scene)
     return screen
 end
 
 function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
     screen = Screen(scene, config)
-    display(screen, scene)
     return screen
 end
 
