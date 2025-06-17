@@ -822,7 +822,7 @@ function closeall(; empty_shader = true, retries = 5)
     catch e
         if retries > 0
             DEBUG[] && @error "Errors occured during closeall(). Retrying..." exception = e
-            closeall(; empty_shader = empty_shader, retries = retries-1)
+            closeall(; empty_shader = empty_shader, retries = retries - 1)
         else
             rethrow(e)
         end
