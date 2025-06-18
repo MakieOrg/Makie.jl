@@ -59,7 +59,7 @@ end
 # basically a singleton for the textureatlas
 function get_cache_path(resolution::Int, pix_per_glyph::Int)
     path = abspath(
-        makie_cache_dir,
+        get_cache_path(),
         "$(SERIALIZATION_FORMAT_VERSION)_texture_atlas_$(resolution)_$(pix_per_glyph).bin"
     )
     if !ispath(dirname(path))
