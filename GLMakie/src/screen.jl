@@ -793,40 +793,31 @@ function Base.close(screen::Screen; reuse = true)
     return
 end
 
-function closeall(; empty_shader = true, retries = 5)
-    try
-        # Since we call closeall to reload any shader
-        # We empty the shader source cache here
-        if empty_shader
-            empty!(LOADED_SHADERS)
-            WARN_ON_LOAD[] = false
-        end
-
-        while !isempty(ALL_SCREENS)
-            screen = pop!(ALL_SCREENS)
-            destroy!(screen)
-        end
-
-        if !isempty(atlas_texture_cache)
-            DEBUG[] && @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
-            # Manual cleanup - font render callbacks are not yet cleaned up, delete
-            # them here. Contexts should all be dead so there is no point in free(tex)
-            for ((atlas, ctx), (tex, func)) in atlas_texture_cache
-                Makie.remove_font_render_callback!(atlas, func)
-            end
-            empty!(atlas_texture_cache)
-        end
-
-        empty!(SINGLETON_SCREEN)
-        empty!(SCREEN_REUSE_POOL)
-    catch e
-        if retries > 0
-            DEBUG[] && @error "Errors occured during closeall(). Retrying..." exception = e
-            closeall(; empty_shader = empty_shader, retries = retries - 1)
-        else
-            rethrow(e)
-        end
+function closeall(; empty_shader = true)
+    # Since we call closeall to reload any shader
+    # We empty the shader source cache here
+    if empty_shader
+        empty!(LOADED_SHADERS)
+        WARN_ON_LOAD[] = false
     end
+
+    while !isempty(ALL_SCREENS)
+        screen = pop!(ALL_SCREENS)
+        destroy!(screen)
+    end
+
+    if !isempty(atlas_texture_cache)
+        @warn "texture atlas cleanup incomplete: $atlas_texture_cache"
+        # Manual cleanup - font render callbacks are not yet cleaned up, delete
+        # them here. Contexts should all be dead so there is no point in free(tex)
+        for ((atlas, ctx), (tex, func)) in atlas_texture_cache
+            Makie.remove_font_render_callback!(atlas, func)
+        end
+        empty!(atlas_texture_cache)
+    end
+
+    empty!(SINGLETON_SCREEN)
+    empty!(SCREEN_REUSE_POOL)
     return
 end
 
@@ -975,10 +966,14 @@ function stop_renderloop!(screen::Screen; close_after_renderloop = screen.close_
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
     if Base.current_task() != screen.rendertask
-        wait(screen)  # handle isnothing(rendertask) in wait(screen)
-        # after done, we can set the task to nothing
-        screen.rendertask = nothing
+        try
+            wait(screen)  # isnothing(rendertask) handled in wait(screen)
+        catch e
+            @warn "Error while waiting for render task to finish. Cleanup will continue" excetion = (e, Base.catch_backtrace())
+        end
     end
+    # after done, we can set the task to nothing
+    screen.rendertask = nothing
     # else, we can't do that much in the rendertask itself
     screen.close_after_renderloop = c
     return
