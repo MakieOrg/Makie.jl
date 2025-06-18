@@ -47,7 +47,7 @@ end
 
 function with_context(f, context)
     if !ShaderAbstractions.context_alive(context)
-        error("Context ist not alive anymore!")
+        error("Context is not alive anymore!")
     end
     old_ctx = nothing
     lock(CONTEXT_LOCK1) do
