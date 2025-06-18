@@ -151,7 +151,7 @@ function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum = GL_TRIANGLES) wh
     # the draw call is later discarded based on on `mode`. See #4782
     N = length(vao.indices) * cardinality(vao.indices)
     N == 0 && return nothing
-    if GLMAKIE_DEBUG[]
+    if DEBUG[]
         data = gpu_data_no_unbind(vao.indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
@@ -181,7 +181,7 @@ renderinstanced(vao::GLVertexArray, a, primitive = GL_TRIANGLES) = renderinstanc
 function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive = GL_TRIANGLES) where {T <: Union{Integer, AbstractFace}}
     N = length(vao.indices) * cardinality(vao.indices)
     N * amount == 0 && return nothing
-    if GLMAKIE_DEBUG[]
+    if DEBUG[]
         data = gpu_data_no_unbind(vao.indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
