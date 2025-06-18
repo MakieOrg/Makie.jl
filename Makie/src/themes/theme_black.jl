@@ -3,6 +3,7 @@ function theme_black()
         backgroundcolor = :black,
         textcolor = :white,
         linecolor = :white,
+        palette = generate_default_palette(:black),
         Axis = (
             backgroundcolor = :transparent,
             bottomspinecolor = :white,
