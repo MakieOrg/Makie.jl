@@ -960,13 +960,17 @@ function stop_renderloop!(screen::Screen; close_after_renderloop = screen.close_
     c = screen.close_after_renderloop
     screen.close_after_renderloop = close_after_renderloop
     screen.stop_renderloop[] = true
+
     # stop_renderloop! may be called inside renderloop as part of close
     # in which case we should not wait for the task to finish (deadlock)
     if Base.current_task() != screen.rendertask
-        wait(screen)  # handle isnothing(rendertask) in wait(screen)
-        # after done, we can set the task to nothing
-        screen.rendertask = nothing
+        try
+            fetch(screen.rendertask)
+        catch e
+            @warn "Error while waiting for render task to finish" exception = (e, Base.catch_backtrace())
+        end
     end
+    screen.rendertask = nothing
     # else, we can't do that much in the rendertask itself
     screen.close_after_renderloop = c
     return
@@ -1007,7 +1011,8 @@ scalechangeobs(screen) = scalefactor -> scalechangeobs(screen, scalefactor)
 function vsynced_renderloop(screen)
     while isopen(screen) && !screen.stop_renderloop[]
         if screen.config.pause_renderloop
-            pollevents(screen, Makie.PausedRenderTick); sleep(0.1)
+            pollevents(screen, Makie.PausedRenderTick)
+            sleep(0.1)
             continue
         end
         pollevents(screen, Makie.RegularRenderTick) # GLFW poll
