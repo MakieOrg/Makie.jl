@@ -19,7 +19,7 @@ function generate_default_palette(backgroundcolor = :white)
     bgc = to_color(backgroundcolor)
     return Attributes(
         color = wong_colors(1),
-        patchcolor = map(c -> lerp(bgc, c, 0.8), wong_colors(1)),
+        patchcolor = map(c -> lerp(bgc, c, 0.8f0), wong_colors(1)),
         marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
         linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
         side = [:left, :right]
