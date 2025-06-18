@@ -634,3 +634,20 @@ function spawnat(f, tid)
     schedule(task)
     return task
 end
+
+# For precompilation we want a second resolve
+# Since that compiles a few more functions
+# TODO, make this unecessary by a better ComputeGraph implementation?
+second_resolve(fig::Figure) = second_resolve(Makie.get_scene(fig))
+second_resolve(fig) = second_resolve(fig.figure)
+function second_resolve(scene::Scene)
+    plots = Makie.collect_atomic_plots(scene)
+    for plot in plots
+        for (k, input) in plot.attributes.inputs
+            ComputePipeline.mark_dirty!(input)
+        end
+        if haskey(plot, :gl_renderobject)
+            plot.gl_renderobject[]
+        end
+    end
+end

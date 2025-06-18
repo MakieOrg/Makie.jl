@@ -439,6 +439,10 @@ function Base.setindex!(computed::Computed, value)
 end
 
 function Base.setindex!(input::Input, value)
+    if is_same(input.value, value)
+        # Skip if the value is the same as before
+        return value
+    end
     input.value = value
     mark_dirty!(input)
     update_observables!(input)

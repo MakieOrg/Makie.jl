@@ -5,11 +5,11 @@ macro compile(block)
         let
             figlike = $(esc(block))
             Makie.colorbuffer(figlike; px_per_unit = 1)
+            Makie.second_resolve(figlike)
             return nothing
         end
     end
 end
-
 
 let
     @setup_workload begin
