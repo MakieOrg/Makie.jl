@@ -151,7 +151,7 @@ end
     # Optimized forms
     poly!(ax, [Circle(Point2f(50 + 300), 50.0f0)], color = :gray, strokewidth = 10, strokecolor = :red)
     poly!(ax, [Circle(Point2f(50 + i, 50 + i), 10.0f0) for i in 1:100:400], color = :red)
-    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i in 1:100:400], strokewidth = 2, strokecolor = :green)
+    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i in 1:100:400], strokewidth = 2, strokecolor = :orange)
     linesegments!(
         ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i in 1:100:400], linewidth = 8, color = :purple
