@@ -55,11 +55,10 @@ mutable struct Screen <: Makie.MakieScreen
     config::ScreenConfig
     canvas::Union{Nothing, Bonito.HTMLElement}
     tick_clock::Makie.BudgetedTimer
+    lock::ReentrantLock
     function Screen(scene::Union{Nothing, Scene}, config::ScreenConfig)
         timer = Makie.BudgetedTimer(1.0 / 30.0)
-        screen = new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer)
-        finalizer(close, screen)
-        return screen
+        return new(Channel{Any}(1), nothing, scene, Set{String}(), config, nothing, timer, Base.ReentrantLock())
     end
 end
 
@@ -104,16 +103,19 @@ function poll_all_plots(scene)
     end
 end
 
-function start_polling_loop!(scene)
-    task = @async while !Makie.isclosed(scene)
-        try
-            poll_all_plots(scene)
-        catch e
-            @error "Error in polling loop" exception = (e, catch_backtrace())
+function start_polling_loop!(screen, scene)
+    scene.isclosed = false
+    return Makie.async_tracked() do isrunning
+        while !Makie.isclosed(scene) && isrunning[]
+            try
+                poll_all_plots(scene)
+            catch e
+                @error "Error in polling loop" exception = (e, catch_backtrace())
+            end
+            sleep(1 / 100)
         end
-        sleep(1 / 100)
+        close(screen; from_close = true)
     end
-    Base.errormonitor(task)
 end
 
 function render_with_init(screen::Screen, session::Session, scene::Scene)
@@ -134,7 +136,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             if initialized == true
                 put!(screen.plot_initialized, true)
                 mark_as_displayed!(screen, scene)
-                start_polling_loop!(scene)
+                start_polling_loop!(screen, scene)
                 connect_post_init_events(screen, scene)
             else
                 # Will be an error from WGLMakie.js
@@ -144,7 +146,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
         end
         on(session, session.on_close) do closed
             if closed == true
-                close(screen)
+                scene.events.window_open[] = false
             end
             return
         end
@@ -156,7 +158,8 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
 end
 
 function Bonito.jsrender(session::Session, scene::Scene)
-    screen = Screen(scene)
+    screen = Screen()
+    screen.scene = scene
     return render_with_init(screen, session, scene)
 end
 
@@ -254,10 +257,37 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T <: MIME}
     return T in Makie.WEB_MIMES
 end
 
-function Base.close(screen::Screen)
-    Makie.stop!(screen.tick_clock)
-    events(screen.scene).window_open[] = false
-    return
+
+function Base.close(screen::Screen; from_close = false)
+    return lock(screen.lock) do
+        if !screen.tick_clock.running && isnothing(screen.scene) && !isopen(screen.session)
+            # If the screen is already closed, we don't need to do anything
+            return
+        end
+        Makie.stop!(screen.tick_clock)
+        if !isnothing(screen.scene)
+            events(screen.scene).window_open[] = false
+            scene = screen.scene
+            delete!(screen, scene)
+            if !isnothing(screen.canvas)
+                # If called from session.on_close, we're already closing the screen
+                if isopen(screen.session) && !from_close
+                    evaljs_value(
+                        screen.session, js"""$(WGL).then(WGL => {
+                            const canvas = $(screen.canvas);
+                            const screen = canvas?.firstElementChild?.wglmakie_screen
+                            if (screen) {
+                                WGL.dispose_screen(screen)
+                            }
+                        })
+                        """
+                    )
+                end
+            end
+            Makie.delete_screen!(scene, screen)
+        end
+        return
+    end
 end
 
 function Base.size(screen::Screen)
@@ -315,10 +345,19 @@ end
 # TODO, create optimized screens, forward more options to JS/WebGL
 function Screen(scene::Scene; kw...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(kw))
-    return Screen(scene, config)
+    screen = Screen(scene, config)
+    return screen
 end
-Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
-Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
+
+function Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME)
+    screen = Screen(scene, config)
+    return screen
+end
+
+function Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat)
+    screen = Screen(scene, config)
+    return screen
+end
 
 function Base.empty!(screen::Screen)
     screen.scene = nothing
@@ -436,25 +475,6 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(plot::Plot))
     return
 end
 
-function delete_js_objects!(
-        screen::Screen, plot_uuids::Vector{String},
-        session::Union{Nothing, Session}
-    )
-    main_session = get_screen_session(screen)
-    isnothing(main_session) && return # if no session we haven't displayed and dont need to delete
-    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
-    root = Bonito.root_session(main_session)
-    isready(root) || return nothing
-
-    Bonito.evaljs(
-        root, js"""
-        $(WGL).then(WGL=> {
-            WGL.delete_plots($(plot_uuids));
-        })"""
-    )
-    !isnothing(session) && close(session)
-    return
-end
 
 function all_plots_scenes(scene::Scene; scene_uuids = String[], plots = Plot[])
     push!(scene_uuids, js_uuid(scene))
@@ -465,7 +485,48 @@ function all_plots_scenes(scene::Scene; scene_uuids = String[], plots = Plot[])
     return scene_uuids, plots
 end
 
-function delete_js_objects!(screen::Screen, scene::Scene)
+function delete_wgl_robj!(session::Union{Nothing, Session}, plot::Plot)
+    # Delete the renderobject, so that we can free the memory
+    if haskey(plot.attributes, :wgl_renderobject)
+        delete!(plot.attributes, :wgl_renderobject, force = true)
+    end
+    if haskey(plot.attributes, :wgl_update_obs)
+        obs = plot.attributes[:wgl_update_obs][]
+        delete!(plot.attributes, :wgl_update_obs)
+        if !isnothing(session)
+            root = Bonito.root_session(session)
+            Bonito.delete_cached!(root, root, obs.id)
+        end
+    end
+    return
+end
+
+
+# Can be called from finalizer!
+function Base.delete!(screen::Screen, ::Scene, plot::Plot)
+    # # only queue atomics to actually delete on js
+    atomics = Makie.collect_atomic_plots(plot)
+    session = get_screen_session(screen)
+    for plot in atomics
+        delete_wgl_robj!(session, plot)
+    end
+    plot_uuids = map(js_uuid, atomics)
+    isnothing(session) && return # if no session we haven't displayed and dont need to delete
+    # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
+    root = Bonito.root_session(session)
+    isready(root) || return nothing
+    Bonito.evaljs(
+        root, js"""
+        $(WGL).then(WGL=> {
+            WGL.delete_plots($(plot_uuids));
+        })"""
+    )
+    return
+end
+
+
+function Base.delete!(screen::Screen, scene::Scene)
+    delete!(screen.displayed_scenes, js_uuid(scene))
     session = get_screen_session(screen)
     isnothing(session) && return # if no session we haven't displayed and dont need to delete
     # Eval in root session, since main_session might be gone (e.g. getting closed just shortly before freeing the plots)
@@ -473,108 +534,13 @@ function delete_js_objects!(screen::Screen, scene::Scene)
     isready(root) || return nothing
     scene_uuids, plots = all_plots_scenes(scene)
     for plot in plots
-        delete!(plot.attributes, :wgl_renderobject)
-        obs = plot.attributes[:wgl_update_obs][]
-        delete!(plot.attributes, :wgl_update_obs)
-        Bonito.delete_cached!(root, root, obs.id)
+        delete_wgl_robj!(root, plot)
     end
-
     Bonito.evaljs(
         root, js"""
         $(WGL).then(WGL=> {
             WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
         })"""
     )
-    return
-end
-
-struct LockfreeQueue{T, F}
-    # Double buffering to be lock free
-    queue1::Vector{T}
-    queue2::Vector{T}
-    current_queue::Threads.Atomic{Int}
-    task::Base.RefValue{Union{Nothing, Task}}
-    execute_job::F
-end
-
-function LockfreeQueue{T}(execute_job::F) where {T, F}
-    return LockfreeQueue{T, F}(
-        T[],
-        T[],
-        Threads.Atomic{Int}(1),
-        Base.RefValue{Union{Nothing, Task}}(nothing),
-        execute_job
-    )
-end
-
-function run_jobs!(queue::LockfreeQueue)
-    # already running:
-    !isnothing(queue.task[]) && !istaskdone(queue.task[]) && return
-
-    return queue.task[] = @async while true
-        try
-            q = nothing
-            if !isempty(queue.queue1)
-                queue.current_queue[] = 1
-                q = queue.queue1
-            elseif !isempty(queue.queue2)
-                queue.current_queue[] = 2
-                q = queue.queue2
-            end
-            if !isnothing(q)
-                while !isempty(q)
-                    item = pop!(q)
-                    Base.invokelatest(queue.execute_job, item...)
-                end
-            end
-            sleep(0.1)
-        catch e
-            if !(e isa EOFError)
-                @warn "error while running JS objects" exception = (e, Base.catch_backtrace())
-            end
-        end
-    end
-end
-
-function Base.push!(queue::LockfreeQueue, item)
-    run_jobs!(queue)
-    # Push to unused queue:
-    return if queue.current_queue[] == 1
-        push!(queue.queue2, item)
-    else
-        push!(queue.queue1, item)
-    end
-end
-
-const DISABLE_JS_FINALZING = Base.RefValue(false)
-const DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Vector{String}, Union{Session, Nothing}}}(delete_js_objects!)
-const SCENE_DELETE_QUEUE = LockfreeQueue{Tuple{Screen, Scene}}(delete_js_objects!)
-
-function Base.delete!(screen::Screen, ::Scene, plot::Plot)
-    # # only queue atomics to actually delete on js
-    atomics = Makie.collect_atomic_plots(plot)
-    session = screen.session
-    for plot in atomics
-        if haskey(plot.attributes.outputs, :wgl_update_obs)
-            # This plot was never rendered, so we don't need to delete it
-            # obs = plot.attributes.outputs[:wgl_update_obs].value[]
-            delete!(plot.attributes, :wgl_update_obs; force = true, recursive = true)
-            # if !isnothing(session)
-            #     Bonito.delete_cached!(session, session, obs.id)
-            # end
-        end
-    end
-    if !DISABLE_JS_FINALZING[]
-        plot_uuids = map(js_uuid, atomics)
-        push!(DELETE_QUEUE, (screen, plot_uuids, nothing))
-    end
-    return
-end
-
-function Base.delete!(screen::Screen, scene::Scene)
-    if !DISABLE_JS_FINALZING[]
-        push!(SCENE_DELETE_QUEUE, (screen, scene))
-    end
-    delete!(screen.displayed_scenes, js_uuid(scene))
     return
 end
