@@ -18,7 +18,7 @@
 
 [![JOSS][joss-img]][joss-url]
 
-[![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://julialang.social/@makie)
+[![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://mastodon.social/@makieorg)
 
 [![chat][discord-img]][discord-url]
 
