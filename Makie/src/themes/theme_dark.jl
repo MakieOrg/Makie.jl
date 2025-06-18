@@ -3,6 +3,7 @@ function theme_dark()
         backgroundcolor = :gray10,
         textcolor = :gray45,
         linecolor = :gray60,
+        palette = generate_default_palette(:gray10),
         Axis = (
             backgroundcolor = :transparent,
             xgridcolor = (:white, 0.09),
