@@ -1,3 +1,5 @@
+ENV["JULIA_DEBUG"] = "Documenter"
+
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")

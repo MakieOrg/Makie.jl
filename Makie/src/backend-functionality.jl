@@ -90,7 +90,7 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
                 p4d = model * p4d
                 ys[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 2)
             end
-            m = isnothing(cached) || cached[3] != I ? Mat4f(I) : nothing
+            m = Mat4f(I)
             return (xs, ys, m)
         end
     end

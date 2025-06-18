@@ -12,6 +12,7 @@ macro compile(block)
             app = App(() -> DOM.div(figlike))
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
+            Makie.second_resolve(figlike, :wgl_renderobject)
             close(session)
             return nothing
         end
@@ -20,7 +21,6 @@ end
 
 let
     @compile_workload begin
-        DISABLE_JS_FINALZING[] = true # to not start cleanup task
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")

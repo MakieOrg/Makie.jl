@@ -127,7 +127,6 @@ function TypedEdge(edge::ComputeEdge)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
-
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
@@ -265,7 +264,7 @@ end
 
 function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entires"
+    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
     return onany(f, obsies...; kwargs...)
 end
 function Observables.map!(f, target::Observable, args::Computed...; kwargs...)
@@ -440,6 +439,10 @@ function Base.setindex!(computed::Computed, value)
 end
 
 function Base.setindex!(input::Input, value)
+    if is_same(input.value, value)
+        # Skip if the value is the same as before
+        return value
+    end
     input.value = value
     mark_dirty!(input)
     update_observables!(input)
@@ -569,7 +572,7 @@ function is_same(a::T, b::T) where {T}
         return a === b
     else
         # For mutable types, we can only compare them if they're not pointing to the same  object
-        # If they are the same, we have to give up since we cant test if they got mutated inbetween
+        # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
         same_object = a === b
         return same_object ? false : a == b
@@ -579,7 +582,7 @@ end
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function resolve!(edge::TypedEdge)
-    return if any(edge.inputs_dirty) # only call if inputs changed
+    if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
         names = ntuple(length(vals)) do i
@@ -598,6 +601,7 @@ function resolve!(edge::TypedEdge)
             error("Needs to return a Tuple with one element per output, or nothing")
         end
     end
+    return
 end
 
 function resolve!(computed::Computed)
@@ -938,7 +942,7 @@ struct MapFunctionWrapper{FT} <: Function
 end
 MapFunctionWrapper(f) = MapFunctionWrapper(f, true)
 
-function (x::MapFunctionWrapper)(inputs, changed, cached)
+function (x::MapFunctionWrapper)(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
     return x.pack ? (result,) : result
 end
@@ -1007,9 +1011,11 @@ If `recursive = true` all child nodes of the selected node are deleted. If
 If either exists without the respective option being true an error will be thrown.
 """
 function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
-    haskey(attr.outputs, key) || throw(KeyError(key))
-    _delete!(attr, attr.outputs[key], force, recursive)
-    return attr
+    return lock(attr.lock) do
+        haskey(attr.outputs, key) || throw(KeyError(key))
+        _delete!(attr, attr.outputs[key], force, recursive)
+        return attr
+    end
 end
 
 function _delete!(attr::ComputeGraph, node::Computed, force::Bool, recursive::Bool)
