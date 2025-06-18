@@ -231,8 +231,8 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
 
     # CairoMatrix somehow has a bug if the precision is too high
     # Where in rare cases a glyph becomes suddenly really large
-    xdiff = Float32.(xproj - proj_pos)
-    ydiff = Float32.(yproj - proj_pos)
+    xdiff = round.(xproj - proj_pos, digits=6)
+    ydiff = round.(yproj - proj_pos, digits=6)
 
     mat = Cairo.CairoMatrix(
         xdiff[1], xdiff[2],
