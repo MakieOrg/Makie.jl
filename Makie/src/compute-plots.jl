@@ -729,23 +729,19 @@ Base.notify(computed::ComputePipeline.Computed) = computed
 
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
-    return register_computation!(
-        attr,
-        [attribute, :positions],
-        [output_name],
-    ) do (vec, positions), changed, last
+    return map!(attr, [attribute, :positions], output_name) do vec, positions
         if !(vec isa AbstractVector)
-            return (vec,)
+            return vec
         end
         NP = length(positions)
         NC = length(vec)
-        NP == NC && return (vec,)
+        NP == NC && return vec
         if NP ÷ 2 == NC
             output = [vec[div(i + 1, 2)] for i in 1:NP]
-            return (output,)
+            return output
         end
         error("Color vector length $(NC) does not match position length $(NP)")
-        return (vec,)
+        return vec
     end
 end
 

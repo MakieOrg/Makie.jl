@@ -232,10 +232,7 @@ function add_light_computation!(graph, scene, lights)
     add_input!(graph, :shading, get(scene.theme, :shading, automatic))
     graph[:shading].value = RefValue{Any}(nothing) # allow shading to switch between automatic and ShadingAlgorithm
 
-    register_computation!(
-        graph, [:lights],
-        [:dirlight_color, :dirlight_direction, :dirlight_cam_relative]
-    ) do (lights,), changed, cached
+    map!(graph, :lights, [:dirlight_color, :dirlight_direction, :dirlight_cam_relative]) do lights
         local idx
         idx = findfirst(light -> light isa DirectionalLight, lights)
         if idx === nothing

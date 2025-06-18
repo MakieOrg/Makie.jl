@@ -30,9 +30,9 @@ function register_voxel_conversions!(attr)
         return (1:size(chunk, 1), 1:size(chunk, 2), 1:size(chunk, 3))
     end
 
-    register_computation!(attr, [:chunk, :updated_indices, :colorrange, :is_air], [:value_limits]) do (chunk, (is, js, ks), colorrange, is_air), changed, cached
-        colorrange !== automatic && return (colorrange,)
-        eltype(chunk) <: native_types && return ((1, 255),)
+    map!(attr, [:chunk, :updated_indices, :colorrange, :is_air], :value_limits) do chunk, (is, js, ks), colorrange, is_air
+        colorrange !== automatic && return colorrange
+        eltype(chunk) <: native_types && return (1, 255)
 
         mini, maxi = (Inf, -Inf)
         for k in ks, j in js, i in is
@@ -44,7 +44,7 @@ function register_voxel_conversions!(attr)
         if !(isfinite(mini) && isfinite(maxi) && isa(mini, Real))
             throw(ArgumentError("Voxel Chunk contains invalid data, resulting in invalid limits ($mini, $maxi)."))
         end
-        return ((mini, maxi),)
+        return (mini, maxi)
     end
 
     return register_computation!(
