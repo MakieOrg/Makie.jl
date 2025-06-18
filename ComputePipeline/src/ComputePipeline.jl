@@ -127,9 +127,7 @@ function TypedEdge(edge::ComputeEdge)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
-    names = ntuple(i -> edge.outputs[i].name, length(outputs))
-    named_outputs = NamedTuple{names}(outputs)
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, named_outputs, edge.outputs)
+    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
 
@@ -583,7 +581,11 @@ function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        result = edge.callback(map(getindex, edge.inputs), dirty, vals)
+        names = ntuple(length(vals)) do i
+            edge.output_nodes[i].name
+        end
+        last = NamedTuple{names}(vals)
+        result = edge.callback(map(getindex, edge.inputs), dirty, last)
         if result isa Tuple
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
