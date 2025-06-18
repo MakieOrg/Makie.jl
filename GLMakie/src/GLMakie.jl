@@ -6,6 +6,8 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_m
     @eval Base.Experimental.@max_methods 1
 end
 
+const DEBUG = Ref(false)
+
 using ModernGL, FixedPointNumbers, Colors, GeometryBasics
 using Makie, FileIO
 
