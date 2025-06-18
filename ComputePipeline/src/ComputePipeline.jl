@@ -1,5 +1,19 @@
 module ComputePipeline
 
+using Preferences
+
+const ENABLE_COMPUTE_CHECKS = @load_preference("ENABLE_COMPUTE_CHECKS", false)
+
+enable_debugging!() = set_debug!(true)
+disable_debugging!() = set_debug!(false)
+function set_debug!(value::Bool)
+    if value != ENABLE_COMPUTE_CHECKS
+        @set_preferences!("ENABLE_COMPUTE_CHECKS" => value)
+        @info "Changing the debug mode requires restarting Julia to take effect!"
+    end
+    return
+end
+
 using Observables
 
 using Base: RefValue
@@ -885,8 +899,6 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
     # edge already exists so we can
     return
 end
-
-const ENABLE_COMPUTE_CHECKS = get(ENV, "ENABLE_COMPUTE_CHECKS", "false") == "true"
 
 macro if_enabled(expr)
     if ENABLE_COMPUTE_CHECKS
