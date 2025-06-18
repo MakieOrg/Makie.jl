@@ -976,3 +976,19 @@ function register_view_normalmatrix!(attr, modelname = :model_f32c)
         return nm
     end
 end
+
+# For precompilation we want a second resolve
+# Since that compiles a few more functions
+# TODO, make this unecessary by a better ComputeGraph implementation?
+second_resolve(fig::Figure, resolve_symbol) = second_resolve(Makie.get_scene(fig), resolve_symbol)
+second_resolve(fig, resolve_symbol) = second_resolve(fig.figure, resolve_symbol)
+function second_resolve(scene::Scene, resolve_symbol)
+    return for_each_atomic_plot(scene) do plot
+        for (k, input) in plot.attributes.inputs
+            ComputePipeline.mark_dirty!(input)
+        end
+        if haskey(plot, resolve_symbol)
+            plot[resolve_symbol][]
+        end
+    end
+end

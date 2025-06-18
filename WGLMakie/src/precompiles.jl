@@ -12,6 +12,7 @@ macro compile(block)
             app = App(() -> DOM.div(figlike))
             dom = Bonito.session_dom(session, app)
             show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
+            Makie.second_resolve(figlike, :wgl_renderobject)
             close(session)
             return nothing
         end

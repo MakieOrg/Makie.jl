@@ -92,8 +92,10 @@ end
 
 function plot_updates(args, changed)
     new_values = []
+    # we currently dont handle update of these in JS
+    disallowed = (:space, :markerspace)
     for (name, value) in pairs(args)
-        if changed[name]
+        if changed[name] && !isnothing(value) && !(name in disallowed)
             _val = if value isa Sampler
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
