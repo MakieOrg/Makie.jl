@@ -127,8 +127,9 @@ function TypedEdge(edge::ComputeEdge)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
-
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
+    names = ntuple(i -> edge.outputs[i].name, length(outputs))
+    named_outputs = NamedTuple{names}(outputs)
+    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, named_outputs, edge.outputs)
 end
 
 
@@ -579,14 +580,10 @@ end
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
 function resolve!(edge::TypedEdge)
-    return if any(edge.inputs_dirty) # only call if inputs changed
+    if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
-            edge.output_nodes[i].name
-        end
-        last = NamedTuple{names}(vals)
-        result = edge.callback(map(getindex, edge.inputs), dirty, last)
+        result = edge.callback(map(getindex, edge.inputs), dirty, vals)
         if result isa Tuple
             if length(result) != length(edge.outputs)
                 error("Did not return correct length: $(result), $(edge.callback)")
@@ -598,6 +595,7 @@ function resolve!(edge::TypedEdge)
             error("Needs to return a Tuple with one element per output, or nothing")
         end
     end
+    return
 end
 
 function resolve!(computed::Computed)
@@ -938,7 +936,7 @@ struct MapFunctionWrapper{FT} <: Function
 end
 MapFunctionWrapper(f) = MapFunctionWrapper(f, true)
 
-function (x::MapFunctionWrapper)(inputs, changed, cached)
+function (x::MapFunctionWrapper)(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
     return x.pack ? (result,) : result
 end
