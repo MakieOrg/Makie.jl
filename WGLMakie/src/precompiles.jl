@@ -20,7 +20,6 @@ end
 
 let
     @compile_workload begin
-        DISABLE_JS_FINALZING[] = true # to not start cleanup task
         WGLMakie.activate!()
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")

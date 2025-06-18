@@ -48,7 +48,7 @@ export function execute_in_order(order, f) {
     orderedExecutor.insert(f, order);
 }
 
-function dispose_screen(screen) {
+export function dispose_screen(screen) {
     if (Object.keys(screen).length === 0) {
         return;
     }
@@ -525,6 +525,8 @@ function create_scene(
         comm,
         texture_atlas: undefined,
     };
+    canvas.wglmakie_screen = screen;
+
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
 
@@ -850,6 +852,7 @@ window.WGL = {
     find_scene,
     scene_cache,
     plot_cache,
+    dispose_screen,
     delete_scenes,
     create_scene,
     events2unitless,

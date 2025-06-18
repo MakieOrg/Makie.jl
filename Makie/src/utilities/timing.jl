@@ -1,3 +1,56 @@
+struct TrackedTask
+    isrunning::Threads.Atomic{Bool}
+    task::Task
+end
+
+Base.istaskdone(t::TrackedTask) = !t.isrunning[] || istaskdone(t.task)
+const TRACKED_TASKS = TrackedTask[]
+const TRACKED_TASKS_LOCK = Base.ReentrantLock()
+const HAS_ATEXIT = Base.RefValue(false)
+
+Base.wait(t::TrackedTask) = wait(t.task)
+
+function Base.close(t::TrackedTask)
+    t.isrunning[] = false
+    yield()
+    istaskdone(t.task) && return
+    wait(t.task)
+    return
+end
+
+function cleanup_tasks()
+    for ttask in TRACKED_TASKS
+        close(ttask)
+    end
+    empty!(TRACKED_TASKS)
+    return
+end
+
+function async_tracked(f)
+    isrunning = Threads.Atomic{Bool}(true)
+    task = @async begin
+        try
+            f(isrunning)
+        finally
+            @lock TRACKED_TASKS_LOCK begin
+                # Remove the task from the tracked tasks
+                isrunning[] = false
+                filter!(!istaskdone, TRACKED_TASKS)
+            end
+        end
+    end
+    ttask = TrackedTask(isrunning, task)
+
+    @lock TRACKED_TASKS_LOCK push!(TRACKED_TASKS, ttask)
+
+    if HAS_ATEXIT[]
+        atexit(cleanup_tasks)
+        HAS_ATEXIT[] = true
+    end
+    return ttask
+end
+
+
 mutable struct BudgetedTimer
     callback::Any
 
@@ -7,7 +60,7 @@ mutable struct BudgetedTimer
     last_time::UInt64
 
     running::Bool
-    task::Union{Nothing, Task}
+    task::Union{Nothing, TrackedTask}
 
     function BudgetedTimer(callback, delta_time::Float64, running::Bool, task::Union{Nothing, Task}, min_sleep = 0.015)
         return new(callback, delta_time, min_sleep, 0.0, time_ns(), running, task)
@@ -35,9 +88,11 @@ end
 function BudgetedTimer(callback, delta_time::AbstractFloat, start = true; min_sleep = 0.015)
     timer = BudgetedTimer(callback, delta_time, true, nothing, min_sleep)
     if start
-        timer.task = @async while timer.running
-            timer.callback(timer)
-            sleep(timer)
+        timer.task = async_tracked() do isrunning
+            while timer.running && isrunning[]
+                timer.callback(timer)
+                sleep(timer)
+            end
         end
     end
     return timer
@@ -48,9 +103,11 @@ function start!(timer::BudgetedTimer)
     timer.last_time = time_ns()
     timer.running = true
     timer.callback(timer) # error check
-    timer.task = @async while timer.running
-        sleep(timer)
-        timer.callback(timer)
+    timer.task = async_tracked() do isrunning
+        while timer.running && isrunning[]
+            sleep(timer)
+            timer.callback(timer)
+        end
     end
     return
 end

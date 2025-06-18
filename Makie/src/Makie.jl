@@ -362,7 +362,16 @@ function logo()
 end
 
 # populated by __init__()
-makie_cache_dir = ""
+const makie_cache_dir = Ref{String}("")
+
+function get_cache_path()
+    if isempty(makie_cache_dir[])
+        # If the cache dir is not set, we use a default location
+        # This is used by the precompilation cache and other things
+        makie_cache_dir[] = @get_scratch!("makie")
+    end
+    return makie_cache_dir[]
+end
 
 function __init__()
     # Make GridLayoutBase default row and colgaps themeable when using Makie
@@ -381,8 +390,7 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
-
-    return global makie_cache_dir = @get_scratch!("makie")
+    return
 end
 
 include("figures.jl")
