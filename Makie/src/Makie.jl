@@ -138,13 +138,6 @@ include("interfaces.jl")
 include("compute-plots.jl")
 include("units.jl")
 include("shorthands.jl")
-include("theming.jl")
-include("themes/theme_ggplot2.jl")
-include("themes/theme_black.jl")
-include("themes/theme_minimal.jl")
-include("themes/theme_light.jl")
-include("themes/theme_dark.jl")
-include("themes/theme_latexfonts.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
@@ -194,6 +187,16 @@ include("basic_recipes/makiecore_examples/lines.jl")
 
 # conversions: need to be after plot recipes
 include("conversions.jl")
+
+# uses to_color() from conversions.jl
+include("theming.jl")
+include("themes/theme_ggplot2.jl")
+include("themes/theme_black.jl")
+include("themes/theme_minimal.jl")
+include("themes/theme_light.jl")
+include("themes/theme_dark.jl")
+include("themes/theme_latexfonts.jl")
+
 
 # layouting of plots
 include("layouting/transformation.jl")
