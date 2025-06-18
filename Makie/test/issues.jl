@@ -75,12 +75,11 @@
             p3 = poly!(a, multipoly1)
 
             # convert to RGBf here, because poly decreases alpha by 0.2
-            palette_colors = Makie.RGBf.(a.scene.theme.palette.color[])
+            palette_colors = a.scene.theme.palette.patchcolor[]
 
-            @test Makie.RGBf(p1.color[]) == palette_colors[1]
-            @test Makie.RGBf(p2.color[]) == palette_colors[2]
-            @test Makie.RGBf(p3.color[]) == palette_colors[3]
-
+            @test p1.color[] == palette_colors[1]
+            @test p2.color[] == palette_colors[2]
+            @test p3.color[] == palette_colors[3]
         end
     end
 end
