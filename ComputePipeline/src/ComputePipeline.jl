@@ -265,7 +265,7 @@ end
 
 function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entires"
+    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
     return onany(f, obsies...; kwargs...)
 end
 function Observables.map!(f, target::Observable, args::Computed...; kwargs...)
@@ -569,7 +569,7 @@ function is_same(a::T, b::T) where {T}
         return a === b
     else
         # For mutable types, we can only compare them if they're not pointing to the same  object
-        # If they are the same, we have to give up since we cant test if they got mutated inbetween
+        # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
         same_object = a === b
         return same_object ? false : a == b
