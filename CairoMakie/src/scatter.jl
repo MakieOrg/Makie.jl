@@ -240,7 +240,7 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
         0, 0,
     )
 
-    return proj_pos, mat, Mat2f(xdiff..., ydiff...)
+    return Vec2f(proj_pos), mat, Mat2f(xdiff..., ydiff...)
 end
 
 function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bool)
