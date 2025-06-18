@@ -34,7 +34,7 @@ function register_voxel_conversions!(attr)
         colorrange !== automatic && return (colorrange,)
         eltype(chunk) <: native_types && return ((1, 255),)
 
-        mini, maxi = isnothing(cached) ? (Inf, -Inf) : cached[1]
+        mini, maxi = (Inf, -Inf)
         for k in ks, j in js, i in is
             elem = chunk[i, j, k]
             is_air(elem) && continue

@@ -238,7 +238,7 @@ function add_light_computation!(graph, scene, lights)
     ) do (lights,), changed, cached
         local idx
         idx = findfirst(light -> light isa DirectionalLight, lights)
-        if idx === nothing && cached === nothing
+        if idx === nothing
             return (RGBf(0, 0, 0), Vec3f(0), true)
         else
             light = lights[idx]::DirectionalLight
@@ -247,7 +247,6 @@ function add_light_computation!(graph, scene, lights)
             cam_relative = light.camera_relative
             return (color, dir, cam_relative)
         end
-        return nothing
     end
 
     # Split this to avoid updating WGLMakie

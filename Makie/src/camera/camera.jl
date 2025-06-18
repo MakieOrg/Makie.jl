@@ -313,11 +313,8 @@ function _has_camera_changed(changed, space, markerspace = space)
 end
 
 function camera_trigger(inputs, changed, cached)
-    isnothing(cached) && return (true,)
     view, projection, viewport, spaces... = inputs
-    has_changed = _has_camera_changed(changed, spaces...)
-    # Same values get ignored
-    return has_changed ? (!cached[1],) : nothing
+    return (_has_camera_changed(changed, spaces...),)
 end
 
 struct CameraMatrixCallback <: Function

@@ -735,7 +735,6 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
         [output_name],
     ) do (vec, positions), changed, last
         if !(vec isa AbstractVector)
-            !isnothing(last) && vec == last[1] && return nothing
             return (vec,)
         end
         NP = length(positions)
