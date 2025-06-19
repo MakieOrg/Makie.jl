@@ -5,9 +5,9 @@ function set_font_matrix(ctx, matrix)
 end
 
 function get_font_matrix(ctx)
-    matrix = Cairo.CairoMatrix()
-    ccall((:cairo_get_font_matrix, Cairo.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx.ptr, Ref(matrix))
-    return matrix
+    matrix = Ref(Cairo.CairoMatrix())
+    ccall((:cairo_get_font_matrix, Cairo.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx.ptr, matrix)
+    return matrix[]
 end
 
 function pattern_set_matrix(ctx, matrix)
@@ -15,9 +15,9 @@ function pattern_set_matrix(ctx, matrix)
 end
 
 function pattern_get_matrix(ctx)
-    matrix = Cairo.CairoMatrix()
-    ccall((:cairo_pattern_get_matrix, Cairo.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx.ptr, Ref(matrix))
-    return matrix
+    matrix = Ref(Cairo.CairoMatrix())
+    ccall((:cairo_pattern_get_matrix, Cairo.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx.ptr, matrix)
+    return matrix[]
 end
 
 function cairo_font_face_destroy(font_face)
