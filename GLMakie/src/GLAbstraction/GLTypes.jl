@@ -30,7 +30,7 @@ mutable struct Shader
 
     function Shader(context, name, source, typ, id)
         obj = new(Symbol(name), source, typ, id, context)
-        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+        DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
 end
@@ -66,7 +66,7 @@ mutable struct GLProgram
     context::GLContext
     function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol, GLenum}, uniformloc::Dict{Symbol, Tuple}, context = first(shader).context)
         obj = new(id, shader, nametype, uniformloc, context)
-        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+        DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
 end
@@ -254,7 +254,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         indexes = len
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+    DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 using ShaderAbstractions: Buffer
@@ -280,7 +280,7 @@ function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractV
     glBindVertexArray(0)
     indices = indexbuffer(triangles)
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indices)
-    GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+    DEBUG[] && finalizer(verify_free, obj)
     return obj
 end
 
@@ -415,7 +415,7 @@ function RenderObject(
     require_context(context)
 
     # Validate context of things in RenderObject
-    if GLMAKIE_DEBUG[]
+    if DEBUG[]
         require_context(program.context, context)
         require_context(vertexarray.context, context)
         for v in values(data)

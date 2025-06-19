@@ -9,7 +9,7 @@ using Random
 using ReferenceTests
 
 # verify OpenGL object cleanup
-GLMakie.GLAbstraction.GLMAKIE_DEBUG[] = true
+GLMakie.DEBUG[] = true
 
 deref(x) = x
 deref(x::Base.RefValue) = x[]

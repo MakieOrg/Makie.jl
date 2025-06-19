@@ -15,13 +15,18 @@ function wong_colors(alpha = 1.0)
     return RGBAf.(colors, alpha)
 end
 
-const DEFAULT_PALETTES = Attributes(
-    color = wong_colors(1),
-    patchcolor = wong_colors(0.8),
-    marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
-    linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
-    side = [:left, :right]
-)
+function generate_default_palette(backgroundcolor = :white)
+    bgc = to_color(backgroundcolor)
+    return Attributes(
+        color = wong_colors(1),
+        patchcolor = map(c -> lerp(bgc, c, 0.8f0), wong_colors(1)),
+        marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
+        linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
+        side = [:left, :right]
+    )
+end
+
+const DEFAULT_PALETTES = generate_default_palette()
 
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
@@ -52,7 +57,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     linecap = :butt,
     joinstyle = :miter,
     miter_limit = pi / 3,
-    patchcolor = RGBAf(0, 0, 0, 0.6),
+    patchcolor = RGBf(0.4, 0.4, 0.4),
     patchstrokecolor = :black,
     patchstrokewidth = 0,
     size = (600, 450), # 4/3 aspect ratio

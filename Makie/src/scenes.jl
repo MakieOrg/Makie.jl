@@ -140,7 +140,13 @@ mutable struct Scene <: AbstractScene
                 scene.isclosed = true
             end
         end
-        finalizer(free, scene)
+        # Only finalize the root scene!
+        # Children can not go out of scope without their parent being finalized
+        if isnothing(parent)
+            finalizer(scene) do s
+                @async free(s)
+            end
+        end
         return scene
     end
 end
@@ -435,16 +441,10 @@ function getindex(scene::Scene, ::Type{OldAxis})
     return nothing
 end
 
-function delete_scene!(scene::Scene)
-    @warn "deprecated in favor of empty!(scene)"
-    empty!(scene)
-    return nothing
-end
-
 function free(scene::Scene)
     # Errors should be handled at a lower level because otherwise
     # some of the cleanup will be incomplete.
-    empty!(scene; free = true)
+    empty!(scene; reset_theme = false)
     for field in [:backgroundcolor, :viewport, :visible]
         Observables.clear(getfield(scene, field))
     end
@@ -456,8 +456,7 @@ function free(scene::Scene)
     return
 end
 
-# Note: called from scene finalizer if free = true
-function Base.empty!(scene::Scene; free = false)
+function Base.empty!(scene::Scene; reset_theme = true)
     foreach(empty!, copy(scene.children))
     # clear plots of this scene
     for plot in copy(scene.plots)
@@ -472,8 +471,11 @@ function Base.empty!(scene::Scene; free = false)
     empty!(scene.children)
     empty!(scene.plots)
     empty!(scene.theme)
+
     # conditional, since in free we dont want this!
-    free || merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+    if reset_theme
+        merge_without_obs!(scene.theme, CURRENT_DEFAULT_THEME)
+    end
 
     disconnect!(scene.camera)
     scene.camera_controls = EmptyCamera()

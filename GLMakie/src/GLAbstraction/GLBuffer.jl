@@ -21,7 +21,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
             id, (buff_length,), buffertype, usage, context,
             Observables.ObserverFunction[]
         )
-        GLMAKIE_DEBUG[] && finalizer(verify_free, obj)
+        DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
 end

@@ -728,24 +728,19 @@ Base.notify(computed::ComputePipeline.Computed) = computed
 
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
-    return register_computation!(
-        attr,
-        [attribute, :positions],
-        [output_name],
-    ) do (vec, positions), changed, last
+    return map!(attr, [attribute, :positions], output_name) do vec, positions
         if !(vec isa AbstractVector)
-            !isnothing(last) && vec == last[1] && return nothing
-            return (vec,)
+            return vec
         end
         NP = length(positions)
         NC = length(vec)
-        NP == NC && return (vec,)
+        NP == NC && return vec
         if NP ÷ 2 == NC
             output = [vec[div(i + 1, 2)] for i in 1:NP]
-            return (output,)
+            return output
         end
         error("Color vector length $(NC) does not match position length $(NP)")
-        return (vec,)
+        return vec
     end
 end
 
@@ -978,5 +973,21 @@ function register_view_normalmatrix!(attr, modelname = :model_f32c)
         i3 = Vec3(1, 2, 3)
         nm = transpose(inv(view[i3, i3] * Mat3f(model[i3, i3])))
         return nm
+    end
+end
+
+# For precompilation we want a second resolve
+# Since that compiles a few more functions
+# TODO, make this unecessary by a better ComputeGraph implementation?
+second_resolve(fig::Figure, resolve_symbol) = second_resolve(Makie.get_scene(fig), resolve_symbol)
+second_resolve(fig, resolve_symbol) = second_resolve(fig.figure, resolve_symbol)
+function second_resolve(scene::Scene, resolve_symbol)
+    return for_each_atomic_plot(scene) do plot
+        for (k, input) in plot.attributes.inputs
+            ComputePipeline.mark_dirty!(input)
+        end
+        if haskey(plot, resolve_symbol)
+            plot[resolve_symbol][]
+        end
     end
 end

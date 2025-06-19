@@ -5,7 +5,7 @@ js_plot_type(plot::Makie.AbstractPlot) = "Mesh"
 js_plot_type(plot::Union{Scatter, Makie.Text}) = "Scatter"
 js_plot_type(plot::Union{Lines, LineSegments}) = "Lines"
 
-function serialize_three(scene::Scene, plot::Makie.ComputePlots)
+function serialize_three(scene::Scene, plot::Makie.PrimitivePlotTypes)
     mesh = create_shader(scene, plot)
 
     mesh[:plot_type] = js_plot_type(plot)
@@ -92,8 +92,10 @@ end
 
 function plot_updates(args, changed)
     new_values = []
+    # we currently dont handle update of these in JS
+    disallowed = (:space, :markerspace)
     for (name, value) in pairs(args)
-        if changed[name]
+        if changed[name] && !isnothing(value) && !(name in disallowed)
             _val = if value isa Sampler
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
@@ -265,7 +267,7 @@ function create_shader(scene::Scene, plot::Scatter)
         end
     end
     # For image markers (should this be a plot attribute?)
-    Makie.add_input!(attr, :interpolate, true)
+    Makie.add_constant!(attr, :interpolate, true)
 
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)

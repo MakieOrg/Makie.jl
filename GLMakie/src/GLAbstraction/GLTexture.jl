@@ -39,7 +39,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             context,
             Observables.ObserverFunction[]
         )
-        GLMAKIE_DEBUG[] && finalizer(verify_free, tex)
+        DEBUG[] && finalizer(verify_free, tex)
         return tex
     end
 end

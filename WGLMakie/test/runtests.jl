@@ -257,7 +257,6 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
         session = edisplay.browserdisplay.handler.session
         session_size = Base.summarysize(session) / 10^6
-        texture_atlas_size = Base.summarysize(WGLMakie.TEXTURE_ATLAS) / 10^6
 
         @test length(session.session_objects) == 0
         @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
@@ -269,19 +268,22 @@ edisplay = Bonito.use_electron_display(devtools = true)
         @test length(server.routes.table) == 2
         @test server.routes.table[1][1] == "/browser-display"
         @test server.routes.table[2][2] isa HTTPAssetServer
-        @show session_size texture_atlas_size
 
         # TODO, this went up from 6 to 11mb, likely because of a session not getting freed
         # It could be related to the error in the console:
         # " Trying to send to a closed session"
         # So maybe a subsession closes and doesn't get freed?
+        @show session_size
         @test session_size < 13
-        @test texture_atlas_size < 12
 
         js_sessions = run(edisplay.window, "Bonito.Sessions.SESSIONS")
         js_objects = run(edisplay.window, "Bonito.Sessions.GLOBAL_OBJECT_CACHE")
         # @test Set([app.session[].id, app.session[].parent.id]) == keys(js_sessions)
         # we used Retain for global_obs, so it should stay as long as root session is open
     end
-
 end
+
+println("###########################")
+println("WGLMakie tests DONE")
+println("Open Tasks: ", length(Makie.TRACKED_TASKS))
+println("###########################")

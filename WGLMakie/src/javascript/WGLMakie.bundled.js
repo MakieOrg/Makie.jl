@@ -24925,6 +24925,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
         comm,
         texture_atlas: undefined
     };
+    canvas.wglmakie_screen = screen;
     add_canvas_events(screen, comm, resize_to);
     set_render_size(screen, width, height);
     const three_scene = deserialize_scene(scenes, screen);
@@ -25228,6 +25229,7 @@ window.WGL = {
     find_scene,
     scene_cache,
     plot_cache,
+    dispose_screen,
     delete_scenes,
     create_scene,
     events2unitless,
@@ -25238,6 +25240,7 @@ window.WGL = {
 };
 export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
 export { execute_in_order as execute_in_order };
+export { dispose_screen as dispose_screen };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
 export { pick_native as pick_native };
