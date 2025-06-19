@@ -146,23 +146,18 @@ function draw_text(ctx, attr::NamedTuple)
             # Not renderable by font (e.g. '\n')
             glyph == 0 && continue
 
+            # offsets and scale apply in markerspace
+            gp3 = glyph_pos .+ size_model * offset
+
+            any(isnan, gp3) && continue
+
+            glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+
             cairoface = set_ft_font(ctx, font)
             old_matrix = get_font_matrix(ctx)
 
             Cairo.save(ctx)  # Glyph save
             Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-
-            # offsets and scale apply in markerspace
-            gp3 = glyph_pos .+ size_model * offset
-
-            if any(isnan, gp3)
-                Cairo.restore(ctx)  # Glyph restore (matches glyph save above)
-                cairo_font_face_destroy(cairoface)
-                set_font_matrix(ctx, old_matrix)
-                continue
-            end
-
-            glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
 
             Cairo.save(ctx)  # Glyph rendering save
             set_font_matrix(ctx, mat)
