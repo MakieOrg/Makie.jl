@@ -226,8 +226,8 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
 
     # CairoMatrix somehow has a bug if the precision is too high
     # Where in rare cases a glyph becomes suddenly really large
-    xdiff = round.(xproj - proj_pos, digits=5)
-    ydiff = round.(yproj - proj_pos, digits=5)
+    xdiff = xproj - proj_pos
+    ydiff = yproj - proj_pos
 
     mat = Cairo.CairoMatrix(
         xdiff[1], xdiff[2],
@@ -235,7 +235,7 @@ function project_marker(cam, markerspace::Symbol, origin::Point3, scale::Vec, ro
         0, 0,
     )
 
-    return Vec2f(proj_pos), mat, Mat2f(xdiff..., ydiff...)
+    return proj_pos, mat, Mat2f(xdiff..., ydiff...)
 end
 
 function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bool)
