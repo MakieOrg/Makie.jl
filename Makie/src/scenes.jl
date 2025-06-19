@@ -144,7 +144,11 @@ mutable struct Scene <: AbstractScene
         # Children can not go out of scope without their parent being finalized
         if isnothing(parent)
             finalizer(scene) do s
-                @async free(s)
+                @async try
+                    free(s)
+                catch e
+                    @error "Error while freeing scene" exception = (e, catch_backtrace())
+                end
             end
         end
         return scene

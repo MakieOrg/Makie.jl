@@ -114,7 +114,11 @@ function start_polling_loop!(screen, scene)
             end
             sleep(1 / 100)
         end
-        close(screen; from_close = true)
+        try
+            close(screen; from_close = true)
+        catch e
+            @error "Error closing screen in polling loop" exception = (e, catch_backtrace())
+        end
     end
 end
 
@@ -257,34 +261,38 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T <: MIME}
     return T in Makie.WEB_MIMES
 end
 
-
 function Base.close(screen::Screen; from_close = false)
     return lock(screen.lock) do
-        if !screen.tick_clock.running && isnothing(screen.scene) && !isopen(screen.session)
+        scene = screen.scene
+        session = nothing
+        if !isnothing(screen.session) && isopen(screen.session) && !from_close
+            session = Bonito.root_session(screen.session)
+        end
+        if !isnothing(screen.scene)
+            scene = screen.scene
+            filter!(x -> x !== screen, scene.current_screens)
+            events(scene).window_open[] = false
+            Makie.for_each_atomic_plot(scene) do plot
+                delete_wgl_robj!(session, plot)
+            end
+        end
+        Makie.stop!(screen.tick_clock)
+        if !screen.tick_clock.running && isnothing(screen.scene) && (isnothing(screen.session) || !isopen(screen.session))
             # If the screen is already closed, we don't need to do anything
             return
         end
-        Makie.stop!(screen.tick_clock)
-        if !isnothing(screen.scene)
-            events(screen.scene).window_open[] = false
-            scene = screen.scene
-            delete!(screen, scene)
-            if !isnothing(screen.canvas)
-                # If called from session.on_close, we're already closing the screen
-                if isopen(screen.session) && !from_close
-                    evaljs_value(
-                        screen.session, js"""$(WGL).then(WGL => {
-                            const canvas = $(screen.canvas);
-                            const screen = canvas?.firstElementChild?.wglmakie_screen
-                            if (screen) {
-                                WGL.dispose_screen(screen)
-                            }
-                        })
-                        """
-                    )
-                end
-            end
-            Makie.delete_screen!(scene, screen)
+        if !isnothing(session) && !isnothing(screen.canvas) && !isnothing(scene)
+            evaljs_value(
+                session, js"""$(WGL).then(WGL => {
+                    const canvas = $(screen.canvas);
+                    const screen = canvas?.firstElementChild?.wglmakie_screen
+                    if (screen) {
+                        console.log("Disposing screen", screen);
+                        WGL.dispose_screen(screen)
+                    }
+                })
+                """
+            )
         end
         return
     end
@@ -536,7 +544,7 @@ function Base.delete!(screen::Screen, scene::Scene)
     for plot in plots
         delete_wgl_robj!(root, plot)
     end
-    Bonito.evaljs(
+    Bonito.evaljs_value(
         root, js"""
         $(WGL).then(WGL=> {
             WGL.delete_scenes($scene_uuids, $(js_uuid.(plots)));
