@@ -37,7 +37,7 @@ function cairo_transform(ctx, cairo_matrix)
 end
 
 function set_ft_font(ctx, font)
-    Makie.FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
+
     font_face = Base.@lock font.lock ccall(
         (:cairo_ft_font_face_create_for_ft_face, Cairo.libcairo),
         Ptr{Cvoid}, (Makie.FreeTypeAbstraction.FT_Face, Cint),

@@ -376,11 +376,13 @@ function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFo
     # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph_index, pixelsize * downsample)
+    # Make sure it's not mutated anymore for Cairo
+    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2{Int32}(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
-    uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
+    isnothing(uv) && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
     for f in atlas.font_render_callback
