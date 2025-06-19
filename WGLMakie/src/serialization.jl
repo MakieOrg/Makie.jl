@@ -198,7 +198,6 @@ function serialize_scene(scene::Scene)
 
     children = map(child -> serialize_scene(child), scene.children)
 
-
     light_dir = Observable(serialize_three(Vec3f(1)), ignore_equal_values = true)
     cam_rel = Observable(serialize_three(false), ignore_equal_values = true)
     ambient = Observable(serialize_three(RGBf(0, 0, 1)), ignore_equal_values = true)

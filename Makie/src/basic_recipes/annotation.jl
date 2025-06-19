@@ -87,6 +87,10 @@ be very close to their associated data points so connection plots are typically 
     """
     fonts = @inherit fonts
     """
+    The size of the label font.
+    """
+    fontsize = @inherit fontsize
+    """
     The alignment of text relative to the label anchor position.
     """
     align = (:center, :center)
@@ -216,6 +220,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         color = textcolor,
         font = p.font,
         fonts = p.fonts,
+        fontsize = p.fontsize,
         justification = p.justification,
         lineheight = p.lineheight,
         visible = p.visible,
