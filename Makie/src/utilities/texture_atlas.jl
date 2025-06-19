@@ -360,7 +360,16 @@ function remove_font_render_callback!(atlas::TextureAtlas, f)
     return filter!(f2 -> f2 != f, atlas.font_render_callback)
 end
 
-function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFont})
+const GL_FONT_CACHE = Dict{FreeTypeAbstraction.FTFont, FreeTypeAbstraction.FTFont}()
+
+function render(atlas::TextureAtlas, (glyph_index, _font)::Tuple{UInt64, NativeFont})
+    # TODO: Return the found font path in FreeTypeAbstraction so we can cache it
+    # (or cache it there?) and turn the second ~30ms search cost into a ~30µs try_load
+    font = get(GL_FONT_CACHE, _font) do
+        fontpath = assetpath("fonts")
+        FreeTypeAbstraction.findfont(FreeTypeAbstraction.fontname(_font), additional_fonts = fontpath)
+    end
+
     downsample = atlas.downsample
     pad = atlas.glyph_padding
     # the target pixel size of our distance field
@@ -376,8 +385,6 @@ function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFo
     # Make sure the font doesn't have a mutated font matrix from e.g. Cairo
     FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     bitmap, extent = renderface(font, glyph_index, pixelsize * downsample)
-    # Make sure it's not mutated anymore for Cairo
-    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     # Our downsampeld & padded distancefield
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2{Int32}(0, 0, size(sd)...)
