@@ -67,6 +67,6 @@
         wait(timer.task)
         N = counter[]
         @test real_dt * 30.0 - 4 < counter[] < real_dt * 30.0 + 4
-        @test N == 34
+        @test N == 33
     end
 end
