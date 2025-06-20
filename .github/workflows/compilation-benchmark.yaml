@@ -33,7 +33,6 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v2
       - name: Benchmark
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}

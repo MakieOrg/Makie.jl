@@ -1,0 +1,6 @@
+[MakieAssets]
+git-tree-sha1 = "ad4e594b35357bcfafa2ed97db3137382a3f09bb"
+
+    [[MakieAssets.download]]
+    sha256 = "b275a61d923be81b6e7b8f3338c9506d71c55a6dc207342e32ea6e43eed3add9"
+    url = "https://github.com/MakieOrg/Makie.jl/releases/download/assets-v1.0.0/MakieAssets.tar.gz"

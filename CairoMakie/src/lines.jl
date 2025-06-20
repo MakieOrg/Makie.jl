@@ -1,21 +1,20 @@
 function draw_atomic(::Scene, screen::Screen, plot::PT) where {PT <: Union{Lines, LineSegments}}
     ctx = screen.context
     attr = plot.attributes
-    if !haskey(attr, :is_lines_plot)
-        #TODO, why are these sometimes already added?
-        add_input!(attr, :is_lines_plot, plot isa Lines)
-        if plot isa LineSegments
-            add_input!(attr, :joinstyle, nothing)
-            add_input!(attr, :miter_limit, nothing)
-        end
+    add_constant!(attr, :is_lines_plot, plot isa Lines)
+    if plot isa LineSegments
+        add_constant!(attr, :joinstyle, nothing)
+        add_constant!(attr, :miter_limit, nothing)
     end
 
     Makie.compute_colors!(attr)
     add_projected_line_points!(attr)
-    extract_attributes!(plot.attributes, [
-        :clipped_points, :clipped_linewidths, :clipped_colors,
-        :linestyle, :linecap, :joinstyle, :miter_limit, :is_lines_plot
-    ], :cairo_attributes)
+    extract_attributes!(
+        plot.attributes, [
+            :clipped_points, :clipped_linewidths, :clipped_colors,
+            :linestyle, :linecap, :joinstyle, :miter_limit, :is_lines_plot,
+        ], :cairo_attributes
+    )
     draw_lineplot(ctx, attr.cairo_attributes[])
     return
 end
@@ -56,7 +55,7 @@ function draw_lineplot(ctx, attributes)
         error("$linecap is not a valid linecap. Valid: 0 (:butt), 1 (:square), 2 (:round)")
     end
 
-    miter_angle = is_lines_plot ? miter_limit : 2pi/3
+    miter_angle = is_lines_plot ? miter_limit : 2pi / 3
     set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
     joinstyle = is_lines_plot ? attributes.joinstyle : 0
     if joinstyle == 2
@@ -90,7 +89,7 @@ function draw_lineplot(ctx, attributes)
         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
         draw_single(is_lines_plot, ctx, positions)
     end
-    if !isnothing(linestyle)
+    return if !isnothing(linestyle)
         Cairo.set_dash(ctx, Float64[])  # Reset dash pattern
     end
 end
@@ -107,7 +106,7 @@ function add_projected_line_points!(attr)
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
     inputs = [:clipspace_points, :computed_color, :linewidth, :is_lines_plot, :uniform_clip_planes, :resolution]
     outputs = [:clipped_points, :clipped_colors, :clipped_linewidths]
-    register_computation!(attr, inputs, outputs) do (clip_points, colors, linewidths, is_lines_plot, clip_planes, res), _, _
+    return register_computation!(attr, inputs, outputs) do (clip_points, colors, linewidths, is_lines_plot, clip_planes, res), _, _
         return clip_line_points(clip_points, colors, linewidths, is_lines_plot, clip_planes, res)
     end
 end
@@ -126,9 +125,10 @@ function clip_line_points(clip_points, colors, linewidths, is_lines_plot, clip_p
     # Fix lines with points far outside the clipped region not drawing at all
     # TODO this can probably be done more efficiently by checking -1 ≤ x, y ≤ 1
     #      directly and calculating intersections directly (1D)
-    push!(clip_planes,
-        Plane3f(Vec3f(-1, 0, 0), -1f0), Plane3f(Vec3f(+1, 0, 0), -1f0),
-        Plane3f(Vec3f(0, -1, 0), -1f0), Plane3f(Vec3f(0, +1, 0), -1f0)
+    push!(
+        clip_planes,
+        Plane3f(Vec3f(-1, 0, 0), -1.0f0), Plane3f(Vec3f(+1, 0, 0), -1.0f0),
+        Plane3f(Vec3f(0, -1, 0), -1.0f0), Plane3f(Vec3f(0, +1, 0), -1.0f0)
     )
 
     # outputs
@@ -139,7 +139,7 @@ function clip_line_points(clip_points, colors, linewidths, is_lines_plot, clip_p
     # Handling one segment per iteration
     if is_lines_plot
         clip_lines!(
-            clip_points, colors, linewidths, clip_planes, res, per_point_colors,per_point_linewidths,
+            clip_points, colors, linewidths, clip_planes, res, per_point_colors, per_point_linewidths,
             screen_points, color_output, linewidth_output
         )
     else
@@ -158,14 +158,14 @@ function clip_linesegments!(
         screen_points, color_output
     )
 
-    for i in 1:2:length(clip_points)-1
+    for i in 1:2:(length(clip_points) - 1)
         if per_point_colors
             c1 = colors[i]
-            c2 = colors[i+1]
+            c2 = colors[i + 1]
         end
 
         p1 = clip_points[i]
-        p2 = clip_points[i+1]
+        p2 = clip_points[i + 1]
         v = p2 - p1
 
         # Handle near/far clipping
@@ -191,7 +191,7 @@ function clip_linesegments!(
                 # to keep index order we just set p1 and p2 to NaN and insert anyway
                 p1 = Vec4f(NaN)
                 p2 = Vec4f(NaN)
-                break;
+                break
             elseif (d1 < 0.0)
                 # p1 clipped, move it towards p2 until unclipped
                 p1 = p1 - d1 * (p2 - p1) / (d2 - d1)
@@ -213,6 +213,7 @@ function clip_linesegments!(
             push!(color_output, c1, c2)
         end
     end
+    return
 end
 
 function clip_lines!(
@@ -220,18 +221,18 @@ function clip_lines!(
         screen_points, color_output, linewidth_output
     )
     last_is_nan = true
-    for i in 1:length(clip_points)-1
+    for i in 1:(length(clip_points) - 1)
         hidden = false
         disconnect1 = false
         disconnect2 = false
 
         if per_point_colors
             c1 = colors[i]
-            c2 = colors[i+1]
+            c2 = colors[i + 1]
         end
 
         p1 = clip_points[i]
-        p2 = clip_points[i+1]
+        p2 = clip_points[i + 1]
         v = p2 - p1
 
         # Handle near/far clipping
@@ -257,7 +258,7 @@ function clip_lines!(
             if (d1 < 0.0) && (d2 < 0.0)
                 # start and end clipped by one plane -> not visible
                 hidden = true
-                break;
+                break
             elseif (d1 < 0.0)
                 # p1 clipped, move it towards p2 until unclipped
                 disconnect1 = true
@@ -315,7 +316,7 @@ function clip_lines!(
                 last_is_nan = true
                 push!(screen_points, clip2screen(p2, res), Vec2f(NaN))
                 if per_point_linewidths
-                    push!(linewidth_output, linewidths[i+1], linewidths[i+1])
+                    push!(linewidth_output, linewidths[i + 1], linewidths[i + 1])
                 end
                 if per_point_colors
                     push!(color_output, c2, c2) # relevant, irrelevant
@@ -327,7 +328,7 @@ function clip_lines!(
     # If last_is_nan == true, the last segment is either hidden or the moved
     # end point has been added. If it is false we're missing the last regular
     # clip_points
-    if !last_is_nan
+    return if !last_is_nan
         push!(screen_points, clip2screen(clip_points[end], res))
         if per_point_linewidths
             push!(linewidth_output, linewidths[end])
@@ -351,27 +352,27 @@ function draw_multi_segments(ctx, positions, colors, linewidths, dash)
     @assert iseven(length(positions))
 
     for i in 1:2:length(positions)
-        if isnan(positions[i+1]) || isnan(positions[i])
+        if isnan(positions[i + 1]) || isnan(positions[i])
             continue
         end
         lw = sv_getindex(linewidths, i)
-        if lw != sv_getindex(linewidths, i+1)
-            error("Cairo doesn't support two different line widths ($lw and $(sv_getindex(linewidths, i+1)) at the endpoints of a line.")
+        if lw != sv_getindex(linewidths, i + 1)
+            error("Cairo doesn't support two different line widths ($lw and $(sv_getindex(linewidths, i + 1)) at the endpoints of a line.")
         end
         Cairo.move_to(ctx, positions[i]...)
-        Cairo.line_to(ctx, positions[i+1]...)
+        Cairo.line_to(ctx, positions[i + 1]...)
         Cairo.set_line_width(ctx, lw)
 
         !isnothing(dash) && Cairo.set_dash(ctx, dash .* lw)
         c1 = sv_getindex(colors, i)
-        c2 = sv_getindex(colors, i+1)
+        c2 = sv_getindex(colors, i + 1)
         # we can avoid the more expensive gradient if the colors are the same
         # this happens if one color was given for each segment
         if c1 == c2
             Cairo.set_source_rgba(ctx, red(c1), green(c1), blue(c1), alpha(c1))
             Cairo.stroke(ctx)
         else
-            pat = Cairo.pattern_create_linear(positions[i]..., positions[i+1]...)
+            pat = Cairo.pattern_create_linear(positions[i]..., positions[i + 1]...)
             Cairo.pattern_add_color_stop_rgba(pat, 0, red(c1), green(c1), blue(c1), alpha(c1))
             Cairo.pattern_add_color_stop_rgba(pat, 1, red(c2), green(c2), blue(c2), alpha(c2))
             Cairo.set_source(ctx, pat)
@@ -379,6 +380,7 @@ function draw_multi_segments(ctx, positions, colors, linewidths, dash)
             Cairo.destroy(pat)
         end
     end
+    return
 end
 
 
@@ -402,7 +404,7 @@ function draw_multi_lines(ctx, positions, colors, linewidths, dash)
         # first is nan, do nothing
     end
 
-    for i in eachindex(positions)[begin+1:end]
+    for i in eachindex(positions)[(begin + 1):end]
         this_position = positions[i]
         this_color = sv_getindex(colors, i)
         this_nan = isnan(this_position)
@@ -434,7 +436,7 @@ function draw_multi_lines(ctx, positions, colors, linewidths, dash)
                 # this color is like the previous
                 if !this_nan
                     # and this is not nan, so line_to and set prev_continued
-                    this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
+                    this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i - 1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     Cairo.line_to(ctx, this_position...)
                     prev_continued = true
 
@@ -459,7 +461,7 @@ function draw_multi_lines(ctx, positions, colors, linewidths, dash)
                 Cairo.stroke(ctx)
 
                 if !this_nan
-                    this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i-1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
+                    this_linewidth != prev_linewidth && error("Encountered two different linewidth values $prev_linewidth and $this_linewidth in `lines` at index $(i - 1). Different linewidths in one line are only permitted in CairoMakie when separated by a NaN point.")
                     # this is not nan
                     # and this color is different than the previous, so move_to prev and line_to this
                     # create gradient pattern and stroke
@@ -486,6 +488,7 @@ function draw_multi_lines(ctx, positions, colors, linewidths, dash)
         prev_linewidth = this_linewidth
         prev_position = this_position
     end
+    return
 end
 
 
@@ -508,13 +511,13 @@ function draw_single_lines(ctx, positions)
         # only take action for non-NaNs
         if !isnan(p)
             # new line segment at beginning or if previously NaN
-            if i == 1 || isnan(positions[i-1])
+            if i == 1 || isnan(positions[i - 1])
                 Cairo.move_to(ctx, p...)
                 start = p
             else
                 Cairo.line_to(ctx, p...)
                 # complete line segment at end or if next point is NaN
-                if i == n || isnan(positions[i+1])
+                if i == n || isnan(positions[i + 1])
                     if p ≈ start
                         Cairo.close_path(ctx)
                     end
@@ -524,16 +527,16 @@ function draw_single_lines(ctx, positions)
         end
     end
     # force clearing of path in case of skipped NaN
-    Cairo.new_path(ctx)
+    return Cairo.new_path(ctx)
 end
 
 function draw_single_segments(ctx, positions)
 
     @assert iseven(length(positions))
 
-    @inbounds for i in 1:2:length(positions)-1
+    @inbounds for i in 1:2:(length(positions) - 1)
         p1 = positions[i]
-        p2 = positions[i+1]
+        p2 = positions[i + 1]
 
         if isnan(p1) || isnan(p2)
             continue
@@ -544,7 +547,7 @@ function draw_single_segments(ctx, positions)
         end
     end
     # force clearing of path in case of skipped NaN
-    Cairo.new_path(ctx)
+    return Cairo.new_path(ctx)
 end
 
 function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space, model, linewidth)
@@ -567,15 +570,15 @@ function draw_bezierpath_lines(ctx, bezierpath::BezierPath, scene, color, space,
 end
 
 function project_command(m::MoveTo, scene, space, model)
-    MoveTo(project_position(scene, space, m.p, model))
+    return MoveTo(project_position(scene, space, m.p, model))
 end
 
 function project_command(l::LineTo, scene, space, model)
-    LineTo(project_position(scene, space, l.p, model))
+    return LineTo(project_position(scene, space, l.p, model))
 end
 
 function project_command(c::CurveTo, scene, space, model)
-    CurveTo(
+    return CurveTo(
         project_position(scene, space, c.c1, model),
         project_position(scene, space, c.c2, model),
         project_position(scene, space, c.p, model),

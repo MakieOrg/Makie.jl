@@ -8,6 +8,7 @@ using ColorTypes
 using ..GLMakie.GLFW
 using ..GLMakie: ShaderSource
 import ..GLMakie.Makie.ComputePipeline: update!
+import ..GLMakie: DEBUG
 using Printf
 using LinearAlgebra
 using Observables
@@ -20,7 +21,6 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 import Base: merge, resize!, similar, length, getindex, setindex!
 
 # Debug tools
-const GLMAKIE_DEBUG = Ref(false)
 const CONTEXT_LOCK1 = ReentrantLock()
 const CONTEXT_LOCK2 = ReentrantLock()
 
@@ -33,8 +33,8 @@ function require_context(ctx, current = ShaderAbstractions.current_context())
     error(msg)
 end
 
-function gl_switch_context!(context=nothing)
-    lock(CONTEXT_LOCK1) do
+function gl_switch_context!(context = nothing)
+    return lock(CONTEXT_LOCK1) do
         if isnothing(context)
             ShaderAbstractions.switch_context!()
         elseif ShaderAbstractions.context_alive(context)
@@ -47,7 +47,7 @@ end
 
 function with_context(f, context)
     if !ShaderAbstractions.context_alive(context)
-        error("Context ist not alive anymore!")
+        error("Context is not alive anymore!")
     end
     old_ctx = nothing
     lock(CONTEXT_LOCK1) do
@@ -55,7 +55,7 @@ function with_context(f, context)
         old_ctx = isassigned(CTX) ? CTX[] : nothing
         ShaderAbstractions.switch_context!(context)
     end
-    try
+    return try
         f()
     finally
         if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)

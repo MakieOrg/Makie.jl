@@ -19,8 +19,6 @@ concurrency:
 jobs:
   makie:
     name: Julia ${{ matrix.version }}
-    env:
-      ENABLE_COMPUTE_CHECKS: "true" # turn on debug checks in compute
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -47,10 +45,12 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./ComputePipeline"
+          pkg"dev ./Makie ./ComputePipeline"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info

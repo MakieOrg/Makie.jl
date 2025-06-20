@@ -6,12 +6,13 @@ function render(list::Tuple)
 end
 
 function setup_clip_planes(N::Integer)
-    for i in 0:min(7, N-1)
+    for i in 0:min(7, N - 1)
         glEnable(GL_CLIP_DISTANCE0 + UInt32(i))
     end
     for i in max(0, N):7
         glDisable(GL_CLIP_DISTANCE0 + UInt32(i))
     end
+    return
 end
 
 # Note: context required in renderloop, not per renderobject here
@@ -19,7 +20,7 @@ end
 """
 When rendering a specialised list of Renderables, we can do some optimizations
 """
-function render(list::Vector{RenderObject{Pre}}) where Pre
+function render(list::Vector{RenderObject{Pre}}) where {Pre}
     isempty(list) && return nothing
     first(list).prerenderfunction()
     vertexarray = first(list).vertexarray
@@ -67,7 +68,7 @@ It uses dictionaries and doesn't care about OpenGL call optimizations.
 So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
-function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
+function render(renderobject::RenderObject, vertexarray = renderobject.vertexarray)
     if renderobject.visible
         renderobject.prerenderfunction()
         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
@@ -86,7 +87,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
                     end
                 catch e
                     Base.showerror(stderr, e)
-                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])::$(typeof(renderobject.uniforms[key]))") exception=(e, Base.catch_backtrace())
+                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])::$(typeof(renderobject.uniforms[key]))") exception = (e, Base.catch_backtrace())
                 end
             end
         end
@@ -98,7 +99,7 @@ function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray
 end
 
 function vao_boundscheck(target::Integer, current::Integer, vao)
-    if target <= current # assuming 0-based OpenGL indices
+    return if target <= current # assuming 0-based OpenGL indices
         msg = IOBuffer()
         print(msg, "BoundsError: OpenGL vertex index $current exceeds the number of vertices $target.\n Occurred with ")
         show(msg, MIME"text/plain"(), vao)
@@ -112,7 +113,7 @@ end
 
 Renders a vertexarray based on its `vao.indices` type.
 """
-function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
+function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: VecOrSignal{UnitRange{Int}}}
     N_vert = length(vao)
     for elem in to_value(vao.indices)
         # TODO: Should this exclude last(elem), i.e. shift a:b to (a-1):(b-1)
@@ -124,7 +125,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: Vec
 end
 
 # by index range to draw
-function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
+function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: TOrSignal{UnitRange{Int}}}
     r = to_value(vao.indices)
     ndraw = length(r)
     ndraw == 0 && return nothing
@@ -137,7 +138,7 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOr
 end
 
 # by number of triangles
-function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{Int}
+function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: TOrSignal{Int}}
     r = to_value(vao.indices)
     r == 0 && return nothing
     glDrawArrays(mode, 0, r)
@@ -145,12 +146,12 @@ function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOr
 end
 
 # using indexbuffer (faces)
-function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
+function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum = GL_TRIANGLES) where {T <: Union{Integer, AbstractFace}}
     # Note: not discarding draw calls with 0 indices may cause segfaults even if
     # the draw call is later discarded based on on `mode`. See #4782
     N = length(vao.indices) * cardinality(vao.indices)
     N == 0 && return nothing
-    if GLMAKIE_DEBUG[]
+    if DEBUG[]
         data = gpu_data_no_unbind(vao.indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
@@ -162,7 +163,7 @@ function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) wher
 end
 
 # undefined indices, default to rendering all vertices
-function render(vao::GLVertexArray, mode::GLenum=GL_TRIANGLES)
+function render(vao::GLVertexArray, mode::GLenum = GL_TRIANGLES)
     length(vao) == 0 && return nothing
     glDrawArrays(mode, 0, length(vao))
     return nothing
@@ -174,13 +175,13 @@ end
 Render `instance_count` instances of the given vertex array based on the type of
 `vao.indices`.
 """
-renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
+renderinstanced(vao::GLVertexArray, a, primitive = GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
 
 # using index buffer
-function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
+function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive = GL_TRIANGLES) where {T <: Union{Integer, AbstractFace}}
     N = length(vao.indices) * cardinality(vao.indices)
     N * amount == 0 && return nothing
-    if GLMAKIE_DEBUG[]
+    if DEBUG[]
         data = gpu_data_no_unbind(vao.indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
@@ -192,7 +193,7 @@ function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primi
 end
 
 # based on number of vertices
-function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
+function renderinstanced(vao::GLVertexArray, amount::Integer, primitive = GL_TRIANGLES)
     length(vao) * amount == 0 && return nothing
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)
     return nothing

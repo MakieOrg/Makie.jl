@@ -9,7 +9,7 @@ using Random
 using ReferenceTests
 
 # verify OpenGL object cleanup
-GLMakie.GLAbstraction.GLMAKIE_DEBUG[] = true
+GLMakie.DEBUG[] = true
 
 deref(x) = x
 deref(x::Base.RefValue) = x[]
@@ -19,7 +19,7 @@ if !deref(GLMakie.ModernGL.enable_opengl_debugging)
     @warn("TESTING WITHOUT OPENGL DEBUGGING")
 end
 
-GLMakie.activate!(framerate=1.0, scalefactor=1.0)
+GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
 @testset "GLMakie" begin
     @testset "mimes" begin
         Makie.inline!(true)
@@ -51,11 +51,11 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         function check_tick(tick, state, count)
             @test tick.state == state
             @test tick.count == count
-            @test tick.time > 1e-9
-            @test tick.delta_time > 1e-9
+            @test tick.time > 1.0e-9
+            @test tick.delta_time > 1.0e-9
         end
 
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         @test events(f).tick[] == Makie.Tick()
 
         filename = "$(tempname()).png"
@@ -70,7 +70,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
             rm(filename)
         end
 
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         filename = "$(tempname()).mp4"
         try
             tick_record = Makie.Tick[]
@@ -82,8 +82,8 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
 
             for (i, tick) in enumerate(tick_record[start:end])
                 @test tick.state == Makie.OneTimeRenderTick
-                @test tick.count == i-1
-                @test tick.time ≈ dt * (i-1)
+                @test tick.count == i - 1
+                @test tick.time ≈ dt * (i - 1)
                 @test tick.delta_time ≈ dt
             end
         finally
@@ -91,7 +91,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         end
 
         # test destruction of tick overwrite
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         let
             io = VideoStream(f)
             @test events(f).tick[] == Makie.Tick(Makie.OneTimeRenderTick, 0, 0.0, 1.0 / io.options.framerate)
@@ -102,7 +102,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         @test events(f).tick[] == tick
 
 
-        f, a, p = scatter(rand(10));
+        f, a, p = scatter(rand(10))
         tick_record = Makie.Tick[]
         on(t -> push!(tick_record, t), events(f).tick)
         screen = GLMakie.Screen(render_on_demand = true, framerate = 30.0, pause_rendering = false, visible = false)
@@ -123,19 +123,17 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         i += 1
 
         while tick_record[i].state == Makie.SkippedRenderTick
-                check_tick(tick_record[i], Makie.SkippedRenderTick, i)
-                i += 1
-            end
+            check_tick(tick_record[i], Makie.SkippedRenderTick, i)
+            i += 1
+        end
 
         while (i <= length(tick_record)) && (tick_record[i].state == Makie.PausedRenderTick)
             check_tick(tick_record[i], Makie.PausedRenderTick, i)
             i += 1
         end
 
-        @test i == length(tick_record)+1
+        @test i == length(tick_record) + 1
     end
-
-
 
 
     # NOTE: Keep this at the end! It also verifies that all cleanup is complete after
@@ -147,7 +145,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         # image so we have a user generated texture in the mix
         # texture atlas is triggered by text
         # include SSAO to make sure its cleanup works too
-        f,a,p = image(rand(4,4))
+        f, a, p = image(rand(4, 4))
         screen = display(f, ssao = true, visible = false)
         colorbuffer(screen)
 
@@ -210,7 +208,7 @@ GLMakie.activate!(framerate=1.0, scalefactor=1.0)
         end
 
         @testset "PostProcessors" begin
-            @test map(pp -> length(pp.robjs), postprocessors) == [2,1,2,1]
+            @test map(pp -> length(pp.robjs), postprocessors) == [2, 1, 2, 1]
             for pp in postprocessors
                 for robj in pp.robjs
                     validate_robj(robj)

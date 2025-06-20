@@ -11,7 +11,7 @@ function makie_color(c)
     if color === :match
         return Colors.colorant"blue"
     end
-    convert(RGBA, c)
+    return convert(RGBA, c)
 end
 
 makie_seriestype_map = Dict{Symbol, Type}(

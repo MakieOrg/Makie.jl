@@ -1,3 +1,5 @@
+ENV["JULIA_DEBUG"] = "Documenter"
+
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
@@ -30,7 +32,7 @@ function nested_filter(x, regex)
     _match(x::Pair) = x[2] isa String ? match(regex, x[2]) !== nothing : true
     fn(el::Pair) = el[2] isa Vector ? el[1] => nested_filter(el[2], regex) : el
     fn(el) = el
-    filter(_match, map(fn, x))
+    return filter(_match, map(fn, x))
 end
 
 unnest(vec::Vector) = collect(Iterators.flatten([unnest(el) for el in vec]))
@@ -128,7 +130,7 @@ pages = [
             "reference/scene/lighting.md",
             "reference/scene/matcap.md",
             "reference/scene/SSAO.md",
-        ]
+        ],
     ],
     "Tutorials" => [
         "tutorials/getting-started.md",
@@ -182,15 +184,15 @@ pages = [
         "API" => "api.md",
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
-    ]
+    ],
 ]
 
 function make_docs(; pages)
     empty!(MakieDocsHelpers.FIGURES)
 
-    Documenter.makedocs(;
-        sitename="Makie",
-        format=DocumenterVitepress.MarkdownVitepress(;
+    return Documenter.makedocs(;
+        sitename = "Makie",
+        format = DocumenterVitepress.MarkdownVitepress(;
             repo = "github.com/MakieOrg/Makie.jl",
             devurl = "dev",
             devbranch = "master",
@@ -212,19 +214,21 @@ make_docs(;
 ##
 
 include("buildutils/redirect_generation.jl")
-generate_redirects([
-    r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
-    r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
-    r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
-    r"/reference/plots/(.*).html" => s"/reference/plots/\1/index.html",
-    r"/explanations/(.*).html" => s"/documentation/\1/index.html",
-    r"/tutorials/(.*).html" => s"/tutorials/\1/index.html",
-    r"/explanations/(.*).html" => s"/explanations/\1/index.html",
-    "/explanations/observables.html" => "/explanations/nodes/index.html",
-    "/reference/plots/overview.html" => "/reference/plots/index.html",
-    "/reference/blocks/overview.html" => "/reference/blocks/index.html",
-    "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
-], dry_run = false)
+generate_redirects(
+    [
+        r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
+        r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
+        r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
+        r"/reference/plots/(.*).html" => s"/reference/plots/\1/index.html",
+        r"/explanations/(.*).html" => s"/documentation/\1/index.html",
+        r"/tutorials/(.*).html" => s"/tutorials/\1/index.html",
+        r"/explanations/(.*).html" => s"/explanations/\1/index.html",
+        "/explanations/observables.html" => "/explanations/nodes/index.html",
+        "/reference/plots/overview.html" => "/reference/plots/index.html",
+        "/reference/blocks/overview.html" => "/reference/blocks/index.html",
+        "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
+    ], dry_run = false
+)
 
 DocumenterVitepress.deploydocs(
     repo = "github.com/MakieOrg/Makie.jl.git",

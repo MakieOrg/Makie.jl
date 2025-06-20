@@ -25,7 +25,7 @@ errorbars!(
 )
 text!(
     scene, [50, 200, 450] .- 30, [250, 250, 250], text = ["tailwidth", "shaftwidth", "tipwidth"],
-    fontsize = 16, align = (:center, :center), rotation = pi/2
+    fontsize = 16, align = (:center, :center), rotation = pi / 2
 )
 
 # lengths
