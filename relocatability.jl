@@ -34,16 +34,18 @@ Pkg.activate("MakieApp")
 # Disable precompile workload, so that we compile less functions
 # Speed up compilation and dont make the CI OOM.
 # This should still precompile anything in the APP and backe that to the image.
-write(joinpath(tmpdir, "LocalPreferences.toml"), """
-[CairoMakie]
-precompile_workload = false
-[GLMakie]
-precompile_workload = false
-[Makie]
-precompile_workload = false
-[WGLMakie]
-precompile_workload = false
-""")
+write(
+    joinpath(tmpdir, "LocalPreferences.toml"), """
+    [CairoMakie]
+    precompile_workload = false
+    [GLMakie]
+    precompile_workload = false
+    [Makie]
+    precompile_workload = false
+    [WGLMakie]
+    precompile_workload = false
+    """
+)
 
 makie_dir = @__DIR__
 
