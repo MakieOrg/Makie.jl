@@ -51,22 +51,18 @@
         end
         sleep(0.5)
         @test counter[] == 0
-        # Compile run
-        Makie.start!(timer)
-        sleep(0.001)
-        Makie.stop!(timer)
 
-        # Real run
-        counter[] = 0 # reset
         t = time_ns()
         Makie.start!(timer)
         sleep(1.0)
         Makie.stop!(timer)
-
         real_dt = 1.0e-9 * (time_ns() - t)
         wait(timer.task)
         N = counter[]
+
         @test real_dt * 30.0 - 4 < counter[] < real_dt * 30.0 + 4
-        @test N == 33
+
+        sleep(0.5)
+        @test counter[] == N
     end
 end
