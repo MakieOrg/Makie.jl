@@ -375,7 +375,7 @@ end
 
 function render(atlas::TextureAtlas, (glyph_index, _font)::Tuple{UInt64, NativeFont})
     # We copy fonts for rendering to avoid issues with Cairo mutating the font matrix
-    font = get(()-> copy_font(_font), ATLAS_FONT_CACHE, _font)
+    font = get(() -> copy_font(_font), ATLAS_FONT_CACHE, _font)
     downsample = atlas.downsample
     pad = atlas.glyph_padding
     # the target pixel size of our distance field
