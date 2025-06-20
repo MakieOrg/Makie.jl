@@ -1,3 +1,23 @@
+using Makie: FastPixel
+
+Makie.el32convert(x::GLAbstraction.Texture) = x
+
+function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
+    gl_switch_context!(screen.glscreen)
+    add_scene!(screen, scene)
+    # poll inside functions to make wait on compile less prominent
+    return if isempty(x.plots) # if no plots inserted, this truly is an atomic
+        draw_atomic(screen, scene, x)
+    elseif x isa Text
+        draw_atomic(screen, scene, x)
+        insert!(screen, scene, x.plots[1])
+    else
+        foreach(x.plots) do x
+            insert!(screen, scene, x)
+        end
+    end
+end
+
 using Makie.ComputePipeline
 
 ################################################################################

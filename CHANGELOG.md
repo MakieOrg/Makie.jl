@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Breaking** Refactored plots to rely on the newly introduced `ComputeGraph` instead of `Observables`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+  - **Breaking** `attr = Attributes(plot)` now returns a `ComputeGraph`, which disallows `copy(attr)`, `pop!(attr, ...)`, `attr[:newvar] = ...` and splatting `plot!(...; attr...)`.
+  - **Semi-Breaking** `plot(parent, attr, args...; kwargs...)` now only considers applicable attributes in `attr` and prioritizes `kwargs` in case of collisions.
+  - **Semi-Breaking** `@recipe Name (args...)` now names converted arguments and requires the number of `args` to match the number of outputs ifrom `convert_arguments()`
+  - **Breaking** `replace_automatic!()` has been removed as it was incompatible. `Makie.default_automatic()` can be used as an alternative.
+  - **Breaking** `text!()` is no longer a nested structure of text plots.
+  - **Breaking** Scene lights have moved to the scene `ComputeGraph` and no longer contain Observables.
+  - Fixed synchronous update issues by allowing synchronized update with `Makie.update!(plot, attrib1 = val1, attrib2 = val2, ...)`
+  - Improved performance in WGLMakie with better bundling and filtering of updates
+  - Improved traceability attribute and argument processing from user input to the backend
+- **Breaking** `annotations!()` (not the new `annotation`) has been removed in favor of `text!()`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- **Semi-Breaking** Removed various internal text bounding box functions in favor of more user friendly functions like `string_boundingboxes(plot)` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- **Semi-Breaking** Deprecated `ShadingAlgorithm` for `plot.shading` in favor of a `Bool`. The selection of the algorithm (`FastShading/MultiLightShading`) now happens at the scene level. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed 2x2 surfaces not aligning colors correctly in WGLMakie [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Added support for per-mesh `uv_transform` in `WGLMakie.meshscatter` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed `PolarAxis` not considering text rotation correctly for tick label margins [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed `LaTeXStrings` not projecting lines correctly if `markerspace != :pixel` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed incorrect z values for 2x2 `surface()` plots in CairoMakie and WGLMakie. [#5052](https://github.com/MakieOrg/Makie.jl/pull/5052)
+- Fixed `arrows3d()` now including lighting attributes. [#5052](https://github.com/MakieOrg/Makie.jl/pull/5052)
 - **Breaking** Removed `MakieCore` from Makie's dependencies. Going forward, package extensions are recommended if a lightweight dependency is desired. A quick fix is to change the dependency to `Makie` and replace all `MakieCore` occurrences with `Makie` although this will incur Makie's full load time every time. The alternative is to use a package extension on `Makie` which requires at least Julia 1.9.
 - **Breaking** Changed `patchcolor` to opaque colors [#5088](https://github.com/MakieOrg/Makie.jl/pull/5088)
 - Fixed `annotation` in the presence of scene transform functions [#5058](https://github.com/MakieOrg/Makie.jl/pull/5058).

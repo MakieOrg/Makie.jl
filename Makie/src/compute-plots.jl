@@ -223,7 +223,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif color isa AbstractPattern
             ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color # TODO: Should we skip alpha in this case?
+            color
         elseif color isa AbstractArray
             add_alpha.(color, alpha)
         else
@@ -232,7 +232,6 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern)
     end
 
-    # TODO: if colorscale is defined, should it act on user supplied colorrange?
     return register_computation!(
         attr,
         [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
