@@ -360,7 +360,22 @@ function remove_font_render_callback!(atlas::TextureAtlas, f)
     return filter!(f2 -> f2 != f, atlas.font_render_callback)
 end
 
-function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFont})
+const ATLAS_FONT_CACHE = Dict{NativeFont, NativeFont}()
+const FTA = FreeTypeAbstraction
+const FT = FTA.FreeType
+
+function copy_font(font::NativeFont)
+    mmapped = font.mmapped
+    isnothing(mmapped) && error("Font $font is not mmapped, can't copy it")
+    face = Ref{FT.FT_Face}()
+    err = @lock FTA.LIBRARY_LOCK FT.FT_New_Memory_Face(FTA.FREE_FONT_LIBRARY[1], mmapped, length(mmapped), Int32(0), face)
+    FTA.check_error(err, "Couldn't copy font \"$(font.fontname)\"")
+    return NativeFont(face[], font.use_cache, mmapped)
+end
+
+function render(atlas::TextureAtlas, (glyph_index, _font)::Tuple{UInt64, NativeFont})
+    # We copy fonts for rendering to avoid issues with Cairo mutating the font matrix
+    font = get(() -> copy_font(_font), ATLAS_FONT_CACHE, _font)
     downsample = atlas.downsample
     pad = atlas.glyph_padding
     # the target pixel size of our distance field
@@ -380,7 +395,7 @@ function render(atlas::TextureAtlas, (glyph_index, font)::Tuple{UInt64, NativeFo
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2{Int32}(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
-    uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
+    isnothing(uv) && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
     for f in atlas.font_render_callback
