@@ -2369,7 +2369,8 @@ end
     )
     annotation!(
         ax, 0, 100, 3pi / 2, -1.0,
-        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold
+        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold,
+        fontsize = 24,
     )
     annotation!(
         ax, -100, 0, 5pi / 2, 1.0,

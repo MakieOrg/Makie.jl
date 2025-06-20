@@ -26,6 +26,7 @@
 - Fixed `annotation` in the presence of scene transform functions [#5058](https://github.com/MakieOrg/Makie.jl/pull/5058).
 - Moved Makie source directory from top level to ./Makie so that Makie itself does not include every other monorepo package when it's installed [#5069](https://github.com/MakieOrg/Makie.jl/pull/5069).
 - Removed asset folder and made it an artifact, breaking code that didn't use `Makie.assetpath`. Also introduces `Makie.loadasset(name)`, to directly load the asset [#5074](https://github.com/MakieOrg/Makie.jl/pull/5074).
+- Added `fontsize` attribute to `annotation` [#5099](https://github.com/MakieOrg/Makie.jl/pull/5099).
 
 ## [0.23.0] - 2025-06-10
 
