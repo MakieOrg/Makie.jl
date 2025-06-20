@@ -360,16 +360,22 @@ function remove_font_render_callback!(atlas::TextureAtlas, f)
     return filter!(f2 -> f2 != f, atlas.font_render_callback)
 end
 
-const GL_FONT_CACHE = Dict{FreeTypeAbstraction.FTFont, FreeTypeAbstraction.FTFont}()
+const ATLAS_FONT_CACHE = Dict{NativeFont, NativeFont}()
+const FTA = FreeTypeAbstraction
+const FT = FTA.FreeType
+
+function copy_font(font::NativeFont)
+    mmapped = font.mmapped
+    isnothing(mmapped) && error("Font $font is not mmapped, can't copy it")
+    face = Ref{FT.FT_Face}()
+    err = @lock FTA.LIBRARY_LOCK FT.FT_New_Memory_Face(FTA.FREE_FONT_LIBRARY[1], mmapped, length(mmapped), Int32(0), face)
+    FTA.check_error(err, "Couldn't copy font \"$(font.fontname)\"")
+    return NativeFont(face[], font.use_cache, mmapped)
+end
 
 function render(atlas::TextureAtlas, (glyph_index, _font)::Tuple{UInt64, NativeFont})
-    # TODO: Return the found font path in FreeTypeAbstraction so we can cache it
-    # (or cache it there?) and turn the second ~30ms search cost into a ~30µs try_load
-    font = get(GL_FONT_CACHE, _font) do
-        fontpath = assetpath("fonts")
-        FreeTypeAbstraction.findfont(FreeTypeAbstraction.fontname(_font), additional_fonts = fontpath)
-    end
-
+    # We copy fonts for rendering to avoid issues with Cairo mutating the font matrix
+    font = get(()-> copy_font(_font), ATLAS_FONT_CACHE, _font)
     downsample = atlas.downsample
     pad = atlas.glyph_padding
     # the target pixel size of our distance field
