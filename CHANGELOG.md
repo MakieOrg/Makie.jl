@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.24.0] - 2025-06-20
+
 - **Breaking** Refactored plots to rely on the newly introduced `ComputeGraph` instead of `Observables`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
   - **Breaking** `attr = Attributes(plot)` now returns a `ComputeGraph`, which disallows `copy(attr)`, `pop!(attr, ...)`, `attr[:newvar] = ...` and splatting `plot!(...; attr...)`.
   - **Semi-Breaking** `plot(parent, attr, args...; kwargs...)` now only considers applicable attributes in `attr` and prioritizes `kwargs` in case of collisions.
@@ -873,7 +875,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.0...HEAD
+[0.23.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...v0.23.0
 [0.22.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.9...v0.22.10
 [0.22.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.8...v0.22.9
