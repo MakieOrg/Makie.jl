@@ -31,6 +31,20 @@ cd(tmpdir)
 Pkg.generate("MakieApp")
 Pkg.activate("MakieApp")
 
+# Disable precompile workload, so that we compile less functions
+# Speed up compilation and dont make the CI OOM.
+# This should still precompile anything in the APP and backe that to the image.
+write(joinpath(tmpdir, "LocalPreferences.toml"), """
+[CairoMakie]
+precompile_workload = false
+[GLMakie]
+precompile_workload = false
+[Makie]
+precompile_workload = false
+[WGLMakie]
+precompile_workload = false
+""")
+
 makie_dir = @__DIR__
 
 # Add packages from branch, to make it easier to move the code later (e.g. when running this locally)
