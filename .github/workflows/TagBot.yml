@@ -13,3 +13,4 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           ssh: ${{ secrets.TAGBOT_KEY }}
+          subdir: Makie
