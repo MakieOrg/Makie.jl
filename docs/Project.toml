@@ -18,7 +18,6 @@ GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 Gumbo = "708ec375-b3d6-5a57-a7ce-8257bf98657a"
 ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-MakieCore = "20f20a25-4f0e-4fdf-b5d1-57303727442b"
 MappedArrays = "dbb5928d-eab1-5f90-85c2-b9b0edb7c900"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 NIfTI = "a3a9e032-41b5-5fc4-967a-a6b7a19844d3"
@@ -28,14 +27,15 @@ RPRMakie = "22d9f318-5e34-4b44-b769-6e3734a732a6"
 RadeonProRender = "27029320-176d-4a42-b57d-56729d2ad457"
 Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
+ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 
 [compat]
-DocumenterVitepress = "0.1"
+DocumenterVitepress = "0.2.4"
 
 [sources]
-Makie = { path = ".." }
-MakieCore = { path = "../MakieCore" }
 CairoMakie = { path = "../CairoMakie" }
+ComputePipeline = {path = "../ComputePipeline"}
 GLMakie = { path = "../GLMakie" }
+Makie = { path = "../Makie" }
 WGLMakie = { path = "../WGLMakie" }
-RPRMakie = { path = "../RPRMakie" }
+RPRMakie = {path = "../RPRMakie"}

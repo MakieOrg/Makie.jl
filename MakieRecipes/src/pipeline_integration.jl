@@ -3,21 +3,21 @@
 # ## Types and aliases
 
 const PlotContext = Union{
-                    AbstractScene,
-                    AbstractPlot,
-                    MakieLayout.LAxis
-                }
+    AbstractScene,
+    AbstractPlot,
+    MakieLayout.LAxis,
+}
 
 # ## API implementation
 
 # Define overrides for RecipesPipeline hooks.
 
-RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::PlotContext) where T = throw(MethodError("Unmatched plot type: $T"))
+RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::PlotContext) where {T} = throw(MethodError("Unmatched plot type: $T"))
 
 # Preprocessing involves resetting the palette for now.
 # Later, it may involve setting up a layouting context, among other things.
 function RecipesPipeline.preprocess_attributes!(plt::PlotContext, plotattributes)
-    plt.palette[].i[] = zero(UInt8)
+    return plt.palette[].i[] = zero(UInt8)
 end
 
 
@@ -41,21 +41,21 @@ function RecipesPipeline.process_userrecipe!(sc::PlotContext, kw_list, kw)
             map(kw[:line_z], kw[:x], kw[:y], kw[:z])
     end
 
-    push!(kw_list, kw)
+    return push!(kw_list, kw)
 end
 
 # Determine axis limits
 function RecipesPipeline.get_axis_limits(sc::PlotContext, f, letter)
     lims = to_value(data_limits(sc))
     i = if letter === :x
-            1
-        elseif letter === :y
-            2
-        elseif letter === :z
-            3
-        else
-            throw(ArgumentError("Letter $letter does not correspond to an axis."))
-        end
+        1
+    elseif letter === :y
+        2
+    elseif letter === :z
+        3
+    else
+        throw(ArgumentError("Letter $letter does not correspond to an axis."))
+    end
 
     o = origin(lims)
     return (o[i], o[i] + widths(lims)[i])
@@ -66,9 +66,9 @@ end
 ########################################
 
 function slice_arg(v::AbstractMatrix, idx::Int)
-    c = mod1(idx, size(v,2))
-    m,n = axes(v)
-    size(v,1) == 1 ? v[first(m),n[c]] : v[:,n[c]]
+    c = mod1(idx, size(v, 2))
+    m, n = axes(v)
+    return size(v, 1) == 1 ? v[first(m), n[c]] : v[:, n[c]]
 end
 # slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
 slice_arg(v, idx) = v
@@ -94,7 +94,7 @@ function makie_plottype(st::Symbol)
     return get(makie_seriestype_map, st, Lines)
 end
 
-makie_args(::Type{T}, plotattributes) where T <: AbstractPlot = makie_args(conversion_trait(T), plotattributes)
+makie_args(::Type{T}, plotattributes) where {T <: AbstractPlot} = makie_args(conversion_trait(T), plotattributes)
 
 function makie_args(::PointBased, plotattributes)
 
@@ -115,9 +115,9 @@ end
 # TODO use Makie.plottype
 makie_args(::SurfaceLike, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
-makie_args(::Type{<: Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
+makie_args(::Type{<:Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
-function makie_args(::Type{<: Poly}, plotattributes)
+function makie_args(::Type{<:Poly}, plotattributes)
     return (from_nansep_vec(Point2f.(plotattributes[:x], plotattributes[:y])),)
 end
 
@@ -141,7 +141,7 @@ function translate_to_makie!(st, pa)
     end
 
     # series color
-    if st ∈ (:path, :path3d, :curves)
+    return if st ∈ (:path, :path3d, :curves)
 
         if !isnothing(get(pa, :line_z, nothing))
             pa[:color] = pa[:line_z]
@@ -287,18 +287,18 @@ end
 
 function set_palette!(plt, plotattributes)
     pt = get!(plotattributes, :palette, default_palette)
-    if pt isa Palette
+    return if pt isa Palette
         # nothing
-    elseif pt isa Vector{<: Colorant}
+    elseif pt isa Vector{<:Colorant}
         plotattributes[:palette] = Palette(pt)
     else
         @warn "Palette was unrecognizable!"
     end
 end
 
-function plot_series_annotations!(plt, args, pt, plotattributes)
+function plot_series_text!(plt, args, pt, plotattributes)
 
-    sa = plotattributes[:series_annotations]
+    sa = plotattributes[:series_text]
 
     positions = Point2f.(plotattributes[:x], plotattributes[:y])
 
@@ -308,15 +308,15 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     fontsize = sa[3]
 
-    @debug("Series annotations say hi")
+    @debug("Series texts say hi")
 
-    annotations!(plt, strs, positions; fontsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    return text!(plt, positions; text = strs, fontsize = fontsize / 30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
-function plot_annotations!(plt, args, pt, plotattributes)
+function plot_text!(plt, args, pt, plotattributes)
 
-    sa = plotattributes[:annotations]
+    sa = plotattributes[:text]
 
     positions = Point2f.(plotattributes[:x], plotattributes[:y])
 
@@ -324,9 +324,9 @@ function plot_annotations!(plt, args, pt, plotattributes)
 
     fontsizes = Float32.(getindex.(sa, 4))
 
-    @debug("Annotations say hi")
+    @debug("Texts say hi")
 
-    annotations!(plt, strs, positions; fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+    return text!(plt, positions; text = strs, fontsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
@@ -340,7 +340,7 @@ function plot_fill!(plt, args, pt, plotattributes)
     c = to_color(color)
     bandcolor = RGBA(red(c), green(c), blue(c), alpha(c) * opacity)
 
-    band!(plt, x, upper, lower; color = bandcolor)
+    return band!(plt, x, upper, lower; color = bandcolor)
 end
 
 # Add the "series" to the Scene.
@@ -379,13 +379,13 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     plot!(plt, pt, args...; ap_attrs...)
 
-    # handle fill and series annotations after, so they can overdraw
+    # handle fill and series text after, so they can overdraw
 
     !isnothing(get(plotattributes, :fill, nothing)) && plot_fill!(plt, args, pt, plotattributes)
 
-    haskey(plotattributes, :annotations) && plot_annotations!(plt, args, pt, plotattributes)
+    haskey(plotattributes, :text) && plot_text!(plt, args, pt, plotattributes)
 
-    !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
+    !isnothing(get(plotattributes, :series_text, nothing)) && plot_series_text!(plt, args, pt, plotattributes)
 
     return plt
 end

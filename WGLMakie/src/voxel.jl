@@ -1,113 +1,126 @@
-function create_shader(scene::Scene, plot::Makie.Voxels)
-    uniform_dict = Dict{Symbol, Any}()
-    uniform_dict[:voxel_id] = Sampler(plot.converted[end], minfilter = :nearest)
-    # for plane sorting
-    uniform_dict[:depthsorting] = plot.depthsorting
-    uniform_dict[:eyeposition] = Vec3f(1)
-    uniform_dict[:view_direction] = camera(scene).view_direction
-    # lighting
-    uniform_dict[:diffuse] = lift(x -> convert_attribute(x, Key{:diffuse}()), plot, plot.diffuse)
-    uniform_dict[:specular] = lift(x -> convert_attribute(x, Key{:specular}()), plot, plot.specular)
-    uniform_dict[:shininess] = lift(x -> convert_attribute(x, Key{:shininess}()), plot, plot.shininess)
-    uniform_dict[:depth_shift] = get(plot, :depth_shift, Observable(0.0f0))
-    uniform_dict[:light_direction] = Vec3f(1)
-    uniform_dict[:light_color] = Vec3f(1)
-    uniform_dict[:ambient] = Vec3f(1)
-    # picking
-    uniform_dict[:picking] = false
-    uniform_dict[:object_id] = UInt32(0)
-    # other
-    uniform_dict[:normalmatrix] = map(plot.model) do m
-        # should be fine to ignore placement matrix here because
-        # translation is ignored and scale shouldn't matter
-        i = Vec(1, 2, 3)
-        return Mat3f(transpose(inv(m[i, i])))
-    end
-    uniform_dict[:shading] = to_value(get(plot, :shading, NoShading)) != NoShading
-    uniform_dict[:gap] = lift(x -> convert_attribute(x, Key{:gap}(), Key{:voxels}()), plot.gap)
+function serialize_three(scene::Scene, plot::Makie.Voxels)
 
-    # TODO: localized update
-    # buffer = Vector{UInt8}(undef, 1)
-    on(plot, plot._local_update) do (is, js, ks)
-        # required_length = length(is) * length(js) * length(ks)
-        # if length(buffer) < required_length
-        #     resize!(buffer, required_length)
-        # end
-        # idx = 1
-        # for k in ks, j in js, i in is
-        #     buffer[idx] = plot.converted[end].val[i, j, k]
-        #     idx += 1
-        # end
-        # GLAbstraction.texsubimage(tex, buffer, is, js, ks)
-        notify(plot.converted[end])
-        return
-    end
+    mesh = create_shader(scene, plot)
 
-    # adjust model matrix with placement matrix
-    uniform_dict[:model] = map(
-            plot, plot.converted...,  plot.model
-        ) do xs, ys, zs, chunk, model
-        mini = minimum.((xs, ys, zs))
-        width = maximum.((xs, ys, zs)) .- mini
-        return Mat4f(model *
-            Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
-        )
-    end
+    mesh[:plot_type] = js_plot_type(plot)
+    mesh[:name] = string(Makie.plotkey(plot)) * "-" * string(objectid(plot))
+    mesh[:visible] = plot.visible[]
+    mesh[:uuid] = js_uuid(plot)
+    mesh[:updater] = plot.attributes[:wgl_update_obs][]
 
-    maybe_color_mapping = plot.calculated_colors[]
-    uv_map = get(plot.attributes, :uvmap, nothing)
-    uv_transform = plot.uv_transform
-    if maybe_color_mapping isa Makie.ColorMapping
-        uniform_dict[:color_map] = Sampler(maybe_color_mapping.colormap, minfilter = :nearest)
-        uniform_dict[:uv_transform] = false
-        uniform_dict[:color] = false
-    elseif !isnothing(to_value(uv_transform)) || !isnothing(to_value(uv_map))
-        if !(to_value(maybe_color_mapping) isa Matrix{<: Colorant})
-            error("Could not create render object for voxel plot due to incomplete texture mapping. `uv_transform` has been provided without an image being passed as `color`.")
-        end
+    mesh[:overdraw] = plot.overdraw[]
+    mesh[:transparency] = plot.transparency[]
+    mesh[:space] = plot.space[]
 
-        uniform_dict[:color_map] = false
-
-        if !isnothing(to_value(uv_transform))
-            # new
-            packed = map(plot, uv_transform) do uvt
-                x = Makie.convert_attribute(uvt, Makie.key"uv_transform"())
-                return Makie.pack_voxel_uv_transform(x)
-            end
-        else
-            # old, deprecated
-            @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
-            packed = map(uv_map) do uvmap
-                raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
-                converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
-                return Makie.pack_voxel_uv_transform(converted_uvt)
-            end
-        end
-        uniform_dict[:uv_transform] = Sampler(packed, minfilter = :nearest)
-        interp = to_value(plot.interpolate) ? :linear : :nearest
-        uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = interp)
-    elseif to_value(maybe_color_mapping) isa Matrix{<: Colorant}
-        error("Could not create render object for voxel plot due to incomplete texture mapping. An image has been passed as `color` but not `uv_transform` was provided.")
+    if haskey(plot, :markerspace)
+        mesh[:markerspace] = plot.markerspace[]
+        mesh[:cam_space] = plot.markerspace[]
     else
-        uniform_dict[:color_map] = false
-        uniform_dict[:uv_transform] = false
-        uniform_dict[:color] = Sampler(maybe_color_mapping, minfilter = :nearest)
+        mesh[:cam_space] = plot.space[]
     end
 
-    # TODO: this is a waste
-    dummy_data = Observable(Float32[])
-    onany(plot, plot.gap, plot.converted[end]) do gap, chunk
+    mesh[:uniforms][:uniform_clip_planes] = serialize_three(plot.uniform_clip_planes[])
+    mesh[:uniforms][:uniform_num_clip_planes] = serialize_three(plot.uniform_num_clip_planes[])
+
+    return mesh
+end
+
+function create_shader(scene::Scene, plot::Voxels)
+    attr = plot.attributes
+
+    Makie.add_computation!(attr, scene, Val(:voxel_model))
+
+    if haskey(attr, :voxel_colormap)
+        map!(attr, :voxel_colormap, [:wgl_colormap, :wgl_uv_transform, :wgl_color]) do colormap
+            # colormap is synchronized with the 255 values possible
+            return (Sampler(colormap, minfilter = :nearest), false, false)
+        end
+    elseif haskey(attr, :voxel_color)
+        Makie.add_computation!(attr, scene, Val(:voxel_uv_transform))
+        register_computation!(
+            attr, [:voxel_color, :packed_uv_transform, :interpolate],
+            [:wgl_colormap, :wgl_uv_transform, :wgl_color]
+        ) do inputs, changed, cached
+            # how interpolate?
+            color, uvt, interpolate = inputs
+            filter = ifelse(interpolate, :linear, :nearest)
+            if isnothing(uvt)
+                return (false, false, Sampler(color, minfilter = filter)) # color vector
+            else
+                return (false, Sampler(uvt, minfilter = :nearest), Sampler(color, minfilter = filter)) # texture map
+            end
+        end
+    else
+
+    end
+
+    Makie.register_world_normalmatrix!(attr, :voxel_model)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :voxel_model)
+
+    # TODO: this is a waste, should just be "make N instances with no data"
+    register_computation!(attr, [:chunk_u8, :gap], [:dummy_data]) do (chunk, gap), changed, cached
         N = sum(size(chunk))
         N_instances = ifelse(gap > 0.01, 2 * N, N + 3)
-        if N_instances != length(dummy_data[]) # avoid updating unnecessarily
-            dummy_data[] = [0f0 for _ in 1:N_instances]
+        if isnothing(cached)
+            return (zeros(Float32, N_instances),) # or smaller type?
+        else
+            dummy_data = cached[1]::Vector{Float32}
+            if N_instances != length(dummy_data)
+                resize!(dummy_data, N_instances)
+                dummy_data .= 0
+                return (dummy_data,)
+            else
+                return nothing
+            end
         end
-        return
     end
-    notify(plot.gap)
 
-    instance = GeometryBasics.mesh(Rect2(0f0, 0f0, 1f0, 1f0))
-    program = InstancedProgram(WebGL(), lasset("voxel.vert"), lasset("voxel.frag"),
-                        instance, VertexArray(dummy = dummy_data), uniform_dict)
-    return program, nothing
+    add_primitive_shading!(scene, attr)
+    inputs = [
+        :dummy_data,
+
+        :depth_shift, :world_normalmatrix,
+        :gap, :chunk_u8, :voxel_model,
+        :wgl_colormap, :wgl_uv_transform, :wgl_color,
+
+        :diffuse, :specular, :shininess, # :backlight,
+        :depthsorting, :primitive_shading,
+        :uniform_clip_planes, :uniform_num_clip_planes, :visible,
+    ]
+
+    return create_wgl_renderobject(voxel_program, attr, inputs)
+end
+
+
+function voxel_program(attr)
+    uniforms = Dict(
+        :diffuse => attr.diffuse,
+        :specular => attr.specular,
+        :shininess => attr.shininess,
+        :picking => false,
+        :object_id => UInt32(0),
+        :depth_shift => attr.depth_shift,
+        :eyeposition => Vec3f(1),
+        :view_direction => Vec3f(1),
+        :depthsorting => attr.depthsorting,
+        :world_normalmatrix => attr.world_normalmatrix,
+        :shading => attr.primitive_shading,
+        :gap => attr.gap,
+        :chunk_u8 => attr.chunk_u8,
+        :voxel_model => attr.voxel_model,
+        :wgl_colormap => attr.wgl_colormap,
+        :wgl_uv_transform => attr.wgl_uv_transform,
+        :wgl_color => attr.wgl_color,
+    )
+
+    # TODO: this is a waste, should just be "make N instances with no data"
+    per_instance = Dict(:dummy_data => attr.dummy_data)
+    instance = GeometryBasics.mesh(Rect2f(0, 0, 1, 1)) # dont need uv, normals
+
+    data = create_instanced_shader(
+        per_instance, instance, uniforms,
+        lasset("voxel.vert"), lasset("voxel.frag")
+    )
+
+    return data
 end
