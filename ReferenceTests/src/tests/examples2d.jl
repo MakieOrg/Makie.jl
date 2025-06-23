@@ -151,7 +151,7 @@ end
     # Optimized forms
     poly!(ax, [Circle(Point2f(50 + 300), 50.0f0)], color = :gray, strokewidth = 10, strokecolor = :red)
     poly!(ax, [Circle(Point2f(50 + i, 50 + i), 10.0f0) for i in 1:100:400], color = :red)
-    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i in 1:100:400], strokewidth = 2, strokecolor = :green)
+    poly!(ax, [Rect2f(50 + i, 50 + i, 20, 20) for i in 1:100:400], strokewidth = 2, strokecolor = :orange)
     linesegments!(
         ax,
         [Point2f(50 + i, 50 + i) => Point2f(i + 70, i + 70) for i in 1:100:400], linewidth = 8, color = :purple
@@ -175,12 +175,14 @@ end
     X = cumsum(RNG.randn(n, m), dims = 2)
     X = X .- X[:, 1]
     μ = vec(mean(X, dims = 1)) # mean
-    f, ax, _ = lines(t, μ)              # plot mean line
+    f, ax, p = lines(t, μ, color = :yellow, linewidth = 2) # plot mean line
+    translate!(p, 0, 0, 1) # make it draw on top
     σ = vec(std(X, dims = 1))  # stddev
     band!(ax, t, μ + σ, μ - σ)   # plot stddev band
 
     # vertical version
-    ax2, _ = lines(f[1, 2], μ, t)
+    ax2, p = lines(f[1, 2], μ, t, color = :yellow, linewidth = 2)
+    translate!(p, 0, 0, 1)
     band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
 
     # array colors
@@ -2367,7 +2369,8 @@ end
     )
     annotation!(
         ax, 0, 100, 3pi / 2, -1.0,
-        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold
+        text = "Trough", style = Ann.Styles.LineArrow(), font = :bold,
+        fontsize = 24,
     )
     annotation!(
         ax, -100, 0, 5pi / 2, 1.0,

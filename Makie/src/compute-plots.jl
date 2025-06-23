@@ -223,7 +223,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif color isa AbstractPattern
             ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color # TODO: Should we skip alpha in this case?
+            color
         elseif color isa AbstractArray
             add_alpha.(color, alpha)
         else
@@ -232,7 +232,6 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern)
     end
 
-    # TODO: if colorscale is defined, should it act on user supplied colorrange?
     return register_computation!(
         attr,
         [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
@@ -473,7 +472,11 @@ function default_attribute(user_attributes, (key, value))
         if value isa Attributes
             return merge(value, Attributes(pairs(user_attributes[key])))
         else
-            return user_attributes[key]
+            val = user_attributes[key]
+            if val isa Union{NamedTuple, Dict}
+                return Attributes(val)
+            end
+            return val
         end
     elseif value isa AttributeMetadata
         val = value.default_value
@@ -488,6 +491,12 @@ struct AttributeConvert{Key, Plot} end
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(_, value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
+end
+
+to_recipe_attribute(_, x) = Ref{Any}(x) # Make sure it can change type
+to_recipe_attribute(_, attr::Attributes) = attr
+function to_recipe_attribute(_, value::Union{NamedTuple, Dict})
+    return Attributes(value)
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
@@ -537,17 +546,18 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
-        if !haskey(attr.inputs, k) && !haskey(attr.outputs, k)
+        if !haskey(attr.outputs, k)
             if is_primitive
                 add_input!(AttributeConvert(k, name), attr, k, v)
             else
-                add_input!((k, v) -> Ref{Any}(v), attr, k, v)
+                add_input!(to_recipe_attribute, attr, k, v)
             end
         end
     end
-    return if !haskey(attr, :model)
+    if !haskey(attr, :model)
         add_input!(attr, :model, Mat4d(I))
     end
+    return
 end
 
 function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
@@ -729,24 +739,19 @@ Base.notify(computed::ComputePipeline.Computed) = computed
 
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
-    return register_computation!(
-        attr,
-        [attribute, :positions],
-        [output_name],
-    ) do (vec, positions), changed, last
+    return map!(attr, [attribute, :positions], output_name) do vec, positions
         if !(vec isa AbstractVector)
-            !isnothing(last) && vec == last[1] && return nothing
-            return (vec,)
+            return vec
         end
         NP = length(positions)
         NC = length(vec)
-        NP == NC && return (vec,)
+        NP == NC && return vec
         if NP ÷ 2 == NC
             output = [vec[div(i + 1, 2)] for i in 1:NP]
-            return (output,)
+            return output
         end
         error("Color vector length $(NC) does not match position length $(NP)")
-        return (vec,)
+        return vec
     end
 end
 
@@ -979,5 +984,21 @@ function register_view_normalmatrix!(attr, modelname = :model_f32c)
         i3 = Vec3(1, 2, 3)
         nm = transpose(inv(view[i3, i3] * Mat3f(model[i3, i3])))
         return nm
+    end
+end
+
+# For precompilation we want a second resolve
+# Since that compiles a few more functions
+# TODO, make this unecessary by a better ComputeGraph implementation?
+second_resolve(fig::Figure, resolve_symbol) = second_resolve(Makie.get_scene(fig), resolve_symbol)
+second_resolve(fig, resolve_symbol) = second_resolve(fig.figure, resolve_symbol)
+function second_resolve(scene::Scene, resolve_symbol)
+    return for_each_atomic_plot(scene) do plot
+        for (k, input) in plot.attributes.inputs
+            ComputePipeline.mark_dirty!(input)
+        end
+        if haskey(plot, resolve_symbol)
+            plot[resolve_symbol][]
+        end
     end
 end

@@ -147,7 +147,11 @@ mutable struct Scene <: AbstractScene
         # Children can not go out of scope without their parent being finalized
         if isnothing(parent)
             finalizer(scene) do s
-                @async free(s)
+                @async try
+                    free(s)
+                catch e
+                    @error "Error while freeing scene" exception = (e, catch_backtrace())
+                end
             end
         end
         return scene
@@ -556,6 +560,7 @@ function Base.delete!(scene::Scene, plot::AbstractPlot)
     return free(plot)
 end
 
+#=
 supports_move_to(::MakieScreen) = false
 
 function supports_move_to(plot::Plot)
@@ -565,13 +570,13 @@ function supports_move_to(plot::Plot)
     end
 end
 
-# function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
-#     # TODO, move without deleting!
-#     # Will be easier with Observable refactor
-#     delete!(screen, scene, plot)
-#     insert!(screen, scene, plot)
-#     return
-# end
+function move_to!(screen::MakieScreen, plot::Plot, scene::Scene)
+    # TODO, move without deleting!
+    # Will be easier with Observable refactor
+    delete!(screen, scene, plot)
+    insert!(screen, scene, plot)
+    return
+end
 
 function move_to!(plot::Plot, scene::Scene)
     if plot.parent === scene
@@ -597,7 +602,7 @@ function move_to!(plot::Plot, scene::Scene)
     plot.parent = scene
     return
 end
-
+=#
 
 events(x) = events(get_scene(x))
 events(scene::Scene) = scene.events

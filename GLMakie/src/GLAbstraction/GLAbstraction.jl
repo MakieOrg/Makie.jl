@@ -8,6 +8,7 @@ using ColorTypes
 using ..GLMakie.GLFW
 using ..GLMakie: ShaderSource
 import ..GLMakie.Makie.ComputePipeline: update!
+import ..GLMakie: DEBUG
 using Printf
 using LinearAlgebra
 using Observables
@@ -20,7 +21,6 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 import Base: merge, resize!, similar, length, getindex, setindex!
 
 # Debug tools
-const GLMAKIE_DEBUG = Ref(false)
 const CONTEXT_LOCK1 = ReentrantLock()
 const CONTEXT_LOCK2 = ReentrantLock()
 

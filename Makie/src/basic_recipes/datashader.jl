@@ -669,11 +669,26 @@ function empty_channel!(channel::Channel)
     end
 end
 
+
+function calculate_colorrange(img, crange)
+    if eltype(img) <: Number
+        if crange isa Automatic
+            return Vec2f(nan_extrema(img))
+        else
+            return Vec2f(crange)
+        end
+    else
+        return automatic # Matrix{<:Colorant}
+    end
+end
+
 function Makie.plot!(p::HeatmapShader)
     scene = Makie.parent_scene(p)
     events = scene.events
     add_axis_limits!(p)
-    register_computation!(p.attributes, [:axis_limits], [:slow_limits]) do (lims,), changed, last
+    add_input!(p.attributes, :mousebutton, events.mousebutton)
+    add_input!(p.attributes, :keyboardbutton, events.keyboardbutton)
+    register_computation!(p.attributes, [:axis_limits, :mousebutton, :keyboardbutton], [:slow_limits]) do (lims, mbs), changed, last
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
@@ -698,21 +713,20 @@ function Makie.plot!(p::HeatmapShader)
     register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
         return (xy_to_rect(x, y),)
     end
-    register_computation!(p, [:image, :x, :y, :max_resolution, :data_limits], [:x_endpoints, :y_endpoints, :overview_image]) do (image, x, y, max_resolution, image_area), changed, last
-        return resample_image(x, y, image.data, max_resolution, image_area)
-    end
-    register_computation!(p, [:colorrange, :overview_image], [:computed_colorrange]) do (crange, img), changed, last
-        if eltype(img) <: Number
-            if crange isa Automatic
-                return (Vec2f(nan_extrema(img)),)
-            else
-                return (Vec2f(crange),)
-            end
+
+    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
+        x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
+        cr = calculate_colorrange(img, crange)
+        if image.lowres_background
+            val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
+            _img = Float32[val for _ in 1:1, _ in 1:1]
         else
-            return (automatic,) # Matrix{<:Colorant}
+            _img = img
         end
+        return x, y, _img, cr
     end
-    register_computation!(p, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+
+    register_computation!(p.attributes, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
         if isnothing(xe_ye_oimg)
             if isnothing(last) # first downsample
@@ -726,15 +740,7 @@ function Makie.plot!(p::HeatmapShader)
 
     gpa = generic_plot_attributes(p)
     cpa = colormap_attributes(p)
-    # overview = overview_image
-    # if !p.image[].lowres_background
-    #     # If we don't use the lowres background,
-    #     # We still display a background image, but with only the average of the image
-    #     # Leading to a background that blends relatively well with the high res image
-    #     overview = map(p, colorrange) do cr
-    #         Float32[mean(cr) for _ in 1:1, _ in 1:1]
-    #     end
-    # end
+
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
