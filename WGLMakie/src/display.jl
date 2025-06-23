@@ -454,7 +454,7 @@ function insert_plot!(session::Session, scene::Scene, @nospecialize(plot::Plot))
     $(WGL).then(WGL=> {
         WGL.insert_plot($(js_uuid(scene)), $plot_data);
     })"""
-    Bonito.evaljs_value(session, js; timeout = 50)
+    Bonito.evaljs_value(session, js; timeout = 10, error_on_closed = false)
     return
 end
 
