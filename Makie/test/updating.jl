@@ -75,12 +75,12 @@ Makie.@recipe(AttrTest) do scene
 end
 
 function Makie.plot!(pl::AttrTest)
-    lines!(pl, pl.arg1, pl.arg2; pl.kwargs[]...)
+    return lines!(pl, pl.arg1, pl.arg2; pl.kwargs[]...)
 end
 
 @testset "passing through and updating Attributes" begin
     obs = Observable(:red)
-    f, ax, pl = attrtest(1:5, 1:5; kwargs=(; color = obs, linewidth = 4))
+    f, ax, pl = attrtest(1:5, 1:5; kwargs = (; color = obs, linewidth = 4))
 
     @test pl.plots[1].color[] == to_color(:red)
     obs[] = :blue
