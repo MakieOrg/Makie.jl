@@ -204,6 +204,7 @@ function cleanup(inspector::DataInspector)
     delete!(inspector.root, inspector.plot)
     clear_temporary_plots!(inspector, inspector.selection)
     close(inspector.hover_channel)
+    inspector.root.data_inspector = nothing
     return inspector
 end
 
@@ -247,6 +248,9 @@ end
 
 function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...)
     parent = root(scene)
+    if !isnothing(parent.data_inspector)
+        return parent.data_inspector
+    end
     @assert origin(viewport(parent)[]) == Vec2f(0)
 
     attrib_dict = Dict(kwargs)
@@ -276,7 +280,7 @@ function DataInspector(scene::Scene; priority = 100, blocking = false, kwargs...
     notify(base_attrib.depth)
 
     inspector = DataInspector(parent, plot, base_attrib)
-
+    parent.data_inspector = inspector
     e = events(parent)
     # We delegate the hover processing to another channel,
     # So that we can skip queued up updates with empty_channel!
