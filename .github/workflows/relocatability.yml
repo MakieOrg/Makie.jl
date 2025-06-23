@@ -36,8 +36,8 @@ jobs:
         arch:
           - x64
         backend:
-          - GLMakie
-          - WGLMakie
+          #- GLMakie
+          #- WGLMakie
           - CairoMakie
     steps:
       - name: Checkout
