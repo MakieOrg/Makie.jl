@@ -75,7 +75,7 @@ Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.0334
 ```
 </details>
 
-or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
+or [Download the BibTeX file](./DanischKrumbiegel2021.bibtex).
 
 ## Community Channels
 
