@@ -1,9 +1,9 @@
 <div align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)"
-        srcset="/Makie/assets/logo_with_text_dark.svg" >
+        srcset="/images/logo_with_text_dark.svg" >
       <img alt="Makie.jl logo"
-        src="/Makie/assets/logo_with_text.svg" height="100">
+        src="/images/logo_with_text.svg" height="100">
     </picture>
 </div>
 
