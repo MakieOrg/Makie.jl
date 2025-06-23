@@ -93,6 +93,8 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
+    # Cant type this, dont have the type yet
+    data_inspector::Any
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -131,7 +133,8 @@ mutable struct Scene <: AbstractScene
             deregister_callbacks,
             ComputeGraph(),
             DimConversions(),
-            false
+            false,
+            nothing
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
