@@ -261,20 +261,20 @@ end
 # TODO: PackageExtension?
 function hcl_nodes(hcl; useheight = false)
     nleaves = length(hcl.order)
-    nodes = [Makie.DNode(i, Point2d(x, 0), nothing)
-             for (i, x) ∈ enumerate(invperm(hcl.order))]
+    nodes = [DNode(i, Point2d(x, 0), nothing) for (i, x) in enumerate(invperm(hcl.order))]
     # Not the cleanest implementation. It may be better to instead change
     # find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx) + 1)
     # I leave it up to the council.
-    for ((m1, m2), height) ∈ zip(eachrow(hcl.merges), hcl.heights)
+    for ((m1, m2), height) in zip(eachrow(hcl.merges), hcl.heights)
         m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
         m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
-        push!(nodes,
-              find_merge(nodes[m1], nodes[m2];
-                               height = ifelse(useheight,
-                                               height - max(nodes[m1].position[2],
-                                                            nodes[m2].position[2]), 1),
-                               index = length(nodes) + 1))
+        max_height = height - max(nodes[m1].position[2], nodes[m2].position[2])
+        merge = find_merge(
+            nodes[m1], nodes[m2];
+            height = ifelse(useheight, max_height, 1),
+            index = length(nodes) + 1
+        )
+        push!(nodes, merge)
     end
 
     return nodes
