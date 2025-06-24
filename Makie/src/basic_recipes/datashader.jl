@@ -8,9 +8,9 @@ module Aggregation
     """
         Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
         Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
-
+    
     # Example
-
+    
     ```Julia
     using Makie
     canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
@@ -33,7 +33,7 @@ module Aggregation
 
     """
         get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
-
+    
     Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
     simplifies passing a local or global operation.
     Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
@@ -129,7 +129,7 @@ module Aggregation
 
     """
         aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
-
+    
     Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
     Method can be `AggSerial()` or `AggThreads()`.
     """
@@ -692,16 +692,15 @@ function Makie.plot!(p::HeatmapShader)
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
+        last_lims = isnothing(last) ? Rect2d() : last.slow_limits
         if update_while_pressed || (no_mbutton && no_kbutton)
             # instead of ignore_equal_values=true (uses ==),
             # we check with isapprox to not update when there are very small changes
-            last_lims = isnothing(last) ? Rect2d() : last.slow_limits
             if !(minimum(lims) ≈ minimum(last_lims) && widths(lims) ≈ widths(last_lims))
                 return (lims,)
-            else
-                return nothing # no change
             end
         end
+        return (last_lims,)
     end
 
     map!(p.attributes, :resolution, :max_resolution) do resolution
@@ -710,9 +709,7 @@ function Makie.plot!(p::HeatmapShader)
         return round.(Int, max.(res, 512)) # Not sure why, but viewport can become (1, 1)
     end
 
-    register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
-        return (xy_to_rect(x, y),)
-    end
+    map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
     map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
