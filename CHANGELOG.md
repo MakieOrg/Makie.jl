@@ -4,6 +4,7 @@
 
 ## [0.24.1] - 2025-06-24
 
+- Don't pull plots from invisible scenes and hide Blocks during construction [#5119](https://github.com/MakieOrg/Makie.jl/pull/5119).
 - Fixed `dendrogram` docstring and added `x, y, merges` conversion [#5118](https://github.com/MakieOrg/Makie.jl/pull/5118).
 - Make sure there's only one inspector per root scene [#5113](https://github.com/MakieOrg/Makie.jl/pull/5113).
 - Bring back lowres background for heatmap(Resampler(...)) [#5110](https://github.com/MakieOrg/Makie.jl/pull/5110).
