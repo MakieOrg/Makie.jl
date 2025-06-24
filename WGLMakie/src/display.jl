@@ -83,6 +83,8 @@ end
 
 function poll_all_plots(scene)
     return Makie.for_each_atomic_plot(scene) do p
+        pp = Makie.parent_scene(p)
+        pp.visible[] || return # Skip invisible scenes
         if haskey(p, :wgl_renderobject)
             try
                 # Skip updating invisible renderobjects
@@ -306,7 +308,7 @@ function get_screen_session(
         screen::Screen; timeout = 100,
         error::Union{Nothing, String} = nothing
     )::Union{Nothing, Session}
-    function throw_error(status)
+    function maybe_throw(status)
         return if !isnothing(error)
             message = "Can't get three: $(status)\n$(error)"
             Base.error(message)
@@ -315,30 +317,34 @@ function get_screen_session(
         end
     end
     if isnothing(screen.session)
-        throw_error("Screen has no session. Not yet displayed?")
+        maybe_throw("Screen has no session. Not yet displayed?")
         return nothing
     end
     session = screen.session
     if !(session.status in (Bonito.RENDERED, Bonito.DISPLAYED, Bonito.OPEN))
-        throw_error("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status), id: $(session.id)")
+        maybe_throw("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status), id: $(session.id)")
         return nothing
     end
     success = Bonito.wait_for_ready(session; timeout = timeout)
+    success === :closed && return nothing
     if success !== :success
-        throw_error("Timed out waiting for session to get ready")
+        maybe_throw("Timed out waiting for session to get ready")
         return nothing
     end
     success = Bonito.wait_for(timeout = timeout) do
+        Bonito.isclosed(session) && return :closed
         isready(screen.plot_initialized)
     end
+    # session closed inbetween, nothing can be done
+    success === :closed && return nothing
     # Throw error if error message specified
-    if success !== :success
-        throw_error("Timed out waiting $(timeout)s for session to get initialize")
+    if success !== :success || !isopen(session)
+        maybe_throw("Timed out waiting $(timeout)s for session to get initialize")
         return nothing
     end
     value = fetch(screen.plot_initialized)
     if value !== true
-        throw_error("Error initializing plot: $(value)")
+        maybe_throw("Error initializing plot: $(value)")
         return nothing
     end
     # At this point we should have a fully initialized plot + session
