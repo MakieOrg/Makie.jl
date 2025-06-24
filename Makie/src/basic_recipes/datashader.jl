@@ -686,22 +686,22 @@ function Makie.plot!(p::HeatmapShader)
     scene = Makie.parent_scene(p)
     events = scene.events
     add_axis_limits!(p)
-    add_input!(p.attributes, :mousebutton, events.mousebutton)
-    add_input!(p.attributes, :keyboardbutton, events.keyboardbutton)
-    register_computation!(p.attributes, [:axis_limits, :mousebutton, :keyboardbutton], [:slow_limits]) do (lims, mbs), changed, last
+    slow_limits = Observable(Rect2f())
+    onany(p, p.axis_limits, events.mousebutton, events.keyboardbutton) do lims, mbs, kbs
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
-        last_lims = isnothing(last) ? Rect2d() : last.slow_limits
+        last_lims = slow_limits[]
         if update_while_pressed || (no_mbutton && no_kbutton)
             # instead of ignore_equal_values=true (uses ==),
             # we check with isapprox to not update when there are very small changes
             if !(minimum(lims) ≈ minimum(last_lims) && widths(lims) ≈ widths(last_lims))
-                return (lims,)
+                slow_limits[] = lims
             end
         end
-        return (last_lims,)
+        return
     end
+    add_input!(p.attributes, :slow_limits, slow_limits)
 
     map!(p.attributes, :resolution, :max_resolution) do resolution
         resampler = p.image[]
