@@ -14,6 +14,8 @@ specified by `positions` and parent nodes identified by `merges`.
 
 `merges` contain pairs of indices `(i, j)` which connect to a new parent node.
 That node is then added to the list and can be merged with another.
+
+Note that this recipe is still experimental and subject to change in the future.
 """
 @recipe Dendrogram (nodes,) begin
     """
