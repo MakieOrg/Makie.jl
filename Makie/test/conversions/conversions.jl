@@ -513,6 +513,6 @@ end
 @testset "Dendrogram" begin
     xs = 1:10
     ys = rand(10)
-    merges = [(i, i+1) for i in 1:20]
+    merges = [(i, i + 1) for i in 1:20]
     @test Makie.convert_arguments(Dendrogram, xs, ys, merges) == Makie.convert_arguments(Dendrogram, Point2.(xs, ys), merges)
 end
