@@ -8,9 +8,9 @@ module Aggregation
     """
         Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
         Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
-    
+
     # Example
-    
+
     ```Julia
     using Makie
     canvas = Canvas(-1, 1, -1, 1; op=AggCount(), resolution=(800, 800))
@@ -33,7 +33,7 @@ module Aggregation
 
     """
         get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
-    
+
     Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
     simplifies passing a local or global operation.
     Allocates the result buffer every time and can be made non allocating by passing the correct result buffer.
@@ -129,7 +129,7 @@ module Aggregation
 
     """
         aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
-    
+
     Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
     Method can be `AggSerial()` or `AggThreads()`.
     """
