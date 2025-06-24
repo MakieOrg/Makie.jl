@@ -752,23 +752,21 @@ The Observable listener is set up with `priority = typemax(Int)-1` and
 `Consume(false)`. This means it will take precedence over all but `typemax(Int)`
 priority and not block later updates.
 """
-function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
+function add_input!(attr::ComputeGraph, k::Symbol, @nospecialize(obs::Observable))
     add_input!(attr, k, obs[])
-    # typemax-1 so it doesn't get disturbed by other listeners but can still be
-    # blocked by a typamax obs
-    of = on(obs, priority = typemax(Int) - 1) do new_val
+    of = on(obs) do new_val
         setproperty!(attr, k, new_val)
-        return Consume(false)
+        return nothing
     end
     push!(attr.observerfunctions, of)
     return attr
 end
 
-function add_input!(f, attr::ComputeGraph, k::Symbol, obs::Observable)
+function add_input!(f, attr::ComputeGraph, k::Symbol, @nospecialize(obs::Observable))
     add_input!(f, attr, k, obs[])
-    of = on(obs, priority = typemax(Int) - 1) do new_val
+    of = on(obs) do new_val
         setproperty!(attr, k, new_val)
-        return Consume(false)
+        return nothing
     end
     push!(attr.observerfunctions, of)
     return attr
