@@ -57,12 +57,13 @@ function check_for_changes()
     
     if has_changes
         println("📝 Changes detected:")
-        changed_files = split(strip(diff_output), '\n')
+        changed_files = String.(split(strip(diff_output), '\n'))  # Convert to Vector{String}
         for file in changed_files
             println("  - $file")
         end
     else
         println("ℹ️  No changes detected")
+        changed_files = String[]  # Empty Vector{String}
     end
     
     return has_changes, changed_files
