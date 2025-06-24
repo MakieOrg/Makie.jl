@@ -6,7 +6,8 @@ struct DNode
 end
 
 """
-    dendrogram(positions, merges; kwargs...)
+    dendrogram(positions, merges)
+    dendrogram(x, y, merges)
 
 Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
 specified by `positions` and parent nodes identified by `merges`.
@@ -243,6 +244,10 @@ function find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx
     newy = max(n1.position[2], n2.position[2]) + height
 
     return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
+end
+
+function convert_arguments(::Type{<:Dendrogram}, x::RealVector, y::RealVector, merges::Vector{<:Tuple{<:Integer, <:Integer}})
+    return convert_arguments(Dendrogram, convert_arguments(PointBased(), x, y)[1], merges)
 end
 
 function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
