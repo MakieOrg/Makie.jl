@@ -9,7 +9,7 @@ function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
     # pick a camera and draw axis.
     scenekw = merge((clear = false, camera = cam3d!), scenekw)
-    ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); scenekw...)
+    ls.scene = Scene(blockscene, lift(round_to_IRect2D, blockscene, ls.layoutobservables.computedbbox); visible = false, scenekw...)
 
     on(blockscene, ls.show_axis) do show_axis
         ax = ls.scene[OldAxis]

@@ -152,7 +152,6 @@ function compute_protrusions(
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
@@ -176,7 +175,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, viewport = scenearea)
+    scene = Scene(blockscene, viewport = scenearea, visible = false)
+    # Hide to block updates, will be unhidden! in constructor who calls this!
+    @assert !scene.visible[]
     ax.scene = scene
     # transfer conversions from axis to scene if there are any
     # or the other way around
