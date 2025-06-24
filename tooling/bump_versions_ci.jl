@@ -72,8 +72,8 @@ end
 function commit_and_push_changes(branch_name::String, bump_type::String, packages_str::String, update_changelog::Bool)
     println("💾 Committing changes...")
     
-    # Add all changes
-    run_git_command(`git add .`)
+    # Add all changes from repository root (not just current directory)
+    run_git_command(`git add -A`)
     
     # Create commit message
     packages_desc = isempty(packages_str) ? "auto-detected" : packages_str
