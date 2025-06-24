@@ -70,10 +70,11 @@ function update_changelog(new_version::VersionNumber, root::String)
         end
     end
 
-    println("Updated CHANGELOG.md with version $new_version")
+    return println("Updated CHANGELOG.md with version $new_version")
 end
 
-function bump_versions(bump_type::String = "patch";
+function bump_versions(
+        bump_type::String = "patch";
 
         packages::Vector{String} = String[],
         custom_bumps::Dict{String, String} = Dict{String, String}(),
@@ -84,7 +85,7 @@ function bump_versions(bump_type::String = "patch";
 
     package_paths = Dict(names .=> paths)
     root = normpath(joinpath(@__DIR__, ".."))
-    cd(root) do
+    return cd(root) do
         tomlpaths = dictmap(package_paths) do _, dir
             normpath(joinpath(root, dir, "Project.toml"))
         end
@@ -126,15 +127,17 @@ function bump_versions(bump_type::String = "patch";
 
             has_changed_src = dictmap((key, changes) -> !isempty(changes), src_changes)
 
-            packages = names[findall(
-                map(names) do name
-                    if has_changed_src["Makie"]
-                        name != "ComputePipeline"
-                    else
-                        has_changed_src[name]
+            packages = names[
+                findall(
+                    map(names) do name
+                        if has_changed_src["Makie"]
+                            name != "ComputePipeline"
+                        else
+                            has_changed_src[name]
+                        end
                     end
-                end
-            )]
+                ),
+            ]
         end
 
         # Apply dependency rules
@@ -275,11 +278,11 @@ function bump_versions_interactive()
             custom_bumps[package] = ["patch", "minor", "major"][bump_choice]
         end
 
-        return bump_versions(packages=selected_packages, custom_bumps=custom_bumps)
+        return bump_versions(packages = selected_packages, custom_bumps = custom_bumps)
     else
         # Uniform bumping
         bump_type = ["patch", "minor", "major"][version_selection]
-        return bump_versions(bump_type; packages=selected_packages)
+        return bump_versions(bump_type; packages = selected_packages)
     end
 end
 
