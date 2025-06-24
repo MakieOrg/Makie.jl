@@ -495,7 +495,7 @@ end
 
 to_recipe_attribute(_, x) = Ref{Any}(x) # Make sure it can change type
 to_recipe_attribute(_, attr::Attributes) = attr
-function to_recipe_attribute(_, value::Union{NamedTuple, Dict})
+function to_recipe_attribute(_, value::NamedTuple)
     return Attributes(value)
 end
 
