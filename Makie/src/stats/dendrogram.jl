@@ -6,18 +6,13 @@ struct DNode
 end
 
 """
-    dendrogram(x, y; kwargs...)
+    dendrogram(positions, merges; kwargs...)
 
-Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram),
-with leaf nodes specified by `x` and `y` coordinates,
-and parent nodes identified by `merges`.
+Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
+specified by `positions` and parent nodes identified by `merges`.
 
-# Arguments
-- `x`: x positions of leaf nodes
-- `y`: y positions of leaf nodes (default = 0)
-
-# Keywords
-- `merges`: specifies connections between nodes (see below)
+`merges` contain pairs of indices `(i, j)` which connect to a new parent node.
+That node is then added to the list and can be merged with another.
 """
 @recipe Dendrogram (nodes,) begin
     """
