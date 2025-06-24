@@ -78,11 +78,11 @@ function commit_and_push_changes(branch_name::String, bump_type::String, package
     # Create commit message
     packages_desc = isempty(packages_str) ? "auto-detected" : packages_str
     commit_msg = """Bump package versions ($bump_type)
-    
+
     - Bump type: $bump_type
     - Packages: $packages_desc
     - Update changelog: $update_changelog
-    
+
     🤖 Generated with GitHub Actions"""
 
     # Commit changes
@@ -107,20 +107,20 @@ function create_pull_request(branch_name::String, bump_type::String, packages_st
     files_list = join(["- $file" for file in changed_files], "\n")
 
     pr_body = """## Version Bump: $bump_type
-    
+
     This PR automatically bumps package versions using the bump_versions.jl script.
-    
+
     ### Configuration
     - **Bump Type**: $bump_type
     - **Packages**: $packages_desc
     - **Update Changelog**: $update_changelog
-    
+
     ### Files Modified
     $files_list
-    
+
     ---
     🤖 This PR was automatically created by GitHub Actions
-    
+  
     **Review checklist:**
     - [ ] Version numbers are correct
     - [ ] CHANGELOG.md is properly updated (if enabled)
@@ -206,15 +206,15 @@ function main()
         println(
             stderr, """
             CI script for bumping package versions via GitHub Actions.
-            
+
             Usage:
                 julia bump_versions_ci.jl <bump_type> [packages] [update_changelog]
-            
+
             Arguments:
                 bump_type: "patch", "minor", or "major"
                 packages: Comma-separated list of packages (optional, defaults to auto-detection)
                 update_changelog: "true" or "false" (optional, defaults to "true")
-            
+
             Examples:
                 julia bump_versions_ci.jl patch
                 julia bump_versions_ci.jl minor "Makie,CairoMakie" true
