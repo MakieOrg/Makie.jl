@@ -1,22 +1,59 @@
-name: Formatting
+name: Auto-format on Master Merge
+
 on:
   push:
     branches:
-      - 'master'
-      - 'release-'
-    tags:
-      - '*'
-  pull_request:
+      - master
+      - main
+
 jobs:
-  runic:
-    name: Runic formatting
+  auto-format:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          version: '1'
-      - uses: julia-actions/cache@v2
-      - uses: fredrikekre/runic-action@v1
+          # Use a PAT or the default token with write permissions
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Fetch full history to avoid shallow clone issues
+          fetch-depth: 0
+
+      - name: Set up Julia (if needed for runic)
+        uses: julia-actions/setup-julia@v2
         with:
-          version: '1.4'
+          version: '1.10'
+
+      - name: Install runic formatter
+        run: |
+          julia -e 'using Pkg; Pkg.add("Runic")'
+
+      - name: Run formatter
+        run: |
+          julia -e 'using Runic; exit(Runic.main(ARGS))' -- --inplace .
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Files were changed by formatter"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No files were changed by formatter"
+          fi
+
+      - name: Commit formatting changes
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          git commit -m "Auto-format code with runic [skip ci]"
+          git push
+
+      - name: Cancel previous workflow runs
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        uses: styfle/cancel-workflow-action@0.12.0
+        with:
+          access_token: ${{ secrets.GITHUB_TOKEN }}
+          workflow_id: ${{ github.run_id }}
