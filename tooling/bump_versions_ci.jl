@@ -120,7 +120,7 @@ function create_pull_request(branch_name::String, bump_type::String, packages_st
 
     ---
     🤖 This PR was automatically created by GitHub Actions
-  
+
     **Review checklist:**
     - [ ] Version numbers are correct
     - [ ] CHANGELOG.md is properly updated (if enabled)
