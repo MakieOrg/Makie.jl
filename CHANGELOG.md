@@ -4,6 +4,11 @@
 
 ## [0.24.1] - 2025-06-24
 
+- Fixed `dendrogram` docstring and added `x, y, merges` conversion [#5118](https://github.com/MakieOrg/Makie.jl/pull/5118).
+- Make sure there's only one inspector per root scene [#5113](https://github.com/MakieOrg/Makie.jl/pull/5113).
+- Bring back lowres background for heatmap(Resampler(...)) [#5110](https://github.com/MakieOrg/Makie.jl/pull/5110).
+- Fixed forwarding attributes in recipes [#5109](https://github.com/MakieOrg/Makie.jl/pull/5109).
+
 ## [0.24.0] - 2025-06-20
 
 - **Breaking** Refactored plots to rely on the newly introduced `ComputeGraph` instead of `Observables`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
