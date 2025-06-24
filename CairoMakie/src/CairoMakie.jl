@@ -28,7 +28,7 @@ end
 include("cairo-extension.jl")
 include("screen.jl")
 include("display.jl")
-include("infrastructure.jl")
+include("plot-primitives.jl")
 include("utils.jl")
 include("lines.jl")
 include("scatter.jl")

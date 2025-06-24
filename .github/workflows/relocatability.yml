@@ -22,7 +22,7 @@ jobs:
     name: Relocatability ${{ matrix.backend }}
     env:
       MODERNGL_DEBUGGING: "true" # turn on errors when running OpenGL tests
-      JULIA_NUM_PRECOMPILE_TAKS: 4
+      JULIA_NUM_PRECOMPILE_TAKS: 1
       JULIA_NUM_THREADS: 1
       JULIA_IMAGE_THREADS: 2
     runs-on: ${{ matrix.os }}
@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.11'
+          - '1.10'
         os:
           - ubuntu-latest
         arch:

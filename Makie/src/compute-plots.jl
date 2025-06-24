@@ -223,7 +223,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         elseif color isa AbstractPattern
             ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color # TODO: Should we skip alpha in this case?
+            color
         elseif color isa AbstractArray
             add_alpha.(color, alpha)
         else
@@ -232,7 +232,6 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern)
     end
 
-    # TODO: if colorscale is defined, should it act on user supplied colorrange?
     return register_computation!(
         attr,
         [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
@@ -473,7 +472,11 @@ function default_attribute(user_attributes, (key, value))
         if value isa Attributes
             return merge(value, Attributes(pairs(user_attributes[key])))
         else
-            return user_attributes[key]
+            val = user_attributes[key]
+            if val isa Union{NamedTuple, Dict}
+                return Attributes(val)
+            end
+            return val
         end
     elseif value isa AttributeMetadata
         val = value.default_value
@@ -488,6 +491,12 @@ struct AttributeConvert{Key, Plot} end
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(_, value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
+end
+
+to_recipe_attribute(_, x) = Ref{Any}(x) # Make sure it can change type
+to_recipe_attribute(_, attr::Attributes) = attr
+function to_recipe_attribute(_, value::NamedTuple)
+    return Attributes(value)
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
@@ -537,17 +546,18 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     end
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
-        if !haskey(attr.inputs, k) && !haskey(attr.outputs, k)
+        if !haskey(attr.outputs, k)
             if is_primitive
                 add_input!(AttributeConvert(k, name), attr, k, v)
             else
-                add_input!((k, v) -> Ref{Any}(v), attr, k, v)
+                add_input!(to_recipe_attribute, attr, k, v)
             end
         end
     end
-    return if !haskey(attr, :model)
+    if !haskey(attr, :model)
         add_input!(attr, :model, Mat4d(I))
     end
+    return
 end
 
 function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}

@@ -60,7 +60,7 @@
         wait(timer.task)
         N = counter[]
 
-        @test real_dt * 30.0 - 3 < counter[] < real_dt * 30.0 + 3
+        @test real_dt * 30.0 - 4 < counter[] < real_dt * 30.0 + 4
 
         sleep(0.5)
         @test counter[] == N

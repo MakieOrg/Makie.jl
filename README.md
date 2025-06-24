@@ -1,9 +1,9 @@
 <div align="center">
     <picture>
       <source media="(prefers-color-scheme: dark)"
-        srcset="/Makie/assets/logo_with_text_dark.svg" >
+        srcset="/images/logo_with_text_dark.svg" >
       <img alt="Makie.jl logo"
-        src="/Makie/assets/logo_with_text.svg" height="100">
+        src="/images/logo_with_text.svg" height="100">
     </picture>
 </div>
 
@@ -75,7 +75,7 @@ Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.0334
 ```
 </details>
 
-or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
+or [Download the BibTeX file](./DanischKrumbiegel2021.bibtex).
 
 ## Community Channels
 

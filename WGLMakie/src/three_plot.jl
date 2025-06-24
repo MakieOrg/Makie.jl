@@ -97,6 +97,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     return wrapper, done_init
 end
 
+#=
 Makie.supports_move_to(::Screen) = false
 
 function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
@@ -115,3 +116,4 @@ function Makie.move_to!(screen::Screen, plot::Plot, scene::Scene)
         """
     )
 end
+=#
