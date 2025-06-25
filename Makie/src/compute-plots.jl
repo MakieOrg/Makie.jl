@@ -245,23 +245,71 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     end
 end
 
-function register_position_transforms!(attr, input_name = :positions)
-    haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
-    map!(attr, [input_name, :transform_func], :positions_transformed) do positions, func
-        return apply_transform(func, positions)
-    end
+"""
+    register_position_transforms!(plot[, input_name = :positions])
+
+Registers
+- `positions_transformed` which include the transform function applies to positions
+- `positions_tranformed_f32c` which include float32convert applied to `positions_transformed`
+where "positions" are given by `getproperty(plot, input_name)`.
+
+See also: [`register_positions_transformed!`](@ref), [`register_positions_transformed_f32c!`](@ref)
+"""
+function register_position_transforms!(plot::Plot, input_name = :positions)
+    return register_position_transforms!(plot.attributes, input_name)
+end
+
+function register_position_transforms!(attr::ComputeGraph, input_name::Symbol = :positions)
+    register_positions_transformed!(attr; input_name)
     register_positions_transformed_f32c!(attr)
     return
 end
 
-function register_positions_transformed_f32c!(attr)
+"""
+    register_positions_transformed!(plot[; input_name = :positions, output_name = :positions_transformed])
+
+Registers `output_name` containing positions with the transform function of the plot applied to `input_name`.
+
+See also: [`register_position_transforms!`](@ref), [`register_positions_transformed_f32c!`](@ref)
+"""
+function register_positions_transformed!(plot::Plot; input_name = :positions, output_name = :positions_transformed)
+    return register_positions_transformed!(plot.attributes; input_name, output_name)
+end
+
+function register_positions_transformed!(
+        attr::ComputeGraph;
+        input_name::Symbol = :positions, output_name::Symbol = :positions_transformed
+    )
+    haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
+    map!(apply_transform, attr, [:transform_func, input_name], output_name)
+    return
+end
+
+"""
+    register_positions_transformed_f32c!(plot[; input_name = :positions, output_name = :positions_transformed])
+
+Registers `output_name` containing positions with the parent scenes float32convert applied to `input_name`.
+Note that this does not apply transformation functions.
+
+See also: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref)
+"""
+function register_positions_transformed_f32c!(
+        plot::Plot; input_name = :positions_transformed, output_name = :positions_transformed_f32c
+    )
+    return register_position_transformed_f32c!(plot.attributes; input_name, output_name)
+end
+
+function register_positions_transformed_f32c!(
+        attr::ComputeGraph;
+        input_name::Symbol = :positions_transformed, output_name::Symbol = :positions_transformed_f32c
+    )
     # model_f32c is the model matrix after processing f32c. Backends should rely
     # on it if it applies to :positions_transformed_f32c
 
     register_computation!(
         attr,
-        [:positions_transformed, :model, :f32c, :space],
-        [:positions_transformed_f32c, :model_f32c]
+        [input_name, :model, :f32c, :space],
+        [output_name, :model_f32c]
     ) do (positions, model, f32c, space), changed, last
 
         # TODO: This is simplified, skipping what's commented out

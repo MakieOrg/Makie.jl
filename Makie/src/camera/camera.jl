@@ -403,5 +403,5 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
     inputs = Computed[scene.compute.camera_trigger, getproperty(plot, name_name)]
     map!((_, name) -> Mat4f(scene.compute[name][]::Mat4d), attr, inputs, matrix_name)
 
-    return
+    return matrix_name
 end
