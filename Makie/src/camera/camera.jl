@@ -139,6 +139,13 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         add_input!(graph, key, getproperty(scene.camera, key))
     end
 
+    # Since (marker)space can change, the matrices a plot needs may change and
+    # thus they need to react to all matrix updates. We add a trigger node here
+    # to simplify this (i.e. avoid the need to listen to 25 matrices or some
+    # subset of the inputs)
+    # Note: The value needs to change so that the update doesn't get discarded
+    map!((a,b,c) -> time(), graph, [:view, :projection, :viewport], :camera_trigger)
+
     map!(graph, :viewport, [:scene_origin, :resolution]) do viewport
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))
     end
@@ -305,41 +312,13 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
 end
 
 
-function _has_camera_changed(changed, space, markerspace = space)
-    is_data = is_data_space(space) || is_data_space(markerspace)
-    is_pixel = is_pixel_space(space) || is_pixel_space(markerspace)
-    result = (is_data && (changed.view || changed.projection)) || (is_pixel && (changed.viewport))
-    return result
-end
-
-function camera_trigger(inputs, changed, cached)
-    isnothing(cached) && return (true,)
-    view, projection, viewport, spaces... = inputs
-    has_changed = _has_camera_changed(changed, spaces...)
-    # Same values get ignored
-    return has_changed ? (!cached[1],) : nothing
-end
 
 struct CameraMatrixCallback <: Function
     graph::ComputeGraph
 end
-
-function (cb::CameraMatrixCallback)(inputs, changed, cached)
-    graph = cb.graph
-    return map(name -> Mat4f(graph[name][]::Mat4d), inputs.camera_matrix_names)
-end
+(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
 
 function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-    # This should connect Computed's from the parent graph to a new Computed in the child graph
-    inputs = [scene_graph.view, scene_graph.projection, scene_graph.viewport, plot_graph.space]
-    haskey(plot_graph, :markerspace) && push!(inputs, plot_graph.markerspace)
-    @assert inputs isa Vector{ComputePipeline.Computed}
-
-    # Only propagate update from camera matrices if its relevant to space
-    register_computation!(camera_trigger, plot_graph, inputs, [:camera_trigger])
-
-
-    input_keys = [:camera_trigger, :camera_matrix_names]
     output_keys = [:projectionview, :projection, :view]
 
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
@@ -355,9 +334,11 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
         end
     end
 
+    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
+
     # Update camera matrices in plot if space changed or a relevant camera update happened
     callback = CameraMatrixCallback(scene_graph)
-    register_computation!(callback, plot_graph, input_keys, output_keys)
+    map!(callback, plot_graph, input_keys, output_keys)
 
     # Do we need those? Maybe also viewport?
     # type assert for safety
