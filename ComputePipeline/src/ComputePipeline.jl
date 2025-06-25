@@ -754,6 +754,10 @@ priority and not block later updates.
 """
 function add_input!(attr::ComputeGraph, k::Symbol, obs::Observable)
     add_input!(attr, k, obs[])
+    # typemax-1 so it doesn't get disturbed by other listeners but can still be
+    # blocked by a typemax obs
+    # Setting it to lower priority, axis and colorbar don't get the latest update
+    # Still need to investigate why exactly
     of = on(obs; priority = typemax(Int) - 1) do new_val
         setproperty!(attr, k, new_val)
         return Consume(false)
