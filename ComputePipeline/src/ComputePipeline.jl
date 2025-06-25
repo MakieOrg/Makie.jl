@@ -982,22 +982,22 @@ map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
 """
-function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Symbol, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end
