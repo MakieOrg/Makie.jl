@@ -228,10 +228,9 @@ world ------>   eye   -----------> clip
                pixel  -----------> clip
              relative -----------> clip
 =#
+_data_to_world(x) = ifelse(x === :data, :world, x)
 function get_camera_matrix_name(input_space::Symbol, output_space::Symbol)
-    key1 = ifelse(input_space === :data, :world, input_space)
-    key2 = ifelse(output_space === :data, :world, output_space)
-    return Symbol(key1, :_to_, key2)
+    return Symbol(_data_to_world(input_space), :_to_, _data_to_world(output_space))
 end
 
 function get_projectionview_name(space::Symbol)
@@ -354,16 +353,55 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     return
 end
 
-#=
-Design Notes:
+function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::Union{Symbol, Computed})
+    scene = parent_scene(plot)
+    attr = plot.attributes
 
-add_camera_computation!(scene.graph, scene)
-- creates inputs for camera controller, scene.viewport
-- calculates all space-to-space matrices
-- calculates some utilities, e.g. resolution, scene_origin (no ppu)
+    getname(x::Computed) = getname(x.name)
+    getname(x::Symbol) = _data_to_world(x) # allows :space and :markerspace to pass
 
-register_camera!(plot_graph, scene_graph)
-- creates a trigger which filters space-relevant camera updates from scene_graph in plot_graph
-- pull view etc appropriate for the plots (marker)space via get_view(scene_graph, space)
-- connects some more utilities, e.g. resolution
-=#
+    # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
+    matrix_name = Symbol(getname(input), :_to_, getname(output))
+
+    # These already exist
+    if haskey(attr, :markerspace) && matrix_name === :space_to_markerspace
+        ComputePipeline.alias!(attr, :preprojection, matrix_name)
+        return
+    elseif haskey(attr, :markerspace) && matrix_name === :markerspace_to_clip
+        ComputePipeline.alias!(attr, :projectionview, matrix_name)
+        return
+    elseif !haskey(attr, :markerspace) && matrix_name === :space_to_clip
+        ComputePipeline.alias!(attr, :projectionview, matrix_name)
+        return
+    end
+
+    _input = input in (:markerspace, :space) ? getproperty(plot, input) : input
+    _output = output in (:markerspace, :space) ? getproperty(plot, output) : output
+
+    isconst(x::Symbol) = true
+    isconst(x::Computed) = false
+
+    if isconst(_input) && isconst(_output)
+        # both spaces are constant so we don't need to be able to switch to a
+        # different camera.
+        add_input!(attr, matrix_name, getproperty(scene.compute, matrix_name))
+        return
+    end
+
+    name_name = Symbol(matrix_name, :_name)
+
+    if !isconst(_input) && isconst(_output)
+        name_tail = Symbol(:_to_, getname(output))
+        map!(a -> Symbol(_data_to_world(a), name_tail), attr, _input, name_name)
+    elseif isconst(_input) && !isconst(_output)
+        name_head = Symbol(getname(input), :_to_)
+        map!(b -> Symbol(name_head, _data_to_world(b)), attr, _output, name_name)
+    else
+        map!(get_camera_matrix_name, attr, [_input, _output], name_name)
+    end
+
+    inputs = Computed[scene.compute.camera_trigger, getproperty(plot, name_name)]
+    map!((_, name) -> Mat4f(scene.compute[name][]::Mat4d), attr, inputs, matrix_name)
+
+    return
+end
