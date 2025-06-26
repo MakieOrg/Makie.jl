@@ -379,7 +379,7 @@ type is not 4 dimensional, each output position will be divided by `p[4]`.
     T = promote_type(Float32, T1, T2)
     return _project(Point{3, T}, M, p, dim4, T)
 end
-@inline function _project(M::Mat4{T1}, ps::AbstractArray{<: VecTypes{N, T2}}, dim4::Real) where {N, T1, T2}
+@inline function _project(M::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real) where {N, T1, T2}
     T = promote_type(Float32, T1, T2)
     return _project(Point{3, T}, M, ps, dim4, T)
 end
@@ -405,14 +405,14 @@ end
 end
 
 function _project(
-        ::Type{OT}, matrix::Mat4{T1}, ps::AbstractArray{<: VecTypes{N, T2}}, dim4::Real
+        ::Type{OT}, matrix::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real
     ) where {OT <: VecTypes, N, T1 <: Real, T2 <: Real}
 
     T = promote_type(Float32, T1, T2)
     return _project(OT, matrix, ps, dim4, T)
 end
 
-function _project(::Type{OT}, matrix::Mat4, ps::AbstractArray{<: VecTypes}, dim4::Real, ::Type{ET}) where {OT <: VecTypes, ET}
+function _project(::Type{OT}, matrix::Mat4, ps::AbstractArray{<:VecTypes}, dim4::Real, ::Type{ET}) where {OT <: VecTypes, ET}
     matrix == I && return to_ndim.(OT, ps, 0)
 
     output = similar(ps, OT)
