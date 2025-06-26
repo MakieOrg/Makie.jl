@@ -366,13 +366,13 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
     # These already exist
     if haskey(attr, :markerspace) && matrix_name === :space_to_markerspace
         ComputePipeline.alias!(attr, :preprojection, matrix_name)
-        return
+        return matrix_name
     elseif haskey(attr, :markerspace) && matrix_name === :markerspace_to_clip
         ComputePipeline.alias!(attr, :projectionview, matrix_name)
-        return
+        return matrix_name
     elseif !haskey(attr, :markerspace) && matrix_name === :space_to_clip
         ComputePipeline.alias!(attr, :projectionview, matrix_name)
-        return
+        return matrix_name
     end
 
     _input = input in (:markerspace, :space) ? getproperty(plot, input) : input
@@ -385,7 +385,7 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
         add_input!(attr, matrix_name, getproperty(scene.compute, matrix_name))
-        return
+        return matrix_name
     end
 
     name_name = Symbol(matrix_name, :_name)
