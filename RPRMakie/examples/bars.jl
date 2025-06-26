@@ -1,6 +1,6 @@
-using GeometryBasics, RPRMakie
-using Colors, FileIO, ImageShow
-using Colors: N0f8
+ GeometryBasics, RPRMakie
+ Colors, FileIO, ImageShow
+ Colors: N0f8
 
 RPRMakie.activate!(plugin = RPR.Northstar, resource = RPR.GPU0)
 fig = Figure(; size = (800, 600), fontsize = 26)
