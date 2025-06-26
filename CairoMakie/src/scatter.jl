@@ -4,7 +4,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     cairo_unclipped_indices!(attr)
     Makie.compute_colors!(attr)
-    project_to_markerspace!(attr)
+    Makie.register_markerspace_positions!(plot, output_name = :positions_in_markerspace)
     map!(cairo_scatter_marker, attr, :marker, :cairo_marker)
     size_model!(attr)
     if !haskey(attr, :eye_to_clip)
@@ -29,7 +29,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     # input -> markerspace
     # TODO: We're doing per-string/glyphcollection work per glyph here
     cairo_unclipped_indices!(attr)
-    project_to_markerspace!(attr)
+    Makie.register_markerspace_positions!(plot, output_name = :positions_in_markerspace)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     size_model!(attr)
     if !haskey(attr, :eye_to_clip)
@@ -249,13 +249,6 @@ function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bo
     p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
-end
-
-function project_to_markerspace!(attr)
-    return map!(attr, [:preprojection, :model_f32c, :positions_transformed_f32c], :positions_in_markerspace) do prepro, model, positions
-        mat = prepro * model
-        return project_position(Point3d, mat, positions, eachindex(positions))
-    end
 end
 
 function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)

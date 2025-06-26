@@ -444,6 +444,12 @@ function register_positions_projected!(
     return getproperty(plot, output_name)
 end
 
+function register_markerspace_positions!(@nospecialize(plot::Plot); kwargs...)
+    haskey(plot, :markerspace) || error("Cannot compute markerspace positions for a plot that doesn't have markerspace.")
+    # kwargs get overwritten by later keyword arguments
+    return register_projected_positions!(plot; kwargs..., input_space = :space, output_space = :markerspace)
+end
+
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
     inputs = _register_input_arguments!(P, attr, input_args)
