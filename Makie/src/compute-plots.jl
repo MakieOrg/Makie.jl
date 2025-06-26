@@ -356,6 +356,7 @@ applied).
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
+- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_projected_positions!(
         @nospecialize(plot::Plot);
@@ -367,16 +368,22 @@ function register_projected_positions!(
         output_name::Symbol = Symbol(output_space, :_, input_name),
         output_type::Type{OT} = Point3f,
         yflip::Bool = false,
+        apply_transform::Bool = input_space === :space
     ) where {OT <: VecTypes}
 
     # Handle transform function + f32c
-    register_positions_transformed!(plot; input_name, output_name = transformed_name)
-    register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
+    if apply_transform
+        register_positions_transformed!(plot; input_name, output_name = transformed_name)
+        register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
+    else
+        transformed_f32c_name = input_name
+    end
+
     register_positions_projected!(
         plot;
         input_space, output_space,
         input_name = transformed_f32c_name, output_name,
-        output_type, yflip
+        output_type, yflip, apply_transform
     )
 
     return getproperty(plot, output_name)
@@ -388,7 +395,8 @@ end
 Register projected positions for the given plot.
 
 Note that this does not apply `transform_func` or `float32convert`. The input
-positions are assumed to already be transformed. `model` is still applied.
+positions are assumed to already be transformed. `model` is still applied if
+`apply_transform == true`.
 
 ## Keyword Arguments:
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
@@ -396,6 +404,7 @@ positions are assumed to already be transformed. `model` is still applied.
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
+- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_positions_projected!(
         @nospecialize(plot::Plot);
@@ -405,6 +414,7 @@ function register_positions_projected!(
         output_name::Symbol = Symbol(output_space, :_positions),
         output_type::Type{OT} = Point3f,
         yflip::Bool = false,
+        apply_transform = input_space === :space
     ) where {OT <: VecTypes}
 
     # Collect and connect necessary projection inputs
@@ -422,18 +432,23 @@ function register_positions_projected!(
     end
 
     # merge projection related matrices
+    inputs = Symbol[]
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
         if !haskey(plot.attributes, :resolution)
             add_input!(plot.attributes, :resolution, parent_scene(plot).compute.resolution)
         end
+        push!(inputs, :resolution)
+    end
 
-        map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c], merged_matrix_name) do res, pv, m
-            flip = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
-            return flip * pv * m
-        end
-    else
-        map!(*, plot.attributes, [projection_matrix_name, :model_f32c], merged_matrix_name)
+    push!(inputs, projection_matrix_name)
+    apply_transform && push!(inputs, :model_f32c)
+
+    fold_matrix(res::Vec2, M::Mat4) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1)) * M
+    fold_matrix(A::Mat4, B::Mat4) = A * B
+
+    map!(plot.attributes, inputs, merged_matrix_name) do args...
+        return Mat4f(foldl(fold_matrix, args))::Mat4f
     end
 
     # apply projection
