@@ -317,7 +317,7 @@ struct CameraMatrixCallback <: Function
 end
 (cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
 
-function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
+function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
 
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
@@ -339,6 +339,12 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     callback = CameraMatrixCallback(scene_graph)
     map!(callback, plot_graph, input_keys, output_keys)
 
+    return
+end
+
+function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
+    _register_common_camera_matrices!(plot_graph, scene_graph)
+
     # Do we need those? Maybe also viewport?
     # type assert for safety
     add_input!(plot_graph, :viewport, scene_graph[:viewport]::Computed)
@@ -353,6 +359,18 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     return
 end
 
+"""
+    register_camera_matrix!(plot, input_space, output_space)
+
+Adds the matrix projecting from `input_space` to `output_space` to the given
+plot. For this the spaces can also be `:space` or `:markerspace`. The name of
+the added projectionmatrix is returned
+
+The registered matrix will usually be named `Symbol(input_space, :_to_, :output_space)`,
+e.g. `:data_to_pixel` or `:space_to_pixel`. `:space_to_clip`, `:space_to_markerspace`
+and `:markerspace_to_clip` will be renamed to `projectionview`, `preprojection` and
+`projectionview` respectively, to avoid duplicating nodes.
+"""
 function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::Union{Symbol, Computed})
     scene = parent_scene(plot)
     attr = plot.attributes
@@ -365,14 +383,14 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
 
     # These already exist
     if haskey(attr, :markerspace) && matrix_name === :space_to_markerspace
-        ComputePipeline.alias!(attr, :preprojection, matrix_name)
-        return matrix_name
+        haskey(attr, :preprojection) || _register_common_camera_matrices!(attr, scene.compute)
+        return :preprojection
     elseif haskey(attr, :markerspace) && matrix_name === :markerspace_to_clip
-        ComputePipeline.alias!(attr, :projectionview, matrix_name)
-        return matrix_name
+        haskey(attr, :projectionview) || _register_common_camera_matrices!(attr, scene.compute)
+        return :projectionview
     elseif !haskey(attr, :markerspace) && matrix_name === :space_to_clip
-        ComputePipeline.alias!(attr, :projectionview, matrix_name)
-        return matrix_name
+        haskey(attr, :projectionview) || _register_common_camera_matrices!(attr, scene.compute)
+        return :projectionview
     end
 
     _input = input in (:markerspace, :space) ? getproperty(plot, input) : input
