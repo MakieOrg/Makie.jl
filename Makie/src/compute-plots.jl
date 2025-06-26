@@ -296,7 +296,7 @@ See also: [`register_position_transforms!`](@ref), [`register_positions_transfor
 function register_positions_transformed_f32c!(
         plot::Plot; input_name = :positions_transformed, output_name = :positions_transformed_f32c
     )
-    return register_position_transformed_f32c!(plot.attributes; input_name, output_name)
+    return register_positions_transformed_f32c!(plot.attributes; input_name, output_name)
 end
 
 function register_positions_transformed_f32c!(
@@ -337,6 +337,69 @@ function register_positions_transformed_f32c!(
         end
     end
     return
+end
+
+"""
+    TODO: docs
+"""
+function register_projected_positions!(
+        @nospecialize(plot::Plot);
+        input_space::Symbol = :space,
+        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        input_name::Symbol = :positions,
+        transformed_name::Symbol = Symbol(input_name, :_transformed),
+        transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
+        output_name::Symbol = Symbol(output_space, :_, input_name),
+        output_type::Type{OT} = Point3f,
+        yflip::Bool = false,
+    ) where {OT <: VecTypes}
+
+    # Handle transform function + f32c
+    projection_input = transformed_f32c_name
+    if is_data_space(output_space)
+        # child plot will apply f32c, so only apply transform func
+        register_positions_transformed!(plot; input_name, output_name = transformed_name)
+        projection_input = transformed_name
+    else
+        register_positions_transformed!(plot; input_name, output_name = transformed_name)
+        register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
+    end
+
+    # Collect and connect necessary projection inputs
+    projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
+    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
+
+    # TODO: Names may collide and ComputePipeline doesn't check strictly enough
+    # by default to catch this...
+    if haskey(plot.attributes, output_name)
+        node = getproperty(plot.attributes, output_name)
+        names = map(n -> n.name, node.parent.inputs)
+        if names != [projection_matrix_name, projection_input]
+            error("Could not register $output_name - already exists with different inputs")
+        end
+    end
+
+    # merge projection related matrices
+    if yflip
+        is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
+        if !haskey(plot.attributes, :resolution)
+            add_input!(plot.attributes, :resolution, parent_scene(plot).compute.resolution)
+        end
+
+        map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c], merged_matrix_name) do res, pv, m
+            flip = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
+            return flip * pv * m
+        end
+    else
+        map!(*, plot.attributes, [projection_matrix_name, :model_f32c], merged_matrix_name)
+    end
+
+    # apply projection
+    map!(plot.attributes, [projection_matrix_name, projection_input], output_name) do matrix, pos
+        return _project(OT, matrix, pos)
+    end
+
+    return getproperty(plot, output_name)
 end
 
 # Split for text compat
