@@ -340,7 +340,22 @@ function register_positions_transformed_f32c!(
 end
 
 """
-    TODO: docs
+    register_projected_positions!(plot; kwargs...)
+
+Register projected positions for the given plot.
+
+Note that this also generates compute nodes for transformed positions (i.e. with
+transform_func applied) and float32-converted positions (i.e. with float32convert
+applied).
+
+## Keyword Arguments:
+- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `input_name = :positions` sets the source positions which will be projected.
+- `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after the `transform_func` is applied.
+- `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
+- `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
+- `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
 """
 function register_projected_positions!(
         @nospecialize(plot::Plot);
@@ -355,15 +370,42 @@ function register_projected_positions!(
     ) where {OT <: VecTypes}
 
     # Handle transform function + f32c
-    projection_input = transformed_f32c_name
-    if is_data_space(output_space)
-        # child plot will apply f32c, so only apply transform func
-        register_positions_transformed!(plot; input_name, output_name = transformed_name)
-        projection_input = transformed_name
-    else
-        register_positions_transformed!(plot; input_name, output_name = transformed_name)
-        register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
-    end
+    register_positions_transformed!(plot; input_name, output_name = transformed_name)
+    register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
+    register_positions_projected!(
+        plot;
+        input_space, output_space,
+        input_name = transformed_f32c_name, output_name,
+        output_type, yflip
+    )
+
+    return getproperty(plot, output_name)
+end
+
+"""
+    register_positions_projected!(plot; kwargs)
+
+Register projected positions for the given plot.
+
+Note that this does not apply `transform_func` or `float32convert`. The input
+positions are assumed to already be transformed. `model` is still applied.
+
+## Keyword Arguments:
+- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
+- `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
+- `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
+"""
+function register_positions_projected!(
+        @nospecialize(plot::Plot);
+        input_space::Symbol = :space,
+        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        input_name::Symbol = :positions_transformed_f32c,
+        output_name::Symbol = Symbol(output_space, :_positions),
+        output_type::Type{OT} = Point3f,
+        yflip::Bool = false,
+    ) where {OT <: VecTypes}
 
     # Collect and connect necessary projection inputs
     projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
@@ -374,7 +416,7 @@ function register_projected_positions!(
     if haskey(plot.attributes, output_name)
         node = getproperty(plot.attributes, output_name)
         names = map(n -> n.name, node.parent.inputs)
-        if names != [projection_matrix_name, projection_input]
+        if names != [projection_matrix_name, input_name]
             error("Could not register $output_name - already exists with different inputs")
         end
     end
@@ -395,7 +437,7 @@ function register_projected_positions!(
     end
 
     # apply projection
-    map!(plot.attributes, [projection_matrix_name, projection_input], output_name) do matrix, pos
+    map!(plot.attributes, [projection_matrix_name, input_name], output_name) do matrix, pos
         return _project(OT, matrix, pos)
     end
 
