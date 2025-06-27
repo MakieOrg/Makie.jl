@@ -426,7 +426,7 @@ function register_positions_projected!(
     if haskey(plot.attributes, output_name)
         node = getproperty(plot.attributes, output_name)
         names = map(n -> n.name, node.parent.inputs)
-        if names != [projection_matrix_name, input_name]
+        if names != [merged_matrix_name, input_name]
             error("Could not register $output_name - already exists with different inputs")
         end
     end
