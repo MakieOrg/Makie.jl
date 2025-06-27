@@ -436,52 +436,28 @@ function register_positions_projected!(
 
     # Collect and connect necessary projection inputs
     projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
+    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
     # by default to catch this...
     if haskey(plot.attributes, output_name)
         node = getproperty(plot.attributes, output_name)
         names = map(n -> n.name, node.parent.inputs)
-        inputs = Symbol[]
-        yflip && push!(inputs, :resolution)
-        push!(inputs, projection_matrix_name)
-        apply_transform && push!(inputs, :model_f32c)
-        push!(inputs, input_name)
-        if names != inputs
+        if names != [merged_matrix_name, input_name]
             error("Could not register $output_name - already exists with different inputs")
         end
     end
 
     # merge projection related matrices
-    if yflip
-        is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
-        if !haskey(plot.attributes, :resolution)
-            add_input!(plot.attributes, :resolution, parent_scene(plot).compute.resolution)
-        end
-    end
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
+    combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
+    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
+    map!(combine_matrices, plot.attributes, inputs, merged_matrix_name)
 
-    flip_matrix(res::Vec2) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
-
-    if yflip
-        if apply_transform
-            map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
-                return _project(OT, flip_matrix(res) * pv * m, pos)
-            end
-        else
-            map!(plot.attributes, [:resolution, projection_matrix_name, input_name], output_name) do res, pv, pos
-                return _project(OT, flip_matrix(res) * pv, pos)
-            end
-        end
-    else
-        if apply_transform
-            map!(plot.attributes, [projection_matrix_name, :model_f32c, input_name], output_name) do pv, m, pos
-                return _project(OT, pv * m, pos)
-            end
-        else
-            map!(plot.attributes, [projection_matrix_name, input_name], output_name) do pv, pos
-                return _project(OT, pv, pos)
-            end
-        end
+    # apply projection
+    map!(plot.attributes, [merged_matrix_name, input_name], output_name) do matrix, pos
+        return _project(OT, matrix, pos)
     end
 
     return getproperty(plot, output_name)
