@@ -449,6 +449,18 @@ function register_positions_projected!(
     end
 
     # merge projection related matrices
+    inputs = Symbol[]
+    if yflip
+        is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
+        if !haskey(plot.attributes, :resolution)
+            add_input!(plot.attributes, :resolution, parent_scene(plot).compute.resolution)
+        end
+        push!(inputs, :resolution)
+    end
+
+    push!(inputs, projection_matrix_name)
+    apply_transform && push!(inputs, :model_f32c)
+
     combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
     combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
     combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
