@@ -306,25 +306,42 @@ function register_positions_transformed_f32c!(
     # model_f32c is the model matrix after processing f32c. Backends should rely
     # on it if it applies to :positions_transformed_f32c
 
-    register_computation!(
-        attr,
-        [input_name, :model, :f32c, :space],
-        [output_name, :model_f32c]
-    ) do (positions, model, f32c, space), changed, last
+    # TODO: These are simplified, skipping what's commented out
 
-        # TODO: This is simplified, skipping what's commented out
+    map!(attr, [:model, :f32c, :space], :model_f32c) do model, f32c, space
+
+        trans, scale = decompose_translation_scale_matrix(model)
+
+        # is_rot_free = is_translation_scale_matrix(model)
+        if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
+            return Mat4f(model)
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        # elseif is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        # elseif is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            return Mat4f(I)
+        end
+    end
+
+    register_computation!(
+        attr, [input_name, :model, :f32c, :space], [output_name]
+    ) do (positions, model, f32c, space), changed, last
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             pos = changed[1] ? el32convert(positions) : nothing
-            return (pos, Mat4f(model))
-            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            return (pos, )
+        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
-            # elseif is_float_safe(scale, trans) && is_rot_free
+        # elseif is_float_safe(scale, trans) && is_rot_free
             # fast path: can swap order of f32c and model, i.e. apply model on GPU
-            # elseif is_rot_free
+        # elseif is_rot_free
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
@@ -333,7 +350,7 @@ function register_positions_transformed_f32c!(
                 p4d = model * p4d
                 return f32_convert(f32c, p4d[Vec(1, 2, 3)])
             end
-            return (output, Mat4f(I))
+            return (output,)
         end
     end
     return
