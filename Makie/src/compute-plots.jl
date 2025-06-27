@@ -452,7 +452,7 @@ function register_positions_projected!(
     end
 
     # apply projection
-    map!(plot.attributes, [projection_matrix_name, input_name], output_name) do matrix, pos
+    map!(plot.attributes, [merged_matrix_name, input_name], output_name) do matrix, pos
         return _project(OT, matrix, pos)
     end
 
