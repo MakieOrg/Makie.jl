@@ -419,14 +419,18 @@ function register_positions_projected!(
 
     # Collect and connect necessary projection inputs
     projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
-    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
     # by default to catch this...
     if haskey(plot.attributes, output_name)
         node = getproperty(plot.attributes, output_name)
         names = map(n -> n.name, node.parent.inputs)
-        if names != [merged_matrix_name, input_name]
+        inputs = Symbol[]
+        yflip && push!(inputs, :resolution)
+        push!(inputs, projection_matrix_name)
+        apply_transform && push!(inputs, :model_f32c)
+        push!(inputs, input_name)
+        if names != inputs
             error("Could not register $output_name - already exists with different inputs")
         end
     end
