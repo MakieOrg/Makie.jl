@@ -506,14 +506,7 @@ function Makie.plot!(plot::Arrows2D)
 end
 
 function data_limits(plot::Arrows2D)
-    startpoints, endpoints = _process_arrow_arguments(
-        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
-    )
-
-    return update_boundingbox(
-        Rect3d(startpoints),
-        Rect3d(endpoints)
-    )
+    return update_boundingbox(Rect3d(plot.startpoints), Rect3d(plot.endpoints))
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
@@ -642,8 +635,10 @@ function Makie.plot!(plot::Arrows3D)
 
     map!(plot, [:world_startpoints, :world_endpoints, :markerscale], :arrowscale) do startpoints, endpoints, ms
         if ms === automatic
-            # TODO: maybe maximum? or max of each 2d norm?
+            # This bbox does not include the size of the arrow mesh, which
+            # `boundingbox()` does include. So we can't reuse it
             bbox = update_boundingbox(Rect3d(startpoints), Rect3d(endpoints))
+            # TODO: maybe maximum? or max of each 2d norm?
             scale = norm(widths(bbox))
             return ifelse(scale == 0.0, 1.0, scale)
         else
@@ -686,7 +681,7 @@ function Makie.plot!(plot::Arrows3D)
     end
 
     # normalize if not yet normalized
-    normalized_dir = map!(plot, [:world_directions, :normalize], :normalized_dir) do dirs, normalized
+    map!(plot, [:world_directions, :normalize], :normalized_dir) do dirs, normalized
         return normalized ? dirs : LinearAlgebra.normalize.(dirs)
     end
     map!(dirs -> to_ndim.(Vec3f, dirs, 0), plot, :normalized_dir, :rot)
@@ -739,10 +734,7 @@ function Makie.plot!(plot::Arrows3D)
 end
 
 function data_limits(plot::Arrows3D)
-    startpoints, directions = _process_arrow_arguments(
-        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
-    )
-    return update_boundingbox(Rect3d(startpoints), Rect3d(startpoints .+ directions))
+    return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 
 function boundingbox(plot::Arrows3D, space::Symbol)
