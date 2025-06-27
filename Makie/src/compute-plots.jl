@@ -665,8 +665,12 @@ const PrimitivePlotTypes = Union{
 }
 
 
-function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
+end
+
+function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+    return map!(f, p.attributes, inputs, outputs)
 end
 
 function default_attribute(user_attributes, (key, value))
