@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Bring back some default attributes for recipes [#5130](https://github.com/MakieOrg/Makie.jl/pull/5130).
 - Allow multiple separate link groups in `xaxislinks` and `yaxislinks` arguments of `SpecApi.GridLayout` so that facet layouts can have independently linked columns and rows [#5127](https://github.com/MakieOrg/Makie.jl/pull/5127).
 
 ## [0.24.1] - 2025-06-24

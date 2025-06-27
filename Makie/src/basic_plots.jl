@@ -1,5 +1,13 @@
 default_theme(scene) = generic_plot_attributes!(Attributes())
-default_theme(::Type{<:Plot}) = Attributes()
+default_theme(::Type{<:Plot}) = Attributes(
+    visible = true,
+    transparency = false,
+    inspectable = true,
+    space = :data,
+    inspector_label = automatic,
+    inspector_clear = automatic,
+    inspector_hover = automatic,
+)
 
 """
 ### Generic attributes
