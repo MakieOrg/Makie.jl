@@ -150,7 +150,7 @@ S.GridLayout([...],
 )
 ```
 
-Axis links are also supported, but they're not part of Axis, but rather the surrounding `GridLayout`, since when constructing the axis you usually don't yet have the other Axes you want to link them to.
+Axis links are also supported, but they're not part of Axis, but rather the surrounding `GridLayout`, since when constructing the axis you usually don't yet have the other Axes you want to link them to. You can either pass a vector of axis specs or a vector of vectors of axis specs, in which case each group is linked independently.
 
 ```@figure
 import Makie.SpecApi as S
