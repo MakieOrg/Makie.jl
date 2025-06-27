@@ -372,6 +372,11 @@ function trace_error(io::IO, edge::Input, marked = nothing)
     return
 end
 
+"""
+    show_inputs(node)
+
+Traces and prints all recursive inputs to a node.
+"""
 show_inputs(node::Computed) = show_inputs(stdout, node)
 function show_inputs(io::IO, node::Computed, tab = 0)
     println(io, "    "^tab, node)
