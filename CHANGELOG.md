@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bring back some default attributes for recipes [#5130](https://github.com/MakieOrg/Makie.jl/pull/5130).
+
 ## [0.24.1] - 2025-06-24
 
 - Don't pull plots from invisible scenes and hide Blocks during construction [#5119](https://github.com/MakieOrg/Makie.jl/pull/5119).
