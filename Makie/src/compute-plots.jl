@@ -434,40 +434,55 @@ function register_positions_projected!(
 
     # Collect and connect necessary projection inputs
     projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
-    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
     # by default to catch this...
     if haskey(plot.attributes, output_name)
-        node = getproperty(plot.attributes, output_name)
-        names = map(n -> n.name, node.parent.inputs)
-        if names != [merged_matrix_name, input_name]
+        node = getproperty(plot.attributes::ComputePipeline.ComputeGraph, output_name)::ComputePipeline.Computed
+        names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
+
+        inputs = Symbol[]
+        yflip && push!(inputs, :resolution)
+        push!(inputs, projection_matrix_name)
+        apply_transform && push!(inputs, :model_f32c)
+        push!(inputs, input_name)
+
+        if names != inputs
             error("Could not register $output_name - already exists with different inputs")
         end
     end
 
     # merge projection related matrices
-    inputs = Symbol[]
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
         if !haskey(plot.attributes, :resolution)
-            add_input!(plot.attributes, :resolution, parent_scene(plot).compute.resolution)
+            scene = parent_scene(plot)::Scene
+            add_input!(plot.attributes, :resolution, scene.compute[:resolution])
         end
-        push!(inputs, :resolution)
     end
 
-    push!(inputs, projection_matrix_name)
-    apply_transform && push!(inputs, :model_f32c)
-
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
-    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
-    combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
-    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
-    map!(combine_matrices, plot.attributes, inputs, merged_matrix_name)
-
-    # apply projection
-    map!(plot.attributes, [merged_matrix_name, input_name], output_name) do matrix, pos
-        return _project(OT, matrix, pos)
+    # add computation
+    # Doing this with explicit branches seems to speed things up a little bit.
+    if yflip
+        if apply_transform
+            map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
+                return _project(OT, flip_matrix(res) * pv * m, pos)
+            end
+        else
+            map!(plot.attributes, [:resolution, projection_matrix_name, input_name], output_name) do res, pv, pos
+                return _project(OT, flip_matrix(res) * pv, pos)
+            end
+        end
+    else
+        if apply_transform
+            map!(plot.attributes, [projection_matrix_name, :model_f32c, input_name], output_name) do pv, m, pos
+                return _project(OT, pv * m, pos)
+            end
+        else
+            map!(plot.attributes, [projection_matrix_name, input_name], output_name) do pv, pos
+                return _project(OT, pv, pos)
+            end
+        end
     end
 
     return getproperty(plot, output_name)::ComputePipeline.Computed
