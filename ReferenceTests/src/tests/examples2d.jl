@@ -2264,7 +2264,7 @@ end
     Makie.step!(st)
 
     p.color[] = :orange
-    p[1][] = vec(ps .+ Point2f(0.2))
+    p[1] = vec(ps .+ Point2f(0.2))
     p.lengthscale[] = 1.5
     p.tiplength = 4
     p.tipwidth = 8
@@ -2292,7 +2292,7 @@ end
     Makie.step!(st)
 
     p.color[] = :orange
-    p[1][] = vec(ps .+ Point2f(0.2))
+    p[1] = vec(ps .+ Point2f(0.2))
     p.lengthscale[] = 1.5
     p.tiplength = 0.2
     p.tipradius = 0.08
