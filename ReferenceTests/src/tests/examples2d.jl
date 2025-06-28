@@ -2291,7 +2291,7 @@ end
     st = Makie.Stepper(f)
     Makie.step!(st)
 
-    p.color = :orange
+    p.color[] = :orange
     p[1] = vec(ps .+ Point2f(0.2))
     p.lengthscale[] = 1.5
     p.tiplength = 0.2
