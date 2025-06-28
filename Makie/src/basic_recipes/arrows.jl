@@ -694,16 +694,16 @@ function Makie.plot!(plot::Arrows3D)
     tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
-    shaft_pos = map(plot, normalized_dir) do dirs
-        map(arrow_metrics[], startpoints_directions[][1], dirs) do metric, pos, dir
+    shaft_pos = map(plot, normalized_dir, arrow_metrics) do dirs, metrics
+        map(metrics, startpoints_directions[][1], dirs) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + taillength * dir
         end
     end
     shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
 
-    tip_pos = map(plot, normalized_dir) do dirs
-        map(arrow_metrics[], startpoints_directions[][1], dirs) do metric, pos, dir
+    tip_pos = map(plot, normalized_dir, arrow_metrics) do dirs, metrics
+        map(metrics, startpoints_directions[][1], dirs) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + (taillength + shaftlength) * dir
         end
