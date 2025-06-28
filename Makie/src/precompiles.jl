@@ -52,3 +52,8 @@ precompile(Vec2{Float64}, (Tuple{Int64, Int64},))
 precompile(_create_plot, (typeof(scatter), Dict{Symbol, Any}, UnitRange{Int64}))
 precompile(BezierPath, (String,))
 precompile(BezierPath, (String, Bool, Nothing, Bool, Bool, Bool))
+
+precompile(_project, (Mat4f, Vector{Point2f}))
+precompile(_project, (Mat4f, Vector{Point3f}))
+precompile(_project, (Type{Point3d}, Mat4f, Vector{Point2f}))
+precompile(_project, (Type{Point3d}, Mat4f, Vector{Point3f}))
