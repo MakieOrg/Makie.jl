@@ -506,7 +506,7 @@ function Makie.plot!(plot::Arrows2D)
 end
 
 function data_limits(plot::Arrows2D)
-    return update_boundingbox(Rect3d(plot.startpoints), Rect3d(plot.endpoints))
+    return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
