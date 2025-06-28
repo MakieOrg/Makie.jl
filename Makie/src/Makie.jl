@@ -128,6 +128,7 @@ include("lighting.jl")
 
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
+include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
 include("dim-converts/dates-integration.jl")
 
