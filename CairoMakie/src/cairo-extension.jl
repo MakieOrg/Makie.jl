@@ -72,15 +72,32 @@ function glyph_path(ctx, glyph, x, y)
     )
 end
 
+function surface_get_device_scale(surf)
+    x = Ref(0.0)
+    y = Ref(0.0)
+    ccall(
+        (:cairo_surface_get_device_scale, Cairo.libcairo),
+        Cvoid, (Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing}),
+        surf.ptr, x, y
+    )
+    return x[], y[]
+end
+
 function surface_set_device_scale(surf, device_x_scale, device_y_scale = device_x_scale)
     # this sets a scaling factor on the lowest level that is "hidden" so its even
     # enabled when the drawing space is reset for strokes
     # that means it can be used to increase or decrease the image resolution
-    return ccall(
-        (:cairo_surface_set_device_scale, Cairo.libcairo),
-        Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
-        surf.ptr, device_x_scale, device_y_scale
-    )
+
+    # This call becomes increasingly expensive for some reason
+    old_x_scale, old_y_scale = surface_get_device_scale(surf)
+    if old_x_scale != device_x_scale || old_y_scale != device_y_scale
+        ccall(
+            (:cairo_surface_set_device_scale, Cairo.libcairo),
+            Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+            surf.ptr, device_x_scale, device_y_scale
+        )
+    end
+    return
 end
 
 function set_miter_limit(ctx, limit)
