@@ -344,12 +344,10 @@ function Makie.plot!(plot::Arrows2D)
 
     # TODO: Doesn't dropping the third dimension here break z order?
     register_projected_positions!(
-        plot, input_name = :startpoints, output_name = :pixel_startpoints,
-        output_space = :pixel, output_type = Point2f
+        plot, Point2f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
     )
     register_projected_positions!(
-        plot, input_name = :endpoints, output_name = :pixel_endpoints,
-        output_space = :pixel, output_type = Point2f
+        plot, Point2f, input_name = :endpoints, output_name = :pixel_endpoints, output_space = :pixel
     )
 
     map!(plot, [:pixel_startpoints, :pixel_endpoints], :pixel_directions) do startpoints, endpoints
@@ -621,12 +619,10 @@ function Makie.plot!(plot::Arrows3D)
     )
 
     register_projected_positions!(
-        plot, input_name = :startpoints, output_name = :world_startpoints,
-        output_space = :data, output_type = Point3f
+        plot, input_name = :startpoints, output_name = :world_startpoints, output_space = :data
     )
     register_projected_positions!(
-        plot, input_name = :endpoints, output_name = :world_endpoints,
-        output_space = :data, output_type = Point3f
+        plot, input_name = :endpoints, output_name = :world_endpoints, output_space = :data
     )
 
     map!(plot, [:world_startpoints, :world_endpoints], :world_directions) do startpoints, endpoints

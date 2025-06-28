@@ -376,14 +376,13 @@ applied).
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_projected_positions!(
-        @nospecialize(plot::Plot);
+        @nospecialize(plot::Plot), ::Type{OT} = Point3f;
         input_space::Symbol = :space,
         output_space::Symbol = :clip, # TODO: would :pixel be more useful?
         input_name::Symbol = :positions,
         transformed_name::Symbol = Symbol(input_name, :_transformed),
         transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
         output_name::Symbol = Symbol(output_space, :_, input_name),
-        output_type::Type{OT} = Point3f,
         yflip::Bool = false,
         apply_transform::Bool = input_space === :space
     ) where {OT <: VecTypes}
@@ -397,13 +396,13 @@ function register_projected_positions!(
     end
 
     register_positions_projected!(
-        plot;
+        plot, OT;
         input_space, output_space,
         input_name = transformed_f32c_name, output_name,
-        output_type, yflip, apply_transform
+        yflip, apply_transform
     )
 
-    return getproperty(plot, output_name)
+    return getproperty(plot, output_name)::ComputePipeline.Computed
 end
 
 """
@@ -424,12 +423,11 @@ positions are assumed to already be transformed. `model` is still applied if
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_positions_projected!(
-        @nospecialize(plot::Plot);
+        @nospecialize(plot::Plot), ::Type{OT} = Point3f;
         input_space::Symbol = :space,
         output_space::Symbol = :clip, # TODO: would :pixel be more useful?
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
-        output_type::Type{OT} = Point3f,
         yflip::Bool = false,
         apply_transform = input_space === :space
     ) where {OT <: VecTypes}
@@ -472,7 +470,7 @@ function register_positions_projected!(
         return _project(OT, matrix, pos)
     end
 
-    return getproperty(plot, output_name)
+    return getproperty(plot, output_name)::ComputePipeline.Computed
 end
 
 function register_markerspace_positions!(@nospecialize(plot::Plot); kwargs...)
