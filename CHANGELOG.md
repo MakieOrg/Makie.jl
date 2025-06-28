@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
+
 ## [0.24.2] - 2025-06-27
 
 - Bring back some default attributes for recipes [#5130](https://github.com/MakieOrg/Makie.jl/pull/5130).
