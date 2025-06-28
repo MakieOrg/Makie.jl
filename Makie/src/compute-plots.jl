@@ -316,12 +316,12 @@ function register_positions_transformed_f32c!(
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             return Mat4f(model)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
-            # edge case: positions not float safe, model not float safe but result in float safe range
-            # (this means positions -> world not float safe, but appears float safe)
+        #    # edge case: positions not float safe, model not float safe but result in float safe range
+        #    # (this means positions -> world not float safe, but appears float safe)
         # elseif is_float_safe(scale, trans) && is_rot_free
-            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        #    # fast path: can swap order of f32c and model, i.e. apply model on GPU
         # elseif is_rot_free
-            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        #    # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             return Mat4f(I)
         end
@@ -335,14 +335,14 @@ function register_positions_transformed_f32c!(
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             pos = changed[1] ? el32convert(positions) : nothing
-            return (pos, )
+            return (pos,)
         # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
-            # edge case: positions not float safe, model not float safe but result in float safe range
-            # (this means positions -> world not float safe, but appears float safe)
+        #    # edge case: positions not float safe, model not float safe but result in float safe range
+        #    # (this means positions -> world not float safe, but appears float safe)
         # elseif is_float_safe(scale, trans) && is_rot_free
-            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        #    # fast path: can swap order of f32c and model, i.e. apply model on GPU
         # elseif is_rot_free
-            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        #    # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
             output = map(positions) do point
@@ -357,7 +357,7 @@ function register_positions_transformed_f32c!(
 end
 
 """
-    register_projected_positions!(plot; kwargs...)
+    register_projected_positions!(plot[, output_type = Point3f]; kwargs...)
 
 Register projected positions for the given plot.
 
@@ -372,7 +372,6 @@ applied).
 - `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after the `transform_func` is applied.
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
-- `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_projected_positions!(
@@ -406,7 +405,7 @@ function register_projected_positions!(
 end
 
 """
-    register_positions_projected!(plot; kwargs)
+    register_positions_projected!(plot[, output_type = Point3f]; kwargs)
 
 Register projected positions for the given plot.
 
@@ -419,7 +418,6 @@ positions are assumed to already be transformed. `model` is still applied if
 - `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
-- `output_type = Point3f` sets the element type of projected positions. Note that when using 4D points, w-normalization is skipped.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
 function register_positions_projected!(
@@ -432,7 +430,7 @@ function register_positions_projected!(
         apply_transform = input_space === :space
     ) where {OT <: VecTypes}
 
-    # Collect and connect necessary projection inputs
+    # Connect necessary projection matrix
     projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
@@ -452,18 +450,15 @@ function register_positions_projected!(
         end
     end
 
-    # merge projection related matrices
+    # add computation
+    # Doing this with explicit branches seems to speed things up a little bit.
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
         if !haskey(plot.attributes, :resolution)
             scene = parent_scene(plot)::Scene
             add_input!(plot.attributes, :resolution, scene.compute[:resolution])
         end
-    end
 
-    # add computation
-    # Doing this with explicit branches seems to speed things up a little bit.
-    if yflip
         if apply_transform
             map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
                 return _project(OT, flip_matrix(res) * pv * m, pos)
