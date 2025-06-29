@@ -19,7 +19,7 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, x::AbstractArray)
 end
 
 function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
-    conv = DQ.ustrip(quantity, value)
+    conv = DQ.ustrip(quantity, DQ.uexpand(value))
     return float(conv)
 end
 
