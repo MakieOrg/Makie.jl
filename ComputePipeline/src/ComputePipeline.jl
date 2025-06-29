@@ -887,7 +887,9 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
         else
             error(
                 "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                    "that uses a different set of inputs. (Failed to find $input in existing)"
+                    "that uses a different set of inputs." *
+                    "\n   existing inputs: $(map(c -> c.name, e1.inputs))" *
+                    "\n   new inputs:      $(map(c -> c.name, inputs))"
             )
         end
     end
@@ -982,22 +984,22 @@ map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
 """
-function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Symbol, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end

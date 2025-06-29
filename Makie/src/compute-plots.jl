@@ -245,38 +245,85 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     end
 end
 
-function register_position_transforms!(attr, input_name = :positions)
-    haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
-    map!(attr, [input_name, :transform_func], :positions_transformed) do positions, func
-        return apply_transform(func, positions)
-    end
+"""
+    register_position_transforms!(plot[, input_name = :positions])
+
+Registers
+- `positions_transformed` which include the transform function applies to positions
+- `positions_tranformed_f32c` which include float32convert applied to `positions_transformed`
+where "positions" are given by `getproperty(plot, input_name)`.
+
+See also: [`register_positions_transformed!`](@ref), [`register_positions_transformed_f32c!`](@ref)
+"""
+function register_position_transforms!(plot::Plot, input_name = :positions)
+    return register_position_transforms!(plot.attributes, input_name)
+end
+
+function register_position_transforms!(attr::ComputeGraph, input_name::Symbol = :positions)
+    register_positions_transformed!(attr; input_name)
     register_positions_transformed_f32c!(attr)
     return
 end
 
-function register_positions_transformed_f32c!(attr)
+"""
+    register_positions_transformed!(plot[; input_name = :positions, output_name = :positions_transformed])
+
+Registers `output_name` containing positions with the transform function of the plot applied to `input_name`.
+
+See also: [`register_position_transforms!`](@ref), [`register_positions_transformed_f32c!`](@ref)
+"""
+function register_positions_transformed!(plot::Plot; input_name = :positions, output_name = :positions_transformed)
+    return register_positions_transformed!(plot.attributes; input_name, output_name)
+end
+
+function register_positions_transformed!(
+        attr::ComputeGraph;
+        input_name::Symbol = :positions, output_name::Symbol = :positions_transformed
+    )
+    haskey(attr.outputs, input_name) || error("$input_name not found while trying to register positions transforms")
+    map!(apply_transform, attr, [:transform_func, input_name], output_name)
+    return
+end
+
+"""
+    register_positions_transformed_f32c!(plot[; input_name = :positions, output_name = :positions_transformed])
+
+Registers `output_name` containing positions with the parent scenes float32convert applied to `input_name`.
+Note that this does not apply transformation functions.
+
+See also: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref)
+"""
+function register_positions_transformed_f32c!(
+        plot::Plot; input_name = :positions_transformed, output_name = :positions_transformed_f32c
+    )
+    return register_positions_transformed_f32c!(plot.attributes; input_name, output_name)
+end
+
+function register_positions_transformed_f32c!(
+        attr::ComputeGraph;
+        input_name::Symbol = :positions_transformed, output_name::Symbol = :positions_transformed_f32c
+    )
     # model_f32c is the model matrix after processing f32c. Backends should rely
     # on it if it applies to :positions_transformed_f32c
 
-    register_computation!(
-        attr,
-        [:positions_transformed, :model, :f32c, :space],
-        [:positions_transformed_f32c, :model_f32c]
-    ) do (positions, model, f32c, space), changed, last
+    # TODO: These are simplified, skipping what's commented out
+    register_model_f32c!(attr)
 
-        # TODO: This is simplified, skipping what's commented out
+    register_computation!(
+        attr, [input_name, :model, :f32c, :space], [output_name]
+    ) do (positions, model, f32c, space), changed, last
 
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
             pos = changed[1] ? el32convert(positions) : nothing
-            return (pos, Mat4f(model))
-            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            return (pos,)
+        elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
-            # elseif is_float_safe(scale, trans) && is_rot_free
+        elseif false # is_float_safe(scale, trans) && is_rot_free
             # fast path: can swap order of f32c and model, i.e. apply model on GPU
-            # elseif is_rot_free
+        elseif false # is_rot_free
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
@@ -285,10 +332,214 @@ function register_positions_transformed_f32c!(attr)
                 p4d = model * p4d
                 return f32_convert(f32c, p4d[Vec(1, 2, 3)])
             end
-            return (output, Mat4f(I))
+            return (output,)
         end
     end
     return
+end
+
+function register_model_f32c!(attr)
+    map!(attr, [:model, :f32c, :space], :model_f32c) do model, f32c, space
+        trans, scale = decompose_translation_scale_matrix(model)
+
+        # is_rot_free = is_translation_scale_matrix(model)
+        if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
+            return Mat4f(model)
+        elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        elseif false # is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        elseif false # is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
+        else
+            return Mat4f(I)
+        end
+    end
+
+    return
+end
+
+"""
+    register_projected_positions!(plot[, output_type = Point3f]; kwargs...)
+
+Register projected positions for the given plot starting from plot argument space.
+
+Note that this also generates compute nodes for transformed positions (i.e. with
+transform_func applied) and float32-converted positions (i.e. with float32convert
+applied).
+
+Optionally `output_type` can be set to control the element type of projected
+positions. (4D points will not be w-normalized, 1D - 3D points will be. This is
+to allow clip space clipping to happen elsewhere.)
+
+## Keyword Arguments:
+- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `input_name = :positions` sets the source positions which will be projected.
+- `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after the `transform_func` is applied.
+- `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
+- `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
+- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+"""
+function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
+end
+function register_projected_positions!(scene::Scene, @nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_projected_positions!(scene.compute, plot.attributes, OT; kwargs...)
+end
+function register_projected_positions!(
+        scene_graph::ComputePipeline.ComputeGraph,
+        plot_graph::ComputePipeline.ComputeGraph,
+        ::Type{OT} = Point3f;
+        input_space::Symbol = :space,
+        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        input_name::Symbol = :positions,
+        transformed_name::Symbol = Symbol(input_name, :_transformed),
+        transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
+        output_name::Symbol = Symbol(output_space, :_, input_name),
+        yflip::Bool = false,
+        apply_transform::Bool = input_space === :space,
+        apply_clip_planes::Bool = false,
+    ) where {OT <: VecTypes}
+
+    # Handle transform function + f32c
+    if apply_transform
+        register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
+        register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
+    else
+        transformed_f32c_name = input_name
+    end
+
+    register_positions_projected!(
+        scene_graph, plot_graph, OT;
+        input_space, output_space,
+        input_name = transformed_f32c_name, output_name,
+        yflip, apply_transform, apply_clip_planes
+    )
+
+    return getindex(plot_graph, output_name)
+end
+
+"""
+    register_positions_projected!(plot[, output_type = Point3f]; kwargs)
+
+Register projected positions for the given plot starting from transformed space.
+
+Note that this does not apply `transform_func` or `float32convert`. The input
+positions are assumed to already be transformed. `model` is still applied if
+`apply_transform == true`.
+
+## Keyword Arguments:
+- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
+- `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
+- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+"""
+function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
+end
+function register_positions_projected!(scene::Scene, @nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_positions_projected!(scene.compute, plot.attributes, OT; kwargs...)
+end
+function register_positions_projected!(
+        scene_graph::ComputePipeline.ComputeGraph,
+        plot_graph::ComputePipeline.ComputeGraph,
+        ::Type{OT} = Point3f;
+        input_space::Symbol = :space,
+        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        input_name::Symbol = :positions_transformed_f32c,
+        output_name::Symbol = Symbol(output_space, :_positions),
+        yflip::Bool = false,
+        apply_transform::Bool = input_space === :space,
+        apply_clip_planes::Bool = !is_data_space(output_space)
+    ) where {OT <: VecTypes}
+
+    # Connect necessary projection matrix from scene
+    projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
+    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
+
+    # TODO: Names may collide and ComputePipeline doesn't check strictly enough
+    # by default to catch this...
+    if haskey(plot_graph, output_name)
+        node = getindex(plot_graph, output_name)
+        names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
+        inputs = Symbol[merged_matrix_name, input_name]
+        if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
+            push!(inputs, ifelse(apply_transform, :model_clip_planes, :clip_planes))
+            input_space === :space && push!(inputs, :space)
+        end
+        if names != inputs
+            error("Could not register $output_name - already exists with different inputs: \nold:   $names\nnew   $inputs")
+        else
+            return getindex(plot_graph, output_name)
+        end
+    end
+
+    # connect resolution for yflip (Cairo) and model matrix if requested
+    inputs = Symbol[]
+    if yflip
+        is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
+        if !haskey(plot_graph, :resolution)
+            add_input!(plot_graph, :resolution, scene_graph[:resolution])
+        end
+        push!(inputs, :resolution)
+    end
+
+    push!(inputs, projection_matrix_name)
+    apply_transform && push!(inputs, :model_f32c)
+
+    # merge/create projection related matrices
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
+    combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
+    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
+    map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
+
+    # apply projection
+    # clip planes only apply from data/world space.
+    if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
+        # easiest to transform them to the space of the projection input and
+        # clip based on those points
+        if apply_transform
+            register_model_clip_planes!(plot_graph)
+            clip_planes_name = :model_clip_planes
+        else
+            clip_planes_name = :clip_planes
+        end
+
+        if input_space === :space # dynamic
+            map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name, :space], output_name) do matrix, pos, clip_planes, space
+                return _project(OT, matrix, pos, clip_planes, space)
+            end
+        else # static
+            map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name], output_name) do matrix, pos, clip_planes
+                return _project(OT, matrix, pos, clip_planes, :data)
+            end
+        end
+
+    else
+        # no clip planes, just project everything
+        map!(plot_graph, [merged_matrix_name, input_name], output_name) do matrix, pos
+            return _project(OT, matrix, pos)
+        end
+    end
+
+    return getindex(plot_graph, output_name)
+end
+
+function register_model_clip_planes!(attr, modelname = :model_f32c)
+    map!(to_model_space, attr, [modelname, :clip_planes], :model_clip_planes)
+    return
+end
+
+function register_markerspace_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    haskey(plot, :markerspace) || error("Cannot compute markerspace positions for a plot that doesn't have markerspace.")
+    # kwargs get overwritten by later keyword arguments
+    return register_projected_positions!(plot, OT; kwargs..., input_space = :space, output_space = :markerspace)
 end
 
 # Split for text compat
@@ -463,8 +714,12 @@ const PrimitivePlotTypes = Union{
 }
 
 
-function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, p.attributes, inputs, outputs)
+end
+
+function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+    return map!(f, p.attributes, inputs, outputs)
 end
 
 function default_attribute(user_attributes, (key, value))
