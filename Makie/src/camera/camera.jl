@@ -399,8 +399,8 @@ function register_camera_matrix!(
         return :projectionview
     end
 
-    _input = input in (:markerspace, :space) ? getproperty(plot, input) : input
-    _output = output in (:markerspace, :space) ? getproperty(plot, output) : output
+    _input = input in (:markerspace, :space) ? getindex(plot_graph, input) : input
+    _output = output in (:markerspace, :space) ? getindex(plot_graph, output) : output
 
     isconst(x::Symbol) = true
     isconst(x::Computed) = false
