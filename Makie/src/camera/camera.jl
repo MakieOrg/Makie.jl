@@ -424,7 +424,7 @@ function register_camera_matrix!(
         map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
     end
 
-    inputs = Computed[scene_graph.camera_trigger, getproperty(plot, name_name)]
+    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
     map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
 
     return matrix_name

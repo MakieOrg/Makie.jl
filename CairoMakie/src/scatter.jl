@@ -5,7 +5,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     cairo_unclipped_indices!(attr)
     Makie.compute_colors!(attr)
     Makie.register_projected_positions!(
-        scene, plot, Point3d, output_name = :positions_in_markerspace,
+        scene.compute, attr, Point3d, output_name = :positions_in_markerspace,
         output_space = :markerspace
     )
     map!(cairo_scatter_marker, attr, :marker, :cairo_marker)
@@ -33,7 +33,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     # TODO: We're doing per-string/glyphcollection work per glyph here
     cairo_unclipped_indices!(attr)
     Makie.register_projected_positions!(
-        scene, plot, Point3d, output_name = :positions_in_markerspace,
+        scene.compute, attr, Point3d, output_name = :positions_in_markerspace,
         output_space = :markerspace
     )
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
