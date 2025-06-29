@@ -415,10 +415,10 @@ function register_camera_matrix!(
     name_name = Symbol(matrix_name, :_name)
 
     if !isconst(_input) && isconst(_output)
-        name_tail = Symbol(:_to_, getname(output))
+        name_tail = Symbol(:_to_, _data_to_world(output))
         map!(a -> Symbol(_data_to_world(a), name_tail), plot_graph, _input, name_name)
     elseif isconst(_input) && !isconst(_output)
-        name_head = Symbol(getname(input), :_to_)
+        name_head = Symbol(_data_to_world(input), :_to_)
         map!(b -> Symbol(name_head, _data_to_world(b)), plot_graph, _output, name_name)
     else
         map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
