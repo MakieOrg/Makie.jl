@@ -228,9 +228,18 @@ world ------>   eye   -----------> clip
                pixel  -----------> clip
              relative -----------> clip
 =#
+#
+const CAMERA_MATRIX_NAMES = let
+    # dynamic Symbol(a, b) is fairly expensive...
+    spaces = [:world, :eye, :clip, :relative, :pixel, :space, :markerspace]
+    Dict{Tuple{Symbol, Symbol}, Symbol}(
+        [(a, b) => Symbol(a, :_to_, b) for a in spaces for b in spaces]
+    )
+end
+
 _data_to_world(x) = ifelse(x === :data, :world, x)
 function get_camera_matrix_name(input_space::Symbol, output_space::Symbol)
-    return Symbol(_data_to_world(input_space), :_to_, _data_to_world(output_space))
+    return CAMERA_MATRIX_NAMES[(_data_to_world(input_space), _data_to_world(output_space))]
 end
 
 function get_projectionview_name(space::Symbol)
@@ -385,7 +394,9 @@ function register_camera_matrix!(
     )
 
     # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
-    matrix_name = Symbol(_data_to_world(input), :_to_, _data_to_world(output))
+    matrix_name = get_camera_matrix_name(input, output)
+
+    haskey(plot_graph, matrix_name) && return matrix_name
 
     # These already exist
     if haskey(plot_graph, :markerspace) && matrix_name === :space_to_markerspace
@@ -412,14 +423,14 @@ function register_camera_matrix!(
         return matrix_name
     end
 
+    # dynamic case (space and/or markerspace used)
+    # Need to build name of the matrix dynamically before fetching it
     name_name = Symbol(matrix_name, :_name)
 
     if !isconst(_input) && isconst(_output)
-        name_tail = Symbol(:_to_, _data_to_world(output))
-        map!(a -> Symbol(_data_to_world(a), name_tail), plot_graph, _input, name_name)
+        map!(a -> get_camera_matrix_name(a, output), plot_graph, _input, name_name)
     elseif isconst(_input) && !isconst(_output)
-        name_head = Symbol(_data_to_world(input), :_to_)
-        map!(b -> Symbol(name_head, _data_to_world(b)), plot_graph, _output, name_name)
+        map!(b -> get_camera_matrix_name(input, b), plot_graph, _output, name_name)
     else
         map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
     end
