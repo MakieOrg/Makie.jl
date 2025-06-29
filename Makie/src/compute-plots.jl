@@ -362,11 +362,15 @@ end
 """
     register_projected_positions!(plot[, output_type = Point3f]; kwargs...)
 
-Register projected positions for the given plot.
+Register projected positions for the given plot starting from plot argument space.
 
 Note that this also generates compute nodes for transformed positions (i.e. with
 transform_func applied) and float32-converted positions (i.e. with float32convert
 applied).
+
+Optionally `output_type` can be set to control the element type of projected
+positions. (4D points will not be w-normalized, 1D - 3D points will be. This is
+to allow clip space clipping to happen elsewhere.)
 
 ## Keyword Arguments:
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
@@ -376,6 +380,7 @@ applied).
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 """
 function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
@@ -394,7 +399,8 @@ function register_projected_positions!(
         transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
         output_name::Symbol = Symbol(output_space, :_, input_name),
         yflip::Bool = false,
-        apply_transform::Bool = input_space === :space
+        apply_transform::Bool = input_space === :space,
+        apply_clip_planes::Bool = false,
     ) where {OT <: VecTypes}
 
     # Handle transform function + f32c
@@ -409,7 +415,7 @@ function register_projected_positions!(
         scene_graph, plot_graph, OT;
         input_space, output_space,
         input_name = transformed_f32c_name, output_name,
-        yflip, apply_transform
+        yflip, apply_transform, apply_clip_planes
     )
 
     return getindex(plot_graph, output_name)
@@ -418,7 +424,7 @@ end
 """
     register_positions_projected!(plot[, output_type = Point3f]; kwargs)
 
-Register projected positions for the given plot.
+Register projected positions for the given plot starting from transformed space.
 
 Note that this does not apply `transform_func` or `float32convert`. The input
 positions are assumed to already be transformed. `model` is still applied if
@@ -430,6 +436,7 @@ positions are assumed to already be transformed. `model` is still applied if
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 """
 function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
@@ -446,55 +453,88 @@ function register_positions_projected!(
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
-        apply_transform::Bool = input_space === :space
+        apply_transform::Bool = input_space === :space,
+        apply_clip_planes::Bool = false
     ) where {OT <: VecTypes}
 
-    # Connect necessary projection matrix
+    # Connect necessary projection matrix from scene
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
+    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
     # by default to catch this...
     if haskey(plot_graph, output_name)
         node = getindex(plot_graph, output_name)
         names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
-
-        inputs = Symbol[]
-        yflip && push!(inputs, :resolution)
-        push!(inputs, projection_matrix_name)
-        apply_transform && push!(inputs, :model_f32c)
-        push!(inputs, input_name)
-
+        inputs = Symbol[merged_matrix_name, input_name]
+        apply_clip_planes && push!(inputs, ifelse(apply_transform, :model_clip_planes, :clip_planes))
         if names != inputs
             error("Could not register $output_name - already exists with different inputs")
+        else
+            return getindex(plot_graph, output_name)
         end
     end
 
-    # add computation
-    # Doing this with explicit branches seems to speed things up a little bit.
+    # connect resolution for yflip (Cairo) and model matrix if requested
+    inputs = Symbol[]
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
         if !haskey(plot_graph, :resolution)
             add_input!(plot_graph, :resolution, scene_graph[:resolution])
         end
+        push!(inputs, :resolution)
+    end
 
+    push!(inputs, projection_matrix_name)
+    apply_transform && push!(inputs, :model_f32c)
+
+    # merge/create projection related matrices
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
+    combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
+    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
+    map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
+
+    # apply projection
+    # clip planes only apply from data/world space.
+    if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
+        # easiest to transform them to the space of the projection input and
+        # clip based on those points
         if apply_transform
-            map!(plot_graph, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
-                return _project(OT, flip_matrix(res) * pv * m, pos)
-            end
+            map!(to_model_space, plot_graph, [:model_f32c, :clip_planes], :model_clip_planes)
+            clip_planes_name = :model_clip_planes
         else
-            map!(plot_graph, [:resolution, projection_matrix_name, input_name], output_name) do res, pv, pos
-                return _project(OT, flip_matrix(res) * pv, pos)
+            clip_planes_name = :clip_planes
+        end
+
+        if input_space === :space # dynamic
+            map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name, :space], output_name) do matrix, pos, clip_planes, space
+                projected = _project(OT, matrix, pos)
+                if is_data_space(space)
+                    @assert projected !== pos "Input data should not be overwritten"
+                    nan_point = OT(NaN)
+                    @inbounds for i in eachindex(projected)
+                        projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
+                    end
+                end
+                return projected
+            end
+        else # static
+            map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name], output_name) do matrix, pos, clip_planes
+                projected = _project(OT, matrix, pos)
+                @assert projected !== pos "Input data should not be overwritten"
+                nan_point = OT(NaN)
+                @inbounds for i in eachindex(projected)
+                    projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
+                end
+                return projected
             end
         end
+
     else
-        if apply_transform
-            map!(plot_graph, [projection_matrix_name, :model_f32c, input_name], output_name) do pv, m, pos
-                return _project(OT, pv * m, pos)
-            end
-        else
-            map!(plot_graph, [projection_matrix_name, input_name], output_name) do pv, pos
-                return _project(OT, pv, pos)
-            end
+        # no clip planes, just project everything
+        map!(plot_graph, [merged_matrix_name, input_name], output_name) do matrix, pos
+            return _project(OT, matrix, pos)
         end
     end
 
