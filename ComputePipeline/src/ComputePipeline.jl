@@ -887,7 +887,9 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
         else
             error(
                 "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                    "that uses a different set of inputs. (Failed to find $input in existing)"
+                    "that uses a different set of inputs." *
+                    "\n   existing inputs: $(map(c -> c.name, e1.inputs))" *
+                    "\n   new inputs:      $(map(c -> c.name, inputs))"
             )
         end
     end

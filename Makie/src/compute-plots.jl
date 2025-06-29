@@ -468,9 +468,12 @@ function register_positions_projected!(
         node = getindex(plot_graph, output_name)
         names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
         inputs = Symbol[merged_matrix_name, input_name]
-        apply_clip_planes && push!(inputs, ifelse(apply_transform, :model_clip_planes, :clip_planes))
+        if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
+            push!(inputs, ifelse(apply_transform, :model_clip_planes, :clip_planes))
+            input_space === :space && push!(inputs, :space)
+        end
         if names != inputs
-            error("Could not register $output_name - already exists with different inputs")
+            error("Could not register $output_name - already exists with different inputs: \nold:   $names\nnew   $inputs")
         else
             return getindex(plot_graph, output_name)
         end
@@ -502,7 +505,7 @@ function register_positions_projected!(
         # easiest to transform them to the space of the projection input and
         # clip based on those points
         if apply_transform
-            register_model_space_clip_planes!(plot_graph)
+            register_model_clip_planes!(plot_graph)
             clip_planes_name = :model_clip_planes
         else
             clip_planes_name = :clip_planes
