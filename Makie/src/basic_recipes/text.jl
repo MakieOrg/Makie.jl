@@ -475,6 +475,19 @@ end
 # - offset always applies in markerspace w/o rotation. Excluding it when positions
 #   are included makes little sense
 
+function register_markerspace_position!(plot::Text; kwargs...)
+    # Careful, text uses :text_positions as the input to the transformation pipeline
+    # We can also skip that part:
+    return register_positions_projected!(
+        plot,
+        input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
+        input_space = :space, output_space = :markerspace,
+        apply_transform = true, apply_clip_planes = true
+    )
+end
+
+
+
 # TODO: anything per-string should include lines?
 
 function register_raw_glyph_boundingboxes!(plot)
