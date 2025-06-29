@@ -70,13 +70,13 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
             xs = changed.x_transformed || changed.f32c ? el32convert(first.(x)) : nothing
             ys = changed.y_transformed || changed.f32c ? el32convert(last.(y)) : nothing
             return (xs, ys)
-        # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
-        #    # edge case: positions not float safe, model not float safe but result in float safe range
-        #    # (this means positions -> world not float safe, but appears float safe)
-        # elseif is_float_safe(scale, trans) && is_rot_free
-        #    # fast path: can swap order of f32c and model, i.e. apply model on GPU
-        # elseif is_rot_free
-        #    # fast path: can merge model into f32c and skip applying model matrix on CPU
+        elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            # edge case: positions not float safe, model not float safe but result in float safe range
+            # (this means positions -> world not float safe, but appears float safe)
+        elseif false # is_float_safe(scale, trans) && is_rot_free
+            # fast path: can swap order of f32c and model, i.e. apply model on GPU
+        elseif false # is_rot_free
+            # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
             xs = Vector{Float32}(undef, length(x))

@@ -486,8 +486,6 @@ function register_markerspace_position!(plot::Text; kwargs...)
     )
 end
 
-
-
 # TODO: anything per-string should include lines?
 
 function register_raw_glyph_boundingboxes!(plot)

@@ -319,8 +319,6 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-
-
 struct CameraMatrixCallback <: Function
     graph::ComputeGraph
 end

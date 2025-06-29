@@ -358,7 +358,7 @@ function Makie.plot!(plot::Arrows2D)
         plot,
         [
             :pixel_directions, :taillength, :tailwidth, :shaftlength,
-            :minshaftlength, :maxshaftlength, :shaftwidth, :tiplength, :tipwidth
+            :minshaftlength, :maxshaftlength, :shaftwidth, :tiplength, :tipwidth,
         ],
         :arrow_metrics
     ) do directions, taillength, tailwidth, shaftlength, minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
@@ -387,7 +387,7 @@ function Makie.plot!(plot::Arrows2D)
         return (
             taillength > 0 && tailwidth > 0,
             shaftwidth > 0,
-            tiplength > 0 && tipwidth > 0
+            tiplength > 0 && tipwidth > 0,
         )
     end
 
@@ -395,7 +395,7 @@ function Makie.plot!(plot::Arrows2D)
         plot,
         [
             :pixel_startpoints, :pixel_directions, :arrow_metrics, :strokemask,
-            :should_component_render, :tail, :shaft, :tip
+            :should_component_render, :tail, :shaft, :tip,
         ],
         :meshes
     ) do ps, dirs, metrics, mask, should_render, shapes...
@@ -646,7 +646,7 @@ function Makie.plot!(plot::Arrows3D)
         plot,
         [
             :world_directions, :arrowscale, :shaftlength, :taillength, :tailradius,
-            :minshaftlength, :maxshaftlength, :shaftradius, :tiplength, :tipradius
+            :minshaftlength, :maxshaftlength, :shaftradius, :tiplength, :tipradius,
         ],
         :arrow_metrics
     ) do directions, arrowscale, _shaftlength, user_metrics...

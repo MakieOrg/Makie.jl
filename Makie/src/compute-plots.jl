@@ -340,7 +340,6 @@ end
 
 function register_model_f32c!(attr)
     map!(attr, [:model, :f32c, :space], :model_f32c) do model, f32c, space
-
         trans, scale = decompose_translation_scale_matrix(model)
 
         # is_rot_free = is_translation_scale_matrix(model)
@@ -357,6 +356,8 @@ function register_model_f32c!(attr)
             return Mat4f(I)
         end
     end
+
+    return
 end
 
 """
@@ -532,7 +533,7 @@ function register_model_clip_planes!(attr, modelname = :model_f32c)
     return
 end
 
-function register_markerspace_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where OT
+function register_markerspace_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     haskey(plot, :markerspace) || error("Cannot compute markerspace positions for a plot that doesn't have markerspace.")
     # kwargs get overwritten by later keyword arguments
     return register_projected_positions!(plot, OT; kwargs..., input_space = :space, output_space = :markerspace)

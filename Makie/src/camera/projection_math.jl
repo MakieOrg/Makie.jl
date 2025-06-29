@@ -450,8 +450,6 @@ function _project(
     return projected
 end
 
-
-
 # TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}
     T = promote_type(Float32, T1, T2)
