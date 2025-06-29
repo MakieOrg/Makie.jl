@@ -373,23 +373,29 @@ and `:markerspace_to_clip` will be renamed to `projectionview`, `preprojection` 
 """
 function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::Union{Symbol, Computed})
     scene = parent_scene(plot)
-    attr = plot.attributes
 
-    getname(x::Computed) = getname(x.name)
-    getname(x::Symbol) = _data_to_world(x) # allows :space and :markerspace to pass
+    getname(x::Computed) = x.name::Symbol
+    getname(x::Symbol) = x
+
+    return register_camera_matrix!(scene.compute, plot.attributes, getname(input), getname(output))
+end
+function register_camera_matrix!(
+        scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
+        input::Symbol, output::Symbol
+    )
 
     # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
-    matrix_name = Symbol(getname(input), :_to_, getname(output))
+    matrix_name = Symbol(_data_to_world(input), :_to_, _data_to_world(output))
 
     # These already exist
-    if haskey(attr, :markerspace) && matrix_name === :space_to_markerspace
-        haskey(attr, :preprojection) || _register_common_camera_matrices!(attr, scene.compute)
+    if haskey(plot_graph, :markerspace) && matrix_name === :space_to_markerspace
+        haskey(plot_graph, :preprojection) || _register_common_camera_matrices!(plot_graph, scene_graph)
         return :preprojection
-    elseif haskey(attr, :markerspace) && matrix_name === :markerspace_to_clip
-        haskey(attr, :projectionview) || _register_common_camera_matrices!(attr, scene.compute)
+    elseif haskey(plot_graph, :markerspace) && matrix_name === :markerspace_to_clip
+        haskey(plot_graph, :projectionview) || _register_common_camera_matrices!(plot_graph, scene_graph)
         return :projectionview
-    elseif !haskey(attr, :markerspace) && matrix_name === :space_to_clip
-        haskey(attr, :projectionview) || _register_common_camera_matrices!(attr, scene.compute)
+    elseif !haskey(plot_graph, :markerspace) && matrix_name === :space_to_clip
+        haskey(plot_graph, :projectionview) || _register_common_camera_matrices!(plot_graph, scene_graph)
         return :projectionview
     end
 
@@ -402,7 +408,7 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
     if isconst(_input) && isconst(_output)
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
-        add_input!(attr, matrix_name, getproperty(scene.compute, matrix_name))
+        add_input!(plot_graph, matrix_name, scene_graph[:matrix_name])
         return matrix_name
     end
 
@@ -410,16 +416,16 @@ function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::U
 
     if !isconst(_input) && isconst(_output)
         name_tail = Symbol(:_to_, getname(output))
-        map!(a -> Symbol(_data_to_world(a), name_tail), attr, _input, name_name)
+        map!(a -> Symbol(_data_to_world(a), name_tail), plot_graph, _input, name_name)
     elseif isconst(_input) && !isconst(_output)
         name_head = Symbol(getname(input), :_to_)
-        map!(b -> Symbol(name_head, _data_to_world(b)), attr, _output, name_name)
+        map!(b -> Symbol(name_head, _data_to_world(b)), plot_graph, _output, name_name)
     else
-        map!(get_camera_matrix_name, attr, [_input, _output], name_name)
+        map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
     end
 
-    inputs = Computed[scene.compute.camera_trigger, getproperty(plot, name_name)]
-    map!((_, name) -> Mat4f(scene.compute[name][]::Mat4d), attr, inputs, matrix_name)
+    inputs = Computed[scene_graph.camera_trigger, getproperty(plot, name_name)]
+    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
 
     return matrix_name
 end

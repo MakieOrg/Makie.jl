@@ -377,8 +377,16 @@ applied).
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
+function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
+end
+function register_projected_positions!(scene::Scene, @nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_projected_positions!(scene.compute, plot.attributes, OT; kwargs...)
+end
 function register_projected_positions!(
-        @nospecialize(plot::Plot), ::Type{OT} = Point3f;
+        scene_graph::ComputePipeline.ComputeGraph,
+        plot_graph::ComputePipeline.ComputeGraph,
+        ::Type{OT} = Point3f;
         input_space::Symbol = :space,
         output_space::Symbol = :clip, # TODO: would :pixel be more useful?
         input_name::Symbol = :positions,
@@ -391,20 +399,20 @@ function register_projected_positions!(
 
     # Handle transform function + f32c
     if apply_transform
-        register_positions_transformed!(plot; input_name, output_name = transformed_name)
-        register_positions_transformed_f32c!(plot; input_name = transformed_name, output_name = transformed_f32c_name)
+        register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
+        register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
     else
         transformed_f32c_name = input_name
     end
 
     register_positions_projected!(
-        plot, OT;
+        scene_graph, plot_graph, OT;
         input_space, output_space,
         input_name = transformed_f32c_name, output_name,
         yflip, apply_transform
     )
 
-    return getproperty(plot, output_name)::ComputePipeline.Computed
+    return getindex(plot_graph, output_name)
 end
 
 """
@@ -423,23 +431,31 @@ positions are assumed to already be transformed. `model` is still applied if
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 """
+function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
+end
+function register_positions_projected!(scene::Scene, @nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
+    return register_positions_projected!(scene.compute, plot.attributes, OT; kwargs...)
+end
 function register_positions_projected!(
-        @nospecialize(plot::Plot), ::Type{OT} = Point3f;
+        scene_graph::ComputePipeline.ComputeGraph,
+        plot_graph::ComputePipeline.ComputeGraph,
+        ::Type{OT} = Point3f;
         input_space::Symbol = :space,
         output_space::Symbol = :clip, # TODO: would :pixel be more useful?
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
-        apply_transform = input_space === :space
+        apply_transform::Bool = input_space === :space
     ) where {OT <: VecTypes}
 
     # Connect necessary projection matrix
-    projection_matrix_name = register_camera_matrix!(plot, input_space, output_space)
+    projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
 
     # TODO: Names may collide and ComputePipeline doesn't check strictly enough
     # by default to catch this...
-    if haskey(plot.attributes, output_name)
-        node = getproperty(plot.attributes::ComputePipeline.ComputeGraph, output_name)::ComputePipeline.Computed
+    if haskey(plot_graph, output_name)
+        node = getindex(plot_graph, output_name)
         names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
 
         inputs = Symbol[]
@@ -457,33 +473,32 @@ function register_positions_projected!(
     # Doing this with explicit branches seems to speed things up a little bit.
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
-        if !haskey(plot.attributes, :resolution)
-            scene = parent_scene(plot)::Scene
-            add_input!(plot.attributes, :resolution, scene.compute[:resolution])
+        if !haskey(plot_graph, :resolution)
+            add_input!(plot_graph, :resolution, scene_graph[:resolution])
         end
 
         if apply_transform
-            map!(plot.attributes, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
+            map!(plot_graph, [:resolution, projection_matrix_name, :model_f32c, input_name], output_name) do res, pv, m, pos
                 return _project(OT, flip_matrix(res) * pv * m, pos)
             end
         else
-            map!(plot.attributes, [:resolution, projection_matrix_name, input_name], output_name) do res, pv, pos
+            map!(plot_graph, [:resolution, projection_matrix_name, input_name], output_name) do res, pv, pos
                 return _project(OT, flip_matrix(res) * pv, pos)
             end
         end
     else
         if apply_transform
-            map!(plot.attributes, [projection_matrix_name, :model_f32c, input_name], output_name) do pv, m, pos
+            map!(plot_graph, [projection_matrix_name, :model_f32c, input_name], output_name) do pv, m, pos
                 return _project(OT, pv * m, pos)
             end
         else
-            map!(plot.attributes, [projection_matrix_name, input_name], output_name) do pv, pos
+            map!(plot_graph, [projection_matrix_name, input_name], output_name) do pv, pos
                 return _project(OT, pv, pos)
             end
         end
     end
 
-    return getproperty(plot, output_name)::ComputePipeline.Computed
+    return getindex(plot_graph, output_name)
 end
 
 function register_markerspace_positions!(@nospecialize(plot::Plot); kwargs...)
