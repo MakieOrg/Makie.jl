@@ -380,7 +380,7 @@ to allow clip space clipping to happen elsewhere.)
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
-- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 """
 function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
@@ -436,7 +436,7 @@ positions are assumed to already be transformed. `model` is still applied if
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
-- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 """
 function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
@@ -454,7 +454,7 @@ function register_positions_projected!(
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
         apply_transform::Bool = input_space === :space,
-        apply_clip_planes::Bool = false
+        apply_clip_planes::Bool = !is_data_space(output_space)
     ) where {OT <: VecTypes}
 
     # Connect necessary projection matrix from scene
@@ -501,7 +501,7 @@ function register_positions_projected!(
         # easiest to transform them to the space of the projection input and
         # clip based on those points
         if apply_transform
-            map!(to_model_space, plot_graph, [:model_f32c, :clip_planes], :model_clip_planes)
+            register_model_space_clip_planes!(plot_graph)
             clip_planes_name = :model_clip_planes
         else
             clip_planes_name = :clip_planes
@@ -509,25 +509,11 @@ function register_positions_projected!(
 
         if input_space === :space # dynamic
             map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name, :space], output_name) do matrix, pos, clip_planes, space
-                projected = _project(OT, matrix, pos)
-                if is_data_space(space)
-                    @assert projected !== pos "Input data should not be overwritten"
-                    nan_point = OT(NaN)
-                    @inbounds for i in eachindex(projected)
-                        projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
-                    end
-                end
-                return projected
+                return _project(OT, matrix, pos, clip_planes, space)
             end
         else # static
             map!(plot_graph, [merged_matrix_name, input_name, clip_planes_name], output_name) do matrix, pos, clip_planes
-                projected = _project(OT, matrix, pos)
-                @assert projected !== pos "Input data should not be overwritten"
-                nan_point = OT(NaN)
-                @inbounds for i in eachindex(projected)
-                    projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
-                end
-                return projected
+                return _project(OT, matrix, pos, clip_planes, :data)
             end
         end
 
@@ -539,6 +525,11 @@ function register_positions_projected!(
     end
 
     return getindex(plot_graph, output_name)
+end
+
+function register_model_clip_planes!(attr, modelname = :model_f32c)
+    map!(to_model_space, attr, [modelname, :clip_planes], :model_clip_planes)
+    return
 end
 
 function register_markerspace_positions!(@nospecialize(plot::Plot); kwargs...)

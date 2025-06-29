@@ -432,6 +432,25 @@ end
     end
 end
 
+function _project(matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f}, space::Symbol = :data, dim4::Real = 1)
+    return _project(Point3f, matrix, pos::Vector{<:VecTypes}, clip_planes, space, dim4)
+end
+function _project(
+        ::Type{OT}, matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f},
+        space::Symbol = :data, dim4::Real = 1
+    ) where {OT}
+    projected = _project(OT, matrix, pos)
+    if is_data_space(space)
+        @assert projected !== pos "Input data should not be overwritten"
+        nan_point = OT(NaN)
+        @inbounds for i in eachindex(projected)
+            projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
+        end
+    end
+    return projected
+end
+
+
 
 # TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}

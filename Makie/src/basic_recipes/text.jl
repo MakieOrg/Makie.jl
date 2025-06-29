@@ -438,25 +438,18 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     return tex_linesegments!(plot)
 end
 
-function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
-    planes = to_model_space(model, clip_planes)
-    projected_pos = _project(preprojection * model, positions)
-    nan_point = eltype(projected_pos)(NaN)
-    for i in eachindex(projected_pos)
-        projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
-    end
-    return projected_pos
-end
-
 function tex_linesegments!(plot)
-    # Don't user register_markerspace_position() here so we skip calculating them
+    register_model_clip_planes!(plot.attributes)
+
+    # Don't user register_markerspace_positions() here so we skip calculating them
     # if no linesegments are needed
     map!(
-        plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+        plot.attributes,
+        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
         :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
+    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
-        markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
+        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
             return seg + markerspace_positions[glyph_idx]
@@ -483,17 +476,6 @@ end
 #   are included makes little sense
 
 # TODO: anything per-string should include lines?
-
-function register_markerspace_position!(plot)
-    if !haskey(plot.attributes, :markerspace_positions)
-        map!(
-            project_text_positions_to_markerspace, plot.attributes,
-            [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :markerspace_positions
-        )
-    end
-    return plot.markerspace_positions
-end
 
 function register_raw_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
@@ -546,7 +528,7 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         map!(
             plot.attributes,
             [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
@@ -623,7 +605,7 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,

@@ -6,7 +6,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     Makie.compute_colors!(attr)
     Makie.register_projected_positions!(
         scene.compute, attr, Point3d, output_name = :positions_in_markerspace,
-        output_space = :markerspace
+        output_space = :markerspace, apply_clip_planes = false
     )
     map!(cairo_scatter_marker, attr, :marker, :cairo_marker)
     size_model!(attr)
@@ -34,7 +34,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     cairo_unclipped_indices!(attr)
     Makie.register_projected_positions!(
         scene.compute, attr, Point3d, output_name = :positions_in_markerspace,
-        output_space = :markerspace
+        output_space = :markerspace, apply_clip_planes = false
     )
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     size_model!(attr)
