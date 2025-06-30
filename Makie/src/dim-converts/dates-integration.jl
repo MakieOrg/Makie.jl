@@ -80,7 +80,7 @@ function convert_dim_value(conversion::DateTimeConversion, attr, values, previou
             error("Plotting unit $(eltype) into axis with type $(T) not supported.")
         end
     end
-    return date_to_number.(T, values)
+    return date_to_number.(conversion.type[], values)
 end
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
