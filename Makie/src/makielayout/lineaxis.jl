@@ -652,7 +652,7 @@ function get_ticks(l::LogTicks, scale::Union{LogFunctions, typeof(pseudolog10)},
         ticks_scaled
     )
 
-    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "")# only useful for pseudolog10
+    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # only useful for pseudolog10
     labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
 
     return ticks, labels
