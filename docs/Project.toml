@@ -39,4 +39,4 @@ ComputePipeline = {path = "../ComputePipeline"}
 GLMakie = { path = "../GLMakie" }
 Makie = { path = "../Makie" }
 WGLMakie = { path = "../WGLMakie" }
-RPRMakie = { path = "../RPRMakie" }
+RPRMakie = {path = "../RPRMakie"}
