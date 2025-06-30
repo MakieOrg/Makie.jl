@@ -90,10 +90,6 @@ end
 function get_ticks(conversion::DateTimeConversion, ticks, scale::typeof(identity), formatter, vmin, vmax)
     T = conversion.type[]
 
-    @show T
-    @show vmin
-    @show vmax
-
     # When automatic, we haven't actually plotted anything yet, so no unit chosen
     # in that case, we can't really have any conversion
     T <: Automatic && return [], []
@@ -101,65 +97,51 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale::typeof(identity
     vmin_date = number_to_date(T, vmin)
     vmax_date = number_to_date(T, vmax)
 
-    dateticks, labels = get_date_ticks(ticks, formatter, vmin_date, vmax_date)
+    dateticks, labels = get_datetime_ticks(ticks, formatter, vmin_date, vmax_date)
 
     # dateticks isa AbstractVector{<:T} || error("DateTimeConversion ticks were returned as $(typeof(dateticks)) but they should match conversion type $T")
 
     return date_to_number.(T, dateticks), labels
-
-
-    # if T <: DateTime
-    #     if ticks isa WilkinsonTicks
-    #         k_min = ticks.k_min
-    #         k_max = ticks.k_max
-    #     else
-    #         k_min = 2
-    #         k_max = 3
-    #     end
-    #     conversion, dates = PlotUtils.optimize_datetime_ticks(vmin, vmax; k_min=k_min, k_max=k_max)
-    #     return conversion, dates
-    # else
-    #     # TODO implement proper ticks for Time Date
-    #     tickvalues = get_tickvalues(formatter, scale, vmin, vmax)
-    #     dates = number_to_date.(T, round.(Int64, tickvalues))
-    #     return tickvalues, string.(dates)
-    # end
 end
 
-function get_date_ticks(ticks, formatter, vmin, vmax)
-    values = get_date_tickvalues(ticks, vmin, vmax)
-    labels = get_date_ticklabels(values, formatter)
+function get_datetime_ticks(ticks, formatter, vmin, vmax)
+    values = get_datetime_tickvalues(ticks, vmin, vmax)
+    labels = get_datetime_ticklabels(values, formatter)
     return values, labels
 end
 
-function get_date_ticks(ticks::Automatic, formatter, vmin::Union{DateTime,Date}, vmax::Union{DateTime,Date})
+function get_datetime_ticks(ticks::Tuple{Any,Any}, formatter::Automatic, vmin, vmax)
+    return ticks[1], ticks[2]
+end
+
+function get_datetime_ticks(ticks::Automatic, formatter, vmin::DateTime, vmax::DateTime)
     vmin_dt = DateTime(vmin)
     vmax_dt = DateTime(vmax)
     datenumbers, labels = PlotUtils.optimize_datetime_ticks(date_to_number(DateTime, vmin_dt), date_to_number(DateTime, vmax_dt); k_min=3, k_max=5)
     dates = number_to_date.(DateTime, datenumbers)
     if formatter !== automatic
-        labels = get_date_ticklabels(dates, formatter)
+        labels = get_datetime_ticklabels(dates, formatter)
     end
     return dates, labels
 end
 
-function get_date_tickvalues(ticks::AbstractVector{<:Union{Date,DateTime}}, vmin::Union{DateTime,Date}, vmax::Union{DateTime,Date})
+function get_datetime_tickvalues(ticks::AbstractVector{<:Union{Date,DateTime}}, vmin::DateTime, vmax::DateTime)
     return ticks
 end
 
-function get_date_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Automatic)
+function get_datetime_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Automatic)
     return string.(values)
 end
 
-function get_date_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Function)
+function get_datetime_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Function)
     return formatter(values)
 end
 
-function get_date_ticklabels(values::AbstractVector{<:DateTime}, formatter::String)
+function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::String)
     fmt = Dates.DateFormat(formatter)
     return [Dates.format(v, fmt) for v in values]
 end
 
-function get_date_ticklabels(values::AbstractVector{<:DateTime}, formatter::Dates.DateFormat)
+function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::Dates.DateFormat)
     return [Dates.format(v, formatter) for v in values]
 end
