@@ -500,9 +500,9 @@ function register_positions_projected!(
     apply_transform && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
 
     # merge/create projection related matrices
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
     combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
-    combine_matrices(pv::Mat4, m::Mat4f) = Mat4f(pv * m)::Mat4f
+    combine_matrices(pv::Mat4, m::Mat4) = Mat4f(pv * m)::Mat4f
     combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
     map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
 
