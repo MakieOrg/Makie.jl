@@ -1831,7 +1831,7 @@ function attribute_examples(::Type{Axis})
                     title = "Pseudolog scale with LogTicks",
                     yticks = LogTicks(-2:2)
                 )
-                
+
                 for ax in [ax1, ax2, ax3]
                     lines!(ax, -100:0.1:100)
                 end
