@@ -387,40 +387,39 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
     end
     
     step_value = datetimes.step
-    dt_array = collect(datetimes)
-    n_ticks = length(dt_array)
+    n_ticks = length(datetimes)
     
     if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year} >= 1
         # For daily+ steps, show only dates (no times) if all times are midnight
-        all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), dt_array)
+        all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), datetimes)
 
         if all_midnight
-            if all(dt -> Dates.day(dt) == 1, dt_array)
+            if all(dt -> Dates.day(dt) == 1, datetimes)
                 if step_value isa Dates.Year
                     if all(dt -> Dates.month(dt) == 1)
                         # Years only
-                        return [Dates.format(dt, "yyyy") for dt in dt_array]
+                        return [Dates.format(dt, "yyyy") for dt in datetimes]
                     else
-                        return [Dates.format(dt, "yyyy-mm") for dt in dt_array]
+                        return [Dates.format(dt, "yyyy-mm") for dt in datetimes]
                     end
                 elseif step_value isa Dates.Month
-                    return [Dates.format(dt, "yyyy-mm") for dt in dt_array]
+                    return [Dates.format(dt, "yyyy-mm") for dt in datetimes]
                 else
-                    return [Dates.format(dt, "yyyy-mm-dd") for dt in dt_array]
+                    return [Dates.format(dt, "yyyy-mm-dd") for dt in datetimes]
                 end
                 # Full date format
-                return [Dates.format(dt, "yyyy-mm-dd") for dt in dt_array]
+                return [Dates.format(dt, "yyyy-mm-dd") for dt in datetimes]
             end
         else
             # Mixed date and time - show full datetime
-            return [Dates.format(dt, "yyyy-mm-dd HH:MM:SS") for dt in dt_array]
+            return [Dates.format(dt, "yyyy-mm-dd HH:MM:SS") for dt in datetimes]
         end
     elseif step_value isa Hour
         # Hourly steps - use multi-line format: time on top, date below when it changes
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
         
-        for (i, dt) in enumerate(dt_array)
+        for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             time_part = Dates.format(dt, "H:MM")
             
@@ -441,7 +440,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
         prev_date = nothing
         prev_hour = nothing
         
-        for (i, dt) in enumerate(dt_array)
+        for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             current_hour = Dates.hour(dt)
             
@@ -469,7 +468,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
         prev_minute = nothing
         prev_second = nothing
         
-        for (i, dt) in enumerate(dt_array)
+        for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             current_hour = Dates.hour(dt)
             current_minute = Dates.minute(dt)
