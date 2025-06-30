@@ -117,7 +117,7 @@ end
 function get_datetime_ticks(ticks::Automatic, formatter, vmin::DateTime, vmax::DateTime)
     vmin_dt = DateTime(vmin)
     vmax_dt = DateTime(vmax)
-    datetimerange = _optimize_datetime_ticks(date_to_number(DateTime, vmin_dt), date_to_number(DateTime, vmax_dt); k_min=3, k_max=5)
+    datetimerange = _optimize_datetime_ticks(date_to_number(DateTime, vmin_dt), date_to_number(DateTime, vmax_dt); k_ideal=5)
     if formatter !== automatic
         labels = get_datetime_ticklabels(datetimerange, formatter)
     else
@@ -147,32 +147,42 @@ function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::
     return [Dates.format(v, formatter) for v in values]
 end
 
-function _optimize_datetime_ticks(a_min, a_max; k_min = 2, k_max = 4)
+function _optimize_datetime_ticks(a_min, a_max; k_ideal = 5, k_min = nothing, k_max = nothing)
     # Int64 is needed here for 32bit systems
     x_min = DateTime(Dates.UTM(Int64(round(a_min))))
     x_max = DateTime(Dates.UTM(Int64(round(a_max))))
 
-    # Default to 5 ticks as a good balance, but respect k_min/k_max bounds
-    target_ticks = clamp(5, k_min, k_max)
-    return _natural_datetime_ticks(x_min, x_max; target_ticks = target_ticks)
+    return _natural_datetime_ticks(x_min, x_max; k_ideal, k_min, k_max)
 end
 
-function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; target_ticks = 5)
+function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal = 5, k_min = nothing, k_max = nothing)
     total_duration = end_dt - start_dt
     total_hours = total_duration / Hour(1)
     total_days = total_hours / 24
+    target_ticks = max(1, k_ideal)  # Ensure target_ticks is at least 1
     
-    # Helper function to count ticks
-    function count_ticks(step, tick_start)
-        tick_count = 0
-        current = tick_start
-        while current <= end_dt && tick_count < 100
-            if current >= start_dt
-                tick_count += 1
-            end
-            current += step
-        end
-        return tick_count
+    # Handle edge case where duration is zero or negative
+    if total_duration <= Millisecond(0)
+        return start_dt:Millisecond(1):start_dt
+    end
+    
+    # Define tick count acceptance range based on k_ideal or explicit k_min/k_max
+    min_ticks = something(k_min, max(2, round(Int, target_ticks * 0.7)))  # At least 70% of ideal, minimum 2
+    max_ticks = something(k_max, round(Int, target_ticks * 1.5))          # At most 150% of ideal (tighter)
+    
+    # Helper function to check if tick count is acceptable
+    # Prefer tick counts closer to k_ideal
+    function is_acceptable_tick_count(tick_count)
+        in_range = tick_count >= min_ticks && tick_count <= max_ticks
+        # For better responsiveness, prefer tick counts closer to k_ideal
+        # Accept if within range, but algorithm will try finer granularity if far from ideal
+        return in_range
+    end
+    
+    # Helper function to check if we should try finer granularity
+    function should_try_finer(tick_count)
+        # If we're significantly below k_ideal, try finer granularity
+        return tick_count < k_ideal * 0.8
     end
     
     # 1. Try yearly ticks (for very long ranges)
@@ -211,8 +221,8 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; target_ti
             tick_start += step
         end
         
-        tick_count = count_ticks(step, tick_start)
-        if tick_count >= 3 && tick_count <= 15
+        tick_count = length(tick_start:step:end_dt)
+        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
             return tick_start:step:end_dt
         end
     end
@@ -224,9 +234,12 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; target_ti
         step_months = nice_steps[argmin(abs.(nice_steps .- step_months))]
         step = Month(step_months)
         tick_start = DateTime(Dates.year(start_dt), Dates.month(start_dt), 1)
+        if tick_start < start_dt
+            tick_start += step
+        end
         
-        tick_count = count_ticks(step, tick_start)
-        if tick_count >= 3 && tick_count <= 15
+        tick_count = length(tick_start:step:end_dt)
+        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
             return tick_start:step:end_dt
         end
     end
@@ -238,101 +251,133 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; target_ti
         step_days = nice_steps[argmin(abs.(nice_steps .- step_days))]
         step = Day(step_days)
         tick_start = DateTime(Dates.Date(start_dt))
+        if tick_start < start_dt
+            tick_start += step
+        end
         
-        tick_count = count_ticks(step, tick_start)
-        if tick_count >= 3 && tick_count <= 15
+        tick_count = length(tick_start:step:end_dt)
+        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
             return tick_start:step:end_dt
         end
     end
     
     # 4. Try hourly ticks
     if total_hours >= 2  # 2+ hours
-        step_hours = max(1, round(Int, total_hours / target_ticks))
-        nice_steps = [1, 2, 3, 4, 6, 8, 12, 24]  # Include 24-hour option
-        step_hours = nice_steps[argmin(abs.(nice_steps .- step_hours))]
-        step = Hour(step_hours)
-        
-        # Count how many ticks this would give
-        start_hour = Dates.hour(start_dt)
-        rounded_hour = (start_hour ÷ step_hours) * step_hours
-        tick_start = DateTime(Dates.Date(start_dt)) + Hour(rounded_hour)
-        if tick_start < start_dt
-            tick_start += step
-        end
-        
-        tick_count = count_ticks(step, tick_start)
-        if tick_count >= 3 && tick_count <= 15
-            return tick_start:step:end_dt
+        step_hours_calc = total_hours / target_ticks
+        # Guard against very small step calculations that could cause overflow
+        if step_hours_calc > 0 && isfinite(step_hours_calc)
+            step_hours = max(1, round(Int, step_hours_calc))
+            nice_steps = [1, 2, 3, 4, 6, 8, 12, 24]  # Include 24-hour option
+            step_hours = nice_steps[argmin(abs.(nice_steps .- step_hours))]
+            step = Hour(step_hours)
+            
+            # Count how many ticks this would give
+            start_hour = Dates.hour(start_dt)
+            rounded_hour = (start_hour ÷ step_hours) * step_hours
+            tick_start = DateTime(Dates.Date(start_dt)) + Hour(rounded_hour)
+            if tick_start < start_dt
+                tick_start += step
+            end
+            
+            tick_count = length(tick_start:step:end_dt)
+            if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+                return tick_start:step:end_dt
+            end
         end
     end
     
     # Try minute ticks
     total_minutes = total_hours * 60
     if total_minutes >= 2
-        step_minutes = max(1, round(Int, total_minutes / target_ticks))
-        nice_steps = [1, 2, 5, 10, 15, 30]
-        step_minutes = nice_steps[argmin(abs.(nice_steps .- step_minutes))]
-        step = Minute(step_minutes)
-        
-        start_minute = Dates.minute(start_dt)
-        rounded_minute = (start_minute ÷ step_minutes) * step_minutes
-        tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + Minute(rounded_minute)
-        if tick_start < start_dt
-            tick_start += step
-        end
-        
-        # Count ticks
-        tick_count = 0
-        current = tick_start
-        while current <= end_dt && tick_count < 50
-            if current >= start_dt
-                tick_count += 1
+        step_minutes_calc = total_minutes / target_ticks
+        if step_minutes_calc > 0 && isfinite(step_minutes_calc)
+            step_minutes = max(1, round(Int, step_minutes_calc))
+            nice_steps = [1, 2, 5, 10, 15, 30]
+            step_minutes = nice_steps[argmin(abs.(nice_steps .- step_minutes))]
+            step = Minute(step_minutes)
+            
+            start_minute = Dates.minute(start_dt)
+            rounded_minute = (start_minute ÷ step_minutes) * step_minutes
+            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + Minute(rounded_minute)
+            if tick_start < start_dt
+                tick_start += step
             end
-            current += step
-        end
-        
-        # If we get at least 3 ticks, use minutes
-        if tick_count >= 3
-            return tick_start:step:end_dt
+            
+            tick_count = length(tick_start:step:end_dt)
+            
+            # If we get acceptable tick count and it's not too far below ideal, use minutes
+            if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+                return tick_start:step:end_dt
+            end
         end
     end
     
     # Try second ticks
     total_seconds = total_hours * 3600
     if total_seconds >= 2
-        step_seconds = max(1, round(Int, total_seconds / target_ticks))
-        nice_steps = [1, 2, 5, 10, 15, 20, 30]
-        step_seconds = nice_steps[argmin(abs.(nice_steps .- step_seconds))]
-        step = Second(step_seconds)
-        
-        start_second = Dates.second(start_dt)
-        rounded_second = (start_second ÷ step_seconds) * step_seconds
-        tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
-                    Minute(Dates.minute(start_dt)) + Second(rounded_second)
-        if tick_start < start_dt
-            tick_start += step
+        step_seconds_calc = total_seconds / target_ticks
+        if step_seconds_calc > 0 && isfinite(step_seconds_calc)
+            step_seconds = max(1, round(Int, step_seconds_calc))
+            nice_steps = [1, 2, 5, 10, 15, 20, 30]
+            step_seconds = nice_steps[argmin(abs.(nice_steps .- step_seconds))]
+            step = Second(step_seconds)
+            
+            start_second = Dates.second(start_dt)
+            rounded_second = (start_second ÷ step_seconds) * step_seconds
+            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
+                        Minute(Dates.minute(start_dt)) + Second(rounded_second)
+            if tick_start < start_dt
+                tick_start += step
+            end
+            
+            tick_count = length(tick_start:step:end_dt)
+            
+            # Only use seconds if tick count is reasonable
+            if is_acceptable_tick_count(tick_count)
+                return tick_start:step:end_dt
+            end
         end
-        
-        return tick_start:step:end_dt
     end
     
-    # Fall back to millisecond ticks
+    # Fall back to millisecond ticks (with bounds checking)
     total_milliseconds = total_hours * 3600 * 1000
-    step_milliseconds = max(1, round(Int, total_milliseconds / target_ticks))
-    nice_steps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
-    step_milliseconds = nice_steps[argmin(abs.(nice_steps .- step_milliseconds))]
-    step = Millisecond(step_milliseconds)
-    
-    start_millisecond = Dates.millisecond(start_dt)
-    rounded_millisecond = (start_millisecond ÷ step_milliseconds) * step_milliseconds
-    tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
-                Minute(Dates.minute(start_dt)) + Second(Dates.second(start_dt)) + 
-                Millisecond(rounded_millisecond)
-    if tick_start < start_dt
-        tick_start += step
+    if total_milliseconds > 0 && isfinite(total_milliseconds)
+        step_milliseconds_calc = total_milliseconds / target_ticks
+        if step_milliseconds_calc > 0 && isfinite(step_milliseconds_calc)
+            step_milliseconds = max(1, round(Int, step_milliseconds_calc))
+            nice_steps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
+            step_milliseconds = nice_steps[argmin(abs.(nice_steps .- step_milliseconds))]
+            step = Millisecond(step_milliseconds)
+            
+            start_millisecond = Dates.millisecond(start_dt)
+            rounded_millisecond = (start_millisecond ÷ step_milliseconds) * step_milliseconds
+            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
+                        Minute(Dates.minute(start_dt)) + Second(Dates.second(start_dt)) + 
+                        Millisecond(rounded_millisecond)
+            if tick_start < start_dt
+                tick_start += step
+            end
+            
+            tick_count = length(tick_start:step:end_dt)
+            
+            # If still too many ticks, fall back to a reasonable default
+            if tick_count > max_ticks
+                # Use hourly ticks as a safe fallback
+                safe_step_hours = max(1, round(Int, total_hours / max_ticks))
+                step = Hour(safe_step_hours)
+                tick_start = DateTime(Dates.Date(start_dt))
+                if tick_start < start_dt
+                    tick_start += step
+                end
+                return tick_start:step:end_dt
+            end
+            
+            return tick_start:step:end_dt
+        end
     end
     
-    return tick_start:step:end_dt
+    # Ultimate fallback - return a simple range
+    return start_dt:Hour(1):end_dt
 end
 
 function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
@@ -482,4 +527,11 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
         end
         return ticklabels
     end
+end
+
+# Convenience function that generates both ticks and labels
+function datetime_ticks_and_labels(start_dt::DateTime, end_dt::DateTime; k_ideal = 5, k_min = nothing, k_max = nothing)
+    ticks = _natural_datetime_ticks(start_dt, end_dt; k_ideal, k_min, k_max)
+    labels = datetime_range_ticklabels(ticks)
+    return ticks, labels
 end
