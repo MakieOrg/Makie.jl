@@ -390,34 +390,24 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
     dt_array = collect(datetimes)
     n_ticks = length(dt_array)
     
-    # Determine the primary time unit based on step size
-    # Convert step to days for comparison
-    step_in_days = if step_value isa Dates.Day
-        Dates.value(step_value)
-    elseif step_value isa Dates.Week
-        Dates.value(step_value) * 7
-    elseif step_value isa Dates.Month
-        30  # Approximate
-    elseif step_value isa Dates.Year
-        365  # Approximate
-    elseif step_value isa Dates.Hour
-        Dates.value(step_value) / 24
-    else
-        0  # Sub-daily
-    end
-    
-    if step_in_days >= 1
+    if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year} >= 1
         # For daily+ steps, show only dates (no times) if all times are midnight
-        all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0), dt_array)
-        
+        all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), dt_array)
+
         if all_midnight
-            if step_in_days >= 365
-                # Years only
-                return [Dates.format(dt, "yyyy") for dt in dt_array]
-            elseif step_in_days >= 30
-                # Year-Month format
-                return [Dates.format(dt, "yyyy-mm") for dt in dt_array]
-            else
+            if all(dt -> Dates.day(dt) == 1, dt_array)
+                if step_value isa Dates.Year
+                    if all(dt -> Dates.month(dt) == 1)
+                        # Years only
+                        return [Dates.format(dt, "yyyy") for dt in dt_array]
+                    else
+                        return [Dates.format(dt, "yyyy-mm") for dt in dt_array]
+                    end
+                elseif step_value isa Dates.Month
+                    return [Dates.format(dt, "yyyy-mm") for dt in dt_array]
+                else
+                    return [Dates.format(dt, "yyyy-mm-dd") for dt in dt_array]
+                end
                 # Full date format
                 return [Dates.format(dt, "yyyy-mm-dd") for dt in dt_array]
             end
