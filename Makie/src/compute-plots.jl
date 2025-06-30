@@ -407,7 +407,13 @@ function register_projected_positions!(
     # Handle transform function + f32c
     if apply_transform
         register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
-        register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
+        if is_data_space(output_space)
+            # Pipeline will apply f32c if the input space is data space, so we
+            # should avoid it here. TODO: also dynamically
+            transformed_f32c_name = transformed_name
+        else
+            register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
+        end
     else
         transformed_f32c_name = input_name
     end
@@ -490,7 +496,8 @@ function register_positions_projected!(
     end
 
     push!(inputs, projection_matrix_name)
-    apply_transform && push!(inputs, :model_f32c)
+    # in data space f32c is not applied and we should use the plain model matrix
+    apply_transform && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
 
     # merge/create projection related matrices
     combine_matrices(res::Vec2, pv::Mat4, m::Mat4f) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
