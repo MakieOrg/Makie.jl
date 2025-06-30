@@ -454,7 +454,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
                 ticklabels[i] = Dates.format(dt, "H:MM")
             else
                 # Same date and hour, show only minutes
-                ticklabels[i] = Dates.format(dt, ":M")
+                ticklabels[i] = Dates.format(dt, ":MM")
             end
             prev_date = current_date
             prev_hour = current_hour
@@ -501,9 +501,9 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
             elseif step_value isa Second || current_second != prev_second
                 # Different second, or using second-level steps
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, ":S")
+                    ticklabels[i] = Dates.format(dt, ":SS")
                 else
-                    ticklabels[i] = Dates.format(dt, ":S.sss")
+                    ticklabels[i] = Dates.format(dt, ":SS.sss")
                 end
             else
                 # Same second, show only milliseconds (for sub-second steps)
