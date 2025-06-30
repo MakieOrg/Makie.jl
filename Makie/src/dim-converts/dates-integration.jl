@@ -432,7 +432,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
         
         for (i, dt) in enumerate(dt_array)
             current_date = Dates.Date(dt)
-            time_part = Dates.format(dt, "HH:MM")
+            time_part = Dates.format(dt, "H:MM")
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
@@ -457,15 +457,15 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                time_part = Dates.format(dt, "HH:MM")
+                time_part = Dates.format(dt, "H:MM")
                 date_part = Dates.format(dt, "yyyy-mm-dd")
                 ticklabels[i] = time_part * "\n" * date_part
             elseif current_hour != prev_hour
                 # Same date but different hour, show hour:minute
-                ticklabels[i] = Dates.format(dt, "HH:MM")
+                ticklabels[i] = Dates.format(dt, "H:MM")
             else
                 # Same date and hour, show only minutes
-                ticklabels[i] = Dates.format(dt, "MM")
+                ticklabels[i] = Dates.format(dt, ":M")
             end
             prev_date = current_date
             prev_hour = current_hour
@@ -488,37 +488,37 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 if step_value isa Second
-                    time_part = Dates.format(dt, "HH:MM:SS")
+                    time_part = Dates.format(dt, "H:MM:SS")
                 else
                     # Show milliseconds for sub-second steps
-                    time_part = Dates.format(dt, "HH:MM:SS.sss")
+                    time_part = Dates.format(dt, "H:MM:SS.sss")
                 end
                 date_part = Dates.format(dt, "yyyy-mm-dd")
                 ticklabels[i] = time_part * "\n" * date_part
             elseif current_hour != prev_hour
                 # Same date but different hour
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, "HH:MM:SS")
+                    ticklabels[i] = Dates.format(dt, "H:MM:SS")
                 else
-                    ticklabels[i] = Dates.format(dt, "HH:MM:SS.sss")
+                    ticklabels[i] = Dates.format(dt, "H:MM:SS.sss")
                 end
             elseif current_minute != prev_minute
                 # Same hour but different minute
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, "MM:SS")
+                    ticklabels[i] = Dates.format(dt, ":M:SS")
                 else
-                    ticklabels[i] = Dates.format(dt, "MM:SS.sss")
+                    ticklabels[i] = Dates.format(dt, ":M:SS.sss")
                 end
             elseif step_value isa Second || current_second != prev_second
                 # Different second, or using second-level steps
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, "SS")
+                    ticklabels[i] = Dates.format(dt, ":S")
                 else
-                    ticklabels[i] = Dates.format(dt, "SS.sss")
+                    ticklabels[i] = Dates.format(dt, ":S.sss")
                 end
             else
                 # Same second, show only milliseconds (for sub-second steps)
-                ticklabels[i] = string(Dates.millisecond(dt))
+                ticklabels[i] = string(".", Dates.millisecond(dt))
             end
             prev_date = current_date
             prev_hour = current_hour
