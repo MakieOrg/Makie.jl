@@ -68,7 +68,7 @@
     @test f(DT(2025, 1, 1, 12, 30, 45):Second(1):DT(2025, 1, 1, 12, 30, 45)) == ["2025-01-01T12:30:45"]
 
     # Edge cases - empty ranges
-    @test f(DT(2025, 1, 2):Day(1):DT(2025, 1, 1)) == DateTime[]
+    @test f(DT(2025, 1, 2):Day(1):DT(2025, 1, 1)) == []
 
     # Mixed date and time (non-midnight) with day/week/month/year intervals
     @test f(DT(2025, 1, 1, 12, 30):Day(1):DT(2025, 1, 3, 12, 30)) == ["2025-01-01 12:30:00", "2025-01-02 12:30:00", "2025-01-03 12:30:00"]
