@@ -177,56 +177,35 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p, p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density, p.color) do f, limits, resolution, stepsize, maxsteps, density, color_func
-        P = if applicable(f, Point2f(0)) || applicable(f, Point3f(0))
-            Point
-        else
-            Number
-        end
-        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density, color_func)
-    end
-    colormap_args = colormap_attributes(p)
-    generic_plot_attributes = Makie.generic_plot_attributes(p)
+    # TODO: if reasonable, break this up into parts
 
-    lines!(
+    map!(
         p,
-        lift(x -> x[3], p, data),
-        color = lift(last, p, data),
-        linestyle = p.linestyle,
-        linecap = p.linecap,
-        joinstyle = p.joinstyle,
-        miter_limit = p.miter_limit,
-        linewidth = p.linewidth;
-        colormap_args...,
-        generic_plot_attributes...
-    )
+        [:f, :limits, :gridsize, :stepsize, :maxsteps, :density, :color],
+        [:arrow_positions, :arrow_directions, :line_points, :arrow_colors, :line_colors]
+    ) do f, args...
+        CallType = applicable(f, Point2f(0)) || applicable(f, Point3f(0)) ? Point : Number
+        return streamplot_impl(CallType, f, args...)
+    end
+
+    lines!(p, p.attributes, p.line_points, color = p.line_colors, fxaa = false)
 
     N = ndims(p.limits[])
 
+    rotation_name = :arrow_directions
     if N == 2 # && scatterplot.markerspace[] == Pixel (default)
         # Calculate arrow head rotations as angles. To avoid distortions from
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
-        scene = parent_scene(p)
-        rotations = lift(p, scene.camera.projectionview, scene.viewport, data) do pv, pxa, data
-            angles = map(data[1], data[2]) do pos, dir
-                pstart = project(scene, pos)
-                pstop = project(scene, pos + dir)
-                pdir = pstop - pstart
-                n = norm(pdir)
-                if n == 0
-                    zero(n)
-                else
-                    angle = acos(pdir[2] / n)
-                    angle = ifelse(pdir[1] > 0, 2pi - angle, angle)
-                end
-            end
-            Billboard(angles)
-        end
-    else
-        rotations = map(x -> x[2], data)
+        map!((pos, dir) -> pos .+ dir, p, [:arrow_positions, :arrow_directions], :arrow_endpoints)
+        register_projected_rotations_2d!(
+            p,
+            startpoint_name = :arrow_positions, endpoint_name = :arrow_endpoints,
+            rotation_transform = x -> x + 0.5f0 * pi
+        )
+        rotation_name = :rotations
     end
 
-    arrow_size = map(p, p.arrow_size) do arrow_size
+    map!(p, [:arrow_size, :limits, :gridsize], :computed_arrow_size) do arrow_size, limits, gridsize
         if arrow_size === automatic
             if N == 3
                 return 0.2 * minimum(p.limits[].widths) / minimum(p.gridsize[])
@@ -238,13 +217,18 @@ function plot!(p::StreamPlot)
         end
     end
 
-    return scatterfun(N)(
+    map!((ah, q) -> arrow_head(N, ah, q), p, [:arrow_head, :quality], :arrow_marker)
+
+    scatterfun(N)(
         p,
-        lift(first, p, data);
-        markersize = arrow_size, rotation = rotations,
-        color = lift(x -> x[4], p, data),
-        marker = lift((ah, q) -> arrow_head(N, ah, q), p, p.arrow_head, p.quality),
-        colormap_args...,
-        generic_plot_attributes...
+        p.attributes,
+        p.arrow_positions;
+        markersize = p.computed_arrow_size,
+        rotation = getindex(p, rotation_name),
+        color = p.arrow_colors,
+        marker = p.arrow_marker,
+        fxaa = N == 3
     )
+
+    return p
 end
