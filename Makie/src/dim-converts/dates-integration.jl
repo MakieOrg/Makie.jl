@@ -167,8 +167,8 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     end
     
     # Define tick count acceptance range based on k_ideal or explicit k_min/k_max
-    min_ticks = something(k_min, max(2, round(Int, target_ticks * 0.7)))  # At least 70% of ideal, minimum 2
-    max_ticks = something(k_max, round(Int, target_ticks * 1.5))          # At most 150% of ideal (tighter)
+    min_ticks = something(k_min, max(2, round(Int, target_ticks * 0.66)))
+    max_ticks = something(k_max, round(Int, target_ticks * 1.33))
     
     # Helper function to check if tick count is acceptable
     # Prefer tick counts closer to k_ideal
@@ -228,7 +228,7 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     end
     
     # 2. Try monthly ticks
-    if total_days >= 60  # 2+ months
+    if total_days >= 58  # 2+ months
         step_months = max(1, round(Int, total_days / (target_ticks * 30)))
         nice_steps = [1, 2, 3, 4, 6, 12]
         step_months = nice_steps[argmin(abs.(nice_steps .- step_months))]
@@ -245,7 +245,7 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     end
     
     # 3. Try daily ticks
-    if total_days >= 7  # 1+ week
+    if total_days >= 2
         step_days = max(1, round(Int, total_days / target_ticks))
         nice_steps = [1, 2, 3, 7, 14, 30]  # Include weekly and bi-weekly options
         step_days = nice_steps[argmin(abs.(nice_steps .- step_days))]
@@ -381,7 +381,7 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
 end
 
 
-struct DateTimeFormatter7
+struct DateTimeFormatter8
     # Full date formats
     y::DateFormat           # year only: "yyyy"
     ym::DateFormat          # year-month: "yyyy-mm"
@@ -409,7 +409,7 @@ struct DateTimeFormatter7
     Ss::DateFormat          # second-millisecond: ":SS.sss"
     MSs::DateFormat         # minute-second-millisecond: ":M:SS.sss"
     
-    function DateTimeFormatter7(;
+    function DateTimeFormatter8(;
         y::DateFormat = dateformat"yyyy",
         ym::DateFormat = dateformat"yyyy-mm",
         ymd::DateFormat = dateformat"yyyy-mm-dd", 
@@ -430,7 +430,7 @@ struct DateTimeFormatter7
     end
 end
 
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter7 = DateTimeFormatter7())::Vector{String}
+function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter8 = DateTimeFormatter8())::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
