@@ -200,7 +200,7 @@ function plot!(p::StreamPlot)
         register_projected_rotations_2d!(
             p,
             startpoint_name = :arrow_positions, endpoint_name = :arrow_endpoints,
-            rotation_transform = x -> x + 0.5f0 * pi
+            rotation_transform = x -> x - 0.5f0 * pi
         )
         rotation_name = :rotations
     end
