@@ -430,7 +430,8 @@ struct DateTimeFormatter8
     end
 end
 
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter8 = DateTimeFormatter8())::Vector{String}
+
+function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, tickobj::DateTimeFormatter8 = DateTimeFormatter8())::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
@@ -448,21 +449,21 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
                 if step_value isa Dates.Year
                     if all(dt -> Dates.month(dt) == 1, datetimes)
                         # Years only
-                        return [Dates.format(dt, formatter.y) for dt in datetimes]
+                        return [Dates.format(dt, tickobj.y) for dt in datetimes]
                     else
-                        return [Dates.format(dt, formatter.ym) for dt in datetimes]
+                        return [Dates.format(dt, tickobj.ym) for dt in datetimes]
                     end
                 elseif step_value isa Dates.Month
-                    return [Dates.format(dt, formatter.ym) for dt in datetimes]
+                    return [Dates.format(dt, tickobj.ym) for dt in datetimes]
                 else
-                    return [Dates.format(dt, formatter.ymd) for dt in datetimes]
+                    return [Dates.format(dt, tickobj.ymd) for dt in datetimes]
                 end
             end
             # Full date format
-            return [Dates.format(dt, formatter.ymd) for dt in datetimes]
+            return [Dates.format(dt, tickobj.ymd) for dt in datetimes]
         else
             # Mixed date and time - show full datetime
-            return [Dates.format(dt, formatter.ymdHMS) for dt in datetimes]
+            return [Dates.format(dt, tickobj.ymdHMS) for dt in datetimes]
         end
     elseif step_value isa Hour
         # Hourly steps - use multi-line format: time on top, date below when it changes
@@ -471,11 +472,12 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
         
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
-            time_part = Dates.format(dt, formatter.HM)
+            time_part = Dates.format(dt, tickobj.HM)
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                ticklabels[i] = Dates.format(dt, formatter.ymdHM)
+                date_part = Dates.format(dt, tickobj.ymd)
+                ticklabels[i] = time_part * "\n" * date_part
             else
                 # Same date as previous tick, show only time
                 ticklabels[i] = time_part
@@ -495,13 +497,15 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                ticklabels[i] = Dates.format(dt, formatter.ymdHM)
+                time_part = Dates.format(dt, tickobj.HM)
+                date_part = Dates.format(dt, tickobj.ymd)
+                ticklabels[i] = time_part * "\n" * date_part
             elseif current_hour != prev_hour
                 # Same date but different hour, show hour:minute
-                ticklabels[i] = Dates.format(dt, formatter.HM)
+                ticklabels[i] = Dates.format(dt, tickobj.HM)
             else
                 # Same date and hour, show only minutes
-                ticklabels[i] = Dates.format(dt, formatter.M)
+                ticklabels[i] = Dates.format(dt, tickobj.M)
             end
             prev_date = current_date
             prev_hour = current_hour
@@ -524,35 +528,37 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.ymdHMS)
+                    time_part = Dates.format(dt, tickobj.HMS)
                 else
                     # Show milliseconds for sub-second steps
-                    ticklabels[i] = Dates.format(dt, formatter.ymdHMSs)
+                    time_part = Dates.format(dt, tickobj.HMSs)
                 end
+                date_part = Dates.format(dt, tickobj.ymd)
+                ticklabels[i] = time_part * "\n" * date_part
             elseif current_hour != prev_hour
                 # Same date but different hour
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.HMS)
+                    ticklabels[i] = Dates.format(dt, tickobj.HMS)
                 else
-                    ticklabels[i] = Dates.format(dt, formatter.HMSs)
+                    ticklabels[i] = Dates.format(dt, tickobj.HMSs)
                 end
             elseif current_minute != prev_minute
                 # Same hour but different minute
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.MS)
+                    ticklabels[i] = Dates.format(dt, tickobj.MS)
                 else
-                    ticklabels[i] = Dates.format(dt, formatter.MSs)
+                    ticklabels[i] = Dates.format(dt, tickobj.MSs)
                 end
             elseif step_value isa Second || current_second != prev_second
                 # Different second, or using second-level steps
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.S)
+                    ticklabels[i] = Dates.format(dt, tickobj.S)
                 else
-                    ticklabels[i] = Dates.format(dt, formatter.Ss)
+                    ticklabels[i] = Dates.format(dt, tickobj.Ss)
                 end
             else
                 # Same second, show only milliseconds (for sub-second steps)
-                ticklabels[i] = Dates.format(dt, formatter.s)
+                ticklabels[i] = Dates.format(dt, tickobj.s)
             end
             prev_date = current_date
             prev_hour = current_hour
@@ -561,158 +567,4 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
         end
         return ticklabels
     end
-end
-
-# Convenience function that generates both ticks and labels
-function datetime_ticks_and_labels(start_dt::DateTime, end_dt::DateTime; k_ideal = 5, k_min = nothing, k_max = nothing, formatter::DateTimeFormatter4 = DateTimeFormatter4())
-    ticks = _natural_datetime_ticks(start_dt, end_dt; k_ideal, k_min, k_max)
-    labels = datetime_range_ticklabels(ticks, formatter)
-    return ticks, labels
-end
-
-
-
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter4 = DateTimeFormatter4())::Vector{String}
-    # Handle edge cases
-    if length(datetimes) <= 1
-        return string.(datetimes)
-    end
-    
-    step_value = datetimes.step
-    n_ticks = length(datetimes)
-    
-    if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year}
-        # For daily+ steps, show only dates (no times) if all times are midnight
-        all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), datetimes)
-
-        if all_midnight
-            if all(dt -> Dates.day(dt) == 1, datetimes)
-                if step_value isa Dates.Year
-                    if all(dt -> Dates.month(dt) == 1, datetimes)
-                        # Years only
-                        return [Dates.format(dt, formatter.y) for dt in datetimes]
-                    else
-                        return [Dates.format(dt, formatter.ym) for dt in datetimes]
-                    end
-                elseif step_value isa Dates.Month
-                    return [Dates.format(dt, formatter.ym) for dt in datetimes]
-                else
-                    return [Dates.format(dt, formatter.ymd) for dt in datetimes]
-                end
-            end
-            # Full date format
-            return [Dates.format(dt, formatter.ymd) for dt in datetimes]
-        else
-            # Mixed date and time - show full datetime
-            return [Dates.format(dt, formatter.ymdHMS) for dt in datetimes]
-        end
-    elseif step_value isa Hour
-        # Hourly steps - use multi-line format: time on top, date below when it changes
-        ticklabels = Vector{String}(undef, n_ticks)
-        prev_date = nothing
-        
-        for (i, dt) in enumerate(datetimes)
-            current_date = Dates.Date(dt)
-            time_part = Dates.format(dt, formatter.HM)
-            
-            if i == 1 || current_date != prev_date
-                # Show date below time when date changes or for first tick
-                date_part = Dates.format(dt, formatter.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
-            else
-                # Same date as previous tick, show only time
-                ticklabels[i] = time_part
-            end
-            prev_date = current_date
-        end
-        return ticklabels
-    elseif step_value isa Minute
-        # Minute-level steps
-        ticklabels = Vector{String}(undef, n_ticks)
-        prev_date = nothing
-        prev_hour = nothing
-        
-        for (i, dt) in enumerate(datetimes)
-            current_date = Dates.Date(dt)
-            current_hour = Dates.hour(dt)
-            
-            if i == 1 || current_date != prev_date
-                # Show date below time when date changes or for first tick
-                time_part = Dates.format(dt, formatter.HM)
-                date_part = Dates.format(dt, formatter.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
-            elseif current_hour != prev_hour
-                # Same date but different hour, show hour:minute
-                ticklabels[i] = Dates.format(dt, formatter.HM)
-            else
-                # Same date and hour, show only minutes
-                ticklabels[i] = Dates.format(dt, formatter.M)
-            end
-            prev_date = current_date
-            prev_hour = current_hour
-        end
-        return ticklabels
-    else
-        # Second-level or sub-second steps
-        ticklabels = Vector{String}(undef, n_ticks)
-        prev_date = nothing
-        prev_hour = nothing
-        prev_minute = nothing
-        prev_second = nothing
-        
-        for (i, dt) in enumerate(datetimes)
-            current_date = Dates.Date(dt)
-            current_hour = Dates.hour(dt)
-            current_minute = Dates.minute(dt)
-            current_second = Dates.second(dt)
-            
-            if i == 1 || current_date != prev_date
-                # Show date below time when date changes or for first tick
-                if step_value isa Second
-                    time_part = Dates.format(dt, formatter.HMS)
-                else
-                    # Show milliseconds for sub-second steps
-                    time_part = Dates.format(dt, formatter.HMSs)
-                end
-                date_part = Dates.format(dt, formatter.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
-            elseif current_hour != prev_hour
-                # Same date but different hour
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.HMS)
-                else
-                    ticklabels[i] = Dates.format(dt, formatter.HMSs)
-                end
-            elseif current_minute != prev_minute
-                # Same hour but different minute
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.MS)
-                else
-                    ticklabels[i] = Dates.format(dt, formatter.MSs)
-                end
-            elseif step_value isa Second || current_second != prev_second
-                # Different second, or using second-level steps
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.S)
-                else
-                    ticklabels[i] = Dates.format(dt, formatter.Ss)
-                end
-            else
-                # Same second, show only milliseconds (for sub-second steps)
-                ticklabels[i] = Dates.format(dt, formatter.s)
-            end
-            prev_date = current_date
-            prev_hour = current_hour
-            prev_minute = current_minute
-            prev_second = current_second
-        end
-        return ticklabels
-    end
-end
-
-# Convenience function that generates both ticks and labels
-function datetime_ticks_and_labels(start_dt::DateTime, end_dt::DateTime; k_ideal = 5, k_min = nothing, k_max = nothing, formatter::DateTimeFormatter4 = DateTimeFormatter4())
-    ticks = _natural_datetime_ticks(start_dt, end_dt; k_ideal, k_min, k_max)
-    labels = datetime_range_ticklabels(ticks, formatter)
-    return ticks, labels
 end
