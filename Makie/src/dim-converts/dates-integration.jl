@@ -380,54 +380,17 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     return start_dt:Hour(1):end_dt
 end
 
-"""
-    DateTimeFormatter4
 
-Configurable formatter for datetime tick labels that supports intelligent partial printing.
-The formatter contains format strings for different time components and scenarios.
-
-# Fields
-- `year_only`: Format for showing only years (default: "yyyy")
-- `year_month`: Format for showing year-month (default: "yyyy-mm") 
-- `full_date`: Format for showing full dates (default: "yyyy-mm-dd")
-- `full_datetime`: Format for showing full datetime (default: "yyyy-mm-dd HH:MM:SS")
-- `time_only`: Format for showing time only (default: "H:MM")
-- `time_with_seconds`: Format for showing time with seconds (default: "H:MM:SS")
-- `time_with_millis`: Format for showing time with milliseconds (default: "H:MM:SS.sss")
-- `minutes_only`: Format for showing minutes only within same hour (default: ":MM")
-- `seconds_only`: Format for showing seconds only within same minute (default: ":SS")
-- `minute_seconds`: Format for showing minutes:seconds within same hour (default: ":M:SS")
-- `millis_only`: Format for showing milliseconds only within same second (default: ".")
-- `date_separator`: String to separate time and date in multi-line labels (default: "\\n")
-
-# Examples
-```julia
-# Default formatter
-fmt = DateTimeFormatter4()
-
-# Custom formatter with 12-hour time
-fmt = DateTimeFormatter4(
-    time_only = "h:MM a",
-    time_with_seconds = "h:MM:SS a",
-    full_datetime = "yyyy-mm-dd h:MM:SS a"
-)
-
-# Custom formatter with different date format
-fmt = DateTimeFormatter4(
-    full_date = "dd/mm/yyyy",
-    year_month = "mm/yyyy"
-)
-```
-"""
-struct DateTimeFormatter4
+struct DateTimeFormatter7
     # Full date formats
     y::DateFormat           # year only: "yyyy"
     ym::DateFormat          # year-month: "yyyy-mm"
     ymd::DateFormat         # year-month-day: "yyyy-mm-dd"
     
-    # Full datetime formats
-    ymdHMS::DateFormat      # full datetime: "yyyy-mm-dd HH:MM:SS"
-    ymdHMSs::DateFormat     # full datetime with ms: "yyyy-mm-dd HH:MM:SS.sss"
+    # Full datetime formats (can be single line or multi-line depending on the format string)
+    ymdHM::DateFormat       # year-month-day hour-minute: "H:MM\nyyyy-mm-dd" or "yyyy-mm-dd H:MM"
+    ymdHMS::DateFormat      # year-month-day hour-minute-second: "H:MM:SS\nyyyy-mm-dd" or "yyyy-mm-dd HH:MM:SS"
+    ymdHMSs::DateFormat     # year-month-day hour-minute-second-ms: "H:MM:SS.sss\nyyyy-mm-dd" or "yyyy-mm-dd HH:MM:SS.sss"
     
     # Time-only formats (with hour)
     HM::DateFormat          # hour-minute: "H:MM"
@@ -446,17 +409,13 @@ struct DateTimeFormatter4
     Ss::DateFormat          # second-millisecond: ":SS.sss"
     MSs::DateFormat         # minute-second-millisecond: ":M:SS.sss"
     
-    # Multi-line formats (time\ndate) - using DateFormat instead of strings since we can't use dateformat"" macro
-    HM_ymd::DateFormat      # "H:MM\nyyyy-mm-dd"
-    HMS_ymd::DateFormat     # "H:MM:SS\nyyyy-mm-dd"  
-    HMSs_ymd::DateFormat    # "H:MM:SS.sss\nyyyy-mm-dd"
-    
-    function DateTimeFormatter4(;
+    function DateTimeFormatter7(;
         y::DateFormat = dateformat"yyyy",
         ym::DateFormat = dateformat"yyyy-mm",
         ymd::DateFormat = dateformat"yyyy-mm-dd", 
-        ymdHMS::DateFormat = dateformat"yyyy-mm-dd HH:MM:SS",
-        ymdHMSs::DateFormat = dateformat"yyyy-mm-dd HH:MM:SS.sss",
+        ymdHM::DateFormat = DateFormat("H:MM\nyyyy-mm-dd"),
+        ymdHMS::DateFormat = DateFormat("H:MM:SS\nyyyy-mm-dd"),
+        ymdHMSs::DateFormat = DateFormat("H:MM:SS.sss\nyyyy-mm-dd"),
         HM::DateFormat = dateformat"H:MM",
         HMS::DateFormat = dateformat"H:MM:SS",
         HMSs::DateFormat = dateformat"H:MM:SS.sss",
@@ -465,16 +424,13 @@ struct DateTimeFormatter4
         MS::DateFormat = dateformat":M:SS",
         s::DateFormat = dateformat".sss",
         Ss::DateFormat = dateformat":SS.sss",
-        MSs::DateFormat = dateformat":M:SS.sss",
-        HM_ymd::DateFormat = DateFormat("H:MM\\nyyyy-mm-dd"),
-        HMS_ymd::DateFormat = DateFormat("H:MM:SS\\nyyyy-mm-dd"),
-        HMSs_ymd::DateFormat = DateFormat("H:MM:SS.sss\\nyyyy-mm-dd")
+        MSs::DateFormat = dateformat":M:SS.sss"
     )
-        new(y, ym, ymd, ymdHMS, ymdHMSs, HM, HMS, HMSs, M, S, MS, s, Ss, MSs, HM_ymd, HMS_ymd, HMSs_ymd)
+        new(y, ym, ymd, ymdHM, ymdHMS, ymdHMSs, HM, HMS, HMSs, M, S, MS, s, Ss, MSs)
     end
 end
 
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter4 = DateTimeFormatter4())::Vector{String}
+function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatter::DateTimeFormatter7 = DateTimeFormatter7())::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
@@ -519,7 +475,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                ticklabels[i] = Dates.format(dt, formatter.HM_ymd)
+                ticklabels[i] = Dates.format(dt, formatter.ymdHM)
             else
                 # Same date as previous tick, show only time
                 ticklabels[i] = time_part
@@ -539,7 +495,7 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                ticklabels[i] = Dates.format(dt, formatter.HM_ymd)
+                ticklabels[i] = Dates.format(dt, formatter.ymdHM)
             elseif current_hour != prev_hour
                 # Same date but different hour, show hour:minute
                 ticklabels[i] = Dates.format(dt, formatter.HM)
@@ -568,10 +524,10 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, formatt
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, formatter.HMS_ymd)
+                    ticklabels[i] = Dates.format(dt, formatter.ymdHMS)
                 else
                     # Show milliseconds for sub-second steps
-                    ticklabels[i] = Dates.format(dt, formatter.HMSs_ymd)
+                    ticklabels[i] = Dates.format(dt, formatter.ymdHMSs)
                 end
             elseif current_hour != prev_hour
                 # Same date but different hour
