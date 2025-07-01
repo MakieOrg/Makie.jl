@@ -59,9 +59,6 @@ with z-elevation for each level.
     documented_attributes(Contour)...
 end
 
-# result in [-π, π]
-angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
-
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
@@ -243,22 +240,12 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
-    register_projected_positions!(plot, input_name = :lbl_pos1, output_space = :pixel)
-    register_projected_positions!(plot, input_name = :lbl_pos3, output_space = :pixel)
-    map!(plot, [:pixel_lbl_pos1, :pixel_lbl_pos3], :text_rotation) do px_positions1, px_positions3
-        return map(px_positions1, px_positions3) do p1, p3
-            rot_from_horz::Float32 = angle(p1[Vec(1,2)], p3[Vec(1,2)])
-            # transition from an angle from horizontal axis in [-π; π]
-            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
-            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
-                rot_from_horz - copysign(Float32(π), rot_from_horz)
-            else
-                rot_from_horz
-            end
-            return to_rotation(rot_from_vert)
-        end
-    end
-
+    register_projected_rotations_2d!(
+        plot,
+        startpoint_name = :lbl_pos1, endpoint_name = :lbl_pos3,
+        output_name = :text_rotation,
+        rotation_transform = to_upright_angle
+    )
 
     texts = text!(
         plot,

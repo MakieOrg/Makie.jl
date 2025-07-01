@@ -182,10 +182,74 @@ function register_model_clip_planes!(attr, modelname = :model_f32c)
     return
 end
 
+function register_f32c_matrix!(attr)
+    map!(attr, :f32c, :f32c_matrix)
+end
+
 ################################################################################
 
 function register_markerspace_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     haskey(plot, :markerspace) || error("Cannot compute markerspace positions for a plot that doesn't have markerspace.")
     # kwargs get overwritten by later keyword arguments
     return register_projected_positions!(plot, OT; kwargs..., input_space = :space, output_space = :markerspace)
+end
+
+"""
+    angle2d(p1, p2)
+
+Computes the angle between the `(1, 0)` direction and `p2 - p1`. z values are
+ignored. The result is in [-π, π].
+"""
+angle2d(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
+angle2d(p1::VecTypes, p2::VecTypes) = angle2d(p1[Vec(1,2)], p2[Vec(1,2)])
+
+@deprecate angle(p1, p2) angle2d(p1, p2) false
+
+"""
+    to_upright_angle(angle)
+
+Maps an angle from [-π, π] to [-π/2; π/2] by adding or subtracting π.
+"""
+to_upright_angle(angle) = angle - ifelse(abs(angle) > 0.5f0 * π, copysign(Float32(π), angle), 0)
+
+"""
+    register_projected_rotations_2d!(plot; kwargs...)
+
+From two arrays of points, computes the 2D angle between the x-axis (1, 0) and
+the direction vector between the points `atan(y1 - y0, x1 - x0)`.
+
+Note that this computes projections to correctly deal with transformations.
+
+## Keyword Arguments
+
+- `startpoint_name::Symbol` name of the start points used to derive angles
+- `endpoint_name::Symbol` name of the end points used to derive angles
+- `output_name::Symbol = :rotations` name of the rotation output
+- `rotation_transform = identity` A transformation that is applied to angles before outputting them. E.g. `to_upright_angle`.
+"""
+function register_projected_rotations_2d!(@nospecialize(plot::Plot); kwargs...)
+    register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
+end
+function register_projected_rotations_2d!(
+        scene_graph::ComputeGraph, plot_graph::ComputeGraph;
+        startpoint_name::Symbol,
+        endpoint_name::Symbol,
+        output_name::Symbol = :rotations,
+        rotation_transform = identity
+    )
+
+    px_startpoints = register_projected_positions!(
+        scene_graph, plot_graph, input_name = startpoint_name, output_space = :pixel
+    )
+    px_endpoints = register_projected_positions!(
+        scene_graph, plot_graph, input_name = endpoint_name, output_space = :pixel
+    )
+
+    map!(plot_graph, [px_startpoints, px_endpoints], output_name) do ps1, ps2
+        angles = angle2d.(ps1, ps2)
+        angles .= rotation_transform.(angles)
+        return angles
+    end
+
+    return getindex(plot_graph, output_name)
 end
