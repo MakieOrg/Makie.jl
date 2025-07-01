@@ -415,7 +415,7 @@ function register_text_computations!(attr::ComputeGraph)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, :text_positions)
+    register_position_transforms!(attr, input_name = :text_positions, transformed_name = :positions_transformed)
     return
 end
 
