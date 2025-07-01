@@ -246,22 +246,33 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
 end
 
 """
-    register_position_transforms!(plot[, input_name = :positions])
+    register_position_transforms!(plot[; kwargs...])
 
-Registers
-- `positions_transformed` which include the transform function applies to positions
-- `positions_tranformed_f32c` which include float32convert applied to `positions_transformed`
-where "positions" are given by `getproperty(plot, input_name)`.
+Registers computations that apply `transform_func` and `float32convert` to a
+position input. Positions need to be an array of point-like data. The
+`float32convert` will also always generate `:model_f32c` which should be used
+instead of `model` after `float32convert` is applied.
+
+## Keyword Arguments
+
+- `input_name = :positions` sets the input to which `transform_func` applies
+- `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after `transform_func` application
+- `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after `float32convert` application
 
 See also: [`register_positions_transformed!`](@ref), [`register_positions_transformed_f32c!`](@ref)
 """
-function register_position_transforms!(plot::Plot, input_name = :positions)
-    return register_position_transforms!(plot.attributes, input_name)
+function register_position_transforms!(plot::Plot; kwargs...)
+    return register_position_transforms!(plot.attributes; kwargs...)
 end
 
-function register_position_transforms!(attr::ComputeGraph, input_name::Symbol = :positions)
-    register_positions_transformed!(attr; input_name)
-    register_positions_transformed_f32c!(attr)
+function register_position_transforms!(
+        attr::ComputeGraph;
+        input_name::Symbol = :positions,
+        transformed_name::Symbol = Symbol(input_name, :_transformed),
+        transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
+    )
+    register_positions_transformed!(attr; input_name, output_name = transformed_name)
+    register_positions_transformed_f32c!(attr, input_name = transformed_name, output_name = transformed_f32c_name)
     return
 end
 
