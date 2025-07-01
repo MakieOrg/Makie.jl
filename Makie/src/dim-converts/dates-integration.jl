@@ -380,7 +380,7 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     return start_dt:Hour(1):end_dt
 end
 
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
+function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
@@ -389,14 +389,14 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
     step_value = datetimes.step
     n_ticks = length(datetimes)
     
-    if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year} >= 1
+    if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year}
         # For daily+ steps, show only dates (no times) if all times are midnight
         all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), datetimes)
 
         if all_midnight
             if all(dt -> Dates.day(dt) == 1, datetimes)
                 if step_value isa Dates.Year
-                    if all(dt -> Dates.month(dt) == 1)
+                    if all(dt -> Dates.month(dt) == 1, datetimes)
                         # Years only
                         return [Dates.format(dt, "yyyy") for dt in datetimes]
                     else
@@ -407,9 +407,9 @@ function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime})
                 else
                     return [Dates.format(dt, "yyyy-mm-dd") for dt in datetimes]
                 end
-                # Full date format
-                return [Dates.format(dt, "yyyy-mm-dd") for dt in datetimes]
             end
+            # Full date format
+            return [Dates.format(dt, "yyyy-mm-dd") for dt in datetimes]
         else
             # Mixed date and time - show full datetime
             return [Dates.format(dt, "yyyy-mm-dd HH:MM:SS") for dt in datetimes]
