@@ -181,71 +181,73 @@ Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 
 function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     # Handle transform_func early so tessellation is in cartesian space.
-    tri = map(p, p.transformation.transform_func, p[1]) do tf, ps
+    map!(p, [:transform_func, :triangles], :triangulation) do tf, ps
         transformed = Makie.apply_transform(tf, ps)
         return DelTri.triangulate(transformed, randomise = false)
     end
 
-    triplot!(p, Attributes(p), tri, transformation = :inherit_model)
+    triplot!(p, Attributes(p), p.triangulation, transformation = :inherit_model)
     return
 end
 
 function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
-    points_2f = Observable(Point2f[])
-    present_points_2f = Observable(Point2f[]) # Points might not be in the triangulation yet, so points_2f is not what we want for scatter
-    triangles_3f = Observable(Makie.TriangleFace{Int}[])
-    ghost_edges_2f = Observable(Point2f[])
-    convex_hull_2f = Observable(Point2f[])
-    constrained_edges_2f = Observable(Point2f[])
+    # Using external arrays in computations is somewhat experimental
+    triangle_points = Point2f[]
+    triangle_faces = TriangleFace{Int}[]
+    # Points might not be in the triangulation yet, so triangle_points is not what we want for scatter
+    scatter_points = Point2f[]
+    ghost_edges = Point2f[]
+    convex_hull = Point2f[]
+    constrained_edges = Point2f[]
 
-    function update_plot(tri)
-        p.recompute_centers[] && DelTri.compute_representative_points!(tri)
-        get_all_triangulation_points!(points_2f[], tri)
-
-        p.show_points[] && get_present_triangulation_points!(present_points_2f[], tri)
-        get_triangulation_triangles!(triangles_3f[], tri)
-
-        if p.show_ghost_edges[]
-            ge = ghost_edges_2f[]
-            extent = p.ghost_edge_extension_factor[]
-            bbox = p.bounding_box[]
-            get_triangulation_ghost_edges!(ge, extent, tri, bbox)
-        end
-
-        p.show_convex_hull[] && get_triangulation_convex_hull!(convex_hull_2f[], tri)
-        p.show_constrained_edges[] && get_triangulation_constrained_edges!(constrained_edges_2f[], tri)
-
-        foreach(
-            notify,
-            (
-                points_2f, present_points_2f, triangles_3f, ghost_edges_2f, convex_hull_2f,
-                constrained_edges_2f,
-            )
-        )
-        return nothing
+    map!(p, [:recompute_centers, :triangles], [:triangle_points, :triangle_faces]) do recompute, tri
+        recompute && DelTri.compute_representative_points!(tri)
+        get_all_triangulation_points!(triangle_points, tri)
+        get_triangulation_triangles!(triangle_faces, tri)
+        return triangle_points, triangle_faces
     end
-    onany(update_plot, p, p[1])
-    update_plot(p[1][])
+
+    map!(p, :triangles, :scatter_points) do tri
+        get_present_triangulation_points!(scatter_points, tri)
+        return scatter_points
+    end
+
+    map!(p,[:ghost_edge_extension_factor, :bounding_box, :triangles], :ghost_edges) do extent, bbox, tri
+        get_triangulation_ghost_edges!(ghost_edges, extent, tri, bbox)
+        return ghost_edges
+    end
+
+    map!(p, :triangles, :convex_hull) do tri
+        get_triangulation_convex_hull!(convex_hull, tri)
+        return convex_hull
+    end
+
+    map!(p, :triangles, :constrained_edges) do tri
+        get_triangulation_constrained_edges!(constrained_edges, tri)
+        return constrained_edges
+    end
 
     poly!(
-        p, points_2f, triangles_3f; strokewidth = p.strokewidth, strokecolor = p.strokecolor,
+        p, p.triangle_points, p.triangle_faces; strokewidth = p.strokewidth, strokecolor = p.strokecolor,
         color = p.triangle_color, linestyle = p.linestyle
     )
     linesegments!(
-        p, ghost_edges_2f; color = p.ghost_edge_color, linewidth = p.ghost_edge_linewidth,
-        linecap = p.linecap, linestyle = p.ghost_edge_linestyle, xautolimits = false, yautolimits = false
+        p, p.ghost_edges; color = p.ghost_edge_color, linewidth = p.ghost_edge_linewidth,
+        linecap = p.linecap, linestyle = p.ghost_edge_linestyle, visible = p.show_ghost_edges,
+        xautolimits = false, yautolimits = false
     )
     lines!(
-        p, convex_hull_2f; color = p.convex_hull_color, linewidth = p.convex_hull_linewidth,
+        p, p.convex_hull; color = p.convex_hull_color, linewidth = p.convex_hull_linewidth,
         linecap = p.linecap, joinstyle = p.joinstyle, miter_limit = p.miter_limit,
-        linestyle = p.convex_hull_linestyle, depth_shift = -1.0f-5
+        linestyle = p.convex_hull_linestyle, depth_shift = -1.0f-5, visible = p.show_convex_hull,
     )
     linesegments!(
-        p, constrained_edges_2f; color = p.constrained_edge_color, depth_shift = -2.0f-5,
-        linecap = p.linecap, linewidth = p.constrained_edge_linewidth, linestyle = p.constrained_edge_linestyle
+        p, p.constrained_edges; color = p.constrained_edge_color, depth_shift = -2.0f-5,
+        linecap = p.linecap, linewidth = p.constrained_edge_linewidth,
+        linestyle = p.constrained_edge_linestyle, visible = p.show_constrained_edges
     )
     scatter!(
-        p, present_points_2f; markersize = p.markersize, color = p.markercolor,
+        p, p.scatter_points; markersize = p.markersize, color = p.markercolor,
         strokecolor = p.strokecolor, marker = p.marker, visible = p.show_points, depth_shift = -3.0f-5
     )
     return p
