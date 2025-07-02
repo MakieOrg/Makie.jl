@@ -100,8 +100,8 @@ end
     arg = nothing
 end
 function Makie.plot!(p::MaybeDict)
-    scatter!(p, p[:data])
+    return scatter!(p, p[:data])
 end
 @testset "Pass dict to recipe" begin
-    @test_nowarn maybedict(rand(3); arg=Dict(1=>"a",2=>"b")) # conversion error
+    @test_nowarn maybedict(rand(3); arg = Dict(1 => "a", 2 => "b")) # conversion error
 end
