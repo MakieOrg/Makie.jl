@@ -9,7 +9,7 @@ Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
 """
-@recipe Voronoiplot (vorn,) begin
+@recipe Voronoiplot begin
     "Determines whether to plot the individual generators."
     show_generators = true
     smooth = false
@@ -121,18 +121,16 @@ convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), p
 convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
-function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
+function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point3}}})
     # from call pattern (::Vector, ::Vector, ::Matrix)
-    if N == 3
-        ps = map(ps -> Point2f.(ps), p, p[1])
-        color = map(ps -> last.(ps), p, p[1])
-    else
-        ps = p[1]
-        color = p.color
-    end
+    map!(x -> (Point2.(ps), last.(ps)), p, :converted_1, [:positions, :extracted_colors])
+    voronoiplot!(p, p.attributes, p.positions, color = p.extracted_colors)
+    return p
+end
 
+function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
     # Handle transform_func early so tessellation is in cartesian space.
-    vorn = map(p, p.transformation.transform_func, ps, p.smooth) do tf, ps, smooth
+    map!(p, [:transform_func, :converted_1, :smooth], :vorn) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
         tri = DelTri.triangulate(transformed, randomise = false)
         vorn = DelTri.voronoi(tri, clip = smooth, smooth = smooth, randomise = false)
@@ -140,9 +138,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
     end
 
     # Default to circular clip for polar transformed data
-    clip = map(
-        p, p.clip, p.unbounded_edge_extension_factor,
-        transform_func_obs(p), ps
+    map!(
+        p,
+        [:clip, :unbounded_edge_extension_factor, :transform_func, :converted_1],
+        :computed_clip
     ) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
             rscaled = maximum(p -> p[1 + tf.theta_as_x], ps) * (1 + ext)
@@ -152,13 +151,10 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
         end
     end
 
-    return voronoiplot!(
-        p, Attributes(p), vorn, transformation = :inherit_model,
-        color = color, clip = clip
-    )
+    return voronoiplot!(p, Attributes(p), p.vorn, transformation = :inherit_model, clip = p.computed_clip)
 end
 
-function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
+function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
@@ -172,11 +168,9 @@ end
 boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
-    generators_2f = Observable(Point2f[])
-    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
-    polygons = Observable(PolyType[])
+    ComputePipeline.alias!(p.attributes, :converted_1, :vorn)
 
-    calculated_colors = map(p, p.color, p[1]) do color, vorn
+    map!(p, [:color, :vorn], :calculated_colors) do color, vorn
         if color === automatic
             # generate some consistent distinguishable colors
             cs = [i for i in DelTri.each_point_index(DelTri.get_triangulation(vorn)) if DelTri.has_polygon(vorn, i)]
@@ -192,27 +186,29 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
         end
     end
 
-    function update_plot(vorn)
+    # Using external arrays with computations is somewhat experimental
+    generators = Point2f[]
+    PolyType = typeof(Polygon(Point2f[], [Point2f[]]))
+    polygons = PolyType[]
+
+    map!(p, [:clip, :unbounded_edge_extension_factor, :vorn], [:generators, :polygons]) do clip, extent, vorn
         if isempty(DelTri.get_unbounded_polygons(vorn))
             bbox = nothing
-        elseif p.clip[] === automatic
-            extent = p.unbounded_edge_extension_factor[]
+        elseif clip === automatic
             bbox = DelTri.polygon_bounds(vorn, extent; include_polygon_vertices = false)
         else
-            bbox = p.clip[]
+            bbox = clip
         end
-        get_voronoi_tiles!(generators_2f[], polygons[], vorn, bbox)
-        foreach(notify, (generators_2f, polygons))
-        return
+
+        get_voronoi_tiles!(generators, polygons, vorn, bbox)
+        return generators, polygons
     end
-    onany(update_plot, p, p[1])
-    update_plot(p[1][])
 
     poly!(
-        p, polygons;
+        p, p.polygons;
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
-        color = calculated_colors,
+        color = p.calculated_colors,
         colormap = p.colormap,
         colorscale = p.colorscale,
         colorrange = p.colorrange,
@@ -222,7 +218,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
     )
 
     scatter!(
-        p, generators_2f;
+        p, p.generators;
         markersize = p.markersize,
         marker = p.marker,
         color = p.markercolor,
