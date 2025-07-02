@@ -114,14 +114,38 @@ function get_datetime_ticks(ticks::Tuple{Any,Any}, formatter::Automatic, vmin, v
     return ticks[1], ticks[2]
 end
 
-function get_datetime_ticks(ticks::Automatic, formatter, vmin::DateTime, vmax::DateTime)
-    vmin_dt = DateTime(vmin)
-    vmax_dt = DateTime(vmax)
-    datetimerange = _optimize_datetime_ticks(date_to_number(DateTime, vmin_dt), date_to_number(DateTime, vmax_dt); k_ideal=5)
-    if formatter !== automatic
-        labels = get_datetime_ticklabels(datetimerange, formatter)
+Base.@kwdef struct DateTimeTicks2
+    y::DateFormat = dateformat"yyyy"
+    ym::DateFormat = dateformat"yyyy-mm"
+    ymd::DateFormat = dateformat"yyyy-mm-dd" 
+    ymdHM::DateFormat = DateFormat("H:MM\nyyyy-mm-dd")
+    ymdHMS::DateFormat = DateFormat("H:MM:SS\nyyyy-mm-dd")
+    ymdHMSs::DateFormat = DateFormat("H:MM:SS.sss\nyyyy-mm-dd")
+    HM::DateFormat = dateformat"H:MM"
+    HMS::DateFormat = dateformat"H:MM:SS"
+    HMSs::DateFormat = dateformat"H:MM:SS.sss"
+    M::DateFormat = dateformat":MM"
+    S::DateFormat = dateformat":SS"
+    MS::DateFormat = dateformat":M:SS"
+    s::DateFormat = dateformat".sss"
+    Ss::DateFormat = dateformat":SS.sss"
+    MSs::DateFormat = dateformat":M:SS.sss"
+    k_ideal::Int = 5
+    k_min::Union{Nothing,Int} = nothing
+    k_max::Union{Nothing,Int} = nothing
+end
+
+
+function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTime)
+    return get_datetime_ticks(DateTimeTicks2(), formatter, vmin, vmax)
+end
+
+function get_datetime_ticks(d::DateTimeTicks2, formatter, vmin, vmax)
+    datetimerange = locate_datetime_ticks(d, vmin, vmax)
+    if formatter === automatic
+        labels = datetime_range_ticklabels(d, datetimerange)
     else
-        labels = datetime_range_ticklabels(datetimerange)
+        labels = get_datetime_ticklabels(datetimerange, formatter)
     end
     return datetimerange, labels
 end
@@ -147,19 +171,11 @@ function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::
     return [Dates.format(v, formatter) for v in values]
 end
 
-function _optimize_datetime_ticks(a_min, a_max; k_ideal = 5, k_min = nothing, k_max = nothing)
-    # Int64 is needed here for 32bit systems
-    x_min = DateTime(Dates.UTM(Int64(round(a_min))))
-    x_max = DateTime(Dates.UTM(Int64(round(a_max))))
-
-    return _natural_datetime_ticks(x_min, x_max; k_ideal, k_min, k_max)
-end
-
-function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal = 5, k_min = nothing, k_max = nothing)
+function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::DateTime)
     total_duration = end_dt - start_dt
     total_hours = total_duration / Hour(1)
     total_days = total_hours / 24
-    target_ticks = max(1, k_ideal)  # Ensure target_ticks is at least 1
+    target_ticks = max(1, dtt.k_ideal)  # Ensure target_ticks is at least 1
     
     # Handle edge case where duration is zero or negative
     if total_duration <= Millisecond(0)
@@ -167,8 +183,9 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     end
     
     # Define tick count acceptance range based on k_ideal or explicit k_min/k_max
-    min_ticks = something(k_min, max(2, round(Int, target_ticks * 0.66)))
-    max_ticks = something(k_max, round(Int, target_ticks * 1.33))
+    min_ticks = something(dtt.k_min, max(2, round(Int, target_ticks * 0.66)))
+    max_ticks = something(dtt.k_max, round(Int, target_ticks * 1.33))
+    @assert min_ticks <= dtt.k_ideal <= max_ticks
     
     # Helper function to check if tick count is acceptable
     # Prefer tick counts closer to k_ideal
@@ -182,7 +199,7 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
     # Helper function to check if we should try finer granularity
     function should_try_finer(tick_count)
         # If we're significantly below k_ideal, try finer granularity
-        return tick_count < k_ideal * 0.8
+        return tick_count < dtt.k_ideal * 0.8
     end
     
     # 1. Try yearly ticks (for very long ranges)
@@ -381,57 +398,9 @@ function _natural_datetime_ticks(start_dt::DateTime, end_dt::DateTime; k_ideal =
 end
 
 
-struct DateTimeFormatter8
-    # Full date formats
-    y::DateFormat           # year only: "yyyy"
-    ym::DateFormat          # year-month: "yyyy-mm"
-    ymd::DateFormat         # year-month-day: "yyyy-mm-dd"
-    
-    # Full datetime formats (can be single line or multi-line depending on the format string)
-    ymdHM::DateFormat       # year-month-day hour-minute: "H:MM\nyyyy-mm-dd" or "yyyy-mm-dd H:MM"
-    ymdHMS::DateFormat      # year-month-day hour-minute-second: "H:MM:SS\nyyyy-mm-dd" or "yyyy-mm-dd HH:MM:SS"
-    ymdHMSs::DateFormat     # year-month-day hour-minute-second-ms: "H:MM:SS.sss\nyyyy-mm-dd" or "yyyy-mm-dd HH:MM:SS.sss"
-    
-    # Time-only formats (with hour)
-    HM::DateFormat          # hour-minute: "H:MM"
-    HMS::DateFormat         # hour-minute-second: "H:MM:SS"
-    HMSs::DateFormat        # hour-minute-second-ms: "H:MM:SS.sss"
-    
-    # Partial formats (minutes within hour)
-    M::DateFormat           # minute only: ":MM"
-    
-    # Partial formats (seconds within minute)
-    S::DateFormat           # second only: ":SS"
-    MS::DateFormat          # minute-second: ":M:SS"
-    
-    # Partial formats (milliseconds)
-    s::DateFormat           # millisecond only: ".sss"
-    Ss::DateFormat          # second-millisecond: ":SS.sss"
-    MSs::DateFormat         # minute-second-millisecond: ":M:SS.sss"
-    
-    function DateTimeFormatter8(;
-        y::DateFormat = dateformat"yyyy",
-        ym::DateFormat = dateformat"yyyy-mm",
-        ymd::DateFormat = dateformat"yyyy-mm-dd", 
-        ymdHM::DateFormat = DateFormat("H:MM\nyyyy-mm-dd"),
-        ymdHMS::DateFormat = DateFormat("H:MM:SS\nyyyy-mm-dd"),
-        ymdHMSs::DateFormat = DateFormat("H:MM:SS.sss\nyyyy-mm-dd"),
-        HM::DateFormat = dateformat"H:MM",
-        HMS::DateFormat = dateformat"H:MM:SS",
-        HMSs::DateFormat = dateformat"H:MM:SS.sss",
-        M::DateFormat = dateformat":MM",
-        S::DateFormat = dateformat":SS",
-        MS::DateFormat = dateformat":M:SS",
-        s::DateFormat = dateformat".sss",
-        Ss::DateFormat = dateformat":SS.sss",
-        MSs::DateFormat = dateformat":M:SS.sss"
-    )
-        new(y, ym, ymd, ymdHM, ymdHMS, ymdHMSs, HM, HMS, HMSs, M, S, MS, s, Ss, MSs)
-    end
-end
 
 
-function datetime_range_ticklabels(datetimes::AbstractRange{<:DateTime}, tickobj::DateTimeFormatter8 = DateTimeFormatter8())::Vector{String}
+function datetime_range_ticklabels(tickobj::DateTimeTicks2, datetimes::AbstractRange{<:DateTime})::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)

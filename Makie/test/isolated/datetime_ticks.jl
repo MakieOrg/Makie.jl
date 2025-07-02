@@ -1,5 +1,5 @@
 @testset "datetime ticklabels" begin
-    f = Makie.datetime_range_ticklabels
+    f(args...) = Makie.datetime_range_ticklabels(Makie.DateTimeTicks2(), args...)
     DT = DateTime
 
     # shortening for first days of years or months
