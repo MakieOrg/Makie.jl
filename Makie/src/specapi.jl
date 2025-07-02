@@ -528,6 +528,8 @@ plots[] = [
     Attributes()
 end
 
+is_atomic_plot(plot::PlotList) = false # is never atomic
+
 function Base.propertynames(pl::PlotList)
     inner_pnames = if length(pl.plots) == 1
         Base.propertynames(pl.plots[1])
