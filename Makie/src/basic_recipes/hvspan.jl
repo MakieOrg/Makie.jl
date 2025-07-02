@@ -40,8 +40,11 @@ function Makie.plot!(p::Union{HSpan, VSpan})
     mi = p isa HSpan ? :xmin : :ymin
     ma = p isa HSpan ? :xmax : :ymax
     add_axis_limits!(p)
-    map!(p.attributes, [:axis_limits, :low, :high, mi, ma, :transform_func], :rects) do lims, lows, highs, mi, ma, transf
+    map!(
+        p.attributes, [:axis_limits, :low, :high, mi, ma, :transform_func], :rects
+    ) do _lims, lows, highs, mi, ma, transf
         rects = Rect2d[]
+        lims = apply_transform(transf, _lims)
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
         broadcast_foreach(lows, highs, mi, ma) do low, high, mi, ma
