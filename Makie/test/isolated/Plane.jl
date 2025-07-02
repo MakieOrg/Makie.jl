@@ -142,6 +142,10 @@ using Makie: Plane, Plane3f, Point3d, Rect3d, Vec3d
         # to_clip_space()
         ps = [2.0f0 .* rand(Point3f) .- 1.0f0 for _ in 1:1000]
         planes = Makie.planes(Rect3f(Point3f(-0.5), Vec3f(1)))
+        filter!(ps) do p # drop points that may cause tests to fail due to float precision issues
+            min_dist = mapreduce(plane -> abs(Makie.distance(plane, p)), min, planes)
+            return min_dist > 1f-10
+        end
         inside = sum(Makie.is_visible.((planes,), ps))
 
         # COV_EXCL_START
