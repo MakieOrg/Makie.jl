@@ -114,10 +114,10 @@ function get_datetime_ticks(ticks::Tuple{Any,Any}, formatter::Automatic, vmin, v
     return ticks[1], ticks[2]
 end
 
-Base.@kwdef struct DateTimeTicks2
+Base.@kwdef struct DateTimeTicks3
     y::DateFormat = dateformat"yyyy"
     ym::DateFormat = dateformat"yyyy-mm"
-    ymd::DateFormat = dateformat"yyyy-mm-dd" 
+    ymd::DateFormat = dateformat"yyyy-mm-dd"
     ymdHM::DateFormat = DateFormat("H:MM\nyyyy-mm-dd")
     ymdHMS::DateFormat = DateFormat("H:MM:SS\nyyyy-mm-dd")
     ymdHMSs::DateFormat = DateFormat("H:MM:SS.sss\nyyyy-mm-dd")
@@ -125,11 +125,11 @@ Base.@kwdef struct DateTimeTicks2
     HMS::DateFormat = dateformat"H:MM:SS"
     HMSs::DateFormat = dateformat"H:MM:SS.sss"
     M::DateFormat = dateformat":MM"
-    S::DateFormat = dateformat":SS"
     MS::DateFormat = dateformat":M:SS"
-    s::DateFormat = dateformat".sss"
-    Ss::DateFormat = dateformat":SS.sss"
     MSs::DateFormat = dateformat":M:SS.sss"
+    S::DateFormat = dateformat":SS"
+    Ss::DateFormat = dateformat":SS.sss"
+    s::DateFormat = dateformat".sss"
     k_ideal::Int = 5
     k_min::Union{Nothing,Int} = nothing
     k_max::Union{Nothing,Int} = nothing
@@ -137,10 +137,10 @@ end
 
 
 function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTime)
-    return get_datetime_ticks(DateTimeTicks2(), formatter, vmin, vmax)
+    return get_datetime_ticks(DateTimeTicks3(), formatter, vmin, vmax)
 end
 
-function get_datetime_ticks(d::DateTimeTicks2, formatter, vmin, vmax)
+function get_datetime_ticks(d::DateTimeTicks3, formatter, vmin, vmax)
     datetimerange = locate_datetime_ticks(d, vmin, vmax)
     if formatter === automatic
         labels = datetime_range_ticklabels(d, datetimerange)
@@ -171,11 +171,10 @@ function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::
     return [Dates.format(v, formatter) for v in values]
 end
 
-function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::DateTime)
+function locate_datetime_ticks(dtt::DateTimeTicks3, start_dt::DateTime, end_dt::DateTime)
     total_duration = end_dt - start_dt
     total_hours = total_duration / Hour(1)
     total_days = total_hours / 24
-    target_ticks = max(1, dtt.k_ideal)  # Ensure target_ticks is at least 1
     
     # Handle edge case where duration is zero or negative
     if total_duration <= Millisecond(0)
@@ -183,8 +182,8 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     end
     
     # Define tick count acceptance range based on k_ideal or explicit k_min/k_max
-    min_ticks = something(dtt.k_min, max(2, round(Int, target_ticks * 0.66)))
-    max_ticks = something(dtt.k_max, round(Int, target_ticks * 1.33))
+    min_ticks = something(dtt.k_min, max(2, round(Int, dtt.k_ideal * 0.66)))
+    max_ticks = something(dtt.k_max, round(Int, dtt.k_ideal * 1.33))
     @assert min_ticks <= dtt.k_ideal <= max_ticks
     
     # Helper function to check if tick count is acceptable
@@ -198,7 +197,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     
     # 1. Try yearly ticks (for very long ranges)
     if total_days >= 365 * 2  # 2+ years
-        step_years = max(1, round(Int, total_days / (target_ticks * 365)))
+        step_years = max(1, round(Int, total_days / (dtt.k_ideal * 365)))
         
         # Use nice round step sizes: 1, 2, 5, 10, 25, 50, 100, 200, 500 years
         nice_steps = [1, 2, 5, 10, 25, 50, 100, 200, 500]
@@ -240,7 +239,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     
     # 2. Try monthly ticks
     if total_days >= 58  # 2+ months
-        step_months = max(1, round(Int, total_days / (target_ticks * 30)))
+        step_months = max(1, round(Int, total_days / (dtt.k_ideal * 30)))
         nice_steps = [1, 2, 3, 4, 6, 12]
         step_months = nice_steps[argmin(abs.(nice_steps .- step_months))]
         step = Month(step_months)
@@ -257,7 +256,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     
     # 3. Try daily ticks
     if total_days >= 2
-        step_days = max(1, round(Int, total_days / target_ticks))
+        step_days = max(1, round(Int, total_days / dtt.k_ideal))
         nice_steps = [1, 2, 3, 7, 14, 30]  # Include weekly and bi-weekly options
         step_days = nice_steps[argmin(abs.(nice_steps .- step_days))]
         step = Day(step_days)
@@ -274,7 +273,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     
     # 4. Try hourly ticks
     if total_hours >= 2  # 2+ hours
-        step_hours_calc = total_hours / target_ticks
+        step_hours_calc = total_hours / dtt.k_ideal
         # Guard against very small step calculations that could cause overflow
         if step_hours_calc > 0 && isfinite(step_hours_calc)
             step_hours = max(1, round(Int, step_hours_calc))
@@ -300,7 +299,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     # Try minute ticks
     total_minutes = total_hours * 60
     if total_minutes >= 2
-        step_minutes_calc = total_minutes / target_ticks
+        step_minutes_calc = total_minutes / dtt.k_ideal
         if step_minutes_calc > 0 && isfinite(step_minutes_calc)
             step_minutes = max(1, round(Int, step_minutes_calc))
             nice_steps = [1, 2, 5, 10, 15, 30]
@@ -326,7 +325,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     # Try second ticks
     total_seconds = total_hours * 3600
     if total_seconds >= 2
-        step_seconds_calc = total_seconds / target_ticks
+        step_seconds_calc = total_seconds / dtt.k_ideal
         if step_seconds_calc > 0 && isfinite(step_seconds_calc)
             step_seconds = max(1, round(Int, step_seconds_calc))
             nice_steps = [1, 2, 5, 10, 15, 20, 30]
@@ -353,7 +352,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     # Fall back to millisecond ticks (with bounds checking)
     total_milliseconds = total_hours * 3600 * 1000
     if total_milliseconds > 0 && isfinite(total_milliseconds)
-        step_milliseconds_calc = total_milliseconds / target_ticks
+        step_milliseconds_calc = total_milliseconds / dtt.k_ideal
         if step_milliseconds_calc > 0 && isfinite(step_milliseconds_calc)
             step_milliseconds = max(1, round(Int, step_milliseconds_calc))
             nice_steps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
@@ -390,7 +389,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     error("Did not determine a format for vmin=$start_dt to vmax=$end_dt")
 end
 
-function datetime_range_ticklabels(tickobj::DateTimeTicks2, datetimes::AbstractRange{<:DateTime})::Vector{String}
+function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractRange{<:DateTime})::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
