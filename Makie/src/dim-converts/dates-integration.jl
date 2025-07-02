@@ -196,12 +196,6 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
         return in_range
     end
     
-    # Helper function to check if we should try finer granularity
-    function should_try_finer(tick_count)
-        # If we're significantly below k_ideal, try finer granularity
-        return tick_count < dtt.k_ideal * 0.8
-    end
-    
     # 1. Try yearly ticks (for very long ranges)
     if total_days >= 365 * 2  # 2+ years
         step_years = max(1, round(Int, total_days / (target_ticks * 365)))
@@ -239,7 +233,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
         end
         
         tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+        if is_acceptable_tick_count(tick_count)
             return tick_start:step:end_dt
         end
     end
@@ -256,7 +250,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
         end
         
         tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+        if is_acceptable_tick_count(tick_count)
             return tick_start:step:end_dt
         end
     end
@@ -273,7 +267,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
         end
         
         tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+        if is_acceptable_tick_count(tick_count)
             return tick_start:step:end_dt
         end
     end
@@ -297,7 +291,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
             end
             
             tick_count = length(tick_start:step:end_dt)
-            if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+            if is_acceptable_tick_count(tick_count)
                 return tick_start:step:end_dt
             end
         end
@@ -323,7 +317,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
             tick_count = length(tick_start:step:end_dt)
             
             # If we get acceptable tick count and it's not too far below ideal, use minutes
-            if is_acceptable_tick_count(tick_count) && !should_try_finer(tick_count)
+            if is_acceptable_tick_count(tick_count)
                 return tick_start:step:end_dt
             end
         end
@@ -396,9 +390,6 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
     # Ultimate fallback - return a simple range
     return start_dt:Hour(1):end_dt
 end
-
-
-
 
 function datetime_range_ticklabels(tickobj::DateTimeTicks2, datetimes::AbstractRange{<:DateTime})::Vector{String}
     # Handle edge cases
