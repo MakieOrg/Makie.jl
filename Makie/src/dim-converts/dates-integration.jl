@@ -171,222 +171,77 @@ function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::
     return [Dates.format(v, formatter) for v in values]
 end
 
-function locate_datetime_ticks(dtt::DateTimeTicks3, start_dt::DateTime, end_dt::DateTime)
-    total_duration = end_dt - start_dt
-    total_hours = total_duration / Hour(1)
-    total_days = total_hours / 24
-    
-    # Handle edge case where duration is zero or negative
-    if total_duration <= Millisecond(0)
-        return start_dt:Millisecond(1):start_dt
-    end
-    
-    # Define tick count acceptance range based on k_ideal or explicit k_min/k_max
-    min_ticks = something(dtt.k_min, max(2, round(Int, dtt.k_ideal * 0.66)))
-    max_ticks = something(dtt.k_max, round(Int, dtt.k_ideal * 1.33))
-    @assert min_ticks <= dtt.k_ideal <= max_ticks
-    
-    # Helper function to check if tick count is acceptable
-    # Prefer tick counts closer to k_ideal
-    function is_acceptable_tick_count(tick_count)
-        in_range = tick_count >= min_ticks && tick_count <= max_ticks
-        # For better responsiveness, prefer tick counts closer to k_ideal
-        # Accept if within range, but algorithm will try finer granularity if far from ideal
-        return in_range
-    end
-    
-    # 1. Try yearly ticks (for very long ranges)
-    if total_days >= 365 * 2  # 2+ years
-        step_years = max(1, round(Int, total_days / (dtt.k_ideal * 365)))
-        
-        # Use nice round step sizes: 1, 2, 5, 10, 25, 50, 100, 200, 500 years
-        nice_steps = [1, 2, 5, 10, 25, 50, 100, 200, 500]
-        step_years = nice_steps[argmin(abs.(nice_steps .- step_years))]
-        step = Year(step_years)
-        
-        # Round start to a nice year boundary
-        start_year = Dates.year(start_dt)
-        if step_years >= 100
-            # Round to nearest century
-            rounded_year = (start_year ÷ 100) * 100
-        elseif step_years >= 50
-            # Round to nearest half-century
-            rounded_year = (start_year ÷ 50) * 50
-        elseif step_years >= 25
-            # Round to nearest quarter-century
-            rounded_year = (start_year ÷ 25) * 25
-        elseif step_years >= 10
-            # Round to nearest decade
-            rounded_year = (start_year ÷ 10) * 10
-        elseif step_years >= 5
-            # Round to nearest 5-year boundary
-            rounded_year = (start_year ÷ 5) * 5
-        else
-            # Use exact start year
-            rounded_year = start_year
-        end
-        
-        tick_start = DateTime(rounded_year, 1, 1)
-        if tick_start < start_dt
-            tick_start += step
-        end
-        
-        tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count)
-            return tick_start:step:end_dt
-        end
-    end
-    
-    # 2. Try monthly ticks
-    if total_days >= 58  # 2+ months
-        step_months = max(1, round(Int, total_days / (dtt.k_ideal * 30)))
-        nice_steps = [1, 2, 3, 4, 6, 12]
-        step_months = nice_steps[argmin(abs.(nice_steps .- step_months))]
-        step = Month(step_months)
-        tick_start = DateTime(Dates.year(start_dt), Dates.month(start_dt), 1)
-        if tick_start < start_dt
-            tick_start += step
-        end
-        
-        tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count)
-            return tick_start:step:end_dt
-        end
-    end
-    
-    # 3. Try daily ticks
-    if total_days >= 2
-        step_days = max(1, round(Int, total_days / dtt.k_ideal))
-        nice_steps = [1, 2, 3, 7, 14, 30]  # Include weekly and bi-weekly options
-        step_days = nice_steps[argmin(abs.(nice_steps .- step_days))]
-        step = Day(step_days)
-        tick_start = DateTime(Dates.Date(start_dt))
-        if tick_start < start_dt
-            tick_start += step
-        end
-        
-        tick_count = length(tick_start:step:end_dt)
-        if is_acceptable_tick_count(tick_count)
-            return tick_start:step:end_dt
-        end
-    end
-    
-    # 4. Try hourly ticks
-    if total_hours >= 2  # 2+ hours
-        step_hours_calc = total_hours / dtt.k_ideal
-        # Guard against very small step calculations that could cause overflow
-        if step_hours_calc > 0 && isfinite(step_hours_calc)
-            step_hours = max(1, round(Int, step_hours_calc))
-            nice_steps = [1, 2, 3, 4, 6, 8, 12, 24]  # Include 24-hour option
-            step_hours = nice_steps[argmin(abs.(nice_steps .- step_hours))]
-            step = Hour(step_hours)
-            
-            # Count how many ticks this would give
-            start_hour = Dates.hour(start_dt)
-            rounded_hour = (start_hour ÷ step_hours) * step_hours
-            tick_start = DateTime(Dates.Date(start_dt)) + Hour(rounded_hour)
-            if tick_start < start_dt
-                tick_start += step
-            end
-            
-            tick_count = length(tick_start:step:end_dt)
-            if is_acceptable_tick_count(tick_count)
-                return tick_start:step:end_dt
-            end
-        end
-    end
-    
-    # Try minute ticks
-    total_minutes = total_hours * 60
-    if total_minutes >= 2
-        step_minutes_calc = total_minutes / dtt.k_ideal
-        if step_minutes_calc > 0 && isfinite(step_minutes_calc)
-            step_minutes = max(1, round(Int, step_minutes_calc))
-            nice_steps = [1, 2, 5, 10, 15, 30]
-            step_minutes = nice_steps[argmin(abs.(nice_steps .- step_minutes))]
-            step = Minute(step_minutes)
-            
-            start_minute = Dates.minute(start_dt)
-            rounded_minute = (start_minute ÷ step_minutes) * step_minutes
-            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + Minute(rounded_minute)
-            if tick_start < start_dt
-                tick_start += step
-            end
-            
-            tick_count = length(tick_start:step:end_dt)
-            
-            # If we get acceptable tick count and it's not too far below ideal, use minutes
-            if is_acceptable_tick_count(tick_count)
-                return tick_start:step:end_dt
-            end
-        end
-    end
-    
-    # Try second ticks
-    total_seconds = total_hours * 3600
-    if total_seconds >= 2
-        step_seconds_calc = total_seconds / dtt.k_ideal
-        if step_seconds_calc > 0 && isfinite(step_seconds_calc)
-            step_seconds = max(1, round(Int, step_seconds_calc))
-            nice_steps = [1, 2, 5, 10, 15, 20, 30]
-            step_seconds = nice_steps[argmin(abs.(nice_steps .- step_seconds))]
-            step = Second(step_seconds)
-            
-            start_second = Dates.second(start_dt)
-            rounded_second = (start_second ÷ step_seconds) * step_seconds
-            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
-                        Minute(Dates.minute(start_dt)) + Second(rounded_second)
-            if tick_start < start_dt
-                tick_start += step
-            end
-            
-            tick_count = length(tick_start:step:end_dt)
-            
-            # Only use seconds if tick count is reasonable
-            if is_acceptable_tick_count(tick_count)
-                return tick_start:step:end_dt
-            end
-        end
-    end
-    
-    # Fall back to millisecond ticks (with bounds checking)
-    total_milliseconds = total_hours * 3600 * 1000
-    if total_milliseconds > 0 && isfinite(total_milliseconds)
-        step_milliseconds_calc = total_milliseconds / dtt.k_ideal
-        if step_milliseconds_calc > 0 && isfinite(step_milliseconds_calc)
-            step_milliseconds = max(1, round(Int, step_milliseconds_calc))
-            nice_steps = [1, 2, 5, 10, 20, 50, 100, 200, 500]
-            step_milliseconds = nice_steps[argmin(abs.(nice_steps .- step_milliseconds))]
-            step = Millisecond(step_milliseconds)
-            
-            start_millisecond = Dates.millisecond(start_dt)
-            rounded_millisecond = (start_millisecond ÷ step_milliseconds) * step_milliseconds
-            tick_start = DateTime(Dates.Date(start_dt)) + Hour(Dates.hour(start_dt)) + 
-                        Minute(Dates.minute(start_dt)) + Second(Dates.second(start_dt)) + 
-                        Millisecond(rounded_millisecond)
-            if tick_start < start_dt
-                tick_start += step
-            end
-            
-            tick_count = length(tick_start:step:end_dt)
-            
-            # If still too many ticks, fall back to a reasonable default
-            if tick_count > max_ticks
-                # Use hourly ticks as a safe fallback
-                safe_step_hours = max(1, round(Int, total_hours / max_ticks))
-                step = Hour(safe_step_hours)
-                tick_start = DateTime(Dates.Date(start_dt))
-                if tick_start < start_dt
-                    tick_start += step
-                end
-                return tick_start:step:end_dt
-            end
-            
-            return tick_start:step:end_dt
-        end
-    end
-    
-    error("Did not determine a format for vmin=$start_dt to vmax=$end_dt")
+extractor(::Type{Year}) = year
+extractor(::Type{Month}) = month
+extractor(::Type{Day}) = day
+extractor(::Type{Hour}) = hour
+extractor(::Type{Minute}) = minute
+extractor(::Type{Second}) = second
+extractor(::Type{Millisecond}) = millisecond
+
+parent_type(::Type{Month}) = Year
+parent_type(::Type{Day}) = Month
+parent_type(::Type{Hour}) = Day
+parent_type(::Type{Minute}) = Hour
+parent_type(::Type{Second}) = Minute
+parent_type(::Type{Millisecond}) = Second
+
+# assumes these are rounded to the given type already
+stepdiff(::Type{Year}, from, to) = year(to) - year(from)
+stepdiff(::Type{Month}, from, to) = 12 * stepdiff(Year, from, to) + (month(to) - month(from))
+stepdiff(T::Type{<:Union{Day,Hour,Minute,Second,Millisecond}}, from, to) = (to - from) / T(1)
+
+get_Q(::Type{<:Union{Year,Millisecond}}) = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)] # Makie default
+get_Q(::Type{Month}) = [(12.0, 2.5), (6.0, 1.5), (3.0, 1.2), (2.0, 0.7), (1.0, 1.0)]
+get_Q(::Type{Day}) = [(7.0, 2.5), (5.0, 1.5), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
+get_Q(::Type{Hour}) = [(24.0, 2.5), (12.0, 1.5), (6.0, 1.0), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
+get_Q(::Type{<:Union{Minute,Second}}) = [(60.0, 2.5), (30.0, 1.7), (15.0, 1.5), (5.0, 1.0), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
+
+function locate_datetime_ticks(dtt::DateTimeTicks3, start::DateTime, stop::DateTime)
+    k_ideal = dtt.k_ideal
+    k_min = something(dtt.k_min, max(1, floor(Int, k_ideal * 0.66)))
+    k_max = something(dtt.k_max, ceil(Int, k_ideal * 1.33))
+    @assert stop > start
+    ticks = _ticks(Year, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Month, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Day, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Hour, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Minute, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Second, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    ticks = _ticks(Millisecond, start, stop; k_ideal, k_min, k_max)
+    ticks !== nothing && return ticks
+    fallback = start:Millisecond(1):stop
+    length(fallback) < dtt.k_max || error("Fallback in milliseconds was too long: $fallback")
+    return fallback
+end
+
+function _ticks(steptype, start::DateTime, stop::DateTime; k_ideal, k_min, k_max)
+    start_ceiled = ceil(start, steptype)
+    start_float = Float64(extractor(steptype)(start_ceiled))
+    start_floored_to_parent = steptype === Year ? DateTime(0) : floor(start_ceiled, parent_type(steptype))
+    diff = stepdiff(steptype, start, stop)
+    diff <= 0 && return nothing
+    stop_float = start_float + diff
+    ticks = Makie.get_tickvalues(
+        Makie.WilkinsonTicks(k_ideal; k_min, k_max, Q = get_Q(steptype)),
+        start_float,
+        stop_float,
+    )
+    length(ticks) < 2 && return nothing
+    step_float = ticks[2] - ticks[1]
+    isinteger(step_float) || return nothing
+    step = steptype(Int(step_float))
+    # ticks can be out of bounds sometimes... need to work around that
+    first_inrange_index = findfirst(>=(start_float), ticks)
+    tickrange = start_floored_to_parent + steptype(ticks[first_inrange_index]):step:stop
+    steptype !== Millisecond && length(tickrange) < k_min && return nothing # fall back to next granularity if too few ticks are found once out of bounds are removed
+    return tickrange
 end
 
 function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractRange{<:DateTime})::Vector{String}
