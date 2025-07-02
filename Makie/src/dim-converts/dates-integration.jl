@@ -387,8 +387,7 @@ function locate_datetime_ticks(dtt::DateTimeTicks2, start_dt::DateTime, end_dt::
         end
     end
     
-    # Ultimate fallback - return a simple range
-    return start_dt:Hour(1):end_dt
+    error("Did not determine a format for vmin=$start_dt to vmax=$end_dt")
 end
 
 function datetime_range_ticklabels(tickobj::DateTimeTicks2, datetimes::AbstractRange{<:DateTime})::Vector{String}
