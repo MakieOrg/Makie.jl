@@ -184,7 +184,7 @@ function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, s
 end
 
 function draw_atomic(::Scene, ::Screen, x::PlotList)
-    nothing # PlotLists are special, and empty plots
+    return nothing # PlotLists are special, and empty plots
 end
 
 function draw_atomic(::Scene, ::Screen, x)
