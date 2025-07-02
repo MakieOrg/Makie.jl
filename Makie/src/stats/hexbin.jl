@@ -63,32 +63,22 @@ get_weight(weights, i) = Float64(weights[i])
 get_weight(::Union{Nothing, StatsBase.UnitWeights}, _) = 1.0
 
 function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
-    tf = transform_func(hb)
+    register_positions_transformed!(hb, input_name = :converted_1, output_name = :positions_transformed)
 
-    points = Observable(Point2f[])
-    count_hex = Observable(Float64[])
-    markersize = Observable(Vec2f(1, 1))
-
-    function add_hex_point((ix, iy), spacing, offset, count)
-        pt = Point2f(offset .+ (2 * ix + isodd(iy), iy) .* spacing)
-        push!(points[], pt)
-        return push!(count_hex[], count)
+    map!(hb, :positions_transformed, :limits) do xy
+        # enclose data in limits
+        r = Rect2(xy)
+        low = prevfloat.(minimum(r))
+        high = nextfloat.(maximum(r))
+        return Rect2d(low, high-low)
     end
 
-    function calculate_grid(xy, weights, bins, cellsize, threshold)
-        empty!(points[])
-        empty!(count_hex[])
+    map!(
+        hb, [:bins, :cellsize, :limits],
+        [:bin_spacing, :bin_offset, :nbins, :bin_yweight, :markersize]
+    ) do bins, cellsize, lims
 
-        isempty(xy) && return
-
-        # enclose data in limits
-        lox, hix = extrema(p -> p[1], xy)
-        loy, hiy = extrema(p -> p[2], xy)
-        _origin = Point(prevfloat(lox), prevfloat(loy))
-        width = Point(nextfloat(hix), nextfloat(hiy)) - _origin
-        lims = apply_transform(tf, Rect2d(_origin, width))
-
-        spacing, offset, (nbinsx, nbinsy) = _spacings_offsets_nbins(bins, cellsize, lims)
+        spacing, offset, nbins = _spacings_offsets_nbins(bins, cellsize, lims)
 
         size = spacing .* _hexbin_size_fact()
         msize = size .* _hexbin_msize_fact()
@@ -98,11 +88,30 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         # cells is wrong
         yweight = size[1] / size[2]
 
+        return spacing, offset, nbins, yweight, msize
+    end
+
+    map!(
+        hb,
+        [:positions_transformed, :bin_spacing, :bin_offset, :nbins, :bin_yweight, :weights, :threshold],
+        [:points, :count_hex]
+    ) do xy, spacing, offset, (nbinsx, nbinsy), yweight, weights, threshold
+        points = Point2f[]
+        count_hex = Float64[]
+
+        isempty(xy) && return points, count_hex
+
+        function add_hex_point((ix, iy), spacing, offset, count)
+            pt = Point2f(offset .+ (2 * ix + isodd(iy), iy) .* spacing)
+            push!(points, pt)
+            return push!(count_hex, count)
+        end
+
         bin_map = Dict{NTuple{2, Int}, Float64}()
 
         i = 1
-        for _xy in xy
-            tx, ty = txy = apply_transform(tf, _xy)
+        for txy in xy
+            tx, ty = txy
             (nx, ny), (nxs, nys), (dvx, dvy) = _nearest_center(txy, spacing, offset)
 
             d1 = (tx - nx)^2 + (yweight * (ty - ny))^2
@@ -132,29 +141,26 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
             end
         end
 
-        markersize[] = Vec2f(msize)
-        notify(points)
-        return notify(count_hex)
+        return points, count_hex
     end
-    onany(calculate_grid, hb[1], hb.weights, hb.bins, hb.cellsize, hb.threshold, update = true)
 
-    computed_colorrange = map(hb, hb.colorrange) do colorrange
+    map!(hb, [:colorrange, :count_hex], :computed_colorrange) do colorrange, count_hex
         if colorrange === automatic
-            if isempty(count_hex[])
-                (0, 1)
+            if isempty(count_hex)
+                return (0, 1)
             else
-                mi, ma = extrema(count_hex[])
+                mi, ma = extrema(count_hex)
                 # if we have only one unique value (usually happens) when there are very few points
                 # and every cell has only 1 entry, then we set the minimum to 0 so we do not get
                 # a singular colorrange error down the line.
                 if mi == ma
-                    (0, ifelse(ma == 0, 1, ma))
+                    return (0, ifelse(ma == 0, 1, ma))
                 else
-                    (mi, ma)
+                    return (mi, ma)
                 end
             end
         else
-            colorrange
+            return colorrange
         end
     end
 
@@ -166,16 +172,16 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         hb.colorscale
     end
     return scatter!(
-        hb, points;
-        colorrange = computed_colorrange,
-        color = count_hex,
+        hb, hb.points;
+        colorrange = hb.computed_colorrange,
+        color = hb.count_hex,
         colormap = hb.colormap,
         colorscale = scale,
         lowclip = hb.lowclip,
         highclip = hb.highclip,
         nan_color = hb.nan_color,
         marker = hexmarker,
-        markersize = markersize,
+        markersize = hb.markersize,
         markerspace = :data,
         strokewidth = hb.strokewidth,
         strokecolor = hb.strokecolor,
