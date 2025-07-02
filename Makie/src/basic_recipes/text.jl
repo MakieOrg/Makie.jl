@@ -482,7 +482,7 @@ function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwarg
         plot, OT; kwargs...,
         input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
         input_space = :space, output_space = :markerspace,
-        apply_transform = true, apply_clip_planes = true
+        apply_model = true, apply_clip_planes = true
     )
 end
 

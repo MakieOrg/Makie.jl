@@ -20,7 +20,11 @@ to allow clip space clipping to happen elsewhere.)
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_transform_func = apply_transform` controls whether `transform_func` is applied.
+- `apply_float32convert = apply_transform` controls whether `float32convert` is applied.
+- `apply_model = apply_transform` controls whether the `model` matrix is applied.
 - `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
 """
 function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
@@ -40,29 +44,37 @@ function register_projected_positions!(
         output_name::Symbol = Symbol(output_space, :_, input_name),
         yflip::Bool = false,
         apply_transform::Bool = input_space === :space,
+        apply_transform_func::Bool = apply_transform,
+        apply_float32convert::Bool = apply_transform,
+        apply_model::Bool = apply_transform,
         apply_clip_planes::Bool = false,
     ) where {OT <: VecTypes}
 
     # Handle transform function + f32c
-    if apply_transform
+    if apply_transform_func
         register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
-        if is_data_space(output_space)
-            # Pipeline will apply f32c if the input space is data space, so we
-            # should avoid it here. TODO: also dynamically
-            transformed_f32c_name = transformed_name
-        else
-            register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
-        end
     else
-        transformed_f32c_name = input_name
+        transformed_name = input_name
     end
 
-    register_positions_projected!(
-        scene_graph, plot_graph, OT;
-        input_space, output_space,
-        input_name = transformed_f32c_name, output_name,
-        yflip, apply_transform, apply_clip_planes
-    )
+    if apply_float32convert && !is_data_space(output_space)
+        register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
+    else
+        # Pipeline will apply f32c if the input space is data space, so we
+        # should avoid it here. TODO: also dynamically
+        transformed_f32c_name = transformed_name
+    end
+
+    if apply_model || (input_space !== output_space) || yflip
+        register_positions_projected!(
+            scene_graph, plot_graph, OT;
+            input_space, output_space,
+            input_name = transformed_f32c_name, output_name,
+            yflip, apply_model, apply_clip_planes
+        )
+    else
+        alias!(plot_graph, output_name, input_name)
+    end
 
     return getindex(plot_graph, output_name)
 end
@@ -73,16 +85,17 @@ end
 Register projected positions for the given plot starting from transformed space.
 
 Note that this does not apply `transform_func` or `float32convert`. The input
-positions are assumed to already be transformed. `model` is still applied if
-`apply_transform == true`.
+positions are assumed to already be transformed. `model_f32c`/`model` is still applied if
+`apply_model == true`.
 
 ## Keyword Arguments:
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
-- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_model = input_space === :space` controls whether the model matrix is applied.
 - `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
 """
 function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
@@ -99,7 +112,7 @@ function register_positions_projected!(
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
-        apply_transform::Bool = input_space === :space,
+        apply_model::Bool = input_space === :space,
         apply_clip_planes::Bool = !is_data_space(output_space)
     ) where {OT <: VecTypes}
 
@@ -114,7 +127,7 @@ function register_positions_projected!(
         names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
         inputs = Symbol[merged_matrix_name, input_name]
         if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
-            push!(inputs, ifelse(apply_transform, :model_clip_planes, :clip_planes))
+            push!(inputs, ifelse(apply_model, :model_clip_planes, :clip_planes))
             input_space === :space && push!(inputs, :space)
         end
         if names != inputs
@@ -136,7 +149,7 @@ function register_positions_projected!(
 
     push!(inputs, projection_matrix_name)
     # in data space f32c is not applied and we should use the plain model matrix
-    apply_transform && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
+    apply_model && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
 
     # merge/create projection related matrices
     combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
@@ -150,7 +163,7 @@ function register_positions_projected!(
     if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
         # easiest to transform them to the space of the projection input and
         # clip based on those points
-        if apply_transform
+        if apply_model
             register_model_clip_planes!(plot_graph)
             clip_planes_name = :model_clip_planes
         else
