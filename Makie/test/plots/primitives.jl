@@ -95,3 +95,13 @@ end
     @test sc.colorrange[] == Vec2f(2, 7)
     @test sc.colormap[] == :jet
 end
+
+@recipe MaybeDict (data,) begin
+    arg = nothing
+end
+function Makie.plot!(p::MaybeDict)
+    scatter!(p, p[:data])
+end
+@testset "Pass dict to recipe" begin
+    @test_nowarn maybedict(rand(3); arg=Dict(1=>"a",2=>"b")) # conversion error
+end
