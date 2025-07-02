@@ -473,9 +473,7 @@ function default_attribute(user_attributes, (key, value))
             return merge(value, Attributes(pairs(user_attributes[key])))
         else
             val = user_attributes[key]
-            if val isa Union{NamedTuple, Dict}
-                return Attributes(val)
-            end
+            val isa NamedTuple && return Attributes(val)
             return val
         end
     elseif value isa AttributeMetadata
