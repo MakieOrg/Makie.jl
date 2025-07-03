@@ -183,6 +183,10 @@ function draw_plot_as_image(scene::Scene, screen::Screen{RT}, primitive::Plot, s
     return
 end
 
+function draw_atomic(::Scene, ::Screen, x::PlotList)
+    return nothing # PlotLists are special, and empty plots
+end
+
 function draw_atomic(::Scene, ::Screen, x)
     return @warn "$(typeof(x)) is not supported by cairo right now"
 end

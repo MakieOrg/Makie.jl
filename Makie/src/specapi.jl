@@ -90,8 +90,8 @@ struct GridLayoutSpec
     tellwidth::Bool
     halign::Float64
     valign::Float64
-    xaxislinks::Vector{BlockSpec}
-    yaxislinks::Vector{BlockSpec}
+    xaxislinks::Vector{Vector{BlockSpec}}
+    yaxislinks::Vector{Vector{BlockSpec}}
 
     function GridLayoutSpec(
             content::AbstractVector{<:Pair};
@@ -104,8 +104,8 @@ struct GridLayoutSpec
             tellwidth::Bool = true,
             halign::Union{Symbol, Real} = :center,
             valign::Union{Symbol, Real} = :center,
-            xaxislinks = BlockSpec[],
-            yaxislinks = BlockSpec[],
+            xaxislinks = Vector{BlockSpec}[],
+            yaxislinks = Vector{BlockSpec}[],
         )
         rowspan, colspan = foldl(content; init = (1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
             return rangeunion(rows, _rows), rangeunion(cols, _cols)
@@ -133,6 +133,9 @@ struct GridLayoutSpec
         halign = GridLayoutBase.halign2shift(halign)
         valign = GridLayoutBase.valign2shift(valign)
 
+        to_nested(v::AbstractVector{BlockSpec}) = Vector{BlockSpec}[v]
+        to_nested(v::AbstractVector{<:AbstractVector{<:BlockSpec}}) = v
+
         return new(
             content,
             (nrows, ncols),
@@ -146,8 +149,8 @@ struct GridLayoutSpec
             tellwidth,
             halign,
             valign,
-            xaxislinks,
-            yaxislinks,
+            to_nested(xaxislinks),
+            to_nested(yaxislinks),
         )
     end
 end
@@ -524,6 +527,8 @@ plots[] = [
 @recipe(PlotList, plotspecs) do scene
     Attributes()
 end
+
+is_atomic_plot(plot::PlotList) = false # is never atomic
 
 function Base.propertynames(pl::PlotList)
     inner_pnames = if length(pl.plots) == 1
@@ -910,21 +915,27 @@ function update_axis_links!(gridspec, all_layoutables)
         end
     end
 
-    xlinked = Set(map(x -> axes[x], gridspec.xaxislinks))
-    ylinked = Set(map(x -> axes[x], gridspec.yaxislinks))
-
     for (spec, ax) in axes
-        if spec in gridspec.xaxislinks
-            replace_links!(ax.xaxislinks, filter(x -> x !== ax, xlinked))
-        else
-            empty!(ax.xaxislinks)
-        end
-        if spec in gridspec.yaxislinks
-            replace_links!(ax.yaxislinks, filter(x -> x !== ax, ylinked))
-        else
-            empty!(ax.yaxislinks)
+        empty!(ax.xaxislinks)
+        empty!(ax.yaxislinks)
+    end
+
+    for linkgroup in gridspec.xaxislinks
+        for linked in linkgroup
+            append!(axes[linked].xaxislinks, [axes[spec] for spec in linkgroup])
         end
     end
+    for linkgroup in gridspec.yaxislinks
+        for linked in linkgroup
+            append!(axes[linked].yaxislinks, [axes[spec] for spec in linkgroup])
+        end
+    end
+
+    for (spec, ax) in axes
+        unique!(ax.xaxislinks)
+        unique!(ax.yaxislinks)
+    end
+
     return
 end
 

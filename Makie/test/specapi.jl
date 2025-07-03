@@ -257,3 +257,59 @@ end
     vals = Makie.convert_dim_value.((ax.dim2_conversion[],), xvals)
     @test last.(pl.converted[][1]) == vals[sortperm(xvals)] # sorted by ENUM value
 end
+
+@testset "axis links" begin
+    axisspecs = [S.Axis(title = "$i,$j", plots = [S.Scatter((i .+ j) .+ (1:3), (i .+ j) .+ (1:3))]) for i in 1:2, j in 1:2]
+
+    x_eachrow = Observable(true)
+    gridspec = lift(x_eachrow) do x_eachrow
+        S.GridLayout(axisspecs, xaxislinks = (x_eachrow ? eachrow : eachcol)(axisspecs), yaxislinks = (x_eachrow ? eachcol : eachrow)(axisspecs))
+    end
+
+    fig, _ = plot(gridspec)
+
+    axes = [content(fig[i, j]) for i in 1:2, j in 1:2]
+    for v in eachrow(axes)
+        @test all(v) do ax
+            Set(ax.xaxislinks) == Set(v)
+        end
+    end
+    for v in eachcol(axes)
+        @test all(v) do ax
+            Set(ax.yaxislinks) == Set(v)
+        end
+    end
+
+    x_eachrow[] = false
+
+    # now the links are flipped
+
+    for v in eachcol(axes)
+        @test all(v) do ax
+            Set(ax.xaxislinks) == Set(v)
+        end
+    end
+    for v in eachrow(axes)
+        @test all(v) do ax
+            Set(ax.yaxislinks) == Set(v)
+        end
+    end
+
+    # test single vector as well
+
+    axisspecs2 = [S.Axis(title = "$i,$j", plots = [S.Scatter((i .+ j) .+ (1:3), (i .+ j) .+ (1:3))]) for i in 1:2, j in 1:2]
+    gridspec2 = S.GridLayout(axisspecs2, xaxislinks = first(eachrow(axisspecs2)), yaxislinks = first(eachcol(axisspecs2)))
+    fig, _ = plot(gridspec2)
+    axes2 = [content(fig[i, j]) for i in 1:2, j in 1:2]
+
+    for (i, v) in enumerate(eachrow(axes2))
+        @test all(v) do ax
+            Set(ax.xaxislinks) == (i == 1 ? Set(v) : Set([]))
+        end
+    end
+    for (i, v) in enumerate(eachcol(axes2))
+        @test all(v) do ax
+            Set(ax.yaxislinks) == (i == 1 ? Set(v) : Set([]))
+        end
+    end
+end

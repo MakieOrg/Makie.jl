@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
+
+## [0.24.2] - 2025-06-27
+
+- Bring back some default attributes for recipes [#5130](https://github.com/MakieOrg/Makie.jl/pull/5130).
+- Allow multiple separate link groups in `xaxislinks` and `yaxislinks` arguments of `SpecApi.GridLayout` so that facet layouts can have independently linked columns and rows [#5127](https://github.com/MakieOrg/Makie.jl/pull/5127).
+
 ## [0.24.1] - 2025-06-24
 
 - Don't pull plots from invisible scenes and hide Blocks during construction [#5119](https://github.com/MakieOrg/Makie.jl/pull/5119).
@@ -883,7 +890,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...HEAD
+[0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...v0.23.0
