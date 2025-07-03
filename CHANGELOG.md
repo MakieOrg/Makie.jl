@@ -4,6 +4,7 @@
 
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
 - Fixed h/vlines and h/vspan not considering transform functions correctly. [#5145](https://github.com/MakieOrg/Makie.jl/pull/5145)
+- Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
 
 ## [0.24.2] - 2025-06-27

@@ -64,7 +64,8 @@ end
 # ComputeEdge with InputFunctionWrapper which drops changed and cached
 # from add_input!(f, key, ::Computed)
 function get_callback_info(f::InputFunctionWrapper, inputs, outputs)
-    return f.user_func, (Symbol, typeof(inputs1[1]))
+    # if the edge isn't initialized inputs fall back onto NamedTuple()
+    return f.user_func, (Symbol, length(inputs) > 0 ? typeof(inputs[1]) : Any)
 end
 
 # Input with InputFunctionWrapper adding Symbol to the callback
@@ -372,6 +373,11 @@ function trace_error(io::IO, edge::Input, marked = nothing)
     return
 end
 
+"""
+    show_inputs(node)
+
+Traces and prints all recursive inputs to a node.
+"""
 show_inputs(node::Computed) = show_inputs(stdout, node)
 function show_inputs(io::IO, node::Computed, tab = 0)
     println(io, "    "^tab, node)

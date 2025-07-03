@@ -179,3 +179,33 @@ The result gets passed to the `Float32Convert`, which updates its linear transfo
 The projection matrices are then derived from the safe limits.
 At this point the linear transformation of the Float32Convert exists just before `view`.
 If possible, it is permuted with `model` so that the model matrix can processed by the graphics API, i.e. on the GPU.
+
+
+## [Projecting in Recipes](@id pipeline_recipe_projections)
+
+As of Makie 0.24.3 the function `register_projected_positions!()` can be used to project point-like data that exists in a plot.
+
+````@docs
+register_projected_position!
+```
+
+The most common cases are that you either want to project positions to pixel space, e.g. to mix in attributes that apply in pixel space, or apply the transform_func as it is a potentially non-linear transform.
+
+To project to pixel space you can simply call `register_projected_positions!(plot, input_name = ...)`.
+For this positions need to exist as a compute node and their name needs to be passed as `input_name`.
+If your positions are an observable you can add them to the compute graph with `Makie.add_input!(plot.attributes, name, observable)`.
+The function will then step through the whole transformation-projection pipeline, applying `transform_func`, `float32convert`, `model` and a `plot.space -> :pixel` projection matrix.
+The final output is written to a node with the name `Symbol(:pixel_, input_name)`, which can be addressed in `map!()` afterwards.
+The node is also returned.
+
+If you just want to apply `transform_func` you can turn off all the other steps by setting the appropriate keyword arguments.
+```julia
+register_projected_positions!(
+    plot, input_name = ...,
+    apply_transform = false, # turn off model, transform_func, float32convert
+    apply_transform_func = true, # turn transform_func back on
+    output_space = :space # turn off projections
+)
+```
+Alternatively you can also call `Makie.register_positions_transformed!(plot, input_name = ..., output_name = ...)`.
+
