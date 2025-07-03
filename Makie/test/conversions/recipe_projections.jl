@@ -1,10 +1,10 @@
 using ComputePipeline
 
 @testset "Recipe projections" begin
-    f,a,p = scatter(1:10, 1000000 .+ (1:10), axis = (xscale = log10,));
+    f, a, p = scatter(1:10, 1000000 .+ (1:10), axis = (xscale = log10,))
     Makie.update_state_before_display!(f)
 
-    scene = a.scene;
+    scene = a.scene
     @test !Makie.is_identity_transform(scene.float32convert)
 
     function run_checks(name, values, nodes_added; kwargs...)
@@ -33,10 +33,11 @@ using ComputePipeline
     )
 
     for space in [:pixel, :clip, :relative]
+        # explicit so we indirectly test _project too
         pv = Makie.get_space_to_space_matrix(scene, :data, space)
         projected = map(p.positions_transformed_f32c[]) do pos
             p4d = pv * to_ndim(Point4f, to_ndim(Point3f, pos, 0), 1)
-            return p4d[Vec(1,2,3)] / p4d[4]
+            return p4d[Vec(1, 2, 3)] / p4d[4]
         end
 
         # Nodes added: dynamic matrix name, camera matrix, combined matrix, output
