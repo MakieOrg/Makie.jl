@@ -121,16 +121,21 @@ convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), p
 convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
-function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point3}}})
-    # from call pattern (::Vector, ::Vector, ::Matrix)
-    map!(x -> (Point2.(ps), last.(ps)), p, :converted_1, [:positions, :extracted_colors])
-    voronoiplot!(p, p.attributes, p.positions, color = p.extracted_colors)
-    return p
-end
+function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
 
-function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
+    if N == 3
+        # from call pattern (::Vector, ::Vector, ::Matrix)
+        map!(ps -> (Point2.(ps), last.(ps)), p, :converted_1, [:positions, :extracted_colors])
+        positions = :positions
+        color = :extracted_colors
+    else
+        # from xs, ys or Points call pattern
+        positions = :converted_1
+        color = :color
+    end
+
     # Handle transform_func early so tessellation is in cartesian space.
-    map!(p, [:transform_func, :converted_1, :smooth], :vorn) do tf, ps, smooth
+    map!(p, [:transform_func, positions, :smooth], :vorn) do tf, ps, smooth
         transformed = Makie.apply_transform(tf, ps)
         tri = DelTri.triangulate(transformed, randomise = false)
         vorn = DelTri.voronoi(tri, clip = smooth, smooth = smooth, randomise = false)
@@ -140,7 +145,7 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
     # Default to circular clip for polar transformed data
     map!(
         p,
-        [:clip, :unbounded_edge_extension_factor, :transform_func, :converted_1],
+        [:clip, :unbounded_edge_extension_factor, :transform_func, positions],
         :computed_clip
     ) do bb, ext, tf, ps
         if bb === automatic && tf isa Polar
@@ -151,10 +156,13 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
         end
     end
 
-    return voronoiplot!(p, Attributes(p), p.vorn, transformation = :inherit_model, clip = p.computed_clip)
+    return voronoiplot!(
+        p, Attributes(p), p.vorn, transformation = :inherit_model,
+        color = getindex(p, color), clip = p.computed_clip
+    )
 end
 
-function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point2}}})
+function data_limits(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}})
     if transform_func(p) isa Polar
         # Because the Polar transform is handled explicitly we cannot rely
         # on the default data_limits. (data limits are pre transform)
