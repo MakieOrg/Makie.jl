@@ -396,6 +396,13 @@ function register_camera_matrix!(
 
     haskey(plot_graph, matrix_name) && return matrix_name
 
+    if input === output # catch space -> space here
+        if !haskey(plot_graph, :identity_matrix)
+            ComputePipeline.add_constant!(plot_graph, :identity_matrix, Mat4f(I))
+        end
+        return :identity_matrix
+    end
+
     # These already exist
     if haskey(plot_graph, :markerspace) && matrix_name === :space_to_markerspace
         haskey(plot_graph, :preprojection) || _register_common_camera_matrices!(plot_graph, scene_graph)
@@ -417,7 +424,7 @@ function register_camera_matrix!(
     if isconst(_input) && isconst(_output)
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
-        add_input!(plot_graph, matrix_name, scene_graph[:matrix_name])
+        add_input!(plot_graph, matrix_name, scene_graph[matrix_name])
         return matrix_name
     end
 
