@@ -860,10 +860,6 @@ end
 function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outputs)
     e1 = attr.outputs[outputs[1]].parent
 
-    if length(inputs) != length(e1.inputs)
-        error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
-    end
-
     if !all(attr.outputs[k].parent == e1 for k in outputs)
         # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
         error("Cannot register computation: $outputs already have multiple parent compute edges.")
@@ -876,25 +872,6 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
         error(
             "Cannot register computation: The outputs already have a parent compute edge using " *
                 "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
-        )
-    end
-    # We can not rely on e1.inputs.name here because name can be different
-    # from the key in attr.outputs
-    inputs_to_verify = Set(e1.inputs)
-    for input in inputs
-        if input in inputs_to_verify
-            delete!(inputs_to_verify, input)
-        else
-            error(
-                "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                    "that uses a different set of inputs. (Failed to find $input in existing)"
-            )
-        end
-    end
-    if !isempty(inputs_to_verify)
-        error(
-            "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                "that uses a different set of inputs. (Given outputs exclude $inputs_to_verify.)"
         )
     end
 
@@ -914,13 +891,27 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     @if_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
-        existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
-        if length(existing) == 0
+        N_existing = count(k -> haskey(attr.outputs, k) && hasparent(attr.outputs[k]), outputs)
+        if N_existing == 0
             # fine, we won't be overwriting an edge
-        elseif length(existing) != length(outputs)
+        elseif N_existing != length(outputs)
+            existing = [k for k in outputs if haskey(attr.outputs, k) && hasparent(attr.outputs[k])]
             combined = join(existing, ", ")
             error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
+
+            e = attr.outputs[outputs[1]].parent
+
+            if length(e.inputs) != length(inputs)
+                error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
+            elseif e.inputs != inputs
+                missmatched = [old.name => new.name for (old, new) in zip(e.inputs, inputs) if old !== new]
+                error(
+                    "Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                        "that uses a different set of inputs. Missmatched inputs: $missmatched (existing, new)"
+                )
+            end
+
             @if_enabled(is_same_computation(f, attr, inputs, outputs))
             # edge already exists so we can return
             return
@@ -982,22 +973,22 @@ map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
 """
-function Base.map!(f, attr::ComputeGraph, input::Symbol, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Symbol, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
+- Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
 
 ## [0.24.2] - 2025-06-27
 
