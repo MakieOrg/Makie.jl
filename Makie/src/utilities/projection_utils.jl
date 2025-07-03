@@ -22,7 +22,7 @@ to allow clip space clipping to happen elsewhere.)
 - `apply_transform_func = apply_transform` controls whether `transform_func` is applied.
 - `apply_float32convert = apply_transform` controls whether `float32convert` is applied.
 - `apply_model = apply_transform` controls whether the `model` matrix is applied.
-- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
 
 Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
@@ -96,7 +96,7 @@ positions are assumed to already be transformed. `model_f32c`/`model` is still a
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `apply_model = input_space === :space` controls whether the model matrix is applied.
-- `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
 
 Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
@@ -118,7 +118,7 @@ function register_positions_projected!(
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
         apply_model::Bool = input_space === :space,
-        apply_clip_planes::Bool = !is_data_space(output_space)
+        apply_clip_planes::Bool = false
     ) where {OT <: VecTypes}
 
     # Connect necessary projection matrix from scene
