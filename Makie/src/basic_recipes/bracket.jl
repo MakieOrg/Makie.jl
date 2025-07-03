@@ -79,7 +79,7 @@ function plot!(pl::Bracket)
         end
     end
 
-    map!((a,b) -> a .* b, pl, [:pixel_directions, :realtextoffset], :finaltextoffset)
+    map!((a, b) -> a .* b, pl, [:pixel_directions, :realtextoffset], :finaltextoffset)
 
     map!(
         pl,

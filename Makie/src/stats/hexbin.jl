@@ -70,7 +70,7 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         r = Rect2(xy)
         low = prevfloat.(minimum(r))
         high = nextfloat.(maximum(r))
-        return Rect2d(low, high-low)
+        return Rect2d(low, high - low)
     end
 
     map!(

@@ -1,4 +1,3 @@
-
 """
     register_projected_positions!(plot[, output_type = Point3f]; kwargs...)
 
@@ -196,7 +195,7 @@ function register_model_clip_planes!(attr, modelname = :model_f32c)
 end
 
 function register_f32c_matrix!(attr)
-    map!(attr, :f32c, :f32c_matrix)
+    return map!(attr, :f32c, :f32c_matrix)
 end
 
 ################################################################################
@@ -214,7 +213,7 @@ Computes the angle between the `(1, 0)` direction and `p2 - p1`. z values are
 ignored. The result is in [-π, π].
 """
 angle2d(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
-angle2d(p1::VecTypes, p2::VecTypes) = angle2d(p1[Vec(1,2)], p2[Vec(1,2)])
+angle2d(p1::VecTypes, p2::VecTypes) = angle2d(p1[Vec(1, 2)], p2[Vec(1, 2)])
 
 @deprecate angle(p1, p2) angle2d(p1, p2) false
 
@@ -241,7 +240,7 @@ Note that this computes projections to correctly deal with transformations.
 - `rotation_transform = identity` A transformation that is applied to angles before outputting them. E.g. `to_upright_angle`.
 """
 function register_projected_rotations_2d!(@nospecialize(plot::Plot); kwargs...)
-    register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
+    return register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
 end
 function register_projected_rotations_2d!(
         scene_graph::ComputeGraph, plot_graph::ComputeGraph;

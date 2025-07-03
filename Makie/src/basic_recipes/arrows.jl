@@ -109,9 +109,9 @@ function mixin_arrow_attributes()
         - `align = :tail` or `align = 0` places the arrow tail at the given position. This makes the arrow point away from that position.
         - `align = :center` or `align = 0.5` places the arrow center (based on its total length) at the given position
         - `align = :tip` or `align = 1.0` places the tip of the arrow at the given position. This makes the arrow point to that position.
-
+        
         Values outside of (0, 1) can also be used to create gaps between the arrow and its anchor position.
-
+        
         With `argmode = :endpoint` alignment is not relative to the first argument passed to arrows.
         Instead the given fraction of the arrow marker is aligned to the fraction between the start
         and end point of the arrow. So `align = :center` will align the center of the arrow marker

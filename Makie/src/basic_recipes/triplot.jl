@@ -212,7 +212,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
         return scatter_points
     end
 
-    map!(p,[:ghost_edge_extension_factor, :bounding_box, :triangles], :ghost_edges) do extent, bbox, tri
+    map!(p, [:ghost_edge_extension_factor, :bounding_box, :triangles], :ghost_edges) do extent, bbox, tri
         get_triangulation_ghost_edges!(ghost_edges, extent, tri, bbox)
         return ghost_edges
     end
