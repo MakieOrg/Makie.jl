@@ -20,7 +20,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     color = nothing
     """
     Controls the number and location of the contour lines. Can be either
-    
+
     - an `Int` that produces n equally wide levels or bands
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """

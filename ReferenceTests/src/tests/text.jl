@@ -467,9 +467,9 @@ end
         text = rich(
             rich("test", font = :bold),
             """
-            
+
             more
-            
+
             """
         );
         markerspace = :data,

@@ -28,7 +28,7 @@ Plots the given text(s) with a background(s) at the given position(s).
     Sets the dash pattern of the outline. Options are `:solid` (equivalent to `nothing`), `:dot`, `:dash`, `:dashdot` and `:dashdotdot`.
     These can also be given in a tuple with a gap style modifier, either `:normal`, `:dense` or `:loose`.
     For example, `(:dot, :loose)` or `(:dashdot, :dense)`.
-    
+
     For custom patterns have a look at [`Makie.Linestyle`](@ref).
     """
     linestyle = nothing
