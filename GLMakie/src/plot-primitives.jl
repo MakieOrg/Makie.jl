@@ -2,11 +2,15 @@ using Makie: FastPixel
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
 
+# PlotList can "become" atomic if no plots are inserted
+# In that case, we should simply not draw it!
+draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
+
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    return if isempty(x.plots) # if no plots inserted, this truly is an atomic
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     elseif x isa Text
         draw_atomic(screen, scene, x)
@@ -16,6 +20,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
             insert!(screen, scene, x)
         end
     end
+    return
 end
 
 using Makie.ComputePipeline
