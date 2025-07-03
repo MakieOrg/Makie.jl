@@ -13,7 +13,7 @@ to allow clip space clipping to happen elsewhere.)
 
 ## Keyword Arguments:
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
-- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `input_name = :positions` sets the source positions which will be projected.
 - `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after the `transform_func` is applied.
 - `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
@@ -24,6 +24,9 @@ to allow clip space clipping to happen elsewhere.)
 - `apply_model = apply_transform` controls whether the `model` matrix is applied.
 - `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
+
+Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
+[`register_positions_transformed_f32c!`](@ref), [`register_projected_rotations_2d!`](@ref)
 """
 function register_projected_positions!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_projected_positions!(parent_scene(plot), plot, OT; kwargs...)
@@ -36,7 +39,7 @@ function register_projected_positions!(
         plot_graph::ComputePipeline.ComputeGraph,
         ::Type{OT} = Point3f;
         input_space::Symbol = :space,
-        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        output_space::Symbol = :pixel,
         input_name::Symbol = :positions,
         transformed_name::Symbol = Symbol(input_name, :_transformed),
         transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
@@ -89,12 +92,15 @@ positions are assumed to already be transformed. `model_f32c`/`model` is still a
 
 ## Keyword Arguments:
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
-- `output_space = :clip` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `input_name = :positions_transformed_f32c` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, positions)` sets the name of the projected positions.
 - `apply_model = input_space === :space` controls whether the model matrix is applied.
 - `apply_clip_planes = !is_data_space(output_space)` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
+
+Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
+[`register_positions_transformed_f32c!`](@ref), [`register_projected_positions!`](@ref)
 """
 function register_positions_projected!(@nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_positions_projected!(parent_scene(plot), plot, OT; kwargs...)
@@ -107,7 +113,7 @@ function register_positions_projected!(
         plot_graph::ComputePipeline.ComputeGraph,
         ::Type{OT} = Point3f;
         input_space::Symbol = :space,
-        output_space::Symbol = :clip, # TODO: would :pixel be more useful?
+        output_space::Symbol = :pixel,
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
         yflip::Bool = false,
