@@ -125,23 +125,6 @@ function register_positions_projected!(
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
     merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
 
-    # TODO: Names may collide and ComputePipeline doesn't check strictly enough
-    # by default to catch this...
-    if haskey(plot_graph, output_name)
-        node = getindex(plot_graph, output_name)
-        names = map(n -> n.name, node.parent.inputs::Vector{ComputePipeline.Computed})
-        inputs = Symbol[merged_matrix_name, input_name]
-        if apply_clip_planes && (is_data_space(input_space) || input_space === :space)
-            push!(inputs, ifelse(apply_model, :model_clip_planes, :clip_planes))
-            input_space === :space && push!(inputs, :space)
-        end
-        if names != inputs
-            error("Could not register $output_name - already exists with different inputs: \nold:   $names\nnew   $inputs")
-        else
-            return getindex(plot_graph, output_name)
-        end
-    end
-
     # connect resolution for yflip (Cairo) and model matrix if requested
     inputs = Symbol[]
     if yflip
