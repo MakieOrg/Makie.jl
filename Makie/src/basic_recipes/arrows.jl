@@ -328,11 +328,9 @@ function _get_arrow_shape(polylike, length, width, metrics)
     return mesh
 end
 
-function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
-    for i in eachindex(m.position)
-        m.position[i] = origin + R * (m.position[i] .+ (offset, 0))
-    end
-    return
+function _apply_arrow_transform(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
+    ps = [origin + to_ndim(Point3f, R * (p .+ (offset, 0)), 0) for p in coordinates(m)]
+    return GeometryBasics.mesh(m, position = ps, pointtype = Point3f)
 end
 
 function Makie.plot!(plot::Arrows2D)
@@ -344,14 +342,14 @@ function Makie.plot!(plot::Arrows2D)
 
     # TODO: Doesn't dropping the third dimension here break z order?
     register_projected_positions!(
-        plot, Point2f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
+        plot, Point3f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
     )
     register_projected_positions!(
-        plot, Point2f, input_name = :endpoints, output_name = :pixel_endpoints, output_space = :pixel
+        plot, Point3f, input_name = :endpoints, output_name = :pixel_endpoints, output_space = :pixel
     )
 
     map!(plot, [:pixel_startpoints, :pixel_endpoints], :pixel_directions) do startpoints, endpoints
-        return endpoints .- startpoints
+        return Point2f.(endpoints) .- Point2f.(startpoints)
     end
 
     map!(
@@ -412,8 +410,7 @@ function Makie.plot!(plot::Arrows2D)
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
                 mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics[i])
-                _apply_arrow_transform!(mesh, R, startpoint, offset)
-                push!(meshes, mesh)
+                push!(meshes, _apply_arrow_transform(mesh, R, startpoint, offset))
 
                 offset += len
             end
