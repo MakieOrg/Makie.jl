@@ -185,7 +185,7 @@ If possible, it is permuted with `model` so that the model matrix can processed 
 
 As of Makie 0.24.3 the function `register_projected_positions!()` can be used to project point-like data that exists in a plot.
 
-````@docs
+```@docs
 register_projected_position!
 ```
 
@@ -199,6 +199,7 @@ The final output is written to a node with the name `Symbol(:pixel_, input_name)
 The node is also returned.
 
 If you just want to apply `transform_func` you can turn off all the other steps by setting the appropriate keyword arguments.
+
 ```julia
 register_projected_positions!(
     plot, input_name = ...,
@@ -207,5 +208,6 @@ register_projected_positions!(
     output_space = :space # turn off projections
 )
 ```
+
 Alternatively you can also call `Makie.register_positions_transformed!(plot, input_name = ..., output_name = ...)`.
 
