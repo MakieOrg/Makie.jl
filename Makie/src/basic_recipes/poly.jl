@@ -50,7 +50,7 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         space = plot.space,
         depth_shift = plot.depth_shift
     )
-    return wireframe!(
+    wireframe!(
         plot, plot[1],
         color = plot.strokecolor, linestyle = plot.linestyle, space = plot.space,
         linewidth = plot.strokewidth, linecap = plot.linecap,
@@ -58,6 +58,7 @@ function plot!(plot::Poly{<:Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}
         inspectable = plot.inspectable, transparency = plot.transparency,
         colormap = plot.strokecolormap, depth_shift = plot.stroke_depth_shift
     )
+    return plot
 end
 
 # Poly conversion
@@ -155,12 +156,10 @@ function to_lines(polygon::AbstractVector{<:VecTypes{N}}) where {N}
 end
 
 function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<:PolyElements}}}})
-    geometries = plot.polygon
-    transform_func = plot.transformation.transform_func
-    meshes = lift(poly_convert, plot, geometries, transform_func)
+    map!(poly_convert, plot, [:polygon, :transform_func], :meshes)
 
     mesh!(
-        plot, meshes;
+        plot, plot.meshes;
         visible = plot.visible,
         shading = plot.shading,
         color = plot.color,
@@ -179,9 +178,9 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         depth_shift = plot.depth_shift
     )
 
-    outline_idxs = lift(to_lines, plot, geometries)
-    stroke = lift(plot, outline_idxs, plot.strokecolor) do (outline, increment_at), sc
-        if !(meshes[] isa Mesh) && meshes[] isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes[])
+    map!(to_lines, plot, :polygon, [:outline, :increment_at])
+    map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
+        if !(meshes isa Mesh) && meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
             mesh_idx = 1
             return map(eachindex(outline)) do point_idx
                 if point_idx == increment_at[mesh_idx]
@@ -194,8 +193,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
         end
     end
     return lines!(
-        plot, lift(first, outline_idxs), visible = plot.visible,
-        color = stroke, linestyle = plot.linestyle, alpha = plot.alpha,
+        plot, plot.outline, visible = plot.visible,
+        color = plot.computed_strokecolor, linestyle = plot.linestyle, alpha = plot.alpha,
         colormap = plot.strokecolormap,
         linewidth = plot.strokewidth, linecap = plot.linecap,
         joinstyle = plot.joinstyle, miter_limit = plot.miter_limit,

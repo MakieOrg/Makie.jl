@@ -486,7 +486,7 @@ function add_uv_mesh!(attr)
                 return (faces, uv, grid_ps)
             end
         end
-        Makie.register_position_transforms!(attr, :wgl_positions)
+        Makie.register_position_transforms!(attr, input_name = :wgl_positions, transformed_name = :positions_transformed)
     else
         _rect = Rect2f(0, 0, 1, 1)
         add_constant!(attr, :faces, decompose(GLTriangleFace, _rect))
