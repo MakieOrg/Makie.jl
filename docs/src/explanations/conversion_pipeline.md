@@ -186,7 +186,7 @@ If possible, it is permuted with `model` so that the model matrix can processed 
 As of Makie 0.24.3 the function `register_projected_positions!()` can be used to project point-like data that exists in a plot.
 
 ```@docs
-register_projected_position!
+register_projected_positions!
 ```
 
 The most common cases are that you either want to project positions to pixel space, e.g. to mix in attributes that apply in pixel space, or apply the transform_func as it is a potentially non-linear transform.
