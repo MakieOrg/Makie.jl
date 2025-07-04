@@ -82,4 +82,10 @@
             @test p3.color[] == palette_colors[3]
         end
     end
+
+    @testset "`default_attribute` with Attributes containing Attributes" begin
+        foo = Attributes(; bar = 1)
+        @test propertynames(foo) == (:bar,)
+        @test Dict(Makie.default_attribute(Attributes(; foo), (:foo, Attributes()))) == Dict(foo)
+    end
 end
