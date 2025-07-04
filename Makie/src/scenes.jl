@@ -138,6 +138,7 @@ mutable struct Scene <: AbstractScene
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
+        add_input!((k, v) -> Ref{Any}(v), scene.compute, :transform_func, transformation.transform_func)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true

@@ -48,9 +48,8 @@ function Makie.plot!(p::Union{HLines, VLines})
     mi = p isa HLines ? (:xmin) : (:ymin)
     ma = p isa HLines ? (:xmax) : (:ymax)
     add_axis_limits!(p)
-    map!(p.attributes, [:axis_limits, :converted_1, mi, ma, :transform_func], :points) do _lims, vals, mi, ma, transf
+    map!(p.attributes, [:axis_limits_transformed, :converted_1, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
         points = Point2d[]
-        lims = apply_transform(transf, _lims)
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)
         broadcast_foreach(vals, mi, ma) do val, mi, ma
