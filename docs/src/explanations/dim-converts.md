@@ -61,6 +61,43 @@ f = Figure()
 ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
 
+#### Experimental DynamicQuantities support
+
+!!! warning
+    This feature might change outside breaking releases, since the API is not yet finalized
+
+Makie also provides support for [DynamicQuantities.jl](https://github.com/SymbolicML/DynamicQuantities.jl). This can used almost as a drop-in replacement for Unitful.jl, with the following key design differences:
+
+* There is no conversion support between Dates.jl and DynamicQuantities.jl objects. Use `1.0u"hr"` in place of `Dates.Hour(1.0)`, `1.0u"d"` in place of `Dates.day(1.0)`, etc.
+* Units are set by the first object plotted by default. This is to prevent unexpected changes to other units when plotting multiple objects on the same axis.
+* Units are displayed in SI be default. Use `us"<desired unit>"` (note the `s`) to explicitly set your desired units, either implicitly in a plot call or explicitly as a `dim_conversion` axis argument.
+
+Below are four common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
+
+```@figure dimconverts-dq
+    using CairoMakie, DynamicQuantities
+
+    # Implicitly define figure, axis, and units
+    f, ax, pl = scatter((100:100:1_000)us"cm")
+    scatter!(ax, (10:-1:1)u"m")
+
+    # Implicitly define axis and units
+    scatter(f[1, 2], (100:100:1_000)us"cm")
+    scatter!(f[1, 2], (10:-1:1)u"m")
+
+    # Explicitly define axis, implicitly define units
+    ax3 = Axis(f[1, 3])
+    scatter!(ax3, (100:100:1_000)us"cm") # The first plot sets the units
+    scatter!(ax3, (10:-1:1)u"m")
+
+    # Explicitly define axis and units
+    ax4 = Axis(f[1, 4]; dim2_conversion=Makie.DQConversion(us"cm"))
+    scatter!(ax4, (100:100:1_000)u"cm") # No need for us"cm" now
+    scatter!(ax4, (10:-1:1)u"m")
+
+    f
+```
+
 ### Limitations
 
 
@@ -75,6 +112,7 @@ ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```@docs
 Makie.CategoricalConversion
 Makie.UnitfulConversion
+Makie.DQConversion
 Makie.DateTimeConversion
 ```
 
