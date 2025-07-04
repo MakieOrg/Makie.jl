@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.24.3] - 2025-07-04
+
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
 - Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
 
@@ -891,7 +893,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...HEAD
+[0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...v0.24.0
