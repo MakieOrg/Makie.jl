@@ -367,9 +367,7 @@ end
 function register_text_computations!(attr::ComputeGraph)
     add_constant!(attr, :atlas, get_texture_atlas())
 
-    register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
-        return (to_font(fs, f),)
-    end
+    map!(to_font, attr, [:fonts, :font], :selected_font)
 
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
@@ -379,25 +377,25 @@ function register_text_computations!(attr::ComputeGraph)
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
-    register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
+    map!(attr, [:text_blocks, :positions], :text_positions) do blocks, pos
         if length(blocks) != length(pos)
             error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
         end
-        return ([p for (b, p) in zip(blocks, pos) for i in b],)
+        return [p for (b, p) in zip(blocks, pos) for i in b]
     end
 
-    register_computation!(attr, [:atlas, :glyphindices, :font_per_char], [:sdf_uv]) do (atlas, gi, fonts), changed, cached
-        return (glyph_uv_width!.((atlas,), gi, fonts),)
+    map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
+        return glyph_uv_width!.((atlas,), gi, fonts)
     end
 
-    register_computation!(attr, [:glyph_origins, :offset, :text_blocks], [:marker_offset]) do (origins, offset, blocks), changed, cached
-        return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r],)
+    map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
+        return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
-    register_computation!(
+    map!(
         attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
         [:quad_offset, :quad_scale]
-    ) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+    ) do atlas, gi, text_blocks, fonts, fontsize
 
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
