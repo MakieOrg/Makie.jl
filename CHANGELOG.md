@@ -4,6 +4,8 @@
 
 ## [0.24.3] - 2025-07-04
 
+- Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
+- Fix plot attributes with `Dict` as input [#5149](https://github.com/MakieOrg/Makie.jl/pull/5149).
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
 - Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
 
