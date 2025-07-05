@@ -103,10 +103,11 @@ function initialize_block!(t::Toggle)
                 animating[] = false
             end
         end
+        return
     end
 
     onmouseleftclick(mouseevents) do event
-       if animating[]
+        if animating[]
             return Consume(true)
         end
         animating[] = true
@@ -115,7 +116,7 @@ function initialize_block!(t::Toggle)
 
         perform_toggle_animation()
 
-        return Consume(true) 
+        return Consume(true)
     end
 
     on(t.active) do active
