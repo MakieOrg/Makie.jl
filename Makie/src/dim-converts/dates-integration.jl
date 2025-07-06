@@ -214,7 +214,7 @@ stepsizes(::Type{Day}) = [1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30]
 stepsizes(::Type{Hour}) = [1, 2, 3, 4, 5, 6, 12]
 stepsizes(::Type{Minute}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
 stepsizes(::Type{Second}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
-stepsizes(::Type{Millisecond}) = [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100, 200, 300, 400, 500]
+stepsizes(::Type{Millisecond}) = [1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 300, 400, 500]
 
 function _ticks(steptype::Type, start::DateTime, stop::DateTime, k_ideal::Int)
     start_ceiled = ceil(start, steptype)
