@@ -191,57 +191,76 @@ stepdiff(::Type{Year}, from, to) = year(to) - year(from)
 stepdiff(::Type{Month}, from, to) = 12 * stepdiff(Year, from, to) + (month(to) - month(from))
 stepdiff(T::Type{<:Union{Day,Hour,Minute,Second,Millisecond}}, from, to) = (to - from) / T(1)
 
-get_Q(::Type{<:Union{Year,Millisecond}}) = [(1.0, 1.0), (5.0, 0.9), (2.0, 0.7), (2.5, 0.5), (3.0, 0.2)] # Makie default
-get_Q(::Type{Month}) = [(12.0, 2.5), (6.0, 1.5), (3.0, 1.2), (2.0, 0.7), (1.0, 1.0)]
-get_Q(::Type{Day}) = [(7.0, 2.5), (5.0, 1.5), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
-get_Q(::Type{Hour}) = [(24.0, 2.5), (12.0, 1.5), (6.0, 1.0), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
-get_Q(::Type{<:Union{Minute,Second}}) = [(60.0, 2.5), (30.0, 1.7), (15.0, 1.5), (5.0, 1.0), (1.0, 1.0), (2.0, 0.7), (3.0, 0.2)]
 
 function locate_datetime_ticks(dtt::DateTimeTicks3, start::DateTime, stop::DateTime)
     k_ideal = dtt.k_ideal
-    k_min = something(dtt.k_min, max(1, floor(Int, k_ideal * 0.66)))
-    k_max = something(dtt.k_max, ceil(Int, k_ideal * 1.33))
     @assert stop > start
-    ticks = _ticks(Year, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Month, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Day, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Hour, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Minute, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Second, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    ticks = _ticks(Millisecond, start, stop; k_ideal, k_min, k_max)
-    ticks !== nothing && return ticks
-    fallback = start:Millisecond(1):stop
-    length(fallback) < dtt.k_max || error("Fallback in milliseconds was too long: $fallback")
-    return fallback
+    ticks_year, cost_year = _ticks(Year, start, stop, k_ideal)
+    ticks_month, cost_month = _ticks(Month, start, stop, k_ideal)
+    ticks_day, cost_day = _ticks(Day, start, stop, k_ideal)
+    ticks_hour, cost_hour = _ticks(Hour, start, stop, k_ideal)
+    ticks_minute, cost_minute = _ticks(Minute, start, stop, k_ideal)
+    ticks_second, cost_second = _ticks(Second, start, stop, k_ideal)
+    ticks_millisecond, cost_millisecond = _ticks(Millisecond, start, stop, k_ideal)
+
+    ticks = (ticks_year, ticks_month, ticks_day, ticks_hour, ticks_minute, ticks_second, ticks_millisecond)
+    costs = (cost_year, cost_month, cost_day, cost_hour, cost_minute, cost_second, cost_millisecond)
+    # for same costs, earlier (bigger) step is preferred
+    return ticks[argmin(costs)]
 end
 
-function _ticks(steptype, start::DateTime, stop::DateTime; k_ideal, k_min, k_max)
+stepsizes(::Type{Month}) = [1, 2, 3, 4, 5, 6]
+stepsizes(::Type{Day}) = [1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30]
+stepsizes(::Type{Hour}) = [1, 2, 3, 4, 5, 6, 12]
+stepsizes(::Type{Minute}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
+stepsizes(::Type{Second}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
+stepsizes(::Type{Millisecond}) = [1, 2, 3, 4, 5, 10, 15, 20, 25, 50, 100, 200, 300, 400, 500]
+
+function _ticks(steptype::Type, start::DateTime, stop::DateTime, k_ideal::Int)
     start_ceiled = ceil(start, steptype)
     start_float = Float64(extractor(steptype)(start_ceiled))
-    start_floored_to_parent = steptype === Year ? DateTime(0) : floor(start_ceiled, parent_type(steptype))
-    diff = stepdiff(steptype, start, stop)
-    diff <= 0 && return nothing
+    diff = stepdiff(steptype, start_ceiled, stop)
+    diff <= 0 && return [], Inf
     stop_float = start_float + diff
-    ticks = Makie.get_tickvalues(
-        Makie.WilkinsonTicks(k_ideal; k_min, k_max, Q = get_Q(steptype)),
-        start_float,
-        stop_float,
-    )
-    length(ticks) < 2 && return nothing
-    step_float = ticks[2] - ticks[1]
-    isinteger(step_float) || return nothing
+    start_float == stop_float && return [], Inf
+    ticks = best_ticks(steptype, start_float, stop_float, k_ideal)
+    cost = _cost(ticks, k_ideal) 
+    step_float = ticks isa AbstractRange ? ticks.step : ticks[2] - ticks[1]
     step = steptype(Int(step_float))
     # ticks can be out of bounds sometimes... need to work around that
     first_inrange_index = findfirst(>=(start_float), ticks)
-    tickrange = start_floored_to_parent + steptype(ticks[first_inrange_index]):step:stop
-    steptype !== Millisecond && length(tickrange) < k_min && return nothing # fall back to next granularity if too few ticks are found once out of bounds are removed
-    return tickrange
+    tickrange = start_ceiled - steptype(start_float) + steptype(ticks[first_inrange_index]):step:stop
+    return tickrange, cost
+end
+
+function _cost(range, k_ideal)
+    abs(length(range) - (k_ideal - 0.5))
+end
+
+function best_ticks(steptype::Type{<:Union{Month,Day,Hour,Minute,Second,Millisecond}}, start, stop, k_ideal)
+    best_ticks(start, stop, stepsizes(steptype), k_ideal)
+end
+
+function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
+    w = WilkinsonTicks(k_ideal)
+    tv = get_tickvalues(w, start, stop)
+    if !all(isinteger, tv)
+        return Int(start):1:Int(stop)
+    else
+        step = max(1, tv[2] - tv[1])
+        return tv[1]:step:tv[end]
+    end
+end
+
+function best_ticks(start, stop, stepsizes, k_ideal)
+    function _range(start, stop, step)
+        from = cld(start, step) * step
+        to = fld(stop, step) * step
+        from:step:to
+    end
+    argmin(_range(start, stop, step) for step in stepsizes) do rng
+        _cost(rng, k_ideal)
+    end
 end
 
 function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractRange{<:DateTime})::Vector{String}
@@ -324,8 +343,37 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             prev_hour = current_hour
         end
         return ticklabels
+    elseif step_value isa Second
+        ticklabels = Vector{String}(undef, n_ticks)
+        prev_date = nothing
+        prev_hour = nothing
+        prev_minute = nothing
+        
+        for (i, dt) in enumerate(datetimes)
+            current_date = Dates.Date(dt)
+            current_hour = Dates.hour(dt)
+            current_minute = Dates.minute(dt)
+            
+            if i == 1 || current_date != prev_date
+                # Show date below time when date changes or for first tick
+                time_part = Dates.format(dt, tickobj.HMS)
+                date_part = Dates.format(dt, tickobj.ymd)
+                ticklabels[i] = time_part * "\n" * date_part
+            elseif current_hour != prev_hour
+                # Same date but different hour, show hour:minute
+                ticklabels[i] = Dates.format(dt, tickobj.HMS)
+            elseif current_minute != prev_minute
+                ticklabels[i] = Dates.format(dt, tickobj.MS)
+            else
+                ticklabels[i] = Dates.format(dt, tickobj.S)
+            end
+            prev_date = current_date
+            prev_hour = current_hour
+            prev_minute = current_minute
+        end
+        return ticklabels
     else
-        # Second-level or sub-second steps
+        # milliseconds
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
         prev_hour = nothing
@@ -340,35 +388,16 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                if step_value isa Second
-                    time_part = Dates.format(dt, tickobj.HMS)
-                else
-                    # Show milliseconds for sub-second steps
-                    time_part = Dates.format(dt, tickobj.HMSs)
-                end
+                time_part = Dates.format(dt, tickobj.HMSs)
                 date_part = Dates.format(dt, tickobj.ymd)
                 ticklabels[i] = time_part * "\n" * date_part
             elseif current_hour != prev_hour
-                # Same date but different hour
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, tickobj.HMS)
-                else
-                    ticklabels[i] = Dates.format(dt, tickobj.HMSs)
-                end
+                ticklabels[i] = Dates.format(dt, tickobj.HMSs)
             elseif current_minute != prev_minute
                 # Same hour but different minute
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, tickobj.MS)
-                else
-                    ticklabels[i] = Dates.format(dt, tickobj.MSs)
-                end
-            elseif step_value isa Second || current_second != prev_second
-                # Different second, or using second-level steps
-                if step_value isa Second
-                    ticklabels[i] = Dates.format(dt, tickobj.S)
-                else
-                    ticklabels[i] = Dates.format(dt, tickobj.Ss)
-                end
+                ticklabels[i] = Dates.format(dt, tickobj.MSs)
+            elseif current_second != prev_second
+                ticklabels[i] = Dates.format(dt, tickobj.Ss)
             else
                 # Same second, show only milliseconds (for sub-second steps)
                 ticklabels[i] = Dates.format(dt, tickobj.s)
