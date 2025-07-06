@@ -2188,7 +2188,7 @@ end
     )
     scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
 
-    component_widths = widths.(Rect2f.(Point2f.(p.plots[1].args[][1])))
+    component_widths = widths.(Rect3f.(p.plots[1].args[][1]))
     for i in 1:8
         scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
         @test component_widths[2i - 1][1] ≈ p.shaftwidth[] * scale # shaft
