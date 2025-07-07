@@ -10,6 +10,8 @@ number_to_date(::Type{DateTime}, i) = DateTime(Dates.UTM(round(Int64, Float64(i)
 date_to_number(::Type{DateTime}, value::Dates.DateTime) = Dates.value(value)
 date_to_number(::Type{DateTime}, value::Dates.Date) = Dates.value(Dates.DateTime(value))
 
+date_to_number(::Type{Time}, value::Dates.Time) = Dates.value(value)
+
 # Allow to plot quantities into a Time unit axis
 function date_to_number(::Type{Time}, value::Unitful.Quantity)
     isnan(value) && return NaN
@@ -138,6 +140,19 @@ function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTi
     return get_datetime_ticks(DateTimeTicks(), formatter, vmin, vmax)
 end
 
+function get_datetime_ticks(::Automatic, formatter, vmin::Time, vmax::Time)
+    # for now, take a shortcut and compute time ticks as datetime ticks on the same day where the day part is omitted in the dateformat
+    dtt = DateTimeTicks(
+        ymdHM = dateformat"H:MM",
+        ymdHMS = dateformat"H:MM:SS",
+        ymdHMSs = dateformat"H:MM:SS.sss",
+    )
+    dvmin = DateTime(0, 1, 1, Dates.hour(vmin), Dates.minute(vmin), Dates.second(vmin), Dates.millisecond(vmin))
+    dvmax = DateTime(0, 1, 1, Dates.hour(vmax), Dates.minute(vmax), Dates.second(vmax), Dates.millisecond(vmax))
+    datetimes, labels = get_datetime_ticks(dtt, formatter, dvmin, dvmax)
+    return Time.(datetimes), labels
+end
+
 function get_datetime_ticks(d::DateTimeTicks, formatter, vmin, vmax)
     datetimes, kind = locate_datetime_ticks(d, vmin, vmax)
     if formatter === automatic
@@ -192,7 +207,9 @@ stepdiff(T::Type{<:Union{Day, Hour, Minute, Second, Millisecond}}, from, to) = (
 
 function locate_datetime_ticks(dtt::DateTimeTicks, start::DateTime, stop::DateTime)
     k_ideal = dtt.k_ideal
-    @assert stop > start
+    if stop <= start
+        return [start], :millisecond
+    end
     ticks_year, cost_year = _ticks(Year, start, stop, k_ideal)
     ticks_month, cost_month = _ticks(Month, start, stop, k_ideal)
     ticks_day, cost_day = _ticks(Day, start, stop, k_ideal)
@@ -318,15 +335,13 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
 
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
-            time_part = Dates.format(dt, tickobj.HM)
 
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                date_part = Dates.format(dt, tickobj.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
+                ticklabels[i] = Dates.format(dt, tickobj.ymdHM)
             else
                 # Same date as previous tick, show only time
-                ticklabels[i] = time_part
+                ticklabels[i] = Dates.format(dt, tickobj.HM)
             end
             prev_date = current_date
         end
@@ -343,9 +358,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
 
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                time_part = Dates.format(dt, tickobj.HM)
-                date_part = Dates.format(dt, tickobj.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
+                ticklabels[i] = Dates.format(dt, tickobj.ymdHM)
             elseif current_hour != prev_hour
                 # Same date but different hour, show hour:minute
                 ticklabels[i] = Dates.format(dt, tickobj.HM)
@@ -370,9 +383,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
 
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                time_part = Dates.format(dt, tickobj.HMS)
-                date_part = Dates.format(dt, tickobj.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
+                ticklabels[i] = Dates.format(dt, tickobj.ymdHMS)
             elseif current_hour != prev_hour
                 # Same date but different hour, show hour:minute
                 ticklabels[i] = Dates.format(dt, tickobj.HMS)
@@ -402,9 +413,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
 
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
-                time_part = Dates.format(dt, tickobj.HMSs)
-                date_part = Dates.format(dt, tickobj.ymd)
-                ticklabels[i] = time_part * "\n" * date_part
+                ticklabels[i] = Dates.format(dt, tickobj.ymdHMSs)
             elseif current_hour != prev_hour
                 ticklabels[i] = Dates.format(dt, tickobj.HMSs)
             elseif current_minute != prev_minute
