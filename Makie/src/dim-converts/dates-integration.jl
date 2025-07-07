@@ -75,7 +75,7 @@ function convert_dim_value(conversion::DateTimeConversion, attr, values, previou
         new_type = eltype
         new_type = new_type === Date ? DateTime : new_type
         conversion.type[] = new_type
-    elseif T != eltype
+    elseif T != eltype && !(T === DateTime && eltype === Date)
         if !(T <: Time && eltype <: Unitful.Quantity)
             error("Plotting unit $(eltype) into axis with type $(T) not supported.")
         end
