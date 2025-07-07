@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a global Axis/Axis3D registry for default interactions [#4531](https://github.com/MakieOrg/Makie.jl/pull/4531).
+
 ## [0.24.3] - 2025-07-04
 
 - Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
