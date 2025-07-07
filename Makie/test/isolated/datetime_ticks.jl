@@ -5,7 +5,7 @@
         for dist in [1, 2, 17, 103, 1076]
             for type in [Millisecond, Second, Minute, Hour, Month, Year]
                 tend = tstart + type(dist)
-                ticks = Makie.locate_datetime_ticks(dtt, tstart, tend)
+                ticks, _ = Makie.locate_datetime_ticks(dtt, tstart, tend)
                 nticks = length(ticks)
                 @test all(tick -> tstart <= tick <= tend, ticks)
             end
@@ -13,7 +13,14 @@
     end
 end
 @testset "datetime ticklabels" begin
-    f(args...) = Makie.datetime_range_ticklabels(Makie.DateTimeTicks3(), args...)
+    sym(::Year) = :year
+    sym(::Month) = :month
+    sym(::Day) = :day
+    sym(::Hour) = :hour
+    sym(::Minute) = :minute
+    sym(::Second) = :second
+    sym(::Millisecond) = :millisecond
+    f(range::AbstractRange) = Makie.datetime_range_ticklabels(Makie.DateTimeTicks3(), collect(range), sym(range.step))
     DT = DateTime
 
     # shortening for first days of years or months
@@ -33,9 +40,6 @@ end
     # Day intervals - all midnight times
     @test f(DT(2025, 1, 1):Day(1):DT(2025, 1, 5)) == ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05"]
     @test f(DT(2025, 1, 1):Day(2):DT(2025, 1, 7)) == ["2025-01-01", "2025-01-03", "2025-01-05", "2025-01-07"]
-
-    # Week intervals
-    @test f(DT(2025, 1, 1):Week(1):DT(2025, 1, 22)) == ["2025-01-01", "2025-01-08", "2025-01-15", "2025-01-22"]
 
     # Hour intervals - same day
     @test f(DT(2025, 1, 1, 9):Hour(1):DT(2025, 1, 1, 12)) == ["9:00\n2025-01-01", "10:00", "11:00", "12:00"]
@@ -84,9 +88,8 @@ end
     # Edge cases - empty ranges
     @test f(DT(2025, 1, 2):Day(1):DT(2025, 1, 1)) == []
 
-    # Mixed date and time (non-midnight) with day/week/month/year intervals
+    # Mixed date and time (non-midnight) with day/month intervals
     @test f(DT(2025, 1, 1, 12, 30):Day(1):DT(2025, 1, 3, 12, 30)) == ["12:30:00\n2025-01-01", "12:30:00\n2025-01-02", "12:30:00\n2025-01-03"]
-    @test f(DT(2025, 1, 1, 9, 15, 30):Week(1):DT(2025, 1, 15, 9, 15, 30)) == ["9:15:30\n2025-01-01", "9:15:30\n2025-01-08", "9:15:30\n2025-01-15"]
     @test f(DT(2025, 1, 15, 14, 22):Month(1):DT(2025, 4, 15, 14, 22)) == ["14:22:00\n2025-01-15", "14:22:00\n2025-02-15", "14:22:00\n2025-03-15", "14:22:00\n2025-04-15"]
 
     # Large step sizes
