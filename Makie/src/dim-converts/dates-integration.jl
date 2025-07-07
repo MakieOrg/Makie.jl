@@ -28,7 +28,7 @@ For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conver
 
 # Arguments
 
-- `type=automatic`: when left at automatic, the first plot into the axis will determine the type. Otherwise, one can set this to `Time`, `Date`, or `DateTime`.
+- `type=automatic`: when left at automatic, the first plot into the axis will determine the type. Otherwise, one can set this to `Time` or `DateTime`.
 
 # Examples
 
@@ -100,8 +100,6 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale::typeof(identity
     vmax_date = number_to_date(T, vmax)
 
     dateticks, labels = get_datetime_ticks(ticks, formatter, vmin_date, vmax_date)
-
-    # dateticks isa AbstractVector{<:T} || error("DateTimeConversion ticks were returned as $(typeof(dateticks)) but they should match conversion type $T")
 
     return date_to_number.(T, dateticks), labels
 end
