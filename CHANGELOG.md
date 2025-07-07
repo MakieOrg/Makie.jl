@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+ - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
 
 ## [0.24.3] - 2025-07-04
 
