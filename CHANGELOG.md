@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
+- Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 
 ## [0.24.2] - 2025-06-27
 
