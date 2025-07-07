@@ -1,4 +1,4 @@
-using Dates
+using Makie.Dates
 @testset "tick finding" begin
     dtt = Makie.DateTimeTicks()
     for tstart in [DateTime(0), DateTime(2000, 1, 1), DateTime(2025, 7, 2), DateTime(2025, 7, 2, 5), DateTime(2025, 7, 2, 5, 17, 32), DateTime(2025, 7, 2, 5, 17, 32, 241)]
