@@ -38,7 +38,7 @@ f
 
 ## PolarAxis Limits
 
-By default the PolarAxis will assume `po.rlimits[] = (0.0, nothing)` and `po.thetalimits[] = (0.0, 2pi)`, showing a full circle.
+By default the PolarAxis will assume `po.rlimits = (0.0, nothing)` and `po.thetalimits = (0.0, 2pi)`, showing a full circle.
 You can adjust these limits to show different cut-outs of the PolarAxis.
 For example, we can limit `thetalimits` to a smaller range to generate a circle sector and further limit rmin through `rlimits` to cut out the center to an arc.
 
@@ -77,7 +77,7 @@ f
 
 
 Note that by default translations in adjustments of rmin and thetalimits are blocked.
-These can be unblocked by calling `autolimits!(ax[, true])` which also tells the PolarAxis to derive r- and thetalimits freely from data, or by setting `ax.fixrmin[] = false` and `ax.thetazoomlock[] = false`.
+These can be unblocked by calling `autolimits!(ax[, true])` which also tells the PolarAxis to derive r- and thetalimits freely from data, or by setting `ax.fixrmin = false` and `ax.thetazoomlock = false`.
 
 
 ## Plot type compatibility
@@ -97,7 +97,7 @@ rs = 0:10
 phis = range(0, 2pi, 37)
 cs = [r+cos(4phi) for phi in phis, r in rs]
 p = surface!(ax, 0..2pi, 0..10, zeros(size(cs)), color = cs, shading = NoShading, colormap = :coolwarm)
-ax.gridz[] = 100
+ax.gridz = 100
 tightlimits!(ax) # surface plots include padding by default
 Colorbar(f[2, 1], p, vertical = false, flipaxis = false)
 
@@ -113,7 +113,7 @@ f
 ```
 
 
-Note that in order to see the grid we need to adjust its depth with `ax.gridz[] = 100` (higher z means lower depth).
+Note that in order to see the grid we need to adjust its depth with `ax.gridz = 100` (higher z means lower depth).
 The hard limits for `ax.gridz` are `(-10_000, 10_000)` with `9000` being a soft limit where axis components may order incorrectly.
 
 ## Hiding spines and decorations
@@ -127,9 +127,9 @@ ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false)
 scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
 ax2 = PolarAxis(f[1, 2], title = "Modified spine")
-ax2.spinecolor[] = :red
-ax2.spinestyle[] = :dash
-ax2.spinewidth[] = 5
+ax2.spinecolor = :red
+ax2.spinestyle = :dash
+ax2.spinewidth = 5
 scatterlines!(ax2, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
 
 f
@@ -164,7 +164,7 @@ f
 ```
 
 
-We can also hide the spine after creation 
+We can also hide the spine after creation
 with `hidespines!(ax)`. And, hide the ticklabels, grid, and/or minorgrid with `hidedecorations!`, `hiderdecorations`, and `hidethetadecorations!`.
 
 ```@figure
@@ -188,6 +188,40 @@ hidedecorations!(ax5)
 fig
 ```
 
+## Ticks and Minorticks
+
+Ticks and minor ticks are hidden by default.
+They are made visible with the `tickvisible` attributes.
+
+```@figure
+f = Figure()
+a = PolarAxis(f[1,1],
+    rticksvisible = true, thetaticksvisible = true,
+    rminorticksvisible = true,
+    thetaminorticksvisible = true,
+)
+f
+```
+
+They can be styled with various other `tick` attributes.
+They can also be mirrored to the other side of a sector-style PolarAxis with `ticksmirrored`.
+
+```@figure
+f = Figure(size = (800, 400))
+kwargs = (
+    rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red, rtickalign = 0.5,
+    thetaticksvisible = true, thetaticksize = 12, thetatickwidth = 4, thetatickcolor = :blue, thetatickalign = 0.5,
+    rminorticksvisible = true, rminorticksize = 8, rminortickwidth = 3, rminortickcolor = :orange, rminortickalign = 1.0,
+    thetaminorticksvisible = true, thetaminorticksize = 8, thetaminortickwidth = 3, thetaminortickcolor = :cyan, thetaminortickalign = 1.0,
+)
+a = PolarAxis(f[1,1], title = "normal", rticksmirrored = false, thetaticksmirrored = false; kwargs...)
+rlims!(a, 0.5, 0.9)
+thetalims!(a, 1pi/5, 2pi/5)
+a = PolarAxis(f[1,2], title = "mirrored", rticksmirrored = true, thetaticksmirrored = true; kwargs...)
+rlims!(a, 0.5, 0.9)
+thetalims!(a, 1pi/5, 2pi/5)
+f
+```
 
 ## Interactivity
 
@@ -217,7 +251,7 @@ clip limiting the polar axis but still within it's scene area, you need
 to translate those plots to a z range between `9000` and `10_000` or disable
 clipping via the `clip` attribute.
 
-For reference, the z values used by `PolarAxis` are `po.griddepth[] = 8999` for grid lines, 9000 for the clip polygons, 9001 for spines and 9002 for tick labels.
+For reference, the z values used by `PolarAxis` are `po.griddepth = 8999` for grid lines, 9000 for the clip polygons, 9001 for spines and 9002 for tick labels.
 
 ### Radial Offset
 

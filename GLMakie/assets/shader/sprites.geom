@@ -38,6 +38,7 @@ uniform float stroke_width;
 uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
+uniform float px_per_unit;
 uniform float depth_shift;
 uniform mat4 preprojection, projection, view, model;
 uniform int num_clip_planes;
@@ -69,7 +70,7 @@ flat out vec2 f_sprite_scale;
 
 bool is_clipped(vec3 world_pos)
 {
-    // We clip scatter points based on the user position rather than the 
+    // We clip scatter points based on the user position rather than the
     // sprite vertex positions.
     // distance = dot(world_pos - plane.point, plane.normal)
     // precalculated: dot(plane.point, plane.normal) -> plane.w
@@ -129,7 +130,7 @@ void main(void)
     // Position of sprite center in marker space + clipping
     if (is_clipped(g_world_position[0]))
         return;
-    
+
     vec4 p = preprojection * vec4(g_world_position[0], 1);
     vec3 position = p.xyz / p.w + g_marker_offset[0];
 
@@ -167,7 +168,7 @@ void main(void)
                              0.0,         1.0/vclip.w, 0.0,         0.0,
                              0.0,         0.0,         1.0/vclip.w, 0.0,
                              -vclip.xyz/(vclip.w*vclip.w),          0.0);
-    mat2 dxyv_dxys = diagm(0.5*resolution) * mat2(d_ndc_d_clip*trans);
+    mat2 dxyv_dxys = diagm(0.5 * px_per_unit * resolution) * mat2(d_ndc_d_clip*trans);
     // Now, our buffer size is expressed in viewport pixels but we get back to
     // the sprite coordinate system using the scale factor of the
     // transformation (for isotropic transformations). For anisotropic

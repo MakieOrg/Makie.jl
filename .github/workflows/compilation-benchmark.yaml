@@ -14,7 +14,7 @@ concurrency:
 jobs:
   benchmark:
     name: ${{ matrix.package }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -33,7 +33,6 @@ jobs:
           arch: x64
       - uses: julia-actions/cache@v2
       - name: Benchmark
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}
           PR_NUMBER: ${{ github.event.number }}
@@ -47,7 +46,7 @@ jobs:
   post-gist:
     name: Post Benchmark Gist
     needs: benchmark  # Wait for all benchmark jobs to complete
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     permissions:
       statuses: write       # Permission to post workflow status
     steps:

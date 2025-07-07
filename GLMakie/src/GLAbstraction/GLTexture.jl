@@ -1,7 +1,7 @@
 struct TextureParameters{NDim}
     minfilter::Symbol
     magfilter::Symbol # magnification
-    repeat   ::NTuple{NDim, Symbol}
+    repeat::NTuple{NDim, Symbol}
     anisotropic::Float32
     swizzle_mask::Vector{GLenum}
 end
@@ -9,25 +9,25 @@ end
 abstract type OpenglTexture{T, NDIM} <: GPUArray{T, NDIM} end
 
 mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
-    id              ::GLuint
-    texturetype     ::GLenum
-    pixeltype       ::GLenum
-    internalformat  ::GLenum
-    format          ::GLenum
-    parameters      ::TextureParameters{NDIM}
-    size            ::NTuple{NDIM, Int}
-    context         ::GLContext
-    observers       ::Vector{Observables.ObserverFunction}
+    id::GLuint
+    texturetype::GLenum
+    pixeltype::GLenum
+    internalformat::GLenum
+    format::GLenum
+    parameters::TextureParameters{NDIM}
+    size::NTuple{NDIM, Int}
+    context::GLContext
+    observers::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
-            context         ::GLContext,
-            id              ::GLuint,
-            texturetype     ::GLenum,
-            pixeltype       ::GLenum,
-            internalformat  ::GLenum,
-            format          ::GLenum,
-            parameters      ::TextureParameters{NDIM},
-            size            ::NTuple{NDIM, Int},
-        )  where {T, NDIM}
+            context::GLContext,
+            id::GLuint,
+            texturetype::GLenum,
+            pixeltype::GLenum,
+            internalformat::GLenum,
+            format::GLenum,
+            parameters::TextureParameters{NDIM},
+            size::NTuple{NDIM, Int},
+        ) where {T, NDIM}
         tex = new(
             id,
             texturetype,
@@ -39,8 +39,8 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             context,
             Observables.ObserverFunction[]
         )
-        GLMAKIE_DEBUG[] && finalizer(verify_free, tex)
-        tex
+        DEBUG[] && finalizer(verify_free, tex)
+        return tex
     end
 end
 
@@ -48,27 +48,27 @@ end
 mutable struct TextureBuffer{T <: GLArrayEltypes} <: OpenglTexture{T, 1}
     texture::Texture{T, 1}
     buffer::GLBuffer{T}
-    function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where T
-        new{T}(texture, buffer)
+    function TextureBuffer(texture::Texture{T, 1}, buffer::GLBuffer{T}) where {T}
+        return new{T}(texture, buffer)
     end
 end
 Base.size(t::TextureBuffer) = size(t.buffer)
 Base.size(t::TextureBuffer, i::Integer) = size(t.buffer, i)
 Base.length(t::TextureBuffer) = length(t.buffer)
 function bind(t::Texture)
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     if t.id == 0
         error("Binding freed Texture{$(eltype(t))}")
     end
-    glBindTexture(t.texturetype, t.id)
+    return glBindTexture(t.texturetype, t.id)
 end
 
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
-ShaderAbstractions.switch_context!(t::TextureBuffer) = switch_context!(t.texture.context)
+gl_switch_context!(t::TextureBuffer) = gl_switch_context!(t.texture.context)
 
 function free(tb::TextureBuffer)
     free(tb.texture)
-    free(tb.buffer)
+    return free(tb.buffer)
 end
 
 is_texturearray(t::Texture) = t.texturetype == GL_TEXTURE_2D_ARRAY
@@ -81,14 +81,14 @@ function set_packing_alignment(a) # at some point we should specialize to array/
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0)
     glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0)
-    glPixelStorei(GL_UNPACK_SKIP_ROWS, 0)
+    return glPixelStorei(GL_UNPACK_SKIP_ROWS, 0)
 end
 
 Makie.@noconstprop function Texture(
         context, data::Ptr{T}, dims::NTuple{NDim, Int};
         internalformat::GLenum = default_internalcolorformat(T),
-        texturetype   ::GLenum = default_texturetype(NDim),
-        format        ::GLenum = default_colorformat(T),
+        texturetype::GLenum = default_texturetype(NDim),
+        format::GLenum = default_colorformat(T),
         mipmap = false,
         parameters... # rest should be texture parameters
     ) where {T, NDim}
@@ -108,13 +108,13 @@ Makie.@noconstprop function Texture(
     texture::Texture{T, NDim}
 end
 export resize_nocopy!
-function resize_nocopy!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
-    switch_context!(t.context)
+function resize_nocopy!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
+    gl_switch_context!(t.context)
     bind(t)
     glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
     t.size = newdims
     bind(t, 0)
-    t
+    return t
 end
 
 """
@@ -155,10 +155,10 @@ Constructor for Array Texture
 function Texture(
         context, data::Vector{Array{T, 2}};
         internalformat::GLenum = default_internalcolorformat(T),
-        texturetype::GLenum    = GL_TEXTURE_2D_ARRAY,
-        format::GLenum         = default_colorformat(T),
+        texturetype::GLenum = GL_TEXTURE_2D_ARRAY,
+        format::GLenum = default_colorformat(T),
         parameters...
-    ) where T <: GLArrayEltypes
+    ) where {T <: GLArrayEltypes}
     texparams = TextureParameters(T, 2; parameters...)
     id = glGenTextures()
 
@@ -166,18 +166,18 @@ function Texture(
 
     numbertype = julia2glenum(eltype(T))
 
-    layers  = length(data)
-    dims    = map(size, data)
-    maxdims = foldl(dims, init = (0,0)) do v0, x
+    layers = length(data)
+    dims = map(size, data)
+    maxdims = foldl(dims, init = (0, 0)) do v0, x
         a = max(v0[1], x[1])
         b = max(v0[2], x[2])
-        (a,b)
+        (a, b)
     end
     set_packing_alignment(data)
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, internalformat, maxdims..., layers)
     for (layer, texel) in enumerate(data)
         width, height = size(texel)
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer-1, width, height, 1, format, numbertype, texel)
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer - 1, width, height, 1, format, numbertype, texel)
     end
 
     texture = Texture{T, 2}(
@@ -190,8 +190,7 @@ function Texture(
 end
 
 
-
-function TextureBuffer(buffer::GLBuffer{T}) where T <: GLArrayEltypes
+function TextureBuffer(buffer::GLBuffer{T}) where {T <: GLArrayEltypes}
     texture_type = GL_TEXTURE_BUFFER
     id = glGenTextures()
     glBindTexture(texture_type, id)
@@ -204,7 +203,7 @@ function TextureBuffer(buffer::GLBuffer{T}) where T <: GLArrayEltypes
     )
     return TextureBuffer(tex, buffer)
 end
-function TextureBuffer(context, buffer::Vector{T}) where T <: GLArrayEltypes
+function TextureBuffer(context, buffer::Vector{T}) where {T <: GLArrayEltypes}
     buff = GLBuffer(context, buffer, buffertype = GL_TEXTURE_BUFFER, usage = GL_DYNAMIC_DRAW)
     return TextureBuffer(buff)
 end
@@ -233,44 +232,46 @@ Creates a texture from an Image
 
 Base.show(io::IO, t::Texture) = show(IOContext(io), MIME"text/plain"(), t)
 
-function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T,D}) where {T,D}
-    if get(io, :compact, false)
+function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T, D}) where {T, D}
+    return if get(io, :compact, false)
         println(io, "Texture$(D)D, ID: $(t.id), Size: $(size(t))")
     else
         show(io.io, mime, t)
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", t::Texture{T,D}) where {T,D}
+function Base.show(io::IO, ::MIME"text/plain", t::Texture{T, D}) where {T, D}
     println(io, "Texture$(D)D: ")
     println(io, "                  ID: ", t.id)
-    println(io, "                Size: ", reduce(size(t), init = "Dimensions: ") do v0, v1
-        v0*"x"*string(v1)
-    end)
+    println(
+        io, "                Size: ", reduce(size(t), init = "Dimensions: ") do v0, v1
+            v0 * "x" * string(v1)
+        end
+    )
     println(io, "    Julia pixel type: ", T)
     println(io, "   OpenGL pixel type: ", GLENUM(t.pixeltype).name)
     println(io, "              Format: ", GLENUM(t.format).name)
     println(io, "     Internal format: ", GLENUM(t.internalformat).name)
-    println(io, "          Parameters: ", t.parameters)
+    return println(io, "          Parameters: ", t.parameters)
 end
 
 # GPUArray interface:
-function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(b.texture.context)
+function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where {T}
+    gl_switch_context!(b.texture.context)
     copy!(a, readoffset, b.buffer, writeoffset, len)
     bind(b.texture)
-    glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
+    return glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
-function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.texture.context)
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where {T}
+    gl_switch_context!(a.texture.context)
     copy!(a.buffer, readoffset, b, writeoffset, len)
     bind(a.texture)
-    glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
+    return glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
 
-function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
-    switch_context!(a.texture.context)
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where {T}
+    gl_switch_context!(a.texture.context)
     @assert a.texture.context == b.texture.context
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
@@ -279,33 +280,33 @@ function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T},
 
     bind(b.texture)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
-    bind(t.texture, 0)
+    return bind(t.texture, 0)
 end
 
 function gpu_setindex!(t::TextureBuffer{T}, newvalue::Vector{T}, indexes::UnitRange{I}) where {T, I <: Integer}
-    switch_context!(t.texture.context)
+    gl_switch_context!(t.texture.context)
     bind(t.texture)
     t.buffer[indexes] = newvalue # set buffer indexes
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) # update texture
-    bind(t.texture, 0)
+    return bind(t.texture, 0)
 end
 
 function gpu_setindex!(t::Texture{T, 1}, newvalue::Array{T, 1}, indexes::UnitRange{I}) where {T, I <: Integer}
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     bind(t)
     texsubimage(t, newvalue, indexes)
-    bind(t, 0)
+    return bind(t, 0)
 end
-function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{UnitRange,Integer}...) where {T, N}
-    switch_context!(t.context)
+function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{UnitRange, Integer}...) where {T, N}
+    gl_switch_context!(t.context)
     bind(t)
     texsubimage(t, newvalue, indexes...)
-    bind(t, 0)
+    return bind(t, 0)
 end
 
 
-function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGenFramebuffers()) where T
-    switch_context!(target.context)
+function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo = glGenFramebuffers()) where {T}
+    gl_switch_context!(target.context)
     @assert target.context == source.context
     glBindFramebuffer(GL_FRAMEBUFFER, fbo)
     glFramebufferTexture2D(
@@ -316,14 +317,13 @@ function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGenFr
         GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
         GL_TEXTURE_2D, target.id, 0
     )
-    glDrawBuffer(GL_COLOR_ATTACHMENT1);
+    glDrawBuffer(GL_COLOR_ATTACHMENT1)
     w, h = map(minimum, zip(size(target), size(source)))
-    glBlitFramebuffer(
+    return glBlitFramebuffer(
         0, 0, w, h, 0, 0, w, h,
         GL_COLOR_BUFFER_BIT, GL_NEAREST
     )
 end
-
 
 
 #=
@@ -336,26 +336,26 @@ function gpu_setindex!{T}(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGe
 end
 =#
 # Implementing the GPUArray interface
-function gpu_data(t::Texture{T, ND}) where {T, ND}
-    switch_context!(t.context)
-    result = Array{T, ND}(undef, size(t))
+function gpu_data(t::Texture{T, NDim}) where {T, NDim}
+    gl_switch_context!(t.context)
+    result = Array{T, NDim}(undef, size(t))
     unsafe_copy!(result, t)
     return result
 end
 
-function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
-    switch_context!(t.context)
+function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T, N}
+    gl_switch_context!(source.context)
     bind(source)
     glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, dest)
     bind(source, 0)
-    nothing
+    return nothing
 end
 
 gpu_data(t::TextureBuffer{T}) where {T} = gpu_data(t.buffer)
 gpu_getindex(t::TextureBuffer{T}, i::UnitRange{Int64}) where {T} = t.buffer[i]
 
 similar(t::Texture{T, NDim}, newdims::Int...) where {T, NDim} = similar(t, newdims)
-function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
+function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where {T}
     buff = similar(t.buffer, newdims...)
     return TextureBuffer(buff)
 end
@@ -375,18 +375,18 @@ function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim
     )
 end
 # Resize Texture
-function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T
-    switch_context!(t.texture.context)
+function gpu_resize!(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where {T}
+    gl_switch_context!(t.texture.context)
     resize!(t.buffer, newdims)
     bind(t.texture)
     glTexBuffer(t.texture.texturetype, t.texture.internalformat, t.buffer.id) #update data in texture
-    t.texture.size  = newdims
+    t.texture.size = newdims
     bind(t.texture, 0)
-    t
+    return t
 end
 # Resize Texture
-function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
-    switch_context!(t.context)
+function gpu_resize!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
+    gl_switch_context!(t.context)
     # dangerous code right here...Better write a few tests for this
     newtex = similar(t, newdims)
     old_size = size(t)
@@ -397,41 +397,41 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     return t
 end
 
-function texsubimage(t::Texture{T, 1}, newvalue::Array{T}, xrange::UnitRange, level=0) where {T}
-    switch_context!(t.context)
-    glTexSubImage1D(
-        t.texturetype, level, first(xrange)-1, length(xrange), t.format, t.pixeltype, newvalue
+function texsubimage(t::Texture{T, 1}, newvalue::Array{T}, xrange::UnitRange, level = 0) where {T}
+    gl_switch_context!(t.context)
+    return glTexSubImage1D(
+        t.texturetype, level, first(xrange) - 1, length(xrange), t.format, t.pixeltype, newvalue
     )
 end
-function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, level=0) where T
-    switch_context!(t.context)
-    glTexSubImage2D(
+function texsubimage(t::Texture{T, 2}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, level = 0) where {T}
+    gl_switch_context!(t.context)
+    return glTexSubImage2D(
         t.texturetype, level,
-        first(xrange)-1, first(yrange)-1, length(xrange), length(yrange),
+        first(xrange) - 1, first(yrange) - 1, length(xrange), length(yrange),
         t.format, t.pixeltype, newvalue
     )
 end
-function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level=0) where {T}
-    switch_context!(t.context)
-    glTexSubImage3D(
+function texsubimage(t::Texture{T, 3}, newvalue::Array{T}, xrange::UnitRange, yrange::UnitRange, zrange::UnitRange, level = 0) where {T}
+    gl_switch_context!(t.context)
+    return glTexSubImage3D(
         t.texturetype, level,
-        first(xrange)-1, first(yrange)-1, first(zrange)-1, length(xrange), length(yrange), length(zrange),
+        first(xrange) - 1, first(yrange) - 1, first(zrange) - 1, length(xrange), length(yrange), length(zrange),
         t.format, t.pixeltype, newvalue
     )
 end
 
 function Base.iterate(t::TextureBuffer{T}) where {T}
-    switch_context!(t.context)
-    iterate(t.buffer)
+    gl_switch_context!(t.context)
+    return iterate(t.buffer)
 end
-function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
+function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where {T}
     v_idx = iterate(t.buffer, state)
     if v_idx === nothing
         bind(t)
         glTexBuffer(t.texturetype, t.internalformat, t.buffer.id)
         bind(t, 0)
     end
-    v_idx
+    return v_idx
 end
 function default_colorformat_sym(colordim::Integer, isinteger::Bool, colororder::AbstractString)
     colordim > 4 && error("no colors with dimension > 4 allowed. Dimension given: ", colordim)
@@ -447,17 +447,18 @@ end
 default_colorformat_sym(::Type{T}) where {T <: Real} = default_colorformat_sym(1, T <: Integer, "RED")
 default_colorformat_sym(::Type{T}) where {T <: AbstractArray} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
 default_colorformat_sym(::Type{T}) where {T <: StaticVector} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
+default_colorformat_sym(::Type{T}) where {T <: Quaternion} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, "RGBA")
 default_colorformat_sym(::Type{T}) where {T <: Colorant} = default_colorformat_sym(cardinality(T), eltype(T) <: Integer, string(Base.typename(T).name))
 
-@generated function default_colorformat(::Type{T}) where T
+@generated function default_colorformat(::Type{T}) where {T}
     sym = default_colorformat_sym(T)
     if !isdefined(ModernGL, sym)
         error("$T doesn't have a proper mapping to an OpenGL format")
     end
-    :($sym)
+    return :($sym)
 end
 
-function default_internalcolorformat_sym(::Type{T}) where T
+function default_internalcolorformat_sym(::Type{T}) where {T}
     cdim = colordim(T)
     if cdim > 4 || cdim < 1
         error("$(cdim)-dimensional colors not supported")
@@ -476,17 +477,17 @@ function default_internalcolorformat_sym(::Type{T}) where T
     elseif eltyp <: Unsigned
         sym *= "UI"
     end
-    Symbol(sym)
+    return Symbol(sym)
 end
 
 # for I = 1:4
 #     for
-@generated function default_internalcolorformat(::Type{T}) where T
+@generated function default_internalcolorformat(::Type{T}) where {T}
     sym = default_internalcolorformat_sym(T)
     if !isdefined(ModernGL, sym)
         error("$T doesn't have a proper mapping to an OpenGL format")
     end
-    :($sym)
+    return :($sym)
 end
 
 
@@ -517,13 +518,14 @@ function map_texture_paramers(s::Symbol)
     error("$s is not a valid texture parameter")
 end
 
-function TextureParameters(T, NDim;
+function TextureParameters(
+        T, NDim;
         minfilter = T <: Integer ? :nearest : :linear,
         magfilter = minfilter, # magnification
-        x_repeat  = :clamp_to_edge, #wrap_s
-        y_repeat  = x_repeat, #wrap_t
-        z_repeat  = x_repeat, #wrap_r
-        anisotropic = 1f0
+        x_repeat = :clamp_to_edge, #wrap_s
+        y_repeat = x_repeat, #wrap_t
+        z_repeat = x_repeat, #wrap_r
+        anisotropic = 1.0f0
     )
     T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
@@ -534,18 +536,18 @@ function TextureParameters(T, NDim;
     else
         GLenum[]
     end
-    TextureParameters(
-        minfilter, magfilter, ntuple(i->repeat[i], NDim),
+    return TextureParameters(
+        minfilter, magfilter, ntuple(i -> repeat[i], NDim),
         anisotropic, swizzle_mask
     )
 end
 function TextureParameters(t::Texture{T, NDim}; kw_args...) where {T, NDim}
-    TextureParameters(T, NDim; kw_args...)
+    return TextureParameters(T, NDim; kw_args...)
 end
 
 const GL_TEXTURE_MAX_ANISOTROPY_EXT = GLenum(0x84FE)
 
-function set_parameters(t::Texture{T, N}, params::TextureParameters=t.parameters) where {T, N}
+function set_parameters(t::Texture{T, N}, params::TextureParameters = t.parameters) where {T, N}
     fnames = (:minfilter, :magfilter, :repeat)
     data = Dict([(name, map_texture_paramers(getfield(params, name))) for name in fnames])
     result = Tuple{GLenum, Any}[]
@@ -567,22 +569,22 @@ function set_parameters(t::Texture{T, N}, params::TextureParameters=t.parameters
         e.code == GLFW.NO_CURRENT_CONTEXT || rethrow(e)
     end
     t.parameters = params
-    set_parameters(t, result)
+    return set_parameters(t, result)
 end
 function texparameter(t::Texture, key::GLenum, val::GLenum)
-    glTexParameteri(t.texturetype, key, val)
+    return glTexParameteri(t.texturetype, key, val)
 end
 function texparameter(t::Texture, key::GLenum, val::Vector)
-    glTexParameteriv(t.texturetype, key, val)
+    return glTexParameteriv(t.texturetype, key, val)
 end
 function texparameter(t::Texture, key::GLenum, val::Float32)
-    glTexParameterf(t.texturetype, key, val)
+    return glTexParameterf(t.texturetype, key, val)
 end
 function set_parameters(t::Texture, parameters::Vector{Tuple{GLenum, Any}})
-    switch_context!(t.context)
+    gl_switch_context!(t.context)
     bind(t)
     for elem in parameters
         texparameter(t, elem...)
     end
-    bind(t, 0)
+    return bind(t, 0)
 end

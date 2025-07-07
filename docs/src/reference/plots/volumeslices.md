@@ -44,7 +44,9 @@ hmaps = [plt[Symbol(:heatmap_, s)][] for s ∈ (:yz, :xz, :xy)]
 toggles = [Toggle(lo[i, nc + 1], active = true) for i ∈ 1:length(hmaps)]
 
 map(zip(hmaps, toggles)) do (h, t)
-    connect!(h.visible, t.active)
+    on(t.active) do active
+        h.visible = active
+    end
 end
 
 # cam3d!(ax.scene, projectiontype=Makie.Orthographic)

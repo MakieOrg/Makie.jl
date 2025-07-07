@@ -9,6 +9,7 @@ export MouseTo
 export LeftClick
 export LeftDown
 export LeftUp
+export RightClick, MiddleClick
 export Lazy
 export Wait
 export relative_pos
@@ -31,24 +32,28 @@ function Makie.plot!(p::Cursor)
     poly = lift(p.width, p.notch, p.shaftwidth, p.shaftlength, p.headlength) do w, draw, wshaft, lshaft, lhead
         ps = Point2f[
             (0, 0),
-            (-w/2, -lhead),
-            (-wshaft/2, -lhead+draw),
-            (-wshaft/2, -lhead-lshaft),
-            (wshaft/2, -lhead-lshaft),
-            (wshaft/2, -lhead+draw),
-            (w/2, -lhead),
+            (-w / 2, -lhead),
+            (-wshaft / 2, -lhead + draw),
+            (-wshaft / 2, -lhead - lshaft),
+            (wshaft / 2, -lhead - lshaft),
+            (wshaft / 2, -lhead + draw),
+            (w / 2, -lhead),
         ]
 
-        angle = asin((-w/2) / (-lhead))
+        angle = asin((-w / 2) / (-lhead))
 
-        Makie.Polygon(map(ps) do point
-            Makie.Mat2f(cos(angle), sin(angle), -sin(angle), cos(angle)) * point
-        end)
+        Makie.Polygon(
+            map(ps) do point
+                Makie.Mat2f(cos(angle), sin(angle), -sin(angle), cos(angle)) * point
+            end
+        )
     end
 
-    scatter!(p, p[1], marker = poly, markersize = p.multiplier, color = p.color, strokecolor = p.strokecolor, strokewidth = p.strokewidth,
-        glowcolor = (:black, 0.10), glowwidth = 2, transform_marker = true)
-    
+    scatter!(
+        p, p[1], marker = poly, markersize = p.multiplier, color = p.color, strokecolor = p.strokecolor, strokewidth = p.strokewidth,
+        glowcolor = (:black, 0.1), glowwidth = 2, transform_marker = true
+    )
+
     return p
 end
 
@@ -58,7 +63,7 @@ end
 
 struct MouseTo{T}
     target::T
-    duration::Union{Nothing,Float64}
+    duration::Union{Nothing, Float64}
 end
 
 MouseTo(target) = MouseTo(target, nothing)
@@ -71,17 +76,17 @@ function mousepositions_frame(m::MouseTo, startpos, t)
     keyframe_to = Animations.Keyframe(dur, Point2f(m.target))
 
     pos = Animations.interpolate(saccadic(2), t, keyframe_from, keyframe_to)
-    [pos]
+    return [pos]
 end
 function mousepositions_end(m::MouseTo, startpos)
-    [m.target]
+    return [m.target]
 end
 
 
 duration(mouseto::MouseTo, prev_position) = mouseto.duration === nothing ? automatic_duration(mouseto, prev_position) : mouseto.duration
 function automatic_duration(mouseto::MouseTo, prev_position)
     dist = sqrt(+(((mouseto.target .- prev_position) .^ 2)...))
-    0.6 + dist / 1000 * 0.5
+    return 0.6 + dist / 1000 * 0.5
 end
 
 struct Wait
@@ -105,6 +110,19 @@ struct LeftUp end
 
 duration(::LeftUp, _) = 0.0
 mouseevents_start(l::LeftUp) = [Makie.MouseButtonEvent(Mouse.left, Mouse.release)]
+
+struct RightClick end
+
+duration(::RightClick, _) = 0.15
+mouseevents_start(l::RightClick) = [Makie.MouseButtonEvent(Mouse.right, Mouse.press)]
+mouseevents_end(l::RightClick) = [Makie.MouseButtonEvent(Mouse.right, Mouse.release)]
+
+struct MiddleClick end
+
+duration(::MiddleClick, _) = 0.15
+mouseevents_start(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.press)]
+mouseevents_end(l::MiddleClick) = [Makie.MouseButtonEvent(Mouse.middle, Mouse.release)]
+
 
 mouseevents_start(obj) = []
 mouseevents_end(obj) = []
@@ -165,8 +183,8 @@ function interaction_record(func, figlike, filepath, events::AbstractVector; fps
         error("Event list is empty")
     end
 
-    cursor_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor.png"))'
-    cursor_pressed_img = Makie.FileIO.load(joinpath(@__DIR__, "..", "assets", "cursor_pressed.png"))'
+    cursor_img = Makie.loadasset("cursor.png")'
+    cursor_pressed_img = Makie.loadasset("cursor_pressed.png")'
     cursor_tip_frac = (0.3, 0.15)
 
     record(content_scene, filepath; framerate = fps, px_per_unit, kwargs...) do io

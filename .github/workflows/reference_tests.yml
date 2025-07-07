@@ -24,10 +24,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -45,7 +45,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+          pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -60,6 +60,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -73,10 +75,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -95,7 +97,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+          pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -112,6 +114,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -123,10 +127,10 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
@@ -137,7 +141,7 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
@@ -145,7 +149,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -165,13 +169,15 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
   consolidation:
     name: Merge artifacts
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:

@@ -76,7 +76,7 @@ vec4 get_color(sampler3D intensity, vec3 uv, vec2 color_norm, sampler1D color_ma
 
 vec4 matcap_color(sampler2D matcap){
     // TODO should matcaps use view space normals?
-    vec2 muv = o_view_normal.xy * 0.5 + vec2(0.5, 0.5);
+    vec2 muv = normalize(o_view_normal).xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 vec4 get_color(Nothing image, vec3 uv, Nothing color_norm, Nothing color_map, sampler2D matcap){
@@ -86,6 +86,9 @@ vec4 get_color(sampler2D color, vec3 uv, Nothing color_norm, Nothing color_map, 
     return matcap_color(matcap);
 }
 vec4 get_color(sampler1D color, vec3 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
+    return matcap_color(matcap);
+}
+vec4 get_color(sampler2D color, vec3 uv, vec2 color_norm, sampler1D color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
 

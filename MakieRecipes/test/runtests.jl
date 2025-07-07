@@ -1,5 +1,5 @@
 using MakieRecipes
-using Literate, MakieCore, CairoMakie
+using Literate, CairoMakie
 using Test
 
 cd(@__DIR__)
