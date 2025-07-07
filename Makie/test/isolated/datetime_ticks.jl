@@ -44,7 +44,7 @@ end
     # Hour intervals - same day
     @test f(DT(2025, 1, 1, 9):Hour(1):DT(2025, 1, 1, 12)) == ["9:00\n2025-01-01", "10:00", "11:00", "12:00"]
     @test f(DT(2025, 1, 1, 9):Hour(2):DT(2025, 1, 1, 15)) == ["9:00\n2025-01-01", "11:00", "13:00", "15:00"]
-    
+
     # Hour intervals - crossing days
     @test f(DT(2025, 1, 1, 22):Hour(1):DT(2025, 1, 2, 2)) == ["22:00\n2025-01-01", "23:00", "0:00\n2025-01-02", "1:00", "2:00"]
     @test f(DT(2025, 1, 1, 23):Hour(3):DT(2025, 1, 2, 5)) == ["23:00\n2025-01-01", "2:00\n2025-01-02", "5:00"]
@@ -52,32 +52,32 @@ end
     # Minute intervals - same hour (shows shortened format within same hour)
     @test f(DT(2025, 1, 1, 9, 0):Minute(15):DT(2025, 1, 1, 9, 45)) == ["9:00\n2025-01-01", ":15", ":30", ":45"]
     @test f(DT(2025, 1, 1, 9, 30):Minute(10):DT(2025, 1, 1, 10, 0)) == ["9:30\n2025-01-01", ":40", ":50", "10:00"]
-    
+
     # Minute intervals - crossing hours
     @test f(DT(2025, 1, 1, 9, 50):Minute(10):DT(2025, 1, 1, 10, 20)) == ["9:50\n2025-01-01", "10:00", ":10", ":20"]
-    
+
     # Minute intervals - crossing days
     @test f(DT(2025, 1, 1, 23, 45):Minute(15):DT(2025, 1, 2, 0, 30)) == ["23:45\n2025-01-01", "0:00\n2025-01-02", ":15", ":30"]
 
     # Second intervals - same minute
     @test f(DT(2025, 1, 1, 9, 0, 0):Second(15):DT(2025, 1, 1, 9, 0, 45)) == ["9:00:00\n2025-01-01", ":15", ":30", ":45"]
     @test f(DT(2025, 1, 1, 9, 0, 30):Second(10):DT(2025, 1, 1, 9, 1, 0)) == ["9:00:30\n2025-01-01", ":40", ":50", ":1:00"]
-    
+
     # Second intervals - crossing minutes (shows shortened format within same hour)
     @test f(DT(2025, 1, 1, 9, 0, 50):Second(10):DT(2025, 1, 1, 9, 1, 20)) == ["9:00:50\n2025-01-01", ":1:00", ":10", ":20"]
-    
+
     # Second intervals - crossing hours
     @test f(DT(2025, 1, 1, 9, 59, 50):Second(10):DT(2025, 1, 1, 10, 0, 20)) == ["9:59:50\n2025-01-01", "10:00:00", ":10", ":20"]
-    
+
     # Second intervals - crossing days
     @test f(DT(2025, 1, 1, 23, 59, 50):Second(10):DT(2025, 1, 2, 0, 0, 20)) == ["23:59:50\n2025-01-01", "0:00:00\n2025-01-02", ":10", ":20"]
 
     # Millisecond intervals - same second
     @test f(DT(2025, 1, 1, 9, 0, 0, 0):Millisecond(250):DT(2025, 1, 1, 9, 0, 0, 750)) == ["9:00:00.000\n2025-01-01", ".250", ".500", ".750"]
-    
+
     # Millisecond intervals - crossing seconds
     @test f(DT(2025, 1, 1, 9, 0, 0, 800):Millisecond(200):DT(2025, 1, 1, 9, 0, 1, 400)) == ["9:00:00.800\n2025-01-01", ":01.000", ".200", ".400"]
-    
+
     # Millisecond intervals - crossing minutes
     @test f(DT(2025, 1, 1, 9, 0, 59, 800):Millisecond(200):DT(2025, 1, 1, 9, 1, 0, 400)) == ["9:00:59.800\n2025-01-01", ":1:00.000", ".200", ".400"]
 

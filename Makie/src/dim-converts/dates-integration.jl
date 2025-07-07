@@ -110,7 +110,7 @@ function get_datetime_ticks(ticks, formatter, vmin, vmax)
     return values, labels
 end
 
-function get_datetime_ticks(ticks::Tuple{Any,Any}, formatter::Automatic, vmin, vmax)
+function get_datetime_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin, vmax)
     return ticks[1], ticks[2]
 end
 
@@ -131,8 +131,8 @@ Base.@kwdef struct DateTimeTicks3
     Ss::DateFormat = dateformat":SS.sss"
     s::DateFormat = dateformat".sss"
     k_ideal::Int = 5
-    k_min::Union{Nothing,Int} = nothing
-    k_max::Union{Nothing,Int} = nothing
+    k_min::Union{Nothing, Int} = nothing
+    k_max::Union{Nothing, Int} = nothing
 end
 
 
@@ -150,15 +150,15 @@ function get_datetime_ticks(d::DateTimeTicks3, formatter, vmin, vmax)
     return datetimes, labels
 end
 
-function get_datetime_tickvalues(ticks::AbstractVector{<:Union{Date,DateTime}}, vmin::DateTime, vmax::DateTime)
+function get_datetime_tickvalues(ticks::AbstractVector{<:Union{Date, DateTime}}, vmin::DateTime, vmax::DateTime)
     return ticks
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Automatic)
+function get_datetime_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Automatic)
     return string.(values)
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:Union{Date,DateTime,Time}}, formatter::Function)
+function get_datetime_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Function)
     return formatter(values)
 end
 
@@ -189,7 +189,7 @@ parent_type(::Type{Millisecond}) = Second
 # assumes these are rounded to the given type already
 stepdiff(::Type{Year}, from, to) = year(to) - year(from)
 stepdiff(::Type{Month}, from, to) = 12 * stepdiff(Year, from, to) + (month(to) - month(from))
-stepdiff(T::Type{<:Union{Day,Hour,Minute,Second,Millisecond}}, from, to) = (to - from) / T(1)
+stepdiff(T::Type{<:Union{Day, Hour, Minute, Second, Millisecond}}, from, to) = (to - from) / T(1)
 
 
 function locate_datetime_ticks(dtt::DateTimeTicks3, start::DateTime, stop::DateTime)
@@ -241,21 +241,21 @@ function _ticks(steptype::Type, start::DateTime, stop::DateTime, k_ideal::Int)
     stop_float = start_float + diff
     start_float == stop_float && return empty_range, Inf
     ticks = best_ticks(steptype, start_float, stop_float, k_ideal)
-    cost = _cost(ticks, k_ideal) 
+    cost = _cost(ticks, k_ideal)
     step_float = ticks isa AbstractRange ? ticks.step : ticks[2] - ticks[1]
     step = steptype(Int(step_float))
     # ticks can be out of bounds sometimes... need to work around that
     first_inrange_index = findfirst(>=(start_float), ticks)
-    tickrange = start_ceiled - steptype(start_float) + steptype(ticks[first_inrange_index]):step:stop
+    tickrange = (start_ceiled - steptype(start_float) + steptype(ticks[first_inrange_index])):step:stop
     return tickrange, cost
 end
 
 function _cost(range, k_ideal)
-    abs(length(range) - (k_ideal - 0.5))
+    return abs(length(range) - (k_ideal - 0.5))
 end
 
-function best_ticks(steptype::Type{<:Union{Month,Day,Hour,Minute,Second,Millisecond}}, start, stop, k_ideal)
-    best_ticks(start, stop, stepsizes(steptype), k_ideal)
+function best_ticks(steptype::Type{<:Union{Month, Day, Hour, Minute, Second, Millisecond}}, start, stop, k_ideal)
+    return best_ticks(start, stop, stepsizes(steptype), k_ideal)
 end
 
 function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
@@ -273,9 +273,9 @@ function best_ticks(start, stop, stepsizes, k_ideal)
     function _range(start, stop, step)
         from = cld(start, step) * step
         to = fld(stop, step) * step
-        from:step:to
+        return from:step:to
     end
-    argmin(_range(start, stop, step) for step in stepsizes) do rng
+    return argmin(_range(start, stop, step) for step in stepsizes) do rng
         _cost(rng, k_ideal)
     end
 end
@@ -285,9 +285,9 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:
     if length(datetimes) <= 1
         return string.(datetimes)
     end
-    
+
     n_ticks = length(datetimes)
-    
+
     if kind in (:year, :month, :day)
         # For daily+ steps, show only dates (no times) if all times are midnight
         all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), datetimes)
@@ -317,11 +317,11 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:
         # Hourly steps - use multi-line format: time on top, date below when it changes
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
-        
+
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             time_part = Dates.format(dt, tickobj.HM)
-            
+
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 date_part = Dates.format(dt, tickobj.ymd)
@@ -338,11 +338,11 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
         prev_hour = nothing
-        
+
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             current_hour = Dates.hour(dt)
-            
+
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 time_part = Dates.format(dt, tickobj.HM)
@@ -364,12 +364,12 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:
         prev_date = nothing
         prev_hour = nothing
         prev_minute = nothing
-        
+
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             current_hour = Dates.hour(dt)
             current_minute = Dates.minute(dt)
-            
+
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 time_part = Dates.format(dt, tickobj.HMS)
@@ -395,13 +395,13 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:
         prev_hour = nothing
         prev_minute = nothing
         prev_second = nothing
-        
+
         for (i, dt) in enumerate(datetimes)
             current_date = Dates.Date(dt)
             current_hour = Dates.hour(dt)
             current_minute = Dates.minute(dt)
             current_second = Dates.second(dt)
-            
+
             if i == 1 || current_date != prev_date
                 # Show date below time when date changes or for first tick
                 time_part = Dates.format(dt, tickobj.HMSs)
