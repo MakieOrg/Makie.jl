@@ -679,7 +679,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the x axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 
@@ -698,7 +698,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the y axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 
