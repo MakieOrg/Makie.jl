@@ -114,7 +114,7 @@ function get_datetime_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin, 
     return ticks[1], ticks[2]
 end
 
-Base.@kwdef struct DateTimeTicks3
+Base.@kwdef struct DateTimeTicks
     y::DateFormat = dateformat"yyyy"
     ym::DateFormat = dateformat"yyyy-mm"
     ymd::DateFormat = dateformat"yyyy-mm-dd"
@@ -131,16 +131,14 @@ Base.@kwdef struct DateTimeTicks3
     Ss::DateFormat = dateformat":SS.sss"
     s::DateFormat = dateformat".sss"
     k_ideal::Int = 5
-    k_min::Union{Nothing, Int} = nothing
-    k_max::Union{Nothing, Int} = nothing
 end
 
 
 function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTime)
-    return get_datetime_ticks(DateTimeTicks3(), formatter, vmin, vmax)
+    return get_datetime_ticks(DateTimeTicks(), formatter, vmin, vmax)
 end
 
-function get_datetime_ticks(d::DateTimeTicks3, formatter, vmin, vmax)
+function get_datetime_ticks(d::DateTimeTicks, formatter, vmin, vmax)
     datetimes, kind = locate_datetime_ticks(d, vmin, vmax)
     if formatter === automatic
         labels = datetime_range_ticklabels(d, datetimes, kind)
@@ -192,7 +190,7 @@ stepdiff(::Type{Month}, from, to) = 12 * stepdiff(Year, from, to) + (month(to) -
 stepdiff(T::Type{<:Union{Day, Hour, Minute, Second, Millisecond}}, from, to) = (to - from) / T(1)
 
 
-function locate_datetime_ticks(dtt::DateTimeTicks3, start::DateTime, stop::DateTime)
+function locate_datetime_ticks(dtt::DateTimeTicks, start::DateTime, stop::DateTime)
     k_ideal = dtt.k_ideal
     @assert stop > start
     ticks_year, cost_year = _ticks(Year, start, stop, k_ideal)
@@ -280,7 +278,7 @@ function best_ticks(start, stop, stepsizes, k_ideal)
     end
 end
 
-function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:DateTime}, kind::Symbol)::Vector{String}
+function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:DateTime}, kind::Symbol)::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
