@@ -1,12 +1,14 @@
+using Dates
 @testset "tick finding" begin
-    k_ideal = 5
-    dtt = Makie.DateTimeTicks3(; k_ideal)
+    dtt = Makie.DateTimeTicks()
     for tstart in [DateTime(0), DateTime(2000, 1, 1), DateTime(2025, 7, 2), DateTime(2025, 7, 2, 5), DateTime(2025, 7, 2, 5, 17, 32), DateTime(2025, 7, 2, 5, 17, 32, 241)]
         for dist in [1, 2, 17, 103, 1076]
             for type in [Millisecond, Second, Minute, Hour, Month, Year]
                 tend = tstart + type(dist)
                 ticks, _ = Makie.locate_datetime_ticks(dtt, tstart, tend)
                 nticks = length(ticks)
+                @test allunique(ticks)
+                @test length(ticks) >= 2
                 @test all(tick -> tstart <= tick <= tend, ticks)
             end
         end
@@ -20,7 +22,7 @@ end
     sym(::Minute) = :minute
     sym(::Second) = :second
     sym(::Millisecond) = :millisecond
-    f(range::AbstractRange) = Makie.datetime_range_ticklabels(Makie.DateTimeTicks3(), collect(range), sym(range.step))
+    f(range::AbstractRange) = Makie.datetime_range_ticklabels(Makie.DateTimeTicks(), collect(range), sym(range.step))
     DT = DateTime
 
     # shortening for first days of years or months
