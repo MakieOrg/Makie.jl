@@ -194,7 +194,7 @@ mutable struct RectangleZoom
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(restrict_x::Bool=false, restrict_y::Bool=false, modifier::Bool=true)
+function RectangleZoom(restrict_x::Bool = false, restrict_y::Bool = false, modifier::Bool = true)
     callback = (ax, newlims) -> let
         if !(0 in widths(newlims))
             ax.targetlimits[] = newlims
@@ -206,7 +206,7 @@ function RectangleZoom(restrict_x::Bool=false, restrict_y::Bool=false, modifier:
         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier
     )
 end
-RectangleZoom(callback::Function, restrict_x::Bool=false, restrict_y::Bool=false, modifier::Bool=true) =
+RectangleZoom(callback::Function, restrict_x::Bool = false, restrict_y::Bool = false, modifier::Bool = true) =
     RectangleZoom(callback, restrict_x, restrict_y, modifier)
 
 function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
