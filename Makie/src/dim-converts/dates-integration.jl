@@ -141,13 +141,13 @@ function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTi
 end
 
 function get_datetime_ticks(d::DateTimeTicks3, formatter, vmin, vmax)
-    datetimerange = locate_datetime_ticks(d, vmin, vmax)
+    datetimes, kind = locate_datetime_ticks(d, vmin, vmax)
     if formatter === automatic
-        labels = datetime_range_ticklabels(d, datetimerange)
+        labels = datetime_range_ticklabels(d, datetimes, kind)
     else
-        labels = get_datetime_ticklabels(datetimerange, formatter)
+        labels = get_datetime_ticklabels(datetimes, formatter)
     end
-    return datetimerange, labels
+    return datetimes, labels
 end
 
 function get_datetime_tickvalues(ticks::AbstractVector{<:Union{Date,DateTime}}, vmin::DateTime, vmax::DateTime)
@@ -203,26 +203,43 @@ function locate_datetime_ticks(dtt::DateTimeTicks3, start::DateTime, stop::DateT
     ticks_second, cost_second = _ticks(Second, start, stop, k_ideal)
     ticks_millisecond, cost_millisecond = _ticks(Millisecond, start, stop, k_ideal)
 
-    ticks = (ticks_year, ticks_month, ticks_day, ticks_hour, ticks_minute, ticks_second, ticks_millisecond)
     costs = (cost_year, cost_month, cost_day, cost_hour, cost_minute, cost_second, cost_millisecond)
     # for same costs, earlier (bigger) step is preferred
-    return ticks[argmin(costs)]
+    i = argmin(costs)
+    return if i == 1
+        collect(ticks_year), :year
+    elseif i == 2
+        collect(ticks_month), :month
+    elseif i == 3
+        collect(ticks_day), :day
+    elseif i == 4
+        collect(ticks_hour), :hour
+    elseif i == 5
+        collect(ticks_minute), :minute
+    elseif i == 6
+        collect(ticks_second), :second
+    elseif i == 7
+        collect(ticks_millisecond), :millisecond
+    else
+        error("unreachable reached")
+    end
 end
 
-stepsizes(::Type{Month}) = [1, 2, 3, 4, 5, 6]
-stepsizes(::Type{Day}) = [1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30]
-stepsizes(::Type{Hour}) = [1, 2, 3, 4, 5, 6, 12]
-stepsizes(::Type{Minute}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
-stepsizes(::Type{Second}) = [1, 2, 3, 4, 5, 10, 15, 20, 30]
-stepsizes(::Type{Millisecond}) = [1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 300, 400, 500]
+stepsizes(::Type{Month}) = (1, 2, 3, 4, 5, 6)
+stepsizes(::Type{Day}) = (1, 2, 3, 4, 5, 7, 10, 15, 20, 25, 30)
+stepsizes(::Type{Hour}) = (1, 2, 3, 4, 5, 6, 12)
+stepsizes(::Type{Minute}) = (1, 2, 3, 4, 5, 10, 15, 20, 30)
+stepsizes(::Type{Second}) = (1, 2, 3, 4, 5, 10, 15, 20, 30)
+stepsizes(::Type{Millisecond}) = (1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 300, 400, 500)
 
 function _ticks(steptype::Type, start::DateTime, stop::DateTime, k_ideal::Int)
     start_ceiled = ceil(start, steptype)
     start_float = Float64(extractor(steptype)(start_ceiled))
     diff = stepdiff(steptype, start_ceiled, stop)
-    diff <= 0 && return [], Inf
+    empty_range = start:steptype(1):start
+    diff <= 0 && return empty_range, Inf
     stop_float = start_float + diff
-    start_float == stop_float && return [], Inf
+    start_float == stop_float && return empty_range, Inf
     ticks = best_ticks(steptype, start_float, stop_float, k_ideal)
     cost = _cost(ticks, k_ideal) 
     step_float = ticks isa AbstractRange ? ticks.step : ticks[2] - ticks[1]
@@ -263,29 +280,28 @@ function best_ticks(start, stop, stepsizes, k_ideal)
     end
 end
 
-function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractRange{<:DateTime})::Vector{String}
+function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::Vector{<:DateTime}, kind::Symbol)::Vector{String}
     # Handle edge cases
     if length(datetimes) <= 1
         return string.(datetimes)
     end
     
-    step_value = datetimes.step
     n_ticks = length(datetimes)
     
-    if step_value isa Union{Dates.Day,Dates.Week,Dates.Month,Dates.Year}
+    if kind in (:year, :month, :day)
         # For daily+ steps, show only dates (no times) if all times are midnight
         all_midnight = all(dt -> (Dates.hour(dt) == 0 && Dates.minute(dt) == 0 && Dates.second(dt) == 0 && Dates.millisecond(dt) == 0), datetimes)
 
         if all_midnight
             if all(dt -> Dates.day(dt) == 1, datetimes)
-                if step_value isa Dates.Year
+                if kind === :year
                     if all(dt -> Dates.month(dt) == 1, datetimes)
                         # Years only
                         return [Dates.format(dt, tickobj.y) for dt in datetimes]
                     else
                         return [Dates.format(dt, tickobj.ym) for dt in datetimes]
                     end
-                elseif step_value isa Dates.Month
+                elseif kind === :month
                     return [Dates.format(dt, tickobj.ym) for dt in datetimes]
                 else
                     return [Dates.format(dt, tickobj.ymd) for dt in datetimes]
@@ -297,7 +313,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             # Mixed date and time - show full datetime
             return [Dates.format(dt, tickobj.ymdHMS) for dt in datetimes]
         end
-    elseif step_value isa Hour
+    elseif kind === :hour
         # Hourly steps - use multi-line format: time on top, date below when it changes
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
@@ -317,7 +333,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             prev_date = current_date
         end
         return ticklabels
-    elseif step_value isa Minute
+    elseif kind === :minute
         # Minute-level steps
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
@@ -343,7 +359,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             prev_hour = current_hour
         end
         return ticklabels
-    elseif step_value isa Second
+    elseif kind === :second
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
         prev_hour = nothing
@@ -372,7 +388,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             prev_minute = current_minute
         end
         return ticklabels
-    else
+    elseif kind === :millisecond
         # milliseconds
         ticklabels = Vector{String}(undef, n_ticks)
         prev_date = nothing
@@ -408,5 +424,7 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks3, datetimes::AbstractR
             prev_second = current_second
         end
         return ticklabels
+    else
+        error("invalid kind $kind")
     end
 end
