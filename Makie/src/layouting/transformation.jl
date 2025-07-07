@@ -471,8 +471,6 @@ An asinh scaling defined as
 ```math
 y = \\frac{\\text{asinh} \\left(x/a\\right)}{\\text{asinh} \\left(1/a\\right)}
 ```
-
-This can be used as the `colorscale` keyword argument to [`heatmap`](@ref).
 """
 function AsinhScale(a=0.1)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
@@ -487,8 +485,6 @@ A sinh scaling defined as
 ```math
 y = \\frac{\\text{sinh} \\left(x/a\\right)}{\\text{sinh} \\left(1/a\\right)}
 ```
-
-This can be used as the `colorscale` keyword argument to [`heatmap`](@ref).
 """
 function SinhScale(a=1/3)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
@@ -504,8 +500,6 @@ A logarithmic scaling defined as
 ```math
 y = \\frac{\\text{log}_b \\left(ax + 1\right)}{\\text{log}_b \\left(a+1\\right)}
 ```
-
-This can be used as the `colorscale` keyword argument to [`heatmap`](@ref).
 """
 function LogScale(a=1000, base=ℯ)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
@@ -526,9 +520,7 @@ defined as
 y = \\text{asinh} \\left( \\frac{Q * x}{a} \\right) \\times \\frac{a}{\\text{asinh} \\left(Q*a\\right)}
 ```
 
-The argument `a` is the linear scaling parameter and `Q` is the asinh softening parameter. To find an effective scaling, the authors recommend setting `Q` to near zero and adjusting the linear scaling `a` to a reasonable level, then increasing `Q` to accentuate faint features.
-
-This can be used as the `colorscale` keyword argument to [`heatmap`](@ref).
+This scaling is typically used to adjust the intensity scaling of astronomical images. The argument `a` is the linear scaling parameter and `Q` is the asinh softening parameter. To find an effective scaling, the authors recommend setting `Q` to near zero and adjusting the linear scaling `a` to a reasonable level, then increasing `Q` to accentuate faint features.
 """
 function LuptonAsinhScale(a=0.1, Q=0.01, frac=0.1)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
@@ -541,7 +533,7 @@ end
 """
     PowerScale(a=1)
 
-A power-law scaling derived as ``y = x^a``. This can be used as the `colorscale` keyword argument to [`heatmap`](@ref).
+A power-law scaling derived as ``y = x^a``.
 """
 function PowerScale(a=1)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
