@@ -1572,7 +1572,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
             """
             There is no color gradient named $cs.
             See `available_gradients()` for the list of available gradients,
-            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            or look at https://docs.makie.org/dev/explanations/colors#Colormaps.
             """
         )
     end
@@ -1622,7 +1622,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            or look at https://docs.makie.org/dev/explanations/colors#Colormaps.
             """
         )
     end
