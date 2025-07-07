@@ -121,15 +121,14 @@ plottype(::Type{<:QQNorm}, args...) = QQPlot
 function Makie.plot!(p::QQPlot)
 
     points, line = p[1], p[2]
-    real_markercolor = Observable{RGBColors}()
 
-    map!(real_markercolor, p.color, p.markercolor) do color, markercolor
+    map!(p.attributes, [:color, :markercolor], :real_markercolor) do color, markercolor
         return to_color(markercolor === automatic ? color : markercolor)
     end
 
     scatter!(
         p, points;
-        color = real_markercolor,
+        color = p.real_markercolor,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
         marker = p.marker,

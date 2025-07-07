@@ -36,29 +36,16 @@ function plot!(p::ScatterLines)
     attr = p.attributes
 
     # markercolor is the same as linecolor if left automatic
-    register_computation!(
-        attr,
-        [:color, :markercolor],
-        [:real_markercolor]
-    ) do (color, markercolor), changed, last
-        return (to_color(markercolor === automatic ? color : markercolor),)
+    map!(attr, [:color, :markercolor], :real_markercolor) do color, markercolor
+        return to_color(markercolor === automatic ? color : markercolor)
     end
 
-    register_computation!(
-        attr,
-        [:colormap, :markercolormap],
-        [:real_markercolormap]
-    ) do (colormap, markercolormap), changed, last
-        return (markercolormap === automatic ? colormap : markercolormap,)
+    map!(attr, [:colormap, :markercolormap], :real_markercolormap) do colormap, markercolormap
+        return markercolormap === automatic ? colormap : markercolormap
     end
 
-    register_computation!(
-        attr,
-        [:colorrange, :markercolorrange],
-        [:real_markercolorrange]
-    ) do (colorrange, markercolorrange), changed, last
-
-        return (markercolorrange === automatic ? colorrange : markercolorrange,)
+    map!(attr, [:colorrange, :markercolorrange], :real_markercolorrange) do colorrange, markercolorrange
+        return markercolorrange === automatic ? colorrange : markercolorrange
     end
 
     lines!(

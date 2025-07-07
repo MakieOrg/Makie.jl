@@ -19,12 +19,10 @@ Examples:
 end
 
 function plot!(p::Arc)
-    args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
-    positions = lift(p, args...) do origin, radius, start_angle, stop_angle, resolution
+    map!(p.attributes, [:origin, :radius, :start_angle, :stop_angle, :resolution], :positions) do origin, radius, start_angle, stop_angle, resolution
         return map(range(start_angle, stop = stop_angle, length = resolution)) do angle
             return origin .+ Point2f((cos(angle), sin(angle)) .* radius)
         end
     end
-    attr = Attributes(p)
-    return lines!(p, attr, positions)
+    return lines!(p, Attributes(p), p.positions)
 end

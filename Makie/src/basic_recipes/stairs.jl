@@ -21,7 +21,7 @@ conversion_trait(::Type{<:Stairs}) = PointBased()
 function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where {T <: Point2}
     points = p[1]
 
-    steppoints = lift(p, points, p.step) do points, step
+    map!(p.attributes, [:converted_1, :step], :steppoints) do points, step
         if step === :pre
             s_points = Vector{T}(undef, length(points) * 2 - 1)
             s_points[1] = point = points[1]
@@ -59,6 +59,6 @@ function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where {T <: Point2}
         end
     end
 
-    lines!(p, shared_attributes(p, Lines), steppoints)
+    lines!(p, shared_attributes(p, Lines), p.steppoints)
     return p
 end

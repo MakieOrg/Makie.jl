@@ -88,15 +88,15 @@ function Makie.plot!(p::Spy)
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
-    register_computation!(p, [:markersize, :data_limits, :z, :marker_gap], [:spy_markersize]) do (markersize, rect, z, gap), _, _
+    map!(p.attributes, [:markersize, :data_limits, :z, :marker_gap], :spy_markersize) do markersize, rect, z, gap
         if markersize === automatic
-            return (Vec2f((widths(rect) ./ Vec2(size(z))) .- gap),)
+            return Vec2f((widths(rect) ./ Vec2(size(z))) .- gap)
         else
-            (Vec2f(markersize),)
+            return Vec2f(markersize)
         end
     end
 
-    register_computation!(p, [:z, :spy_markersize, :color, :data_limits], [:positions, :spy_color, :index_map]) do (z, markersize, color, rect), _, _
+    map!(p.attributes, [:z, :spy_markersize, :color, :data_limits], [:positions, :spy_color, :index_map]) do z, markersize, color, rect
         x, y, scolor = SparseArrays.findnz(z)
         index_map = Dict(enumerate(zip(x, y)))
         mhalf = markersize ./ 2
@@ -105,7 +105,7 @@ function Makie.plot!(p::Spy)
             return (p01 .* widths(rect)) .+ minimum(rect) .+ mhalf
         end
         _color = isnothing(color) ? convert(Vector{Float32}, scolor) : color
-        return (points, _color, index_map)
+        return points, _color, index_map
     end
 
     scatter!(
