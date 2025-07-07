@@ -174,11 +174,11 @@ struct LimitReset
     modifier2::Optional{Keyboard.Button} # e.g. Keyboard.left_shift, or some other keyboard button to auto limits.
 
     function LimitReset(
-        mouseevent = MouseEventTypes.leftclick,
-        modifier1 = Keyboard.left_control,
-        modifier2 = Keyboard.left_shift,
-    )
-        new(mouseevent, modifier1, modifier2)
+            mouseevent = MouseEventTypes.leftclick,
+            modifier1 = Keyboard.left_control,
+            modifier2 = Keyboard.left_shift,
+        )
+        return new(mouseevent, modifier1, modifier2)
     end
 end
 

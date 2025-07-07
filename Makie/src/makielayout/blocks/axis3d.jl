@@ -207,7 +207,8 @@ function initialize_block!(ax::Axis3)
     on(process_event, scene, ax.keysevents)
 
     for (name, (active, interaction)) in interactions(Axis3)
-        active && register_interaction!(ax, name,
+        active && register_interaction!(
+            ax, name,
             interaction isa Function ? interaction : deepcopy(interaction),
         )
     end
