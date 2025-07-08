@@ -843,6 +843,15 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     return
 end
 
+function register_computation!(f, attr::ComputeGraph, inputs::Vector{Union{Computed, Symbol}}, outputs::Vector{Symbol})
+    if !all(k -> k isa Symbol && haskey(attr.outputs, k), inputs)
+        missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
+        error("Could not register computation: Inputs $missing_keys not found.")
+    end
+    _inputs = Computed[k isa Symbol ? attr.outputs[k] : k for k in inputs]
+    register_computation!(f, attr, _inputs, outputs)
+    return
+end
 
 function check_boxed_values(f)
     names = propertynames(f)
@@ -978,12 +987,12 @@ function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Vector{<:Union{Symbol, Computed}}, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Union{Vector{Symbol}, Vector{Computed}}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Vector{<:Union{Symbol, Computed}}, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     return attr
 end
