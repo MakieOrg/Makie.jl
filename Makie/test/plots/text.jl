@@ -107,7 +107,6 @@ end
     @test scales == fta_scales
 end
 
-
 @testset "old text syntax" begin
     text("text", position = Point2f(0, 0))
     text(["text"], position = [Point2f(0, 0)])
@@ -121,4 +120,28 @@ end
     err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
     # @test_throws err text(1, 2, text = "hi", textsize = 30)
+end
+
+@testset "Text type changes" begin
+    scene = Scene()
+    for initial_text in ["test", rich("test"), L"test"]
+        p = text!(scene, 0, 0, text = initial_text)
+        @test begin
+            for changed in ["test", rich("test"), L"test"]
+                p.text = changed
+                p.glyphindices[]
+            end
+            true
+        end
+
+        p = text!(scene, 0, 0, text = [initial_text])
+        @test begin
+            for changed in ["test", rich("test"), L"test"]
+                p.text = [changed]
+                p.glyphindices[]
+            end
+            true
+        end
+    end
+
 end
