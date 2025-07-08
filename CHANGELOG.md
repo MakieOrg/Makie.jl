@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Adjusted compute `map!` to accept mixed array contain Symbols and compute nodes [#5167](https://github.com/MakieOrg/Makie.jl/pull/5167)
+
 ## [0.24.3] - 2025-07-04
 
 - Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
