@@ -35,6 +35,16 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
     include("isolated_tests.jl")
     include("unit_tests.jl")
 
+    @testset "ComputeGraph Sanity Checks" begin
+        # This is supposed to catch changes in ComputePipeline causing nodes to
+        # be skipped or become duplicated. This will also trigger if plot attributes
+        # are modified in which case the numbers should just be updated
+        f,a,p = scatter(rand(10));
+        colorbuffer(f)
+        @test length(p.attributes.inputs) = 44
+        @test length(p.attributes.outputs) = 89
+    end
+
     @testset "Reference Tests" begin
         @testset "refimages" begin
             ReferenceTests.mark_broken_tests()
