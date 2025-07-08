@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Moved remaining compute edge checks for safe edge reuse out of debug mode [#5169](https://github.com/MakieOrg/Makie.jl/pull/5169)
+
 ## [0.24.3] - 2025-07-04
 
 - Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
