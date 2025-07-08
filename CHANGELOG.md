@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added some validation for compute node initialization (which guards against some error in `map!()` callbacks) [#5170](https://github.com/MakieOrg/Makie.jl/pull/5170)
+
 ## [0.24.3] - 2025-07-04
 
 - Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
