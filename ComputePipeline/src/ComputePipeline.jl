@@ -843,11 +843,8 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Symbol}, ou
     return
 end
 
-function register_computation!(f, attr::ComputeGraph, inputs::Vector{Union{Computed, Symbol}}, outputs::Vector{Symbol})
-    if !all(k -> k isa Symbol && haskey(attr.outputs, k), inputs)
-        missing_keys = filter(k -> !haskey(attr.outputs, k), inputs)
-        error("Could not register computation: Inputs $missing_keys not found.")
-    end
+# [computed, symbol] is an Any Vector so no eltype here
+function register_computation!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
     _inputs = Computed[k isa Symbol ? attr.outputs[k] : k for k in inputs]
     register_computation!(f, attr, _inputs, outputs)
     return
@@ -987,12 +984,12 @@ function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{<:Union{Symbol, Computed}}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector{<:Union{Symbol, Computed}}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     return attr
 end
