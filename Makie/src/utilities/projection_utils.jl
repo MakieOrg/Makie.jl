@@ -15,8 +15,6 @@ to allow clip space clipping to happen elsewhere.)
 - `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
 - `input_name = :positions` sets the source positions which will be projected.
-- `transformed_name = Symbol(input_name, :_transformed)` sets the name of positions after the `transform_func` is applied.
-- `transformed_f32c_name = Symbol(transformed_name, :_f32c)` sets the name of positions after float32convert is applied.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
 - `apply_transform_func = apply_transform` controls whether `transform_func` is applied.
@@ -41,8 +39,6 @@ function register_projected_positions!(
         input_space::Symbol = :space,
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions,
-        transformed_name::Symbol = Symbol(input_name, :_transformed),
-        transformed_f32c_name::Symbol = Symbol(transformed_name, :_f32c),
         output_name::Symbol = Symbol(output_space, :_, input_name),
         yflip::Bool = false,
         apply_transform::Bool = input_space === :space,
@@ -54,12 +50,14 @@ function register_projected_positions!(
 
     # Handle transform function + f32c
     if apply_transform_func
+        transformed_name = Symbol(input_name, :_transformed)
         register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
     else
         transformed_name = input_name
     end
 
     if apply_float32convert && !is_data_space(output_space)
+        transformed_f32c_name = Symbol(transformed_name, :_f32c)
         register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
     else
         # Pipeline will apply f32c if the input space is data space, so we
