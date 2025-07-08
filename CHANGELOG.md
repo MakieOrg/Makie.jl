@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
+
 ## [0.24.3] - 2025-07-04
 
 - Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
