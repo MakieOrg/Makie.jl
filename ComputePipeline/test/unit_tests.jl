@@ -777,5 +777,5 @@ end
     @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
 
     map!(x -> graph.a, graph, :a, :j)
-    @test_throws ErrorException graph.j[]
+    @test_throws ResolveException{ErrorException} graph.j[]
 end
