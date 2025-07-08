@@ -44,11 +44,11 @@ mutable struct Computed
     parent_idx::Int # index of parent.outputs this value refers to
     Computed(name) = new(name, false)
     function Computed(name, value::RefValue)
-        validate_value(value)
+        validate_node_value(value)
         return new(name, false, value)
     end
     function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
-        validate_value(value)
+        validate_node_value(value)
         return new(name, false, value, parent, idx)
     end
     function Computed(name, edge::AbstractEdge, idx::Integer)
@@ -119,6 +119,13 @@ function TypedEdge(edge::ComputeEdge)
 
     result = edge.callback(map(getindex, inputs), dirty, nothing)
 
+    if !all(is_node_value_valid, result)
+        invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+        strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+        str = join(strings, ", ")
+        error("Edge callback returned invalid types for outputs: [$str]")
+    end
+
     if result isa Tuple
         if length(result) != length(edge.outputs)
             m = first(methods(edge.callback))
@@ -167,20 +174,9 @@ Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
 function Input(graph, name, value, f, output)
-    validate_value(value)
+    validate_node_value(value)
     return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
 end
-
-# Sanity checks, maybe remove later?
-validate_value(x) = nothing
-validate_value(x::RefValue) = isassigned(x) ? validate_value(x[]) : nothing
-# shouldn't have those in input.value or computed.value[]
-validate_value(::Computed) = error("::Computed is not a valid value for a Computed or Input")
-validate_value(::Input) = error("::Input is not a valid value for a Computed or Input")
-validate_value(::Observable) = error("::Observable is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Computed}) = error("::Computed is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Input}) = error("::Input is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Observable}) = error("::Observable is not a valid value for a Computed or Input")
 
 
 """
@@ -218,6 +214,20 @@ struct ComputeGraph
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
+end
+
+validate_node_value(x) = nothing
+validate_node_value(x::RefValue) = isassigned(x) ? validate_node_value(x[]) : nothing
+# shouldn't have those in input.value or computed.value[]
+function validate_node_value(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+    error("The value of a compute node is not allowed to be of type ::$T.")
+end
+
+is_node_value_valid(x) = true
+is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : true
+# shouldn't have those in input.value or computed.value[]
+function is_node_value_valid(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+    return false
 end
 
 """
