@@ -119,32 +119,37 @@ function TypedEdge(edge::ComputeEdge)
 
     result = edge.callback(map(getindex, inputs), dirty, nothing)
 
-    if !all(is_node_value_valid, result)
-        invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
-        strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
-        str = join(strings, ", ")
-        error("Edge callback returned invalid types for outputs: [$str]")
-    end
-
     if result isa Tuple
+
+        if !all(is_node_value_valid, result)
+            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+            str = join(strings, ", ")
+            error("Edge callback returned invalid types for outputs: [$str]")
+        end
+
         if length(result) != length(edge.outputs)
             m = first(methods(edge.callback))
             line = string(m.file, ":", m.line)
             error("Result needs to have same length. Found: $(result), for func $(line)")
         end
+
         outputs = ntuple(length(edge.outputs)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
         foreach(node -> node.dirty = true, edge.outputs)
+
     elseif isnothing(result)
+
         outputs = ntuple(length(edge.outputs)) do i
             v = RefValue(nothing)
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
         foreach(node -> node.dirty = false, edge.outputs)
+
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
