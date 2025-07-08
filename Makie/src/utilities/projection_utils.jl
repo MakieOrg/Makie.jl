@@ -12,8 +12,8 @@ positions. (4D points will not be w-normalized, 1D - 3D points will be. This is
 to allow clip space clipping to happen elsewhere.)
 
 ## Keyword Arguments:
-- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes.
-- `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes.
+- `input_space = :space` sets the input space. Can be `:space` or `:markerspace` to refer to those plot attributes or any static space like `:data`.
+- `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes or any static space like `:pixel`.
 - `input_name = :positions` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
