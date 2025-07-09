@@ -66,7 +66,8 @@ get_callback_info(f, args...) = f, typeof.(args)
 # ComputeEdge with InputFunctionWrapper which drops changed and cached
 # from add_input!(f, key, ::Computed)
 function get_callback_info(f::InputFunctionWrapper, inputs, changed, outputs)
-    return get_callback_info(f.user_func, f.key, inputs[1])
+    # if the edge inputs aren't initialized yet we fall back onto am empty namedtuple
+    return get_callback_info(f.user_func, f.key, length(inputs) > 0 ? inputs[1] : nothing)
 end
 
 # Input with InputFunctionWrapper adding Symbol to the callback
