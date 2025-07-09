@@ -72,7 +72,7 @@ function initialize_block!(t::Toggle)
 
     function perform_toggle_animation()
         if animating[]
-            return 
+            return
         end
         animating[] = true
 
