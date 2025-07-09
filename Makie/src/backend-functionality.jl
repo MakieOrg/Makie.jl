@@ -54,10 +54,12 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         return (xps, yps)
     end
 
+    register_model_f32c!(attr)
+
     return register_computation!(
         attr,
         [:x_transformed, :y_transformed, :model, :f32c, :space],
-        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
+        [:x_transformed_f32c, :y_transformed_f32c]
     ) do (x, y, model, f32c, space), changed, cached
         # TODO: this should be done in one nice function
         # This is simplified, skipping what's commented out
@@ -65,16 +67,15 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            m = changed.model ? Mat4f(model) : nothing
             xs = changed.x_transformed || changed.f32c ? el32convert(first.(x)) : nothing
             ys = changed.y_transformed || changed.f32c ? el32convert(last.(y)) : nothing
-            return (xs, ys, m)
-            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            return (xs, ys)
+        elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
-            # elseif is_float_safe(scale, trans) && is_rot_free
+        elseif false # is_float_safe(scale, trans) && is_rot_free
             # fast path: can swap order of f32c and model, i.e. apply model on GPU
-            # elseif is_rot_free
+        elseif false # is_rot_free
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
@@ -90,8 +91,7 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
                 p4d = model * p4d
                 ys[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 2)
             end
-            m = Mat4f(I)
-            return (xs, ys, m)
+            return (xs, ys)
         end
     end
 end
