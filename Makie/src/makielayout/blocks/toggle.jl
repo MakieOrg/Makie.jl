@@ -71,6 +71,10 @@ function initialize_block!(t::Toggle)
     updatefunc = Ref{Any}(nothing)
 
     function perform_toggle_animation()
+        if animating[]
+            return 
+        end
+        animating[] = true
 
         anim_posfrac = Animations.Animation(
             [0, t.toggleduration[]],
@@ -107,22 +111,12 @@ function initialize_block!(t::Toggle)
     end
 
     onmouseleftclick(mouseevents) do event
-        if animating[]
-            return Consume(true)
-        end
-        animating[] = true
-
         t.active[] = !t.active[]
-
-        perform_toggle_animation()
-
         return Consume(true)
     end
 
     on(t.active) do active
-        if !animating[]
-            perform_toggle_animation()
-        end
+        perform_toggle_animation()
     end
 
     onmouseover(mouseevents) do event
