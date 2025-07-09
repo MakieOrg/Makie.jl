@@ -50,36 +50,37 @@ end
 get_callback_info(edge::Input) = get_callback_info(edge.f, edge.value)
 function get_callback_info(edge::ComputeEdge)
     input = _get_named_inputs(edge)
+    changed = NamedTuple{keys(input)}(ntuple(x -> true, length(keys(input))))
     output = _get_named_outputs(edge)
-    return get_callback_info(edge.callback, input, output)
+    return get_callback_info(edge.callback, input, changed, output)
 end
 
-# fill out standard ComputeEdge callback arg types
-# register_computation!(), map!(), add_input!(key, ::Computed)
-function get_callback_info(f, arg1, arg3)
-    names = propertynames(arg1)
-    return f, (typeof(arg1), NamedTuple{names, NTuple{length(names), Bool}}, typeof(arg3))
-end
+# catch-all for the final user function being called.
+# could be:
+#   f(inputs, changed, cached) from register_computation!()
+#   f(key, input) from InputFunctionWrapper in Input
+#   f(input) from MapFunctionWrapper in map!()
+# or some other syntax due to a wrapper created in another package
+get_callback_info(f, args...) = f, typeof.(args)
 
 # ComputeEdge with InputFunctionWrapper which drops changed and cached
 # from add_input!(f, key, ::Computed)
-function get_callback_info(f::InputFunctionWrapper, inputs, outputs)
-    # if the edge isn't initialized inputs fall back onto NamedTuple()
-    return f.user_func, (Symbol, length(inputs) > 0 ? typeof(inputs[1]) : Any)
+function get_callback_info(f::InputFunctionWrapper, inputs, changed, outputs)
+    # if the edge inputs aren't initialized yet we fall back onto am empty namedtuple
+    return get_callback_info(f.user_func, f.key, length(inputs) > 0 ? inputs[1] : nothing)
 end
 
 # Input with InputFunctionWrapper adding Symbol to the callback
 # for add_input!(f, key, value)
-function get_callback_info(f::InputFunctionWrapper, arg)
-    return f.user_func, (Symbol, typeof(arg))
+function get_callback_info(f::InputFunctionWrapper, input)
+    return get_callback_info(f.user_func, f.key, input)
 end
 
 # map!(f, attr, ...) call which drops changed, cached and NamedTuple
 # for add_input!(f, key, value)
-function get_callback_info(f::MapFunctionWrapper, inputs, outputs)
-    return f.user_func, typeof.(values(inputs))
+function get_callback_info(f::MapFunctionWrapper, inputs, changed, outputs)
+    return get_callback_info(f.user_func, values(inputs))
 end
-
 
 # add_input!(key, value)
 get_callback_info(f::typeof(identity), arg) = f, (typeof(arg),)
