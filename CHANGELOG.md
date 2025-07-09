@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
+- Updated `arc`, `band`, `pie`, `stairs`, `stem`, `tooltip`, `wireframe` and `qqplot` to use the new compute graph instead of observables [#5165](https://github.com/MakieOrg/Makie.jl/pull/5165)
 
 ## [0.24.3] - 2025-07-04
 
