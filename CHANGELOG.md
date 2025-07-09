@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `register_projected_rotations_2d!` for calculating the screen space rotation between data points of a plot. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `map!(f, plot::Plot, inputs, outputs)` method (accepting a plot instead of a compute graph). [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Updated `arrows`, `bracket`, `contour`, `contour3d`, `poly`, `streamplot`, `textlabel`, `triplot`, `voronoiplot` and `hexbin` to use the compute graph instead of observables. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
+
+## [0.24.3] - 2025-07-04
+
+- Fixed empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
+- Fixed plot attributes with `Dict` as input [#5149](https://github.com/MakieOrg/Makie.jl/pull/5149).
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
 - Fixed h/vlines and h/vspan not considering transform functions correctly. [#5145](https://github.com/MakieOrg/Makie.jl/pull/5145)
 - Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
@@ -893,7 +903,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...HEAD
+[0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2
 [0.24.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...v0.24.0

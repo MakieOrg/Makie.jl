@@ -25,7 +25,8 @@ convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
-convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
+convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
+convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 
 to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
@@ -847,8 +848,6 @@ where both scripts are right-aligned against the following text.
 left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 
 export rich, subscript, superscript, subsup, left_subsup
-
-convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
 
 struct GlyphState
     x::Float32

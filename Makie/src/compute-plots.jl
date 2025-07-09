@@ -574,6 +574,9 @@ Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert
 function (::AttributeConvert{key, plot})(_, value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
 end
+function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, _, value) where {key, plot}
+    return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
+end
 
 to_recipe_attribute(_, x) = Ref{Any}(x) # Make sure it can change type
 to_recipe_attribute(_, attr::Attributes) = attr
