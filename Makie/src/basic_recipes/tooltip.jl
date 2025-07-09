@@ -124,9 +124,9 @@ end
 
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
-    map!(ToolTipShape, p.attributes, [:placement, :align, :triangle_size], :shape)
+    map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)
 
-    map!(p.attributes, [:placement, :align], :text_align) do placement, align
+    map!(p, [:placement, :align], :text_align) do placement, align
         if placement === :left
             return (1.0, align)
         elseif placement === :right
@@ -141,9 +141,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    map!(to_lrbt_padding, p.attributes, [:textpadding], :text_padding)
+    map!(to_lrbt_padding, p, [:textpadding], :text_padding)
 
-    map!(p.attributes, [:offset, :textpadding, :triangle_size, :placement, :align], :text_offset) do o, pad, ts, placement, align
+    map!(p, [:offset, :textpadding, :triangle_size, :placement, :align], :text_offset) do o, pad, ts, placement, align
         l, r, b, t = pad
 
         if placement === :left

@@ -36,7 +36,7 @@ end
 
 function plot!(plot::Pie)
 
-    map!(plot.attributes, [:xs, :ys, :values, :vertex_per_deg, :radius, :inner_radius, :offset_radius, :offset, :normalize], :polys) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
+    map!(plot, [:xs, :ys, :values, :vertex_per_deg, :radius, :inner_radius, :offset_radius, :offset, :normalize], :polys) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
         radius = length(radius) == 1 ? fill(only(radius), length(vals)) : radius
         inner_radius = length(inner_radius) == 1 ? fill(only(inner_radius), length(vals)) : inner_radius
         offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius

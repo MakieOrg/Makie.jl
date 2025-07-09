@@ -46,11 +46,11 @@ trunkpoint(stempoint::P, offset::Point3) where {P <: Point3} = P(offset...)
 
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
 
-    map!(s.attributes, [:converted_1, :offset], :stemtuples) do ps, to
+    map!(s, [:converted_1, :offset], :stemtuples) do ps, to
         tuple.(ps, trunkpoint.(ps, to))
     end
 
-    map!(s.attributes, [:stemtuples], :trunkpoints) do st
+    map!(s, [:stemtuples], :trunkpoints) do st
         return last.(st)
     end
 

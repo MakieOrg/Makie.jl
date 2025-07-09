@@ -10,7 +10,7 @@ yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
 function plot!(plot::Wireframe{<:Tuple{<:Any, <:Any, <:AbstractMatrix}})
-    map!(plot.attributes, [:converted_1, :converted_2, :converted_3], :points_faces) do x, y, z
+    map!(plot, [:converted_1, :converted_2, :converted_3], :points_faces) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
@@ -22,7 +22,7 @@ function plot!(plot::Wireframe{<:Tuple{<:Any, <:Any, <:AbstractMatrix}})
 end
 
 function plot!(plot::Wireframe{Tuple{T}}) where {T}
-    map!(plot.attributes, [:converted_1], :points) do g
+    map!(plot, [:converted_1], :points) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
         points = decompose(Point, g)

@@ -80,7 +80,7 @@ end
 needs_tight_limits(::Spy) = true
 
 function Makie.plot!(p::Spy)
-    map!(p.attributes, [:x, :y], :data_limits) do x, y
+    map!(p, [:x, :y], :data_limits) do x, y
         xe = minmax(x...)
         ye = minmax(y...)
         Rect2((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
@@ -88,7 +88,7 @@ function Makie.plot!(p::Spy)
     # TODO FastPixel isn't accepting marker size in data coordinates
     # but instead in pixel - so we need to fix that in GLMakie for consistency
     # and make this nicer when redoing unit support
-    map!(p.attributes, [:markersize, :data_limits, :z, :marker_gap], :spy_markersize) do markersize, rect, z, gap
+    map!(p, [:markersize, :data_limits, :z, :marker_gap], :spy_markersize) do markersize, rect, z, gap
         if markersize === automatic
             return Vec2f((widths(rect) ./ Vec2(size(z))) .- gap)
         else
@@ -96,7 +96,7 @@ function Makie.plot!(p::Spy)
         end
     end
 
-    map!(p.attributes, [:z, :spy_markersize, :color, :data_limits], [:positions, :spy_color, :index_map]) do z, markersize, color, rect
+    map!(p, [:z, :spy_markersize, :color, :data_limits], [:positions, :spy_color, :index_map]) do z, markersize, color, rect
         x, y, scolor = SparseArrays.findnz(z)
         index_map = Dict(enumerate(zip(x, y)))
         mhalf = markersize ./ 2
@@ -117,11 +117,13 @@ function Makie.plot!(p::Spy)
         generic_plot_attributes(p)...
     )
 
-    return lines!(
+    lines!(
         p, p.data_limits;
         color = p.framecolor,
         linewidth = p.framesize,
         visible = p.framevisible,
         inspectable = false
     )
+
+    return p
 end
