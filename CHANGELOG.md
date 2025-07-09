@@ -3,12 +3,16 @@
 ## Unreleased
 
 - Adjusted compute `map!` to accept mixed array contain Symbols and compute nodes [#5167](https://github.com/MakieOrg/Makie.jl/pull/5167)
+- Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `register_projected_rotations_2d!` for calculating the screen space rotation between data points of a plot. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `map!(f, plot::Plot, inputs, outputs)` method (accepting a plot instead of a compute graph). [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Updated `arrows`, `bracket`, `contour`, `contour3d`, `poly`, `streamplot`, `textlabel`, `triplot`, `voronoiplot` and `hexbin` to use the compute graph instead of observables. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
 
 ## [0.24.3] - 2025-07-04
 
-- Fix empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
-- Fix plot attributes with `Dict` as input [#5149](https://github.com/MakieOrg/Makie.jl/pull/5149).
+- Fixed empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
+- Fixed plot attributes with `Dict` as input [#5149](https://github.com/MakieOrg/Makie.jl/pull/5149).
 - Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
 - Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
 
