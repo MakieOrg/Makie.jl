@@ -1,15 +1,82 @@
 # Changelog
 
-## [Unreleased]
+## Unreleased
 
 - Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+- Adjusted compute `map!` to accept mixed array contain Symbols and compute nodes [#5167](https://github.com/MakieOrg/Makie.jl/pull/5167)
+- Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `register_projected_rotations_2d!` for calculating the screen space rotation between data points of a plot. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Added `map!(f, plot::Plot, inputs, outputs)` method (accepting a plot instead of a compute graph). [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Updated `arrows`, `bracket`, `contour`, `contour3d`, `poly`, `streamplot`, `textlabel`, `triplot`, `voronoiplot` and `hexbin` to use the compute graph instead of observables. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
+- Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
+
+## [0.24.3] - 2025-07-04
+
+- Fixed empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).
+- Fixed plot attributes with `Dict` as input [#5149](https://github.com/MakieOrg/Makie.jl/pull/5149).
+- Fixed arrow marker attributes in `arrows3d` not triggering repositioning of arrows. [#5134](https://github.com/MakieOrg/Makie.jl/pull/5134)
+- Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
+
+## [0.24.2] - 2025-06-27
+
+- Bring back some default attributes for recipes [#5130](https://github.com/MakieOrg/Makie.jl/pull/5130).
+- Allow multiple separate link groups in `xaxislinks` and `yaxislinks` arguments of `SpecApi.GridLayout` so that facet layouts can have independently linked columns and rows [#5127](https://github.com/MakieOrg/Makie.jl/pull/5127).
+
+## [0.24.1] - 2025-06-24
+
+- Don't pull plots from invisible scenes and hide Blocks during construction [#5119](https://github.com/MakieOrg/Makie.jl/pull/5119).
+- Fixed `dendrogram` docstring and added `x, y, merges` conversion [#5118](https://github.com/MakieOrg/Makie.jl/pull/5118).
+- Make sure there's only one inspector per root scene [#5113](https://github.com/MakieOrg/Makie.jl/pull/5113).
+- Bring back lowres background for heatmap(Resampler(...)) [#5110](https://github.com/MakieOrg/Makie.jl/pull/5110).
+- Fixed forwarding attributes in recipes [#5109](https://github.com/MakieOrg/Makie.jl/pull/5109).
+
+## [0.24.0] - 2025-06-20
+
+- **Breaking** Refactored plots to rely on the newly introduced `ComputeGraph` instead of `Observables`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+  - **Breaking** `attr = Attributes(plot)` now returns a `ComputeGraph`, which disallows `copy(attr)`, `pop!(attr, ...)`, `attr[:newvar] = ...` and splatting `plot!(...; attr...)`.
+  - **Semi-Breaking** `plot(parent, attr, args...; kwargs...)` now only considers applicable attributes in `attr` and prioritizes `kwargs` in case of collisions.
+  - **Semi-Breaking** `@recipe Name (args...)` now names converted arguments and requires the number of `args` to match the number of outputs ifrom `convert_arguments()`
+  - **Breaking** `replace_automatic!()` has been removed as it was incompatible. `Makie.default_automatic()` can be used as an alternative.
+  - **Breaking** `text!()` is no longer a nested structure of text plots.
+  - **Breaking** Scene lights have moved to the scene `ComputeGraph` and no longer contain Observables.
+  - Fixed synchronous update issues by allowing synchronized update with `Makie.update!(plot, attrib1 = val1, attrib2 = val2, ...)`
+  - Improved performance in WGLMakie with better bundling and filtering of updates
+  - Improved traceability attribute and argument processing from user input to the backend
+- **Breaking** `annotations!()` (not the new `annotation`) has been removed in favor of `text!()`. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- **Semi-Breaking** Removed various internal text bounding box functions in favor of more user friendly functions like `string_boundingboxes(plot)` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- **Semi-Breaking** Deprecated `ShadingAlgorithm` for `plot.shading` in favor of a `Bool`. The selection of the algorithm (`FastShading/MultiLightShading`) now happens at the scene level. [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed 2x2 surfaces not aligning colors correctly in WGLMakie [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Added support for per-mesh `uv_transform` in `WGLMakie.meshscatter` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed `PolarAxis` not considering text rotation correctly for tick label margins [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed `LaTeXStrings` not projecting lines correctly if `markerspace != :pixel` [#4630](https://github.com/MakieOrg/Makie.jl/pull/4630)
+- Fixed incorrect z values for 2x2 `surface()` plots in CairoMakie and WGLMakie. [#5052](https://github.com/MakieOrg/Makie.jl/pull/5052)
+- Fixed `arrows3d()` now including lighting attributes. [#5052](https://github.com/MakieOrg/Makie.jl/pull/5052)
+- **Breaking** Removed `MakieCore` from Makie's dependencies. Going forward, package extensions are recommended if a lightweight dependency is desired. A quick fix is to change the dependency to `Makie` and replace all `MakieCore` occurrences with `Makie` although this will incur Makie's full load time every time. The alternative is to use a package extension on `Makie` which requires at least Julia 1.9.
+- **Breaking** Changed `patchcolor` to opaque colors [#5088](https://github.com/MakieOrg/Makie.jl/pull/5088)
+- Fixed `annotation` in the presence of scene transform functions [#5058](https://github.com/MakieOrg/Makie.jl/pull/5058).
+- Moved Makie source directory from top level to ./Makie so that Makie itself does not include every other monorepo package when it's installed [#5069](https://github.com/MakieOrg/Makie.jl/pull/5069).
+- Removed asset folder and made it an artifact, breaking code that didn't use `Makie.assetpath`. Also introduces `Makie.loadasset(name)`, to directly load the asset [#5074](https://github.com/MakieOrg/Makie.jl/pull/5074).
+- Added `fontsize` attribute to `annotation` [#5099](https://github.com/MakieOrg/Makie.jl/pull/5099).
+
+## [0.23.0] - 2025-06-10
+
+- **Breaking** Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
+  - **Breaking** `Arrows` as a type is deprecated as the recipe has been split up. Use the `Makie.ArrowLike` conversion trait, `Arrows2D` or `Arrows3D` instead.
+  - **Breaking** The `arrows!()` function is deprecated in favor of `arrows2d!()` and `arrows3d!()`. These plot functions differ in how they render arrows and can be used in 2D and 3D interchangeably.
+  - **Breaking** The arrow size now considers all components of the arrow, not just the shaft, changing sizes and alignments.
+  - **Breaking** `align` no longer accepts `:lineend, :tailend, :headstart` and `:origin`. It now only accepts `:head, :center, :tail` and numbers for fractional alignment. Issues with these alignments not working correctly have been fixed.
+  - **Breaking** Attributes `arrowhead, arrowtail, arrowcolor, linecolor, linewidth, arrowsize` are deprecated. See `?arrows2d` and `?arrows3d` or the main docs for replacements.
+  - **Breaking** Attributes `linestyle` and `transform_marker` are no longer supported.
+  - **Breaking** Outside of `minshaftlength .. maxshaftlength`, arrows now scale as a whole instead of just their shaft.
+  - **Breaking** 3D Arrows now try to scale to a size appropriate to the given data. This can be turned off by setting `markerscale` to a static number.
+  - Arrows are now split into a tail, shaft and head, allowing for double-headed arrows.
+  - 2D arrows are now based on `poly`, fixing self-overlap issues with transparent arrows.
+  - 3D arrow tips, or more generally the new `GeometryBasics.Cone` renders with much smoother shading.
+  - `argmode = :endpoint` has been added to allow constructing arrows with a start and end point instead of a start point and a direction.
+  - Arrows now work correctly with `colorrange`, `alpha`, etc.
+  - Transforms (e.g. `log` or `rotate!(plot, ...)`) now only affect the start and end points of arrows, rather than its components. This fixes issues like incorrect tip rotation of 2D arrows and stretching/squishing of 3D arrows.
 - Add dim conversion support for Axis3 [#4964](https://github.com/MakieOrg/Makie.jl/pull/4964).
 - Added support for vectors of intervals in `hspan` and `vspan` [#5036](https://github.com/MakieOrg/Makie.jl/pull/5036)
-- Refactored `arrows` to solve various issues: [#4925](https://github.com/MakieOrg/Makie.jl/pull/4925)
-  - arrow size now considers all components of the arrow, not just the shaft
-  - arrows are now split into a tail, shaft and head, allowing for double-headed arrows
-  - align now works consistently for 2D and 3D arrows and now only accepts `:head, :center, :tail` or numbers
-  - arrows are now based on `poly`, fixing overlap issues with transparent arrows
 - Export `Float64` geometry types `Point3d`, `Vec4d`, `Rect2d` etc. [#5040](https://github.com/MakieOrg/Makie.jl/pull/5040).
 - Added `dendrogram` recipe to Makie [#2755](https://github.com/MakieOrg/Makie.jl/pull/2755)
 - Added unit support to `Slider` [#5037](https://github.com/MakieOrg/Makie.jl/pull/5037)
@@ -836,7 +903,12 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...HEAD
+[0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
+[0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2
+[0.24.1]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.0...v0.24.1
+[0.24.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.23.0...v0.24.0
+[0.23.0]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.10...v0.23.0
 [0.22.10]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.9...v0.22.10
 [0.22.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.8...v0.22.9
 [0.22.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.22.7...v0.22.8

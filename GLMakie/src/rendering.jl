@@ -26,11 +26,11 @@ end
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen; resize_buffers=true)
+function render_frame(screen::Screen; resize_buffers = true)
     isnothing(screen.scene) && return
 
     nw = to_native(screen)
-    ShaderAbstractions.switch_context!(nw)
+    gl_switch_context!(nw)
     GLAbstraction.require_context(nw)
 
     function sortby(x)
@@ -42,7 +42,7 @@ function render_frame(screen::Screen; resize_buffers=true)
         # return Makie.zvalue2d(plot)
     end
 
-    sort!(screen.renderlist; by=sortby)
+    sort!(screen.renderlist; by = sortby)
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
@@ -129,6 +129,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            elem[:px_per_unit] = ppu
             render(elem)
         end
     catch e

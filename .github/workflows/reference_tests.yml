@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
           - ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+          pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -60,6 +60,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -95,7 +97,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+          pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -112,6 +114,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
@@ -123,7 +127,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
           - ubuntu-latest
@@ -145,7 +149,7 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -165,6 +169,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info

@@ -7,6 +7,8 @@ using FixedPointNumbers
 using ColorTypes
 using ..GLMakie.GLFW
 using ..GLMakie: ShaderSource
+import ..GLMakie.Makie.ComputePipeline: update!
+import ..GLMakie: DEBUG
 using Printf
 using LinearAlgebra
 using Observables
@@ -19,7 +21,8 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 import Base: merge, resize!, similar, length, getindex, setindex!
 
 # Debug tools
-const GLMAKIE_DEBUG = Ref(false)
+const CONTEXT_LOCK1 = ReentrantLock()
+const CONTEXT_LOCK2 = ReentrantLock()
 
 # implemented in GLMakie/glwindow.jl
 function require_context_no_error(args...) end
@@ -29,21 +32,41 @@ function require_context(ctx, current = ShaderAbstractions.current_context())
     isnothing(msg) && return nothing
     error(msg)
 end
-function with_context(f, context)
-    CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
-    old_ctx = isassigned(CTX) ? CTX[] : nothing
-    GLAbstraction.switch_context!(context)
-    try
-        f()
-    finally
-        if isnothing(old_ctx)
-            GLAbstraction.switch_context!()
+
+function gl_switch_context!(context = nothing)
+    return lock(CONTEXT_LOCK1) do
+        if isnothing(context)
+            ShaderAbstractions.switch_context!()
+        elseif ShaderAbstractions.context_alive(context)
+            ShaderAbstractions.switch_context!(context)
         else
-            GLAbstraction.switch_context!(old_ctx)
+            error("Switching to unalived context!")
         end
     end
 end
-export require_context, with_context
+
+function with_context(f, context)
+    if !ShaderAbstractions.context_alive(context)
+        error("Context is not alive anymore!")
+    end
+    old_ctx = nothing
+    lock(CONTEXT_LOCK1) do
+        CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+        old_ctx = isassigned(CTX) ? CTX[] : nothing
+        ShaderAbstractions.switch_context!(context)
+    end
+    return try
+        f()
+    finally
+        if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)
+            gl_switch_context!()
+        else
+            gl_switch_context!(old_ctx)
+        end
+    end
+end
+
+export require_context, with_context, gl_switch_context!
 
 include("AbstractGPUArray.jl")
 
