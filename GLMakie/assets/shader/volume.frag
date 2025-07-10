@@ -352,17 +352,18 @@ void main()
     bool is_outside_box = (eye_unit.x < 0 || eye_unit.y < 0 || eye_unit.z < 0
             || eye_unit.x > 1 || eye_unit.y > 1 || eye_unit.z > 1);
 
-    vec3 start = back_position;
-    vec3 stop = eye_unit;
+    vec3 start = eye_unit;
+    vec3 stop = back_position;
 
     if (is_outside_box) {
+        // only trace inside the box:
         // solve back_position + distance * dir == 1
         // solve back_position + distance * dir == 0
         // to see where it first hits unit cube!
         vec3 solution_1 = (1.0 - back_position) / dir;
         vec3 solution_0 = (0.0 - back_position) / dir;
         float solution = min_bigger_0(solution_1, solution_0);
-        stop = back_position + solution * dir;
+        start = back_position + solution * dir;
     }
 
     // if completely clipped discard this ray tracing attempt
