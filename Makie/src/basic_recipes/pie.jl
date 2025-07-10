@@ -35,11 +35,8 @@ function convert_arguments(::Type{<:Pie}, xs::Union{Real, RealVector}, ys::Union
 end
 
 function plot!(plot::Pie)
-    xs = plot[1]
-    ys = plot[2]
-    values = plot[3]
 
-    polys = lift(plot, xs, ys, values, plot.vertex_per_deg, plot.radius, plot.inner_radius, plot.offset_radius, plot.offset, plot.normalize) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
+    map!(plot, [:xs, :ys, :values, :vertex_per_deg, :radius, :inner_radius, :offset_radius, :offset, :normalize], :polys) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
         radius = length(radius) == 1 ? fill(only(radius), length(vals)) : radius
         inner_radius = length(inner_radius) == 1 ? fill(only(inner_radius), length(vals)) : inner_radius
         offset_radius = length(offset_radius) == 1 ? fill(only(offset_radius), length(vals)) : offset_radius
@@ -83,7 +80,7 @@ function plot!(plot::Pie)
 
     # plot pieces as polys
     poly!(
-        plot, polys,
+        plot, plot.polys,
         color = plot.color, strokewidth = plot.strokewidth,
         strokecolor = plot.strokecolor, inspectable = plot.inspectable,
         visible = plot.visible, transparency = plot.transparency

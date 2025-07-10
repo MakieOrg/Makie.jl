@@ -25,7 +25,8 @@ convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
-convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
+convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
+convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 
 to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
@@ -415,7 +416,7 @@ function register_text_computations!(attr::ComputeGraph)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, :text_positions)
+    register_position_transforms!(attr, input_name = :text_positions, transformed_name = :positions_transformed)
     return
 end
 
@@ -438,25 +439,18 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     return tex_linesegments!(plot)
 end
 
-function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
-    planes = to_model_space(model, clip_planes)
-    projected_pos = _project(preprojection * model, positions)
-    nan_point = eltype(projected_pos)(NaN)
-    for i in eachindex(projected_pos)
-        projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
-    end
-    return projected_pos
-end
-
 function tex_linesegments!(plot)
-    # Don't user register_markerspace_position() here so we skip calculating them
+    register_model_clip_planes!(plot.attributes)
+
+    # Don't user register_markerspace_positions() here so we skip calculating them
     # if no linesegments are needed
     map!(
-        plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+        plot.attributes,
+        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
         :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
+    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
-        markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
+        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
             return seg + markerspace_positions[glyph_idx]
@@ -482,18 +476,18 @@ end
 # - offset always applies in markerspace w/o rotation. Excluding it when positions
 #   are included makes little sense
 
-# TODO: anything per-string should include lines?
-
-function register_markerspace_position!(plot)
-    if !haskey(plot.attributes, :markerspace_positions)
-        map!(
-            project_text_positions_to_markerspace, plot.attributes,
-            [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :markerspace_positions
-        )
-    end
-    return plot.markerspace_positions
+function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwargs...) where {OT}
+    # Careful, text uses :text_positions as the input to the transformation pipeline
+    # We can also skip that part:
+    return register_positions_projected!(
+        plot, OT; kwargs...,
+        input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
+        input_space = :space, output_space = :markerspace,
+        apply_model = true, apply_clip_planes = true
+    )
 end
+
+# TODO: anything per-string should include lines?
 
 function register_raw_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
@@ -546,7 +540,7 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         map!(
             plot.attributes,
             [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
@@ -623,7 +617,7 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,
@@ -854,8 +848,6 @@ where both scripts are right-aligned against the following text.
 left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 
 export rich, subscript, superscript, subsup, left_subsup
-
-convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
 
 struct GlyphState
     x::Float32
