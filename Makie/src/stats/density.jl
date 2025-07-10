@@ -58,11 +58,8 @@ Plot a kernel density estimate of `values`.
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
-    x = plot[1]
-
-    lowerupper = lift(
-        plot, x, plot.direction, plot.boundary, plot.offset,
-        plot.npoints, plot.bandwidth, plot.weights
+    map!(plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
+               [:lower, :upper]
     ) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(
@@ -82,50 +79,40 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         else
             error("Invalid direction $dir, only :x or :y allowed")
         end
-        (lowerv, upperv)
+        return lowerv, upperv
     end
 
-    linepoints = lift(plot, lowerupper, plot.strokearound) do lu, sa
+    map!(plot, [:lower, :upper, :strokearound], :linepoints) do l, u, sa
         if sa
-            ps = copy(lu[2])
-            push!(ps, lu[1][end])
-            push!(ps, lu[1][1])
-            push!(ps, lu[1][2])
+            ps = copy(u)
+            push!(ps, l[end])
+            push!(ps, l[1])
+            push!(ps, l[2])
             ps
         else
-            lu[2]
+            u
         end
     end
 
-    lower = Observable(Point2f[])
-    upper = Observable(Point2f[])
-
-    on(plot, lowerupper) do (l, u)
-        lower.val = l
-        upper[] = u
-    end
-    notify(lowerupper)
-
-    colorobs = Observable{Any}()
-    map!(plot, colorobs, plot.color, lowerupper, plot.direction) do c, lu, dir
+    map!(plot, [:color, :lower, :upper, :direction], :colorobs) do c, l, u, dir
         if (dir === :x && c === :x) || (dir === :y && c === :y)
             dim = dir === :x ? 1 : 2
-            return Float32[l[dim] for l in lu[1]]
+            return Float32[l[dim] for l in l]
         elseif (dir === :y && c === :x) || (dir === :x && c === :y)
-            o = Float32(plot.offset[])
+            o = Float32(plot.offset)
             dim = dir === :x ? 2 : 1
-            return vcat(Float32[l[dim] - o for l in lu[1]], Float32[l[dim] - o for l in lu[2]])::Vector{Float32}
+            return vcat(Float32[l[dim] - o for l in l], Float32[l[dim] - o for l in u])::Vector{Float32}
         else
             return c
         end
     end
 
     band!(
-        plot, lower, upper, color = colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
+        plot, plot.lower, plot.upper, color = plot.colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
         colorrange = plot.colorrange, inspectable = plot.inspectable, alpha = plot.alpha, visible = plot.visible
     )
     l = lines!(
-        plot, linepoints, color = plot.strokecolor,
+        plot, plot.linepoints, color = plot.strokecolor,
         linestyle = plot.linestyle, linewidth = plot.strokewidth,
         inspectable = plot.inspectable, alpha = plot.alpha, visible = plot.visible
     )

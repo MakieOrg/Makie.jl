@@ -77,15 +77,13 @@ flip_xy(p::Point2f) = reverse(p)
 flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
-    args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
-    signals = lift(
-        plot,
-        plot[1],
-        plot[2],
-        plot[:color],
-        args...,
-    ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
+    map!(plot, [:x, :y, :color, :weights, :width, :range, :show_outliers, :whiskerwidth, 
+                :show_notch, :orientation, :gap, :dodge, :n_dodge, :dodge_gap],
+               [:centers, :boxwidth, :boxmin, :boxmax, :medians, :notchmin, :notchmax, :t_segments,
+                :boxcolor, :outlier_indices, :outlier_points]
+        ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch,
+             orientation, gap, dodge, n_dodge, dodge_gap
         x̂, widths = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
@@ -162,33 +160,10 @@ function Makie.plot!(plot::BoxPlot)
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
 
-        return (
-            centers = centers,
-            boxmin = boxmin,
-            boxmax = boxmax,
-            medians = medians,
-            notchmin = notchmin,
-            notchmax = notchmax,
-            outliers = outlier_points,
-            t_segments = t_segments,
-            boxwidth = boxwidth,
-            outlier_indices = outlier_indices,
-            boxcolor = boxcolor,
-        )
+        return centers, boxwidth, boxmin, boxmax, medians, notchmin, notchmax, t_segments, boxcolor, outlier_indices, outlier_points
     end
-    centers = @lift($signals.centers)
-    boxmin = @lift($signals.boxmin)
-    boxmax = @lift($signals.boxmax)
-    medians = @lift($signals.medians)
-    notchmin = @lift($show_notch ? $signals.notchmin : automatic)
-    notchmax = @lift($show_notch ? $signals.notchmax : automatic)
-    outliers = @lift($signals.outliers)
-    t_segments = @lift($signals.t_segments)
-    boxwidth = @lift($signals.boxwidth)
-    outlier_indices = @lift($signals.outlier_indices)
-    boxcolor = @lift($signals.boxcolor)
 
-    outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
+    map!(plot, [:outliercolor, :color, :outlier_indices], :outlier_color) do outliercolor, color, outlier_indices
         c = outliercolor === automatic ? color : outliercolor
         if c isa AbstractVector
             return c[outlier_indices]
@@ -199,47 +174,47 @@ function Makie.plot!(plot::BoxPlot)
 
     scatter!(
         plot,
-        color = outliercolor,
-        marker = plot[:marker],
-        markersize = plot[:markersize],
-        strokecolor = plot[:outlierstrokecolor],
-        strokewidth = plot[:outlierstrokewidth],
-        outliers,
-        inspectable = plot[:inspectable],
-        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        plot.outlier_points,
+        color = plot.outlier_color,
+        marker = plot.marker,
+        markersize = plot.markersize,
+        strokecolor = plot.outlierstrokecolor,
+        strokewidth = plot.outlierstrokewidth,
+        inspectable = plot.inspectable,
+        colorrange = plot.boxcolor isa AbstractArray{<:Real} ? extrema(plot.boxcolor) : automatic, # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
         visible = plot.visible,
     )
     linesegments!(
         plot,
-        color = plot[:whiskercolor],
-        linewidth = plot[:whiskerlinewidth],
-        t_segments,
-        inspectable = plot[:inspectable],
+        plot.t_segments,
+        color = plot.whiskercolor,
+        linewidth = plot.whiskerlinewidth,
+        inspectable = plot.inspectable,
         visible = plot.visible
     )
     return crossbar!(
         plot,
-        color = boxcolor,
-        colorrange = plot[:colorrange],
-        colormap = plot[:colormap],
-        colorscale = plot[:colorscale],
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
-        midlinecolor = plot[:mediancolor],
-        midlinewidth = plot[:medianlinewidth],
-        show_midline = plot[:show_median],
-        orientation = orientation,
-        width = boxwidth,
+        plot.centers,
+        plot.medians,
+        plot.boxmin,
+        plot.boxmax,
         gap = 0,
-        show_notch = show_notch,
-        notchmin = notchmin,
-        notchmax = notchmax,
-        notchwidth = plot[:notchwidth],
-        inspectable = plot[:inspectable],
-        centers,
-        medians,
-        boxmin,
-        boxmax,
+        color = plot.boxcolor,
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
+        colorscale = plot.colorscale,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
+        midlinecolor = plot.mediancolor,
+        midlinewidth = plot.medianlinewidth,
+        show_midline = plot.show_median,
+        orientation = plot.orientation,
+        width = plot.boxwidth,
+        show_notch = plot.show_notch,
+        notchmin = plot.notchmin,
+        notchmax = plot.notchmax,
+        notchwidth = plot.notchwidth,
+        inspectable = plot.inspectable,   
         visible = plot.visible
     )
 end

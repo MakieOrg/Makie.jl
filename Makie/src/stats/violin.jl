@@ -51,16 +51,11 @@ function getuniquevalue(v::AbstractVector, idxs)
 end
 
 function plot!(plot::Violin)
-    x, y = plot[1], plot[2]
-    args = @extract plot (
-        width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
-        datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation,
-    )
-    signals = lift(
-        plot, x, y,
-        args...
-    ) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
-            dodge, n_dodge, gap, dodge_gap, orientation
+    map!(plot, [:x, :y, :width, :side, :scale, :color, :show_median, :npoints, :boundary, :bandwidth, 
+                :weights, :datalimits, :max_density, :dodge, :n_dodge, :gap, :dodge_gap, :orientation],
+                [:vertices, :lines, :colors]
+    ) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits,
+        max_density, dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all components
@@ -151,22 +146,22 @@ function plot!(plot::Violin)
             push!(colors, spec.color)
         end
 
-        return (vertices = vertices, lines = lines, colors = colors)
+        return vertices, lines, colors
     end
 
     poly!(
         plot,
-        lift(s -> s.vertices, plot, signals);
-        color = lift(s -> s.colors, plot, signals),
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
+        plot.vertices;
+        color = plot.colors,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
     )
     return linesegments!(
         plot,
-        lift(s -> s.lines, plot, signals);
-        color = plot[:mediancolor],
-        linewidth = plot[:medianlinewidth],
-        visible = plot[:show_median],
-        inspectable = plot[:inspectable]
+        plot.lines;
+        color = plot.mediancolor,
+        linewidth = plot.medianlinewidth,
+        visible = plot.show_median,
+        inspectable = plot.inspectable
     )
 end

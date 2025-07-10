@@ -9,7 +9,7 @@ end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     w = wgts === automatic ? () : (StatsBase.weights(wgts),)
-    h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
+    h = StatsBase.fit(StatsBase.Histogram, values, w..., edges)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:(end - 1)] .+ (diff(edges) ./ 2)
@@ -56,13 +56,9 @@ end
 
 function Makie.plot!(plot::StepHist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
         _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         phantomedge = edges[end] # to bring step back to baseline
         edges = vcat(edges, phantomedge)
@@ -70,14 +66,12 @@ function Makie.plot!(plot::StepHist)
         heights = vcat(z, weights, z)
         return Point2.(edges, heights)
     end
-    color = lift(plot, plot.color) do color
-        if color === :values
-            return last.(points[])
-        else
-            return color
-        end
+
+    map!(plot, [:points, :color], :colors) do points, color
+        return color === :values ? last.(points) : color
     end
-    stairs!(plot, Attributes(plot), points; color = color)
+
+    stairs!(plot, Attributes(plot), plot.points; color = plot.colors)
     return plot
 end
 
@@ -161,37 +155,27 @@ end
 
 function Makie.plot!(plot::Hist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
         centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         return Point2.(centers, weights)
     end
-    widths = lift(diff, plot, edges)
-    color = lift(plot, plot.color) do color
-        if color === :values
-            return last.(points[])
-        else
-            return color
-        end
+
+    map!(diff, plot, :edges, :widths)
+    map!(plot, [:points, :color], :colors) do points, color
+        return color === :values ? last.(points) : color
     end
 
-    bar_labels = lift(plot, plot.bar_labels) do x
-        x === :values ? :y : x
+    map!(plot, :bar_labels, :barlabels) do x
+        return x === :values ? :y : x
     end
 
     # plot the values, not the observables, to be in control of updating
     bp = barplot!(
-        plot, Attributes(plot), points; width = widths, fillto = plot.fillto,
-        offset = plot.offset, bar_labels = bar_labels, color = color
+        plot, Attributes(plot), plot.points; width = plot.widths, fillto = plot.fillto,
+        offset = plot.offset, bar_labels = plot.barlabels, color = plot.colors
     )
 
-    onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
-        bp[1][] = points[]
-    end
     return plot
 end

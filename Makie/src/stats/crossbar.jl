@@ -49,15 +49,8 @@ It is most commonly used as part of the `boxplot`.
 end
 
 function Makie.plot!(plot::CrossBar)
-    args = @extract plot (width, dodge, n_dodge, gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
-
-    signals = lift(
-        plot,
-        plot[1],
-        plot[2],
-        plot[3],
-        plot[4],
-        args...,
+    map!(plot, [:x, :y, :ymin, :ymax, :width, :dodge, :n_dodge, :gap, :dodge_gap, 
+        :show_notch, :notchmin, :notchmax, :notchwidth, :orientation], [:boxes, :midlines]
     ) do x, y, ymin, ymax, width, dodge, n_dodge, gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
         x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
@@ -100,33 +93,29 @@ function Makie.plot!(plot::CrossBar)
             boxes = frect.(l, ymin, boxwidth, ymax .- ymin)
             midlines = Pair.(fpoint.(l, y), fpoint.(r, y))
         end
-        return [boxes;], [midlines;]
+        return boxes, midlines
     end
-    boxes = lift(s -> s[1], plot, signals)
-    midlines = lift(s -> s[2], plot, signals)
     poly!(
         plot,
-        boxes,
+        plot.boxes,
         color = plot.color,
         colorrange = plot.colorrange,
         colormap = plot.colormap,
         colorscale = plot.colorscale,
         strokecolor = plot.strokecolor,
         strokewidth = plot.strokewidth,
-        inspectable = plot[:inspectable],
+        inspectable = plot.inspectable,
         visible = plot.visible
     )
+    map!(plot, [:midlinecolor, :strokecolor], :linesegmentcolor) do mc, sc
+        mc === automatic ? sc : mc
+    end
     return linesegments!(
         plot,
-        color = lift(
-            (mc, sc) -> mc === automatic ? sc : mc,
-            plot,
-            plot.midlinecolor,
-            plot.strokecolor,
-        ),
-        linewidth = plot[:midlinewidth],
-        visible = plot[:show_midline],
-        inspectable = plot[:inspectable],
-        midlines,
+        color = plot.linesegmentcolor,
+        linewidth = plot.midlinewidth,
+        visible = plot.show_midline,
+        inspectable = plot.inspectable,
+        plot.midlines,
     )
 end
