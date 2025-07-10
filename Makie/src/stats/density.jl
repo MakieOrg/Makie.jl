@@ -95,12 +95,11 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    map!(plot, [:color, :lower, :upper, :direction], :colorobs) do c, l, u, dir
+    map!(plot, [:color, :lower, :upper, :direction, :offset], :colorobs) do c, l, u, dir, o
         if (dir === :x && c === :x) || (dir === :y && c === :y)
             dim = dir === :x ? 1 : 2
             return Float32[l[dim] for l in l]
         elseif (dir === :y && c === :x) || (dir === :x && c === :y)
-            o = Float32(plot.offset)
             dim = dir === :x ? 2 : 1
             return vcat(Float32[l[dim] - o for l in l], Float32[l[dim] - o for l in u])::Vector{Float32}
         else
