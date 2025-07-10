@@ -10,8 +10,6 @@ The basic usage is as easy as replacing numbers with any supported type, e.g. `D
 
 ```@figure dimconverts
 using CairoMakie, Makie.Dates, Makie.Unitful
-# TODO: find out why this can't just be defined in a `@figure DQ_dimconverts` block
-import DynamicQuantities as DQ
 CairoMakie.activate!() # hide
 Makie.inline!(true) # hide
 
@@ -63,7 +61,7 @@ f = Figure()
 ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
 
-#### Experimental DynamicQuantities support
+### Experimental DynamicQuantities.jl support
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized
@@ -76,28 +74,33 @@ Makie also provides support for [DynamicQuantities.jl](https://github.com/Symbol
 
 Below are four common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
 
-```@figure dimconverts
-    import DynamicQuantities as DQ
+```@setup DQ_dimconverts
+# TODO: not sure why this needs to be defined in a setup block first
+using DynamicQuantities
+```
 
-    # Implicitly define figure, axis, and units
-    f, ax, pl = scatter((100:100:1_000)*DQ.us"cm")
-    scatter!(ax, (10:-1:1)*DQ.u"m")
+```@figure DQ_dimconverts
+using DynamicQuantities
 
-    # Implicitly define axis and units
-    scatter(f[1, 2], (100:100:1_000)*DQ.us"cm")
-    scatter!(f[1, 2], (10:-1:1)*DQ.u"m")
+# Implicitly define figure, axis, and units
+f, ax, pl = scatter((100:100:1_000)us"cm")
+scatter!(ax, (10:-1:1)u"m")
 
-    # Explicitly define axis, implicitly define units
-    ax3 = Axis(f[1, 3])
-    scatter!(ax3, (100:100:1_000)*DQ.us"cm") # The first plot sets the units
-    scatter!(ax3, (10:-1:1)*DQ.u"m")
+# Implicitly define axis and units
+scatter(f[1, 2], (100:100:1_000)us"cm")
+scatter!(f[1, 2], (10:-1:1)u"m")
 
-    # Explicitly define axis and units
-    ax4 = Axis(f[1, 4]; dim2_conversion=Makie.DQConversion(DQ.us"cm"))
-    scatter!(ax4, (100:100:1_000)*DQ.u"cm") # No need for us"cm" now
-    scatter!(ax4, (10:-1:1)*DQ.u"m")
+# Explicitly define axis, implicitly define units
+ax3 = Axis(f[2, 1])
+scatter!(ax3, (100:100:1_000)us"cm") # The first plot sets the units
+scatter!(ax3, (10:-1:1)u"m")
 
-    f
+# Explicitly define axis and units
+ax4 = Axis(f[2, 2]; dim2_conversion=Makie.DQConversion(us"cm"))
+scatter!(ax4, (100:100:1_000)u"cm") # No need for us"cm" now
+scatter!(ax4, (10:-1:1)u"m")
+
+f
 ```
 
 ### Limitations
