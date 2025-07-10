@@ -9,13 +9,13 @@ import DynamicQuantities as DQ
 end
 
 @reference_test "DQ Basic units" begin
-   f = Figure()
-   scatter(f[1, 1], DQ.us"ns" * (1:10), DQ.us"d" * (1:10), markersize = 20, color = 1:10)
-   linesegments(f[1, 2], 1:10, round.(LinRange(0, 4599800000000, 10))DQ.u"ns" .|> DQ.us"minute")
-   scatter(f[2, 1], DQ.us"cm" * (1:10), DQ.us"d" * (1:10))
-   # TODO, implement log units, e.g., dB, mag?
-   scatter(f[2, 2], (60:10:100) * DQ.us"Hz")
-   f
+    f = Figure()
+    scatter(f[1, 1], DQ.us"ns" * (1:10), DQ.us"d" * (1:10), markersize = 20, color = 1:10)
+    linesegments(f[1, 2], 1:10, round.(LinRange(0, 4599800000000, 10))DQ.u"ns" .|> DQ.us"minute")
+    scatter(f[2, 1], DQ.us"cm" * (1:10), DQ.us"d" * (1:10))
+    # TODO, implement log units, e.g., dB, mag?
+    scatter(f[2, 2], (60:10:100) * DQ.us"Hz")
+    f
 end
 
 # TODO: Do we really want to support this? Currently uses the units specified in the initial plot
@@ -42,9 +42,9 @@ end
     # Don't simplify (assume the user knows better)
     scatter(f[1, 2], (1:10) * DQ.u"K", exp.(1:10) * DQ.us"mm/m^2")
     # Do not change prefixes of simple or compound units
-    scatter(f[2, 1], 10 .^ (1:6) * DQ.us"W/m^2", (1:6) .* 1000 * DQ.u"nm"; axis=(; dim2_conversion=Makie.DQConversion(DQ.us"μm")))
+    scatter(f[2, 1], 10 .^ (1:6) * DQ.us"W/m^2", (1:6) .* 1000 * DQ.u"nm"; axis = (; dim2_conversion = Makie.DQConversion(DQ.us"μm")))
     # Do not change units/prefixes for simple units when adding more plots
-    scatter(f[2, 2], (0:10) * DQ.u"W/m^2", (0:10) * DQ.u"g"; axis=(; dim1_conversion=Makie.DQConversion(DQ.us"W/m^2")))
+    scatter(f[2, 2], (0:10) * DQ.u"W/m^2", (0:10) * DQ.u"g"; axis = (; dim1_conversion = Makie.DQConversion(DQ.us"W/m^2")))
     scatter!((0:10) * DQ.u"kW/m^2", (0:10) * DQ.us"kg")
     f
 end

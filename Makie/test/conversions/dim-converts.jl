@@ -41,7 +41,7 @@ end
     ax_conversion = Makie.get_conversions(ax)
     @test pl_conversion[2] isa Makie.DQConversion
     @test ax_conversion[2] isa Makie.DQConversion
-    @test pl.plots[1][1][] == Point{2,Float32}.(1:5, 1:5)
+    @test pl.plots[1][1][] == Point{2, Float32}.(1:5, 1:5)
 end
 
 struct DateStruct end
@@ -91,7 +91,7 @@ end
 
     # TODO, DynamicQuantities does not work with Dates. Is this by design?
     f, ax, pl = scatter(rand(Hour(1):Hour(1):Hour(20), 10))
-    @test_throws ResolveException{Makie.Unitful.DimensionError} scatter!(ax, LinRange(0*DQ.u"yr", 0.1*DQ.u"yr", 5))
+    @test_throws ResolveException{Makie.Unitful.DimensionError} scatter!(ax, LinRange(0 * DQ.u"yr", 0.1 * DQ.u"yr", 5))
 end
 
 function test_cleanup(arg)
@@ -107,7 +107,7 @@ end
         test_cleanup([0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"])
     end
     @testset "DQConversion" begin
-        test_cleanup([0.01*DQ.u"km", 0.02*DQ.u"km", 0.03*DQ.u"km", 0.04*DQ.u"km"])
+        test_cleanup([0.01 * DQ.u"km", 0.02 * DQ.u"km", 0.03 * DQ.u"km", 0.04 * DQ.u"km"])
     end
     @testset "CategoricalConversion" begin
         test_cleanup(Categorical(["a", "b", "c"]))

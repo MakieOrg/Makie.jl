@@ -15,7 +15,7 @@ unit_string(quantity::DQ.UnionAbstractQuantity) = string(DQ.dimension(quantity))
 
 function unit_convert(quantity::DQ.UnionAbstractQuantity, x::AbstractArray)
     # Note: unit_convert.(Ref(quantity), x) currently causes broadcasting error for `QuantityArray`s
-    map(Base.Fix1(unit_convert, quantity), x)
+    return map(Base.Fix1(unit_convert, quantity), x)
 end
 
 function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
