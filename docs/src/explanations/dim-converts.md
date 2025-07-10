@@ -74,11 +74,6 @@ Makie also provides support for [DynamicQuantities.jl](https://github.com/Symbol
 
 Below are four common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
 
-```@setup DQ_dimconverts
-# TODO: not sure why this needs to be defined in a setup block first
-using DynamicQuantities
-```
-
 ```@figure DQ_dimconverts
 using DynamicQuantities
 
