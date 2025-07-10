@@ -42,7 +42,7 @@ end
     ax_conversion = Makie.get_conversions(ax)
     @test pl_conversion[2] isa Makie.DateTimeConversion
 
-    @test pl[1][] == Point.(1:5, Float64.(Makie.date_to_number.(DateTime.(1:5))))
+    @test pl[1][] == Point.(1:5, Float64.(Makie.date_to_number.(DateTime, DateTime.(1:5))))
 end
 
 @testset "Categorical ylims!" begin

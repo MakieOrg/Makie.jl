@@ -18,6 +18,7 @@
 - Fixed h/vlines and h/vspan not considering transform functions correctly. [#5145](https://github.com/MakieOrg/Makie.jl/pull/5145)
 - Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Moved some compute edge checks out of debug mode to error more consistently on edge overwrite [#5125](https://github.com/MakieOrg/Makie.jl/pull/5125)
+- Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 
 ## [0.24.2] - 2025-06-27
 
