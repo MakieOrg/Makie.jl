@@ -51,11 +51,14 @@ function getuniquevalue(v::AbstractVector, idxs)
 end
 
 function plot!(plot::Violin)
-    map!(plot, [:x, :y, :width, :side, :scale, :color, :show_median, :npoints, :boundary, :bandwidth, 
-                :weights, :datalimits, :max_density, :dodge, :n_dodge, :gap, :dodge_gap, :orientation],
-                [:vertices, :lines, :colors]
+    map!(
+        plot, [
+            :x, :y, :width, :side, :scale, :color, :show_median, :npoints, :boundary, :bandwidth,
+            :weights, :datalimits, :max_density, :dodge, :n_dodge, :gap, :dodge_gap, :orientation,
+        ],
+        [:vertices, :lines, :colors]
     ) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits,
-        max_density, dodge, n_dodge, gap, dodge_gap, orientation
+            max_density, dodge, n_dodge, gap, dodge_gap, orientation
         x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
         # for horizontal violin just flip all components

@@ -78,12 +78,17 @@ flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.width
 
 function Makie.plot!(plot::BoxPlot)
 
-    map!(plot, [:x, :y, :color, :weights, :width, :range, :show_outliers, :whiskerwidth, 
-                :show_notch, :orientation, :gap, :dodge, :n_dodge, :dodge_gap],
-               [:centers, :boxwidth, :boxmin, :boxmax, :medians, :notchmin, :notchmax, :t_segments,
-                :boxcolor, :outlier_indices, :outlier_points]
-        ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch,
-             orientation, gap, dodge, n_dodge, dodge_gap
+    map!(
+        plot, [
+            :x, :y, :color, :weights, :width, :range, :show_outliers, :whiskerwidth,
+            :show_notch, :orientation, :gap, :dodge, :n_dodge, :dodge_gap,
+        ],
+        [
+            :centers, :boxwidth, :boxmin, :boxmax, :medians, :notchmin, :notchmax, :t_segments,
+            :boxcolor, :outlier_indices, :outlier_points,
+        ]
+    ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch,
+            orientation, gap, dodge, n_dodge, dodge_gap
         x̂, widths = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth === :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
@@ -214,7 +219,7 @@ function Makie.plot!(plot::BoxPlot)
         notchmin = plot.notchmin,
         notchmax = plot.notchmax,
         notchwidth = plot.notchwidth,
-        inspectable = plot.inspectable,   
+        inspectable = plot.inspectable,
         visible = plot.visible
     )
 end

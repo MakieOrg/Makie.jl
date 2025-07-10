@@ -58,8 +58,9 @@ Plot a kernel density estimate of `values`.
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
-    map!(plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
-               [:lower, :upper]
+    map!(
+        plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
+        [:lower, :upper]
     ) do x, dir, bound, offs, n, bw, weights
 
         k = KernelDensity.kde(

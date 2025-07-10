@@ -49,8 +49,11 @@ It is most commonly used as part of the `boxplot`.
 end
 
 function Makie.plot!(plot::CrossBar)
-    map!(plot, [:x, :y, :ymin, :ymax, :width, :dodge, :n_dodge, :gap, :dodge_gap, 
-        :show_notch, :notchmin, :notchmax, :notchwidth, :orientation], [:boxes, :midlines]
+    map!(
+        plot, [
+            :x, :y, :ymin, :ymax, :width, :dodge, :n_dodge, :gap, :dodge_gap,
+            :show_notch, :notchmin, :notchmax, :notchwidth, :orientation,
+        ], [:boxes, :midlines]
     ) do x, y, ymin, ymax, width, dodge, n_dodge, gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
         x̂, boxwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
