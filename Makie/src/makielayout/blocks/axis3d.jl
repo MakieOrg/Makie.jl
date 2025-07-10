@@ -243,10 +243,14 @@ function calculate_matrices(
 
     if aspect === :equal
         scales = 2 ./ Float64.(ws)
+        axis_radius = sqrt(3)
     elseif aspect === :data
-        scales = 2 .* sign.(ws) ./ max.(maximum(ws), Float64.(ws))
+        scales = 2 .* sign.(ws) ./ maximum(ws)
+        axis_radius = norm(ws ./ maximum(ws))
     elseif aspect isa VecTypes{3}
-        scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
+        normalized_aspect = Float64.(aspect) ./ maximum(aspect)
+        scales = 2 ./ Float64.(ws) .* normalized_aspect
+        axis_radius = norm(normalized_aspect)
     else
         error("Invalid aspect $aspect")
     end
@@ -265,8 +269,7 @@ function calculate_matrices(
 
     fov = ang_min + (ang_max - ang_min) * perspectiveness
 
-    # After model content is normalized to a -1..1^3 box, i.e. within radius sqrt(3)
-    radius = zoom_mult * sqrt(3) / sind(fov / 2)
+    radius = zoom_mult * axis_radius / sind(fov / 2)
     camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
     eyepos = radius * camdir
 
@@ -276,7 +279,7 @@ function calculate_matrices(
         u_x = normalize(cross(up, u_z))
         u_y = cross(u_z, u_x)
 
-        lookat = zoom_mult * sqrt(3) * (scene_offset[1] * u_x + scene_offset[2] * u_y)
+        lookat = zoom_mult * axis_radius * (scene_offset[1] * u_x + scene_offset[2] * u_y)
         eyepos += lookat
     else
         lookat = Vec3d(0)
@@ -289,19 +292,18 @@ function calculate_matrices(
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, radius, fov,
-        w, h, to_protrusions(protrusions), viewmode, near
+        w, h, to_protrusions(protrusions), viewmode, near, axis_radius
     )
 
     return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protrusions, viewmode, near_limit)
-    # model normalizes the the longest axis of the axis bbox to -1..1, so its
-    # bounding sphere has a radius of sqrt(3)
-    # The distance of the camera to the center of the bounding sphere is "radius"
+function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protrusions, viewmode, near_limit, axis_radius)
+    # axis_radius is the radius of the bounding sphere of the axis
+    # radius is the distance between the camera and the center of the axis
     near_limit > 0.0 || error("near value must be > 0, but is $near_limit.")
-    near = max(near_limit, radius - sqrt(3))
-    far = max((1 + 1.0e-3) * near, radius + sqrt(3))
+    near = max(near_limit, radius - axis_radius)
+    far = max((1 + 1.0e-3) * near, radius + axis_radius)
 
     aspect_ratio = width / height
 
