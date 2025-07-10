@@ -149,10 +149,9 @@ function convert_arguments(p::PointBased, mp::MultiPoint{Dim, T}) where {Dim, T}
 end
 
 function convert_arguments(p::PointBased, mp::AbstractVector{<:MultiPoint})
-    points = mapreduce(x-> convert_arguments(p, x)[1], vcat,mp)
+    points = mapreduce(x -> convert_arguments(p, x)[1], vcat, mp)
     return (points,)
 end
-
 
 
 function convert_arguments(::PointBased, pos::RealMatrix)
