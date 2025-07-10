@@ -1,15 +1,14 @@
 using Test
 import DynamicQuantities as DQ
-using Makie.ComputePipeline: ResolveException
 
-@reference_test "combining units, error for numbers" begin
+@reference_test "DQ: combining units, error for numbers" begin
     f, ax, pl = scatter(((1:600:(100 * 60))DQ.u"s" .|> DQ.us"min"), 1:10, markersize = 20, color = 1:10)
     scatter!(ax, (1:10)DQ.u"hr", 1:10; markersize = 20, color = 1:10, colormap = :reds)
     @test_throws ResolveException scatter!(ax, rand(10), 1:10) # should error!
     f
 end
 
-@reference_test "Basic units" begin
+@reference_test "DQ: Basic units" begin
    f = Figure()
    scatter(f[1, 1], DQ.us"ns" * (1:10), DQ.us"d" * (1:10), markersize = 20, color = 1:10)
    linesegments(f[1, 2], 1:10, round.(LinRange(0, 4599800000000, 10))DQ.u"ns" .|> DQ.us"minute")
@@ -21,7 +20,7 @@ end
 
 # TODO: Do we really want to support this? Currently uses the units specified in the initial plot
 # call as intended in the original PR: https://github.com/SymbolicML/DynamicQuantities.jl/pull/165
-#@reference_test "Auto units for observables" begin
+#@reference_test "DQ: Auto units for observables" begin
 #    obs = Observable{Any}(DQ.u"s" * (1:10))
 #    f, ax, pl = scatter(1:10, obs)
 #    st = Stepper(f)
@@ -37,7 +36,7 @@ end
 #    st
 #end
 
-@reference_test "Unit reflection" begin
+@reference_test "DQ: Unit reflection" begin
     # Don't swallow units past the first
     f, a, p = scatter((1:10) * DQ.us"J/s")
     # Don't simplify (assume the user knows better)
@@ -50,7 +49,7 @@ end
     f
 end
 
-@reference_test "Unitful Axis3" begin
+@reference_test "DQ: Unitful Axis3" begin
     fig = Figure(size = (700, 300))
     ax = Axis3(fig[1, 1], dim1_conversion = Makie.DQConversion(DQ.us"m"))
     xs, ys = -2:0.2:2, -2:0.2:2
