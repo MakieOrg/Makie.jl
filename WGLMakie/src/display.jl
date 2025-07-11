@@ -69,7 +69,7 @@ end
 Bonito.needs_post_notify(x::Makie.FigureLike) = true
 function Bonito.post_notify_callback(x::Makie.FigureLike)
     scene = Makie.get_scene(x)
-    return ()-> poll_all_plots(scene)
+    return () -> poll_all_plots(scene)
 end
 
 
