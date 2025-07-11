@@ -66,6 +66,13 @@ function Makie.px_per_unit(s::Screen)::Float64
     return something(s.config.px_per_unit, 1.0)
 end
 
+Bonito.needs_post_notify(x::Makie.FigureLike) = true
+function Bonito.post_notify_callback(x::Makie.FigureLike)
+    scene = Makie.get_scene(x)
+    return ()-> poll_all_plots(scene)
+end
+
+
 function Screen(; config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(config))
     return Screen(nothing, config)
