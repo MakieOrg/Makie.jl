@@ -363,7 +363,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, clear = false, camera = campixel!)
+    blockscene = Scene(topscene, visible=false, clear = false, camera = campixel!)
 
     # create base block with otherwise undefined fields
     b = T(fig_or_scene, lobservables, blockscene)
