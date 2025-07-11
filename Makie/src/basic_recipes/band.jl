@@ -31,7 +31,7 @@ function Makie.plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
     nanpoint(::Type{<:Point3}) = Point3(NaN)
     nanpoint(::Type{<:Point2}) = Point2(NaN)
-    coordinates = lift(plot, lowerpoints, upperpoints, plot.direction) do lowerpoints, upperpoints, direction
+    map!(plot, [:lowerpoints, :upperpoints, :direction], :coordinates) do lowerpoints, upperpoints, direction
         n = length(lowerpoints)
         @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
         concat = [lowerpoints; upperpoints]
@@ -48,27 +48,28 @@ function Makie.plot!(plot::Band)
         end
         return concat
     end
-    connectivity = lift(x -> band_connect(length(x)), plot, plot[1])
-
-    color = lift(plot, plot.color) do c
+    map!(plot, [:lowerpoints], :connectivity) do lowerpoints
+        return band_connect(length(lowerpoints))
+    end
+    map!(plot, [:lowerpoints, :color], :colors) do lowerpoints, c
         if c isa AbstractVector
             # if the same number of colors is given as there are
             # points on one side of the band, the colors are mirrored to the other
             # side to make an even band
-            if length(c) == length(lowerpoints[])
+            if length(c) == length(lowerpoints)
                 return repeat(to_color(c), 2)
                 # if there's one color for each band vertex, the colors are used directly
-            elseif length(c) == 2 * length(lowerpoints[])
+            elseif length(c) == 2 * length(lowerpoints)
                 return to_color(c)
             else
-                error("Wrong number of colors. Must be $(length(lowerpoints[])) or double.")
+                error("Wrong number of colors. Must be $(length(lowerpoints)) or double.")
             end
         else
             return c
         end
     end
 
-    return mesh!(plot, Attributes(plot), coordinates, connectivity, color = color)
+    return mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
 end
 
 function fill_view(x, y1, y2, where::Nothing)

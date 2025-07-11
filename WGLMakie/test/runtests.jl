@@ -222,7 +222,6 @@ edisplay = Bonito.use_electron_display(devtools = true)
             windowed_dist = [mean(dist_from_target[i:(i + window)]) for i in 1:(length(dist_from_target) - window)]
             standard_error = sqrt(mapreduce(t -> t * t, +, windowed_dist) / length(windowed_dist))
             @test standard_error < 0.05dt
-            @info dist_from_target
 
             # delta times should average out to 1/30, with the caveat that ticks
             # can sometimes get skipped/merge into a N * 1/30 tick. Those ticks
