@@ -56,6 +56,8 @@ using Makie: volume
         include("conversions/float32convert.jl")
         include("conversions/cameras.jl")
         include("conversions/projection_math.jl")
+
+        include("conversions/recipe_projections.jl")
     end
 
     @testset "Interactivity" begin
