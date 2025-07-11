@@ -72,7 +72,6 @@ function Bonito.post_notify_callback(x::Makie.FigureLike)
     return () -> poll_all_plots(scene)
 end
 
-
 function Screen(; config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(config))
     return Screen(nothing, config)

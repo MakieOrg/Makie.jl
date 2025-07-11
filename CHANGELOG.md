@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fix `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 - Adjusted compute `map!` to accept mixed array contain Symbols and compute nodes [#5167](https://github.com/MakieOrg/Makie.jl/pull/5167)
 - Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Added `register_projected_rotations_2d!` for calculating the screen space rotation between data points of a plot. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
