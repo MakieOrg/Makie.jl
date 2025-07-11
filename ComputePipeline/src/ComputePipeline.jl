@@ -115,10 +115,16 @@ function TypedEdge(edge::ComputeEdge)
     names = ntuple(i -> edge.inputs[i].name, N)
     values = ntuple(i -> edge.inputs[i].value, N)
     inputs = NamedTuple{names}(values)
+    # force `callback` and `inputs` types to be inferred so the rest of the 
+    # constructor can be type stable 
+    return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
+end
+
+function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
-    result = edge.callback(map(getindex, inputs), dirty, nothing)
-
+    result = f(map(getindex, inputs), dirty, nothing)
+    
     if result isa Tuple
 
         if !all(is_node_value_valid, result)
@@ -134,7 +140,7 @@ function TypedEdge(edge::ComputeEdge)
             error("Result needs to have same length. Found: $(result), for func $(line)")
         end
 
-        outputs = ntuple(length(edge.outputs)) do i
+        outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
@@ -153,7 +159,7 @@ function TypedEdge(edge::ComputeEdge)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
+    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
 
@@ -956,15 +962,18 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     return
 end
 
-struct MapFunctionWrapper{FT} <: Function
+struct MapFunctionWrapper{pack, FT} <: Function
     user_func::FT
-    pack::Bool
+    MapFunctionWrapper(f::FT, pack = true) where {FT} = new{pack, FT}(f)
 end
-MapFunctionWrapper(f) = MapFunctionWrapper(f, true)
 
-function (x::MapFunctionWrapper)(inputs, @nospecialize(changed), @nospecialize(cached))
+function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
-    return x.pack ? (result,) : result
+    return (result,)
+end
+function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospecialize(cached))
+    result = x.user_func(values(inputs)...)
+    return result
 end
 
 """
