@@ -124,9 +124,9 @@ end
 
 function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
 
-    shape = map(ToolTipShape, p, p.placement, p.align, p.triangle_size)
+    map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)
 
-    text_align = map(p, p.placement, p.align) do placement, align
+    map!(p, [:placement, :align], :text_align) do placement, align
         if placement === :left
             return (1.0, align)
         elseif placement === :right
@@ -141,9 +141,9 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
         end
     end
 
-    textpadding = map(to_lrbt_padding, p, p.textpadding)
+    map!(to_lrbt_padding, p, [:textpadding], :text_padding)
 
-    text_offset = map(p, p.offset, textpadding, p.triangle_size, p.placement, p.align) do o, pad, ts, placement, align
+    map!(p, [:offset, :textpadding, :triangle_size, :placement, :align], :text_offset) do o, pad, ts, placement, align
         l, r, b, t = pad
 
         if placement === :left
@@ -161,10 +161,10 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     p = textlabel!(
-        p, p[1], p.text, shape = shape,
+        p, p[1], p.text, shape = p.shape,
 
-        padding = textpadding, justification = p.justification, text_align = text_align,
-        offset = text_offset, fontsize = p.fontsize, font = p.font,
+        padding = p.text_padding, justification = p.justification, text_align = p.text_align,
+        offset = p.text_offset, fontsize = p.fontsize, font = p.font,
 
         draw_on_top = false,
 

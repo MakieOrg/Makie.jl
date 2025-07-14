@@ -2092,6 +2092,23 @@ end
     f
 end
 
+@reference_test "hvlines + hvspan with transform_func" begin
+    f = Figure()
+
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    hspan!(ax, 0.1, 0.12, color = :lightblue, alpha = 0.5, strokewidth = 2, strokecolor = :black)
+    hspan!(ax, 0.9, 1, xmin = 0.2, xmax = 0.8)
+    vspan!(ax, 0.1, 0.12)
+    vspan!(ax, 0.9, 1, ymin = 0.2, ymax = 0.8, strokecolor = RGBf(0, 1, 0.1), strokewidth = 3)
+
+    hlines!(ax, 0.2, linewidth = 5)
+    hlines!(ax, 0.8, xmin = 0.2, xmax = 0.8, linewidth = 5)
+    vlines!(ax, 0.2, color = :green, linewidth = 3)
+    vlines!(ax, 0.8, ymin = 0.2, ymax = 0.8, color = :red, linewidth = 3, linestyle = :dot)
+
+    f
+end
+
 @reference_test "Color Patterns" begin
     f = Figure()
     a = Axis(f[1, 1], aspect = DataAspect()) #autolimitaspect = 1)
@@ -2188,7 +2205,7 @@ end
     )
     scatter!(scene, 50:50:400, fill(20, 8), marker = Rect, markersize = 20, color = :red)
 
-    component_widths = widths.(Rect2f.(p.plots[1].args[][1]))
+    component_widths = widths.(Rect3f.(p.plots[1].args[][1]))
     for i in 1:8
         scale = heights[i] / (clamp(heights[i] - p.tiplength[], min, max) + p.tiplength[])
         @test component_widths[2i - 1][1] ≈ p.shaftwidth[] * scale # shaft

@@ -197,6 +197,7 @@ is_vector_attribute(x::Base.Generator) = is_vector_attribute(x.iter)
 is_vector_attribute(x::NativeFont) = false
 is_vector_attribute(x::Quaternion) = false
 is_vector_attribute(x::VecTypes) = false
+is_vector_attribute(x::ScalarOrVector) = x.sv isa Vector
 is_vector_attribute(x) = false
 
 is_scalar_attribute(x) = !is_vector_attribute(x)
@@ -229,6 +230,17 @@ The length of an attribute is determined with `attr_broadcast_length` and elemen
         return
     end
 end
+
+ref_wrap_scalar_parameter(x) = is_vector_attribute(x) ? x : Ref(x)
+
+"""
+    makie_broadcast(f, args...)
+
+Like `broadcast` but treats types that Makie considers scalars as such, e.g.
+`VecTypes` (Point, Vec) or Quaternions. `is_vector_attribute` controls how
+arguments are considered.
+"""
+@inline makie_broadcast(f, args...) = broadcast(f, ref_wrap_scalar_parameter.(args)...)
 
 
 # used for lines in CairoMakie
