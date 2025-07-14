@@ -166,9 +166,26 @@ end
 function get_ticks(::Automatic, scale, formatter, vmin::Time, vmax::Time)
     # for now, take a shortcut and compute time ticks as datetime ticks on the same day where the day part is omitted in the dateformat
     dtt = DateTimeTicks(
-        ymdHM = dateformat"H:MM",
-        ymdHMS = dateformat"H:MM:SS",
-        ymdHMSs = dateformat"H:MM:SS.sss",
+        DateTimeTicks(
+        dateformat"yyyy",
+        dateformat"yyyy-mm",
+        dateformat"yyyy-mm-dd",
+        # these three are changed
+        dateformat"H:MM",
+        dateformat"H:MM:SS",
+        dateformat"H:MM:SS.sss",
+        #
+        dateformat"H:MM",
+        dateformat"H:MM:SS",
+        dateformat"H:MM:SS.sss",
+        dateformat":MM",
+        dateformat":M:SS",
+        dateformat":M:SS.sss",
+        dateformat":SS",
+        dateformat":SS.sss",
+        dateformat".sss",
+        5,
+    )
     )
     dvmin = DateTime(0, 1, 1, Dates.hour(vmin), Dates.minute(vmin), Dates.second(vmin), Dates.millisecond(vmin))
     dvmax = DateTime(0, 1, 1, Dates.hour(vmax), Dates.minute(vmax), Dates.second(vmax), Dates.millisecond(vmax))
