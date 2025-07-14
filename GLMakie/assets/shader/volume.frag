@@ -349,8 +349,8 @@ void main()
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
     vec3 dir = normalize(eye_unit - back_position);
 
-    bool is_outside_box = (eye_unit.x < 0 || eye_unit.y < 0 || eye_unit.z < 0
-            || eye_unit.x > 1 || eye_unit.y > 1 || eye_unit.z > 1);
+    bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
+            || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
 
     vec3 start = eye_unit;
     vec3 stop = back_position;
