@@ -758,3 +758,23 @@ end
         @test g.output[] == (2, 3)
     end
 end
+
+@testset "mixed-map" begin
+    graph1 = ComputeGraph()
+    add_input!(graph1, :a1, 1)
+
+    graph2 = ComputeGraph()
+    add_input!(graph2, :a2, 1)
+
+    map!(+, graph1, [graph1[:a1], graph2[:a2]], :merged1)
+    e1 = graph1.merged1.parent
+    @test e1.inputs == [graph1.a1, graph2.a2]
+
+    map!(+, graph1, [:a1, graph2[:a2]], :merged2)
+    e2 = graph1.merged2.parent
+    @test e2.inputs == [graph1.a1, graph2.a2]
+
+    map!(+, graph2, [graph1[:a1], :a2], :merged3)
+    e3 = graph2.merged3.parent
+    @test e3.inputs == [graph1.a1, graph2.a2]
+end
