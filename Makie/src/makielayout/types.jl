@@ -231,37 +231,37 @@ struct KeysEvent
 end
 
 tickinfo = """
-    The following is a list of common tick objects.
+The following is a list of common tick objects.
 
-    Numeric:
-    - A vector of numbers
-    - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-    - `WilkinsonTicks`, the default tick finder for linear ticks
-    - `LinearTicks`, an alternative tick finder for linear ticks
-    - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-    - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+Numeric:
+- A vector of numbers
+- A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+- `WilkinsonTicks`, the default tick finder for linear ticks
+- `LinearTicks`, an alternative tick finder for linear ticks
+- `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+- `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
 
-    DateTime:
-    - A vector of `DateTime`s
-    - A tuple with two vectors `(datetimes, labels)`
-    - `DateTimeTicks`, the default tick finder for datetime ticks
-    """
+DateTime:
+- A vector of `DateTime`s
+- A tuple with two vectors `(datetimes, labels)`
+- `DateTimeTicks`, the default tick finder for datetime ticks
+"""
 
 tickformatinfo = """
-    The following is a list of common tick formatter objects.
+The following is a list of common tick formatter objects.
 
-    Numeric:
-    - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
-        that can be plotted by the `text` primitive.
-    - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
-        formats numbers rounded to 2 decimal digits and with the suffix `kg`.
-    
-    DateTime:
-    - A `Function` that takes a vector of datetimes and returns a vector of labels. A label can be anything
-        that can be plotted by the `text` primitive.
-    - A `String` which is used to construct a `Dates.DateFormat` object for use with `Dates.format`. For example, `"dd.mm.yyyy"`.
-    - A `Dates.DateFormat` object which is used with `Dates.format` like the `String` option.
-    """
+Numeric:
+- A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
+    formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+
+DateTime:
+- A `Function` that takes a vector of datetimes and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used to construct a `Dates.DateFormat` object for use with `Dates.format`. For example, `"dd.mm.yyyy"`.
+- A `Dates.DateFormat` object which is used with `Dates.format` like the `String` option.
+"""
 
 """
 A 2D axis which can be plotted into.
