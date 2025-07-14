@@ -86,10 +86,6 @@ function convert_dim_value(conversion::DateTimeConversion, attr, values, previou
 end
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
-    error("$(scale) scale not supported for DateTimeConversion")
-end
-
-function get_ticks(conversion::DateTimeConversion, ticks, scale::typeof(identity), formatter, vmin, vmax)
     T = conversion.type[]
 
     # When automatic, we haven't actually plotted anything yet, so no unit chosen
@@ -99,18 +95,18 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale::typeof(identity
     vmin_date = number_to_date(T, vmin)
     vmax_date = number_to_date(T, vmax)
 
-    dateticks, labels = get_datetime_ticks(ticks, formatter, vmin_date, vmax_date)
+    dateticks, labels = get_ticks(ticks, scale, formatter, vmin_date, vmax_date)
 
     return date_to_number.(T, dateticks), labels
 end
 
-function get_datetime_ticks(ticks, formatter, vmin, vmax)
-    values = get_datetime_tickvalues(ticks, vmin, vmax)
-    labels = get_datetime_ticklabels(values, formatter)
+function get_ticks(ticks, scale, formatter, vmin::DateTime, vmax::DateTime)
+    values = get_tickvalues(ticks, vmin, vmax)
+    labels = get_ticklabels(values, formatter)
     return values, labels
 end
 
-function get_datetime_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin, vmax)
+function get_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin::DateTime, vmax::DateTime)
     return ticks[1], ticks[2]
 end
 
@@ -134,11 +130,11 @@ Base.@kwdef struct DateTimeTicks
 end
 
 
-function get_datetime_ticks(::Automatic, formatter, vmin::DateTime, vmax::DateTime)
-    return get_datetime_ticks(DateTimeTicks(), formatter, vmin, vmax)
+function get_ticks(::Automatic, scale, formatter, vmin::DateTime, vmax::DateTime)
+    return get_ticks(DateTimeTicks(), scale, formatter, vmin, vmax)
 end
 
-function get_datetime_ticks(::Automatic, formatter, vmin::Time, vmax::Time)
+function get_ticks(::Automatic, scale, formatter, vmin::Time, vmax::Time)
     # for now, take a shortcut and compute time ticks as datetime ticks on the same day where the day part is omitted in the dateformat
     dtt = DateTimeTicks(
         ymdHM = dateformat"H:MM",
@@ -147,38 +143,38 @@ function get_datetime_ticks(::Automatic, formatter, vmin::Time, vmax::Time)
     )
     dvmin = DateTime(0, 1, 1, Dates.hour(vmin), Dates.minute(vmin), Dates.second(vmin), Dates.millisecond(vmin))
     dvmax = DateTime(0, 1, 1, Dates.hour(vmax), Dates.minute(vmax), Dates.second(vmax), Dates.millisecond(vmax))
-    datetimes, labels = get_datetime_ticks(dtt, formatter, dvmin, dvmax)
+    datetimes, labels = get_ticks(dtt, scale, formatter, dvmin, dvmax)
     return Time.(datetimes), labels
 end
 
-function get_datetime_ticks(d::DateTimeTicks, formatter, vmin, vmax)
+function get_ticks(d::DateTimeTicks, scale, formatter, vmin::DateTime, vmax::DateTime)
     datetimes, kind = locate_datetime_ticks(d, vmin, vmax)
     if formatter === automatic
         labels = datetime_range_ticklabels(d, datetimes, kind)
     else
-        labels = get_datetime_ticklabels(datetimes, formatter)
+        labels = get_ticklabels(datetimes, formatter)
     end
     return datetimes, labels
 end
 
-function get_datetime_tickvalues(ticks::AbstractVector{<:Union{Date, DateTime}}, vmin::DateTime, vmax::DateTime)
+function get_tickvalues(ticks::AbstractVector{<:Union{Date, DateTime}}, scale, vmin::DateTime, vmax::DateTime)
     return ticks
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Automatic)
+function get_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Automatic)
     return string.(values)
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Function)
+function get_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Function)
     return formatter(values)
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::String)
+function get_ticklabels(values::AbstractVector{<:DateTime}, formatter::String)
     fmt = Dates.DateFormat(formatter)
     return [Dates.format(v, fmt) for v in values]
 end
 
-function get_datetime_ticklabels(values::AbstractVector{<:DateTime}, formatter::Dates.DateFormat)
+function get_ticklabels(values::AbstractVector{<:DateTime}, formatter::Dates.DateFormat)
     return [Dates.format(v, formatter) for v in values]
 end
 
@@ -189,13 +185,6 @@ extractor(::Type{Hour}) = hour
 extractor(::Type{Minute}) = minute
 extractor(::Type{Second}) = second
 extractor(::Type{Millisecond}) = millisecond
-
-parent_type(::Type{Month}) = Year
-parent_type(::Type{Day}) = Month
-parent_type(::Type{Hour}) = Day
-parent_type(::Type{Minute}) = Hour
-parent_type(::Type{Second}) = Minute
-parent_type(::Type{Millisecond}) = Second
 
 # assumes these are rounded to the given type already
 stepdiff(::Type{Year}, from, to) = year(to) - year(from)
