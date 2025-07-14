@@ -44,11 +44,11 @@ mutable struct Computed
     parent_idx::Int # index of parent.outputs this value refers to
     Computed(name) = new(name, false)
     function Computed(name, value::RefValue)
-        validate_value(value)
+        validate_node_value(value)
         return new(name, false, value)
     end
     function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
-        validate_value(value)
+        validate_node_value(value)
         return new(name, false, value, parent, idx)
     end
     function Computed(name, edge::AbstractEdge, idx::Integer)
@@ -115,33 +115,51 @@ function TypedEdge(edge::ComputeEdge)
     names = ntuple(i -> edge.inputs[i].name, N)
     values = ntuple(i -> edge.inputs[i].value, N)
     inputs = NamedTuple{names}(values)
+    # force `callback` and `inputs` types to be inferred so the rest of the
+    # constructor can be type stable
+    return Base.invokelatest(TypedEdge, edge, edge.callback, inputs)
+end
+
+function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
-    result = edge.callback(map(getindex, inputs), dirty, nothing)
+    result = f(map(getindex, inputs), dirty, nothing)
 
     if result isa Tuple
+
+        if !all(is_node_value_valid, result)
+            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+            strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
+            str = join(strings, ", ")
+            error("Edge callback returned invalid types for outputs: [$str]")
+        end
+
         if length(result) != length(edge.outputs)
             m = first(methods(edge.callback))
             line = string(m.file, ":", m.line)
             error("Result needs to have same length. Found: $(result), for func $(line)")
         end
-        outputs = ntuple(length(edge.outputs)) do i
+
+        outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
         foreach(node -> node.dirty = true, edge.outputs)
+
     elseif isnothing(result)
+
         outputs = ntuple(length(edge.outputs)) do i
             v = RefValue(nothing)
             edge.outputs[i].value = v # initialize to fully typed RefValue
             return v
         end
         foreach(node -> node.dirty = false, edge.outputs)
+
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
     end
-    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
+    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
 
@@ -167,20 +185,9 @@ Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
 function Input(graph, name, value, f, output)
-    validate_value(value)
+    validate_node_value(value)
     return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
 end
-
-# Sanity checks, maybe remove later?
-validate_value(x) = nothing
-validate_value(x::RefValue) = isassigned(x) ? validate_value(x[]) : nothing
-# shouldn't have those in input.value or computed.value[]
-validate_value(::Computed) = error("::Computed is not a valid value for a Computed or Input")
-validate_value(::Input) = error("::Input is not a valid value for a Computed or Input")
-validate_value(::Observable) = error("::Observable is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Computed}) = error("::Computed is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Input}) = error("::Input is not a valid value for a Computed or Input")
-validate_value(::RefValue{<:Observable}) = error("::Observable is not a valid value for a Computed or Input")
 
 
 """
@@ -218,6 +225,20 @@ struct ComputeGraph
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
     obs_to_update::Vector{Observable}
+end
+
+validate_node_value(x) = nothing
+validate_node_value(x::RefValue) = isassigned(x) ? validate_node_value(x[]) : nothing
+# shouldn't have those in input.value or computed.value[]
+function validate_node_value(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+    error("The value of a compute node is not allowed to be of type ::$T.")
+end
+
+is_node_value_valid(x) = true
+is_node_value_valid(x::RefValue) = isassigned(x) ? is_node_value_valid(x[]) : true
+# shouldn't have those in input.value or computed.value[]
+function is_node_value_valid(::Union{T, RefValue{T}}) where {T <: Union{Computed, Input, ComputeGraph, ComputeEdge}}
+    return false
 end
 
 """
@@ -956,15 +977,18 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     return
 end
 
-struct MapFunctionWrapper{FT} <: Function
+struct MapFunctionWrapper{pack, FT} <: Function
     user_func::FT
-    pack::Bool
+    MapFunctionWrapper(f::FT, pack = true) where {FT} = new{pack, FT}(f)
 end
-MapFunctionWrapper(f) = MapFunctionWrapper(f, true)
 
-function (x::MapFunctionWrapper)(inputs, @nospecialize(changed), @nospecialize(cached))
+function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
-    return x.pack ? (result,) : result
+    return (result,)
+end
+function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospecialize(cached))
+    result = x.user_func(values(inputs)...)
+    return result
 end
 
 """
@@ -973,12 +997,12 @@ end
 Registers a new ComputeEdge in the `compute_graph` which connect one or multiple
 `inputs` to one or multiple `outputs`.
 
-Inputs can be Symbols referring to compute nodes in `compute_graph`, or compute 
-nodes from any graph. These can also be mixed. Outputs are always Symbols naming 
+Inputs can be Symbols referring to compute nodes in `compute_graph`, or compute
+nodes from any graph. These can also be mixed. Outputs are always Symbols naming
 the new nodes generated by this functon.
 
-The callback function `f` will be called with the values of the inputs as arguments. 
-If the output is a `::Symbol`, the function is expected to return a value, otherwise 
+The callback function `f` will be called with the values of the inputs as arguments.
+If the output is a `::Symbol`, the function is expected to return a value, otherwise
 it is expected to return a tuple of values to be mapped to the outputs.
 
 ```julia
