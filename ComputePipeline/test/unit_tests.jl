@@ -759,6 +759,27 @@ end
     end
 end
 
+@testset "Validation" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 1)
+
+    @test_throws ErrorException add_input!(graph, :b, Ref(graph.a))
+    @test_throws ErrorException add_input!(graph, :c, Ref(graph.inputs[:a]))
+    @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
+
+    # add_input!() processes this, so we need to check more manually
+    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
+    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
+
+    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
+    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
+    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
+    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
+
+    map!(x -> graph.a, graph, :a, :j)
+    @test_throws ResolveException{ErrorException} graph.j[]
+end
+
 @testset "mixed-map" begin
     graph1 = ComputeGraph()
     add_input!(graph1, :a1, 1)
