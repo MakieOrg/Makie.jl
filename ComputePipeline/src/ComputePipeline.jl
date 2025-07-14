@@ -884,18 +884,46 @@ function check_boxed_values(f)
     end
 end
 
-function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outputs)
-    e1 = attr.outputs[outputs[1]].parent
+macro ifelse_enabled(enabled_expr, disabled_expr = :())
+    if ENABLE_COMPUTE_CHECKS
+        return esc(enabled_expr)
+    else
+        return esc(disabled_expr)
+    end
+end
 
-    if !all(attr.outputs[k].parent == e1 for k in outputs)
-        # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e1], ", ")
-        error("Cannot register computation: $outputs already have multiple parent compute edges.")
+function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outputs)
+    # Check this so we can type assert later
+    if any(k -> haskey(attr.inputs, k), outputs)
+        input_nodes = [k for k in outputs if haskey(attr.inputs, k)]
+        error("One or multiple edge outputs already exist as graph inputs: $input_nodes")
     end
 
-    if e1.callback != f
+    e = attr.outputs[outputs[1]].parent::ComputeEdge
+
+    # Check that the edge is shared
+    if any(k -> attr.outputs[k].parent::ComputeEdge !== e, outputs)
+        # bad_keys = join([k for k in outputs if attr.outputs[k].parent != e], ", ")
+        error("Cannot register computation: $outputs already have multiple different parent compute edges.")
+    end
+
+    # Check that the requested inputs are the inputs of the new edge
+    if length(e.inputs) != length(inputs)
+        error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
+    elseif e.inputs != inputs
+        missmatched = [old.name => new.name for (old, new) in zip(e.inputs, inputs) if old !== new]
+        error(
+            "Cannot register computation: There already exists a parent compute edge for the given outputs " *
+                "that uses a different set of inputs. Missmatched inputs: $missmatched (existing, new)"
+        )
+    end
+
+    # Check that the same callback is used
+    # TODO: === is much faster, but why?
+    if @ifelse_enabled(e.callback != f, e.callback !== f)
         # We should only care about input arg types...
         func1, loc1 = edge_callback_to_string(f, (NamedTuple, NamedTuple, Nothing))
-        func2, loc2 = edge_callback_to_string(e1)
+        func2, loc2 = edge_callback_to_string(e)
         error(
             "Cannot register computation: The outputs already have a parent compute edge using " *
                 "a different callback function.\n  Given: $func1 $loc1\n  Found: $func2 $loc2\n  $(methods(f))"
@@ -906,16 +934,8 @@ function is_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, outpu
     return
 end
 
-macro if_enabled(expr)
-    if ENABLE_COMPUTE_CHECKS
-        return esc(expr)
-    else
-        return :()
-    end
-end
-
 function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::Vector{Symbol})
-    @if_enabled(check_boxed_values(f))
+    @ifelse_enabled(check_boxed_values(f))
 
     if any(k -> haskey(attr.outputs, k), outputs)
         N_existing = count(k -> haskey(attr.outputs, k) && hasparent(attr.outputs[k]), outputs)
@@ -927,19 +947,8 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
             error("Cannot register computation: Some outputs already have parent compute edges: $combined")
         else
 
-            e = attr.outputs[outputs[1]].parent
+            assert_same_computation(f, attr, inputs, outputs)
 
-            if length(e.inputs) != length(inputs)
-                error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
-            elseif e.inputs != inputs
-                missmatched = [old.name => new.name for (old, new) in zip(e.inputs, inputs) if old !== new]
-                error(
-                    "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                        "that uses a different set of inputs. Missmatched inputs: $missmatched (existing, new)"
-                )
-            end
-
-            @if_enabled(is_same_computation(f, attr, inputs, outputs))
             # edge already exists so we can return
             return
         end

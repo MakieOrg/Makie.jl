@@ -70,25 +70,23 @@ function initialize_block!(t::Toggle)
 
     updatefunc = Ref{Any}(nothing)
 
-    onmouseleftclick(mouseevents) do event
+    function perform_toggle_animation()
         if animating[]
-            return Consume(true)
+            return
         end
         animating[] = true
 
         anim_posfrac = Animations.Animation(
             [0, t.toggleduration[]],
-            t.active[] ? [1.0, 0.0] : [0.0, 1.0],
+            !t.active[] ? [1.0, 0.0] : [0.0, 1.0],
             Animations.sineio()
         )
 
         coloranim = Animations.Animation(
             [0, t.toggleduration[]],
-            t.active[] ? [t.framecolor_active[], t.framecolor_inactive[]] : [t.framecolor_inactive[], t.framecolor_active[]],
+            !t.active[] ? [t.framecolor_active[], t.framecolor_inactive[]] : [t.framecolor_inactive[], t.framecolor_active[]],
             Animations.sineio()
         )
-
-        t.active[] = !t.active[]
 
         tstart = topscene.events.tick[].time
 
@@ -109,8 +107,16 @@ function initialize_block!(t::Toggle)
                 animating[] = false
             end
         end
+        return
+    end
 
+    onmouseleftclick(mouseevents) do event
+        t.active[] = !t.active[]
         return Consume(true)
+    end
+
+    on(t.active) do active
+        perform_toggle_animation()
     end
 
     onmouseover(mouseevents) do event
