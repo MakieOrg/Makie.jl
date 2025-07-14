@@ -99,6 +99,7 @@ end
     r = -10:10
     data = [1 - (1 + x/10 + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
     index_data = round.(Int, 10 .* abs.(data))
+    N = maximum(index_data)
     rgba_data = [RGBAf(x/5, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
     add_data = [RGBAf(x, cos(y^2)^2, 0.1 * cos(z^2)^2, 0.1 + 0.1 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
 
