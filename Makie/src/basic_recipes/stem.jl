@@ -45,16 +45,17 @@ trunkpoint(stempoint::P, offset::Point3) where {P <: Point3} = P(offset...)
 
 
 function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
-    points = s[1]
 
-    stemtuples = lift(s, points, s.offset) do ps, to
+    map!(s, [:converted_1, :offset], :stemtuples) do ps, to
         tuple.(ps, trunkpoint.(ps, to))
     end
 
-    trunkpoints = lift(st -> last.(st), s, stemtuples)
+    map!(s, [:stemtuples], :trunkpoints) do st
+        return last.(st)
+    end
 
     lines!(
-        s, trunkpoints,
+        s, s.trunkpoints,
         linewidth = s.trunkwidth,
         color = s.trunkcolor,
         colormap = s.trunkcolormap,
@@ -65,7 +66,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         inspectable = s.inspectable
     )
     linesegments!(
-        s, stemtuples,
+        s, s.stemtuples,
         linewidth = s.stemwidth,
         color = s.stemcolor,
         colormap = s.stemcolormap,
