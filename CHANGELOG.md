@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+- Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
 - Add support for `GeometryBasics.MultiPoint` [#5182](https://github.com/MakieOrg/Makie.jl/pull/5182).
 - Adjusted compute `map!` to accept mixed array contain Symbols and compute nodes [#5167](https://github.com/MakieOrg/Makie.jl/pull/5167)
 - Added `register_projected_positions!()` for projecting data in recipes (from start to finish). Also generalized `register_position_transform!()` and related for use in recipes [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
