@@ -110,25 +110,54 @@ function get_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin::DateTime,
     return ticks[1], ticks[2]
 end
 
-Base.@kwdef struct DateTimeTicks
-    y::DateFormat = dateformat"yyyy"
-    ym::DateFormat = dateformat"yyyy-mm"
-    ymd::DateFormat = dateformat"yyyy-mm-dd"
-    ymdHM::DateFormat = DateFormat("H:MM\nyyyy-mm-dd")
-    ymdHMS::DateFormat = DateFormat("H:MM:SS\nyyyy-mm-dd")
-    ymdHMSs::DateFormat = DateFormat("H:MM:SS.sss\nyyyy-mm-dd")
-    HM::DateFormat = dateformat"H:MM"
-    HMS::DateFormat = dateformat"H:MM:SS"
-    HMSs::DateFormat = dateformat"H:MM:SS.sss"
-    M::DateFormat = dateformat":MM"
-    MS::DateFormat = dateformat":M:SS"
-    MSs::DateFormat = dateformat":M:SS.sss"
-    S::DateFormat = dateformat":SS"
-    Ss::DateFormat = dateformat":SS.sss"
-    s::DateFormat = dateformat".sss"
-    k_ideal::Int = 5
+struct DateTimeTicks
+    y::DateFormat
+    ym::DateFormat
+    ymd::DateFormat
+    ymdHM::DateFormat
+    ymdHMS::DateFormat
+    ymdHMSs::DateFormat
+    HM::DateFormat
+    HMS::DateFormat
+    HMSs::DateFormat
+    M::DateFormat
+    MS::DateFormat
+    MSs::DateFormat
+    S::DateFormat
+    Ss::DateFormat
+    s::DateFormat
+    k_ideal::Int
 end
 
+"""
+    DateTimeTicks(k_ideal::Int)
+
+A tick finder that tries to locate around `k_ideal` equally spaced ticks
+in a `DateTime` interval. The ticks are formatted such that neighboring ticks
+omit redundant information. For example, two neighboring ticks that lie
+in the same minute would only show the time up to the minute once, and the second
+otherwise.
+"""
+function DateTimeTicks(k_ideal::Int = 5)
+    DateTimeTicks(
+        dateformat"yyyy",
+        dateformat"yyyy-mm",
+        dateformat"yyyy-mm-dd",
+        DateFormat("H:MM\nyyyy-mm-dd"),
+        DateFormat("H:MM:SS\nyyyy-mm-dd"),
+        DateFormat("H:MM:SS.sss\nyyyy-mm-dd"),
+        dateformat"H:MM",
+        dateformat"H:MM:SS",
+        dateformat"H:MM:SS.sss",
+        dateformat":MM",
+        dateformat":M:SS",
+        dateformat":M:SS.sss",
+        dateformat":SS",
+        dateformat":SS.sss",
+        dateformat".sss",
+        k_ideal,
+    )
+end
 
 function get_ticks(::Automatic, scale, formatter, vmin::DateTime, vmax::DateTime)
     return get_ticks(DateTimeTicks(), scale, formatter, vmin, vmax)
