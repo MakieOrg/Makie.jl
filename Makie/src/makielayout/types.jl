@@ -230,6 +230,21 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
+tickinfo = """
+    Common objects that can be used as numeric ticks are:
+    - A vector of numbers
+    - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+    - `WilkinsonTicks`, the default tick finder for linear ticks
+    - `LinearTicks`, an alternative tick finder for linear ticks
+    - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
+    - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+
+    For an axis with DateTime conversion, the available tick objects are:
+    - A vector of `DateTime`s
+    - A tuple with two vectors `(datetimes, labels)`
+    - `DateTimeTicks`, the default tick finder for datetime ticks
+    """
+
 """
 A 2D axis which can be plotted into.
 
@@ -501,13 +516,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
         `Makie.get_ticklabels(xtickformat, xtickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         xticks = Makie.automatic
         """
@@ -535,13 +544,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
         `Makie.get_ticklabels(ytickformat, ytickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         yticks = Makie.automatic
         """
