@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
 - Added some validation for compute node initialization (which guards against some error in `map!()` callbacks) [#5170](https://github.com/MakieOrg/Makie.jl/pull/5170)
 - Added support for `GeometryBasics.MultiPoint` [#5182](https://github.com/MakieOrg/Makie.jl/pull/5182).
 - Moved remaining compute edge checks for safe edge reuse out of debug mode [#5169](https://github.com/MakieOrg/Makie.jl/pull/5169)
