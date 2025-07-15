@@ -95,6 +95,16 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin
     vmin_date = number_to_date(T, vmin)
     vmax_date = number_to_date(T, vmax)
 
+    # limits are expanded with float fractions which can let them land in-between
+    # milliseconds, so we pick the milliseconds that result in tighter limits,
+    # otherwise we can get vmin and vmax outside of the actual axis
+    if date_to_number(T, vmin_date) < vmin
+        vmin_date = vmin_date + Millisecond(1)
+    end
+    if date_to_number(T, vmax_date) > vmax
+        vmax_date = vmax_date - Millisecond(1)
+    end
+
     dateticks, labels = get_ticks(ticks, scale, formatter, vmin_date, vmax_date)
 
     return date_to_number.(T, dateticks), labels
