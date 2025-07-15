@@ -213,11 +213,11 @@ end
 function register_colormapping!(attr::ComputeGraph, colorname = :color)
     register_colormapping_without_color!(attr)
 
-    register_computation!(
+    map!(
         attr,
         [colorname, :colorscale, :alpha],
         [:raw_color, :scaled_color, :fetch_pixel]
-    ) do (color, colorscale, alpha), changed, last
+    ) do color, colorscale, alpha
         val = if color isa Union{AbstractArray{<:Real}, Real}
             clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
         elseif color isa AbstractPattern
@@ -232,15 +232,15 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         return (color, val, color isa AbstractPattern)
     end
 
-    return register_computation!(
+    return map!(
         attr,
-        [:colorrange, :colorscale, :scaled_color], [:scaled_colorrange]
-    ) do (colorrange, colorscale, color), changed, last
-        (color isa AbstractArray{<:Real} || color isa Real) || return (nothing,)
+        [:colorrange, :colorscale, :scaled_color], :scaled_colorrange
+    ) do colorrange, colorscale, color
+        (color isa AbstractArray{<:Real} || color isa Real) || return nothing
         if colorrange === automatic
-            return (isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color)),)
+            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
         else
-            return (Vec2f(apply_scale(colorscale, colorrange)),)
+            return Vec2f(apply_scale(colorscale, colorrange))
         end
     end
 end
@@ -403,14 +403,14 @@ function _register_expand_arguments!(::Type{P}, attr, inputs, is_merged = false)
         conversion_trait(P, map(k -> attr[k][], inputs)...)
     end
     # call it args for backwards compatibility (plot.args)
-    register_computation!(attr, inputs, [:args]) do input_args, changed, last
+    map!(attr, inputs, :args) do input_args...
         args = values(is_merged ? input_args[1] : input_args)
         args_exp = expand_dimensions(PTrait, args...)
         if isnothing(args_exp)
             # This can change types, so force Any type in Compute node
-            return (Ref{Any}(args),)
+            return Ref{Any}(args)
         else
-            return (Ref{Any}(args_exp),)
+            return Ref{Any}(args_exp)
         end
     end
     return
@@ -443,8 +443,8 @@ end
 function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input = :args)
     if !(length(args) in (2, 3))
         # We only support plots with 2 or 3 dimensions right now
-        register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (Ref{Any}(args.args),)
+        map!(attr, :args, :dim_converted) do args
+            return Ref{Any}(args)
         end
         return
     end
@@ -479,8 +479,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
-        register_computation!(attr, [:args], [:dim_converted]) do args, changed, last
-            return (Ref{Any}(args.args),)
+        map!(attr, :args, :dim_converted) do args
+            return Ref{Any}(args)
         end
     elseif isnothing(status) || status == true # we don't know (e.g. recipes)
         add_dim_converts!(attr, dim_converts, args)
@@ -488,8 +488,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         if args_converted !== args
             # Not at target conversion, but something got converted
             # This means we need to convert the args before doing a dim conversion
-            register_computation!(attr, [:args], [:recursive_convert]) do args, changed, last
-                return (convert_arguments(P, args.args...),)
+            map!(attr, :args, :recursive_convert) do args
+                return convert_arguments(P, args...)
             end
             add_dim_converts!(attr, dim_converts, args_converted, :recursive_convert)
         else
@@ -498,20 +498,20 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
-    register_computation!(attr, [:dim_converted, :convert_kwargs], [:converted]) do args, changed, last
-        x = convert_arguments(P, args.dim_converted...; args.convert_kwargs...)
+    map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
+        x = convert_arguments(P, dim_converted...; convert_kwargs...)
         if x isa Tuple
-            return (x,)
+            return x
         elseif x isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
-            return ((x,),)
+            return (x,)
         else
             error("Result needs to be Tuple or SpecApi")
         end
     end
     converted = attr[:converted][]
     n_args = length(converted)
-    register_computation!(attr, [:converted], [argument_names(P, n_args)...]) do args, changed, last
-        return args.converted # destructure
+    map!(attr, :converted, [argument_names(P, n_args)...]) do converted
+        return converted # destructure
     end
 
     add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
@@ -525,10 +525,10 @@ function register_marker_computations!(attr::ComputeGraph)
 
     # TODO: allowing user supplied atlas for e.g. sprite animations would be nice...
 
-    return register_computation!(
+    return map!(
         attr, [:marker, :markersize, :font],
         [:quad_offset, :quad_scale]
-    ) do (marker, markersize, font), changed, last
+    ) do marker, markersize, font
         atlas = get_texture_atlas()
         quad_scale = rescale_marker(atlas, marker, font, markersize)
         quad_offset = offset_marker(atlas, marker, font, markersize)
@@ -855,7 +855,7 @@ end
 
 function register_mesh_decomposition!(attr)
     # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
-    register_computation!(attr, [:mesh], [:positions, :faces, :normals, :texturecoordinates]) do (merged,), changed, cached
+    map!(attr, :mesh, [:positions, :faces, :normals, :texturecoordinates]) do merged
         pos = coordinates(merged)
         faces = decompose(GLTriangleFace, merged)
         normies = normals(merged)
@@ -863,7 +863,10 @@ function register_mesh_decomposition!(attr)
         return (pos, faces, normies, texturecoords)
     end
 
-    return register_computation!(attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]) do (meshes, merged, color), changed, cached
+    return map!(
+        attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
+    ) do meshes, merged, color
+
         if hasproperty(merged, :color)
             return (merged.color, true)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
