@@ -236,15 +236,16 @@ The following is a list of common tick objects.
 Numeric:
 - A vector of numbers
 - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-- `WilkinsonTicks`, the default tick finder for linear ticks
-- `LinearTicks`, an alternative tick finder for linear ticks
-- `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-- `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+- [`WilkinsonTicks`](@ref), the default tick finder for linear ticks
+- [`LinearTicks`](@ref), an alternative tick finder for linear ticks
+- [`LogTicks`](@ref), a wrapper that applies any other wrapped tick finder on log-transformed values
+- [`MultiplesTicks`](@ref), for finding ticks at multiples of a given value, such as `π`
+- [`AngularTicks`](@ref), for finding tick steps that are fitting for angles with base 12 numbering (90° instead of 100)
 
 DateTime:
 - A vector of `DateTime`s
 - A tuple with two vectors `(datetimes, labels)`
-- `DateTimeTicks`, the default tick finder for datetime ticks
+- [`DateTimeTicks`](@ref), the default tick finder for datetime ticks
 """
 
 tickformatinfo = """
