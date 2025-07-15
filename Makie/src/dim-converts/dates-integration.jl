@@ -288,15 +288,41 @@ stepsizes(::Type{Minute}) = (1, 2, 3, 4, 5, 10, 15, 20, 30)
 stepsizes(::Type{Second}) = (1, 2, 3, 4, 5, 10, 15, 20, 30)
 stepsizes(::Type{Millisecond}) = (1, 2, 3, 4, 5, 10, 20, 25, 50, 100, 200, 300, 400, 500)
 
+parent_type(::Type{Month}) = Year
+parent_type(::Type{Day}) = Month
+parent_type(::Type{Hour}) = Day
+parent_type(::Type{Minute}) = Hour
+parent_type(::Type{Second}) = Minute
+parent_type(::Type{Millisecond}) = Second
+
 function _ticks(steptype::Type, start::DateTime, stop::DateTime, k_ideal::Int)
     start_ceiled = ceil(start, steptype)
+
     start_float = Float64(extractor(steptype)(start_ceiled))
+    offset = 0.0
+    start_float_adjusted = start_float
+
+    # for steps other than Year we check if there's a step of the parent
+    # size within the limits, if so, we calculate float ticks relative to that.
+    # For example, if we cross a second in the millisecond range in steps of 3,
+    # we don't want 999, 1002 but 1000, 1003, so we don't divide the float values
+    # relative to the start floored to the parent, but to the first parent step.
+    if steptype !== Year
+        start_ceiled_parent = ceil(start, parent_type(steptype))
+        if start_ceiled_parent <= stop
+            negative = -stepdiff(steptype, start_ceiled, start_ceiled_parent)
+            offset = negative - start_float
+            start_float_adjusted = negative
+        end
+    end
+
     diff = stepdiff(steptype, start_ceiled, stop)
     empty_range = start:steptype(1):start
     diff <= 0 && return empty_range, Inf
-    stop_float = start_float + diff
-    start_float == stop_float && return empty_range, Inf
-    ticks = best_ticks(steptype, start_float, stop_float, k_ideal)
+    stop_float = start_float_adjusted + diff
+    start_float_adjusted == stop_float && return empty_range, Inf
+    ticks = best_ticks(steptype, start_float_adjusted, stop_float, k_ideal)
+    ticks = ticks .- offset # remove offset
     cost = _cost(ticks, k_ideal)
     step_float = ticks isa AbstractRange ? ticks.step : ticks[2] - ticks[1]
     step = steptype(Int(step_float))
