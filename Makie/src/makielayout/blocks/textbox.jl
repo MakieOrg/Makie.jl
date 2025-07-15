@@ -75,7 +75,7 @@ function initialize_block!(tbox::Textbox)
     t = Label(
         scene, text = tbox.displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
-        fontsize = tbox.fontsize, padding = tbox.textpadding
+        fontsize = tbox.fontsize, padding = tbox.textpadding, justification = :left
     )
 
     textplot = t.blockscene.plots[1]
