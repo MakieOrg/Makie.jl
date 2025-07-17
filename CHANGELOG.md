@@ -15,6 +15,7 @@
 - Updated `arc`, `band`, `pie`, `stairs`, `stem`, `tooltip`, `wireframe` and `qqplot` to use the new compute graph instead of observables [#5165](https://github.com/MakieOrg/Makie.jl/pull/5165)
 - Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks. It is exported as `DateTimeTicks` [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 - Fixed missing toggle animation [#5156](https://github.com/MakieOrg/Makie.jl/pull/#5156)
+- Fixed broadcast error in `position_on_plot` for mesh [#5196](https://github.com/MakieOrg/Makie.jl/pull/5196)
 
 ## [0.24.3] - 2025-07-04
 
