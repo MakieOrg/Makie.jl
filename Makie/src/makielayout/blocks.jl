@@ -687,17 +687,17 @@ julia> e[] = true
 :always
 ```
 """
-function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e3, kwargs...)
-    _enabled = typeof(enabled)<:Observable ? enabled : Observable(enabled)
-    _delay = typeof(delay)<:Observable ? delay : Observable(delay)
-    _depth = typeof(depth)<:Observable ? depth : Observable(depth)
+function tooltip!(b::Block, str::AbstractString; enabled = true, delay = 0, depth = 9.0e3, kwargs...)
+    _enabled = typeof(enabled) <: Observable ? enabled : Observable(enabled)
+    _delay = typeof(delay) <: Observable ? delay : Observable(delay)
+    _depth = typeof(depth) <: Observable ? depth : Observable(depth)
 
     position = Observable(Point2f(0))
-    tt = tooltip!(b.blockscene, position, str; visible=false, kwargs...)
-    on(z->translate!(tt, 0, 0, z), _depth)
+    tt = tooltip!(b.blockscene, position, str; visible = false, kwargs...)
+    on(z -> translate!(tt, 0, 0, z), _depth)
 
     function update_viz0(mp, bbox)
-        if mp in bbox
+        return if mp in bbox
             position[] = mp
             tt.visible[] = true
         else
@@ -710,7 +710,7 @@ function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e
     end
 
     function update_viz(mp, bbox)
-        if mp in bbox
+        return if mp in bbox
             last_mp in bbox || (t0 = time())
             last_mp = mp
             position[] = mp
@@ -723,10 +723,10 @@ function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e
 
     was_open = false
     channel = Channel{Tuple}(Inf) do ch
-        for (mp,bbox) in ch
+        for (mp, bbox) in ch
             if isopen(b.blockscene)
                 was_open = true
-                _delay[]==0 ? update_viz0(mp,bbox) : update_viz(mp,bbox)
+                _delay[] == 0 ? update_viz0(mp, bbox) : update_viz(mp, bbox)
             end
             !isopen(b.blockscene) && was_open && break
         end
@@ -737,7 +737,7 @@ function tooltip!(b::Block, str::AbstractString; enabled=true, delay=0, depth=9e
         if e && isnothing(obsfun)
             obsfun = onany(b.blockscene.events.mouseposition, b.layoutobservables.computedbbox) do mp, bbox
                 empty_channel!(channel)
-                put!(channel, (mp,bbox))
+                put!(channel, (mp, bbox))
             end
         elseif !e && !isnothing(obsfun)
             foreach(off, obsfun)
