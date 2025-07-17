@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 ## [0.24.4] - 2025-07-17
 
