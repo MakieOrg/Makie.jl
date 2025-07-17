@@ -603,9 +603,17 @@ end
 
 @testset "Toggle" begin
     f = Figure()
-    Toggle(f[1, 1])
+    t = Toggle(f[1, 1])
     Toggle(f[2, 1], orientation = :vertical)
     Toggle(f[3, 1], orientation = pi / 4)
+
+    # changing active triggers animation
+    e = events(f)
+    @test length(e.tick.listeners) == 0
+    t.active[] = true
+    @test length(e.tick.listeners) == 1
+    e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
+    @test length(e.tick.listeners) == 0
 end
 
 @testset "Tooltips on Blocks" begin
