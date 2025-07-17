@@ -340,7 +340,10 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
 
     for f in faces(plot.mesh[])
         if idx in f
-            p1, p2, p3 = Makie.apply_transform(tf, positions[f])
+            p1, p2, p3 = positions[f]
+            p1 = Makie.apply_transform(tf, p1)
+            p2 = Makie.apply_transform(tf, p2)
+            p3 = Makie.apply_transform(tf, p3)
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if !isnan(pos)
                 if apply_transform
