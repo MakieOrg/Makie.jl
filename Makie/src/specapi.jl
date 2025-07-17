@@ -457,6 +457,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
 end
 
 function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
     # Update args in plot `input_args` list
     updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
@@ -596,7 +597,7 @@ function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     pos = 1
     for p in specs
         p === spec && return pos
-        if haskey(p.kwargs, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(spec)
+        if haskey(p.kwargs, :cycle) && !isnothing(p.kwargs[:cycle]) && plotfunc(p) === plotfunc(spec)
             is_cycling = any(syms) do x
                 return haskey(p.kwargs, x) && isnothing(p[x])
             end
