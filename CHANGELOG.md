@@ -13,6 +13,7 @@
 - Updated `arrows`, `bracket`, `contour`, `contour3d`, `poly`, `streamplot`, `textlabel`, `triplot`, `voronoiplot` and `hexbin` to use the compute graph instead of observables. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
 - Updated `arc`, `band`, `pie`, `stairs`, `stem`, `tooltip`, `wireframe` and `qqplot` to use the new compute graph instead of observables [#5165](https://github.com/MakieOrg/Makie.jl/pull/5165)
+- Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks. It is exported as `DateTimeTicks` [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 - Fixed missing toggle animation [#5156](https://github.com/MakieOrg/Makie.jl/pull/#5156)
 
 ## [0.24.3] - 2025-07-04

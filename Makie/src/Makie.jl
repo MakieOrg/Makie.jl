@@ -281,6 +281,9 @@ export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
 
+# Ticks
+export DateTimeTicks
+
 # Transformations
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, data_limits
