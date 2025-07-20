@@ -568,13 +568,46 @@ plottype(::Type{<:Plot{F}}, ::Union{PlotSpec, AbstractVector{PlotSpec}}) where {
 plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec, BlockSpec}) where {F} = Plot{plot}
 plottype(::Type{<:Plot}, ::Union{GridLayoutSpec, BlockSpec}) = Plot{plot}
 
+"""
+    to_plot_object(ps::PlotSpec)
 
+Return a materialized [`Plot`](@ref) object from a [`PlotSpec`](@ref).
+This can then be visualized via `push!(scene, plt)`.
+"""
 function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
     return P((ps.args...,), copy(ps.kwargs))
 end
 
+function to_plot_object(ps::PlotSpec, ::Nothing)
+    P = plottype(ps)
+    return P((ps.args...,), copy(ps.kwargs))
+end
 
+"""
+    to_plot_object(ps::PlotSpec, parent::PlotList)
+
+Return a materialized plot object constructed from `ps`,
+that inherits all attributes (including transformation)
+from `parent`.  
+
+This uses the `plot!(::ComputeGraph, args..., kwargs)`
+formulation to instantiate the plot as a true child plot.
+"""
+function to_plot_object(ps::PlotSpec, parent::PlotList)
+    P = plottype(ps)
+    return P((parent.attributes, ps.args...,), copy(ps.kwargs))
+end
+
+
+"""
+    push_without_add!(scene::Scene, plot)
+
+Push the plot to `scene` and its current screens
+without actually adding it to toplevel `scene.plots`.
+
+Mainly used by [`plotlist`](@ref) to avoid having duplicate plot objects.
+"""
 function push_without_add!(scene::Scene, plot)
     validate_attribute_keys(plot)
     for screen in scene.current_screens
@@ -631,7 +664,7 @@ function diff_plotlist!(
             # Plots from the plotlist to only appear as children of the PlotList recipe
             # - so we dont push it to the scene if there's a plotlist.
             # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
-            plot_obj = to_plot_object(plotspec)
+            plot_obj = to_plot_object(plotspec, plotlist)
             connect_plot!(scene, plot_obj)
             if !isnothing(plotlist)
                 push!(plotlist.plots, plot_obj)
