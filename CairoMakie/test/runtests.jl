@@ -338,3 +338,17 @@ end
         end
     end
 end
+
+@testset "Screen is reconstructed if pointer is null" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    lines!(ax, rand(10))
+
+    # First, show the main scene:
+    @test_nowarn colorbuffer(fig)
+    # Then, show a subscene
+    @test_nowarn colorbuffer(ax.scene)
+    # Then, show the main scene again
+    @test_nowarn colorbuffer(fig)
+    # If we have made it to here with no errors - profit!
+end
