@@ -596,7 +596,7 @@ formulation to instantiate the plot as a true child plot.
 """
 function to_plot_object(ps::PlotSpec, parent::PlotList)
     P = plottype(ps)
-    return P((parent.attributes, ps.args...,), copy(ps.kwargs))
+    return P((parent.attributes, ps.args...), copy(ps.kwargs))
 end
 
 
