@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- When plotting `PlotSpec`s, allow them to inherit all attributes of the provided `plotlist`.  This includes `transformation` and `transform_func`, which fix plotspecs in e.g. log-scaled axes, PolarAxis, and GeoAxis []().
 
 ## [0.24.4] - 2025-07-17
 
