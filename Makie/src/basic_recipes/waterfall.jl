@@ -49,17 +49,18 @@ function Makie.plot!(p::Waterfall)
 
     map!(stack_bars, p, [:converted_1, :dodge, :stack], [:xy, :fillto, :final])
 
-    if p.show_final
-        final_gap = p.final_gap === automatic ? p.dodge == automatic ? 0 : p.gap : p.final_gap
-        barplot!(
-            p,
-            p.final,
-            dodge = p.dodge,
-            color = p.final_color,
-            dodge_gap = p.final_dodge_gap,
-            gap = final_gap,
-        )
+    map!(p, [:final_gap, :gap, :dodge], :finalgap) do final_gap, gap, dodge
+        return final_gap === automatic ? dodge == automatic ? 0 : gap : final_gap
     end
+    barplot!(
+        p,
+        p.final,
+        dodge = p.dodge,
+        color = p.final_color,
+        dodge_gap = p.final_dodge_gap,
+        gap = p.finalgap,
+        visible = p.show_final,
+    )
 
     barplot!(
         p, p.attributes, p.xy;
@@ -67,50 +68,49 @@ function Makie.plot!(p::Waterfall)
         stack = automatic,
     )
 
-    if p.show_direction
-        function direction_markers(
-                xy, fillto,
-                marker_pos,
-                marker_neg,
-                width,
-                gap,
-                dodge,
-                n_dodge,
-                dodge_gap,
-            )
-            xs = first(
-                compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap)
-            )
-            MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
-            DataType = eltype(xy)
-            shapes = MarkerType[]
-            xy = DataType[]
-            for i in eachindex(xs)
-                y = last(xy[i])
-                fillto = fillto[i]
-                if fillto > y
-                    push!(xy, (xs[i], (y + fillto) / 2))
-                    push!(shapes, marker_neg)
-                elseif fillto < y
-                    push!(xy, (xs[i], (y + fillto) / 2))
-                    push!(shapes, marker_pos)
-                end
+    function direction_markers(
+        xy, fillto,
+        marker_pos,
+        marker_neg,
+        width,
+        gap,
+        dodge,
+        n_dodge,
+        dodge_gap,
+    )
+        xs = first(
+            compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap)
+        )
+        MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
+        DataType = eltype(xy)
+        shapes = MarkerType[]
+        xy = DataType[]
+        for i in eachindex(xs)
+            y = last(xy[i])
+            fillto = fillto[i]
+            if fillto > y
+                push!(xy, (xs[i], (y + fillto) / 2))
+                push!(shapes, marker_neg)
+            elseif fillto < y
+                push!(xy, (xs[i], (y + fillto) / 2))
+                push!(shapes, marker_pos)
             end
-            return xy, shapes
         end
-
-        map!(
-            direction_markers, p,
-            [:xy, :fillto, :marker_pos, :marker_neg, :width, :gap, :dodge, :n_dodge, :dodge_gap],
-            [:scatter_xy, :shapes]
-        )
-
-        scatter!(
-            p, p.scatter_xy,
-            marker = p.shapes,
-            color = p.direction_color
-        )
+        return xy, shapes
     end
+
+    map!(
+        direction_markers, p,
+        [:xy, :fillto, :marker_pos, :marker_neg, :width, :gap, :dodge, :n_dodge, :dodge_gap],
+        [:scatter_xy, :shapes]
+    )
+
+    scatter!(
+        p, p.scatter_xy,
+        marker = p.shapes,
+        color = p.direction_color,
+        visible = p.show_direction,
+    )
 
     return p
 end
