@@ -501,7 +501,7 @@ A logarithmic scaling defined as
 y = \\frac{\\text{log}_b \\left(ax + 1\right)}{\\text{log}_b \\left(a+1\\right)}
 ```
 """
-function LogScale(a=1000, base=ℯ)
+function LogScale(a = 1000, base = ℯ)
     a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
     base < 0 && throw(ArgumentError("Argument `base` must be > 0."))
     forward(x) = log(base, a * x + 1) / log(base, a + 1)

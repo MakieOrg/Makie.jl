@@ -553,14 +553,14 @@ end
     z = broadcast((x, y) -> x, x, y')
 
     for scale in (
-        Makie.Symlog10(2), 
-        Makie.pseudolog10, 
-        Makie.AsinhScale(0.1), 
-        Makie.SinhScale(1/3), 
-        Makie.LogScale(1000, ℯ), 
-        Makie.LuptonAsinhScale(0.1, 0.01, 0.1), 
-        Makie.PowerScale(1)
-    )
+            Makie.Symlog10(2),
+            Makie.pseudolog10,
+            Makie.AsinhScale(0.1),
+            Makie.SinhScale(1 / 3),
+            Makie.LogScale(1000, ℯ),
+            Makie.LuptonAsinhScale(0.1, 0.01, 0.1),
+            Makie.PowerScale(1),
+        )
         fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
         Colorbar(fig[1, 2], hm)
     end
