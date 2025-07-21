@@ -38,6 +38,17 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
 @testset "reference tests" begin
     WGLMakie.activate!()
+
+    @testset "ComputeGraph Sanity Checks" begin
+        # This is supposed to catch changes in ComputePipeline causing nodes to
+        # be skipped or become duplicated. This will also trigger if plot attributes
+        # are modified in which case the numbers should just be updated
+        f, a, p = scatter(rand(10))
+        colorbuffer(f)
+        @test length(p.attributes.inputs) == 44
+        @test length(p.attributes.outputs) == 96
+    end
+
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
         recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
@@ -222,7 +233,6 @@ edisplay = Bonito.use_electron_display(devtools = true)
             windowed_dist = [mean(dist_from_target[i:(i + window)]) for i in 1:(length(dist_from_target) - window)]
             standard_error = sqrt(mapreduce(t -> t * t, +, windowed_dist) / length(windowed_dist))
             @test standard_error < 0.05dt
-            @info dist_from_target
 
             # delta times should average out to 1/30, with the caveat that ticks
             # can sometimes get skipped/merge into a N * 1/30 tick. Those ticks

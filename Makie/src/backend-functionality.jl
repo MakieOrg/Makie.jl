@@ -6,9 +6,7 @@ add_computation!(attr::ComputeGraph, scene::Scene, symbols::Symbol...) =
 add_computation!(attr::ComputeGraph, symbols::Symbol...) = add_computation!(attr, Val.(symbols)...)
 
 function add_computation!(attr, ::Val{:gl_miter_limit})
-    return register_computation!(attr, [:miter_limit], [:gl_miter_limit]) do (miter,), changed, output
-        return (Float32(cos(pi - miter)),)
-    end
+    return map!(miter -> Float32(cos(pi - miter)), attr, :miter_limit, :gl_miter_limit)
 end
 
 function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_length})
@@ -39,11 +37,11 @@ _xy_convert(x::Makie.EndPoints, n) = [LinRange(extrema(x)..., n + 1);]
 
 function add_computation!(attr, scene, ::Val{:heatmap_transform})
     # TODO: consider just using a grid of points?
-    register_computation!(
+    map!(
         attr,
         [:x, :y, :image, :transform_func],
         [:x_transformed, :y_transformed]
-    ) do (x, y, img, func), changed, last
+    ) do x, y, img, func
 
         x1d = _xy_convert(x, size(img, 1))
         xps = apply_transform(func, Point2.(x1d, 0))
@@ -54,10 +52,12 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         return (xps, yps)
     end
 
+    register_model_f32c!(attr)
+
     return register_computation!(
         attr,
         [:x_transformed, :y_transformed, :model, :f32c, :space],
-        [:x_transformed_f32c, :y_transformed_f32c, :model_f32c]
+        [:x_transformed_f32c, :y_transformed_f32c]
     ) do (x, y, model, f32c, space), changed, cached
         # TODO: this should be done in one nice function
         # This is simplified, skipping what's commented out
@@ -65,16 +65,15 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
         trans, scale = decompose_translation_scale_matrix(model)
         # is_rot_free = is_translation_scale_matrix(model)
         if !is_data_space(space) || isnothing(f32c) || (is_identity_transform(f32c) && is_float_safe(scale, trans))
-            m = changed.model ? Mat4f(model) : nothing
             xs = changed.x_transformed || changed.f32c ? el32convert(first.(x)) : nothing
             ys = changed.y_transformed || changed.f32c ? el32convert(last.(y)) : nothing
-            return (xs, ys, m)
-            # elseif is_identity_transform(f32c) && !is_float_safe(scale, trans)
+            return (xs, ys)
+        elseif false # is_identity_transform(f32c) && !is_float_safe(scale, trans)
             # edge case: positions not float safe, model not float safe but result in float safe range
             # (this means positions -> world not float safe, but appears float safe)
-            # elseif is_float_safe(scale, trans) && is_rot_free
+        elseif false # is_float_safe(scale, trans) && is_rot_free
             # fast path: can swap order of f32c and model, i.e. apply model on GPU
-            # elseif is_rot_free
+        elseif false # is_rot_free
             # fast path: can merge model into f32c and skip applying model matrix on CPU
         else
             # TODO: avoid reallocating?
@@ -90,8 +89,7 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
                 p4d = model * p4d
                 ys[i] = f32_convert(f32c, p4d[Vec(1, 2, 3)], 2)
             end
-            m = Mat4f(I)
-            return (xs, ys, m)
+            return (xs, ys)
         end
     end
 end
@@ -106,46 +104,46 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
     # TODO: This is dropping fast paths for Range/Vector x, y w/o transform_func & f32c
     # TODO: If we're always creating a Matrix of Points GLMakie should just
     #       use that directly instead of going back to a x and y matrix representation
-    register_computation!(
+    map!(
         attr,
         [:x, :y, :z, :transform_func],
-        [:positions_transformed]
-    ) do (x, y, z, func), changed, last
-        return (apply_transform(func, _surf_xyz_convert(x, y, z)),)
+        :positions_transformed
+    ) do x, y, z, func
+        return apply_transform(func, _surf_xyz_convert(x, y, z))
     end
 
     register_positions_transformed_f32c!(attr)
 
-    return register_computation!(
+    return map!(
         attr,
-        [:positions_transformed_f32c],
+        :positions_transformed_f32c,
         [:x_transformed_f32c, :y_transformed_f32c, :z_transformed_f32c]
-    ) do (xyz,), changed, cached
+    ) do xyz
         return ntuple(i -> getindex.(xyz, i), Val(3))
     end
 end
 
 function add_computation!(attr, scene, ::Val{:voxel_model})
-    return register_computation!(attr, [:x, :y, :z, :chunk_u8, :model], [:voxel_model]) do (xs, ys, zs, chunk, model), changed, cached
+    return map!(attr, [:x, :y, :z, :chunk_u8, :model], :voxel_model) do xs, ys, zs, chunk, model
         mini = minimum.((xs, ys, zs))
         width = maximum.((xs, ys, zs)) .- mini
         m = Makie.transformationmatrix(Vec3f(mini), Vec3f(width ./ size(chunk)))
-        return (Mat4f(model * m),)
+        return Mat4f(model * m)
     end
 end
 
 function add_computation!(attr, scene, ::Val{:uniform_model})
-    return register_computation!(attr, [:data_limits, :model], [:uniform_model]) do (cube, model), changed, cached
+    return map!(attr, [:data_limits, :model], :uniform_model) do cube, model
         mini = minimum(cube)
         width = widths(cube)
         trans = Makie.transformationmatrix(Vec3f(mini), Vec3f(width))
-        return (Mat4f(model * trans),)
+        return Mat4f(model * trans)
     end
 end
 
 # repacks per-element uv_transform into Vec2's for wrapping in Texture/TextureBuffer for meshscatter
 function add_computation!(attr, scene, ::Val{:uv_transform_packing})
-    return register_computation!(attr, [:pattern_uv_transform], [:packed_uv_transform]) do (uvt,), changed, last
+    return map!(attr, :pattern_uv_transform, :packed_uv_transform) do uvt
         if uvt isa Vector
             # 3x Vec2 should match the element order of glsl mat3x2
             output = Vector{Vec2f}(undef, 3 * length(uvt))
@@ -154,9 +152,9 @@ function add_computation!(attr, scene, ::Val{:uv_transform_packing})
                 output[3 * (i - 1) + 2] = uvt[i][Vec(3, 4)]
                 output[3 * (i - 1) + 3] = uvt[i][Vec(5, 6)]
             end
-            return (output,)
+            return output
         else
-            return (uvt,)
+            return uvt
         end
     end
 end
@@ -170,23 +168,23 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     # transform them to world space (post float32convert) on the CPU. We then can't
     # do instancing anymore, so meshscatter becomes pointless.
     space = haskey(attr, :markerspace) ? :markerspace : :space
-    return register_computation!(
-        attr, [:f32c, :model, :model_f32c, :transform_marker, space], [:f32c_scale]
-    ) do (f32c, model, model_f32c, transform_marker, space), changed, cached
+    return map!(
+        attr, [:f32c, :model, :model_f32c, :transform_marker, space], :f32c_scale
+    ) do f32c, model, model_f32c, transform_marker, space
         if Makie.is_identity_transform(f32c)
-            return (Vec3f(1),)
+            return Vec3f(1)
         else
             # f32c_scale * model_f32c should reproduce f32c.scale * model if transform_marker is true
             if is_data_space(space)
                 if transform_marker
                     d3 = Vec(1, 6, 11)
                     scale = f32c.scale .* model[d3] ./ model_f32c[d3]
-                    return (Vec3f(scale),)
+                    return Vec3f(scale)
                 else
-                    return (Vec3f(f32c.scale),)
+                    return Vec3f(f32c.scale)
                 end
             else
-                return (Vec3f(1),)
+                return Vec3f(1)
             end
         end
     end
@@ -198,16 +196,16 @@ end
 
 function add_computation!(attr, scene, ::Val{:voxel_uv_transform})
     # TODO: Should this verify that color is a texture?
-    return register_computation!(attr, [:uvmap, :uv_transform], [:packed_uv_transform]) do (uvmap, uvt), changed, cached
+    return map!(attr, [:uvmap, :uv_transform], :packed_uv_transform) do uvmap, uvt
         if !isnothing(uvt)
-            return (Makie.pack_voxel_uv_transform(uvt),)
+            return pack_voxel_uv_transform(uvt)
         elseif !isnothing(uvmap)
             @warn "Voxel uvmap has been deprecated in favor of the more general `uv_transform`. Use `map(lrbt -> (Point2f(lrbt[1], lrbt[3]), Vec2f(lrbt[2] - lrbt[1], lrbt[4] - lrbt[3])), uvmap)`."
-            raw_uvt = Makie.uvmap_to_uv_transform(uvmap)
-            converted_uvt = Makie.convert_attribute(raw_uvt, Makie.key"uv_transform"())
-            return (Makie.pack_voxel_uv_transform(converted_uvt),)
+            raw_uvt = uvmap_to_uv_transform(uvmap)
+            converted_uvt = convert_attribute(raw_uvt, key"uv_transform"())
+            return pack_voxel_uv_transform(converted_uvt)
         else
-            return (nothing,)
+            return nothing
         end
     end
 end
@@ -318,10 +316,10 @@ end
 function add_computation!(attr, ::Val{:surface_as_mesh})
     # Generate mesh from surface data and add its data to the compute graph.
     # Use that to draw surface as a mesh
-    register_computation!(
+    map!(
         attr,
         [:x, :y, :z, :transform_func, :invert_normals], [:positions_transformed, :faces, :texturecoordinates, :normals]
-    ) do (x, y, z, transform_func, invert_normals), changed, cached
+    ) do x, y, z, transform_func, invert_normals
 
         # (x, y, z) are generated after convert_arguments and dim_converts,
         # before apply_transform and f32c

@@ -320,10 +320,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, _, space, model), changed, last
-            pvm = Makie.space_to_clip(scene.camera, space) * model
+        ) do (pos, projectionview, model), changed, last
+            pvm = projectionview * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos, depth_vals, indices, pvm)
@@ -425,10 +425,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, _, space, model), changed, last
-            pvm = Makie.space_to_clip(scene.camera, space) * model
+        ) do (pos, projectionview, space, model), changed, last
+            pvm = projectionview * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos, depth_vals, indices, pvm)
