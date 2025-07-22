@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
+
 ## Unreleased
 
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
