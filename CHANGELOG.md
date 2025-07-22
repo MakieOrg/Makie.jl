@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
+
 ## Unreleased
 
 ## [0.24.4] - 2025-07-17
