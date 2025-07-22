@@ -1158,7 +1158,7 @@ end
 
 function toggle_visibility!(entry::LegendEntry, sync = false)
     foreach_plot_with_visible(entry) do p
-        p.visible = sync ? true : !p.visible[]
+        update!(p, visible = sync ? true : !p.visible[])
     end
     return
 end

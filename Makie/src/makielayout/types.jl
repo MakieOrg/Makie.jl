@@ -1412,8 +1412,6 @@ struct LegendEntry
     end
 end
 
-get_plots(le::LegendEntry) = le.plots
-
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
 @Block Legend begin
