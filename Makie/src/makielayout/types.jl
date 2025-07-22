@@ -1379,52 +1379,40 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct ImageElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshScatterElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
-end
-
-function get_plots(le::LegendElement)
-    if hasfield(typeof(le), :plots)
-        return le.plots
-    else
-        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
-        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
-        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
-        """
-        return Plot[]
-    end
 end
 
 struct LegendEntry
+    plots::Vector{Plot}
     elements::Vector{LegendElement}
     attributes::Attributes
+
+    function LegendEntry(plots::Vector, elements::Vector, attr::Attributes)
+        return new(plots, elements, attr)
+    end
 end
 
+get_plots(le::LegendEntry) = le.plots
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
