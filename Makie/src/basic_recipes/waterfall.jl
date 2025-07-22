@@ -84,19 +84,19 @@ function Makie.plot!(p::Waterfall)
         MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
         DataType = eltype(xy)
         shapes = MarkerType[]
-        xy = DataType[]
+        scatter_xy = DataType[]
         for i in eachindex(xs)
             y = last(xy[i])
-            fillto = fillto[i]
-            if fillto > y
-                push!(xy, (xs[i], (y + fillto) / 2))
+            fto = fillto[i]
+            if fto > y
+                push!(scatter_xy, (xs[i], (y + fto) / 2))
                 push!(shapes, marker_neg)
-            elseif fillto < y
-                push!(xy, (xs[i], (y + fillto) / 2))
+            elseif fto < y
+                push!(scatter_xy, (xs[i], (y + fto) / 2))
                 push!(shapes, marker_pos)
             end
         end
-        return xy, shapes
+        return scatter_xy, shapes
     end
 
     map!(
