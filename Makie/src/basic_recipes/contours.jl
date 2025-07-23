@@ -45,6 +45,10 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     labelformatter = contour_label_formatter
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
+    """
+    Sets the tolerance for sampling of a `level` in 3D contour plots.
+    """
+    isorange = automatic
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
@@ -112,39 +116,71 @@ conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<:N
 conversion_trait(::Type{<:Contour}, ::AbstractArray{<:Number, 3}) = VolumeLike()
 
 function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
-    x, y, z, volume = plot[1:4]
-    @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = lift(nan_extrema, plot, volume)
-    cliprange = map((v, default) -> ifelse(v === automatic, default, v), plot, plot.colorrange, valuerange)
-    cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
-        levels = to_levels(l, vrange)
-        nlevels = length(levels)
-        N = 50 * nlevels
+    map!(nan_extrema, plot, :converted_4, :input_value_range)
+    map!(to_levels, plot, [:levels, :input_value_range], :value_levels)
+    map!(extrema, plot, :value_levels, :value_range)
 
-        iso_eps = if haskey(plot, :isorange)
-            plot.isorange[]
+    map!(plot, [:isorange, :value_range], :computed_isorange) do isorange, valuerange
+        if isorange === automatic
+            minstep = minimum(valuerange[2:end] .- valuerange[1:end-1])
+            return 0.03 * minstep
         else
-            nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
-        end
-        cmap = to_colormap(_cmap)
-        v_interval = cliprange[1] .. cliprange[2]
-        # resample colormap and make the empty area between iso surfaces transparent
-        map(1:N) do i
-            i01 = (i - 1) / (N - 1)
-            c = Makie.interpolated_getindex(cmap, i01)
-            isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
-            line = reduce(levels, init = false) do v0, level
-                isoval in v_interval || return false
-                v0 || abs(level - isoval) <= iso_eps
-            end
-            RGBAf(Colors.color(c), line ? alpha : 0.0)
+            return isorange
         end
     end
 
-    return volume!(
-        plot, Attributes(plot), x, y, z, volume, alpha = 1.0, # don't apply alpha 2 times
-        algorithm = 7, colorrange = cliprange, colormap = cmap
+    # The colorrange and colormap needs to be padded with RGBAf(..., 0) so that
+    # samples outside the colorrange are not drawn
+    map!(default_automatic, plot, [:colorrange, :value_range], :tight_colorrange)
+    map!(plot, [:tight_colorrange, :computed_isorange], :padded_colorrange) do (min, max), isorange
+        return (min - 2isorange, max + 2isorange)
+    end
+
+    map!(plot, [:value_levels, :tight_colorrange], :clamped_levels) do levels, (min, max)
+        return filter(lvl -> min <= lvl <= max, levels)
+    end
+
+    map!(to_colormap, plot, :colormap, :input_colormap)
+
+    map!(plot,
+        [:clamped_levels, :tight_colorrange, :padded_colorrange, :computed_isorange, :alpha, :input_colormap],
+        :computed_colormap
+    ) do levels, tight_colorrange, (min, max), isorange, alpha, cmap
+        # We need colormap values for the full color range (with padding)
+        # We also need enough color values to have samples in
+        # `level - isorange .. level + isorange`, otherwise we might skip over
+        # isosurface
+        # WGLMakie texture size may be limited to 4096
+        N = ceil(Int, (max - min) / isorange)
+        if N > 4096
+            min_isorange = (max - min) / 4096
+            @warn "Isorange maybe too small to resolve iso surfaces. Try `isorange > $min_isorange`"
+        end
+        N = clamp(N, 50, 4096)
+
+        clip_range = tight_colorrange[1] - isorange .. tight_colorrange[2] + isorange
+        return map(1:N) do i
+            isoval = min + (i - 1) / (N - 1) * (max - min)
+            c = Colors.color(interpolated_getindex(cmap, isoval, tight_colorrange))
+            if isoval in clip_range && any(lvl -> lvl - isorange < isoval < lvl + isorange, levels)
+                return RGBAf(c, alpha)
+            else
+                return RGBAf(c, 0.0)
+            end
+        end
+    end
+
+    volume!(
+        plot, Attributes(plot),
+        plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
+        alpha = 1.0, # don't apply alpha 2 times
+        algorithm = 7, # contour algorithm
+        colorrange = plot.padded_colorrange,
+        colormap = plot.computed_colormap,
+        isorange = 0.0 # unused, but needs to be a float
     )
+
+    return plot
 end
 
 color_per_level(color, args...) = color_per_level(to_color(color), args...)
