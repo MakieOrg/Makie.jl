@@ -5,6 +5,8 @@
 
 ## Unreleased
 
+- Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+
 ## [0.24.4] - 2025-07-17
 
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
