@@ -5,6 +5,8 @@
 
 ## Unreleased
 
+- Fix an error in CairoMakie's screen management where corrupted (null-pointer) screens were not reconstructed on the next display [#5207](https://github.com/MakieOrg/Makie.jl/pull/5207).
+
 ## [0.24.4] - 2025-07-17
 
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
