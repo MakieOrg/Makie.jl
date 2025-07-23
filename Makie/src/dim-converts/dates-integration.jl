@@ -92,6 +92,16 @@ function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin
     # in that case, we can't really have any conversion
     T <: Automatic && return [], []
 
+    # Time can only be between 0:00:00 and 23:59:59 (plus nanoseconds)
+    # but through expansion of limits (for visual purposes) we can easily
+    # get floats outside of the valid range. But these do pass through conversion
+    # by wrapping to the adjacent day's time. So we clamp vmin and vmax
+    # to the valid range instead, there cannot be Time data outside of those anyway.
+    if T === Time
+        vmin = max(vmin, zero(vmin))
+        vmax = min(vmax, date_to_number(Time, Time(Nanosecond(-1))))
+    end
+
     vmin_date = number_to_date(T, vmin)
     vmax_date = number_to_date(T, vmax)
 
