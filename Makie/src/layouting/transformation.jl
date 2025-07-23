@@ -464,6 +464,84 @@ function Symlog10(lo, hi)
     return ReversibleScale(forward, inverse; limits = (0.0f0, 3.0f0), name = :Symlog10)
 end
 
+"""
+    AsinhScale(a=0.1)
+
+An asinh scaling defined as
+```math
+y = \\frac{\\text{asinh} \\left(x/a\\right)}{\\text{asinh} \\left(1/a\\right)}
+```
+"""
+function AsinhScale(a = 0.1)
+    a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
+    forward(x) = asinh(x / a) / asinh(1 / a)
+    inverse(x) = a * sinh(asinh(1 / a) * x)
+    return ReversibleScale(forward, inverse; name = :AsinhScale)
+end
+
+"""
+    SinhScale(a=1/3)
+A sinh scaling defined as
+```math
+y = \\frac{\\text{sinh} \\left(x/a\\right)}{\\text{sinh} \\left(1/a\\right)}
+```
+"""
+function SinhScale(a = 1 / 3)
+    a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
+    forward(x) = sinh(x / a) / sinh(1 / a)
+    inverse(x) = a * asinh(sinh(1 / a) * x)
+    return ReversibleScale(forward, inverse; name = :SinhScale)
+end
+
+"""
+    LogScale(a=1000, base=ℯ)
+
+A logarithmic scaling defined as
+```math
+y = \\frac{\\text{log}_b \\left(ax + 1\right)}{\\text{log}_b \\left(a+1\\right)}
+```
+"""
+function LogScale(a = 1000, base = ℯ)
+    a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
+    base < 0 && throw(ArgumentError("Argument `base` must be > 0."))
+    forward(x) = log(base, a * x + 1) / log(base, a + 1)
+    inverse(x) = ((1 + a)^x - 1) / a
+    return ReversibleScale(forward, inverse; limits = (0.0f0, 3.0f0), name = :LogScale)
+end
+
+"""
+    LuptonAsinhScale(a=0.1, Q=0.01, frac=0.1)
+
+A modified asinh scaling based on
+[Lupton et al. 2004](https://ui.adsabs.harvard.edu/abs/2004PASP..116..133L)
+defined as
+
+```math
+y = \\text{asinh} \\left( \\frac{Q * x}{a} \\right) \\times \\frac{a}{\\text{asinh} \\left(Q*a\\right)}
+```
+
+This scaling is typically used to adjust the intensity scaling of astronomical images. The argument `a` is the linear scaling parameter and `Q` is the asinh softening parameter. To find an effective scaling, the authors recommend setting `Q` to near zero and adjusting the linear scaling `a` to a reasonable level, then increasing `Q` to accentuate faint features.
+"""
+function LuptonAsinhScale(a = 0.1, Q = 0.01, frac = 0.1)
+    a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
+    Q < 0 && throw(ArgumentError("Argument `Q` must be > 0."))
+    forward(x) = asinh(Q * x / a) * frac / asinh(frac * Q)
+    inverse(x) = a * sinh(asinh(frac * Q) * x / frac) / Q
+    return ReversibleScale(forward, inverse; name = :LuptonAsinhScale)
+end
+
+"""
+    PowerScale(a=1)
+
+A power-law scaling derived as ``y = x^a``.
+"""
+function PowerScale(a = 1)
+    a < 0 && throw(ArgumentError("Argument `a` must be > 0."))
+    forward(x) = x^a
+    inverse(x) = x^(inv(a))
+    return ReversibleScale(forward, inverse; name = :PowerScale)
+end
+
 function inverse_transform(f)
     f⁻¹ = InverseFunctions.inverse(f)
     return f⁻¹ isa InverseFunctions.NoInverse ? nothing : f⁻¹  # nothing is for backwards compatibility
