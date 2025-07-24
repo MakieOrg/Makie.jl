@@ -104,3 +104,17 @@ end
     @test f(DT(2024, 12, 31, 22):Hour(2):DT(2025, 1, 1, 4)) == ["22:00\n2024-12-31", "0:00\n2025-01-01", "2:00", "4:00"]
     @test f(DT(2024, 12, 31, 23, 59):Minute(1):DT(2025, 1, 1, 0, 2)) == ["23:59\n2024-12-31", "0:00\n2025-01-01", ":01", ":02"]
 end
+
+@testset "time ticks close to edges" begin
+    f(vmin, vmax) = Makie.get_ticks(Makie.DateTimeConversion(Time), Makie.automatic, identity, Makie.automatic, vmin, vmax)
+    tmin = Time(0)
+    tmax = Time(0) - Nanosecond(1)
+    num_tmin = Makie.date_to_number(Time, tmin)
+    num_tmax = Makie.date_to_number(Time, tmax)
+    num_lower_tmin = num_tmin - 1
+    num_higher_tmax = num_tmax + 1
+    @test Makie.number_to_date(Time, num_lower_tmin) > tmin
+    @test Makie.number_to_date(Time, num_higher_tmax) < tmax
+    @test f(num_tmin, num_tmax) == f(num_lower_tmin, num_higher_tmax)
+    @test !isempty(f(num_lower_tmin, num_higher_tmax)[1])
+end
