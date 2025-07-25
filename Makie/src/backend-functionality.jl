@@ -190,6 +190,18 @@ function add_computation!(attr, scene, ::Val{:meshscatter_f32c_scale})
     end
 end
 
+
+function add_computation!(attr, ::Val{:disassemble_mesh}, name = :marker)
+    map!(attr, name, [:vertex_position, :faces, :normal, :uv]) do mesh
+        faces = decompose(GLTriangleFace, mesh)
+        normals = decompose_normals(mesh)
+        texturecoordinates = decompose_uv(mesh)
+        positions = decompose(Point3f, mesh)
+        return (positions, faces, normals, texturecoordinates)
+    end
+    return
+end
+
 function add_computation!(attr, scene, ::Val{:pattern_uv_transform}; kwargs...)
     return register_pattern_uv_transform!(attr; kwargs...)
 end

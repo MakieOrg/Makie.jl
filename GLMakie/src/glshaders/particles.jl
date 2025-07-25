@@ -50,14 +50,17 @@ end
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
-function draw_mesh_particle(screen, p, data)
-    to_opengl_mesh!(screen.glscreen, data, p[1]) # TODO: new functions need something else
+function draw_mesh_particle(screen, data)
     @gen_defaults! data begin
-        position = p[2] => TextureBuffer
+        vertices = nothing => GLBuffer
+        faces = nothing => indexbuffer
+        normals = nothing => GLBuffer
+        texturecoordinates = nothing => GLBuffer
+
+        position = Point3f[] => TextureBuffer
         scale = Vec3f(1) => TextureBuffer
         rotation = Quaternionf(0, 0, 0, 1) => TextureBuffer
         f32c_scale = Vec3f(1) # drawing_primitives.jl
-        texturecoordinates = nothing
     end
 
     shading = pop!(data, :shading)::Makie.ShadingAlgorithm

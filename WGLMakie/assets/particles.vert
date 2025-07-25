@@ -78,7 +78,7 @@ vec4 to_color(vec4 c) {
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = get_markersize() * to_vec3(get_position());
+    vec3 vertex_position = get_markersize() * to_vec3(get_vertex_position());
     vec3 N = get_normal() / get_markersize(); // see issue #3702
     rotate(get_converted_rotation(), vertex_position, N);
     vertex_position = get_f32c_scale() * vertex_position;
