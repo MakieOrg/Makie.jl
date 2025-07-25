@@ -6,6 +6,7 @@ using Colors: N0f8
 tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
 
+serialize_three(::Nothing) = false
 serialize_three(val::Number) = val
 serialize_three(val::Vec2f) = convert(Vector{Float32}, val)
 serialize_three(val::Vec3f) = convert(Vector{Float32}, val)

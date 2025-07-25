@@ -1140,8 +1140,8 @@ function unpack_array(array) {
     return array;
 }
 
-function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
-    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+function compute_lastlen(points, point_ndim, pvm, res, is_lines_with_linestyle) {
+    if (!is_lines_with_linestyle) return new Float32Array(points.length / point_ndim).fill(0);
     if (points.length === 0) return new Float32Array(0);
 
     const num_points = points.length / point_ndim;
@@ -1228,7 +1228,9 @@ function get_projectionview(cam, plot) {
 
 function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
-    const is_lines = !plot.is_segments;
+    // LineSegments don't need lastlen because the line pattern isn't continuous between segments
+    // lines without linestyle don't need it either, because there is no pattern to continue
+    const is_lines_with_linestyle = !plot.is_segments && plot.plot_data.pattern;
     const pvm = get_projectionview(cam, plot);
     const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
@@ -1244,12 +1246,12 @@ function get_last_len(plot, points) {
                 point_ndim,
                 pvm.value,
                 res.value,
-                is_lines
+                is_lines_with_linestyle
             );
             plot.update_buffer("lastlen", lastlen);
         };
     }
-    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines);
+    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
 }
 
 export function add_line_attributes(plot, attributes) {
