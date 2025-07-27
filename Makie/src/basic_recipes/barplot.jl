@@ -142,18 +142,123 @@ end
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
 
 function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-    width === automatic && (width = 1)
-    width *= 1 - gap
+    # @show (x, width, gap, dodge, n_dodge, dodge_gap)
+    # invariants and definitions enforced by `resolve_` functions:
+    # dodge group: the set of dodged elements (spread out so they don't overlap) placed
+    # at a single x-position
+    #
+    # n_dodge: the number of dodge positions in each dodge group
+    # dodge: dodge position we are computing for a given dodge group
+    #
+    # width:
+    #  - the relative summed width of all bars within a dodge group (0 to 1)
+    #  - the relative width of each individual bar in a dodge group (0 to 1)
+    #
+    # dodge_gap: either
+    #  - the relative gap size between all dodged bars
+    #  - the relative gap size between each individual bar in a dodge group
+    #
+    # there are n-1 gaps between n elements, and therefore:
+    # length(width) == length(dodge_gap) + 1
+    i_dodge = resolve_dodge(dodge)
+    resolved_dodge_gap = resolve_dodge_gap(width, dodge_gap)
+    width = resolve_width(width, gap, dodge_gap)
+    n_dodge = resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
+
+    return compute_x_and_width_helper(x, width, i_dodge, n_dodge, resolved_dodge_gap)
+end
+
+function resolve_dodge(dodge)
     if dodge === automatic
-        i_dodge = 1
+        return 1
     elseif eltype(dodge) <: Integer
-        i_dodge = dodge
+        if any(<(1), dodge)
+            throw(ArgumentError("Dodge values should be integers > 0"))
+        end
+        return dodge
     else
-        ArgumentError("The keyword argument `dodge` currently supports only `AbstractVector{<: Integer}`") |> throw
+        throw(ArgumentError(
+            "The keyword argument `dodge` currently supports only " * "`AbstractVector{<: Integer}`"
+        ))
     end
-    n_dodge === automatic && (n_dodge = maximum(i_dodge))
+    return dodge
+end
+
+function resolve_dodge_gap(width, dodge_gap)
+    if dodge_gap === automatic
+        return 0.0
+    end
+
+    if width === automatic
+        return dodge_gap
+    end
+
+    if !(width isa Number) && !(dodge_gap isa Number)
+        if length(width) - 1 != length(dodge_gap)
+            throw(
+                ArgumentError(
+                    "The `width` keyword argument must be a single number or " *
+                    "`length(width) == length(dodge_gap) + 1`. There is one " *
+                    "less gap between elements as there are elements.",
+                ),
+            )
+        end
+        return dodge_gap
+    end
+
+    if !(width isa Number)
+        return fill(dodge_gap, length(width) - 1)
+    end
+
+    return dodge_gap
+end
+
+function resolve_width(width, gap, dodge_gap)
+    width === automatic && (width = 1)
+    width = width .* (1 - gap)
+
+    if dodge_gap isa Number
+        return width
+    elseif width isa Number
+        return fill(width, length(dodge_gap) + 1)
+    else
+        return width
+    end
+end
+
+function resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
+    if n_dodge === automatic
+        if dodge_gap == automatic
+            n_dodge = 1
+            if i_dodge > 1
+                throw(ArgumentError("You must specify `n_dodge` or `dodge_gap` to "*
+                                    "have a dodge index greater than 1"))
+            end
+        elseif dodge_gap isa Number
+            n_dodge = maximum(i_dodge)
+        else
+            n_dodge = length(dodge_gap) + 1
+        end
+    end
+
+    if !(dodge_gap isa Number) && length(dodge_gap) != (n_dodge - 1)
+        throw(
+            ArgumentError(
+                "The keyword argument `dodge_gap` must have a length " *
+                "of `n_dodge - 1` or it must be a number. There is one " *
+                "less gap between elements as there are elements.",
+            ),
+        )
+    end
+
+    return n_dodge
+end
+
+# dodge_gap and width as scalars
+function compute_x_and_width_helper(x, width::Number, i_dodge, n_dodge, dodge_gap::Number)
     dodge_width = scale_width(dodge_gap, n_dodge)
     shifts = shift_dodge.(i_dodge, dodge_width, dodge_gap)
+    width .* shifts
     return x .+ width .* shifts, width * dodge_width
 end
 
@@ -161,6 +266,62 @@ scale_width(dodge_gap, n_dodge) = (1 - (n_dodge - 1) * dodge_gap) / n_dodge
 
 function shift_dodge(i, dodge_width, dodge_gap)
     return (dodge_width - 1) / 2 + (i - 1) * (dodge_width + dodge_gap)
+end
+
+# dodge_gap and width as vectors (1 element per dodge index)
+function compute_x_and_width_helper(x, width, i_dodge, n_dodge, dodge_gap)
+    # @show x, width, i_dodge, n_dodge, dodge_gap
+    # invariant enforced above: length(width) !== length(dodge_gap) - 1
+
+    # `space_for_element` determines how much room there is for the plot element once after
+    # accounting for gaps. It plays the same role that `(1 - (n_dodge - 1) * dodge_gap)`
+    # plays in the scalar case.
+    space_for_element = (1 - (sum(dodge_gap))) / n_dodge
+    gap_scale = mean(width)
+    # NOTE: to keep the meaning of `dodge_gap` values constant across a specified array, the
+    # *effect* of each `dodge_gap` is not proportional to individual bar widths (since those
+    # are also potentially variable) but rather to the total space allotted to gaps
+    # (`sum(dodge_gap)`).
+
+    # `width_shifts` determines how far we need to move on the x-axis to get to the nth
+    # element's center. This plays the same role that `width * (i - 1) * (dodge_width +
+    # dodge_gap)` plays for the scalar case. To find the nth bar's center we need the width
+    # of the last bar (weight[i-1]), the gap between that bar and this bar (dodge_gap[i-1]),
+    # and the width of the current bar (weight[i])
+    width_shifts = cumsum(
+        width[i - 1] * 0.5space_for_element +
+            dodge_gap[i - 1] * gap_scale +
+            width[i] * 0.5space_for_element
+        for i in 2:n_dodge
+    )
+
+    # `half_width` plays the same role that `width * (dodge_width - 1) / 2` plays for the
+    # the scalar case. It is used to center the dodged elements. Like the `width_shifts`
+    # above, we need to be more granular because of the heterogenous widths involved
+    if @show(n_dodge) > 2
+        half_index = n_dodge >> 1
+        half_width = width_shifts[half_index-1]
+        # `half_width` is now in the center of the central bar (for odd n_dodge), or it is at
+        # the center of the bar just to the right of the center gap (for event n_dodge)
+        if iseven(n_dodge)
+            # we move from the center of the bar to the center of the next gap
+            half_width += width[half_index] * 0.5space_for_element +
+                dodge_gap[half_index] * 0.5gap_scale
+        end
+        @show half_width
+    else
+        half_width = 0
+    end
+
+    el_width = getindex.(Ref(width), i_dodge) .* space_for_element
+    @show el_width_shift = map(i_dodge) do i
+        # compare to `shift_dodge` implementation above
+        get(width_shifts, i - 1, 0.0) - half_width
+    end
+
+    @show x.+el_width_shift
+    @show el_width
+    return x .+ el_width_shift, el_width
 end
 
 function stack_from_to_sorted(y)
