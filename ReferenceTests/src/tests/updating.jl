@@ -296,7 +296,7 @@ end
 end
 
 @reference_test "meshscatter update" begin
-    f,a,p = meshscatter([Point3f(0)])
+    f, a, p = meshscatter([Point3f(0)])
     st = Stepper(f)
     Makie.step!(st)
 
@@ -305,6 +305,6 @@ end
     p.markersize = Vec3f(0.2, 0.1, 0.05)
     p.rotation = Vec3f(1, 1, -1)
     p.alpha = 0.5
-    p.arg1 = [Point3f(-0.1, -0.05, 0), Point3f(0.1,0,0), Point3f(0,0.15,0)]
+    p.arg1 = [Point3f(-0.1, -0.05, 0), Point3f(0.1, 0, 0), Point3f(0, 0.15, 0)]
     Makie.step!(st)
 end

@@ -416,7 +416,6 @@ function meshscatter_program(args)
 end
 
 
-
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
 
