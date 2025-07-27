@@ -1230,7 +1230,7 @@ function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
     // LineSegments don't need lastlen because the line pattern isn't continuous between segments
     // lines without linestyle don't need it either, because there is no pattern to continue
-    const is_lines_with_linestyle = !plot.is_segments && plot.plot_data.pattern;
+    const is_lines_with_linestyle = !plot.is_segments && (plot.plot_data.pattern != false);
     const pvm = get_projectionview(cam, plot);
     const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
@@ -1248,9 +1248,9 @@ function get_last_len(plot, points) {
                 res.value,
                 is_lines_with_linestyle
             );
-            plot.update_buffer("lastlen", lastlen);
         };
     }
+
     return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
 }
 

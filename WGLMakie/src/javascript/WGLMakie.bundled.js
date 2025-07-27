@@ -24302,7 +24302,7 @@ function get_projectionview(cam, plot) {
 }
 function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
-    const is_lines_with_linestyle = !plot.is_segments && plot.plot_data.pattern;
+    const is_lines_with_linestyle = !plot.is_segments && plot.plot_data.pattern != false;
     const pvm = get_projectionview(cam, plot);
     const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
@@ -24313,8 +24313,7 @@ function get_last_len(plot, points) {
             const geom = plot.mesh.geometry;
             const ia = geom.interleaved_attributes;
             const new_points = ia.positions_transformed_f32c.array;
-            const lastlen = compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
-            plot.update_buffer("lastlen", lastlen);
+            compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
         };
     }
     return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
