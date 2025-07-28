@@ -96,8 +96,31 @@ WARN_ON_LOAD[] = true
 
 function __init__()
     activate!()
+    show_gl_icon_in_dock(false)
     # trigger OpenGL cleanup to avoid errors in debug mode
     return atexit(GLMakie.closeall)
+end
+
+function show_gl_icon_in_dock(show::Bool)
+    Sys.isapple() || return
+    try
+        # Get NSApplication class and selectors
+        nsapp_class = @ccall objc_getClass("NSApplication"::Cstring)::Ptr{Cvoid}
+        shared_app_sel = @ccall sel_registerName("sharedApplication"::Cstring)::Ptr{Cvoid}
+        set_policy_sel = @ccall sel_registerName("setActivationPolicy:"::Cstring)::Ptr{Cvoid}
+        
+        # Get NSApplication shared instance
+        nsapp = @ccall objc_msgSend(nsapp_class::Ptr{Cvoid}, shared_app_sel::Ptr{Cvoid})::Ptr{Cvoid}
+        
+        # Set activation policy
+        NSApplicationActivationPolicyRegular   = 0
+        NSApplicationActivationPolicyAccessory = 1
+        val = show ? NSApplicationActivationPolicyRegular : NSApplicationActivationPolicyAccessory
+        
+        @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_policy_sel::Ptr{Cvoid}, val::Clong)::Ptr{Cvoid}
+    catch e
+        @warn "Failed to set dock icon visibility" e
+    end
 end
 
 include("precompiles.jl")
