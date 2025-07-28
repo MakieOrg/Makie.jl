@@ -133,7 +133,6 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
-
     # The colorrange and colormap needs to be padded with RGBAf(..., 0) so that
     # samples outside the colorrange are not drawn
     map!(plot, [:tight_colorrange, :computed_isorange], :padded_colorrange) do (min, max), isorange

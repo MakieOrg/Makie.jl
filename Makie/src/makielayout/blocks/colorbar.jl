@@ -72,6 +72,14 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     )
 end
 
+function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+    levels = ComputePipeline.get_observable!(plot.value_levels)
+    return ColorMapping(
+        levels[], levels, plot.input_colormap, plot.tight_colorrange, plot.colorscale,
+        Observable(1.0), Observable(automatic), Observable(automatic), plot.nan_color
+    )
+end
+
 function extract_colormap(plot::Voxels)
     limits = plot.value_limits
     # TODO: does this need padding for lowclip and highclip?
