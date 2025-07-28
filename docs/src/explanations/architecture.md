@@ -86,7 +86,7 @@ But `Scene`s as a low level building block are not the most convenient container
 
 In practice, Makie users build most data visualizations out of more convenient, higher-level objects. These are the `Figure` and several different `Block` objects like `Axis`, `Axis3`, `LScene`, `Button`, `Label`, `Slider` and `Menu`. These objects are themselves built out of `Scene`s and `Plot`s.
 
-The `Figure` consists of two elements, a `Scene` and a `GridLayout`. The `Scene` is the root of the figure's scene graph and the `GridLayout` computes the positions of the figure's `Block`s.
+The `Figure` consists mainly of two elements, a `Scene` and a `GridLayout`. The `Scene` is the root of the figure's scene graph and the `GridLayout` computes the positions of the figure's `Block`s.
 
 Every `Block` object consists of a `Scene` called the `blockscene` and an arbitrary number of child plots and child scenes connected to it. When we want to create an `Axis` object in Makie we often do something like:
 
