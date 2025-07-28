@@ -12,7 +12,7 @@ end
 function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_length})
     # linestyle/pattern handling
     if attr[:linestyle][] === nothing
-        add_constants!(attr, uniform_pattern = nothing, uniform_pattern_length = 1f0)
+        add_constants!(attr, uniform_pattern = nothing, uniform_pattern_length = 1.0f0)
     else
         register_computation!(
             attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
