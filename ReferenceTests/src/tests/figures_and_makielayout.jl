@@ -700,7 +700,7 @@ end
     )
     gl = GridLayout(f[1, 2], tellheight = false)
     Label(gl[1, 1], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)))
-    Label(gl[2, 1], rich("X", superscript("super"), subscript("sub")))
+    Label(gl[2, 1], "X" * superscript("super") * subscript("sub"))
     Label(gl[3, 1], rich(left_subsup("92", "238"), "U"))
     Label(gl[4, 1], rich("SO", subsup("4", "2−")))
     Label(gl[5, 1], rich("x", subsup("f", "g")))
