@@ -107,14 +107,14 @@ digraph {
     Figure;
     C [label="content::Vector"];
     GridLayout;
-    Scene;
+    Scene [label="Root Scene"];
     
     subgraph cluster_axis {
         label="Axis";
         style=filled;
         fillcolor="#fcfcfcff";
         
-        GridContent [label="GridContent\n(controls Axis position)"];
+        GridContent [label="GridContent\n(gets Axis position from layout)"];
         BS [label="Scene (blockscene)"];
         AD [label="Plots (Axis decorations)"];
         AS [label="Scene (Axis canvas)"];
@@ -157,7 +157,7 @@ digraph {
     Figure;
     C [label="content::Vector"];
     GridLayout;
-    Scene;
+    Scene [label="Root Scene"];
     
     subgraph cluster_axis {
         label="Axis";
