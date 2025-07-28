@@ -116,11 +116,15 @@ conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<:N
 conversion_trait(::Type{<:Contour}, ::AbstractArray{<:Number, 3}) = VolumeLike()
 
 function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
-    map!(nan_extrema, plot, :converted_4, :input_value_range)
-    map!(to_levels, plot, [:levels, :input_value_range], :value_levels)
-    map!(extrema, plot, :value_levels, :value_range)
+    map!(nan_extrema, plot, :converted_4, :value_range)
+    map!(default_automatic, plot, [:colorrange, :value_range], :tight_colorrange)
 
-    map!(plot, [:isorange, :value_range], :computed_isorange) do isorange, valuerange
+    map!(to_levels, plot, [:levels, :value_range], :value_levels)
+    map!(extrema, plot, :value_levels, :level_range)
+
+    # the default isorange should be smaller than the gap between levels, but not
+    # so small that surfaces disappear/get skipped
+    map!(plot, [:isorange, :level_range], :computed_isorange) do isorange, valuerange
         if isorange === automatic
             minstep = minimum(valuerange[2:end] .- valuerange[1:end-1])
             return 0.03 * minstep
@@ -129,9 +133,9 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         end
     end
 
+
     # The colorrange and colormap needs to be padded with RGBAf(..., 0) so that
     # samples outside the colorrange are not drawn
-    map!(default_automatic, plot, [:colorrange, :value_range], :tight_colorrange)
     map!(plot, [:tight_colorrange, :computed_isorange], :padded_colorrange) do (min, max), isorange
         return (min - 2isorange, max + 2isorange)
     end
