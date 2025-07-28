@@ -2,6 +2,7 @@
 
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
+- Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange` and colormap resolution, and added colormap extractor for `Colorbar` support. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
 
 ## Unreleased
 
