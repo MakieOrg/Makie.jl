@@ -2,6 +2,7 @@
 
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
+- Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
 
 ## Unreleased

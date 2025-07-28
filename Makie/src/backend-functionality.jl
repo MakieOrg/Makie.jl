@@ -11,24 +11,29 @@ end
 
 function add_computation!(attr, ::Val{:uniform_pattern}, ::Val{:uniform_pattern_length})
     # linestyle/pattern handling
-    return register_computation!(
-        attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
-    ) do (linestyle,), changed, cached
-        if isnothing(linestyle)
-            sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
-            len = 1.0f0 # should be irrelevant, compat for strictly solid lines
-        else
-            sdf = Makie.linestyle_to_sdf(linestyle)
-            len = Float32(last(linestyle) - first(linestyle))
+    if attr[:linestyle][] === nothing
+        add_constants!(attr, uniform_pattern = nothing, uniform_pattern_length = 1.0f0)
+    else
+        register_computation!(
+            attr, [:linestyle], [:uniform_pattern, :uniform_pattern_length]
+        ) do (linestyle,), changed, cached
+            if isnothing(linestyle)
+                sdf = fill(Float16(-1.0), 100) # compat for switching from linestyle to solid/nothing
+                len = 1.0f0 # should be irrelevant, compat for strictly solid lines
+            else
+                sdf = Makie.linestyle_to_sdf(linestyle)
+                len = Float32(last(linestyle) - first(linestyle))
+            end
+            if isnothing(cached)
+                tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
+            else
+                tex = cached.uniform_pattern
+                ShaderAbstractions.update!(tex, sdf)
+            end
+            return (tex, len)
         end
-        if isnothing(cached)
-            tex = ShaderAbstractions.Sampler(sdf, x_repeat = :repeat)
-        else
-            tex = cached.uniform_pattern
-            ShaderAbstractions.update!(tex, sdf)
-        end
-        return (tex, len)
     end
+    return
 end
 
 
