@@ -512,14 +512,13 @@ function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glna
         input2glname[:scaled_color] = :color
     end
 
-    marker = attr[:marker][]
-    positions = data[:position]
-    return draw_mesh_particle(screen, (marker, positions), data)
+    return draw_mesh_particle(screen, data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
+    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -539,6 +538,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     ]
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
+        :vertex_position, :faces, :normal, :uv,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix, :view_normalmatrix,
@@ -547,6 +547,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position, :markersize => :scale,
+        :vertex_position => :vertices, :normal => :normals, :uv => :texturecoordinates,
         :packed_uv_transform => :uv_transform,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :color, :lowclip_color => :lowclip, :highclip_color => :highclip,
