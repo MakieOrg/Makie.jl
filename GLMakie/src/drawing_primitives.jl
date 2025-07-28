@@ -853,33 +853,34 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             t = Makie.transform_func_obs(plot)
             mat = plot[3]
-            xypos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], space) do f32c, model, t, x, y, space
+            xyzpos = lift(plot, pop!(gl_attributes, :f32c), plot.model, t, plot[1], plot[2], plot[3], space) do f32c, model, t, x, y, z, space
                 # Only if transform doesn't do anything, we can stay linear in 1/2D
                 if Makie.is_identity_transform(t) && isnothing(f32c)
-                    return (x, y)
+                    return (x, y, z)
                 elseif Makie.is_translation_scale_matrix(model)
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y)), space)
+                        Makie.f32_convert(f32c, apply_transform.((t,), Point.(x, y, z)), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y)), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform(t, Point(x, y, z)), space) for (x, y, z) in zip(x, y, z)]
                     end
-                    return (first.(matrix), last.(matrix))
+                    return (getindex.(matrix, 1), getindex.(matrix, 2), getindex.(matrix, 3))
                 else
                     matrix = if x isa AbstractMatrix && y isa AbstractMatrix
-                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y), Point2d), space)
+                        Makie.f32_convert(f32c, apply_transform_and_model.((model,), (t,), Point.(x, y, z), Point3d), space)
                     else
                         # If we do any transformation, we have to assume things aren't on the grid anymore
                         # so x + y need to become matrices.
-                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y), Point2d), space) for x in x, y in y]
+                        [Makie.f32_convert(f32c, apply_transform_and_model(model, t, Point(x, y, z), Point3d), space) for (x, y, z) in zip(x, y, z)]
                     end
-                    return (first.(matrix), last.(matrix))
+                    return (getindex.(matrix, 1), getindex.(matrix, 2), getindex.(matrix, 3))
                 end
             end
-            xpos = lift(first, plot, xypos)
-            ypos = lift(last, plot, xypos)
-            args = map((xpos, ypos, mat)) do arg
+            xpos = lift(x -> getindex(x, 1), plot, xyzpos)
+            ypos = lift(x -> getindex(x, 2), plot, xyzpos)
+            zpos = lift(x -> getindex(x, 3), plot, xyzpos)
+            args = map((xpos, ypos, zpos)) do arg
                 Texture(screen.glscreen, lift(x-> convert(Array, el32convert(x)), plot, arg); minfilter=:linear)
             end
             if isnothing(img)
