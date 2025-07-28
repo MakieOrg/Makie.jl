@@ -4,7 +4,7 @@ The idea behind Makie is to describe complex plots as a composition of primitive
 
 From an architecture perspective, the two most important objects in Makie are `Scene`s and `Plot`s.
 
-## Scenes
+## [Scenes](@id architecture_scenes)
 
 A `Scene` represents an abstract rectangular canvas or viewport. It can contain `Plot` objects which are going to be rendered according to their `Scene`'s camera and light settings.
 A given `Scene` can contain child scenes which may cover the full area of the parent `Scene` or a smaller rectangular section of it.
@@ -36,7 +36,7 @@ Every `Scene` in Makie has a 3D camera (consisting of two 4x4 projection and vie
 
 A given Makie backend can `display` or render a `Scene` by attaching it to a `[MakieBackend].Screen`. Usually the displayed `Scene` will be the root scene of a given scene graph but it doesn't have to be. The root `Scene` of the scene graph will also usually be held by a `Figure` object (more on `Figure`s below).
 
-## Plots
+## [Plots](@id architecture_plots)
 
 `Plot` objects fall into two categories, primitive or non-primitive. Primitive plots are what the backends can render. Makie has a couple of primitive plot types, for example `Scatter`, `Lines`, `Text`, `Image` or `Mesh`. 
 
