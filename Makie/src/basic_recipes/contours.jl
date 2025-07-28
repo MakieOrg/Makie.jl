@@ -126,7 +126,7 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     # so small that surfaces disappear/get skipped
     map!(plot, [:isorange, :level_range], :computed_isorange) do isorange, valuerange
         if isorange === automatic
-            minstep = minimum(valuerange[2:end] .- valuerange[1:end-1])
+            minstep = minimum(valuerange[2:end] .- valuerange[1:(end - 1)])
             return 0.03 * minstep
         else
             return isorange
@@ -145,7 +145,8 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
 
     map!(to_colormap, plot, :colormap, :input_colormap)
 
-    map!(plot,
+    map!(
+        plot,
         [:clamped_levels, :tight_colorrange, :padded_colorrange, :computed_isorange, :alpha, :input_colormap],
         :computed_colormap
     ) do levels, tight_colorrange, (min, max), isorange, alpha, cmap
