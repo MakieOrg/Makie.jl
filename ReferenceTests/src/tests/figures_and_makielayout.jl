@@ -695,8 +695,8 @@ end
         xscale = log10,
         yscale = log2,
         title = rich("A ", rich("title", color = :red, font = :bold_italic)),
-        xlabel = rich("X", subscript("label", fontsize = 25)),
-        ylabel = rich("Y", superscript("label")),
+        xlabel = "X" * subscript("label", fontsize = 25),
+        ylabel = "Y" * superscript("label"),
     )
     gl = GridLayout(f[1, 2], tellheight = false)
     Label(gl[1, 1], rich("Hi", rich("Hi", offset = (0.2, 0.2), color = :blue)))
