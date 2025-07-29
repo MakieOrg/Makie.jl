@@ -133,7 +133,7 @@ digraph {
 }
 ```
 
-As you can see, there are three connections between `Figure` and `Axis`. The `Figure` stores a reference to the `Axis` itself in its `content` field but this is just for bookkeeping purposes. The important connections are from the `GridLayout` to the `Axis`'s `GridContent` and from the figure's root scene to the `Axis`'s `blockscene`, placing all the content of `Axis` and its child plots in the scene graph.
+As you can see, there are two connections between `Figure` and `Axis`, from the figure's `GridLayout` to the axis's `GridContent` and from the figure's root scene to the `Axis`'s `blockscene`, placing all the content of `Axis` and its child plots in the scene graph.
 
 The layout and scene connections are independent of each other. In principle, objects can be added to the scene graph without being in the layout just as objects can be added to the layout without being in the scene graph.
 
