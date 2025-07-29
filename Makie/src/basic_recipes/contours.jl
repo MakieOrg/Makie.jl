@@ -122,14 +122,17 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     map!(default_automatic, plot, [:colorrange, :value_range], :tight_colorrange)
 
     map!(to_levels, plot, [:levels, :value_range], :value_levels)
-    map!(extrema, plot, :value_levels, :level_range)
 
     # the default isorange should be smaller than the gap between levels, but not
     # so small that surfaces disappear/get skipped
-    map!(plot, [:isorange, :level_range], :computed_isorange) do isorange, valuerange
+    map!(plot, [:isorange, :value_levels, :value_range], :computed_isorange) do isorange, value_levels, (min, max)
         if isorange === automatic
-            minstep = minimum(valuerange[2:end] .- valuerange[1:(end - 1)])
-            return 0.03 * minstep
+            if length(value_levels) > 1
+                minstep = minimum(value_levels[2:end] .- value_levels[1:(end - 1)])
+                return 0.03 * minstep
+            else
+                return 0.03 * (max - min)
+            end
         else
             return isorange
         end
