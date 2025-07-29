@@ -862,7 +862,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         observers = func(block)
         add_observer!(spec, observers)
     end
-    unhide!(block)
+    unhide!(block) # in case we hid it before
     return to_update, reset_to_defaults
 end
 
@@ -982,10 +982,10 @@ function update_gridlayout!(
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
-            @debug("updating old block with spec")
+            @debug("updating old block with spec: $(get_type(spec))")
             # Make sure we don't double reuse a layoutable
             splice!(previous_contents, idx)
-            (_, _, old_spec) = old_key
+            (a_, oldpos, old_spec) = old_key
             (layoutable, plot_obs) = layoutable_obs
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout
