@@ -6,6 +6,7 @@
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
 
 ## Unreleased
+- When plotting `PlotSpec`s, allow them to inherit all attributes of the provided `plotlist`.  This includes `transformation` and `transform_func`, which fix plotspecs in e.g. log-scaled axes, PolarAxis, and GeoAxis [#5206](https://github.com/MakieOrg/Makie.jl/pull/5206).
 
 ## [0.24.4] - 2025-07-17
 
