@@ -10,6 +10,7 @@ using CairoMakie
 using GLMakie
 using WGLMakie
 using RPRMakie
+using Graphviz_jll
 
 ##
 
@@ -23,6 +24,7 @@ using Markdown
 
 
 include("figure_block.jl")
+include("graphviz_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
 include("fake_interaction.jl")
@@ -150,6 +152,7 @@ pages = [
             "explanations/backends/wglmakie.md",
         ],
         "explanations/animation.md",
+        "explanations/architecture.md",
         "explanations/blocks.md",
         "explanations/cameras.md",
         "explanations/conversion_pipeline.md",
