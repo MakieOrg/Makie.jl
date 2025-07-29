@@ -1,5 +1,5 @@
 """
-    stem(xs, ys, [zs]; kwargs...)
+    stem(xs, ys, [zs]; attributes...)
 
 Plots markers at the given positions extending from `offset` along stem lines.
 

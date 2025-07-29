@@ -1,14 +1,14 @@
 """
-    errorbars(x, y, error_both; kwargs...)
-    errorbars(x, y, error_low, error_high; kwargs...)
-    errorbars(x, y, error_low_high; kwargs...)
+    errorbars(x, y, error_both; attributes...)
+    errorbars(x, y, error_low, error_high; attributes...)
+    errorbars(x, y, error_low_high; attributes...)
 
-    errorbars(xy, error_both; kwargs...)
-    errorbars(xy, error_low, error_high; kwargs...)
-    errorbars(xy, error_low_high; kwargs...)
+    errorbars(xy, error_both; attributes...)
+    errorbars(xy, error_low, error_high; attributes...)
+    errorbars(xy, error_low_high; attributes...)
 
-    errorbars(xy_error_both; kwargs...)
-    errorbars(xy_error_low_high; kwargs...)
+    errorbars(xy_error_both; attributes...)
+    errorbars(xy_error_low_high; attributes...)
 
 Plots errorbars at xy positions, extending by errors in the given `direction`.
 
@@ -32,9 +32,9 @@ end
 const RealOrVec = Union{Real, RealVector}
 
 """
-    rangebars(val, low, high; kwargs...)
-    rangebars(val, low_high; kwargs...)
-    rangebars(val_low_high; kwargs...)
+    rangebars(val, low, high; attributes...)
+    rangebars(val, low_high; attributes...)
+    rangebars(val_low_high; attributes...)
 
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
 given the chosen `direction`.

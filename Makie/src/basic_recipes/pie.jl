@@ -1,7 +1,7 @@
 """
-    pie(values; kwargs...)
-    pie(point, values; kwargs...)
-    pie(x, y, values; kwargs...)
+    pie(values; attributes...)
+    pie(point, values; attributes...)
+    pie(x, y, values; attributes...)
 
 Creates a pie chart from the given `values`.
 """

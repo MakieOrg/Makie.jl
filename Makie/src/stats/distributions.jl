@@ -27,7 +27,7 @@ end
 # qqplots (M. K. Borregaard implementation from StatPlots)
 
 """
-    qqplot(x, y; kwargs...)
+    qqplot(x, y; attributes...)
 Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
 samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - a list of samples,

@@ -23,7 +23,7 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values)
+    stephist(values; attributes...)
 
 Plot a step histogram of `values`.
 """
@@ -82,7 +82,7 @@ function Makie.plot!(plot::StepHist)
 end
 
 """
-    hist(values)
+    hist(values; attributes...)
 
 Plot a histogram of `values`.
 """

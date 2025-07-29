@@ -1,7 +1,7 @@
 """
-    spy(z::AbstractSparseArray)
-    spy(x_range::NTuple{2, Number}, y_range::NTuple{2, Number}, z::AbstractSparseArray)
-    spy(x_range::ClosedInterval, y_range::ClosedInterval, z::AbstractSparseArray)
+    spy(z::AbstractSparseArray; attributes...)
+    spy(x_range::NTuple{2, Number}, y_range::NTuple{2, Number}, z::AbstractSparseArray; attributes...)
+    spy(x_range::ClosedInterval, y_range::ClosedInterval, z::AbstractSparseArray; attributes...)
 
 Visualizes big sparse matrices.
 Usage:

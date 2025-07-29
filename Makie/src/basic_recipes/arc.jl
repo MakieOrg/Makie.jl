@@ -1,5 +1,5 @@
 """
-    arc(origin, radius, start_angle, stop_angle; kwargs...)
+    arc(origin, radius, start_angle, stop_angle; attributes...)
 
 This function plots a circular arc, centered at `origin` with radius `radius`,
 from `start_angle` to `stop_angle`.

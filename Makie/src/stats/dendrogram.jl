@@ -6,8 +6,8 @@ struct DNode
 end
 
 """
-    dendrogram(positions, merges)
-    dendrogram(x, y, merges)
+    dendrogram(positions, merges; attributes...)
+    dendrogram(x, y, merges; attributes...)
 
 Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
 specified by `positions` and parent nodes identified by `merges`.

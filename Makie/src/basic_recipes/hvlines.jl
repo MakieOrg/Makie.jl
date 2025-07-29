@@ -1,5 +1,5 @@
 """
-    hlines(ys; xmin = 0.0, xmax = 1.0, attrs...)
+    hlines(ys; xmin = 0.0, xmax = 1.0, attributes...)
 
 Create horizontal lines across a `Scene` with 2D projection.
 The lines will be placed at `ys` in data coordinates and `xmin` to `xmax`
@@ -16,7 +16,7 @@ they are broadcast to calculate the final line segments.
 end
 
 """
-    vlines(xs; ymin = 0.0, ymax = 1.0, attrs...)
+    vlines(xs; ymin = 0.0, ymax = 1.0, attributes...)
 
 Create vertical lines across a `Scene` with 2D projection.
 The lines will be placed at `xs` in data coordinates and `ymin` to `ymax`

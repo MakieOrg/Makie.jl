@@ -1,5 +1,5 @@
 """
-    streamplot(f::function, xinterval, yinterval; color = norm, kwargs...)
+    streamplot(f::function, xinterval, yinterval; color = norm, attributes...)
 
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.

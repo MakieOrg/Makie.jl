@@ -53,10 +53,10 @@ end
 using .Ann
 
 """
-    annotation(x_target, y_target)
-    annotation(x_label, y_label, x_target, y_target)
-    annotation(points_target)
-    annotation(points_label, points_target)
+    annotation(x_target, y_target; attributes...)
+    annotation(x_label, y_label, x_target, y_target; attributes...)
+    annotation(points_target; attributes...)
+    annotation(points_label, points_target; attributes...)
 
 Annotate one or more target points with a combination of optional text labels and
 connections between labels and targets, typically in the form of an arrow.

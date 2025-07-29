@@ -1,5 +1,5 @@
 """
-    series(curves)
+    series(curves; attributes...)
 
 Curves can be:
 * `AbstractVector{<: AbstractVector{<: Point2}}`: the native representation of a series as a vector of lines
