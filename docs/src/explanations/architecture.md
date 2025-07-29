@@ -1,4 +1,4 @@
-# Architecture overview
+# Architecture
 
 The idea behind Makie is to describe complex plots as a composition of primitive building blocks. These primitives are rendered to GUI windows, bitmaps or vector graphics using one of Makie's backend packages.
 
