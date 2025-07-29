@@ -101,13 +101,16 @@ This sets up the following relationship of objects:
 ```@graphviz
 digraph {
     rankdir=TB;
-    compound=true;
     edge [dir=none];
-    
-    Figure;
-    C [label="content::Vector"];
-    GridLayout;
-    Scene [label="Root Scene"];
+
+    subgraph cluster_figure {
+        label="Figure";
+        style=filled;
+        fillcolor="#fcfcfcff";
+
+        GridLayout;
+        Scene [label="Root Scene"];
+    }
     
     subgraph cluster_axis {
         label="Axis";
@@ -125,10 +128,6 @@ digraph {
         AS -> AP;
     }
     
-    Figure -> C;
-    Figure -> GridLayout;
-    Figure -> Scene;
-    C -> GridContent [label="stores", lhead="cluster_axis", labelfloat=true, labeljust="c"];
     GridLayout -> GridContent;
     Scene -> BS;
 }
@@ -151,13 +150,16 @@ This removes the `GridLayout` connection from the above diagram:
 ```@graphviz
 digraph {
     rankdir=TB;
-    compound=true;
     edge [dir=none];
-    
-    Figure;
-    C [label="content::Vector"];
-    GridLayout;
-    Scene [label="Root Scene"];
+
+    subgraph cluster_figure {
+        label="Figure";
+        style=filled;
+        fillcolor="#fcfcfcff";
+
+        GridLayout;
+        Scene [label="Root Scene"];
+    }
     
     subgraph cluster_axis {
         label="Axis";
@@ -175,10 +177,7 @@ digraph {
         AS -> AP;
     }
     
-    Figure -> C;
-    Figure -> GridLayout;
-    Figure -> Scene;
-    C -> GridContent [label="stores", lhead="cluster_axis", labelfloat=true, labeljust="c"];
+    GridLayout -> GridContent [style=invis];
     Scene -> BS;
 }
 ```
