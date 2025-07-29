@@ -29,5 +29,5 @@ void main()
     frag_vert = world_vert.xyz;
 
     gl_Position = projectionview * world_vert;
-    gl_Position.z += gl_Position.w * depth_shift;
+    gl_Position.z = 0.5;
 }
