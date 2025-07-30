@@ -17,6 +17,8 @@ uniform vec3 light_color;
 uniform vec3 ambient;
 uniform vec3 light_direction;
 
+uniform mat4 projection, view;
+
 float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
 vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
@@ -363,6 +365,11 @@ void main()
     if (color.a <= 0.0){
         discard;
     }
-    fragment_color = color;
 
+    // use front face for depth, see GLMakie
+    // TODO: depth calculation for contour, isosurface
+    vec4 frag_coord = projection * view * model * vec4(start, 1.0);
+    gl_FragDepth = 0.5 * (frag_coord.z / frag_coord.w + depth_shift + 1.0);
+
+    fragment_color = color;
 }
