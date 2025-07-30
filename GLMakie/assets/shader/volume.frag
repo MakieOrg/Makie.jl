@@ -226,13 +226,18 @@ vec4 contours(vec3 front, vec3 dir)
         float opacity = density.a;
         if(opacity > 0.0)
         {
+
 #ifdef ENABLE_DEPTH
             vec4 frag_coord = projectionview * model * vec4(pos, 1);
             if (is_clipped(frag_coord))
+            {
+                pos += dir;
                 continue;
+            }
             else
                 depth = min(depth, frag_coord.z / frag_coord.w);
 #endif
+
             vec3 N = gennormal(pos, step_size, edge_gap);
             vec4 world_pos = model * vec4(pos, 1);
             vec3 opaque = illuminate(world_pos.xyz / world_pos.w, camdir, N, density.rgb);
@@ -264,13 +269,18 @@ vec4 isosurface(vec3 front, vec3 dir)
         float density = texture(volumedata, pos).x;
         if(abs(density - isovalue) < isorange)
         {
+
 #ifdef ENABLE_DEPTH
             vec4 frag_coord = projectionview * model * vec4(pos, 1);
             if (is_clipped(frag_coord))
+            {
+                pos += dir;
                 continue;
+            }
             else
                 depth = min(depth, frag_coord.z / frag_coord.w);
 #endif
+
             vec3 N = gennormal(pos, step_size, edge_gap);
             vec4 world_pos = model * vec4(pos, 1);
             c = vec4(
