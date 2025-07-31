@@ -325,7 +325,6 @@ function get_screen_session(
         maybe_throw("Screen Session uninitialized. Not yet displayed? Session status: $(screen.session.status), id: $(session.id)")
         return nothing
     end
-    isready(session) && return session
     success = Bonito.wait_for_ready(session; timeout = timeout)
     success === :closed && return nothing
     if success !== :success
