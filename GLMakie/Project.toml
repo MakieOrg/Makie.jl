@@ -43,6 +43,3 @@ julia = "1"
 
 [sources.Makie]
 path = "../Makie"
-
-[targets]
-test = ["DynamicQuantities"]
