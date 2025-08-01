@@ -88,6 +88,10 @@ function Makie.plot!(plot::BoxPlot)
 
     map!(StructArrays.finduniquesorted, plot, :x̂, :groups)
 
+    map!(plot, :groups, :centers) do groups
+        return Float32[center for (center, _) in groups]
+    end
+
     map!(plot, [:y, :weights, :groups], [:quantiles, :Ns]) do y, weights, groups
         quantiles = []
         Ns = []
@@ -109,6 +113,8 @@ function Makie.plot!(plot::BoxPlot)
                 push!(notchmin, q3 - nh)
                 push!(notchmax, q3 + nh)
             end
+        else
+            notchmin, notchmax = automatic, automatic
         end
         return notchmin, notchmax
     end
@@ -116,12 +122,11 @@ function Makie.plot!(plot::BoxPlot)
     map!(
         plot,
         [:y, :groups, :quantiles, :range, :show_outliers, :orientation],
-        [:outlier_points, :outlier_indices, :centers, :q1s, :q5s]
+        [:outlier_points, :outlier_indices, :q1s, :q5s]
     ) do y, groups, quantiles, range, show_outliers, orientation
         outlier_points, outlier_indices = Point2f[], Int[]
-        centers, q1s, q5s = Float32[], Float32[], Float32[]
-        for ((center, idxs), q) in zip(groups, quantiles)
-            push!(centers, center)
+        q1s, q5s = Float32[], Float32[]
+        for (q, (center, idxs)) in zip(quantiles, groups)
             q1, q2, _, q4, q5 = q
             values = view(y, idxs)
             if !iszero(range)
@@ -144,7 +149,7 @@ function Makie.plot!(plot::BoxPlot)
             push!(q1s, q1)
             push!(q5s, q5)
         end
-        return outlier_points, outlier_indices, centers, q1s, q5s
+        return outlier_points, outlier_indices, q1s, q5s
     end
 
     map!(
@@ -152,17 +157,21 @@ function Makie.plot!(plot::BoxPlot)
         [:groups, :widths, :q1s, :quantiles, :q5s, :whiskerwidth, :orientation],
         [:t_segments, :boxwidth]
     ) do groups, widths, q1s, quantiles, q5s, whiskerwidth, orientation
+        if !(whiskerwidth === :match || whiskerwidth >= 0)
+            error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
+        end
         t_segments = Point2f[]
         WT = widths isa AbstractVector ? eltype(widths) : typeof(widths)
         boxwidth = WT[]
-        for ((center, _), bw, q1, q, q5) in zip(groups, widths, q1s, quantiles, q5s)
-            push!(boxwidth, bw)
+        for ((center, idxs), q1, q, q5) in zip(groups, q1s, quantiles, q5s)
+            bw = getuniquevalue(widths, idxs)
             ww = whiskerwidth === :match ? bw : whiskerwidth * bw
             lw, rw = center - ww / 2, center + ww / 2
             segs = [
                 (center, q[2]), (center, q1), (lw, q1), (rw, q1), # lower T
                 (center, q[4]), (center, q5), (rw, q5), (lw, q5), # upper T
             ]
+            push!(boxwidth, bw)
             append!(t_segments, segs)
         end
         if orientation === :horizontal

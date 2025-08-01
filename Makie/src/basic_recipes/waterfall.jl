@@ -52,9 +52,9 @@ function Makie.plot!(p::Waterfall)
     map!(p, [:final_gap, :gap, :dodge], :finalgap) do final_gap, gap, dodge
         return final_gap === automatic ? dodge == automatic ? 0 : gap : final_gap
     end
+
     barplot!(
-        p,
-        p.final,
+        p, p.final;
         dodge = p.dodge,
         color = p.final_color,
         dodge_gap = p.final_dodge_gap,
@@ -69,18 +69,10 @@ function Makie.plot!(p::Waterfall)
     )
 
     function direction_markers(
-            xy, fillto,
-            marker_pos,
-            marker_neg,
-            width,
-            gap,
-            dodge,
-            n_dodge,
-            dodge_gap,
-        )
-        xs = first(
-            compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap)
-        )
+        xy, fillto, marker_pos, marker_neg, width,
+        gap, dodge, n_dodge, dodge_gap
+    )
+        xs = first(compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap))
         MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
         DataType = eltype(xy)
         shapes = MarkerType[]
