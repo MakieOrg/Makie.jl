@@ -152,7 +152,6 @@ function compute_protrusions(
 end
 
 function initialize_block!(ax::Axis; palette = nothing)
-
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
     ax.elements = elements
@@ -176,7 +175,9 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
 
-    scene = Scene(blockscene, viewport = scenearea)
+    scene = Scene(blockscene, viewport = scenearea, visible = false)
+    # Hide to block updates, will be unhidden! in constructor who calls this!
+    @assert !scene.visible[]
     ax.scene = scene
     # transfer conversions from axis to scene if there are any
     # or the other way around
@@ -579,6 +580,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, finallimits)
+    map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
     return ax
 end
 
@@ -587,7 +589,9 @@ function add_axis_limits!(plot)
     if !haskey(scene.compute, :axis_limits)
         error("add_axis_limits! can only be used with `Axis`, not with any other Axis type or a pure scene!")
     end
-    return add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
+    add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
+    add_input!(plot.attributes, :axis_limits_transformed, scene.compute.axis_limits_transformed)
+    return
 end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)

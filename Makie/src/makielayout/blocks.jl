@@ -399,6 +399,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
 
     # in this function, the block specific setup logic is executed and the remaining
     # uninitialized fields are filled
+    # hide block while initializing, so that it doesn't show up in half a state while rendering
+    # And to skip a few more updates
+    hide!(b)
     initialize_block!(b, args...; non_attribute_kwargs...)
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
         try
@@ -428,6 +431,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
             Makie.current_axis!(fig_or_scene, b)
         end
     end
+    # Unhide it when we're done!
+    unhide!(b)
+
     return b
 end
 
@@ -508,18 +514,20 @@ function unhide!(block::Block)
     if !block.blockscene.visible[]
         block.blockscene.visible[] = true
     end
-    return if hasproperty(block, :scene) && !block.scene.visible[]
+    if hasproperty(block, :scene) && isdefined(block, :scene) && !block.scene.visible[]
         block.scene.visible[] = true
     end
+    return
 end
 
 function hide!(block::Block)
     if block.blockscene.visible[]
         block.blockscene.visible[] = false
     end
-    return if hasproperty(block, :scene) && block.scene.visible[]
+    if hasproperty(block, :scene) && isdefined(block, :scene) && block.scene.visible[]
         block.scene.visible[] = false
     end
+    return
 end
 
 function disconnect!(block::Block)

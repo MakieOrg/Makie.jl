@@ -93,6 +93,8 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
+    # Cant type this, dont have the type yet
+    data_inspector::Any
 
     function Scene(
             parent::Union{Nothing, Scene},
@@ -131,10 +133,12 @@ mutable struct Scene <: AbstractScene
             deregister_callbacks,
             ComputeGraph(),
             DimConversions(),
-            false
+            false,
+            nothing
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
+        add_input!((k, v) -> Ref{Any}(v), scene.compute, :transform_func, transformation.transform_func)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -158,7 +162,11 @@ end
 isclosed(scene::Scene) = scene.isclosed
 
 # on & map versions that deregister when scene closes!
-function Observables.on(@nospecialize(f), @nospecialize(scene::Union{Plot, Scene}), @nospecialize(observable::Observable); update = false, priority = 0)
+function Observables.on(
+        @nospecialize(f), @nospecialize(scene::Union{Plot, Scene}),
+        @nospecialize(observable::Union{Observable, Computed});
+        update = false, priority = 0
+    )
     to_deregister = on(f, observable; update = update, priority = priority)::Observables.ObserverFunction
     push!(scene.deregister_callbacks::Vector{Observables.ObserverFunction}, to_deregister)
     return to_deregister
@@ -667,7 +675,7 @@ function center!(scene::Scene, padding = 0.01, exclude = not_in_data_space)
 end
 
 parent_scene(x) = parent_scene(get_scene(x))
-parent_scene(x::Plot) = parent_scene(parent(x))
+parent_scene(x::Plot) = parent_scene(parent(x))::Scene
 parent_scene(x::Scene) = x
 parent_scene(::Nothing) = nothing
 

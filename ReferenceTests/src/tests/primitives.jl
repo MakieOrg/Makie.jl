@@ -830,9 +830,10 @@ end
     # test that lowclip and highclip are visible for values just outside the colorrange
     fig = Figure(size = (800, 400))
     chunk = reshape(collect(1:900), 30, 30, 1)
-    a1, _ = voxels(fig[1, 1], chunk, lowclip = :red, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
-    a2, _ = voxels(fig[1, 2], chunk, lowclip = :red, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
-    foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 40), Vec3f(0), Vec3f(0, 1, 0)), (a1, a2))
+    a1, _ = voxels(fig[1, 1], chunk, lowclip = :orange, highclip = :red, colorrange = (1.0, 900.0), shading = NoShading)
+    a2, p = voxels(fig[1, 2], chunk, lowclip = :orange, highclip = :red, colorrange = (1.1, 899.9), shading = NoShading)
+    foreach(a -> update_cam!(a.scene, Vec3f(0, 0, 35), Vec3f(0), Vec3f(0, 1, 0)), (a1, a2))
+    Colorbar(fig[1, 3], p)
     fig
 end
 

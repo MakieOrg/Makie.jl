@@ -9,7 +9,8 @@ dendrogram
 ```@figure
 using CairoMakie
 
-# Positions of leaf nodes
+# Relative positions of leaf nodes
+# These positions will be translated to place the root node at `origin`
 leaves = Point2f[
     (1,0),
     (2,0.5),

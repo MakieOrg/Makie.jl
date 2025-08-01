@@ -80,13 +80,13 @@ function _process_arrow_arguments(pos, pos_or_dir, align, lengthscale, norm, arg
         end
         dirs .*= lengthscale
         startpoints = origins .- align_val .* dirs
-        return startpoints, dirs
+        return startpoints, startpoints .+ dirs
 
     elseif argmode in (:direction, :directions)
         # compute startpoint such that plot[1] is at the align_val fraction of the drawn arrow
         dirs = lengthscale .* (norm ? normalize.(pos_or_dir) : pos_or_dir)
         startpoints = pos .- align_val .* dirs
-        return startpoints, dirs
+        return startpoints, startpoints .+ dirs
 
     else
         error("Did not recognize argmode = :$argmode - must be :endpoint or :direction")
@@ -328,49 +328,40 @@ function _get_arrow_shape(polylike, length, width, metrics)
     return mesh
 end
 
-function _apply_arrow_transform!(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
-    for i in eachindex(m.position)
-        m.position[i] = origin + R * (m.position[i] .+ (offset, 0))
-    end
-    return
+function _apply_arrow_transform(m::GeometryBasics.Mesh, R::Mat2, origin, offset)
+    ps = [origin + to_ndim(Point3f, R * (p .+ (offset, 0)), 0) for p in coordinates(m)]
+    return GeometryBasics.mesh(m, position = ps, pointtype = Point3f)
 end
 
 function Makie.plot!(plot::Arrows2D)
-    @extract plot (
-        normalize, align, lengthscale,
-        tail, taillength, tailwidth,
-        shaft, shaftlength, minshaftlength, maxshaftlength, shaftwidth,
-        tip, tiplength, tipwidth,
-        transparency, visible, inspectable,
-    )
-
-    startpoints_directions = map(
+    map!(
         _process_arrow_arguments, plot,
-        plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
+        [:points, :directions, :align, :lengthscale, :normalize, :argmode],
+        [:startpoints, :endpoints]
     )
 
-    scene = parent_scene(plot)
-    arrowpoints_px = map(
-        plot,
-        startpoints_directions, transform_func_obs(plot), plot.model, plot.space,
-        plot.markerspace, scene.camera.projectionview, scene.viewport
-    ) do (ps, dirs), tf, model, space, markerspace, pv, vp
+    # TODO: Doesn't dropping the third dimension here break z order?
+    register_projected_positions!(
+        plot, Point3f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
+    )
+    register_projected_positions!(
+        plot, Point3f, input_name = :endpoints, output_name = :pixel_endpoints, output_space = :pixel
+    )
 
-        startpoints = transform_and_project(plot, space, markerspace, ps, Point2f)
-        endpoints = transform_and_project(plot, space, markerspace, ps .+ dirs, Point2f)
-        return (startpoints, endpoints .- startpoints)
+    map!(plot, [:pixel_startpoints, :pixel_endpoints], :pixel_directions) do startpoints, endpoints
+        return Point2f.(endpoints) .- Point2f.(startpoints)
     end
 
-    arrow_metrics = map(
-        plot, arrowpoints_px,
-        taillength, tailwidth,
-        shaftlength, minshaftlength, maxshaftlength, shaftwidth,
-        tiplength, tipwidth,
-    ) do (startpoints, directions), taillength, tailwidth,
-            shaftlength, minshaftlength, maxshaftlength, shaftwidth,
-            tiplength, tipwidth
+    map!(
+        plot,
+        [
+            :pixel_directions, :taillength, :tailwidth, :shaftlength,
+            :minshaftlength, :maxshaftlength, :shaftwidth, :tiplength, :tipwidth,
+        ],
+        :arrow_metrics
+    ) do directions, taillength, tailwidth, shaftlength, minshaftlength, maxshaftlength, shaftwidth, tiplength, tipwidth
 
-        metrics = Vector{NTuple{6, Float64}}(undef, length(startpoints))
+        metrics = Vector{NTuple{6, Float64}}(undef, length(directions))
         for i in eachindex(metrics)
             target_length = norm(directions[i])
             target_shaftlength = if shaftlength === automatic
@@ -386,17 +377,27 @@ function Makie.plot!(plot::Arrows2D)
         return metrics
     end
 
-    meshes = map(plot, arrow_metrics, plot.strokemask, tail, shaft, tip) do metrics, mask, shapes...
-        ps, dirs = arrowpoints_px[]
-        meshes = GeometryBasics.Mesh[]
-
-        # Do this statically so it's easier for DataInspector to reason about.
-        # These all trigger arrow_metrics
-        should_render = (
-            taillength[] > 0 && tailwidth[] > 0,
-            shaftwidth[] > 0,
-            tiplength[] > 0 && tipwidth[] > 0,
+    map!(
+        plot,
+        [:taillength, :tailwidth, :shaftwidth, :tiplength, :tipwidth],
+        :should_component_render
+    ) do taillength, tailwidth, shaftwidth, tiplength, tipwidth
+        return (
+            taillength > 0 && tailwidth > 0,
+            shaftwidth > 0,
+            tiplength > 0 && tipwidth > 0,
         )
+    end
+
+    map!(
+        plot,
+        [
+            :pixel_startpoints, :pixel_directions, :arrow_metrics, :strokemask,
+            :should_component_render, :tail, :shaft, :tip,
+        ],
+        :meshes
+    ) do ps, dirs, metrics, mask, should_render, shapes...
+        meshes = GeometryBasics.Mesh[]
 
         for i in eachindex(metrics)
             # rotate + translate
@@ -409,8 +410,7 @@ function Makie.plot!(plot::Arrows2D)
             for (shape, len, width, render) in zip(shapes, metrics[i][1:2:6], metrics[i][2:2:6], should_render)
                 render || continue
                 mesh = _get_arrow_shape(shape, len, max(0, width - mask), metrics[i])
-                _apply_arrow_transform!(mesh, R, startpoint, offset)
-                push!(meshes, mesh)
+                push!(meshes, _apply_arrow_transform(mesh, R, startpoint, offset))
 
                 offset += len
             end
@@ -421,11 +421,11 @@ function Makie.plot!(plot::Arrows2D)
 
     # Similar to register_colormapping, but for each color
     register_colormapping_without_color!(plot.attributes)
-    map!(to_color, plot.attributes, :nan_color, :converted_nan_color)
+    map!(to_color, plot, :nan_color, :converted_nan_color)
 
     for key in [:tailcolor, :shaftcolor, :tipcolor]
         map!(
-            plot.attributes, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
+            plot, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
         ) do maybe_color, default, colorscale, alpha
 
             color = to_color(default_automatic(maybe_color, default))
@@ -440,7 +440,8 @@ function Makie.plot!(plot::Arrows2D)
     end
 
     map!(
-        plot.attributes, [:colorrange, :colorscale, :scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor],
+        plot,
+        [:colorrange, :colorscale, :scaled_tailcolor, :scaled_shaftcolor, :scaled_tipcolor],
         :scaled_colorrange
     ) do colorrange, colorscale, colors...
 
@@ -469,17 +470,13 @@ function Makie.plot!(plot::Arrows2D)
     end
 
     # map to poly vertices
-    calc_colors = map(
+    map!(
         plot,
-        arrow_metrics, plot.calculated_tailcolor, plot.calculated_shaftcolor, plot.calculated_tipcolor
-    ) do metrics, colors...
+        [:arrow_metrics, :should_component_render, :calculated_tailcolor, :calculated_shaftcolor, :calculated_tipcolor],
+        :merged_colors
+    ) do metrics, should_render, colors...
 
         output = RGBA[]
-        should_render = (
-            taillength[] > 0 && tailwidth[] > 0,
-            shaftwidth[] > 0,
-            tiplength[] > 0 && tipwidth[] > 0,
-        )
         for i in eachindex(metrics)
             for j in 1:3
                 if should_render[j]
@@ -494,8 +491,9 @@ function Makie.plot!(plot::Arrows2D)
     # thin (e.g. if shaftwidth is small). To hide this, we reduce the mesh width
     # further and add some stroke (lines) instead.
     poly!(
-        plot, plot.attributes, meshes, space = plot.markerspace, color = calc_colors,
-        strokecolor = calc_colors, strokewidth = plot.strokemask;
+        plot, plot.attributes, plot.meshes, space = plot.markerspace,
+        color = plot.merged_colors,
+        strokecolor = plot.merged_colors, strokewidth = plot.strokemask;
         transformation = :nothing, alpha = 1
     )
 
@@ -503,14 +501,7 @@ function Makie.plot!(plot::Arrows2D)
 end
 
 function data_limits(plot::Arrows2D)
-    startpoints, directions = _process_arrow_arguments(
-        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
-    )
-
-    return update_boundingbox(
-        Rect3d(startpoints),
-        Rect3d(startpoints .+ directions)
-    )
+    return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limits(p))
 
@@ -614,37 +605,33 @@ function to_mesh(prim::GeometryBasics.GeometryPrimitive, n)
 end
 
 function Makie.plot!(plot::Arrows3D)
-    @extract plot (
-        normalize, align, lengthscale, markerscale, quality,
-        tail, taillength, tailradius,
-        shaft, shaftlength, minshaftlength, maxshaftlength, shaftradius,
-        tip, tiplength, tipradius,
-        visible,
-    )
+    map!(default_automatic, plot, [:tailcolor, :color], :resolved_tailcolor)
+    map!(default_automatic, plot, [:shaftcolor, :color], :resolved_shaftcolor)
+    map!(default_automatic, plot, [:tipcolor, :color], :resolved_tipcolor)
 
-    tailcolor = map(default_automatic, plot, plot.tailcolor, plot.color)
-    shaftcolor = map(default_automatic, plot, plot.shaftcolor, plot.color)
-    tipcolor = map(default_automatic, plot, plot.tipcolor, plot.color)
-
-    _startpoints_directions = map(
+    map!(
         _process_arrow_arguments, plot,
-        plot[1], plot[2], plot.align, plot.lengthscale, plot.normalize, plot.argmode
+        [:points, :directions, :align, :lengthscale, :normalize, :argmode],
+        [:startpoints, :endpoints]
     )
 
-    startpoints_directions = map(
-        plot, _startpoints_directions,
-        transform_func_obs(plot), transformationmatrix(plot)
-    ) do (ps, dirs), tf, model
+    register_projected_positions!(
+        plot, input_name = :startpoints, output_name = :world_startpoints, output_space = :data
+    )
+    register_projected_positions!(
+        plot, input_name = :endpoints, output_name = :world_endpoints, output_space = :data
+    )
 
-        startpoints = apply_transform_and_model(plot, ps)
-        endpoints = apply_transform_and_model(plot, ps .+ dirs)
-        return (startpoints, endpoints .- startpoints)
+    map!(plot, [:world_startpoints, :world_endpoints], :world_directions) do startpoints, endpoints
+        return endpoints .- startpoints
     end
 
-    arrowscale = map(plot, startpoints_directions, markerscale) do (ps, dirs), ms
+    map!(plot, [:world_startpoints, :world_endpoints, :markerscale], :arrowscale) do startpoints, endpoints, ms
         if ms === automatic
+            # This bbox does not include the size of the arrow mesh, which
+            # `boundingbox()` does include. So we can't reuse it
+            bbox = update_boundingbox(Rect3d(startpoints), Rect3d(endpoints))
             # TODO: maybe maximum? or max of each 2d norm?
-            bbox = update_boundingbox(Rect3d(ps), Rect3d(ps .+ dirs))
             scale = norm(widths(bbox))
             return ifelse(scale == 0.0, 1.0, scale)
         else
@@ -652,12 +639,14 @@ function Makie.plot!(plot::Arrows3D)
         end
     end
 
-    arrow_metrics = map(
-        plot, startpoints_directions, arrowscale, shaftlength,
-        taillength, tailradius,
-        minshaftlength, maxshaftlength, shaftradius,
-        tiplength, tipradius,
-    ) do (_, directions), arrowscale, _shaftlength, user_metrics...
+    map!(
+        plot,
+        [
+            :world_directions, :arrowscale, :shaftlength, :taillength, :tailradius,
+            :minshaftlength, :maxshaftlength, :shaftradius, :tiplength, :tipradius,
+        ],
+        :arrow_metrics
+    ) do directions, arrowscale, _shaftlength, user_metrics...
 
         # apply scaling factor to all user metrics
         taillength, tailradius, minshaftlength, maxshaftlength, shaftradius,
@@ -685,60 +674,60 @@ function Makie.plot!(plot::Arrows3D)
     end
 
     # normalize if not yet normalized
-    normalized_dir = map(plot, startpoints_directions, normalize) do (pos, dirs), normalized
+    map!(plot, [:world_directions, :normalize], :normalized_dir) do dirs, normalized
         return normalized ? dirs : LinearAlgebra.normalize.(dirs)
     end
-    rot = map(dirs -> to_ndim.(Vec3f, dirs, 0), plot, normalized_dir)
+    map!(dirs -> to_ndim.(Vec3f, dirs, 0), plot, :normalized_dir, :rot)
 
-    tail_scale = map(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, arrow_metrics)
-    tail_visible = map((l, v) -> !iszero(l) && v, plot, plot.taillength, visible)
+    map!(metrics -> [Vec3f(2r, 2r, l) for (l, r, _, _, _, _) in metrics], plot, :arrow_metrics, :tail_scale)
+    map!((l, v) -> !iszero(l) && v, plot, [:taillength, :visible], :tail_visible)
 
     # Skip startpoints, directions inputs to avoid double update (let arrow metrics trigger)
-    shaft_pos = map(plot, normalized_dir) do dirs
-        map(arrow_metrics[], startpoints_directions[][1], dirs) do metric, pos, dir
+    map!(plot, [:arrow_metrics, :world_startpoints, :normalized_dir], :shaft_pos) do metrics, startpoints, dirs
+        map(metrics, startpoints, dirs) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + taillength * dir
         end
     end
-    shaft_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, arrow_metrics)
+    map!(metrics -> [Vec3f(2r, 2r, l) for (_, _, l, r, _, _) in metrics], plot, :arrow_metrics, :shaft_scale)
 
-    tip_pos = map(plot, normalized_dir) do dirs
-        map(arrow_metrics[], startpoints_directions[][1], dirs) do metric, pos, dir
+    map!(plot, [:arrow_metrics, :world_startpoints, :normalized_dir], :tip_pos) do metrics, startpoints, dirs
+        map(metrics, startpoints, dirs) do metric, pos, dir
             taillength, tailradius, shaftlength, shaftradius, tiplength, tipradius = metric
             return pos + (taillength + shaftlength) * dir
         end
     end
-    tip_scale = map(metrics -> [Vec3f(2r, 2r, l) for (_, _, _, _, l, r) in metrics], plot, arrow_metrics)
-    tip_visible = map((l, v) -> !iszero(l) && v, plot, plot.tiplength, visible)
+    map!(metrics -> [Vec3f(2r, 2r, l) for (_, _, _, _, l, r) in metrics], plot, [:arrow_metrics], :tip_scale)
+    map!((l, v) -> !iszero(l) && v, plot, [:tiplength, :visible], :tip_visible)
 
-    tail_m = map(to_mesh, plot, tail, quality)
-    shaft_m = map(to_mesh, plot, shaft, quality)
-    tip_m = map(to_mesh, plot, tip, quality)
+    map!(to_mesh, plot, [:tail, :quality], :tail_m)
+    map!(to_mesh, plot, [:shaft, :quality], :shaft_m)
+    map!(to_mesh, plot, [:tip, :quality], :tip_m)
 
     meshscatter!(
         plot, plot.attributes,
-        map(first, plot, startpoints_directions), marker = tail_m, markersize = tail_scale, rotation = rot,
-        color = tailcolor, visible = tail_visible, transformation = :nothing, transform_marker = false,
+        plot.world_startpoints, markersize = plot.tail_scale, rotation = plot.rot,
+        marker = plot.tail_m, color = plot.resolved_tailcolor, visible = plot.tail_visible,
+        transformation = :nothing, transform_marker = false,
     )
     meshscatter!(
         plot, plot.attributes,
-        shaft_pos, marker = shaft_m, markersize = shaft_scale, rotation = rot,
-        color = shaftcolor, visible = visible, transformation = :nothing, transform_marker = false,
+        plot.shaft_pos, markersize = plot.shaft_scale, rotation = plot.rot,
+        marker = plot.shaft_m, color = plot.resolved_shaftcolor, visible = plot.visible,
+        transformation = :nothing, transform_marker = false,
     )
     meshscatter!(
         plot, plot.attributes,
-        tip_pos, marker = tip_m, markersize = tip_scale, rotation = rot,
-        color = tipcolor, visible = tip_visible, transformation = :nothing, transform_marker = false,
+        plot.tip_pos, markersize = plot.tip_scale, rotation = plot.rot,
+        marker = plot.tip_m, color = plot.resolved_tipcolor, visible = plot.tip_visible,
+        transformation = :nothing, transform_marker = false,
     )
 
     return plot
 end
 
 function data_limits(plot::Arrows3D)
-    startpoints, directions = _process_arrow_arguments(
-        plot[1][], plot[2][], plot.align[], plot.lengthscale[], plot.normalize[], plot.argmode[]
-    )
-    return update_boundingbox(Rect3d(startpoints), Rect3d(startpoints .+ directions))
+    return update_boundingbox(Rect3d(plot.startpoints[]), Rect3d(plot.endpoints[]))
 end
 
 function boundingbox(plot::Arrows3D, space::Symbol)

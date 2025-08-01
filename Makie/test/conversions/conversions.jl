@@ -122,6 +122,14 @@ end
     @test p_empty[1] == pts_empty
 end
 
+@testset "MultiPoint" begin
+    x = MultiPoint(rand(Point2f, 100))
+    f, ax, pl = plot(x)
+    @test pl.converted[][1] == x.points
+    f, ax, pl = plot([x, x])
+    @test pl.converted[][1] == [x.points; x.points]
+end
+
 @testset "intervals" begin
     x = [1, 5, 10]
     y = [1 .. 2, 1 .. 3, 2 .. 3]
@@ -508,4 +516,11 @@ end
     @test plotfunc!(Image) === image!
     @test func2type(lines) == Lines
     @test func2type(hexbin!) == Hexbin
+end
+
+@testset "Dendrogram" begin
+    xs = 1:10
+    ys = rand(10)
+    merges = [(i, i + 1) for i in 1:20]
+    @test Makie.convert_arguments(Dendrogram, xs, ys, merges) == Makie.convert_arguments(Dendrogram, Point2.(xs, ys), merges)
 end

@@ -686,23 +686,22 @@ function Makie.plot!(p::HeatmapShader)
     scene = Makie.parent_scene(p)
     events = scene.events
     add_axis_limits!(p)
-    add_input!(p.attributes, :mousebutton, events.mousebutton)
-    add_input!(p.attributes, :keyboardbutton, events.keyboardbutton)
-    register_computation!(p.attributes, [:axis_limits, :mousebutton, :keyboardbutton], [:slow_limits]) do (lims, mbs), changed, last
+    slow_limits = Observable(Rect2f())
+    onany(p, p.axis_limits, events.mousebutton, events.keyboardbutton) do lims, mbs, kbs
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
+        last_lims = slow_limits[]
         if update_while_pressed || (no_mbutton && no_kbutton)
             # instead of ignore_equal_values=true (uses ==),
             # we check with isapprox to not update when there are very small changes
-            last_lims = isnothing(last) ? Rect2d() : last.slow_limits
             if !(minimum(lims) ≈ minimum(last_lims) && widths(lims) ≈ widths(last_lims))
-                return (lims,)
-            else
-                return nothing # no change
+                slow_limits[] = lims
             end
         end
+        return
     end
+    add_input!(p.attributes, :slow_limits, slow_limits)
 
     map!(p.attributes, :resolution, :max_resolution) do resolution
         resampler = p.image[]
@@ -710,9 +709,7 @@ function Makie.plot!(p::HeatmapShader)
         return round.(Int, max.(res, 512)) # Not sure why, but viewport can become (1, 1)
     end
 
-    register_computation!(p, [:x, :y], [:data_limits]) do (x, y), changed, last
-        return (xy_to_rect(x, y),)
-    end
+    map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
     map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)

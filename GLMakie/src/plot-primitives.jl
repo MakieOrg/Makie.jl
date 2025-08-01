@@ -2,11 +2,15 @@ using Makie: FastPixel
 
 Makie.el32convert(x::GLAbstraction.Texture) = x
 
+# PlotList can "become" atomic if no plots are inserted
+# In that case, we should simply not draw it!
+draw_atomic(::Screen, ::Scene, ::PlotList) = nothing
+
 function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     gl_switch_context!(screen.glscreen)
     add_scene!(screen, scene)
     # poll inside functions to make wait on compile less prominent
-    return if isempty(x.plots) # if no plots inserted, this truly is an atomic
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     elseif x isa Text
         draw_atomic(screen, scene, x)
@@ -16,6 +20,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
             insert!(screen, scene, x)
         end
     end
+    return
 end
 
 using Makie.ComputePipeline
@@ -315,10 +320,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, _, space, model), changed, last
-            pvm = Makie.space_to_clip(scene.camera, space) * model
+        ) do (pos, projectionview, model), changed, last
+            pvm = projectionview * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos, depth_vals, indices, pvm)
@@ -420,10 +425,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :space, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, _, space, model), changed, last
-            pvm = Makie.space_to_clip(scene.camera, space) * model
+        ) do (pos, projectionview, space, model), changed, last
+            pvm = projectionview * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos, depth_vals, indices, pvm)
@@ -507,14 +512,13 @@ function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glna
         input2glname[:scaled_color] = :color
     end
 
-    marker = attr[:marker][]
-    positions = data[:position]
-    return draw_mesh_particle(screen, (marker, positions), data)
+    return draw_mesh_particle(screen, data)
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     attr = generic_robj_setup(screen, scene, plot)
 
+    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -534,6 +538,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
     ]
     uniforms = [
         :positions_transformed_f32c, :markersize, :rotation, :f32c_scale, :instances,
+        :vertex_position, :faces, :normal, :uv,
         :lowclip_color, :highclip_color, :nan_color, :matcap,
         :fetch_pixel, :model_f32c,
         :diffuse, :specular, :shininess, :backlight, :world_normalmatrix, :view_normalmatrix,
@@ -542,6 +547,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::MeshScatter)
 
     input2glname = Dict{Symbol, Symbol}(
         :positions_transformed_f32c => :position, :markersize => :scale,
+        :vertex_position => :vertices, :normal => :normals, :uv => :texturecoordinates,
         :packed_uv_transform => :uv_transform,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :scaled_color => :color, :lowclip_color => :lowclip, :highclip_color => :highclip,
@@ -697,8 +703,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
+        # unused dummy data
+        map!(pos -> collect(Float32.(eachindex(pos))), attr, positions, :gl_last_length)
     else
         positions = :gl_projected_positions
+        register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
+            return (sumlengths(pos, res),)
+        end
     end
 
     # Derived vertex attributes
@@ -706,9 +717,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
         return (Int32(length(indices) - 2),)
     end
-    register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
-        return (sumlengths(pos, res),)
-    end
+
 
     inputs = [
         # relevant to creation time decisions

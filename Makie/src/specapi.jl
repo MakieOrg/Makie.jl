@@ -90,8 +90,8 @@ struct GridLayoutSpec
     tellwidth::Bool
     halign::Float64
     valign::Float64
-    xaxislinks::Vector{BlockSpec}
-    yaxislinks::Vector{BlockSpec}
+    xaxislinks::Vector{Vector{BlockSpec}}
+    yaxislinks::Vector{Vector{BlockSpec}}
 
     function GridLayoutSpec(
             content::AbstractVector{<:Pair};
@@ -104,8 +104,8 @@ struct GridLayoutSpec
             tellwidth::Bool = true,
             halign::Union{Symbol, Real} = :center,
             valign::Union{Symbol, Real} = :center,
-            xaxislinks = BlockSpec[],
-            yaxislinks = BlockSpec[],
+            xaxislinks = Vector{BlockSpec}[],
+            yaxislinks = Vector{BlockSpec}[],
         )
         rowspan, colspan = foldl(content; init = (1:1, 1:1)) do (rows, cols), ((_rows, _cols, _...), _)
             return rangeunion(rows, _rows), rangeunion(cols, _cols)
@@ -133,6 +133,9 @@ struct GridLayoutSpec
         halign = GridLayoutBase.halign2shift(halign)
         valign = GridLayoutBase.valign2shift(valign)
 
+        to_nested(v::AbstractVector{BlockSpec}) = Vector{BlockSpec}[v]
+        to_nested(v::AbstractVector{<:AbstractVector{<:BlockSpec}}) = v
+
         return new(
             content,
             (nrows, ncols),
@@ -146,8 +149,8 @@ struct GridLayoutSpec
             tellwidth,
             halign,
             valign,
-            xaxislinks,
-            yaxislinks,
+            to_nested(xaxislinks),
+            to_nested(yaxislinks),
         )
     end
 end
@@ -262,11 +265,10 @@ end
 # Needing to reset attributes to their defaults, at the cost of re-creating more plots than necessary.
 # TODO when focussing better performance, this is one of the first things we want to try
 function distance_score(a::PlotSpec, b::PlotSpec, scores_dict; maxscore = Inf)
-    (a.type !== b.type) && return 100.0
     return hypot(
         distance_score(a.args, b.args, scores_dict; maxscore),
         distance_score(a.kwargs, b.kwargs, scores_dict; maxscore)
-    ) |> Float64
+    )
 end
 
 function distance_score(a::Any, b::Any, scores; maxscore = Inf)
@@ -329,7 +331,7 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore = Inf)
             distance_score(a.kwargs, b.kwargs, scores_dict; maxscore = maxscore / 0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
             distance_score(a.plots, b.plots, scores_dict; maxscore),
-        ) |> Float64
+        )
     end
 end
 
@@ -367,12 +369,19 @@ function distance_score(
     end
 end
 
+_typeof(x) = typeof(x)
+_typeof(spec::BlockSpec) = spec.type
+_typeof(spec::PlotSpec) = spec.type
+
 function find_min_distance(f, to_compare, list, scores, penalty = (key, score) -> score)
     isempty(list) && return -1
     minscore = 2.0
     idx = -1
     for key in keys(list)
-        score = distance_score(to_compare, f(list[key], key), scores; maxscore = minscore)
+        comparison = f(list[key], key)
+        # We can always just match plots of the same type
+        _typeof(comparison) !== _typeof(to_compare) && continue
+        score = distance_score(to_compare, comparison, scores; maxscore = minscore)
         score = penalty(key, score) # apply custom penalty
         if score ≈ 0.0 # shortcuircit for exact matches
             return key
@@ -448,6 +457,7 @@ function Base.getproperty(::_SpecApi, field::Symbol)
 end
 
 function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
     # Update args in plot `input_args` list
     updates = Dict{Symbol, Any}()
     for i in eachindex(spec.args)
@@ -525,6 +535,8 @@ plots[] = [
     Attributes()
 end
 
+is_atomic_plot(plot::PlotList) = false # is never atomic
+
 function Base.propertynames(pl::PlotList)
     inner_pnames = if length(pl.plots) == 1
         Base.propertynames(pl.plots[1])
@@ -585,7 +597,7 @@ function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     pos = 1
     for p in specs
         p === spec && return pos
-        if haskey(p.kwargs, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(spec)
+        if haskey(p.kwargs, :cycle) && !isnothing(p.kwargs[:cycle]) && plotfunc(p) === plotfunc(spec)
             is_cycling = any(syms) do x
                 return haskey(p.kwargs, x) && isnothing(p[x])
             end
@@ -850,7 +862,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         observers = func(block)
         add_observer!(spec, observers)
     end
-    unhide!(block)
+    unhide!(block) # in case we hid it before
     return to_update, reset_to_defaults
 end
 
@@ -910,21 +922,27 @@ function update_axis_links!(gridspec, all_layoutables)
         end
     end
 
-    xlinked = Set(map(x -> axes[x], gridspec.xaxislinks))
-    ylinked = Set(map(x -> axes[x], gridspec.yaxislinks))
-
     for (spec, ax) in axes
-        if spec in gridspec.xaxislinks
-            replace_links!(ax.xaxislinks, filter(x -> x !== ax, xlinked))
-        else
-            empty!(ax.xaxislinks)
-        end
-        if spec in gridspec.yaxislinks
-            replace_links!(ax.yaxislinks, filter(x -> x !== ax, ylinked))
-        else
-            empty!(ax.yaxislinks)
+        empty!(ax.xaxislinks)
+        empty!(ax.yaxislinks)
+    end
+
+    for linkgroup in gridspec.xaxislinks
+        for linked in linkgroup
+            append!(axes[linked].xaxislinks, [axes[spec] for spec in linkgroup])
         end
     end
+    for linkgroup in gridspec.yaxislinks
+        for linked in linkgroup
+            append!(axes[linked].yaxislinks, [axes[spec] for spec in linkgroup])
+        end
+    end
+
+    for (spec, ax) in axes
+        unique!(ax.xaxislinks)
+        unique!(ax.yaxislinks)
+    end
+
     return
 end
 
@@ -964,10 +982,10 @@ function update_gridlayout!(
             end
             push!(new_layoutables, (nesting, position, spec) => (new_layoutable, obs))
         else
-            @debug("updating old block with spec")
+            @debug("updating old block with spec: $(get_type(spec))")
             # Make sure we don't double reuse a layoutable
             splice!(previous_contents, idx)
-            (_, _, old_spec) = old_key
+            (a_, oldpos, old_spec) = old_key
             (layoutable, plot_obs) = layoutable_obs
             gridlayout[position...] = layoutable
             if layoutable isa GridLayout

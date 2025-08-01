@@ -1,7 +1,7 @@
 name = "ComputePipeline"
 uuid = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 authors = ["Simon Danisch", "Frederic Freyer", "MakieOrg"]
-version = "0.1.1"
+version = "0.1.3"
 
 [deps]
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"

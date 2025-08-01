@@ -6,18 +6,16 @@ struct DNode
 end
 
 """
-    dendrogram(x, y; kwargs...)
+    dendrogram(positions, merges)
+    dendrogram(x, y, merges)
 
-Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram),
-with leaf nodes specified by `x` and `y` coordinates,
-and parent nodes identified by `merges`.
+Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
+specified by `positions` and parent nodes identified by `merges`.
 
-# Arguments
-- `x`: x positions of leaf nodes
-- `y`: y positions of leaf nodes (default = 0)
+`merges` contain pairs of indices `(i, j)` which connect to a new parent node.
+That node is then added to the list and can be merged with another.
 
-# Keywords
-- `merges`: specifies connections between nodes (see below)
+Note that this recipe is still experimental and subject to change in the future.
 """
 @recipe Dendrogram (nodes,) begin
     """
@@ -250,6 +248,10 @@ function find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx
     return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
+function convert_arguments(::Type{<:Dendrogram}, x::RealVector, y::RealVector, merges::Vector{<:Tuple{<:Integer, <:Integer}})
+    return convert_arguments(Dendrogram, convert_arguments(PointBased(), x, y)[1], merges)
+end
+
 function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
     nodes = [DNode(i, n, nothing) for (i, n) in enumerate(leaves)]
     for m in merges
@@ -262,11 +264,19 @@ end
 function hcl_nodes(hcl; useheight = false)
     nleaves = length(hcl.order)
     nodes = [DNode(i, Point2d(x, 0), nothing) for (i, x) in enumerate(invperm(hcl.order))]
-
-    for (m1, m2) in eachrow(hcl.merges)
+    # Not the cleanest implementation. It may be better to instead change
+    # find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx) + 1)
+    # I leave it up to the council.
+    for ((m1, m2), height) in zip(eachrow(hcl.merges), hcl.heights)
         m1 = ifelse(m1 < 0, -m1, m1 + nleaves)
         m2 = ifelse(m2 < 0, -m2, m2 + nleaves)
-        push!(nodes, find_merge(nodes[m1], nodes[m2]; index = length(nodes) + 1))
+        max_height = height - max(nodes[m1].position[2], nodes[m2].position[2])
+        merge = find_merge(
+            nodes[m1], nodes[m2];
+            height = ifelse(useheight, max_height, 1),
+            index = length(nodes) + 1
+        )
+        push!(nodes, merge)
     end
 
     return nodes
