@@ -4,8 +4,8 @@ function contour_label_formatter(level::Real)::String
 end
 
 """
-    contour(x, y, z)
-    contour(z::Matrix)
+    contour(x, y, z; attributes...)
+    contour(z::Matrix; attributes...)
 
 Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
 If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
@@ -50,7 +50,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
 end
 
 """
-    contour3d(x, y, z)
+    contour3d(x, y, z; attributes...)
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.

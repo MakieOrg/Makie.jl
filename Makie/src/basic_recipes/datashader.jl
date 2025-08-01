@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<: Point})
+    datashader(points::AbstractVector{<: Point}; attributes...)
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
