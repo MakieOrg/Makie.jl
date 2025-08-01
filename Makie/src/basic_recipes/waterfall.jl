@@ -74,9 +74,9 @@ function Makie.plot!(p::Waterfall)
         )
         xs = first(compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap))
         MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
-        DataType = eltype(xy)
+        PointType = eltype(xy)
         shapes = MarkerType[]
-        scatter_xy = DataType[]
+        scatter_xy = PointType[]
         for i in eachindex(xs)
             y = last(xy[i])
             fto = fillto[i]
