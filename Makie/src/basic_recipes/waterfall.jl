@@ -69,9 +69,9 @@ function Makie.plot!(p::Waterfall)
     )
 
     function direction_markers(
-        xy, fillto, marker_pos, marker_neg, width,
-        gap, dodge, n_dodge, dodge_gap
-    )
+            xy, fillto, marker_pos, marker_neg, width,
+            gap, dodge, n_dodge, dodge_gap
+        )
         xs = first(compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap))
         MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
         DataType = eltype(xy)
