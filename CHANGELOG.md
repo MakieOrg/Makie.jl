@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 - Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
