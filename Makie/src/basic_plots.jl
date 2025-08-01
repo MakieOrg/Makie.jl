@@ -759,7 +759,7 @@ Only works for GLMakie for now.
     These code injections happen before compile time and require
     `GLMakie.closeall()` to be overwritten.
     """
-    uniforms = Dict{Symbol,Any}()
+    uniforms = Dict{Symbol, Any}()
     mixin_generic_plot_attributes()...
     fxaa = false
 end

@@ -1224,14 +1224,14 @@ function assemble_shadertoy_robj!(data, screen::Screen, attr, args, input2glname
 
     templates = Dict(
         "SHADERTOY_INPUTS" => """
-        uniform vec2 iResolution;
-        uniform vec2 iMouse;
-        uniform float iGlobalTime;
-        uniform sampler2D iChannel0;
-        uniform sampler2D iChannel1;
-        uniform sampler2D iChannel2;
-        uniform sampler2D iChannel3;
-        """,
+            uniform vec2 iResolution;
+            uniform vec2 iMouse;
+            uniform float iGlobalTime;
+            uniform sampler2D iChannel0;
+            uniform sampler2D iChannel1;
+            uniform sampler2D iChannel2;
+            uniform sampler2D iChannel3;
+            """,
         "TOY_SHADER" => plot.shader[],
         "buffers" => output_buffers(screen, to_value(false)),
         "buffer_writes" => output_buffer_writes(screen, to_value(false))
@@ -1252,7 +1252,7 @@ function assemble_shadertoy_robj!(data, screen::Screen, attr, args, input2glname
         shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "shadertoy.frag", "shadertoy.vert";
-            view=templates
+            view = templates
         )
     end
     get!(uniforms, :ssao, Observable(false))

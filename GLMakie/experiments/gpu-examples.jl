@@ -2,8 +2,8 @@ using CUDA
 
 const N = 1024  # Number of particles
 const dt = 0.01  # Time step
-const G = 6.67430e-11  # Gravitational constant
-const eps = 1e-3  # Softening factor to avoid singularity
+const G = 6.6743e-11  # Gravitational constant
+const eps = 1.0e-3  # Softening factor to avoid singularity
 
 
 # Struct to represent a particle
@@ -25,7 +25,7 @@ function init_particles(n)
         mass[i] = rand(Float32) * 10 + 1
     end
 
-    Particle(pos, vel, mass)
+    return Particle(pos, vel, mass)
 end
 
 # GPU kernel to calculate forces and update positions and velocities
@@ -58,7 +58,7 @@ end
 function run_simulation(particles, dt, G, eps, N)
     threads = 256
     blocks = ceil(Int, N / threads)
-    @cuda threads = threads blocks = blocks update_particles!(particles, dt, G, eps, N)
+    return @cuda threads = threads blocks = blocks update_particles!(particles, dt, G, eps, N)
 end
 
 # Initialize particles
