@@ -703,8 +703,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
 
     if isnothing(plot.linestyle[])
         positions = :positions_transformed_f32c
+        # unused dummy data
+        map!(pos -> collect(Float32.(eachindex(pos))), attr, positions, :gl_last_length)
     else
         positions = :gl_projected_positions
+        register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
+            return (sumlengths(pos, res),)
+        end
     end
 
     # Derived vertex attributes
@@ -712,9 +717,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Lines)
     register_computation!(attr, [:gl_indices], [:gl_total_length]) do (indices,), changed, cached
         return (Int32(length(indices) - 2),)
     end
-    register_computation!(attr, [positions, :resolution], [:gl_last_length]) do (pos, res), changed, cached
-        return (sumlengths(pos, res),)
-    end
+
 
     inputs = [
         # relevant to creation time decisions

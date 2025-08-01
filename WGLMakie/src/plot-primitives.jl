@@ -729,8 +729,6 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
-    # TODO: This always sets a pattern, so we are rendering solid lines as a
-    # gapless pattern... We probably shouldn't so we don't require lastlength
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 
