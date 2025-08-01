@@ -55,7 +55,7 @@ export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks, AngularTicks
 export hidexdecorations!, hideydecorations!, hidezdecorations!, hidedecorations!, hidespines!
 export hiderdecorations!, hidethetadecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!

@@ -73,7 +73,7 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
 end
 
 function extract_colormap(plot::Voxels)
-    limits = plot._limits
+    limits = plot.value_limits
     # TODO: does this need padding for lowclip and highclip?
     discretized_values = map(lims -> range(lims[1], lims[2], length = 253), plot, limits)
 

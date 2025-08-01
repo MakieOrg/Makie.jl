@@ -59,50 +59,43 @@ with z-elevation for each level.
     documented_attributes(Contour)...
 end
 
-# result in [-π, π]
-angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
-
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return (
-        lev,
-        map(p -> to_ndim(Point3f, p, lev), Tuple(pts)),
-        col,
-    )
+    return to_ndim.(Point3f, pts, lev)..., col
 end
 
-function contourlines(::Type{<:Contour}, contours, cols, labels)
-    points = Point2f[]
-    colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32, NTuple{3, Point2f}, RGBA{Float32}}[]
-    for (color, c) in zip(cols, Contours.levels(contours))
-        for elem in Contours.lines(c)
-            append!(points, elem.vertices)
-            push!(points, Point2f(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
-        end
-    end
-    return points, colors, lev_pos_col
-end
+function contourlines(::Type{<:T}, contours, cols, labels) where {T <: Union{Contour3d, Contour}}
+    PT = T <: Contour3d ? Point3f : Point2f
 
-function contourlines(::Type{<:Contour3d}, contours, cols, labels)
-    points = Point3f[]
+    points = PT[]
     colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32, NTuple{3, Point3f}, RGBA{Float32}}[]
+    levels = Float32[]
+    lbl_pos_low = PT[]
+    lbl_pos_center = PT[]
+    lbl_pos_high = PT[]
+    lbl_color = RGBAf[]
+
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(points, to_ndim(Point3f, p, c.level))
+                push!(points, to_ndim(PT, p, c.level))
             end
-            push!(points, Point3f(NaN32))
+            push!(points, PT(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
+
+            if labels
+                p1, p2, p3, col = label_info(c.level, elem.vertices, color)
+                push!(levels, c.level)
+                push!(lbl_pos_low, p1)
+                push!(lbl_pos_center, p2)
+                push!(lbl_pos_high, p3)
+                push!(lbl_color, col)
+            end
         end
     end
-    return points, colors, lev_pos_col
+    return points, colors, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high, lbl_color
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -200,9 +193,8 @@ function has_changed(old_args, new_args)
 end
 
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
-    x, y, z = plot[1:3]
-    zrange = lift(nan_extrema, plot, z)
-    levels = lift(plot, plot.levels, zrange) do levels, zrange
+    map!(nan_extrema, plot, :converted_3, :zrange)
+    map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -211,91 +203,80 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    colorrange = lift(plot.colorrange, zrange) do crange, zrange
-        if crange === automatic
-            return zrange
-        else
-            return crange
+    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+
+    map!(
+        color_per_level, plot,
+        [:color, :colormap, :colorscale, :computed_colorrange, :alpha, :zlevels],
+        :level_colors
+    )
+
+    map!(
+        plot,
+        [:converted_1, :converted_2, :converted_3, :zlevels, :level_colors, :labels],
+        [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
+    ) do args...
+        return contourlines(args..., T)
+    end
+
+    # TODO:
+    # Should we make yes/no labels a constructor-time decisions so we can avoid
+    # all the extra work for it entirely?
+    # (i.e. no text plot, no boundingboxes, no projections?)
+
+    # TODO: Is this necessary?
+    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], :text_positions) do ps1, ps2, ps3
+        return map(ps1, ps2, ps3) do p1, p2, p3
+            p = ifelse(isnan(p2), p1, p2)
+            return ifelse(isnan(p), p3, p)
         end
     end
 
-    @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
-    args = @extract plot (color, colormap, colorscale)
-    level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
-
-    args = (x, y, z, levels, level_colors, labels)
-    arg_values = map(to_value, args)
-
-    old_values = map(copy, arg_values)
-    points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values = true)
-    onany(plot, args...) do args...
-        # contourlines is expensive enough, that it's worth to copy & check against old values
-        # We need to copy, since the values may get mutated in place
-        if has_changed(old_values, args)
-            old_values = map(copy, args)
-            points[], colors[], lev_pos_col[] = contourlines(args..., T)
-            return
-        end
+    map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
+        return formatter.(levels)
     end
 
-    P = T <: Contour ? Point2f : Point3f
-    scene = parent_scene(plot)
+    map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
+        return ifelse(user_color === nothing, computed_color, to_color(user_color))
+    end
 
-    lab_pos, lab_rot, lab_col, lab_str = P[], Float32[], RGBA{Float32}[], String[]
+    register_projected_rotations_2d!(
+        plot,
+        startpoint_name = :lbl_pos1, endpoint_name = :lbl_pos3,
+        output_name = :text_rotation,
+        rotation_transform = to_upright_angle
+    )
 
     texts = text!(
         plot,
-        P[];
-        color = RGBA{Float32}[],
-        rotation = Float32[],
-        text = String[],
+        plot.text_positions;
+        color = plot.text_color,
+        rotation = plot.text_rotation,
+        text = plot.text_strings,
         align = (:center, :center),
-        fontsize = labelsize,
-        font = labelfont,
+        fontsize = plot.labelsize,
+        font = plot.labelfont,
         transform_marker = false
     )
 
-    lift(
-        plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
-        labels, labelcolor, labelformatter, lev_pos_col
-    ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
-        labels || return
-        pos = P[]
-        rot = Quaternionf[]
-        col = RGBAf[]
-        lbl = String[]
+    register_string_boundingboxes!(texts)
+    add_input!(plot.attributes, :string_boundingboxes, texts.string_boundingboxes)
 
-        for (lev, (p1, p2, p3), color) in lev_pos_col
-            px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
-            px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
-            rot_from_horz::Float32 = angle(px_pos1, px_pos3)
-            # transition from an angle from horizontal axis in [-π; π]
-            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
-            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
-                rot_from_horz - copysign(Float32(π), rot_from_horz)
-            else
-                rot_from_horz
-            end
-            push!(col, labelcolor === nothing ? color : to_color(labelcolor))
-            push!(rot, to_rotation(rot_from_vert))
-            push!(lbl, labelformatter(lev))
+    P = T <: Contour ? Point2f : Point3f
 
-            p = p2  # try to position label around center
-            isnan(p) && (p = p1)
-            isnan(p) && (p = p3)
-            push!(pos, p)
+    pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-        end
-        update!(texts, arg1 = pos, rotation = rot, color = col, text = lbl)
-        return
-    end
+    map!(plot, [:labels, :string_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
+        use_labels || return segments
 
-    bboxes = string_boundingboxes_obs(texts)
-
-    masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
-        labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
+
+        # To avoid always projecting, pull these in indirectly.
+        # string boundingboxes will already update on everything that could trigger
+        # pixel_contour_points, so this should be fine
+        pixel_pos = pixel_pos_node[]
+
         n = 1
         bb = Rect2(bboxes[n])
         nlab = length(bboxes)
@@ -304,25 +285,27 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
-            elseif project(scene, apply_transform(transform_func(plot), p)) in bb
+            elseif pixel_pos[i] in bb
                 masked[i] = nan
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
-                        project(scene, apply_transform(transform_func(plot), segments[j])) in bb || break
+                        pixel_pos[j] in bb || break
                         masked[j] = nan
                     end
                 end
             end
         end
-        masked
+
+        return masked
     end
 
+
     lines!(
-        plot, masked_lines;
-        color = colors,
+        plot, plot.masked_lines;
+        color = plot.contour_colors,
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
@@ -337,7 +320,8 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     )
 
     # toggle to debug labels
-    # wireframe!(plot, map(bbs -> merge(map(GeometryBasics.mesh, bbs)), bboxes), space = :pixel)
+    # map!(bbs -> merge(map(GeometryBasics.mesh, bbs)), plot, texts.string_boundingboxes, :bbs2d)
+    # wireframe!(plot, plot.bbs2d, space = :pixel)
 
     return plot
 end

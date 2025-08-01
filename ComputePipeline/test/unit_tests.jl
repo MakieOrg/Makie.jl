@@ -758,3 +758,44 @@ end
         @test g.output[] == (2, 3)
     end
 end
+
+@testset "Validation" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 1)
+
+    @test_throws ErrorException add_input!(graph, :b, Ref(graph.a))
+    @test_throws ErrorException add_input!(graph, :c, Ref(graph.inputs[:a]))
+    @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
+
+    # add_input!() processes this, so we need to check more manually
+    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
+    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
+
+    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
+    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
+    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
+    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
+
+    map!(x -> graph.a, graph, :a, :j)
+    @test_throws ResolveException{ErrorException} graph.j[]
+end
+
+@testset "mixed-map" begin
+    graph1 = ComputeGraph()
+    add_input!(graph1, :a1, 1)
+
+    graph2 = ComputeGraph()
+    add_input!(graph2, :a2, 1)
+
+    map!(+, graph1, [graph1[:a1], graph2[:a2]], :merged1)
+    e1 = graph1.merged1.parent
+    @test e1.inputs == [graph1.a1, graph2.a2]
+
+    map!(+, graph1, [:a1, graph2[:a2]], :merged2)
+    e2 = graph1.merged2.parent
+    @test e2.inputs == [graph1.a1, graph2.a2]
+
+    map!(+, graph2, [graph1[:a1], :a2], :merged3)
+    e3 = graph2.merged3.parent
+    @test e3.inputs == [graph1.a1, graph2.a2]
+end
