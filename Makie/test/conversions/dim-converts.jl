@@ -1,8 +1,11 @@
 using Makie.Unitful
+import DynamicQuantities as DQ
 using Makie.Dates
 
 @testset "1 arg expansion" begin
     f, ax, pl = scatter(u"m" .* (1:10))
+    @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
+    f, ax, pl = scatter(DQ.u"m" .* (1:10))
     @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
     f, ax, pl = scatter(Categorical(["a", "b", "c"]))
     @test pl isa Scatter{Tuple{Vector{Point2{Float64}}}}
@@ -18,6 +21,13 @@ function Makie.plot!(plot::UnitfulPlot)
     return scatter!(plot, plot.x, map(x -> x .* u"s", plot.x))
 end
 
+@recipe DQPlot (x,) begin
+end
+
+function Makie.plot!(plot::DQPlot)
+    return scatter!(plot, plot.x, map(x -> x .* DQ.u"s", plot.x))
+end
+
 @testset "dates in recipe" begin
     f, ax, pl = unitfulplot(1:5)
     pl_conversion = Makie.get_conversions(pl)
@@ -25,8 +35,14 @@ end
     @test pl_conversion[2] isa Makie.UnitfulConversion
     @test ax_conversion[2] isa Makie.UnitfulConversion
     @test pl.plots[1][1][] == Point{2, Float32}.(1:5, 1:5)
-end
 
+    f, ax, pl = dqplot(1:5)
+    pl_conversion = Makie.get_conversions(pl)
+    ax_conversion = Makie.get_conversions(ax)
+    @test pl_conversion[2] isa Makie.DQConversion
+    @test ax_conversion[2] isa Makie.DQConversion
+    @test pl.plots[1][1][] == Point{2, Float32}.(1:5, 1:5)
+end
 
 struct DateStruct end
 
@@ -72,6 +88,10 @@ end
     # TODO, how to check for this case?
     @test_throws ResolveException scatter!(ax, 1:4) # happens inside graph in dim_convert
     @test_throws ArgumentError scatter!(ax, Hour(1):Hour(1):Hour(4), 1:4)
+
+    # TODO, DynamicQuantities does not work with Dates. Is this by design?
+    f, ax, pl = scatter(rand(Hour(1):Hour(1):Hour(20), 10))
+    @test_throws ResolveException{Makie.Unitful.DimensionError} scatter!(ax, LinRange(0 * DQ.u"yr", 0.1 * DQ.u"yr", 5))
 end
 
 function test_cleanup(arg)
@@ -85,6 +105,9 @@ end
 @testset "clean up observables" begin
     @testset "UnitfulConversion" begin
         test_cleanup([0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"])
+    end
+    @testset "DQConversion" begin
+        test_cleanup([0.01 * DQ.u"km", 0.02 * DQ.u"km", 0.03 * DQ.u"km", 0.04 * DQ.u"km"])
     end
     @testset "CategoricalConversion" begin
         test_cleanup(Categorical(["a", "b", "c"]))

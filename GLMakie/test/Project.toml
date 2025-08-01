@@ -1,4 +1,5 @@
 [deps]
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
