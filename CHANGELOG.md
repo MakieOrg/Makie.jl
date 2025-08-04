@@ -4,6 +4,7 @@
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
 - Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
+- Fixed issue with `linesegments` erroring in another backend after first being displayed in GLMakie [#5232](https://github.com/MakieOrg/Makie.jl/pull/5232)
 
 ## Unreleased
 
