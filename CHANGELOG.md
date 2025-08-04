@@ -1,7 +1,9 @@
 # Changelog
 
 ## Unreleased
+ - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
 
+- Fixed `propertynames(::Attributes)` [#5154](https://github.com/MakieOrg/Makie.jl/pull/5154).
 - Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
