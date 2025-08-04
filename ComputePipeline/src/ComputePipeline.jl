@@ -911,8 +911,8 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     if length(e.inputs) != length(inputs) || e.inputs != inputs
         error(
             "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
-            "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
-            "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
+                "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
+                "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
         )
     end
 
