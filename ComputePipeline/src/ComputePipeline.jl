@@ -908,13 +908,11 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     end
 
     # Check that the requested inputs are the inputs of the new edge
-    if length(e.inputs) != length(inputs)
-        error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
-    elseif e.inputs != inputs
-        missmatched = [old.name => new.name for (old, new) in zip(e.inputs, inputs) if old !== new]
+    if length(e.inputs) != length(inputs) || e.inputs != inputs
         error(
-            "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                "that uses a different set of inputs. Missmatched inputs: $missmatched (existing, new)"
+            "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
+            "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
+            "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
         )
     end
 
