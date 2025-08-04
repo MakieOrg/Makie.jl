@@ -129,9 +129,9 @@ function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         if isorange === automatic
             if length(value_levels) > 1
                 minstep = minimum(value_levels[2:end] .- value_levels[1:(end - 1)])
-                return 0.03 * minstep
+                return 0.1 * minstep
             else
-                return 0.03 * (max - min)
+                return 0.1 * (max - min)
             end
         else
             return isorange
