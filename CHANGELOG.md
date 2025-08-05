@@ -1,15 +1,16 @@
 # Changelog
 
 ## Unreleased
- - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
 
+- Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
 - Fixed `propertynames(::Attributes)` [#5154](https://github.com/MakieOrg/Makie.jl/pull/5154).
 - Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
 - Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
-- Fix `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
+- Fixed issue with `linesegments` erroring in another backend after first being displayed in GLMakie [#5232](https://github.com/MakieOrg/Makie.jl/pull/5232)
+- Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 
 ## [0.24.4] - 2025-07-17
 
