@@ -777,7 +777,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::LineSegments)
     # linestyle/pattern handling
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     haskey(attr, :debug) || add_constant!(attr, :debug, false) # see Lines
-    Makie.add_computation!(attr, Val(:uniform_clip_planes))
+    # could use world space, but clip space fits better with other backends
+    # costs ~1µs per clip plane
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
 
     register_computation!(attr, [:positions_transformed_f32c], [:indices]) do (positions,), changed, cached
         return (length(positions),)

@@ -554,7 +554,7 @@ end
 function default_attribute(user_attributes, (key, value))
     if haskey(user_attributes, key)
         if value isa Attributes
-            return merge(value, Attributes(pairs(user_attributes[key])))
+            return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
         else
             val = user_attributes[key]
             val isa NamedTuple && return Attributes(val)
