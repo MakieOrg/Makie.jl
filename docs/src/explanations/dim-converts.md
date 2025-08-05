@@ -72,7 +72,11 @@ Makie also provides support for [DynamicQuantities.jl](https://github.com/Symbol
 * Units are set by the first object plotted by default. This is to prevent unexpected changes to other units when plotting multiple objects on the same axis.
 * Units are displayed in SI be default. Use `us"<desired unit>"` (note the `s`) to explicitly set your desired units, either implicitly in a plot call or explicitly as a `dim_conversion` axis argument.
 
-Below are four common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
+Below are a few common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
+
+```@setup DQ_dimconverts
+using DynamicQuantities
+```
 
 ```@figure DQ_dimconverts
 using DynamicQuantities
