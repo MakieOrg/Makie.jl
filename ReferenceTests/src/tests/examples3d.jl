@@ -136,7 +136,7 @@ end
     limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
 
     ax = Axis3(f[2, 1])
-    contour!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, levels = [0.5, 0.9, 1.9])
+    contour!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, levels = [0.5, 0.9, 1.8])
     limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
 
     ax = Axis3(f[3, 1])
