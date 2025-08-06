@@ -9,7 +9,7 @@
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
 - Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
-- Fixed issue with `linesegments` erroring in another backend after first being displayed in GLMakie [#5232](https://github.com/MakieOrg/Makie.jl/pull/5232)
+- Fixed `volume` plots getting clipped based on the vertices of their bounding box, e.g. when zooming in Axis3 [#5225](https://github.com/MakieOrg/Makie.jl/pull/5225)
 - Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 
 ## [0.24.4] - 2025-07-17

@@ -315,7 +315,11 @@ colormap. How exactly the color is derived depends on the algorithm used.
     isorange = 0.05
     "Sets whether the volume data should be sampled with interpolation."
     interpolate = true
-    "Enables depth write for :iso so that volume correctly occludes other objects."
+    """
+    Enables more accurate but slower depth handling. When turned off depth is based on the back vertices of the bounding
+    box of the volume. When turned on it is based on the ray start point in front of the camera. For `algorithm = :iso`
+    (and contours) it is based on the front most surface rendered.
+    """
     enable_depth = true
     "Absorption multiplier for algorithm = :absorption, :absorptionrgba and :indexedabsorption. This changes how much light each voxel absorbs."
     absorption = 1.0f0
