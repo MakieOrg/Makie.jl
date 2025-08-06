@@ -249,7 +249,8 @@ end
     # reorder plots for transparency
     ax.scene.plots[:] = ax.scene.plots[[1, 3, 4, 5, 2]]
 
-    contour(fig[2, 1], x, x, x, (x,y,z) -> sqrt(x * x + y * y) / (10 + z * z),
+    contour(
+        fig[2, 1], x, x, x, (x,y,z) -> sqrt(x * x + y * y) / (10 + z * z),
         levels = [0.01, 0.1, 0.2, 0.5, 1.0],
         colorrange = (0.1, 0.5), # this should clip 0.01 and 1.0
     )
