@@ -7,6 +7,7 @@ function Base.display(screen::Screen, scene::Scene; connect = true)
             screen.scene = nothing
         end
         display_scene!(screen, scene)
+        show_gl_icon_in_dock(true)
     else
         @assert screen.scene === scene "internal error. Scene already displayed by screen but not as root scene"
     end
