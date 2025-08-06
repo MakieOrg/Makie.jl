@@ -132,18 +132,20 @@ end
 
 # These work in 2D and 3D
 function closest_point_on_line(A::VecTypes, B::VecTypes, ray::Ray)
-    return closest_point_on_line(to_ndim(Point3d, A, 0), to_ndim(Point3d, B, 0), ray)
+    return lerp(A, B, closest_point_on_line_interpolation(A, B, ray))
 end
-function closest_point_on_line(A::Point3, B::Point3, ray::Ray)
+function closest_point_on_line_interpolation(A::VecTypes, B::VecTypes, ray::Ray)
+    return closest_point_on_line_interpolation(to_ndim(Point3d, A, 0), to_ndim(Point3d, B, 0), ray)
+end
+function closest_point_on_line_interpolation(A::Point3, B::Point3, ray::Ray)
     # See:
     # https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    AB_norm = norm(B .- A)
-    u_AB = (B .- A) / AB_norm
-    u_perp = normalize(cross(ray.direction, u_AB))
+    AB = B .- A
+    u_perp = cross(ray.direction, AB)
     # e_RD, e_perp defines a plane with normal n
     n = normalize(cross(ray.direction, u_perp))
-    t = dot(ray.origin .- A, n) / dot(u_AB, n)
-    return A .+ clamp(t, 0.0, AB_norm) * u_AB
+    t = dot(ray.origin .- A, n) / dot(AB, n)
+    return clamp(t, 0.0, 1.0)
 end
 
 function ray_triangle_intersection(A::VecTypes, B::VecTypes, C::VecTypes, ray::Ray, ϵ = 1.0e-6)
@@ -318,11 +320,10 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     # not allowed to change this, so applying it should be fine. Applying the
     # model matrix may add a z component to the Rect2f, which we can't represent.
     # So we instead inverse-transform the ray
-    p0, p1 = map(Point2d.(extrema(plot.x[]), extrema(plot.y[]))) do p
-        return Makie.apply_transform(transform_func(plot), p)
-    end
-    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
+    p0, p1 = Point2d.(extrema(model_space_boundingbox(plot)))
+    ray = transform(inv(plot.model[]), ray)
     pos = ray_rect_intersection(Rect2(p0, p1 - p0), ray)
+    pos = inv_f32_convert(plot, pos)
 
     if apply_transform
         p4d = plot.model[] * to_ndim(Point4d, to_ndim(Point3d, pos, 0), 1)
@@ -333,27 +334,36 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     end
 end
 
-function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
-    positions = decompose(Point3d, plot.mesh[])
-    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
-    tf = transform_func(plot)
-
-    for f in faces(plot.mesh[])
+function find_picked_triangle(positions, faces, ray::Ray, idx)
+    # positions w/ f32c, transform_func, no model
+    for f in faces
         if idx in f
             p1, p2, p3 = positions[f]
-            p1 = Makie.apply_transform(tf, p1)
-            p2 = Makie.apply_transform(tf, p2)
-            p3 = Makie.apply_transform(tf, p3)
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if !isnan(pos)
-                if apply_transform
-                    p4d = plot.model[] * to_ndim(Point4d, pos, 1)
-                    return Point3d(p4d) / p4d[4]
-                else
-                    return Makie.apply_transform(inverse_transform(tf), pos)
-                end
+                return f, pos
             end
         end
+    end
+
+    return Point3d(NaN)
+end
+
+function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
+    ray = transform(inv(plot.model[]), ray)
+    _, pos = find_picked_triangle(plot.positions_transformed_f32c[], plot.faces[], ray, idx)
+
+    if !isnan(pos)
+        pos = inv_f32_convert(plot, pos)
+       if apply_transform
+            p4d = plot.model_f32c[] * to_ndim(Point4d, pos, 1)
+            return Point3d(p4d) / p4d[4]
+        else
+            tf = transform_func(plot)
+            return Makie.apply_transform(inverse_transform(tf), pos)
+        end
+    else
+        return pos
     end
 
     @debug "Did not find intersection for index = $idx when casting a ray on mesh."
@@ -375,51 +385,43 @@ function surface_pos(xs, ys, zs, i, j)
     return Point3d(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
 end
 
-function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
-    xs = plot[1][]
-    ys = plot[2][]
-    zs = plot[3][]
-    w, h = size(zs)
-    _i = mod1(idx, w); _j = div(idx - 1, w)
+function find_picked_surface_cell(plot::Surface, idx, ray::Ray)
+    ps = plot.positions_transformed_f32c[]
+    w, h = size(plot.z[])
+    _j, _i = fldmod1(idx, w)
+    linear_index(i, j, w) = i + (j-1) * w
 
-    ray = transform(inv(plot.model[]), inv_f32_convert(plot, ray))
-    tf = transform_func(plot)
-
+    # TODO: Is this still true?
     # This isn't the most accurate so we include some neighboring faces
-    pos = Point3f(NaN)
     for i in (_i - 1):(_i + 1), j in (_j - 1):(_j + 1)
         (1 <= i <= w) && (1 <= j < h) || continue
 
-        if i - 1 > 0
-            # transforms only apply to x and y coordinates of surfaces
-            A = surface_pos(xs, ys, zs, i, j)
-            B = surface_pos(xs, ys, zs, i - 1, j)
-            C = surface_pos(xs, ys, zs, i, j + 1)
-            A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2d(p))
-                Point3d(xy[1], xy[2], p[3])
-            end
-            pos = ray_triangle_intersection(A, B, C, ray)
-        end
+        f1 = TriangleFace{Int64}(linear_index(i, j, w), linear_index(i - 1, j, w), linear_index(i, j + 1, w))
+        f2 = TriangleFace{Int64}(linear_index(i, j, w), linear_index(i, j + 1, w), linear_index(i + 1, j + 1, w))
 
-        if i + 1 <= w && isnan(pos)
-            A = surface_pos(xs, ys, zs, i, j)
-            B = surface_pos(xs, ys, zs, i, j + 1)
-            C = surface_pos(xs, ys, zs, i + 1, j + 1)
-            A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2d(p))
-                Point3d(xy[1], xy[2], p[3])
-            end
+        for f in (f1, f2)
+            all(i -> 1 <= i <= length(ps), f) || continue
+            A, B, C = ps[f]
             pos = ray_triangle_intersection(A, B, C, ray)
+            if !isnan(pos)
+                return f, Point3d(pos)
+            end
         end
-
-        isnan(pos) || break
     end
+
+    return nothing, Point3d(NaN)
+end
+
+function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
+    ray = transform(inv(plot.model_f32c[]), ray)
+    _, pos = find_picked_surface_cell(plot, idx, ray)
+    pos = inv_f32_convert(plot, pos)
 
     if apply_transform
         p4d = plot.model[] * to_ndim(Point4d, pos, 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
+        tf = transform_func(plot)
         xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos))
         return Point3d(xy[1], xy[2], pos[3])
     end
