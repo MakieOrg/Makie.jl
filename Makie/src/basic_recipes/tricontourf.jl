@@ -1,8 +1,8 @@
 struct DelaunayTriangulation end
 
 """
-    tricontourf(triangles::Triangulation, zs; kwargs...)
-    tricontourf(xs, ys, zs; kwargs...)
+    tricontourf(triangles::Triangulation, zs; attributes...)
+    tricontourf(xs, ys, zs; attributes...)
 
 Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and
 vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`

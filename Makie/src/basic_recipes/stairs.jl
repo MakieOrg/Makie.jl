@@ -1,5 +1,5 @@
 """
-    stairs(xs, ys; kwargs...)
+    stairs(xs, ys; attributes...)
 
 Plot a stair function.
 
