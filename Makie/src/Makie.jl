@@ -231,6 +231,7 @@ include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
 include("interaction/pick_element.jl")
+include("interaction/DataInspector2.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")

@@ -1,5 +1,7 @@
 abstract type PlotElement end
 
+Base.parent(element::PlotElement) = element.parent
+
 function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
     names = filter(name -> name !== :parent, fieldnames(T))
     fields = getfield.(Ref(elem), names)

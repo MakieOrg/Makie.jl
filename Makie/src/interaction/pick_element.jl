@@ -20,7 +20,6 @@ plot_stack(plot::Plot) = (plot, plot_stack(parent(plot))...)
 plot_stack(::Scene) = tuple()
 plot_stack(::Nothing) = tuple()
 
-
 function pick_element(plot_stack::Tuple, idx)
     root = last(plot_stack)
     source = first(plot_stack)
