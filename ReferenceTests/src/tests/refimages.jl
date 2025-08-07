@@ -41,6 +41,9 @@ end
 @testset "unitful" begin
     include("unitful.jl")
 end
+@testset "dynamicquantities" begin
+    include("dynamicquantities.jl")
+end
 @testset "specapi" begin
     include("specapi.jl")
 end
