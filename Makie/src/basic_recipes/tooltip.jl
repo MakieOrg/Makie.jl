@@ -1,4 +1,5 @@
 """
+    tooltip(positions, string)
     tooltip(position, string)
     tooltip(x, y, string)
 
@@ -52,16 +53,18 @@ Creates a tooltip pointing at `position` displaying the given `string
 end
 
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
-    return (Point2{float_type(x, y)}(x, y), str)
-end
-function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
-    return (Point2{float_type(x, y)}(x, y),)
+    return ([Point2{float_type(x, y)}(x, y)], [str])
 end
 
-function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
+function plot!(plot::Tooltip{<:Tuple{<:AbstractArray{VecTypes}, <:AbstractArray{<:AbstractString}}})
     tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
     return plot
 end
+
+function convert_arguments(::Type{<:Tooltip}, x::AbstractVector, y::AbstractVector, str::AbstractString)
+    return (Point2{float_type(x, y)}.(x, y), str)
+end
+convert_arguments(::Type{<:Tooltip}, args...) = convert_arguments(PointBased(), args...)
 
 struct ToolTipShape
     placement::Symbol
@@ -122,7 +125,7 @@ function (tt::ToolTipShape)(origin::VecTypes{2}, size::VecTypes{2})
 end
 
 
-function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
+function plot!(p::Tooltip{<:Tuple{<:AbstractArray{<:VecTypes}}})
 
     map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)
 
@@ -161,7 +164,8 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     p = textlabel!(
-        p, p[1], p.text, shape = p.shape,
+        p, p[1],
+        text = p.text, shape = p.shape,
 
         padding = p.text_padding, justification = p.justification, text_align = p.text_align,
         offset = p.text_offset, fontsize = p.fontsize, font = p.font,

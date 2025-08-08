@@ -871,11 +871,11 @@ function show_data(inspector::DataInspector, plot::Arrows2D, _idx, source)
     N = plot.taillength[] > 0 && plot.tailwidth[] > 0 ? length(coordinates(plot.tail[])) : 0
     N += plot.shaftwidth[] > 0 ? length(coordinates(plot.shaft[])) : 0
     N += plot.tiplength[] > 0 && plot.tipwidth[] > 0 ? length(coordinates(plot.tip[])) : 0
+    N += Int(source isa Lines)
     @assert N != 0
 
     # arrow index
     idx = fld1(_idx, N)
-
     pos = plot[1][][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
