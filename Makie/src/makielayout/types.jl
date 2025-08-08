@@ -574,17 +574,17 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         ytickformat = Makie.automatic
         "The button for panning."
-        panbutton::Makie.Mouse.Button = Makie.Mouse.right
+        panbutton::IsPressedInputType = Makie.Mouse.right
         "The key for limiting panning to the x direction."
-        xpankey::Makie.Keyboard.Button = Makie.Keyboard.x
+        xpankey::IsPressedInputType = Makie.Keyboard.x
         "The key for limiting panning to the y direction."
-        ypankey::Makie.Keyboard.Button = Makie.Keyboard.y
+        ypankey::IsPressedInputType = Makie.Keyboard.y
         "The key for limiting zooming to the x direction."
-        xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
+        xzoomkey::IsPressedInputType = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
-        yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
-        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
+        zoombutton::IsPressedInputType = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -2343,9 +2343,9 @@ end
         "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
         zoomspeed::Float32 = 0.1
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
-        rzoomkey = Keyboard.r
+        rzoomkey::IsPressedInputType = Keyboard.r
         "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
-        thetazoomkey = Keyboard.t
+        thetazoomkey::IsPressedInputType = Keyboard.t
         "Controls whether rmin remains fixed during zooming and translation. (The latter will be turned off by setting this to true.)"
         fixrmin::Bool = true
         "Controls whether adjusting the rlimits through interactive zooming is blocked."
@@ -2353,13 +2353,13 @@ end
         "Controls whether adjusting the thetalimits through interactive zooming is blocked."
         thetazoomlock::Bool = true
         "Sets the mouse button for translating the plot in r-direction."
-        r_translation_button = Mouse.right
+        r_translation_button::IsPressedInputType = Mouse.right
         "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."
-        theta_translation_button = Mouse.right
+        theta_translation_button::IsPressedInputType = Mouse.right
         "Sets the button for rotating the PolarAxis as a whole. This replaces theta translation when triggered and must include a mouse button."
-        axis_rotation_button = Keyboard.left_control & Mouse.right
+        axis_rotation_button::IsPressedInputType = Keyboard.left_control & Mouse.right
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
-        reset_button = Keyboard.left_control & Mouse.left
+        reset_button::IsPressedInputType = Keyboard.left_control & Mouse.left
         "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
         reset_axis_orientation::Bool = false
     end

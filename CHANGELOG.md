@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
+
 ## [0.24.5] - 2025-08-06
 
 - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
