@@ -21,6 +21,31 @@ function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
     return T(plot, fields...)
 end
 
+struct TrackedPlotElement{PlotType, ElementType <: PlotElement{PlotType}} <: PlotElement{PlotType}
+    element::ElementType
+    accessed_fields::Vector{Symbol}
+end
+
+# Manual
+track!(::PlotElement, ::Symbol...) = nothing
+track!(e::TrackedPlotElement, names::Symbol...) = push!(e.accessed_fields, names...)
+
+# Automatic
+function Base.getproperty(element::T, name::Symbol) where {PT, ET, T <: TrackedPlotElement{PT, ET}}
+    if hasfield(T, name)
+        return getfield(element, name)
+    else
+        hasfield(ET, name) && track!(element, name)
+        return getproperty(element.element, name)
+    end
+end
+
+# Util
+TrackedPlotElement(e::PlotElement) = TrackedPlotElement(e, Symbol[])
+Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
+get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
+Base.parent(e::TrackedPlotElement) = parent(e.element)
+
 struct IndexedPlotElement{PlotType, D} <: PlotElement{PlotType}
     parent::PlotType
     index::CartesianIndex{D}

@@ -1,6 +1,6 @@
 mutable struct DataInspector2
     parent::Scene
-    persistent_tooltips::Vector{Tooltip}
+    persistent_tooltips::Dict{UInt64, Tooltip}
     dynamic_tooltip::Tooltip
 
     last_mouseposition::Tuple{Float64, Float64}
@@ -14,9 +14,29 @@ function DataInspector2(obj)
         xautolimits = false, yautolimits = false, zautolimits = false
     )
 
-    di = DataInspector2(get_scene(obj), Tooltip[], tt, (0.0, 0.0), UInt64(0))
+    di = DataInspector2(get_scene(obj), Dict{UInt64, Tooltip}(), tt, (0.0, 0.0), UInt64(0), [0, 0, 0])
 
-    on(tick -> update_tooltip!(di, tick), events(di.parent).tick)
+    e = events(di.parent)
+
+    on(tick -> update_tooltip!(di, tick), e.tick)
+
+    on(e.mousebutton) do event
+        if ispressed(e, Keyboard.left_shift & Mouse.left) && is_mouseinside(di.parent)
+            mp = e.mouseposition[]
+            for (plot, idx) in pick_sorted(di.parent, mp, 10)
+                if parent_scene(plot) == di.parent
+                    if plot.inspectable[]
+                        element = pick_element(plot_stack(plot), idx)
+                        add_persistent_tooltip!(di, element)
+                        break
+                    elseif plot isa Tooltip
+                        element = pick_element(plot_stack(plot), idx)
+                        remove_persistent_tooltip!(di, element)
+                    end
+                end
+            end
+        end
+    end
 
     return di
 end
@@ -103,5 +123,53 @@ end
 function copy_local_model_transformations!(target::Transformable, source::Transformable)
     t = source.transformation
     transform!(target, translation = t.translation, rotation = t.rotation, scale = t.scale)
+    return
+end
+
+function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
+    if isempty(plot.arg1[])
+        error("tooltip(::Vector{PlotElement}) must not be initialized with an empty list.")
+    end
+
+    element = TrackedPlotElement(first(plot.arg1[]))
+    parent_plot = parent(element)
+
+    empty!(element)
+    pos = get_position(element)
+    get_tooltip_label(element, pos)
+
+    inputs = [plot.arg1, getproperty.(Ref(parent_plot), get_accessed_fields(element))...]
+    map!(plot, inputs, [:element_positions, :element_labels]) do elements, triggers...
+        positions = get_position.(elements)
+        labels = get_tooltip_label.(elements, positions)
+        # TODO: add z shift to labels
+        return positions, labels
+    end
+
+    tooltip!(
+        plot, Attributes(plot), plot.element_positions; text = plot.element_labels,
+        transformation = parent_plot.transformation
+    )
+    return plot
+end
+
+function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) where {PT}
+    id = objectid(parent(element))
+    if haskey(di.persistent_tooltips, id)
+        tt = di.persistent_tooltips[id]
+        elements = push!(tt.arg1[], element)
+        update!(tt, arg1 = elements)
+    else
+        di.persistent_tooltips[id] = tooltip!(di.parent, PlotElement{PT}[element])
+    end
+    return
+end
+
+function remove_persistent_tooltip!(di::DataInspector2, element::PlotElement{<:Tooltip})
+    key = findfirst(==(parent(element)), di.persistent_tooltips)
+    if key !== nothing
+        tt = pop!(di.persistent_tooltips, key)
+        delete!(di.parent, tt)
+    end
     return
 end
