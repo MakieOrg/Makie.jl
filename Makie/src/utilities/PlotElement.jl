@@ -1,46 +1,6 @@
-abstract type PlotElement end
+abstract type PlotElement{PlotType} end
 
 Base.parent(element::PlotElement) = element.parent
-
-function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
-    names = filter(name -> name !== :parent, fieldnames(T))
-    fields = getfield.(Ref(elem), names)
-    return T(plot, fields...)
-end
-
-struct IndexedPlotElement{D} <: PlotElement
-    parent::Plot
-    index::CartesianIndex{D}
-end
-
-IndexedPlotElement(plot::Plot, idx::Integer) = IndexedPlotElement(plot, CartesianIndex(idx))
-function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}) where {N}
-    return IndexedPlotElement(plot, CartesianIndex(idx...))
-end
-
-struct InterpolatedPlotElement{D} <: PlotElement
-    parent::Plot
-    index0::CartesianIndex{D}
-    index1::CartesianIndex{D}
-    interpolation::Vec{D, Float32}
-end
-
-function InterpolatedPlotElement(plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat)
-    return InterpolatedPlotElement(plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation))
-end
-function InterpolatedPlotElement(plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer}, interpolation::VecTypes{D, <:AbstractFloat}) where {D}
-    return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation))
-end
-
-struct MeshPlotElement <: PlotElement
-    parent::Plot
-    face::GLTriangleFace
-    uv::Vec2f
-
-    function MeshPlotElement(plot::Plot, face::TriangleFace, uv::VecTypes{2})
-        return new(plot, GLTriangleFace(face), Vec2f(uv))
-    end
-end
 
 function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     if hasfield(T, name)
@@ -55,17 +15,57 @@ function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     end
 end
 
+function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
+    names = filter(name -> name !== :parent, fieldnames(T))
+    fields = getfield.(Ref(elem), names)
+    return T(plot, fields...)
+end
+
+struct IndexedPlotElement{PlotType, D} <: PlotElement{PlotType}
+    parent::PlotType
+    index::CartesianIndex{D}
+end
+
+IndexedPlotElement(plot::Plot, idx::Integer) = IndexedPlotElement(plot, CartesianIndex(idx))
+function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}) where {N}
+    return IndexedPlotElement(plot, CartesianIndex(idx...))
+end
+
+struct InterpolatedPlotElement{PlotType, D} <: PlotElement{PlotType}
+    parent::PlotType
+    index0::CartesianIndex{D}
+    index1::CartesianIndex{D}
+    interpolation::Vec{D, Float32}
+end
+
+function InterpolatedPlotElement(plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat)
+    return InterpolatedPlotElement(plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation))
+end
+function InterpolatedPlotElement(plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer}, interpolation::VecTypes{D, <:AbstractFloat}) where {D}
+    return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation))
+end
+
+struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
+    parent::PlotType
+    face::GLTriangleFace
+    uv::Vec2f
+
+    function MeshPlotElement(plot::PlotType, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
+        return new{PlotType}(plot, GLTriangleFace(face), Vec2f(uv))
+    end
+end
+
 function element_getindex(x, element::IndexedPlotElement)
     return sv_getindex(x, element.index)
 end
 
-function element_getindex(x, element::InterpolatedPlotElement{1})
+function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) where {PlotType}
     low = sv_getindex(x, element.index0)
     high = sv_getindex(x, element.index1)
     return lerp(low, high, element.interpolation[1])
 end
 
-function element_getindex(x, element::InterpolatedPlotElement{2})
+function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) where {PlotType}
     i0, j0 = Tuple(element.index0)
     i1, j1 = Tuple(element.index1)
 

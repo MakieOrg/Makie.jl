@@ -57,10 +57,10 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     element = pick_element(plot_stack(source_plot), source_index)
 
     # TODO: Should we extract plot from PlotElement?
-    pos = get_position(parent(element), element)
+    pos = get_position(element)
     # TODO: shift pos to desired depth
 
-    label = get_tooltip_label(parent(element), element, pos)
+    label = get_tooltip_label(element, pos)
 
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
@@ -70,8 +70,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     update!(di.dynamic_tooltip, pos, text = label, visible = true) #; kwargs...
 end
 
-function get_position(plot::PT, element::PlotElement) where {PT <: Plot}
-    converted = plot.attributes[:converted][]
+function get_position(element::PlotElement{PT}) where {PT <: Plot}
+    converted = parent(element).attributes[:converted][]
     n_args = length(converted)
     if n_args == 1
         name = argument_names(PT, 1)[1]
@@ -83,8 +83,8 @@ function get_position(plot::PT, element::PlotElement) where {PT <: Plot}
     end
 end
 
-function get_tooltip_label(plot::Plot, element::PlotElement, pos)
-    label = plot.inspector_label[]
+function get_tooltip_label(element::PlotElement, pos)
+    label = element.inspector_label
     if label isa String
         return Format.format(label, pos...)
     elseif label isa Function
