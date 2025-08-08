@@ -574,7 +574,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         ytickformat = Makie.automatic
         "The button for panning."
-        panbutton::Makie.Mouse.Button = Makie.Mouse.right
+        panbutton::IsPressedInputType = Makie.Mouse.right
         "The key for limiting panning to the x direction."
         xpankey::IsPressedInputType = Makie.Keyboard.x
         "The key for limiting panning to the y direction."
