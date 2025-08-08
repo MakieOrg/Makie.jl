@@ -5,6 +5,7 @@ mutable struct DataInspector2
 
     last_mouseposition::Tuple{Float64, Float64}
     last_selection::UInt64
+    update_counter::Vector{Int}
 end
 
 function DataInspector2(obj)
@@ -27,10 +28,13 @@ function update_tooltip!(di::DataInspector2, tick::Tick)
     is_interactive_tick = tick.state === RegularRenderTick || tick.state === SkippedRenderTick
     mouse_moved = mp != di.last_mouseposition
 
+    di.update_counter[1] += 1 # TODO: for performance checks, remove later
+
     if is_interactive_tick && mouse_moved
         processed = false
 
         if is_mouseinside(di.parent)
+            di.update_counter[2] += 1 # TODO: for performance checks, remove later
             di.last_mouseposition = mp
 
             # inspector.attributes.range[]
@@ -39,8 +43,10 @@ function update_tooltip!(di::DataInspector2, tick::Tick)
                 # plt belong to scene
                 plot_in_scene = parent_scene(plot) == di.parent
                 if plot_in_scene && plot.inspectable[]
+                    di.update_counter[3] += 1 # TODO: for performance checks, remove later
                     processed =  true
                     update_tooltip!(di, plot, idx)
+                    break
                 end
             end
         end
