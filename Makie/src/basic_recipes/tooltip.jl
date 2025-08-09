@@ -50,6 +50,8 @@ Creates a tooltip pointing at `position` displaying the given `string
 
     mixin_generic_plot_attributes()...
     inspectable = false
+    "If true the tooltip will be rendered at maximum z."
+    draw_on_top = false
 end
 
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
@@ -170,7 +172,7 @@ function plot!(p::Tooltip{<:Tuple{<:AbstractArray{<:VecTypes}}})
         padding = p.text_padding, justification = p.justification, text_align = p.text_align,
         offset = p.text_offset, fontsize = p.fontsize, font = p.font,
 
-        draw_on_top = false,
+        draw_on_top = p.draw_on_top,
 
         text_color = p.textcolor,
         text_strokewidth = p.strokewidth,

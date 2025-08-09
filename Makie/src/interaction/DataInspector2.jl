@@ -6,15 +6,26 @@ mutable struct DataInspector2
     last_mouseposition::Tuple{Float64, Float64}
     last_selection::UInt64
     update_counter::Vector{Int}
+
+    attributes::Attributes
+
+    obsfuncs::Vector{Any}
+    update_channel::Channel{Nothing}
 end
 
-function DataInspector2(obj)
+function DataInspector2(obj; kwargs...)
     tt = tooltip!(
         obj, Point2f(0), text = "", visible = false,
-        xautolimits = false, yautolimits = false, zautolimits = false
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        draw_on_top = true
     )
 
-    di = DataInspector2(get_scene(obj), Dict{UInt64, Tooltip}(), tt, (0.0, 0.0), UInt64(0), [0, 0, 0])
+    di = DataInspector2(
+        get_scene(obj), Dict{UInt64, Tooltip}(), tt,
+        (0.0, 0.0), UInt64(0), [0, 0, 0],
+        Attributes(),
+        Any[], Channel{Nothing}(Inf)
+    )
 
     e = events(di.parent)
 
@@ -117,7 +128,7 @@ function get_tooltip_label(element::PlotElement, pos)
     elseif label isa Function
         return label(element)
     elseif label === automatic
-        return "TODO: default label"
+        return get_default_tooltip_label(element, pos)
     end
 end
 
@@ -186,3 +197,13 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
 
     return
 end
+
+
+################################################################################
+
+function get_default_tooltip_label(e, pos::VecTypes)
+    parts = showoff_minus(pos)
+    return '(' * join(parts, ", ") * ')'
+end
+
+get_default_tooltip_label(e, p) = "Failed to construct label for $e, $p"
