@@ -86,31 +86,43 @@ function element_getindex(x, element::IndexedPlotElement)
 end
 
 function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) where {PlotType}
-    low = sv_getindex(x, element.index0)
-    high = sv_getindex(x, element.index1)
-    return lerp(low, high, element.interpolation[1])
+    if is_vector_attribute(x)
+        low = sv_getindex(x, element.index0)
+        high = sv_getindex(x, element.index1)
+        return lerp(low, high, element.interpolation[1])
+    else
+        return x
+    end
 end
 
 function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) where {PlotType}
-    i0, j0 = Tuple(element.index0)
-    i1, j1 = Tuple(element.index1)
+    if is_vector_attribute(x)
+        i0, j0 = Tuple(element.index0)
+        i1, j1 = Tuple(element.index1)
 
-    x00 = sv_getindex(x, CartesianIndex(i0, j0))
-    x10 = sv_getindex(x, CartesianIndex(i1, j0))
-    x01 = sv_getindex(x, CartesianIndex(i0, j1))
-    x11 = sv_getindex(x, CartesianIndex(i1, j1))
+        x00 = sv_getindex(x, CartesianIndex(i0, j0))
+        x10 = sv_getindex(x, CartesianIndex(i1, j0))
+        x01 = sv_getindex(x, CartesianIndex(i0, j1))
+        x11 = sv_getindex(x, CartesianIndex(i1, j1))
 
-    x_0 = lerp(x00, x10, element.interpolation[1])
-    x_1 = lerp(x01, x11, element.interpolation[1])
+        x_0 = lerp(x00, x10, element.interpolation[1])
+        x_1 = lerp(x01, x11, element.interpolation[1])
 
-    return lerp(x_0, x_1, element.interpolation[2])
+        return lerp(x_0, x_1, element.interpolation[2])
+    else
+        return x
+    end
 end
 
 function element_getindex(x, element::MeshPlotElement)
-    i, j, k = element.face
-    a = sv_getindex(x, i)
-    b = sv_getindex(x, j)
-    c = sv_getindex(x, k)
-    u, v = element.uv
-    return lerp(a, b, u) + lerp(a, c, v)
+    if is_vector_attribute(x)
+        i, j, k = element.face
+        a = sv_getindex(x, i)
+        b = sv_getindex(x, j)
+        c = sv_getindex(x, k)
+        u, v = element.uv
+        return lerp(a, b, u) + lerp(a, c, v)
+    else
+        return x
+    end
 end
