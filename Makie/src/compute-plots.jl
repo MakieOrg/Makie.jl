@@ -613,7 +613,9 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             let plotcycle = cycle
                 add_input!(attr, k, get(kwargs, k, nothing)) do key, value
                     palettes = attr.palettes[]
-                    value isa Cycled && return get_cycle_attribute(palettes, key, value.i, plotcycle)
+                    if value isa Cycled
+                        value = get_cycle_attribute(palettes, key, value.i, plotcycle)
+                    end
                     if !isnothing(value)
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
