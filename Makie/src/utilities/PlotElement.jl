@@ -16,9 +16,10 @@ function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
 end
 
 function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
+    base_type = getfield(Makie, nameof(T))
     names = filter(name -> name !== :parent, fieldnames(T))
     fields = getfield.(Ref(elem), names)
-    return T(plot, fields...)
+    return base_type(plot, fields...)
 end
 
 struct TrackedPlotElement{PlotType, ElementType <: PlotElement{PlotType}} <: PlotElement{PlotType}

@@ -29,9 +29,10 @@ function DataInspector2(obj)
                         element = pick_element(plot_stack(plot), idx)
                         add_persistent_tooltip!(di, element)
                         break
-                    elseif plot isa Tooltip
+                    elseif rootparent_plot(plot) isa Tooltip
                         element = pick_element(plot_stack(plot), idx)
                         remove_persistent_tooltip!(di, element)
+                        break
                     end
                 end
             end
@@ -165,11 +166,23 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
     return
 end
 
-function remove_persistent_tooltip!(di::DataInspector2, element::PlotElement{<:Tooltip})
-    key = findfirst(==(parent(element)), di.persistent_tooltips)
+function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotElement{<:Tooltip})
+    tt = parent(tooltip_element)
+    key = findfirst(==(tt), di.persistent_tooltips)
+
+    # If we don't find the tooltip plot then we don't own it and shouldn't touch it
     if key !== nothing
-        tt = pop!(di.persistent_tooltips, key)
-        delete!(di.parent, tt)
+        idx = tooltip_element.index[1]
+        elements = tt.arg1[]
+        deleteat!(elements, idx)
+
+        if length(elements) == 0
+            tt = pop!(di.persistent_tooltips, key)
+            delete!(di.parent, tt)
+        else
+            update!(tt, arg1 = elements)
+        end
     end
+
     return
 end

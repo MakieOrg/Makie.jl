@@ -648,3 +648,13 @@ function spawnat(f, tid)
     schedule(task)
     return task
 end
+
+print_plot_tree(plot::Plot) = show_plot_tree(stdout, plot)
+function show_plot_tree(io::IO, plot::Plot, depth::Integer = 0)
+    println(io, ' '^(4 * depth), plot)
+    foreach(p -> show_plot_tree(io, p, depth + 1), plot.plots)
+    return
+end
+
+# TODO: Can this extend rootparent()?
+rootparent_plot(plot::Plot) = parent(plot) isa Scene ? plot : rootparent_plot(parent(plot))

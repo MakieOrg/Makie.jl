@@ -16,19 +16,39 @@ function pick_element(scene::Scene, mouseposition::VecTypes{2})
     end
 end
 
-plot_stack(plot::Plot) = (plot, plot_stack(parent(plot))...)
+plot_stack(plot::Plot) = (plot_stack(parent(plot))..., plot)
 plot_stack(::Scene) = tuple()
 plot_stack(::Nothing) = tuple()
 
 function pick_element(plot_stack::Tuple, idx)
-    root = last(plot_stack)
-    source = first(plot_stack)
-    for i in length(plot_stack):-1:1
-        element = pick_element(plot_stack[i], idx, source)
-        if element !== nothing
-            return PlotElement(root, element)
-        end
-    end
+    element = pick_element(first(plot_stack), idx, Base.tail(plot_stack))
+    return PlotElement(first(plot_stack), element)
+end
+
+# TODO: update docs
+"""
+    pick_element(plot::Plot, index::Integer, source::Plot)
+
+Overload method for plot element picking. Given the top level recipe plot `plot`
+and the picked `source` plot and `index`, this should return a `PlotElement` that
+represents picked element in the recipe plot.
+
+If this method is not implemented for a given recipe, it will fallback onto
+`pick_element()` for the next highest level plot. For example, if we pick the
+`mesh` plot in `barplot` this function will be called in this order until it
+hits a valid method:
+```
+BarPlot # 1. attempt `pick_element(::BarPlot, ::Int64, ::Mesh)`
+    Poly # 2. attempt `pick_element(::Poly, ::Int64, ::Mesh)`
+        Mesh # 3. attempt `pick_element(::Mesh, ::Int64, ::Mesh)`
+        Lines
+```
+If there is no method for the top level recipe plot, the result from a lower
+level `pick_element` will be re-wrapped to refer to the top level recipe plot.
+
+"""
+function pick_element(plot, index, child_stack)
+    pick_element(first(child_stack), index, Base.tail(child_stack))
 end
 
 # Utilities
@@ -93,47 +113,22 @@ function triangle_interpolation_parameters(face::TriangleFace, positions::Abstra
     return Vec2f(uvw)
 end
 
-# Overload target
+# Primitives
 
-"""
-    pick_element(plot::Plot, index::Integer, source::Plot)
-
-Overload method for plot element picking. Given the top level recipe plot `plot`
-and the picked `source` plot and `index`, this should return a `PlotElement` that
-represents picked element in the recipe plot.
-
-If this method is not implemented for a given recipe, it will fallback onto
-`pick_element()` for the next highest level plot. For example, if we pick the
-`mesh` plot in `barplot` this function will be called in this order until it
-hits a valid method:
-```
-BarPlot # 1. attempt `pick_element(::BarPlot, ::Int64, ::Mesh)`
-    Poly # 2. attempt `pick_element(::Poly, ::Int64, ::Mesh)`
-        Mesh # 3. attempt `pick_element(::Mesh, ::Int64, ::Mesh)`
-        Lines
-```
-If there is no method for the top level recipe plot, the result from a lower
-level `pick_element` will be re-wrapped to refer to the top level recipe plot.
-
-"""
-function pick_element(plot, idx, source)
-    elem = pick_element(plot, idx)
-    if elem === nothing
-        @info "Hit default with $plot ($source)"
-    end
-    return elem
-end
-pick_element(::Plot, idx) = nothing
-
-function pick_element(plot::Union{Scatter, MeshScatter, Text}, idx)
+function pick_element(plot::Union{Scatter, MeshScatter}, idx, plot_stack)
     return IndexedPlotElement(plot, idx)
 end
 
-function pick_element(plot::Union{Lines, LineSegments}, idx)
+function pick_element(plot::Text, idx, plot_stack)
+    idx = findfirst(range -> idx in range, plot.text_blocks[])
+    return IndexedPlotElement(plot, idx)
+end
+
+function pick_element(plot::Union{Lines, LineSegments}, idx, plot_stack)
     return pick_line_element(parent_scene(plot), plot, idx)
 end
 
-function pick_element(plot::Union{Image, Heatmap}, idx)
+function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack)
     if plot.interpolate[]
         return pick_rect2D_element(parent_scene(plot), plot)
     else
@@ -142,7 +137,7 @@ function pick_element(plot::Union{Image, Heatmap}, idx)
     end
 end
 
-function pick_element(plot::Mesh, idx)
+function pick_element(plot::Mesh, idx, plot_stack)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     f, pos = find_picked_triangle(
         plot.positions_transformed_f32c[], plot.faces[], ray, idx
@@ -152,17 +147,61 @@ function pick_element(plot::Mesh, idx)
 end
 
 
-function pick_element(plot::Surface, idx)
+function pick_element(plot::Surface, idx, plot_stack)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     f, pos = find_picked_surface_cell(plot, idx, ray)
     uv = triangle_interpolation_parameters(f, plot.positions_transformed_f32c[], pos)
     return MeshPlotElement(plot, f, uv)
 end
 
-function pick_element(plot::Voxels, idx)
+function pick_element(plot::Voxels, idx, plot_stack)
     cart = CartesianIndices(size(plot.chunk_u8[]))[idx]
     return IndexedPlotElement(plot, cart)
 end
 
 # TODO:
-pick_element(plot::Volume, idx) = false
+pick_element(plot::Volume, idx, plot_stack) = false
+
+# Overloads
+
+function pick_mesh_array_index(merged_mesh::GeometryBasics.Mesh, vertex_index::Integer)
+    # When multiple meshes get merged via GeometryBasics, the faces of each
+    # input mesh will get tracked by mesh.views. Faces of the first input are
+    # mesh.faces[mesh.views[1]] etc. If we have 0 or 1 views, we have only one
+    # mesh present. Otherwise we have multiple, and we need to find which mesh
+    # a the vertex index `idx` belongs to. (Vertices don't get reused)
+    if length(merged_mesh.views) < 2
+        return 1
+    else
+        fs = faces(merged_mesh)
+        for (face_idx, face) in enumerate(fs)
+            if vertex_index in face
+                return findfirst(range -> face_idx in range, merged_mesh.views)
+            end
+        end
+    end
+end
+
+function pick_mesh_array_index(plot::Mesh, vertex_index::Integer, plot_stack)
+    return pick_mesh_array_index(plot.mesh[], vertex_index)
+end
+
+function pick_mesh_array_index(::Wireframe, ::Integer, plot_stack)
+    return 1 # TODO: compute this
+end
+
+function pick_mesh_array_index(::Poly, vertex_index::Integer, plot_stack)
+    return pick_mesh_array_index(first(plot_stack), vertex_index, plot_stack)
+end
+
+function pick_mesh_array_index(plot::Poly, idx::Integer, plot_stack::Tuple{<:Lines, Vararg{Plot}})
+    # increment_at marks the NaN points which separate outline of each mesh
+    # If only one mesh is present, increment_at will be [typemax(Int)]
+    return findfirst(separation_idx -> idx < separation_idx, plot.increment_at[])
+end
+
+# Text produces the element we want so we just need to handle Poly
+function pick_element(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
+    idx = pick_mesh_array_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedPlotElement(plot, idx)
+end
