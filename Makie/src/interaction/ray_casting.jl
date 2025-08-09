@@ -334,7 +334,11 @@ function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_tran
     end
 end
 
-function find_picked_triangle(positions, faces, ray::Ray, idx)
+function find_picked_triangle(
+        positions::AbstractArray{<:VecTypes},
+        faces::AbstractArray{<:GeometryBasics.AbstractFace},
+        ray::Ray, idx::Integer
+    )
     # positions w/ f32c, transform_func, no model
     for f in faces
         if idx in f
@@ -346,7 +350,7 @@ function find_picked_triangle(positions, faces, ray::Ray, idx)
         end
     end
 
-    return Point3d(NaN)
+    return GLTriangleFace(0,0,0), Point3d(NaN)
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)

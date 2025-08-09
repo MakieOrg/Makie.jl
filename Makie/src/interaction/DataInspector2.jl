@@ -122,7 +122,7 @@ function get_position(element::PlotElement{PT}) where {PT <: Plot}
 end
 
 function get_tooltip_label(element::PlotElement, pos)
-    label = element.inspector_label
+    label = get(element, :inspector_label, automatic)
     if label isa String
         return Format.format(label, pos...)
     elseif label isa Function
@@ -207,3 +207,10 @@ function get_default_tooltip_label(e, pos::VecTypes)
 end
 
 get_default_tooltip_label(e, p) = "Failed to construct label for $e, $p"
+
+################################################################################
+
+function get_position(element::PlotElement{<:Hist})
+    barplot_element = PlotElement(parent(element).plots[1], element)
+    return get_position(barplot_element)
+end

@@ -113,7 +113,9 @@ function triangle_interpolation_parameters(face::TriangleFace, positions::Abstra
     return Vec2f(uvw)
 end
 
+################################################################################
 # Primitives
+################################################################################
 
 function pick_element(plot::Union{Scatter, MeshScatter}, idx, plot_stack)
     return IndexedPlotElement(plot, idx)
@@ -162,7 +164,9 @@ end
 # TODO:
 pick_element(plot::Volume, idx, plot_stack) = false
 
+################################################################################
 # Overloads
+################################################################################
 
 function pick_mesh_array_index(merged_mesh::GeometryBasics.Mesh, vertex_index::Integer)
     # When multiple meshes get merged via GeometryBasics, the faces of each
@@ -202,6 +206,11 @@ end
 
 # Text produces the element we want so we just need to handle Poly
 function pick_element(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
+    idx = pick_mesh_array_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedPlotElement(plot, idx)
+end
+
+function pick_element(plot::BarPlot, idx, plot_stack)
     idx = pick_mesh_array_index(first(plot_stack), idx, Base.tail(plot_stack))
     return IndexedPlotElement(plot, idx)
 end

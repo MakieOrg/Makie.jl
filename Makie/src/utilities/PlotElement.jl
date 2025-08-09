@@ -6,12 +6,21 @@ function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     if hasfield(T, name)
         return getfield(element, name)
     else
-        plot = getfield(element, :parent)
+        plot = parent(element)
         if haskey(plot.attributes, name)
             return element_getindex(getproperty(plot, name)[], element)
         else
             return getproperty(plot, name)
         end
+    end
+end
+
+function Base.get(element::PlotElement{PT}, name::Symbol, default) where {PT}
+    plot = parent(element)
+    if haskey(plot.attributes, name) || hasfield(PT, name)
+        getproperty(element, name)
+    else
+        return default
     end
 end
 
