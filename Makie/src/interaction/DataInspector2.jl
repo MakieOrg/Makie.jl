@@ -21,11 +21,16 @@ function DataInspector2(obj; kwargs...)
     )
     register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
 
+    kwarg_dict = Dict(kwargs)
+    attr = Attributes(
+        range = pop!(kwarg_dict, :range, 10),
+        persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
+    )
 
     di = DataInspector2(
         get_scene(obj), Dict{UInt64, Tooltip}(), tt,
         (0.0, 0.0), UInt64(0), [0, 0, 0],
-        Attributes(),
+        attr,
         Any[], Channel{Nothing}(Inf)
     )
 
@@ -33,24 +38,7 @@ function DataInspector2(obj; kwargs...)
 
     on(tick -> update_tooltip!(di, tick), e.tick)
 
-    on(e.mousebutton) do event
-        if ispressed(e, Keyboard.left_shift & Mouse.left) && is_mouseinside(di.parent)
-            mp = e.mouseposition[]
-            for (plot, idx) in pick_sorted(di.parent, mp, 10)
-                if parent_scene(plot) == di.parent
-                    if plot.inspectable[]
-                        element = pick_element(plot_stack(plot), idx)
-                        add_persistent_tooltip!(di, element)
-                        break
-                    elseif rootparent_plot(plot) isa Tooltip
-                        element = pick_element(plot_stack(plot), idx)
-                        remove_persistent_tooltip!(di, element)
-                        break
-                    end
-                end
-            end
-        end
-    end
+    on(event -> update_persistent_tooltips!(di), e.mousebutton)
 
     return di
 end
@@ -64,29 +52,53 @@ function update_tooltip!(di::DataInspector2, tick::Tick)
 
     di.update_counter[1] += 1 # TODO: for performance checks, remove later
 
-    if is_interactive_tick && mouse_moved
-        processed = false
+    # This update wont change state, ignore it
+    (is_interactive_tick && mouse_moved) || return
 
-        if is_mouseinside(di.parent)
-            di.update_counter[2] += 1 # TODO: for performance checks, remove later
-            di.last_mouseposition = mp
+    # Mouse outside relevant area, hide tooltip
+    if !is_mouseinside(di.parent)
+        update!(di.dynamic_tooltip, visible = false)
+        return
+    end
 
-            # inspector.attributes.range[]
-            for (plot, idx) in pick_sorted(di.parent, mp, 10)
+    di.update_counter[2] += 1 # TODO: for performance checks, remove later
+    di.last_mouseposition = mp
 
-                # plt belong to scene
-                plot_in_scene = parent_scene(plot) == di.parent
-                if plot_in_scene && plot.inspectable[]
-                    di.update_counter[3] += 1 # TODO: for performance checks, remove later
-                    processed =  true
-                    update_tooltip!(di, plot, idx)
-                    break
-                end
-            end
+    for (plot, idx) in pick_sorted(di.parent, mp, di.attributes.range[])
+        # Areas of scenes can overlap so we need to make sure the plot is
+        # actually in the correct scene
+        if parent_scene(plot) == di.parent && plot.inspectable[]
+            di.update_counter[3] += 1 # TODO: for performance checks, remove later
+            update_tooltip!(di, plot, idx)
+            return
         end
+    end
 
-        if !processed
-            update!(di.dynamic_tooltip, visible = false)
+    # Did not find inspectable plot, hide tooltip
+    update!(di.dynamic_tooltip, visible = false)
+
+    return
+end
+
+function update_persistent_tooltips!(di::DataInspector2)
+    e = events(di.parent)
+
+    if !ispressed(e, di.attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
+        return
+    end
+
+    mp = e.mouseposition[]
+    for (plot, idx) in pick_sorted(di.parent, mp, 10)
+        (parent_scene(plot) != di.parent) && continue
+
+        if plot.inspectable[]
+            element = pick_element(plot_stack(plot), idx)
+            add_persistent_tooltip!(di, element)
+            return
+        elseif rootparent_plot(plot) isa Tooltip
+            element = pick_element(plot_stack(plot), idx)
+            remove_persistent_tooltip!(di, element)
+            return
         end
     end
 
