@@ -94,6 +94,59 @@ end
     f
 end
 
+@reference_test "Volume from inside" begin
+    f = Figure(size = (600, 400), backgroundcolor = :black)
+    r = -10:10
+    data = [1 - (1 + x / 10 + cos(y^2) + cos(z^2)) for x in r, y in r, z in r]
+    index_data = round.(Int, 10 .* abs.(data))
+    N = maximum(index_data)
+    rgba_data = [RGBAf(x / 5, cos(y^2)^2, cos(z^2)^2, 0.5 + 0.5 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
+    add_data = [RGBAf(x, cos(y^2)^2, 0.1 * cos(z^2)^2, 0.1 + 0.1 * sin(x^2 + y^2 + z^2)) for x in r, y in r, z in r]
+
+    volume(
+        f[1, 1], -10 .. 10, -10 .. 10, -10 .. 10, data;
+        algorithm = :iso, isovalue = 0.5, isorange = 0.1
+    )
+    volume(f[2, 1], -10 .. 10, -10 .. 10, -10 .. 10, data, algorithm = :absorption)
+    volume(f[1, 2], -10 .. 10, -10 .. 10, -10 .. 10, data; algorithm = :mip)
+    volume(f[2, 2], -10 .. 10, -10 .. 10, -10 .. 10, rgba_data; algorithm = :absorptionrgba)
+    volume(f[1, 3], -10 .. 10, -10 .. 10, -10 .. 10, add_data; algorithm = :additive, alpha = 0.05)
+    volume(
+        f[2, 3], -10 .. 10, -10 .. 10, -10 .. 10, index_data;
+        algorithm = :indexedabsorption, colormap = Makie.resample(to_colormap(:viridis), N)
+    )
+
+    for ls in f.content
+        cam = cameracontrols(ls)
+        cam.settings.center[] = false
+        update_cam!(ls.scene, Vec3f(0), Vec3f(20, 1, 1))
+    end
+
+    f
+end
+
+# Test that volumes don't get clipped when their containing box would (i.e. if
+# the back vertices would get clipped)
+@reference_test "Volume no-clip" begin
+    f = Figure(size = (300, 800))
+    r = [sqrt(x * x + y * y + z * z) for x in -5:5, y in -5:5, z in -5:5]
+
+    ax = Axis3(f[1, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, algorithm = :iso, isovalue = 0.9)
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[2, 1])
+    contour!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, levels = [0.5, 0.9, 1.9])
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[3, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, absorption = 0.01, colorrange = (1, 2))
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    f
+end
+
+
 @reference_test "Textured meshscatter" begin
     catmesh = loadasset("cat.obj")
     img = loadasset("diffusemap.png")

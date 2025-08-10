@@ -11,26 +11,6 @@ function (x::VolumePrerender)()
     return glCullFace(GL_FRONT)
 end
 
-vol_depth_init(enable) = enable ? "float depth = 100000.0;" : ""
-vol_depth_default(enable) = enable ? "gl_FragDepth = gl_FragCoord.z;" : ""
-function vol_depth_main(enable)
-    return if enable
-        """
-        vec4 frag_coord = projectionview * model * vec4(pos, 1);
-        depth = min(depth, frag_coord.z / frag_coord.w);
-        """
-    else
-        ""
-    end
-end
-function vol_depth_write(enable)
-    return if enable
-        "gl_FragDepth = depth == 100000.0 ? gl_FragDepth : 0.5 * depth + 0.5;"
-    else
-        ""
-    end
-end
-
 @nospecialize
 """
 A matrix of Intensities will result in a contourf kind of plot
@@ -87,10 +67,7 @@ function draw_volume(screen, data::Dict)
                 "shading" => light_calc(shading),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "depth_init" => vol_depth_init(to_value(enable_depth)),
-                "depth_default" => vol_depth_default(to_value(enable_depth)),
-                "depth_main" => vol_depth_main(to_value(enable_depth)),
-                "depth_write" => vol_depth_write(to_value(enable_depth)),
+                "ENABLE_DEPTH" => to_value(enable_depth) ? "#define ENABLE_DEPTH" : "",
                 "buffers" => output_buffers(screen, to_value(transparency)),
                 "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
             )

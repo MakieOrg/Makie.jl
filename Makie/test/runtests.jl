@@ -25,6 +25,7 @@ using Makie: volume
         include("isolated/timing.jl")
         include("isolated/Plane.jl")
         include("isolated/texture_atlas.jl")
+        include("isolated/datetime_ticks.jl")
     end
 
     @testset "Plots" begin
@@ -56,6 +57,8 @@ using Makie: volume
         include("conversions/float32convert.jl")
         include("conversions/cameras.jl")
         include("conversions/projection_math.jl")
+
+        include("conversions/recipe_projections.jl")
     end
 
     @testset "Interactivity" begin

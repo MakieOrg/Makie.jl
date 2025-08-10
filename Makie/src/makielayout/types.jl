@@ -230,6 +230,40 @@ struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
 
+tickinfo = """
+The following is a list of common tick objects.
+
+Numeric:
+- A vector of numbers
+- A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+- [`WilkinsonTicks`](@ref), the default tick finder for linear ticks
+- [`LinearTicks`](@ref), an alternative tick finder for linear ticks
+- [`LogTicks`](@ref), a wrapper that applies any other wrapped tick finder on log-transformed values
+- [`MultiplesTicks`](@ref), for finding ticks at multiples of a given value, such as `π`
+- [`AngularTicks`](@ref), for finding tick steps that are fitting for angles with base 12 numbering (90° instead of 100)
+
+DateTime:
+- A vector of `DateTime`s
+- A tuple with two vectors `(datetimes, labels)`
+- [`DateTimeTicks`](@ref), the default tick finder for datetime ticks
+"""
+
+tickformatinfo = """
+The following is a list of common tick formatter objects.
+
+Numeric:
+- A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
+    formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+
+DateTime:
+- A `Function` that takes a vector of datetimes and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used to construct a `Dates.DateFormat` object for use with `Dates.format`. For example, `"dd.mm.yyyy"`.
+- A `Dates.DateFormat` object which is used with `Dates.format` like the `String` option.
+"""
+
 """
 A 2D axis which can be plotted into.
 
@@ -501,13 +535,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
         `Makie.get_ticklabels(xtickformat, xtickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         xticks = Makie.automatic
         """
@@ -518,11 +546,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `xticks` for more information.
 
-        Common objects that can be used for tick formatting are:
-        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
-          that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
-          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        $tickformatinfo
         """
         xtickformat = Makie.automatic
         """
@@ -535,13 +559,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
         `Makie.get_ticklabels(ytickformat, ytickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         yticks = Makie.automatic
         """
@@ -552,11 +570,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `yticks` for more information.
 
-        Common objects that can be used for tick formatting are:
-        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
-          that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
-          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        $tickformatinfo
         """
         ytickformat = Makie.automatic
         "The button for panning."
@@ -679,7 +693,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the x axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 
@@ -698,7 +712,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the y axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 

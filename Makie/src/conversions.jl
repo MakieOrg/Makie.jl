@@ -144,6 +144,16 @@ function convert_arguments(p::PointBased, x::GeometryPrimitive{Dim, T}) where {D
     return convert_arguments(p, decompose(Point{Dim, float_type(T)}, x))
 end
 
+function convert_arguments(p::PointBased, mp::MultiPoint{Dim, T}) where {Dim, T}
+    return convert_arguments(p, mp.points)
+end
+
+function convert_arguments(p::PointBased, mp::AbstractVector{<:MultiPoint})
+    points = mapreduce(x -> convert_arguments(p, x)[1], vcat, mp)
+    return (points,)
+end
+
+
 function convert_arguments(::PointBased, pos::RealMatrix)
     return (to_vertices(pos),)
 end
@@ -1572,7 +1582,7 @@ function categorical_colors(cs::Union{String, Symbol}, categories::Integer)
             """
             There is no color gradient named $cs.
             See `available_gradients()` for the list of available gradients,
-            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            or look at https://docs.makie.org/dev/explanations/colors#Colormaps.
             """
         )
     end
@@ -1622,7 +1632,7 @@ function to_colormap(cs::Union{String, Symbol})::Vector{RGBAf}
             """
             There is no color gradient named $cs.
             See `Makie.available_gradients()` for the list of available gradients,
-            or look at http://docs.makie.org/dev/generated/colors#Colormap-reference.
+            or look at https://docs.makie.org/dev/explanations/colors#Colormaps.
             """
         )
     end

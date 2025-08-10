@@ -122,6 +122,14 @@ end
     @test p_empty[1] == pts_empty
 end
 
+@testset "MultiPoint" begin
+    x = MultiPoint(rand(Point2f, 100))
+    f, ax, pl = plot(x)
+    @test pl.converted[][1] == x.points
+    f, ax, pl = plot([x, x])
+    @test pl.converted[][1] == [x.points; x.points]
+end
+
 @testset "intervals" begin
     x = [1, 5, 10]
     y = [1 .. 2, 1 .. 3, 2 .. 3]
