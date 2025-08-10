@@ -15,10 +15,12 @@ end
 
 function DataInspector2(obj; kwargs...)
     tt = tooltip!(
-        obj, Point2f(0), text = "", visible = false,
+        obj, Point3f(0), text = "", visible = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         draw_on_top = true
     )
+    register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
+
 
     di = DataInspector2(
         get_scene(obj), Dict{UInt64, Tooltip}(), tt,
@@ -92,6 +94,17 @@ function update_tooltip!(di::DataInspector2, tick::Tick)
 end
 
 function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::Integer)
+    function border_dodging_placement(di::DataInspector2, proj_pos)
+        wx, wy = widths(viewport(di.parent)[])
+        px, py = proj_pos
+
+        placement = py < 0.75wy ? (:above) : (:below)
+        px < 0.25wx && (placement = :right)
+        px > 0.75wx && (placement = :left)
+
+        return placement
+    end
+
     element = pick_element(plot_stack(source_plot), source_index)
 
     # TODO: Should we extract plot from PlotElement?
@@ -105,8 +118,15 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 
     copy_local_model_transformations!(di.dynamic_tooltip, parent(element))
 
-    update!(di.dynamic_tooltip, pos, text = label, visible = true) #; kwargs...
+    px_pos = di.dynamic_tooltip.pixel_positions[][1]
+
+    update!(
+        di.dynamic_tooltip, pos, text = label, visible = true,
+        placement = border_dodging_placement(di, px_pos)
+        #; kwargs...
+    )
 end
+
 
 function get_position(element::PlotElement{PT}) where {PT <: Plot}
     converted = parent(element).attributes[:converted][]
