@@ -23,6 +23,7 @@ FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FilePaths = "8fc22ac5-c921-52a6-82fd-178b2807b824"
 FixedPointNumbers = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 Format = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
 FreeTypeAbstraction = "663a7486-cb36-511b-a19d-713bb74d65c9"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
@@ -65,6 +66,9 @@ TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
+[sources]
+ComputePipeline = {path = "../ComputePipeline"}
+
 [compat]
 Animations = "0.4"
 Base64 = "1.0, 1.6"
@@ -84,6 +88,7 @@ FileIO = "1.6"
 FilePaths = "0.8"
 FixedPointNumbers = "0.6, 0.7, 0.8"
 Format = "1.3"
+ForwardDiff = "1.0.1"
 FreeType = "3.0, 4.0"
 FreeTypeAbstraction = "0.10.3"
 GeometryBasics = "0.5.9"
@@ -126,6 +131,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources.ComputePipeline]
-path = "../ComputePipeline"

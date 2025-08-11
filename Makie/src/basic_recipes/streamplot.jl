@@ -196,10 +196,10 @@ function plot!(p::StreamPlot)
     if N == 2 # && scatterplot.markerspace[] == Pixel (default)
         # Calculate arrow head rotations as angles. To avoid distortions from
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
-        map!((pos, dir) -> pos .+ dir, p, [:arrow_positions, :arrow_directions], :arrow_endpoints)
+        # We also need this for transform functions that curve space.
         register_projected_rotations_2d!(
             p,
-            startpoint_name = :arrow_positions, endpoint_name = :arrow_endpoints,
+            startpoint_name = :arrow_positions, direction_name = :arrow_directions,
             rotation_transform = x -> x - 0.5f0 * pi
         )
         rotation_name = :rotations

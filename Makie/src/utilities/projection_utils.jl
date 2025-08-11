@@ -212,6 +212,22 @@ Maps an angle from [-π, π] to [-π/2; π/2] by adding or subtracting π.
 """
 to_upright_angle(angle) = angle - ifelse(abs(angle) > 0.5f0 * π, copysign(Float32(π), angle), 0)
 
+function local_projection_matrix_basis(M, p)
+    #=
+    A projection matrix is applied as
+    f(p) = (M * p)[1:3] / (M * p)[4]
+    Because of the division (perpsective projection), the local basis may change
+    in space. To calulate it, we need to calculate the jacobian and evaluate it
+    at the given position.
+    =#
+    p3d = to_ndim(Point3d, p, 0)
+    p4d = to_ndim(Point4d, p3d, 1)
+    w = dot(M[4, :], p4d)
+    deriv1 = M[Vec(1,2,3), Vec(1,2,3)] * w
+    deriv2 = (M[Vec(1,2,3), :] * p4d) * M[4, Vec(1,2,3)]'
+    return (deriv1 .- deriv2) ./ (w * w)
+end
+
 """
     register_projected_rotations_2d!(plot; kwargs...)
 
@@ -233,22 +249,45 @@ end
 function register_projected_rotations_2d!(
         scene_graph::ComputeGraph, plot_graph::ComputeGraph;
         startpoint_name::Symbol,
-        endpoint_name::Symbol,
+        direction_name::Symbol,
         output_name::Symbol = :rotations,
         rotation_transform = identity
     )
 
-    px_startpoints = register_projected_positions!(
-        scene_graph, plot_graph, input_name = startpoint_name, output_space = :pixel
-    )
-    px_endpoints = register_projected_positions!(
-        scene_graph, plot_graph, input_name = endpoint_name, output_space = :pixel
-    )
+    projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, :space, :pixel)
+    register_model_f32c!(plot_graph)
 
-    map!(plot_graph, [px_startpoints, px_endpoints], output_name) do ps1, ps2
-        angles = angle2d.(ps1, ps2)
-        angles .= rotation_transform.(angles)
-        return angles
+    # TODO: f32convert, model_f32c
+    map!(
+        plot_graph,
+        [projection_matrix_name, :model_f32c, :f32c, :transform_func, startpoint_name, direction_name],
+        output_name
+    ) do proj_matrix, model, f32c, transform_func, positions, directions
+
+        # repackage transform_func so ForwardDiff can work with it
+        f(pos) = apply_transform(transform_func, pos)
+
+        if f32c === nothing
+            f32c_mat = Mat2d(1, 0, 0, 1)
+        else
+            full_mat = f32_convert_matrix(f32c)
+            f32c_mat = Mat2d(full_mat[Vec(1, 2), Vec(1, 2)])
+        end
+
+        map(positions, directions) do pos, dir
+            # We assume that there is no 3D rotation here, so z doesn't matter.
+            # We also assume that there is no perspective projection, which
+            # means the vector basis doesn't change locally.
+            basis_transform =
+                proj_matrix[Vec(1, 2), Vec(1, 2)] *
+                model[Vec(1, 2), Vec(1, 2)] *
+                f32c_mat *
+                ForwardDiff.jacobian(f, pos)
+
+            transformed_dir = basis_transform * dir
+            angle = atan(transformed_dir[2], transformed_dir[1])
+            return rotation_transform(angle)
+        end
     end
 
     return getindex(plot_graph, output_name)
