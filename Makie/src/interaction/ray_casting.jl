@@ -340,22 +340,22 @@ function find_picked_triangle(
         ray::Ray, idx::Integer
     )
     # positions w/ f32c, transform_func, no model
-    for f in faces
-        if idx in f
-            p1, p2, p3 = positions[f]
+    for (face_index, face) in enumerate(faces)
+        if idx in face
+            p1, p2, p3 = positions[face]
             pos = ray_triangle_intersection(p1, p2, p3, ray)
             if !isnan(pos)
-                return f, pos
+                return face, face_index, pos
             end
         end
     end
 
-    return GLTriangleFace(0,0,0), Point3d(NaN)
+    return GLTriangleFace(1,1,1), 0, Point3d(NaN)
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
     ray = transform(inv(plot.model[]), ray)
-    _, pos = find_picked_triangle(plot.positions_transformed_f32c[], plot.faces[], ray, idx)
+    _, _, pos = find_picked_triangle(plot.positions_transformed_f32c[], plot.faces[], ray, idx)
 
     if !isnan(pos)
         pos = inv_f32_convert(plot, pos)

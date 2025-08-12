@@ -70,8 +70,9 @@ function update_tooltip!(di::DataInspector2, tick::Tick)
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
             di.update_counter[3] += 1 # TODO: for performance checks, remove later
-            update_tooltip!(di, plot, idx)
-            return
+            if update_tooltip!(di, plot, idx)
+                return
+            end
         end
     end
 
@@ -120,6 +121,10 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 
     element = pick_element(plot_stack(source_plot), source_index)
 
+    if isnothing(element)
+        return false
+    end
+
     # TODO: Should we extract plot from PlotElement?
     pos = get_position(element)
     # TODO: shift pos to desired depth
@@ -138,6 +143,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
         placement = border_dodging_placement(di, px_pos)
         #; kwargs...
     )
+
+    return true
 end
 
 

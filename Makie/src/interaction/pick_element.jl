@@ -141,19 +141,28 @@ end
 
 function pick_element(plot::Mesh, idx, plot_stack)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
-    f, pos = find_picked_triangle(
+    face, face_index, pos = find_picked_triangle(
         plot.positions_transformed_f32c[], plot.faces[], ray, idx
     )
-    uv = triangle_interpolation_parameters(f, plot.positions_transformed_f32c[], pos)
-    return MeshPlotElement(plot, f, uv)
+    if isnan(pos)
+        return nothing
+    else
+        uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
+        submesh_index = findfirst(range -> face_index in range, plot.mesh[].views)
+        return MeshPlotElement(plot, something(submesh_index, 1), face, uv)
+    end
 end
 
 
 function pick_element(plot::Surface, idx, plot_stack)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
-    f, pos = find_picked_surface_cell(plot, idx, ray)
-    uv = triangle_interpolation_parameters(f, plot.positions_transformed_f32c[], pos)
-    return MeshPlotElement(plot, f, uv)
+    face, pos = find_picked_surface_cell(plot, idx, ray)
+    if isnan(pos)
+        return nothing
+    else
+        uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
+        return MeshPlotElement(plot, 1, face, uv)
+    end
 end
 
 function pick_element(plot::Voxels, idx, plot_stack)

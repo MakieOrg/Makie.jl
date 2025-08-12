@@ -31,6 +31,8 @@ function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
     return base_type(plot, fields...)
 end
 
+PlotElement(@nospecialize(::Plot), ::Nothing) = nothing
+
 struct TrackedPlotElement{PlotType, ElementType <: PlotElement{PlotType}} <: PlotElement{PlotType}
     element::ElementType
     accessed_fields::Vector{Symbol}
@@ -82,11 +84,12 @@ end
 
 struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
     parent::PlotType
+    submesh_index::Int64
     face::GLTriangleFace
     uv::Vec2f
 
-    function MeshPlotElement(plot::PlotType, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
-        return new{PlotType}(plot, GLTriangleFace(face), Vec2f(uv))
+    function MeshPlotElement(plot::PlotType, submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
+        return new{PlotType}(plot, submesh_index, GLTriangleFace(face), Vec2f(uv))
     end
 end
 
