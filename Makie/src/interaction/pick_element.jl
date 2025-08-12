@@ -58,7 +58,7 @@ function pick_line_element(scene::Scene, plot, idx)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))
     idx = max(2, idx)
     interpolation = closest_point_on_line_interpolation(pos[idx - 1], pos[idx], ray)
-    return InterpolatedPlotElement(plot, idx-1, idx, interpolation)
+    return InterpolatedPlotElement(plot, idx-1, idx, interpolation, length(pos))
 end
 
 function model_space_boundingbox(plot::Heatmap)
@@ -88,8 +88,15 @@ function pick_rect2D_element(scene::Scene, plot)
     _size = size(plot.image[])
     uv = (pos - p0) ./ (p1 - p0)
     ij_interp = uv .* _size
-    ij_low = clamp.(floor.(Int, ij_interp), 1, _size .- 1)
-    return InterpolatedPlotElement(plot, ij_low, ij_low .+ 1, ij_interp .- ij_low)
+    # 0   1   2   3  ij_interp
+    # | , | , | , |
+    #   1   2   3    cell index
+    # ij_low should be i for ij_interp = i-0.5 .. i+0.5
+    # ij_high should be i+1 in the same range
+    ij_low = clamp.(floor.(Int, ij_interp .+ 0.5), 1, _size)
+    ij_high = clamp.(ceil.(Int, ij_interp .+ 0.5), 1, _size)
+    local_interpolation = ij_interp .- ij_low .+ 0.5
+    return InterpolatedPlotElement(plot, ij_low, ij_high, local_interpolation, _size)
 end
 
 function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<: VecTypes{2}}, ref::VecTypes)
@@ -118,12 +125,12 @@ end
 ################################################################################
 
 function pick_element(plot::Union{Scatter, MeshScatter}, idx, plot_stack)
-    return IndexedPlotElement(plot, idx)
+    return IndexedPlotElement(plot, idx, length(plot.positions[]))
 end
 
 function pick_element(plot::Text, idx, plot_stack)
     idx = findfirst(range -> idx in range, plot.text_blocks[])
-    return IndexedPlotElement(plot, idx)
+    return IndexedPlotElement(plot, idx, length(plot.text_blocks[]))
 end
 
 function pick_element(plot::Union{Lines, LineSegments}, idx, plot_stack)
@@ -134,8 +141,9 @@ function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack)
     if plot.interpolate[]
         return pick_rect2D_element(parent_scene(plot), plot)
     else
-        cart = CartesianIndices(size(plot.image[]))[idx]
-        return IndexedPlotElement(plot, cart)
+        _size = size(plot.image[])
+        cart = CartesianIndices(_size)[idx]
+        return IndexedPlotElement(plot, cart, _size)
     end
 end
 
@@ -176,8 +184,9 @@ function pick_element(plot::Surface, idx, plot_stack)
 end
 
 function pick_element(plot::Voxels, idx, plot_stack)
-    cart = CartesianIndices(size(plot.chunk_u8[]))[idx]
-    return IndexedPlotElement(plot, cart)
+    _size = size(plot.chunk_u8[])
+    cart = CartesianIndices(_size)[idx]
+    return IndexedPlotElement(plot, cart, _size)
 end
 
 # TODO:
@@ -252,12 +261,13 @@ function fast_submesh_index(plot::Mesh, idx::Integer)
         faces = plot.faces[]
         for (face_index, face) in enumerate(plot.faces[])
             if idx in face
-                submesh_index = findfirst(range -> face_index in range, plot.mesh[].views)
-                return submesh_index
+                views = plot.mesh[].views
+                submesh_index = findfirst(range -> face_index in range, views)
+                return submesh_index, length(views)
             end
         end
     end
-    return 1
+    return 1, 1
 end
 
 function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Mesh, Vararg{Plot}})
@@ -267,19 +277,20 @@ end
 function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     # increment_at marks the NaN points which separate outline of each mesh
     # If only one mesh is present, increment_at will be [typemax(Int)]
-    return findfirst(separation_idx -> idx < separation_idx, plot.increment_at[])
+    increment_at = plot.increment_at[]
+    return findfirst(separation_idx -> idx < separation_idx, increment_at), length(increment_at)
 end
 function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plot}})
-    return 1
+    return 1, 1
 end
 
 # Text produces the element we want so we just need to handle Poly
 function pick_element(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
-    idx = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedPlotElement(plot, idx)
+    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedPlotElement(plot, idx, N)
 end
 
 function pick_element(plot::BarPlot, idx, plot_stack)
-    idx = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedPlotElement(plot, idx)
+    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedPlotElement(plot, idx, N)
 end

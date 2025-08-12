@@ -61,25 +61,40 @@ Base.parent(e::TrackedPlotElement) = parent(e.element)
 struct IndexedPlotElement{PlotType, D} <: PlotElement{PlotType}
     parent::PlotType
     index::CartesianIndex{D}
+    size::Vec{D, Int64}
+
+    function IndexedPlotElement(plot::PT, idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {PT <: Plot, N}
+        return new{PT, N}(plot, idx, Vec{N, Int64}(size))
+    end
 end
 
-IndexedPlotElement(plot::Plot, idx::Integer) = IndexedPlotElement(plot, CartesianIndex(idx))
-function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}) where {N}
-    return IndexedPlotElement(plot, CartesianIndex(idx...))
+function IndexedPlotElement(plot::Plot, idx::Integer, size::Integer)
+    return IndexedPlotElement(plot, CartesianIndex(idx), Vec{1, Int64}(size))
 end
+
+function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
+    return IndexedPlotElement(plot, CartesianIndex(idx...), Vec{N, Int64}(size))
+end
+
 
 struct InterpolatedPlotElement{PlotType, D} <: PlotElement{PlotType}
     parent::PlotType
     index0::CartesianIndex{D}
     index1::CartesianIndex{D}
     interpolation::Vec{D, Float32}
+    size::Vec{D, Int64}
 end
 
-function InterpolatedPlotElement(plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat)
-    return InterpolatedPlotElement(plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation))
+function InterpolatedPlotElement(plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat, size::Integer)
+    return InterpolatedPlotElement(plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation), Vec{1, Int64}(size))
 end
-function InterpolatedPlotElement(plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer}, interpolation::VecTypes{D, <:AbstractFloat}) where {D}
-    return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation))
+
+function InterpolatedPlotElement(
+        plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer},
+        interpolation::VecTypes{D, <:AbstractFloat}, size::VecTypes{D, <:Integer}
+    ) where {D}
+
+    return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation), Vec{D, Int64}(size))
 end
 
 struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
@@ -95,6 +110,20 @@ end
 
 function element_getindex(x, element::IndexedPlotElement)
     return sv_getindex(x, element.index)
+end
+
+function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
+    if x isa AbstractArray{T, 2} where T
+        return element_getindex(x, element)
+    elseif x isa Union{EndPoints, EndPointsLike}
+        x0, x1 = x
+        r = range(x0, x1, element.size[dim])
+        return r[element.index[dim]]
+    elseif is_array_attribute(x) # or vector, we already filtered 2d arrays
+        return sv_getindex(x, element.index[dim])
+    else
+        return x
+    end
 end
 
 # TODO: can we extend is_vector_attribute() to consider Matrices vectors?
@@ -130,6 +159,22 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) wher
         x_1 = lerp(x01, x11, element.interpolation[1])
 
         return lerp(x_0, x_1, element.interpolation[2])
+    else
+        return x
+    end
+end
+
+function dimensional_element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
+    if x isa AbstractArray{T, 2} where T
+        return element_getindex(x, element)
+    elseif x isa Union{EndPoints, EndPointsLike}
+        x0, x1 = x
+        f = (element.index0[dim] + element.interpolation[dim] - 0.5) / element.size[dim]
+        return lerp(x0, x1, f)
+    elseif is_array_attribute(x)
+        x0 = sv_getindex(x, element.index0[dim])
+        x1 = sv_getindex(x, element.index1[dim])
+        return lerp(x0, x1, element.interpolation[dim])
     else
         return x
     end

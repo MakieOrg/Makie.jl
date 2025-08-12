@@ -253,6 +253,13 @@ get_default_tooltip_label(e, p) = "Failed to construct label for $e, $p"
 get_position(element::PlotElement{<:Mesh}) = element.positions
 get_position(element::PlotElement{<:Surface}) = element.positions
 
+function get_position(element::PlotElement{<:Union{Image, Heatmap}})
+    plot = parent(element)
+    x = dimensional_element_getindex(plot.x[], element, 1)
+    y = dimensional_element_getindex(plot.y[], element, 2)
+    return Point2f(x, y)
+end
+
 function get_position(element::PlotElement{<:Hist})
     barplot_element = PlotElement(parent(element).plots[1], element)
     return get_position(barplot_element)
