@@ -97,8 +97,17 @@ function element_getindex(x, element::IndexedPlotElement)
     return sv_getindex(x, element.index)
 end
 
+# TODO: can we extend is_vector_attribute() to consider Matrices vectors?
+is_array_attribute(x::AbstractArray) = true
+is_array_attribute(x::Base.Generator) = is_array_attribute(x.iter)
+is_array_attribute(x::NativeFont) = false
+is_array_attribute(x::Quaternion) = false
+is_array_attribute(x::VecTypes) = false
+is_array_attribute(x::ScalarOrVector) = x.sv isa Vector
+is_array_attribute(x) = false
+
 function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) where {PlotType}
-    if is_vector_attribute(x)
+    if is_array_attribute(x)
         low = sv_getindex(x, element.index0)
         high = sv_getindex(x, element.index1)
         return lerp(low, high, element.interpolation[1])
@@ -108,7 +117,7 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) wher
 end
 
 function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) where {PlotType}
-    if is_vector_attribute(x)
+    if is_array_attribute(x)
         i0, j0 = Tuple(element.index0)
         i1, j1 = Tuple(element.index1)
 
@@ -127,7 +136,7 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) wher
 end
 
 function element_getindex(x, element::MeshPlotElement)
-    if is_vector_attribute(x)
+    if is_array_attribute(x)
         i, j, k = element.face
         a = sv_getindex(x, i)
         b = sv_getindex(x, j)

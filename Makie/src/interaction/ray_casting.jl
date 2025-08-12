@@ -401,7 +401,7 @@ function find_picked_surface_cell(plot::Surface, idx, ray::Ray)
         (1 <= i <= w) && (1 <= j < h) || continue
 
         f1 = TriangleFace{Int64}(linear_index(i, j, w), linear_index(i - 1, j, w), linear_index(i, j + 1, w))
-        f2 = TriangleFace{Int64}(linear_index(i, j, w), linear_index(i, j + 1, w), linear_index(i + 1, j + 1, w))
+        f2 = TriangleFace{Int64}(linear_index(i, j + 1, w), linear_index(i + 1, j + 1, w), linear_index(i, j, w))
 
         for f in (f1, f2)
             all(i -> 1 <= i <= length(ps), f) || continue

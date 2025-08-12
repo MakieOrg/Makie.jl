@@ -109,13 +109,8 @@ function add_computation!(attr, scene, ::Val{:surface_transform})
     # TODO: This is dropping fast paths for Range/Vector x, y w/o transform_func & f32c
     # TODO: If we're always creating a Matrix of Points GLMakie should just
     #       use that directly instead of going back to a x and y matrix representation
-    map!(
-        attr,
-        [:x, :y, :z, :transform_func],
-        :positions_transformed
-    ) do x, y, z, func
-        return apply_transform(func, _surf_xyz_convert(x, y, z))
-    end
+    map!(_surf_xyz_convert, attr, [:x, :y, :z], :positions)
+    map!(apply_transform, attr, [:transform_func, :positions], :positions_transformed)
 
     register_positions_transformed_f32c!(attr)
 

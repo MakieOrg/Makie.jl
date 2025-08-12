@@ -156,10 +156,20 @@ end
 
 function pick_element(plot::Surface, idx, plot_stack)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+    # the face picked here is always (pos, change first matrix index, change second matrix index)
+    # so calculated uv's match first and second matrix index too
     face, pos = find_picked_surface_cell(plot, idx, ray)
     if isnan(pos)
         return nothing
     else
+        # TODO: This should probably be a InterpolatedPlotElement{Surface, 2},
+        # but how do we calculate the interpolated indices safely and quickly?
+        # j, i = fldmod1(idx, size(z, 1)) should give us the closest matrix element
+        # which means we can be somewhere between i-0.5 .. i+0.5 and j-0.5 .. j+0.5
+        # this gives us 4 quads to search
+        # each quad can be an irregular shape and any dimension could be constant
+        # and we need to ray cast to get an accurate position on the quad
+        # for now just triangulate...
         uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
         return MeshPlotElement(plot, 1, face, uv)
     end
