@@ -268,15 +268,19 @@ function voxel_size(p::Voxels)
 end
 
 function voxel_positions(p::Voxels)
-    mini, maxi = extrema(data_limits(p))
     voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     _size = size(voxel_id)
-    step = (maxi .- mini) ./ _size
-    return [
-        Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
+    return [voxel_position(p, i, j, k)
             for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
             if voxel_id[i, j, k] !== 0x00
     ]
+end
+
+function voxel_position(p::Voxels, i, j, k)
+    mini, maxi = extrema(data_limits(p))
+    _size = size(p.chunk_u8[].data::Array{UInt8, 3})
+    step = (maxi .- mini) ./ _size
+    return Point3f(mini .+ step .* (i - 0.5, j - 0.5, k - 0.5))
 end
 
 function voxel_colors(p::Voxels)

@@ -260,6 +260,10 @@ function get_position(element::PlotElement{<:Union{Image, Heatmap}})
     return Point2f(x, y)
 end
 
+function get_position(element::PlotElement{<:Voxels})
+    return voxel_position(parent(element), Tuple(element.index)...)
+end
+
 function get_position(element::PlotElement{<:Hist})
     barplot_element = PlotElement(parent(element).plots[1], element)
     return get_position(barplot_element)
