@@ -177,49 +177,99 @@ pick_element(plot::Volume, idx, plot_stack) = false
 # Overloads
 ################################################################################
 
-function pick_mesh_array_index(merged_mesh::GeometryBasics.Mesh, vertex_index::Integer)
+function find_triangle_in_submesh(
+        positions::AbstractArray{<:VecTypes},
+        faces::AbstractArray{<:GeometryBasics.AbstractFace},
+        ray::Ray
+    )
+    for face in faces
+        p1, p2, p3 = positions[face]
+        pos = ray_triangle_intersection(p1, p2, p3, ray)
+        if !isnan(pos)
+            return face, face_index, pos
+        end
+    end
+    return GLTriangleFace(1, 1, 1), 0, Point3d(NaN)
+end
+
+function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plot}})
+    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+    meshplot = plot.plots[1]
+    positions = meshplot.positions_transformed_f32c[]
+
+    face, face_index, pos = find_triangle_in_submesh(
+        positions, meshplot.faces[], ray
+    )
+
+    if isnan(pos)
+        return nothing
+    else
+        submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
+        uv = triangle_interpolation_parameters(face, positions, pos)
+        return MeshPlotElement(plot, submesh_index, face, uv)
+    end
+end
+
+function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
+    # reproduce mesh result
+    submesh_index = findfirst(separation_idx -> idx < separation_idx, plot.increment_at[])
+    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+    meshplot = plot.plots[1]
+    positions = meshplot.positions_transformed_f32c[]
+    range = meshplot.mesh[].views[submesh_index]
+
+    face, face_index, pos = find_triangle_in_submesh(
+        positions, view(meshplot.faces[], range), ray
+    )
+
+    if isnan(pos)
+        return nothing
+    else
+        submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
+        uv = triangle_interpolation_parameters(face, positions, pos)
+        return MeshPlotElement(plot, submesh_index, face, uv)
+    end
+end
+
+function fast_submesh_index(plot::Mesh, idx::Integer)
     # When multiple meshes get merged via GeometryBasics, the faces of each
     # input mesh will get tracked by mesh.views. Faces of the first input are
     # mesh.faces[mesh.views[1]] etc. If we have 0 or 1 views, we have only one
     # mesh present. Otherwise we have multiple, and we need to find which mesh
     # a the vertex index `idx` belongs to. (Vertices don't get reused)
-    if length(merged_mesh.views) < 2
-        return 1
-    else
-        fs = faces(merged_mesh)
-        for (face_idx, face) in enumerate(fs)
-            if vertex_index in face
-                return findfirst(range -> face_idx in range, merged_mesh.views)
+    if length(plot.mesh[].views) > 1
+        ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+        faces = plot.faces[]
+        for (face_index, face) in enumerate(plot.faces[])
+            if idx in face
+                submesh_index = findfirst(range -> face_index in range, plot.mesh[].views)
+                return submesh_index
             end
         end
     end
+    return 1
 end
 
-function pick_mesh_array_index(plot::Mesh, vertex_index::Integer, plot_stack)
-    return pick_mesh_array_index(plot.mesh[], vertex_index)
+function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Mesh, Vararg{Plot}})
+    return fast_submesh_index(first(plot_stack), idx)
 end
 
-function pick_mesh_array_index(::Wireframe, ::Integer, plot_stack)
-    return 1 # TODO: compute this
-end
-
-function pick_mesh_array_index(::Poly, vertex_index::Integer, plot_stack)
-    return pick_mesh_array_index(first(plot_stack), vertex_index, plot_stack)
-end
-
-function pick_mesh_array_index(plot::Poly, idx::Integer, plot_stack::Tuple{<:Lines, Vararg{Plot}})
+function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     # increment_at marks the NaN points which separate outline of each mesh
     # If only one mesh is present, increment_at will be [typemax(Int)]
     return findfirst(separation_idx -> idx < separation_idx, plot.increment_at[])
 end
+function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plot}})
+    return 1
+end
 
 # Text produces the element we want so we just need to handle Poly
 function pick_element(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
-    idx = pick_mesh_array_index(first(plot_stack), idx, Base.tail(plot_stack))
+    idx = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
     return IndexedPlotElement(plot, idx)
 end
 
 function pick_element(plot::BarPlot, idx, plot_stack)
-    idx = pick_mesh_array_index(first(plot_stack), idx, Base.tail(plot_stack))
+    idx = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
     return IndexedPlotElement(plot, idx)
 end

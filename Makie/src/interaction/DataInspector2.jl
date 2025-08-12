@@ -256,4 +256,8 @@ function get_position(element::PlotElement{<:Hist})
 end
 
 get_position(element::PlotElement{<:Mesh}) = element.positions
+function get_position(element::PlotElement{<:Poly})
+    mesh_element = PlotElement(parent(element).plots[1], element)
+    return get_position(mesh_element)
+end
 
