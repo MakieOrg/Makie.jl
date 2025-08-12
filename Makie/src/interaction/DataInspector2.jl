@@ -14,14 +14,15 @@ mutable struct DataInspector2
 end
 
 function DataInspector2(obj; kwargs...)
+    kwarg_dict = Dict(kwargs)
+
     tt = tooltip!(
-        obj, Point3f(0), text = "", visible = false,
+        obj, Point3d(0), text = "", visible = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        draw_on_top = true
+        draw_on_top = get(kwarg_dict, :draw_on_top, true)
     )
     register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
 
-    kwarg_dict = Dict(kwargs)
     attr = Attributes(
         range = pop!(kwarg_dict, :range, 10),
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
@@ -133,7 +134,7 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     px_pos = di.dynamic_tooltip.pixel_positions[][1]
 
     update!(
-        di.dynamic_tooltip, pos, text = label, visible = true,
+        di.dynamic_tooltip, to_ndim(Point3d, pos, 0), text = label, visible = true,
         placement = border_dodging_placement(di, px_pos)
         #; kwargs...
     )
