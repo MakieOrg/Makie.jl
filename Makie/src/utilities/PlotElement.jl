@@ -133,7 +133,7 @@ function element_getindex(x, element::MeshPlotElement)
         b = sv_getindex(x, j)
         c = sv_getindex(x, k)
         u, v = element.uv
-        return lerp(a, b, u) + lerp(a, c, v)
+        return a + u * (b-a) + v * (c-a)
     else
         return x
     end

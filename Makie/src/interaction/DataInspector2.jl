@@ -254,3 +254,6 @@ function get_position(element::PlotElement{<:Hist})
     barplot_element = PlotElement(parent(element).plots[1], element)
     return get_position(barplot_element)
 end
+
+get_position(element::PlotElement{<:Mesh}) = element.positions
+
