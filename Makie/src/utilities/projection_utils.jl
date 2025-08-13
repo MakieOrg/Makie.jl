@@ -281,7 +281,7 @@ function register_projected_rotations_2d!(
         # means the vector basis doesn't change locally.
         basis_transform = proj_matrix[Vec(1, 2), Vec(1, 2)] * model[Vec(1, 2), Vec(1, 2)] * f32c_mat
 
-        delta = relative_delta * norm(widths(Rect2d(positions)))
+        delta = relative_delta * norm(widths(Rect3d(positions)))
 
         map(positions, directions) do pos, dir
             transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
@@ -316,7 +316,7 @@ function register_transformed_rotations_3d!(
     )
 
     map!(
-        plot, [:transform_func, startpoint_name, direction_name], output_name
+        plot, [:transform_func, position_name, direction_name], output_name
     ) do transform_func, positions, directions
         delta = relative_delta * norm(widths(Rect3d(positions)))
         return apply_transform_to_direction(transform_func, positions, directions, delta)
