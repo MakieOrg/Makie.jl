@@ -192,7 +192,6 @@ function plot!(p::StreamPlot)
 
     N = ndims(p.limits[])
 
-    rotation_name = :arrow_directions
     if N == 2 # && scatterplot.markerspace[] == Pixel (default)
         # Calculate arrow head rotations as angles. To avoid distortions from
         # (extreme) aspect ratios we need to project to pixel space and renormalize.
@@ -202,7 +201,13 @@ function plot!(p::StreamPlot)
             startpoint_name = :arrow_positions, direction_name = :arrow_directions,
             rotation_transform = x -> x - 0.5f0 * pi
         )
-        rotation_name = :rotations
+    else
+        register_transformed_rotations_3d!(
+            p, startpoint_name = :arrow_positions, direction_name = :arrow_directions
+        )
+        # map!(p, [:transform_func, :arrow_positions, :arrow_directions], :rotations) do tf, pos, dir
+        #     normalize(apply_transform(tf, pos .+ 0.01 * dir) .- apply_transform(tf, pos .- 0.01 * dir))
+        # end
     end
 
     map!(p, [:arrow_size, :limits, :gridsize], :computed_arrow_size) do arrow_size, limits, gridsize
@@ -224,7 +229,7 @@ function plot!(p::StreamPlot)
         p.attributes,
         p.arrow_positions;
         markersize = p.computed_arrow_size,
-        rotation = getindex(p, rotation_name),
+        rotation = getindex(p, :rotations),
         color = p.arrow_colors,
         marker = p.arrow_marker,
         fxaa = N == 3

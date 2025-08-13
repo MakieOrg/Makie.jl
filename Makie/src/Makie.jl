@@ -78,7 +78,6 @@ using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, to_value, notify
-using ForwardDiff
 
 import InverseFunctions
 

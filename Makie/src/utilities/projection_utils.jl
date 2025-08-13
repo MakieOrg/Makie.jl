@@ -243,29 +243,26 @@ Note that this computes projections to correctly deal with transformations.
 - `output_name::Symbol = :rotations` name of the rotation output
 - `rotation_transform = identity` A transformation that is applied to angles before outputting them. E.g. `to_upright_angle`.
 """
-function register_projected_rotations_2d!(@nospecialize(plot::Plot); kwargs...)
-    return register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
+function register_projected_rotations_2d!(plot::Plot; kwargs...)
+    return register_projected_rotations_2d!(plot, parent_scene(plot).compute, plot.attributes; kwargs...)
 end
 function register_projected_rotations_2d!(
-        scene_graph::ComputeGraph, plot_graph::ComputeGraph;
+        plot::Plot, scene_graph::ComputeGraph, plot_graph::ComputeGraph;
         startpoint_name::Symbol,
         direction_name::Symbol,
         output_name::Symbol = :rotations,
-        rotation_transform = identity
+        rotation_transform = identity,
+        relative_delta = 1e-3
     )
 
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, :space, :pixel)
     register_model_f32c!(plot_graph)
 
-    # TODO: f32convert, model_f32c
     map!(
         plot_graph,
         [projection_matrix_name, :model_f32c, :f32c, :transform_func, startpoint_name, direction_name],
         output_name
     ) do proj_matrix, model, f32c, transform_func, positions, directions
-
-        # repackage transform_func so ForwardDiff can work with it
-        f(pos) = apply_transform(transform_func, pos)
 
         if f32c === nothing
             f32c_mat = Mat2d(1, 0, 0, 1)
@@ -274,21 +271,38 @@ function register_projected_rotations_2d!(
             f32c_mat = Mat2d(full_mat[Vec(1, 2), Vec(1, 2)])
         end
 
-        map(positions, directions) do pos, dir
-            # We assume that there is no 3D rotation here, so z doesn't matter.
-            # We also assume that there is no perspective projection, which
-            # means the vector basis doesn't change locally.
-            basis_transform =
-                proj_matrix[Vec(1, 2), Vec(1, 2)] *
-                model[Vec(1, 2), Vec(1, 2)] *
-                f32c_mat *
-                ForwardDiff.jacobian(f, pos)
+        # We assume that there is no 3D rotation here, so z doesn't matter.
+        # We also assume that there is no perspective projection, which
+        # means the vector basis doesn't change locally.
+        basis_transform = proj_matrix[Vec(1, 2), Vec(1, 2)] * model[Vec(1, 2), Vec(1, 2)] * f32c_mat
 
-            transformed_dir = basis_transform * dir
+        delta = relative_delta * norm(widths(Rect2d(positions)))
+
+        map(positions, directions) do pos, dir
+            transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
+            transformed_dir = basis_transform * transformed_dir
             angle = atan(transformed_dir[2], transformed_dir[1])
             return rotation_transform(angle)
         end
     end
 
     return getindex(plot_graph, output_name)
+end
+
+function register_transformed_rotations_3d!(
+        @nospecialize(plot::Plot);
+        startpoint_name::Symbol,
+        direction_name::Symbol,
+        output_name::Symbol = :rotations,
+        relative_delta = 1e-3
+    )
+
+    map!(
+        plot, [:transform_func, startpoint_name, direction_name], output_name
+    ) do transform_func, positions, directions
+        delta = relative_delta * norm(widths(Rect3d(positions)))
+        return apply_transform_to_direction(transform_func, positions, directions, delta)
+    end
+
+    return getproperty(plot, output_name)
 end
