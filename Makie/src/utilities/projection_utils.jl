@@ -285,7 +285,7 @@ function register_projected_rotations_2d!(
 
         map(positions, directions) do pos, dir
             transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
-            transformed_dir = basis_transform * transformed_dir
+            transformed_dir = basis_transform * transformed_dir[Vec(1, 2)]
             angle = atan(transformed_dir[2], transformed_dir[1])
             return rotation_transform(angle)
         end

@@ -359,13 +359,17 @@ function apply_transform_to_direction(f, positions::AbstractArray, directions::A
     return map((pos, dir) -> apply_transform_to_direction(f, pos, dir, delta), positions, directions)
 end
 
-function apply_transform_to_direction(f, position::VecTypes{D}, direction::VecTypes{D}, delta) where {D}
-    p0 = apply_transform(f, position .- delta .* direction)
-    p1 = apply_transform(f, position .+ delta .* direction)
-    return normalize(p1 .- p0)
+function apply_transform_to_direction(f, position::VecTypes{D1, T1}, direction::VT, delta) where {D1, T1, D2, T2, VT <: VecTypes{D2, T2}}
+    D = max(D1, D2)
+    T = float_type(T1, T2)
+    pos = to_ndim(Point{D, T}, position, 0)
+    dir = to_ndim(Point{D, T}, direction, 0)
+    p0 = apply_transform(f, pos .- delta .* dir)
+    p1 = apply_transform(f, pos .+ delta .* dir)
+    return normalize(to_ndim(VT, p1 .- p0, 0))
 end
 
-function apply_transform_to_direction(f::typeof(identity), position::VecTypes{D}, direction::VecTypes{D}, delta) where {D}
+function apply_transform_to_direction(f::typeof(identity), position::VecTypes, direction::VecTypes, delta)
     return direction
 end
 
