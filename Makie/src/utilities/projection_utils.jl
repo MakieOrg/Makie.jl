@@ -223,8 +223,8 @@ function local_projection_matrix_basis(M, p)
     p3d = to_ndim(Point3d, p, 0)
     p4d = to_ndim(Point4d, p3d, 1)
     w = dot(M[4, :], p4d)
-    deriv1 = M[Vec(1,2,3), Vec(1,2,3)] * w
-    deriv2 = (M[Vec(1,2,3), :] * p4d) * M[4, Vec(1,2,3)]'
+    deriv1 = M[Vec(1, 2, 3), Vec(1, 2, 3)] * w
+    deriv2 = (M[Vec(1, 2, 3), :] * p4d) * M[4, Vec(1, 2, 3)]'
     return (deriv1 .- deriv2) ./ (w * w)
 end
 
@@ -257,7 +257,7 @@ function register_projected_rotations_2d!(
         direction_name::Symbol,
         output_name::Symbol = :rotations,
         rotation_transform = identity,
-        relative_delta = 1e-3
+        relative_delta = 1.0e-3
     )
 
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, :space, :pixel)
@@ -312,7 +312,7 @@ function register_transformed_rotations_3d!(
         position_name::Symbol,
         direction_name::Symbol,
         output_name::Symbol = :rotations,
-        relative_delta = 1e-3
+        relative_delta = 1.0e-3
     )
 
     map!(
