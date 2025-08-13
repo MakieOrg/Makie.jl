@@ -2406,3 +2406,29 @@ end
 
     f
 end
+
+@reference_test "Transformed rotations" begin
+    f = Figure(size = (600, 700))
+    a = PolarAxis(f[1, 1])
+    p = streamplot!(a, p -> Point2f(1, 0), 0..2pi, 0..5, gridsize = (10, 10))
+    a = PolarAxis(f[2, 1])
+    p = contour!(
+        a, 0..2pi, 0..5, [sqrt(x^2 + y^2) for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3)
+
+        a = LScene(f[1, 2])
+    p = streamplot!(
+        a, p -> Point3f(p[2], p[3], p[1]), -1..1, -1..1, -1..1, gridsize = (5, 5, 5),
+        arrow_size = 0.2, transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
+    )
+    a = LScene(f[2, 2])
+    cam3d!(a)
+    p = contour3d!(
+        a, -1..1, -1..1,
+        [cos(x) - sin(y) - x*y for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3,
+        transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
+    )
+
+    f
+end
