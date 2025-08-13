@@ -241,9 +241,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
+    # transform directions to pixel-space angles
     register_projected_rotations_2d!(
         plot,
-        startpoint_name = :text_positions, direction_name = :raw_lbl_directions,
+        position_name = :text_positions, direction_name = :raw_lbl_directions,
         output_name = :text_rotation,
         rotation_transform = to_upright_angle
     )

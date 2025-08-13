@@ -229,26 +229,31 @@ function local_projection_matrix_basis(M, p)
 end
 
 """
-    register_projected_rotations_2d!(plot; kwargs...)
+    register_projected_rotations_2d!(plot; position_name, direction_name, kwargs...)
 
-From two arrays of points, computes the 2D angle between the x-axis (1, 0) and
-the direction vector between the points `atan(y1 - y0, x1 - x0)`.
+Computes the angles of direction vectors at given positions while taking into
+account distortions picked up in the transformation and projection pipeline.
 
-Note that this computes projections to correctly deal with transformations.
+To do this, `apply_transform_to_direction()` is used to apply the transform
+function to directions. Then the remaining matrix transformations (including
+float32convert) are applied under the assumption that they do not include
+perspective projection. Finally the 2D angle to the x-axis (1, 0) is calculated
+using `atan(dir[2], dir[1])` and the optional `rotation_transform` is applied.
 
 ## Keyword Arguments
 
-- `startpoint_name::Symbol` name of the start points used to derive angles
-- `endpoint_name::Symbol` name of the end points used to derive angles
+- `position_name::Symbol` name of the positions where the directions apply
+- `direction_name::Symbol` name of the directions to be processed
 - `output_name::Symbol = :rotations` name of the rotation output
 - `rotation_transform = identity` A transformation that is applied to angles before outputting them. E.g. `to_upright_angle`.
+- `relative_delta = 1e-3` sets the delta for `apply_transform_to_direction()` relative to the data scale
 """
 function register_projected_rotations_2d!(plot::Plot; kwargs...)
-    return register_projected_rotations_2d!(plot, parent_scene(plot).compute, plot.attributes; kwargs...)
+    return register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
 end
 function register_projected_rotations_2d!(
-        plot::Plot, scene_graph::ComputeGraph, plot_graph::ComputeGraph;
-        startpoint_name::Symbol,
+        scene_graph::ComputeGraph, plot_graph::ComputeGraph;
+        position_name::Symbol,
         direction_name::Symbol,
         output_name::Symbol = :rotations,
         rotation_transform = identity,
@@ -260,7 +265,7 @@ function register_projected_rotations_2d!(
 
     map!(
         plot_graph,
-        [projection_matrix_name, :model_f32c, :f32c, :transform_func, startpoint_name, direction_name],
+        [projection_matrix_name, :model_f32c, :f32c, :transform_func, position_name, direction_name],
         output_name
     ) do proj_matrix, model, f32c, transform_func, positions, directions
 
@@ -289,9 +294,22 @@ function register_projected_rotations_2d!(
     return getindex(plot_graph, output_name)
 end
 
+"""
+    register_transformed_rotations_3d!(plot; position_name, direction_name, kwargs...)
+
+Computes `transform_func`-aware 3D direction vectors using
+`apply_transform_to_direction()`.
+
+## Keyword Arguments
+
+- `position_name::Symbol` name of the positions where the directions apply
+- `direction_name::Symbol` name of the directions to be processed
+- `output_name::Symbol = :rotations` name of the rotation output
+- `relative_delta = 1e-3` sets the delta for `apply_transform_to_direction()` relative to the data scale
+"""
 function register_transformed_rotations_3d!(
         @nospecialize(plot::Plot);
-        startpoint_name::Symbol,
+        position_name::Symbol,
         direction_name::Symbol,
         output_name::Symbol = :rotations,
         relative_delta = 1e-3
