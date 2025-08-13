@@ -212,7 +212,7 @@ Maps an angle from [-π, π] to [-π/2; π/2] by adding or subtracting π.
 """
 to_upright_angle(angle) = angle - ifelse(abs(angle) > 0.5f0 * π, copysign(Float32(π), angle), 0)
 
-function local_projection_matrix_basis(M, p)
+function local_basis_transformation_matrix(M, p)
     #=
     A projection matrix is applied as
     f(p) = (M * p)[1:3] / (M * p)[4]
@@ -226,6 +226,10 @@ function local_projection_matrix_basis(M, p)
     deriv1 = M[Vec(1, 2, 3), Vec(1, 2, 3)] * w
     deriv2 = (M[Vec(1, 2, 3), :] * p4d) * M[4, Vec(1, 2, 3)]'
     return (deriv1 .- deriv2) ./ (w * w)
+end
+
+function contains_perspective_projection(M::Mat4)
+    return (M[4, 1] != 0) || (M[4, 2] != 0) || (M[4, 3] != 0)
 end
 
 """
@@ -269,25 +273,31 @@ function register_projected_rotations_2d!(
         output_name
     ) do proj_matrix, model, f32c, transform_func, positions, directions
 
-        if f32c === nothing
-            f32c_mat = Mat2d(1, 0, 0, 1)
-        else
-            full_mat = f32_convert_matrix(f32c)
-            f32c_mat = Mat2d(full_mat[Vec(1, 2), Vec(1, 2)])
-        end
+        pvmf32 = proj_matrix * model
 
-        # We assume that there is no 3D rotation here, so z doesn't matter.
-        # We also assume that there is no perspective projection, which
-        # means the vector basis doesn't change locally.
-        basis_transform = proj_matrix[Vec(1, 2), Vec(1, 2)] * model[Vec(1, 2), Vec(1, 2)] * f32c_mat
+        if f32c !== nothing
+            pvmf32 *= f32_convert_matrix(f32c)
+        end
 
         delta = relative_delta * norm(widths(Rect3d(positions)))
 
-        map(positions, directions) do pos, dir
-            transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
-            transformed_dir = basis_transform * transformed_dir[Vec(1, 2)]
-            angle = atan(transformed_dir[2], transformed_dir[1])
-            return rotation_transform(angle)
+        if contains_perspective_projection(pvmf32)
+            # Perspective projection makes the basis position dependent
+            map(positions, directions) do pos, dir
+                transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
+                local_pvmf32 = local_basis_transformation_matrix(pvmf32, pos)
+                transformed_dir = local_pvmf32 * to_ndim(Vec3f, transformed_dir, 0)
+                angle = atan(transformed_dir[2], transformed_dir[1])
+                return rotation_transform(angle)
+            end
+        else
+            pvmf32_3 = pvmf32[Vec(1, 2, 3), Vec(1, 2, 3)]
+            map(positions, directions) do pos, dir
+                transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
+                transformed_dir = pvmf32_3 * to_ndim(Vec3f, transformed_dir, 0)
+                angle = atan(transformed_dir[2], transformed_dir[1])
+                return rotation_transform(angle)
+            end
         end
     end
 
