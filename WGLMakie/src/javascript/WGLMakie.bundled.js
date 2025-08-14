@@ -23141,6 +23141,22 @@ class Plot {
                 throw new Error(`Buffer ${name} doesn't exist in Plot: ${this.name}`);
             }
         }
+        if (new_data && typeof new_data === 'object' && 'value' in new_data && 'length' in new_data) {
+            const value = new_data.value;
+            if (value instanceof Float32Array || Array.isArray(value)) {
+                const element_size = value.length;
+                const total_size = new_data.length * element_size;
+                const expanded_array = new Float32Array(total_size);
+                for(let i = 0; i < new_data.length; i++){
+                    expanded_array.set(value, i * element_size);
+                }
+                new_data = expanded_array;
+            } else {
+                const expanded_array = new Float32Array(new_data.length).fill(value);
+                new_data = expanded_array;
+            }
+        }
+        console.log(new_data);
         const old_length = buffer.array.length;
         const is_interleaved = buffer instanceof qh;
         const attribute = is_interleaved ? find_interleaved_attribute(geometry, buffer) : buffer;
