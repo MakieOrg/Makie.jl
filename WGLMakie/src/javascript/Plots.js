@@ -62,6 +62,34 @@ function connect_plot(scene, plot) {
     uniforms.light_color = scene.light_color;
 }
 
+
+export function expand_compressed(new_data) {
+    // Check if new_data is in compressed format
+    if (
+        new_data &&
+        typeof new_data === "object" &&
+        "value" in new_data &&
+        "length" in new_data
+    ) {
+        // Expand compressed format back to full array
+        const value = new_data.value;
+        if (value instanceof Float32Array || Array.isArray(value)) {
+            // Handle Vec3f case - value is an array/Float32Array that needs to be repeated
+            const element_size = value.length;
+            const total_size = new_data.length * element_size;
+            const expanded_array = new Float32Array(total_size);
+            for (let i = 0; i < new_data.length; i++) {
+                expanded_array.set(value, i * element_size);
+            }
+            return expanded_array;
+        } else {
+            // Handle scalar case - single value repeated
+            return new Float32Array(new_data.length).fill(value);
+        }
+    }
+    return new_data; // Return as is if not compressed
+}
+
 export class Plot {
     mesh = undefined;
     parent = undefined;
@@ -128,7 +156,6 @@ export class Plot {
         const { geometry } = mesh;
         const { attributes, interleaved_attributes } = geometry;
         const { uniforms } = mesh.material;
-
         data.forEach(([key, value]) => {
             if (key in uniforms) {
                 this.update_uniform(key, value);
@@ -157,7 +184,8 @@ export class Plot {
         update_uniform(uniform, new_data);
     }
 
-    update_buffer(name, new_data) {
+    update_buffer(name, input_data) {
+        const new_data = expand_compressed(input_data);
         const {geometry} = this.mesh;
         let buffer = geometry.attributes[name];
 
@@ -170,27 +198,6 @@ export class Plot {
             }
         }
 
-        // Check if new_data is in compressed format
-        if (new_data && typeof new_data === 'object' && 'value' in new_data && 'length' in new_data) {
-            // Expand compressed format back to full array
-            const value = new_data.value;
-            if (value instanceof Float32Array || Array.isArray(value)) {
-                // Handle Vec3f case - value is an array/Float32Array that needs to be repeated
-                const element_size = value.length;
-                const total_size = new_data.length * element_size;
-                const expanded_array = new Float32Array(total_size);
-
-                for (let i = 0; i < new_data.length; i++) {
-                    expanded_array.set(value, i * element_size);
-                }
-                new_data = expanded_array;
-            } else {
-                // Handle scalar case - single value repeated
-                const expanded_array = new Float32Array(new_data.length).fill(value);
-                new_data = expanded_array;
-            }
-        }
-        console.log(new_data);
         const old_length = buffer.array.length;
         const is_interleaved =  buffer instanceof THREE.InstancedInterleavedBuffer;
         const attribute = is_interleaved ? find_interleaved_attribute(geometry, buffer) : buffer;
@@ -261,7 +268,7 @@ export class Lines extends Plot {
     }
 
     update(data_key_value_array) {
-        const dict = Object.fromEntries(data_key_value_array);
+        const dict = Object.fromEntries(data_key_value_array.map(([k, v]) => [k, expand_compressed(v)]));
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
     }
