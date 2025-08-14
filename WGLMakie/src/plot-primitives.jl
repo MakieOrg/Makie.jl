@@ -100,7 +100,7 @@ function plot_updates(args, changed)
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
                 # Check if value is an array with all identical elements
-                if value isa AbstractArray && length(value) > 1 && all(x -> x == value[1], value)
+                if value isa AbstractVector && length(value) > 1 && all(x -> x == value[1], value)
                     # Use compressed format for arrays with identical elements
                     Dict("value" => serialize_three(value[1]), "length" => length(value))
                 else
