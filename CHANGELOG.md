@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.

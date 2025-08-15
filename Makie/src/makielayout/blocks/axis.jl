@@ -1829,7 +1829,13 @@ function attribute_examples(::Type{Axis})
                     yticks = [-100, -10, 0, 10, 100]
                 )
 
-                for ax in [ax1, ax2]
+                ax3 = Axis(f[1, 1],
+                    yscale = Makie.pseudolog10,
+                    title = "Pseudolog scale with LogTicks",
+                    yticks = LogTicks(-2:2)
+                )
+
+                for ax in [ax1, ax2, ax3]
                     lines!(ax, -100:0.1:100)
                 end
 
