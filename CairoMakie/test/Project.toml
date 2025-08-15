@@ -1,4 +1,5 @@
 [deps]
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 GeoInterface = "cf35fbd7-0cd7-5166-be24-54bfbe79505f"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
