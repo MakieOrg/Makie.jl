@@ -30,9 +30,10 @@ function push_screen!(scene::Scene, screen::T) where {T <: MakieScreen}
         # If screen isn't already part of this scene, we make sure
         # that the screen only has one screen per type
         of_same_type = filter(x -> x isa T, scene.current_screens) # collect all of same type
-        foreach(x -> delete_screen!(scene, x), of_same_type)
+        # foreach(x -> delete_screen!(scene, x), of_same_type)
         # Now we can push the screen :)
         push!(scene.current_screens, screen)
+        unique!(scene.current_screens)
     end
     # Now only thing left is to make sure all children also have the screen!
     for children in scene.children
