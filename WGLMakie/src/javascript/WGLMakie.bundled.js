@@ -23052,6 +23052,23 @@ function delete_three_scene(scene) {
         delete_plot(scene.children[0]);
     }
 }
+function expand_compressed(new_data) {
+    if (new_data && typeof new_data === "object" && "value" in new_data && "length" in new_data) {
+        const value = new_data.value;
+        if (value instanceof Float32Array || Array.isArray(value)) {
+            const element_size = value.length;
+            const total_size = new_data.length * element_size;
+            const expanded_array = new Float32Array(total_size);
+            for(let i = 0; i < new_data.length; i++){
+                expanded_array.set(value, i * element_size);
+            }
+            return expanded_array;
+        } else {
+            return new Float32Array(new_data.length).fill(value);
+        }
+    }
+    return new_data;
+}
 class Plot {
     mesh = undefined;
     parent = undefined;
@@ -23132,7 +23149,8 @@ class Plot {
         }
         update_uniform(uniform, new_data);
     }
-    update_buffer(name, new_data) {
+    update_buffer(name, input_data) {
+        const new_data = expand_compressed(input_data);
         const { geometry  } = this.mesh;
         let buffer = geometry.attributes[name];
         if (!buffer) {
@@ -24385,7 +24403,10 @@ class Lines extends Plot {
         this.init_mesh();
     }
     update(data_key_value_array) {
-        const dict = Object.fromEntries(data_key_value_array);
+        const dict = Object.fromEntries(data_key_value_array.map(([k, v])=>[
+                k,
+                expand_compressed(v)
+            ]));
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
     }
@@ -24540,6 +24561,7 @@ function approx_equal(a, b) {
     return Math.abs(a - b) < Number.EPSILON;
 }
 const mod1 = {
+    expand_compressed: expand_compressed,
     Plot: Plot,
     Lines: Lines,
     Mesh: Mesh,
