@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
+- Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
 
 ## [0.24.5] - 2025-08-06
 
