@@ -35,7 +35,7 @@ function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
 end
 
 """
-    barplot(positions, heights; kwargs...)
+    barplot(positions, heights; attributes...)
 
 Plots a barplot.
 """

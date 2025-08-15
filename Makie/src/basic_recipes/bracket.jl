@@ -1,8 +1,8 @@
 """
-    bracket(x1, y1, x2, y2; kwargs...)
-    bracket(x1s, y1s, x2s, y2s; kwargs...)
-    bracket(point1, point2; kwargs...)
-    bracket(vec_of_point_tuples; kwargs...)
+    bracket(x1, y1, x2, y2; attributes...)
+    bracket(x1s, y1s, x2s, y2s; attributes...)
+    bracket(point1, point2; attributes...)
+    bracket(vec_of_point_tuples; attributes...)
 
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text label at the midpoint.
 
