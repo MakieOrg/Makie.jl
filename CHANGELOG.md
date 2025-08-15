@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
