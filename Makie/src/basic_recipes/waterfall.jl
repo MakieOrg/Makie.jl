@@ -53,25 +53,23 @@ function Makie.plot!(p::Waterfall)
         return final_gap === automatic ? dodge == automatic ? 0 : gap : final_gap
     end
 
-    barplot!(
-        p, p.final;
-        dodge = p.dodge,
-        color = p.final_color,
-        dodge_gap = p.final_dodge_gap,
-        gap = p.finalgap,
-        visible = p.show_final,
-    )
+    # TODO: change to use `visible` after bounding box issue is fixed (see https://github.com/MakieOrg/Makie.jl/pull/5184#issuecomment-3191231795)
+    if p.show_final[]
+        barplot!(
+            p, p.final;
+            dodge = p.dodge,
+            color = p.final_color,
+            dodge_gap = p.final_dodge_gap,
+            gap = p.finalgap,
+        )
+    end
 
-    barplot!(
-        p, p.attributes, p.xy;
-        fillto = p.fillto,
-        stack = automatic,
-    )
+    barplot!(p, p.attributes, p.xy; fillto = p.fillto, stack = automatic)
 
     function direction_markers(
-            xy, fillto, marker_pos, marker_neg, width,
-            gap, dodge, n_dodge, dodge_gap
-        )
+        xy, fillto, marker_pos, marker_neg, width,
+        gap, dodge, n_dodge, dodge_gap
+    )
         xs = first(compute_x_and_width(first.(xy), width, gap, dodge, n_dodge, dodge_gap))
         MarkerType = promote_type(typeof(marker_pos), typeof(marker_neg))
         PointType = eltype(xy)
@@ -97,12 +95,9 @@ function Makie.plot!(p::Waterfall)
         [:scatter_xy, :shapes]
     )
 
-    scatter!(
-        p, p.scatter_xy,
-        marker = p.shapes,
-        color = p.direction_color,
-        visible = p.show_direction,
-    )
+    if p.show_direction[]
+        scatter!(p, p.scatter_xy; marker = p.shapes, color = p.direction_color)
+    end
 
     return p
 end
