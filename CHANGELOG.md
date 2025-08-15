@@ -1,11 +1,23 @@
 # Changelog
 
+## Unreleased
+
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
+- Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
+- Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
+- Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
+
+## [0.24.5] - 2025-08-06
+
+- Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
+- Fixed `propertynames(::Attributes)` [#5154](https://github.com/MakieOrg/Makie.jl/pull/5154).
+- Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
+- Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
-
-## Unreleased
+- Fixed `volume` plots getting clipped based on the vertices of their bounding box, e.g. when zooming in Axis3 [#5225](https://github.com/MakieOrg/Makie.jl/pull/5225)
+- Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 
 ## [0.24.4] - 2025-07-17
 
@@ -920,7 +932,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...HEAD
+[0.24.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...v0.24.4
 [0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2

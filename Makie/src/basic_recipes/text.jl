@@ -71,7 +71,6 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     return
 end
 
-
 function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
     if isscalar(x)
         return x
@@ -331,28 +330,23 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :linesegments, :linewidths, :linecolors, :lineindices,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
-        if isnothing(cached)
-            _outputs = (
-                glyphcollections = GlyphCollection[],
-                glyphindices = UInt64[],
-                font_per_char = NativeFont[],
-                glyph_origins = Point3f[],
-                glyph_extents = GlyphExtent[],
-                text_blocks = UnitRange{Int64}[],
-                text_color = RGBAf[],
-                text_rotation = Quaternionf[],
-                text_scales = Vec2f[],
-                text_strokewidth = Float32[],
-                text_strokecolor = RGBAf[],
-                linesegments = Point3f[],
-                linewidths = Float32[],
-                linecolors = RGBAf[],
-                lineindices = Pair{Int, Int}[],
-            )
-        else
-            foreach(empty!, values(cached))
-            _outputs = cached
-        end
+        _outputs = (
+            glyphcollections = GlyphCollection[],
+            glyphindices = UInt64[],
+            font_per_char = NativeFont[],
+            glyph_origins = Point3f[],
+            glyph_extents = GlyphExtent[],
+            text_blocks = UnitRange{Int64}[],
+            text_color = RGBAf[],
+            text_rotation = Quaternionf[],
+            text_scales = Vec2f[],
+            text_strokewidth = Float32[],
+            text_strokecolor = RGBAf[],
+            linesegments = Point3f[],
+            linewidths = Float32[],
+            linecolors = RGBAf[],
+            lineindices = Pair{Int, Int}[],
+        )
         # strokewidth = Float32[] # TODO: Skipped?
 
         N = length(input_texts)

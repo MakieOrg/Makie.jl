@@ -99,7 +99,13 @@ function plot_updates(args, changed)
             _val = if value isa Sampler
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
-                serialize_three(value)
+                # Check if value is an array with all identical elements
+                if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
+                    # Use compressed format for arrays with identical elements
+                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                else
+                    serialize_three(value)
+                end
             end
             push!(new_values, [name, _val])
         end
@@ -729,8 +735,6 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
-    # TODO: This always sets a pattern, so we are rendering solid lines as a
-    # gapless pattern... We probably shouldn't so we don't require lastlength
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 

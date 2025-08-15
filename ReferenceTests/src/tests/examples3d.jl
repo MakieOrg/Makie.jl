@@ -125,6 +125,28 @@ end
     f
 end
 
+# Test that volumes don't get clipped when their containing box would (i.e. if
+# the back vertices would get clipped)
+@reference_test "Volume no-clip" begin
+    f = Figure(size = (300, 800))
+    r = [sqrt(x * x + y * y + z * z) for x in -5:5, y in -5:5, z in -5:5]
+
+    ax = Axis3(f[1, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, algorithm = :iso, isovalue = 0.9)
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[2, 1])
+    contour!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, levels = [0.5, 0.9, 1.9])
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[3, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, absorption = 0.01, colorrange = (1, 2))
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    f
+end
+
+
 @reference_test "Textured meshscatter" begin
     catmesh = loadasset("cat.obj")
     img = loadasset("diffusemap.png")
