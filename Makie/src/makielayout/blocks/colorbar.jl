@@ -72,6 +72,21 @@ function extract_colormap(plot::Union{Contourf, Tricontourf})
     )
 end
 
+function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+    levels = ComputePipeline.get_observable!(plot.value_levels)
+    # Users may use transparency to make layered isosurfaces visible. Because
+    # 3D contours often accumulate the color of an isosurface over multiple
+    # samples one typically needs very low alpha values for this, which would
+    # make the colors in the colormap very faint. To keep the Colorbar useful,
+    # we remove user alpha here. (The recipe also uses `alpha = 0` to remove
+    # samples outside of isosurfaces. This is preserved here)
+    colormap = map(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0.0f0), plot.computed_colormap)
+    return ColorMapping(
+        levels[], levels, colormap, plot.padded_colorrange, plot.colorscale,
+        Observable(1.0), Observable(automatic), Observable(automatic), plot.nan_color
+    )
+end
+
 function extract_colormap(plot::Voxels)
     limits = plot.value_limits
     # TODO: does this need padding for lowclip and highclip?
