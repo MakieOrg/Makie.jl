@@ -5,6 +5,7 @@
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
 - Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
+- Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange`, colormap resolution, and changed colormap extractor for `Colorbar` to ignore alpha. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
 
 ## [0.24.5] - 2025-08-06
 
@@ -13,7 +14,6 @@
 - Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
 - Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
 - Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
-- Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange` and colormap resolution, and added colormap extractor for `Colorbar` support. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
 - Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
 - Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
 - Fixed `volume` plots getting clipped based on the vertices of their bounding box, e.g. when zooming in Axis3 [#5225](https://github.com/MakieOrg/Makie.jl/pull/5225)
