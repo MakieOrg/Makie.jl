@@ -8,8 +8,8 @@ contour3d
 ## Examples
 
 3D contour plots exist in two variants.
-`contour` implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
-[contour3d](@ref) computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
+[contour](@ref) implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
+`contour3d` computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
 
 ```@figure backend=GLMakie
 r = range(-pi, pi, length = 21)
