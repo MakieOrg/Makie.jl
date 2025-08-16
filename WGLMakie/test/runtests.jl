@@ -27,7 +27,6 @@ excludes = Set(
         "Image on Surface Sphere", # TODO: texture rotated 180°
         "Array of Images Scatter", # scatter does not support texture images
         "Order Independent Transparency",
-        "3D Contour with 2D contour slices", # looks like a z-fighting issue
         "Mesh with 3d volume texture", # Not implemented yet
         "matcap", # not yet implemented
     ]
