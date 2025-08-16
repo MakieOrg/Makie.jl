@@ -80,7 +80,7 @@ function extract_colormap(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, 
     # make the colors in the colormap very faint. To keep the Colorbar useful,
     # we remove user alpha here. (The recipe also uses `alpha = 0` to remove
     # samples outside of isosurfaces. This is preserved here)
-    colormap = map(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0f0), plot.computed_colormap)
+    colormap = map(cm -> RGBAf.(Colors.color.(cm), Colors.alpha.(cm) .> 0.0f0), plot.computed_colormap)
     return ColorMapping(
         levels[], levels, colormap, plot.padded_colorrange, plot.colorscale,
         Observable(1.0), Observable(automatic), Observable(automatic), plot.nan_color
