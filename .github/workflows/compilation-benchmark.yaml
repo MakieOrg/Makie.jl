@@ -51,7 +51,7 @@ jobs:
       statuses: write       # Permission to post workflow status
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: ./images
           merge-multiple: true
