@@ -2426,7 +2426,7 @@ end
     cam3d!(a)
     p = contour3d!(
         a, -1 .. 1, -1 .. 1,
-        [cos(x) - sin(y) - x*y for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        [cos(x) - sin(y) - x * y for x in range(-1, 1, 30), y in range(-1, 1, 30)],
         labels = true, colormap = :magma, linewidth = 3,
         transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
     )
