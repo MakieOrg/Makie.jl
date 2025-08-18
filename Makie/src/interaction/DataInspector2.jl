@@ -19,25 +19,28 @@ function DataInspector2(obj; blocking = false, kwargs...)
         return parent.data_inspector
     end
 
-    kwarg_dict = Dict(kwargs)
+    kwarg_dict = Dict{Symbol, Any}(kwargs)
 
-    tt = tooltip!(
-        obj, Point3d(0), text = "", visible = false,
-        xautolimits = false, yautolimits = false, zautolimits = false,
-        draw_on_top = get(kwarg_dict, :draw_on_top, true)
-    )
-    register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
-
-    attr = Attributes(
+    inspector_attr = Attributes(
         range = pop!(kwarg_dict, :range, 10),
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
         dodge_margins = to_lrbt_padding(pop!(kwarg_dict, :dodge_margins, 30)),
     )
 
+    # defaults for plot attrib
+    get!(kwarg_dict, :draw_on_top, true)
+
+    tt = tooltip!(
+        obj, Point3d(0), text = "", visible = false,
+        xautolimits = false, yautolimits = false, zautolimits = false;
+        kwarg_dict...
+    )
+    register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
+
     inspector = DataInspector2(
         parent, Dict{UInt64, Tooltip}(), tt,
         (0.0, 0.0), UInt64(0), [0, 0, 0],
-        attr,
+        inspector_attr,
         Any[], Channel{Nothing}(Inf)
     )
 
