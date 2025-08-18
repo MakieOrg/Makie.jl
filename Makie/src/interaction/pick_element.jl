@@ -190,7 +190,7 @@ function pick_element(plot::Voxels, idx, plot_stack)
 end
 
 # TODO:
-pick_element(plot::Volume, idx, plot_stack) = false
+pick_element(plot::Volume, idx, plot_stack) = nothing
 
 ################################################################################
 # Overloads
