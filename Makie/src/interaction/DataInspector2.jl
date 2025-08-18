@@ -79,6 +79,9 @@ function DataInspector2(obj; blocking = false, kwargs...)
     return inspector
 end
 
+
+# dynamic tooltips
+
 function update_tooltip!(di::DataInspector2)
     e = events(di.parent)
     mp = e.mouseposition[]
@@ -110,31 +113,6 @@ function update_tooltip!(di::DataInspector2)
 
     # Did not find inspectable plot, hide tooltip
     update!(di.dynamic_tooltip, visible = false)
-
-    return
-end
-
-function update_persistent_tooltips!(di::DataInspector2)
-    e = events(di.parent)
-
-    if !ispressed(e, di.attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
-        return
-    end
-
-    mp = e.mouseposition[]
-    for (plot, idx) in pick_sorted(di.parent, mp, 10)
-        (parent_scene(plot) != di.parent) && continue
-
-        if plot.inspectable[]
-            element = pick_element(plot_stack(plot), idx)
-            add_persistent_tooltip!(di, element)
-            return
-        elseif rootparent_plot(plot) isa Tooltip
-            element = pick_element(plot_stack(plot), idx)
-            remove_persistent_tooltip!(di, element)
-            return
-        end
-    end
 
     return
 end
@@ -207,6 +185,34 @@ end
 function copy_local_model_transformations!(target::Transformable, source::Transformable)
     t = source.transformation
     transform!(target, translation = t.translation, rotation = t.rotation, scale = t.scale)
+    return
+end
+
+
+# persistent tooltips
+
+function update_persistent_tooltips!(di::DataInspector2)
+    e = events(di.parent)
+
+    if !ispressed(e, di.attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
+        return
+    end
+
+    mp = e.mouseposition[]
+    for (plot, idx) in pick_sorted(di.parent, mp, 10)
+        (parent_scene(plot) != di.parent) && continue
+
+        if plot.inspectable[]
+            element = pick_element(plot_stack(plot), idx)
+            add_persistent_tooltip!(di, element)
+            return
+        elseif rootparent_plot(plot) isa Tooltip
+            element = pick_element(plot_stack(plot), idx)
+            remove_persistent_tooltip!(di, element)
+            return
+        end
+    end
+
     return
 end
 
