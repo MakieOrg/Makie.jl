@@ -363,7 +363,7 @@ function apply_transform_to_direction(f, position::VecTypes{D1, T1}, direction::
     D = max(D1, D2)
     T = float_type(T1, T2)
     pos = to_ndim(Point{D, T}, position, 0)
-    dir = to_ndim(Point{D, T}, direction, 0)
+    dir = to_ndim(Point{D, T}, normalize(direction), 0)
     p0 = apply_transform(f, pos .- delta .* dir)
     p1 = apply_transform(f, pos .+ delta .* dir)
     return normalize(to_ndim(VT, p1 .- p0, 0))
