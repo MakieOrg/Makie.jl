@@ -13,7 +13,12 @@ mutable struct DataInspector2
     update_channel::Channel{Nothing}
 end
 
-function DataInspector2(obj; kwargs...)
+function DataInspector2(obj; blocking = false, kwargs...)
+    parent = get_scene(obj)
+    if !isnothing(parent.data_inspector)
+        return parent.data_inspector
+    end
+
     kwarg_dict = Dict(kwargs)
 
     tt = tooltip!(
@@ -28,33 +33,60 @@ function DataInspector2(obj; kwargs...)
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
     )
 
-    di = DataInspector2(
-        get_scene(obj), Dict{UInt64, Tooltip}(), tt,
+    inspector = DataInspector2(
+        parent, Dict{UInt64, Tooltip}(), tt,
         (0.0, 0.0), UInt64(0), [0, 0, 0],
         attr,
         Any[], Channel{Nothing}(Inf)
     )
 
-    e = events(di.parent)
+    parent.data_inspector = inspector
 
-    on(tick -> update_tooltip!(di, tick), e.tick)
+    e = events(parent)
 
-    on(event -> update_persistent_tooltips!(di), e.mousebutton)
+    # dynamic tooltip
 
-    return di
+    # We delegate the hover processing to another channel,
+    # So that we can skip queued up updates with empty_channel!
+    # And also not slow down the processing of e.mouseposition/e.scroll
+    channel = Channel{Nothing}(blocking ? 0 : Inf) do ch
+        while isopen(ch)
+            take!(ch) # wait for event
+            if isopen(parent)
+                update_tooltip!(inspector)
+            end
+        end
+    end
+    inspector.update_channel = channel
+
+    listeners = on(e.tick) do tick
+        is_interactive_tick = tick.state === RegularRenderTick ||
+            tick.state === SkippedRenderTick
+
+        if is_interactive_tick
+            inspector.update_counter[1] += 1 # TODO: for performance checks, remove later
+            empty_channel!(channel) # remove queued up hover requests
+            put!(channel, nothing)
+        end
+
+        return
+    end
+    push!(inspector.obsfuncs, listeners)
+
+    # persistent tooltip
+    on(event -> update_persistent_tooltips!(inspector), e.mousebutton)
+
+    return inspector
 end
 
-function update_tooltip!(di::DataInspector2, tick::Tick)
+function update_tooltip!(di::DataInspector2)
     e = events(di.parent)
     mp = e.mouseposition[]
 
-    is_interactive_tick = tick.state === RegularRenderTick || tick.state === SkippedRenderTick
-    mouse_moved = mp != di.last_mouseposition
-
-    di.update_counter[1] += 1 # TODO: for performance checks, remove later
-
+    # TODO: This is not enough. We'd need to check if anything in the scene
+    # changed - i.e. scene.viewport, camera matrices, any of the renderobjects...
     # This update wont change state, ignore it
-    (is_interactive_tick && mouse_moved) || return
+    # mp == di.last_mouseposition && return
 
     # Mouse outside relevant area, hide tooltip
     if !is_mouseinside(di.parent)
@@ -273,4 +305,3 @@ function get_position(element::PlotElement{<:Poly})
     mesh_element = PlotElement(parent(element).plots[1], element)
     return get_position(mesh_element)
 end
-
