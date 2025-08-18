@@ -183,7 +183,7 @@ end
     # vertical version
     ax2, p = lines(f[1, 2], μ, t, color = :yellow, linewidth = 2)
     translate!(p, 0, 0, 1)
-    band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
+    band!(ax2, t, μ + σ, μ - σ, direction = :y, alpha = 0.5)   # plot stddev band
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
