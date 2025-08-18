@@ -33,6 +33,8 @@ end
 
 PlotElement(@nospecialize(::Plot), ::Nothing) = nothing
 
+
+
 struct TrackedPlotElement{PlotType, ElementType <: PlotElement{PlotType}} <: PlotElement{PlotType}
     element::ElementType
     accessed_fields::Vector{Symbol}
@@ -58,6 +60,8 @@ Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
 Base.parent(e::TrackedPlotElement) = parent(e.element)
 
+
+
 struct IndexedPlotElement{PlotType, D} <: PlotElement{PlotType}
     parent::PlotType
     index::CartesianIndex{D}
@@ -74,6 +78,24 @@ end
 
 function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
     return IndexedPlotElement(plot, CartesianIndex(idx...), Vec{N, Int64}(size))
+end
+
+function element_getindex(x, element::IndexedPlotElement)
+    return sv_getindex(x, element.index)
+end
+
+function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
+    if x isa AbstractArray{T, 2} where T
+        return element_getindex(x, element)
+    elseif x isa Union{EndPoints, EndPointsLike}
+        x0, x1 = x
+        r = range(x0, x1, element.size[dim])
+        return r[element.index[dim]]
+    elseif is_array_attribute(x) # or vector, we already filtered 2d arrays
+        return sv_getindex(x, element.index[dim])
+    else
+        return x
+    end
 end
 
 
@@ -95,35 +117,6 @@ function InterpolatedPlotElement(
     ) where {D}
 
     return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation), Vec{D, Int64}(size))
-end
-
-struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
-    parent::PlotType
-    submesh_index::Int64
-    face::GLTriangleFace
-    uv::Vec2f
-
-    function MeshPlotElement(plot::PlotType, submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
-        return new{PlotType}(plot, submesh_index, GLTriangleFace(face), Vec2f(uv))
-    end
-end
-
-function element_getindex(x, element::IndexedPlotElement)
-    return sv_getindex(x, element.index)
-end
-
-function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
-    if x isa AbstractArray{T, 2} where T
-        return element_getindex(x, element)
-    elseif x isa Union{EndPoints, EndPointsLike}
-        x0, x1 = x
-        r = range(x0, x1, element.size[dim])
-        return r[element.index[dim]]
-    elseif is_array_attribute(x) # or vector, we already filtered 2d arrays
-        return sv_getindex(x, element.index[dim])
-    else
-        return x
-    end
 end
 
 # TODO: can we extend is_vector_attribute() to consider Matrices vectors?
@@ -177,6 +170,19 @@ function dimensional_element_getindex(x, element::InterpolatedPlotElement{PlotTy
         return lerp(x0, x1, element.interpolation[dim])
     else
         return x
+    end
+end
+
+
+
+struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
+    parent::PlotType
+    submesh_index::Int64
+    face::GLTriangleFace
+    uv::Vec2f
+
+    function MeshPlotElement(plot::PlotType, submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
+        return new{PlotType}(plot, submesh_index, GLTriangleFace(face), Vec2f(uv))
     end
 end
 
