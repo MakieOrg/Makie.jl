@@ -31,6 +31,7 @@ function DataInspector2(obj; blocking = false, kwargs...)
     attr = Attributes(
         range = pop!(kwarg_dict, :range, 10),
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
+        dodge_margins = to_lrbt_padding(pop!(kwarg_dict, :dodge_margins, 30)),
     )
 
     inspector = DataInspector2(
@@ -121,10 +122,12 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     function border_dodging_placement(di::DataInspector2, proj_pos)
         wx, wy = widths(viewport(di.parent)[])
         px, py = proj_pos
+        l, r, b, t = di.attributes[:dodge_margins][]
 
-        placement = py < 0.75wy ? (:above) : (:below)
-        px < 0.25wx && (placement = :right)
-        px > 0.75wx && (placement = :left)
+        placement = :above
+        placement = ifelse(py > max(0.5wy, wy - t), :below, placement)
+        placement = ifelse(px < min(0.5wx, l),      :right, placement)
+        placement = ifelse(px > max(0.5wx, wx - r), :left,  placement)
 
         return placement
     end
