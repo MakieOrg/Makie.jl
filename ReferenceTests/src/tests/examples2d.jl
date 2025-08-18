@@ -187,7 +187,7 @@ end
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
-    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues)
+    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues, alpha = 0.5)
     f
 end
 
