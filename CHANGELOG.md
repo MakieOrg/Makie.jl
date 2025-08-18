@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
+- Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
+- Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
+- Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange`, colormap resolution, and changed colormap extractor for `Colorbar` to ignore alpha. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
+
 ## [0.24.5] - 2025-08-06
 
 - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
