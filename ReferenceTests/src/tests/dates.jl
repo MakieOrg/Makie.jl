@@ -12,6 +12,9 @@ date_time_range = range(date_time, step = Week(5), length = 10)
     scatter(f[1, 1], time_range, 1:10, axis = (xticklabelrotation = pi / 4,))
     scatter(f[1, 2], date_range, 1:10, axis = (xticklabelrotation = pi / 4,))
     scatter(f[2, 1], date_time_range, 1:10, axis = (xticklabelrotation = pi / 4,))
+    # Edge case: large xs that are still considered float-safe should not break line rendering
+    a, p = lines(f[2, 2], Date(2000):Year(1):Date(2009), sin.(1:10), axis = (xticklabelrotation = pi / 4,))
+    @test Makie.is_identity_transform(a.scene.float32convert)
     f
 end
 

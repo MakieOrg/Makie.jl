@@ -125,6 +125,28 @@ end
     f
 end
 
+# Test that volumes don't get clipped when their containing box would (i.e. if
+# the back vertices would get clipped)
+@reference_test "Volume no-clip" begin
+    f = Figure(size = (300, 800))
+    r = [sqrt(x * x + y * y + z * z) for x in -5:5, y in -5:5, z in -5:5]
+
+    ax = Axis3(f[1, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, algorithm = :iso, isovalue = 0.9)
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[2, 1])
+    contour!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, levels = [0.5, 0.9, 1.8])
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    ax = Axis3(f[3, 1])
+    volume!(ax, -5 .. 5, -5 .. 5, -5 .. 5, r, absorption = 0.01, colorrange = (1, 2))
+    limits!(ax, Rect3f(-1, -1, -1, 2, 2, 2))
+
+    f
+end
+
+
 @reference_test "Textured meshscatter" begin
     catmesh = loadasset("cat.obj")
     img = loadasset("diffusemap.png")
@@ -217,7 +239,8 @@ end
     end
     x = range(-2pi, stop = 2pi, length = 100)
     # c[4] == fourth argument of the above plotting command
-    fig, ax, c = contour(x, x, x, test, levels = 6, alpha = 0.3, transparency = true)
+    fig = Figure(size = (400, 700))
+    ax, c = contour(fig[1, 1], x, x, x, test, levels = 6, alpha = 0.03, colormap = [:white, :black], transparency = true)
 
     xm, ym, zm = minimum(data_limits(c))
     contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation = (:xy, zm), linewidth = 2)
@@ -225,6 +248,13 @@ end
     contourf!(ax, x, x, map(v -> v[:, :, 1], c[4]), transformation = (:yz, xm))
     # reorder plots for transparency
     ax.scene.plots[:] = ax.scene.plots[[1, 3, 4, 5, 2]]
+
+    contour(
+        fig[2, 1], x, x, x, (x, y, z) -> sqrt(x * x + y * y) / (10 + z * z),
+        levels = [0.01, 0.1, 0.2, 0.5, 1.0],
+        colorrange = (0.1, 0.5), # this should clip 0.01 and 1.0
+    )
+
     fig
 end
 
