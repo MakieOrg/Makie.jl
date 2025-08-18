@@ -11,6 +11,26 @@ mutable struct DataInspector2
 
     obsfuncs::Vector{Any}
     update_channel::Channel{Nothing}
+
+    function DataInspector2(parent, persistent, dynamic, lastmp, lastsel, counter, attr, obsfuncs, channel)
+        inspector = new(parent, persistent, dynamic, lastmp, lastsel, counter, attr, obsfuncs, channel)
+        finalizer(inspector) do inspector
+            foreach(off, inspector.obsfuncs)
+            empty!(inspector.obsfuncs)
+
+            close(inspector.update_channel)
+
+            foreach(tt -> delete!(inspector.parent, tt), values(inspector.persistent_tooltips))
+            empty!(inspector.persistent_tooltips)
+
+            delete!(inspector.parent, inspector.dynamic_tooltip)
+
+            inspector.parent.data_inspector = nothing
+            return
+        end
+
+        return inspector
+    end
 end
 
 function DataInspector2(obj; blocking = false, kwargs...)
@@ -63,7 +83,7 @@ function DataInspector2(obj; blocking = false, kwargs...)
     end
     inspector.update_channel = channel
 
-    listeners = on(e.tick) do tick
+    tick_listener = on(e.tick) do tick
         is_interactive_tick = tick.state === RegularRenderTick ||
             tick.state === SkippedRenderTick
 
@@ -75,10 +95,11 @@ function DataInspector2(obj; blocking = false, kwargs...)
 
         return
     end
-    push!(inspector.obsfuncs, listeners)
 
     # persistent tooltip
-    on(event -> update_persistent_tooltips!(inspector), e.mousebutton)
+    mouse_listener = on(event -> update_persistent_tooltips!(inspector), e.mousebutton)
+
+    push!(inspector.obsfuncs, tick_listener, mouse_listener)
 
     return inspector
 end
