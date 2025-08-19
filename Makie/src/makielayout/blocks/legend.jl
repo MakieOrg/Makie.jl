@@ -1005,14 +1005,14 @@ attribute `label` set.
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{<:AbstractAxis, <:AbstractScene}}}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     return Legend(fig_or_scene, plots, labels, title; kwargs...)
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots = filter(get_plots(ax)) do plot
+    lplots = filter(reduce(vcat, get_plots.(ax), init=AbstractPlot[])) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
