@@ -388,3 +388,11 @@ end
 function get_default_tooltip_data(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
     return pos, element.endpoints - element.startpoints
 end
+
+function get_tooltip_position(element::PlotElement{<:Band})
+    return 0.5(element.lowerpoints + element.upperpoints)
+end
+
+function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
+    return element.upperpoints, element.lowerpoints
+end

@@ -262,7 +262,7 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     end
 end
 
-function fast_submesh_index(plot::Mesh, idx::Integer)
+function fast_submesh_index(plot::Mesh, idx::Integer, plot_stack = nothing)
     # When multiple meshes get merged via GeometryBasics, the faces of each
     # input mesh will get tracked by mesh.views. Faces of the first input are
     # mesh.faces[mesh.views[1]] etc. If we have 0 or 1 views, we have only one
@@ -313,4 +313,27 @@ function pick_element(plot::Arrows2D, idx, plot_stack)
     idx = fld1(idx, N_components)
     N = fld1(N, N_components)
     return IndexedPlotElement(plot, idx, N)
+end
+
+function pick_element(plot::Band, idx, plot_stack)
+    meshplot = first(plot_stack)
+
+    # find selected triangle
+    ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+    face, face_index, pos = find_picked_triangle(
+        meshplot.positions_transformed_f32c[], meshplot.faces[], ray, idx
+    )
+    isnan(pos) && return nothing
+
+    # Get index of of the quad/first point in ps1/ps2
+    ps1 = plot.lowerpoints[]
+    ps2 = plot.upperpoints[]
+    N = length(ps1)
+    idx = mod1(face_index, N-1)
+
+    # interpolate to quad paramater
+    # TODO: These should not be in different spaces (input space vs post f32c world space)
+    f = point_in_quad_parameter(ps1[idx], ps1[idx + 1], ps2[idx + 1], ps2[idx], to_ndim(Point2d, pos, 0))
+
+    return InterpolatedPlotElement(plot, idx, idx+1, f, N)
 end
