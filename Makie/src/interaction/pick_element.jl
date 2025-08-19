@@ -243,8 +243,8 @@ end
 function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     # reproduce mesh result
     submesh_index = findfirst(separation_idx -> idx < separation_idx, plot.increment_at[])
-    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     meshplot = plot.plots[1]
+    ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     positions = meshplot.positions_transformed_f32c[]
     range = meshplot.mesh[].views[submesh_index]
 
@@ -303,5 +303,13 @@ end
 
 function pick_element(plot::BarPlot, idx, plot_stack)
     idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedPlotElement(plot, idx, N)
+end
+
+function pick_element(plot::Arrows2D, idx, plot_stack)
+    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+    N_components = sum(plot.should_component_render[])
+    idx = fld1(idx, N_components)
+    N = fld1(N, N_components)
     return IndexedPlotElement(plot, idx, N)
 end
