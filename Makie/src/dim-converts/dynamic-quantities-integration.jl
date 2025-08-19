@@ -17,7 +17,7 @@ scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 Fix unit to always use Meter & display unit in the xlabel:
 
 ```julia
-dqc = Makie.DQConversion(us"m"; units_in_label=false)
+dqc = Makie.DQConversion(us"m"; units_in_label = false)
 
 scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=dqc, xlabel="x (km)"))
 ```
