@@ -1,5 +1,5 @@
 """
-    scatterlines(xs, ys, [zs]; kwargs...)
+    scatterlines(xs, ys, [zs]; attributes...)
 
 Plots `scatter` markers and `lines` between them.
 """

@@ -3,7 +3,7 @@ S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/maste
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
-    crossbar(x, y, ymin, ymax; kwargs...)
+    crossbar(x, y, ymin, ymax; attributes...)
 Draw a crossbar. A crossbar represents a range with a (potentially notched) box.
 It is most commonly used as part of the `boxplot`.
 ## Arguments

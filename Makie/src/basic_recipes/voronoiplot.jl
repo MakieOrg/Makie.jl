@@ -1,9 +1,9 @@
 """
-    voronoiplot(x, y, values; kwargs...)
-    voronoiplot(values; kwargs...)
-    voronoiplot(x, y; kwargs...)
-    voronoiplot(positions; kwargs...)
-    voronoiplot(vorn::VoronoiTessellation; kwargs...)
+    voronoiplot(x, y, values; attributes...)
+    voronoiplot(values; attributes...)
+    voronoiplot(x, y; attributes...)
+    voronoiplot(positions; attributes...)
+    voronoiplot(vorn::VoronoiTessellation; attributes...)
 
 Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from

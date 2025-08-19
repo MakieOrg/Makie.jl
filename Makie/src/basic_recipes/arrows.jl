@@ -232,9 +232,9 @@ function arrowtail2d(l, W, metrics)
 end
 
 """
-    arrows2d(points, directions; kwargs...)
-    arrows2d(x, y, [z], u, v, [w])
-    arrows2d(x, y, [z], f::Function)
+    arrows2d(points, directions; attributes...)
+    arrows2d(x, y, [z], u, v, [w]; attributes...)
+    arrows2d(x, y, [z], f::Function; attributes...)
 
 Plots arrows as 2D shapes.
 
@@ -510,9 +510,9 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 
 """
-    arrows3d(points, directions; kwargs...)
-    arrows3d(x, y, [z], u, v, [w])
-    arrows3d(x, y, [z], f::Function)
+    arrows3d(points, directions; attributes...)
+    arrows3d(x, y, [z], u, v, [w]; attributes...)
+    arrows3d(x, y, [z], f::Function; attributes...)
 
 Plots arrows as 3D shapes.
 
