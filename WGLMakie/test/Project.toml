@@ -1,5 +1,4 @@
 [deps]
-DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 Electron = "a1bb12fb-d4d1-54b4-b10a-ee7951ef7ad3"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
