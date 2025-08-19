@@ -45,6 +45,7 @@ function DataInspector2(obj; blocking = false, kwargs...)
         range = pop!(kwarg_dict, :range, 10),
         persistent_tooltip_key = pop!(kwarg_dict, :persistent_tooltip_key, Keyboard.left_shift & Mouse.left),
         dodge_margins = to_lrbt_padding(pop!(kwarg_dict, :dodge_margins, 30)),
+        formatter = pop!(kwarg_dict, :formatter, default_tooltip_formatter)
     )
 
     # defaults for plot attrib
@@ -162,11 +163,10 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
         return false
     end
 
-    # TODO: Should we extract plot from PlotElement?
-    pos = get_position(element)
-    # TODO: shift pos to desired depth
+    pos = get_tooltip_position(element)
+    # TODO: shift pos to desired depth (or is draw_on_top enough?)
 
-    label = get_tooltip_label(element, pos)
+    label = get_tooltip_label(di, element, pos)
 
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
@@ -185,27 +185,16 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 end
 
 
-function get_position(element::PlotElement{PT}) where {PT <: Plot}
+function get_tooltip_position(element::PlotElement{PT}) where {PT <: Plot}
     converted = parent(element).attributes[:converted][]
     n_args = length(converted)
     if n_args == 1
         name = argument_names(PT, 1)[1]
-        return to_ndim(Point3d, getproperty(element, name), 0)
+        return getproperty(element, name)
     else
         names = argument_names(PT, n_args)
         p = Point.(getproperty.(Ref(element), names))
-        return to_ndim(Point3d, p, 0)
-    end
-end
-
-function get_tooltip_label(element::PlotElement, pos)
-    label = get(element, :inspector_label, automatic)
-    if label isa String
-        return Format.format(label, pos...)
-    elseif label isa Function
-        return label(element)
-    elseif label === automatic
-        return get_default_tooltip_label(element, pos)
+        return p
     end
 end
 
@@ -213,6 +202,65 @@ function copy_local_model_transformations!(target::Transformable, source::Transf
     t = source.transformation
     transform!(target, translation = t.translation, rotation = t.rotation, scale = t.scale)
     return
+end
+
+function get_tooltip_label(di::DataInspector2, element::PlotElement, pos)
+    label = get(element, :inspector_label, automatic)
+
+    if label isa String
+        # TODO: Can this double as a formatting string? Seems difficult to handle
+        # the various types that label data can be...
+        return label
+    elseif label isa Function
+        return label(element, pos)
+    elseif label === automatic
+        return get_default_tooltip_label(di, element, pos)
+    end
+end
+
+function get_default_tooltip_label(di, element, pos)
+    data = get_default_tooltip_label_data(element, pos)
+    number_formatter = di.attributes[:formatter][]
+    return apply_tooltip_format(number_formatter, data)
+end
+
+get_default_tooltip_label_data(element, pos) = pos
+
+function apply_tooltip_format(fmt, data::Tuple)
+    return mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a\n$b", data)
+end
+
+function apply_tooltip_format(fmt, data::VecTypes)
+    return '(' * mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a, $b", data) * ')'
+end
+
+function apply_tooltip_format(fmt, c::RGB)
+    return "RGB" * apply_tooltip_format(fmt, (red(c), green(c), blue(c)))
+end
+
+function apply_tooltip_format(fmt, c::RGBA)
+    return "RGBA" * apply_tooltip_format(fmt, (red(c), green(c), blue(c), alpha(c)))
+end
+
+function apply_tooltip_format(fmt, c::Gray)
+    return "Gray(" * apply_tooltip_format(fmt, gray(c)) * ')'
+end
+
+apply_tooltip_format(fmt::String, x::Number) = Format.format(fmt, x)
+apply_tooltip_format(fmt::Function, x::Number) = fmt(x)
+
+function default_tooltip_formatter(x)
+    if 1e-3 < abs(x) < 1e-1
+        return @sprintf("%0.6f", x)
+    elseif 1e-1 < abs(x) < 1e3
+        return @sprintf("%0.3f", x)
+    elseif 1e3 < abs(x) < 1e5
+        return @sprintf("%0.0f", x)
+    elseif iszero(x)
+        return "0"
+    else
+        return @sprintf("%0.3e", x)
+    end
 end
 
 
@@ -252,12 +300,12 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     parent_plot = parent(element)
 
     empty!(element)
-    pos = get_position(element)
+    pos = get_tooltip_position(element)
     get_tooltip_label(element, pos)
 
     inputs = [plot.arg1, getproperty.(Ref(parent_plot), get_accessed_fields(element))...]
     map!(plot, inputs, [:element_positions, :element_labels]) do elements, triggers...
-        positions = get_position.(elements)
+        positions = get_tooltip_position.(elements)
         labels = get_tooltip_label.(elements, positions)
         # TODO: add z shift to labels
         return positions, labels
@@ -303,38 +351,28 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
     return
 end
 
-
 ################################################################################
 
-function get_default_tooltip_label(e, pos::VecTypes)
-    parts = showoff_minus(pos)
-    return '(' * join(parts, ", ") * ')'
-end
+get_tooltip_position(element::PlotElement{<:Mesh}) = element.positions
+get_tooltip_position(element::PlotElement{<:Surface}) = element.positions
 
-get_default_tooltip_label(e, p) = "Failed to construct label for $e, $p"
-
-################################################################################
-
-get_position(element::PlotElement{<:Mesh}) = element.positions
-get_position(element::PlotElement{<:Surface}) = element.positions
-
-function get_position(element::PlotElement{<:Union{Image, Heatmap}})
+function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
     plot = parent(element)
     x = dimensional_element_getindex(plot.x[], element, 1)
     y = dimensional_element_getindex(plot.y[], element, 2)
     return Point2f(x, y)
 end
 
-function get_position(element::PlotElement{<:Voxels})
+function get_tooltip_position(element::PlotElement{<:Voxels})
     return voxel_position(parent(element), Tuple(element.index)...)
 end
 
-function get_position(element::PlotElement{<:Hist})
+function get_tooltip_position(element::PlotElement{<:Hist})
     barplot_element = PlotElement(parent(element).plots[1], element)
-    return get_position(barplot_element)
+    return get_tooltip_position(barplot_element)
 end
 
-function get_position(element::PlotElement{<:Poly})
+function get_tooltip_position(element::PlotElement{<:Poly})
     mesh_element = PlotElement(parent(element).plots[1], element)
-    return get_position(mesh_element)
+    return get_tooltip_position(mesh_element)
 end
