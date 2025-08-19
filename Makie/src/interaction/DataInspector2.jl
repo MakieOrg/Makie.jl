@@ -219,12 +219,12 @@ function get_tooltip_label(di::DataInspector2, element::PlotElement, pos)
 end
 
 function get_default_tooltip_label(di, element, pos)
-    data = get_default_tooltip_label_data(element, pos)
+    data = get_default_tooltip_data(element, pos)
     number_formatter = di.attributes[:formatter][]
     return apply_tooltip_format(number_formatter, data)
 end
 
-get_default_tooltip_label_data(element, pos) = pos
+get_default_tooltip_data(element, pos) = pos
 
 function apply_tooltip_format(fmt, data::Tuple)
     return mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a\n$b", data)
@@ -353,6 +353,8 @@ end
 
 ################################################################################
 
+# Overwrites
+
 get_tooltip_position(element::PlotElement{<:Mesh}) = element.positions
 get_tooltip_position(element::PlotElement{<:Surface}) = element.positions
 
@@ -376,3 +378,6 @@ function get_tooltip_position(element::PlotElement{<:Poly})
     mesh_element = PlotElement(parent(element).plots[1], element)
     return get_tooltip_position(mesh_element)
 end
+
+
+get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
