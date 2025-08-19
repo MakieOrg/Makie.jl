@@ -2,6 +2,7 @@
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 ComputePipeline = "95dc2771-c249-4cd0-9c9f-1f3b4330693c"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 IOCapture = "b5f81e59-6552-4d32-b1f0-c071b021bf89"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
