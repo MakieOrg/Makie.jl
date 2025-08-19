@@ -61,42 +61,19 @@ function pick_line_element(scene::Scene, plot, idx)
     return InterpolatedPlotElement(plot, idx-1, idx, interpolation, length(pos))
 end
 
-function model_space_boundingbox(plot::Heatmap)
+get_picked_model_space_rect(plot::Image, idx) = Rect2d(model_space_boundingbox(plot))
+
+function get_picked_model_space_rect(plot::Heatmap, idx)
     # Workaround for Resampler
     if !isempty(plot.plots)
-        return model_space_boundingbox(plot.plots[1])
+        return get_picked_model_space_rect(plot.plots[1], idx)
     end
 
-    p0, p1 = Point2d.(
-        extrema(plot.x_transformed_f32c[]),
-        extrema(plot.y_transformed_f32c[])
-    )
-    # using Rect3d in case we generalize this
-    return Rect3d(Point3d(p0..., 0), Vec3d((p1 .- p0)..., 0))
-end
+    j, i = fldmod1(idx, size(plot.image[], 1))
+    p0 = Point2d.(plot.x_transformed_f32c[][i], plot.y_transformed_f32c[][j])
+    p1 = Point2d.(plot.x_transformed_f32c[][i+1], plot.y_transformed_f32c[][j+1])
 
-model_space_boundingbox(plot::Image) = Rect3d(plot.positions_transformed_f32c[])
-
-function pick_rect2D_element(scene::Scene, plot)
-    # Heatmap and Image are always a Rect2f. The transform function is currently
-    # not allowed to change this, so applying it should be fine. Applying the
-    # model matrix may add a z component to the Rect2f, which we can't represent,
-    # so we instead inverse-transform the ray
-    p0, p1 = Point2d.(extrema(model_space_boundingbox(plot)))
-    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))
-    pos = Vec2d(ray_rect_intersection(Rect2(p0, p1 - p0), ray))
-    _size = size(plot.image[])
-    uv = (pos - p0) ./ (p1 - p0)
-    ij_interp = uv .* _size
-    # 0   1   2   3  ij_interp
-    # | , | , | , |
-    #   1   2   3    cell index
-    # ij_low should be i for ij_interp = i-0.5 .. i+0.5
-    # ij_high should be i+1 in the same range
-    ij_low = clamp.(floor.(Int, ij_interp .+ 0.5), 1, _size)
-    ij_high = clamp.(ceil.(Int, ij_interp .+ 0.5), 1, _size)
-    local_interpolation = ij_interp .- ij_low .+ 0.5
-    return InterpolatedPlotElement(plot, ij_low, ij_high, local_interpolation, _size)
+    return Rect2d(p0, p1 .- p0)
 end
 
 function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<: VecTypes{2}}, ref::VecTypes)
@@ -137,8 +114,42 @@ function pick_element(plot::Union{Lines, LineSegments}, idx, plot_stack)
     return pick_line_element(parent_scene(plot), plot, idx)
 end
 
+function interpolated_edge_to_cell_index(i_interp, _size, one_based = false)
+    # 0   1   2   3  i_interp
+    # | , | , | , |
+    #   1   2   3    cell index
+    # ij_low should be i for ij_interp = i-0.5 .. i+0.5
+    # ij_high should be i+1 in the same range
+    i_low = clamp.(floor.(Int, i_interp .+ 0.5 .- one_based), 1, _size)
+    i_high = clamp.(ceil.(Int, i_interp .+ 0.5 .- one_based), 1, _size)
+    local_interpolation = i_interp .- i_low .+ 0.5 .- one_based
+    return i_low, i_high, local_interpolation
+end
+
 function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack)
     if plot.interpolate[]
+        # Heatmap and Image are always a Rect2f. The transform function is currently
+        # not allowed to change this, so applying it should be fine. Applying the
+        # model matrix may add a z component to the Rect2f, which we can't represent,
+        # so we instead inverse-transform the ray
+        rect = get_picked_model_space_rect(plot, idx)
+        ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
+        pos = Vec2d(ray_rect_intersection(rect, ray))
+        isnan(pos) && return nothing
+
+        _size = size(plot.image[])
+        if plot isa Image
+            # cell based indices
+            ij_interp = (pos - origin(rect)) ./ widths(rect) .* _size
+            ij_low, ij_high, interp = interpolated_edge_to_cell_index(ij_interp, _size, false)
+            return InterpolatedPlotElement(plot, ij_low, ij_high, interp, _size)
+        else
+            j, i = fldmod1(idx, _size[1]) # cell index
+            local_interpolation = (pos - origin(rect)) ./ widths(rect)
+            # edge based indices
+            return InterpolatedPlotElement(plot, Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, _size, true)
+        end
+
         return pick_rect2D_element(parent_scene(plot), plot)
     else
         _size = size(plot.image[])

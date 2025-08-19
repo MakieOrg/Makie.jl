@@ -89,10 +89,18 @@ function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2
         return element_getindex(x, element)
     elseif x isa Union{EndPoints, EndPointsLike}
         x0, x1 = x
-        r = range(x0, x1, element.size[dim])
-        return r[element.index[dim]]
+        r = range(x0, x1, 2 * element.size[dim] + 1) # N+1 edges and N centers
+        return r[2 * element.index[dim]] # indexing centers
     elseif is_array_attribute(x) # or vector, we already filtered 2d arrays
-        return sv_getindex(x, element.index[dim])
+        if length(x) == element.size[dim] # center based
+            return sv_getindex(x, element.index[dim])
+        elseif length(x) == element.size[dim] + 1 # edge based
+            low = sv_getindex(x, element.index[dim])
+            high = sv_getindex(x, element.index[dim]+1)
+            return 0.5 * (low + high)
+        else
+            error("Got unexpected length $(length(x)).")
+        end
     else
         return x
     end
@@ -105,18 +113,29 @@ struct InterpolatedPlotElement{PlotType, D} <: PlotElement{PlotType}
     index1::CartesianIndex{D}
     interpolation::Vec{D, Float32}
     size::Vec{D, Int64}
+    edge_based::Bool
 end
 
-function InterpolatedPlotElement(plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat, size::Integer)
-    return InterpolatedPlotElement(plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation), Vec{1, Int64}(size))
+function InterpolatedPlotElement(
+        plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat,
+        size::Integer, edge_based = false
+    )
+    return InterpolatedPlotElement(
+        plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation),
+        Vec{1, Int64}(size), edge_based
+    )
 end
 
 function InterpolatedPlotElement(
         plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer},
-        interpolation::VecTypes{D, <:AbstractFloat}, size::VecTypes{D, <:Integer}
+        interpolation::VecTypes{D, <:AbstractFloat}, size::VecTypes{D, <:Integer},
+        edge_based = false
     ) where {D}
 
-    return InterpolatedPlotElement(plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation), Vec{D, Int64}(size))
+    return InterpolatedPlotElement(
+        plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation),
+        Vec{D, Int64}(size), edge_based
+    )
 end
 
 # TODO: can we extend is_vector_attribute() to consider Matrices vectors?
@@ -142,16 +161,28 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) wher
     if is_array_attribute(x)
         i0, j0 = Tuple(element.index0)
         i1, j1 = Tuple(element.index1)
+        fi, fj = element.interpolation
+
+        # Heatmap uses edge based indices that sometimes need to be converted to
+        # cell based indices
+        if element.edge_based
+            if size(x, 1) == element.size[1] # center based
+                i0, i1, fi = interpolated_edge_to_cell_index(i0 + fi, element.size[1], true)
+            end
+            if size(x, 2) == element.size[2] # center based
+                j0, j1, fj = interpolated_edge_to_cell_index(j0 + fj, element.size[2], true)
+            end
+        end
 
         x00 = sv_getindex(x, CartesianIndex(i0, j0))
         x10 = sv_getindex(x, CartesianIndex(i1, j0))
         x01 = sv_getindex(x, CartesianIndex(i0, j1))
         x11 = sv_getindex(x, CartesianIndex(i1, j1))
 
-        x_0 = lerp(x00, x10, element.interpolation[1])
-        x_1 = lerp(x01, x11, element.interpolation[1])
+        x_0 = lerp(x00, x10, fi)
+        x_1 = lerp(x01, x11, fi)
 
-        return lerp(x_0, x_1, element.interpolation[2])
+        return lerp(x_0, x_1, fj)
     else
         return x
     end

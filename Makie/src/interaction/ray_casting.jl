@@ -315,6 +315,22 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
     end
 end
 
+function model_space_boundingbox(plot::Heatmap)
+    # Workaround for Resampler
+    if !isempty(plot.plots)
+        return model_space_boundingbox(plot.plots[1])
+    end
+
+    p0, p1 = Point2d.(
+        extrema(plot.x_transformed_f32c[]),
+        extrema(plot.y_transformed_f32c[])
+    )
+    # using Rect3d in case we generalize this
+    return Rect3d(Point3d(p0..., 0), Vec3d((p1 .- p0)..., 0))
+end
+
+model_space_boundingbox(plot::Image) = Rect3d(plot.positions_transformed_f32c[])
+
 function position_on_plot(plot::Union{Heatmap, Image}, idx, ray::Ray; apply_transform = true)
     # Heatmap and Image are always a Rect2f. The transform function is currently
     # not allowed to change this, so applying it should be fine. Applying the
