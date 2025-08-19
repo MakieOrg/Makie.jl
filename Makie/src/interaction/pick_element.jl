@@ -212,7 +212,7 @@ function find_triangle_in_submesh(
         faces::AbstractArray{<:GeometryBasics.AbstractFace},
         ray::Ray
     )
-    for face in faces
+    for (face_index, face) in enumerate(faces)
         p1, p2, p3 = positions[face]
         pos = ray_triangle_intersection(p1, p2, p3, ray)
         if !isnan(pos)
@@ -255,6 +255,7 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     if isnan(pos)
         return nothing
     else
+        face_index = range[face_index]
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
         return MeshPlotElement(plot, submesh_index, face, uv)
