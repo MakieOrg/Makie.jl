@@ -4,6 +4,26 @@
 
 - Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
 
+## [0.24.6] - 2025-08-19
+
+- Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
+- Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
+- Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
+- Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange`, colormap resolution, and changed colormap extractor for `Colorbar` to ignore alpha. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
+- Fixed double application of `alpha` regression in `Band` plots in CairoMakie [#5258](https://github.com/MakieOrg/Makie.jl/pull/5258).
+
+## [0.24.5] - 2025-08-06
+
+- Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.
+- Fixed `propertynames(::Attributes)` [#5154](https://github.com/MakieOrg/Makie.jl/pull/5154).
+- Fixed cycle error in SpecApi and axis re-creation for plot type changes [#5198](https://github.com/MakieOrg/Makie.jl/pull/5198).
+- Fixed incorrect variable name used for `voxels` in `Colorbar` [#5208](https://github.com/MakieOrg/Makie.jl/pull/5208)
+- Fixed `Time` ticks breaking when axis limits crossed over midnight [#5212](https://github.com/MakieOrg/Makie.jl/pull/5212).
+- Fixed issue where segments of solid `lines` disappeared when positions were large enough [#5216](https://github.com/MakieOrg/Makie.jl/pull/5216)
+- Fixed `meshscatter` markers not updating correctly in GLMakie [#5217](https://github.com/MakieOrg/Makie.jl/pull/5217)
+- Fixed `volume` plots getting clipped based on the vertices of their bounding box, e.g. when zooming in Axis3 [#5225](https://github.com/MakieOrg/Makie.jl/pull/5225)
+- Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
+
 ## [0.24.4] - 2025-07-17
 
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
@@ -16,6 +36,7 @@
 - Added `map!(f, plot::Plot, inputs, outputs)` method (accepting a plot instead of a compute graph). [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Updated `arrows`, `bracket`, `contour`, `contour3d`, `poly`, `streamplot`, `textlabel`, `triplot`, `voronoiplot` and `hexbin` to use the compute graph instead of observables. [#5121](https://github.com/MakieOrg/Makie.jl/pull/5121)
 - Fixed `p.text = "..."` erroring with `p = text(..., text = rich(...))` [#5173](https://github.com/MakieOrg/Makie.jl/pull/5173)
+- Support Interpolations.jl v0.16 [#5157](https://github.com/MakieOrg/Makie.jl/pull/5157)
 - Updated `arc`, `band`, `pie`, `stairs`, `stem`, `tooltip`, `wireframe` and `qqplot` to use the new compute graph instead of observables [#5165](https://github.com/MakieOrg/Makie.jl/pull/5165)
 - Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks. It is exported as `DateTimeTicks` [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 - Fixed missing toggle animation [#5156](https://github.com/MakieOrg/Makie.jl/pull/#5156)
@@ -916,7 +937,9 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...HEAD
+[0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6
+[0.24.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...v0.24.4
 [0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
 [0.24.2]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.1...v0.24.2

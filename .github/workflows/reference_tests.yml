@@ -32,7 +32,7 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -83,7 +83,7 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -135,7 +135,7 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -181,15 +181,15 @@ jobs:
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: ReferenceImages_WGLMakie_1
           path: ./ReferenceImages/WGLMakie
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: ReferenceImages_CairoMakie_1
           path: ./ReferenceImages/CairoMakie
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
