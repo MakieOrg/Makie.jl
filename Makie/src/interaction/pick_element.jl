@@ -327,20 +327,16 @@ function pick_element(plot::Band, idx, plot_stack)
 
     # find selected triangle
     ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
-    face, face_index, pos = find_picked_triangle(
-        meshplot.positions_transformed_f32c[], meshplot.faces[], ray, idx
-    )
+    ps = meshplot.positions_transformed_f32c[]
+    face, face_index, pos = find_picked_triangle(ps, meshplot.faces[], ray, idx)
     isnan(pos) && return nothing
 
     # Get index of of the quad/first point in ps1/ps2
-    ps1 = plot.lowerpoints[]
-    ps2 = plot.upperpoints[]
-    N = length(ps1)
+    N = div(length(ps), 2)
     idx = mod1(face_index, N-1)
 
     # interpolate to quad paramater
-    # TODO: These should not be in different spaces (input space vs post f32c world space)
-    f = point_in_quad_parameter(ps1[idx], ps1[idx + 1], ps2[idx + 1], ps2[idx], to_ndim(Point2d, pos, 0))
+    f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
 
     return InterpolatedPlotElement(plot, idx, idx+1, f, N)
 end
