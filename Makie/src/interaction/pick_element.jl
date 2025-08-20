@@ -21,8 +21,17 @@ plot_stack(::Scene) = tuple()
 plot_stack(::Nothing) = tuple()
 
 function pick_element(plot_stack::Tuple, idx)
-    element = pick_element(first(plot_stack), idx, Base.tail(plot_stack))
-    return PlotElement(plot_stack, element)
+    element_or_accessor = pick_element(first(plot_stack), idx, Base.tail(plot_stack))
+    if element_or_accessor isa PlotElement
+        # Allow pick_element(plot, idx, plot_stack) to edit the plot_stack by
+        # returning a PlotElement. Since those methods don't have the full
+        # stack anymore we need to reconstruct the head
+        head = Makie.plot_stack(parent(first(element_or_accessor.plot_stack)))
+        full_stack = tuple(head..., element_or_accessor.plot_stack...)
+        return PlotElement(full_stack, element_or_accessor)
+    else # Accessor or Nothing
+        return PlotElement(plot_stack, element_or_accessor)
+    end
 end
 
 # TODO: update docs
