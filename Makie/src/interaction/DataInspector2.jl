@@ -369,12 +369,6 @@ function get_tooltip_position(element::PlotElement{<:Hist})
     return get_tooltip_position(parent(element))
 end
 
-function get_tooltip_position(element::PlotElement{<:Poly})
-    # TODO: drop lines from poly element
-    meshplot = get_plot(element).plots[1]
-    return element_getindex(meshplot.positions[], element.index)
-end
-
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
     return 0.5 * (element.startpoints + element.endpoints)
 end
@@ -389,15 +383,9 @@ function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
     return element.upperpoints, element.lowerpoints
 end
 
-function get_tooltip_position(element::PlotElement{<:Contourf})
-    # TODO: drop lines from poly element
-    meshplot = get_plot(element).plots[1].plots[1]
-    return element_getindex(meshplot.positions[], element.index)
-end
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
     poly_element = parent(element)
     return poly_element.color
 end
-
 
 get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = parent(element).color

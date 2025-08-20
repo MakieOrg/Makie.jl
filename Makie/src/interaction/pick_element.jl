@@ -254,9 +254,11 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plo
     else
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return InterpolatedMeshElement(
+        accessor = InterpolatedMeshElement(
             length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
         )
+        # Edit stack so Poly always traces to mesh for simplicity
+        return PlotElement((plot, plot.plots[1]), accessor)
     end
 end
 
@@ -278,9 +280,10 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
         face_index = range[face_index]
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return InterpolatedMeshElement(
+        accessor = InterpolatedMeshElement(
             length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
         )
+        return PlotElement((plot, plot.plots[1]), accessor)
     end
 end
 
