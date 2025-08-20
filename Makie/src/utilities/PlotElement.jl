@@ -208,23 +208,36 @@ end
 
 struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
     parent::PlotType
+
+    N_vertices::Int64
+    N_submeshes::Int64
+
     submesh_index::Int64
     face::GLTriangleFace
     uv::Vec2f
 
-    function MeshPlotElement(plot::PlotType, submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}) where {PlotType}
-        return new{PlotType}(plot, submesh_index, GLTriangleFace(face), Vec2f(uv))
+    function MeshPlotElement(
+            plot::PlotType, N_vertices::Integer, N_submeshes::Integer,
+            submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}
+        ) where {PlotType}
+        return new{PlotType}(plot, N_vertices, N_submeshes, submesh_index, GLTriangleFace(face), Vec2f(uv))
     end
 end
 
 function element_getindex(x, element::MeshPlotElement)
     if is_array_attribute(x)
-        i, j, k = element.face
-        a = sv_getindex(x, i)
-        b = sv_getindex(x, j)
-        c = sv_getindex(x, k)
-        u, v = element.uv
-        return a + u * (b-a) + v * (c-a)
+        if length(x) == element.N_vertices
+            i, j, k = element.face
+            a = sv_getindex(x, i)
+            b = sv_getindex(x, j)
+            c = sv_getindex(x, k)
+            u, v = element.uv
+            return a + u * (b-a) + v * (c-a)
+        elseif length(x) == element.N_submeshes
+            return x[element.submesh_index]
+        else
+            return x
+        end
     else
         return x
     end

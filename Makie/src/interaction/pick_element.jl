@@ -168,7 +168,10 @@ function pick_element(plot::Mesh, idx, plot_stack)
     else
         uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
         submesh_index = findfirst(range -> face_index in range, plot.mesh[].views)
-        return MeshPlotElement(plot, something(submesh_index, 1), face, uv)
+        return MeshPlotElement(
+            plot, length(plot.positions_transformed_f32c[]), length(plot.mesh[].views),
+            something(submesh_index, 1), face, uv
+        )
     end
 end
 
@@ -190,7 +193,7 @@ function pick_element(plot::Surface, idx, plot_stack)
         # and we need to ray cast to get an accurate position on the quad
         # for now just triangulate...
         uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
-        return MeshPlotElement(plot, 1, face, uv)
+        return MeshPlotElement(plot, length(plot.positions_transformed_f32c[]), 1, 1, face, uv)
     end
 end
 
@@ -236,7 +239,9 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plo
     else
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return MeshPlotElement(plot, submesh_index, face, uv)
+        return MeshPlotElement(
+            plot, length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
+        )
     end
 end
 
@@ -258,7 +263,9 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
         face_index = range[face_index]
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return MeshPlotElement(plot, submesh_index, face, uv)
+        return MeshPlotElement(
+            plot, length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
+        )
     end
 end
 
