@@ -346,3 +346,5 @@ function pick_element(plot::Band, idx, plot_stack)
 
     return InterpolatedPlotElement(plot, idx, idx+1, f, N)
 end
+
+pick_element(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing

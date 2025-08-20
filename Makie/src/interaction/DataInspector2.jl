@@ -402,3 +402,12 @@ function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
     poly_element = PlotElement(parent(element).plots[1], element)
     return poly_element.color
 end
+
+function get_tooltip_position(element::PlotElement{<:Spy})
+    scatter_element = PlotElement(parent(element).plots[1], element)
+    return get_tooltip_position(scatter_element)
+end
+function get_default_tooltip_data(element::PlotElement{<:Spy}, pos)
+    scatter_element = PlotElement(parent(element).plots[1], element)
+    return scatter_element.color
+end
