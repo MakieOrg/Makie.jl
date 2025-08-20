@@ -1,14 +1,25 @@
+abstract type AbstractElementAccessor end
+
 abstract type PlotElement{PlotType} end
 
-Base.parent(element::PlotElement) = element.parent
+PlotElement(@nospecialize(::Any), ::Nothing) = nothing
+
+function dimensional_element_getindex(x, element::PlotElement, dim::Integer)
+    return dimensional_element_getindex(x, accessor(element), dim)
+end
+element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element))
+
+Base.parent(element::PlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
+get_plot(element::PlotElement) = first(element.plot_stack)
+accessor(element::PlotElement) = element.index
 
 function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     if hasfield(T, name)
         return getfield(element, name)
     else
-        plot = parent(element)
+        plot = get_plot(element)
         if haskey(plot.attributes, name)
-            return element_getindex(getproperty(plot, name)[], element)
+            return element_getindex(getproperty(plot, name)[], element.index)
         else
             return getproperty(plot, name)
         end
@@ -16,26 +27,32 @@ function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
 end
 
 function Base.get(element::PlotElement{PT}, name::Symbol, default) where {PT}
-    plot = parent(element)
+    plot = get_plot(element)
     if haskey(plot.attributes, name) || hasfield(PT, name)
-        getproperty(element, name)
+        return getproperty(element, name)
     else
         return default
     end
 end
 
-function PlotElement(plot::Plot, elem::T) where {T <: PlotElement}
-    base_type = getfield(Makie, nameof(T))
-    names = filter(name -> name !== :parent, fieldnames(T))
-    fields = getfield.(Ref(elem), names)
-    return base_type(plot, fields...)
+
+
+struct SimplePlotElement{
+        PlotType,
+        IndexType <: AbstractElementAccessor,
+        PlotStack <: Tuple{PlotType, Vararg{Plot}}
+    } <: PlotElement{PlotType}
+
+    plot_stack::PlotStack
+    index::IndexType
 end
 
-PlotElement(@nospecialize(::Plot), ::Nothing) = nothing
+PlotElement(plot_stack::Tuple, elem::PlotElement) = SimplePlotElement(plot_stack, elem.index)
+PlotElement(plot_stack::Tuple, accessor::AbstractElementAccessor) = SimplePlotElement(plot_stack, accessor)
 
 
 
-struct TrackedPlotElement{PlotType, ElementType <: PlotElement{PlotType}} <: PlotElement{PlotType}
+struct TrackedPlotElement{PlotType, ElementType <: SimplePlotElement{PlotType}} <: PlotElement{PlotType}
     element::ElementType
     accessed_fields::Vector{Symbol}
 end
@@ -58,33 +75,33 @@ end
 TrackedPlotElement(e::PlotElement) = TrackedPlotElement(e, Symbol[])
 Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
-Base.parent(e::TrackedPlotElement) = parent(e.element)
+Base.parent(e::TrackedPlotElement) = TrackedPlotElement(parent(e.element), e.accessed_fields)
+get_plot(e::TrackedPlotElement) = get_plot(e.element)
 
 
 
-struct IndexedPlotElement{PlotType, D} <: PlotElement{PlotType}
-    parent::PlotType
+struct IndexedElement{D} <: AbstractElementAccessor
     index::CartesianIndex{D}
     size::Vec{D, Int64}
 
-    function IndexedPlotElement(plot::PT, idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {PT <: Plot, N}
-        return new{PT, N}(plot, idx, Vec{N, Int64}(size))
+    function IndexedElement(idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {N}
+        return new{N}(idx, Vec{N, Int64}(size))
     end
 end
 
-function IndexedPlotElement(plot::Plot, idx::Integer, size::Integer)
-    return IndexedPlotElement(plot, CartesianIndex(idx), Vec{1, Int64}(size))
+function IndexedElement(idx::Integer, size::Integer)
+    return IndexedElement(CartesianIndex(idx), Vec{1, Int64}(size))
 end
 
-function IndexedPlotElement(plot::Plot, idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
-    return IndexedPlotElement(plot, CartesianIndex(idx...), Vec{N, Int64}(size))
+function IndexedElement(idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
+    return IndexedElement(CartesianIndex(idx...), Vec{N, Int64}(size))
 end
 
-function element_getindex(x, element::IndexedPlotElement)
+function element_getindex(x, element::IndexedElement)
     return sv_getindex(x, element.index)
 end
 
-function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
+function dimensional_element_getindex(x, element::IndexedElement{2}, dim::Integer)
     if x isa AbstractArray{T, 2} where T
         return element_getindex(x, element)
     elseif x isa Union{EndPoints, EndPointsLike}
@@ -107,8 +124,7 @@ function dimensional_element_getindex(x, element::IndexedPlotElement{PlotType, 2
 end
 
 
-struct InterpolatedPlotElement{PlotType, D} <: PlotElement{PlotType}
-    parent::PlotType
+struct InterpolatedElement{D} <: AbstractElementAccessor
     index0::CartesianIndex{D}
     index1::CartesianIndex{D}
     interpolation::Vec{D, Float32}
@@ -116,24 +132,23 @@ struct InterpolatedPlotElement{PlotType, D} <: PlotElement{PlotType}
     edge_based::Bool
 end
 
-function InterpolatedPlotElement(
-        plot::Plot, i0::Integer, i1::Integer, interpolation::AbstractFloat,
-        size::Integer, edge_based = false
+function InterpolatedElement(
+        i0::Integer, i1::Integer, interpolation::AbstractFloat, size::Integer, edge_based = false
     )
-    return InterpolatedPlotElement(
-        plot, CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation),
+    return InterpolatedElement(
+        CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation),
         Vec{1, Int64}(size), edge_based
     )
 end
 
-function InterpolatedPlotElement(
-        plot::Plot, i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer},
+function InterpolatedElement(
+        i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer},
         interpolation::VecTypes{D, <:AbstractFloat}, size::VecTypes{D, <:Integer},
         edge_based = false
     ) where {D}
 
-    return InterpolatedPlotElement(
-        plot, CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation),
+    return InterpolatedElement(
+        CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation),
         Vec{D, Int64}(size), edge_based
     )
 end
@@ -147,7 +162,7 @@ is_array_attribute(x::VecTypes) = false
 is_array_attribute(x::ScalarOrVector) = x.sv isa Vector
 is_array_attribute(x) = false
 
-function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) where {PlotType}
+function element_getindex(x, element::InterpolatedElement{1})
     if is_array_attribute(x)
         low = sv_getindex(x, element.index0)
         high = sv_getindex(x, element.index1)
@@ -157,7 +172,7 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 1}) wher
     end
 end
 
-function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) where {PlotType}
+function element_getindex(x, element::InterpolatedElement{2})
     if is_array_attribute(x)
         i0, j0 = Tuple(element.index0)
         i1, j1 = Tuple(element.index1)
@@ -188,7 +203,7 @@ function element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}) wher
     end
 end
 
-function dimensional_element_getindex(x, element::InterpolatedPlotElement{PlotType, 2}, dim::Integer) where {PlotType}
+function dimensional_element_getindex(x, element::InterpolatedElement{2}, dim::Integer)
     if x isa AbstractArray{T, 2} where T
         return element_getindex(x, element)
     elseif x isa Union{EndPoints, EndPointsLike}
@@ -206,9 +221,7 @@ end
 
 
 
-struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
-    parent::PlotType
-
+struct InterpolatedMeshElement <: AbstractElementAccessor
     N_vertices::Int64
     N_submeshes::Int64
 
@@ -216,15 +229,15 @@ struct MeshPlotElement{PlotType} <: PlotElement{PlotType}
     face::GLTriangleFace
     uv::Vec2f
 
-    function MeshPlotElement(
-            plot::PlotType, N_vertices::Integer, N_submeshes::Integer,
+    function InterpolatedMeshElement(
+            N_vertices::Integer, N_submeshes::Integer,
             submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}
-        ) where {PlotType}
-        return new{PlotType}(plot, N_vertices, N_submeshes, submesh_index, GLTriangleFace(face), Vec2f(uv))
+        )
+        return new(N_vertices, N_submeshes, submesh_index, GLTriangleFace(face), Vec2f(uv))
     end
 end
 
-function element_getindex(x, element::MeshPlotElement)
+function element_getindex(x, element::InterpolatedMeshElement)
     if is_array_attribute(x)
         if length(x) == element.N_vertices
             i, j, k = element.face

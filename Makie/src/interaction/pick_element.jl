@@ -22,7 +22,7 @@ plot_stack(::Nothing) = tuple()
 
 function pick_element(plot_stack::Tuple, idx)
     element = pick_element(first(plot_stack), idx, Base.tail(plot_stack))
-    return PlotElement(first(plot_stack), element)
+    return PlotElement(plot_stack, element)
 end
 
 # TODO: update docs
@@ -48,7 +48,7 @@ level `pick_element` will be re-wrapped to refer to the top level recipe plot.
 
 """
 function pick_element(plot, index, child_stack)
-    pick_element(first(child_stack), index, Base.tail(child_stack))
+    return pick_element(first(child_stack), index, Base.tail(child_stack))
 end
 
 # Utilities
@@ -58,7 +58,7 @@ function pick_line_element(scene::Scene, plot, idx)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))
     idx = max(2, idx)
     interpolation = closest_point_on_line_interpolation(pos[idx - 1], pos[idx], ray)
-    return InterpolatedPlotElement(plot, idx-1, idx, interpolation, length(pos))
+    return InterpolatedElement(idx-1, idx, interpolation, length(pos))
 end
 
 get_picked_model_space_rect(plot::Image, idx) = Rect2d(model_space_boundingbox(plot))
@@ -102,12 +102,12 @@ end
 ################################################################################
 
 function pick_element(plot::Union{Scatter, MeshScatter}, idx, plot_stack)
-    return IndexedPlotElement(plot, idx, length(plot.positions[]))
+    return IndexedElement(idx, length(plot.positions[]))
 end
 
 function pick_element(plot::Text, idx, plot_stack)
     idx = findfirst(range -> idx in range, plot.text_blocks[])
-    return IndexedPlotElement(plot, idx, length(plot.text_blocks[]))
+    return IndexedElement(idx, length(plot.text_blocks[]))
 end
 
 function pick_element(plot::Union{Lines, LineSegments}, idx, plot_stack)
@@ -126,11 +126,11 @@ function interpolated_edge_to_cell_index(i_interp, size, one_based = false)
     return i_low, i_high, local_interpolation
 end
 
-function InterpolatedPlotElement(
+function InterpolatedElement(
         plot::Plot, rect::Rect2;
         edge_based = false,
         model = plot.model_f32c[],
-        ray = transform(inv(model), ray),
+        ray = transform(inv(model), ray_at_cursor(parent_scene(plot))),
         size = Base.size(plot.image[])
     )
     pos = Vec2d(ray_rect_intersection(rect, ray))
@@ -139,12 +139,12 @@ function InterpolatedPlotElement(
     if !edge_based
         ij_interp = (pos - origin(rect)) ./ widths(rect) .* size
         ij_low, ij_high, interp = interpolated_edge_to_cell_index(ij_interp, size, edge_based)
-        return InterpolatedPlotElement(plot, ij_low, ij_high, interp, size)
+        return InterpolatedElement(ij_low, ij_high, interp, size)
     else
         j, i = fldmod1(idx, size[1]) # cell index
         local_interpolation = (pos - origin(rect)) ./ widths(rect)
-        return InterpolatedPlotElement(
-            plot, Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, size, edge_based
+        return InterpolatedElement(
+            Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, size, edge_based
         )
     end
 end
@@ -156,11 +156,11 @@ function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack::Tuple{})
         # model matrix may add a z component to the Rect2f, which we can't represent,
         # so we instead inverse-transform the ray
         rect = get_picked_model_space_rect(plot, idx)
-        return InterpolatedPlotElement(plot, rect, edge_based = plot isa Heatmap)
+        return InterpolatedElement(plot, rect, edge_based = plot isa Heatmap)
     else
         _size = size(plot.image[])
         cart = CartesianIndices(_size)[idx]
-        return IndexedPlotElement(plot, cart, _size)
+        return IndexedElement(cart, _size)
     end
 end
 
@@ -174,8 +174,8 @@ function pick_element(plot::Mesh, idx, plot_stack)
     else
         uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
         submesh_index = findfirst(range -> face_index in range, plot.mesh[].views)
-        return MeshPlotElement(
-            plot, length(plot.positions_transformed_f32c[]), length(plot.mesh[].views),
+        return InterpolatedMeshElement(
+            length(plot.positions_transformed_f32c[]), length(plot.mesh[].views),
             something(submesh_index, 1), face, uv
         )
     end
@@ -199,14 +199,14 @@ function pick_element(plot::Surface, idx, plot_stack)
         # and we need to ray cast to get an accurate position on the quad
         # for now just triangulate...
         uv = triangle_interpolation_parameters(face, plot.positions_transformed_f32c[], pos)
-        return MeshPlotElement(plot, length(plot.positions_transformed_f32c[]), 1, 1, face, uv)
+        return InterpolatedMeshElement(length(plot.positions_transformed_f32c[]), 1, 1, face, uv)
     end
 end
 
 function pick_element(plot::Voxels, idx, plot_stack)
     _size = size(plot.chunk_u8[])
     cart = CartesianIndices(_size)[idx]
-    return IndexedPlotElement(plot, cart, _size)
+    return IndexedElement(cart, _size)
 end
 
 # TODO:
@@ -245,8 +245,8 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plo
     else
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return MeshPlotElement(
-            plot, length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
+        return InterpolatedMeshElement(
+            length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
         )
     end
 end
@@ -269,8 +269,8 @@ function pick_element(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
         face_index = range[face_index]
         submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
         uv = triangle_interpolation_parameters(face, positions, pos)
-        return MeshPlotElement(
-            plot, length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
+        return InterpolatedMeshElement(
+            length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
         )
     end
 end
@@ -312,12 +312,12 @@ end
 # Text produces the element we want so we just need to handle Poly
 function pick_element(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
     idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedPlotElement(plot, idx, N)
+    return IndexedElement(idx, N)
 end
 
 function pick_element(plot::BarPlot, idx, plot_stack)
     idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedPlotElement(plot, idx, N)
+    return IndexedElement(idx, N)
 end
 
 function pick_element(plot::Arrows2D, idx, plot_stack)
@@ -325,7 +325,7 @@ function pick_element(plot::Arrows2D, idx, plot_stack)
     N_components = sum(plot.should_component_render[])
     idx = fld1(idx, N_components)
     N = fld1(N, N_components)
-    return IndexedPlotElement(plot, idx, N)
+    return IndexedElement(idx, N)
 end
 
 function pick_element(plot::Band, idx, plot_stack)
@@ -344,7 +344,7 @@ function pick_element(plot::Band, idx, plot_stack)
     # interpolate to quad paramater
     f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
 
-    return InterpolatedPlotElement(plot, idx, idx+1, f, N)
+    return InterpolatedElement(idx, idx+1, f, N)
 end
 
 pick_element(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing

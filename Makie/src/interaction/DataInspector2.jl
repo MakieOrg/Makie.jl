@@ -171,7 +171,7 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
 
-    copy_local_model_transformations!(di.dynamic_tooltip, parent(element))
+    copy_local_model_transformations!(di.dynamic_tooltip, get_plot(element))
 
     px_pos = di.dynamic_tooltip.pixel_positions[][1]
 
@@ -184,9 +184,9 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     return true
 end
 
-
+# TODO: replace this with backtracing
 function get_tooltip_position(element::PlotElement{PT}) where {PT <: Plot}
-    converted = parent(element).attributes[:converted][]
+    converted = get_plot(element).attributes[:converted][]
     n_args = length(converted)
     if n_args == 1
         name = argument_names(PT, 1)[1]
@@ -297,7 +297,7 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     end
 
     element = TrackedPlotElement(first(plot.arg1[]))
-    parent_plot = parent(element)
+    parent_plot = get_plot(element)
 
     empty!(element)
     pos = get_tooltip_position(element)
@@ -319,7 +319,7 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
 end
 
 function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) where {PT}
-    id = objectid(parent(element))
+    id = objectid(get_plot(element))
     if haskey(di.persistent_tooltips, id)
         tt = di.persistent_tooltips[id]
         elements = push!(tt.arg1[], element)
@@ -331,7 +331,7 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
 end
 
 function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotElement{<:Tooltip})
-    tt = parent(tooltip_element)
+    tt = get_plot(tooltip_element)
     key = findfirst(==(tt), di.persistent_tooltips)
 
     # If we don't find the tooltip plot then we don't own it and shouldn't touch it
@@ -359,7 +359,7 @@ get_tooltip_position(element::PlotElement{<:Mesh}) = element.positions
 get_tooltip_position(element::PlotElement{<:Surface}) = element.positions
 
 function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
-    plot = parent(element)
+    plot = get_plot(element)
     x = dimensional_element_getindex(plot.x[], element, 1)
     y = dimensional_element_getindex(plot.y[], element, 2)
     return Point2f(x, y)
@@ -367,17 +367,17 @@ end
 get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
 function get_tooltip_position(element::PlotElement{<:Voxels})
-    return voxel_position(parent(element), Tuple(element.index)...)
+    return voxel_position(get_plot(element), Tuple(element.index.index)...)
 end
 
 function get_tooltip_position(element::PlotElement{<:Hist})
-    barplot_element = PlotElement(parent(element).plots[1], element)
-    return get_tooltip_position(barplot_element)
+    return get_tooltip_position(parent(element))
 end
 
 function get_tooltip_position(element::PlotElement{<:Poly})
-    mesh_element = PlotElement(parent(element).plots[1], element)
-    return get_tooltip_position(mesh_element)
+    # TODO: drop lines from poly element
+    meshplot = get_plot(element).plots[1]
+    return element_getindex(meshplot.positions[], element.index)
 end
 
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
@@ -395,19 +395,20 @@ function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
 end
 
 function get_tooltip_position(element::PlotElement{<:Contourf})
-    mesh_element = PlotElement(parent(element).plots[1].plots[1], element)
-    return get_tooltip_position(mesh_element)
+    # TODO: drop lines from poly element
+    meshplot = get_plot(element).plots[1].plots[1]
+    return element_getindex(meshplot.positions[], element.index)
 end
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
-    poly_element = PlotElement(parent(element).plots[1], element)
+    poly_element = parent(element)
     return poly_element.color
 end
 
 function get_tooltip_position(element::PlotElement{<:Spy})
-    scatter_element = PlotElement(parent(element).plots[1], element)
+    scatter_element = parent(element)
     return get_tooltip_position(scatter_element)
 end
 function get_default_tooltip_data(element::PlotElement{<:Spy}, pos)
-    scatter_element = PlotElement(parent(element).plots[1], element)
+    scatter_element = parent(element)
     return scatter_element.color
 end
