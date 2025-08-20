@@ -114,43 +114,49 @@ function pick_element(plot::Union{Lines, LineSegments}, idx, plot_stack)
     return pick_line_element(parent_scene(plot), plot, idx)
 end
 
-function interpolated_edge_to_cell_index(i_interp, _size, one_based = false)
+function interpolated_edge_to_cell_index(i_interp, size, one_based = false)
     # 0   1   2   3  i_interp
     # | , | , | , |
     #   1   2   3    cell index
     # ij_low should be i for ij_interp = i-0.5 .. i+0.5
     # ij_high should be i+1 in the same range
-    i_low = clamp.(floor.(Int, i_interp .+ 0.5 .- one_based), 1, _size)
-    i_high = clamp.(ceil.(Int, i_interp .+ 0.5 .- one_based), 1, _size)
+    i_low = clamp.(floor.(Int, i_interp .+ 0.5 .- one_based), 1, size)
+    i_high = clamp.(ceil.(Int, i_interp .+ 0.5 .- one_based), 1, size)
     local_interpolation = i_interp .- i_low .+ 0.5 .- one_based
     return i_low, i_high, local_interpolation
 end
 
-function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack)
+function InterpolatedPlotElement(
+        plot::Plot, rect::Rect2;
+        edge_based = false,
+        model = plot.model_f32c[],
+        ray = transform(inv(model), ray),
+        size = Base.size(plot.image[])
+    )
+    pos = Vec2d(ray_rect_intersection(rect, ray))
+    isnan(pos) && return nothing
+
+    if !edge_based
+        ij_interp = (pos - origin(rect)) ./ widths(rect) .* size
+        ij_low, ij_high, interp = interpolated_edge_to_cell_index(ij_interp, size, edge_based)
+        return InterpolatedPlotElement(plot, ij_low, ij_high, interp, size)
+    else
+        j, i = fldmod1(idx, size[1]) # cell index
+        local_interpolation = (pos - origin(rect)) ./ widths(rect)
+        return InterpolatedPlotElement(
+            plot, Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, size, edge_based
+        )
+    end
+end
+
+function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack::Tuple{})
     if plot.interpolate[]
         # Heatmap and Image are always a Rect2f. The transform function is currently
         # not allowed to change this, so applying it should be fine. Applying the
         # model matrix may add a z component to the Rect2f, which we can't represent,
         # so we instead inverse-transform the ray
         rect = get_picked_model_space_rect(plot, idx)
-        ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
-        pos = Vec2d(ray_rect_intersection(rect, ray))
-        isnan(pos) && return nothing
-
-        _size = size(plot.image[])
-        if plot isa Image
-            # cell based indices
-            ij_interp = (pos - origin(rect)) ./ widths(rect) .* _size
-            ij_low, ij_high, interp = interpolated_edge_to_cell_index(ij_interp, _size, false)
-            return InterpolatedPlotElement(plot, ij_low, ij_high, interp, _size)
-        else
-            j, i = fldmod1(idx, _size[1]) # cell index
-            local_interpolation = (pos - origin(rect)) ./ widths(rect)
-            # edge based indices
-            return InterpolatedPlotElement(plot, Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, _size, true)
-        end
-
-        return pick_rect2D_element(parent_scene(plot), plot)
+        return InterpolatedPlotElement(plot, rect, edge_based = plot isa Heatmap)
     else
         _size = size(plot.image[])
         cart = CartesianIndices(_size)[idx]

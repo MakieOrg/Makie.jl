@@ -364,7 +364,6 @@ function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
     y = dimensional_element_getindex(plot.y[], element, 2)
     return Point2f(x, y)
 end
-
 get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
 function get_tooltip_position(element::PlotElement{<:Voxels})
@@ -384,7 +383,6 @@ end
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
     return 0.5 * (element.startpoints + element.endpoints)
 end
-
 function get_default_tooltip_data(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
     return pos, element.endpoints - element.startpoints
 end
@@ -392,7 +390,15 @@ end
 function get_tooltip_position(element::PlotElement{<:Band})
     return 0.5(element.lowerpoints + element.upperpoints)
 end
-
 function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
     return element.upperpoints, element.lowerpoints
+end
+
+function get_tooltip_position(element::PlotElement{<:Contourf})
+    mesh_element = PlotElement(parent(element).plots[1].plots[1], element)
+    return get_tooltip_position(mesh_element)
+end
+function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
+    poly_element = PlotElement(parent(element).plots[1], element)
+    return poly_element.color
 end
