@@ -9,6 +9,8 @@ function dimensional_element_getindex(x, element::PlotElement, dim::Integer)
 end
 element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element))
 
+# TODO: Should this be called child() instead? Or something else? Because its
+# not the PlotElement containing the parent plot...
 Base.parent(element::PlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
 get_plot(element::PlotElement) = first(element.plot_stack)
 accessor(element::PlotElement) = element.index

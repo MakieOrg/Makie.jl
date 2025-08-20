@@ -184,25 +184,34 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     return true
 end
 
-# TODO: replace this with backtracing
-function get_tooltip_position(element::PlotElement{PT}) where {PT <: Plot}
-    converted = get_plot(element).attributes[:converted][]
-    n_args = length(converted)
-    if n_args == 1
-        name = argument_names(PT, 1)[1]
-        return getproperty(element, name)
-    else
-        names = argument_names(PT, n_args)
-        p = Point.(getproperty.(Ref(element), names))
-        return p
-    end
+# Default to stepping back towards the picked primitive
+get_tooltip_position(element) = get_tooltip_position(parent(element))
+
+# Primitives (volume skipped)
+function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
+    plot = get_plot(element)
+    x = dimensional_element_getindex(plot.x[], element, 1)
+    y = dimensional_element_getindex(plot.y[], element, 2)
+    return Point2f(x, y)
 end
+
+function get_tooltip_position(
+        element::PlotElement{<:Union{Scatter, MeshScatter, Lines, LineSegments, Text, Mesh, Surface}}
+    )
+    return element.positions
+end
+
+function get_tooltip_position(element::PlotElement{<:Voxels})
+    return voxel_position(get_plot(element), Tuple(element.index.index)...)
+end
+
 
 function copy_local_model_transformations!(target::Transformable, source::Transformable)
     t = source.transformation
     transform!(target, translation = t.translation, rotation = t.rotation, scale = t.scale)
     return
 end
+
 
 function get_tooltip_label(di::DataInspector2, element::PlotElement, pos)
     label = get(element, :inspector_label, automatic)
@@ -354,21 +363,7 @@ end
 ################################################################################
 
 # Overwrites
-
-get_tooltip_position(element::PlotElement{<:Mesh}) = element.positions
-get_tooltip_position(element::PlotElement{<:Surface}) = element.positions
-
-function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
-    plot = get_plot(element)
-    x = dimensional_element_getindex(plot.x[], element, 1)
-    y = dimensional_element_getindex(plot.y[], element, 2)
-    return Point2f(x, y)
-end
 get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
-
-function get_tooltip_position(element::PlotElement{<:Voxels})
-    return voxel_position(get_plot(element), Tuple(element.index.index)...)
-end
 
 function get_tooltip_position(element::PlotElement{<:Hist})
     return get_tooltip_position(parent(element))
@@ -404,11 +399,5 @@ function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
     return poly_element.color
 end
 
-function get_tooltip_position(element::PlotElement{<:Spy})
-    scatter_element = parent(element)
-    return get_tooltip_position(scatter_element)
-end
-function get_default_tooltip_data(element::PlotElement{<:Spy}, pos)
-    scatter_element = parent(element)
-    return scatter_element.color
-end
+
+get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = parent(element).color
