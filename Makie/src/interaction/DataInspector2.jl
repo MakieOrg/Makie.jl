@@ -163,29 +163,40 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
         return false
     end
 
-    pos = get_tooltip_position(element)
+    # We need to grab transformations and space from the plot we grab the
+    # position from
+    @assert !applicable(get_tooltip_position, PlotElement) "`get_tooltip_position()` must only exist for typed `PlotElement{<:SomePlot}`"
+    position_element = element
+    while !isempty(position_element.plot_stack)
+        if applicable(get_tooltip_position, position_element)
+            break
+        else
+            position_element = parent(position_element)
+        end
+    end
+
     # TODO: shift pos to desired depth (or is draw_on_top enough?)
+    pos = get_tooltip_position(position_element)
+
+    plot = get_plot(position_element)
+    copy_local_model_transformations!(di.dynamic_tooltip, plot)
 
     label = get_tooltip_label(di, element, pos)
 
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
 
-    copy_local_model_transformations!(di.dynamic_tooltip, get_plot(element))
-
     px_pos = di.dynamic_tooltip.pixel_positions[][1]
 
     update!(
         di.dynamic_tooltip, to_ndim(Point3d, pos, 0), text = label, visible = true,
-        placement = border_dodging_placement(di, px_pos)
+        placement = border_dodging_placement(di, px_pos),
+        space = plot.space[]
         #; kwargs...
     )
 
     return true
 end
-
-# Default to stepping back towards the picked primitive
-get_tooltip_position(element) = get_tooltip_position(parent(element))
 
 # Primitives (volume skipped)
 function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
