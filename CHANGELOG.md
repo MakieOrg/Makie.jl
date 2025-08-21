@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 
 ## [0.24.6] - 2025-08-19
 
