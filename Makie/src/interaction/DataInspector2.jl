@@ -365,8 +365,8 @@ end
 # Overwrites
 get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
-function get_tooltip_position(element::PlotElement{<:Hist})
-    return get_tooltip_position(parent(element))
+function get_tooltip_position(element::PlotElement{<:BarPlot})
+    return element.positions
 end
 
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
@@ -384,8 +384,7 @@ function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
 end
 
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
-    poly_element = parent(element)
-    return poly_element.color
+    return parent(element).color
 end
 
 get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = parent(element).color
