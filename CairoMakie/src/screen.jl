@@ -291,7 +291,7 @@ function Makie.apply_screen_config!(
     # we need to re-create the screen if the rendertype changes, or for all vector backends
     # since they need to use the new IO, or if the resolution changed!
     new_resolution = scaled_scene_resolution(new_rendertype, config, scene)
-    if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype) || size(screen) != new_resolution
+    if SCREEN_RT !== new_rendertype || is_vector_backend(new_rendertype) || size(screen) != new_resolution || screen.surface.ptr == C_NULL
         old_screen = screen
         surface = surface_from_output_type(new_rendertype, io, new_resolution...)
         screen = Screen(scene, config, surface)
