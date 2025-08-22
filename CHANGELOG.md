@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+- `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+
+## [0.24.6] - 2025-08-19
 
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
@@ -933,7 +936,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...HEAD
+[0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6
 [0.24.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...v0.24.4
 [0.24.3]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.2...v0.24.3
