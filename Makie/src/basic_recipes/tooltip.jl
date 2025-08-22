@@ -52,6 +52,9 @@ Creates a tooltip pointing at `position` displaying the given `string
     inspectable = false
     "If true the tooltip will be rendered at maximum z."
     draw_on_top = false
+
+    # Only used for DataInspector
+    _formatter = nothing
 end
 
 function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractString)

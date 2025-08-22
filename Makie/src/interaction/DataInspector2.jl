@@ -7,13 +7,21 @@ mutable struct DataInspector2
     last_selection::UInt64
     update_counter::Vector{Int}
 
-    attributes::Attributes
+    inspector_attributes::Attributes
+    tooltip_attributes::Attributes
 
     obsfuncs::Vector{Any}
     update_channel::Channel{Nothing}
 
-    function DataInspector2(parent, persistent, dynamic, lastmp, lastsel, counter, attr, obsfuncs, channel)
-        inspector = new(parent, persistent, dynamic, lastmp, lastsel, counter, attr, obsfuncs, channel)
+    function DataInspector2(
+            parent, persistent, dynamic, lastmp, lastsel, counter,
+            inspector_attr, tooltip_attr, obsfuncs, channel
+        )
+        inspector = new(
+            parent, persistent, dynamic, lastmp, lastsel, counter,
+            inspector_attr, tooltip_attr, obsfuncs, channel
+        )
+
         finalizer(inspector) do inspector
             foreach(off, inspector.obsfuncs)
             empty!(inspector.obsfuncs)
@@ -61,7 +69,7 @@ function DataInspector2(obj; blocking = false, kwargs...)
     inspector = DataInspector2(
         parent, Dict{UInt64, Tooltip}(), tt,
         (0.0, 0.0), UInt64(0), [0, 0, 0],
-        inspector_attr,
+        inspector_attr, Attributes(kwarg_dict),
         Any[], Channel{Nothing}(Inf)
     )
 
@@ -97,8 +105,9 @@ function DataInspector2(obj; blocking = false, kwargs...)
         return
     end
 
+    # TODO: remove priority, make compatible with 3D axis
     # persistent tooltip
-    mouse_listener = on(event -> update_persistent_tooltips!(inspector), e.mousebutton)
+    mouse_listener = on(event -> update_persistent_tooltips!(inspector), e.mousebutton, priority = typemax(Int))
 
     push!(inspector.obsfuncs, tick_listener, mouse_listener)
 
@@ -126,7 +135,7 @@ function update_tooltip!(di::DataInspector2)
     di.update_counter[2] += 1 # TODO: for performance checks, remove later
     di.last_mouseposition = mp
 
-    for (plot, idx) in pick_sorted(di.parent, mp, di.attributes.range[])
+    for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes.range[])
         # Areas of scenes can overlap so we need to make sure the plot is
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
@@ -147,7 +156,7 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     function border_dodging_placement(di::DataInspector2, proj_pos)
         wx, wy = widths(viewport(di.parent)[])
         px, py = proj_pos
-        l, r, b, t = di.attributes[:dodge_margins][]
+        l, r, b, t = di.inspector_attributes[:dodge_margins][]
 
         placement = :above
         placement = ifelse(py > max(0.5wy, wy - t), :below, placement)
@@ -158,22 +167,12 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     end
 
     element = pick_element(plot_stack(source_plot), source_index)
-
-    if isnothing(element)
-        return false
-    end
+    isnothing(element) && return false
 
     # We need to grab transformations and space from the plot we grab the
     # position from
-    @assert !applicable(get_tooltip_position, PlotElement) "`get_tooltip_position()` must only exist for typed `PlotElement{<:SomePlot}`"
-    position_element = element
-    while !isempty(position_element.plot_stack)
-        if applicable(get_tooltip_position, position_element)
-            break
-        else
-            position_element = parent(position_element)
-        end
-    end
+    position_element = get_position_element(element)
+    isnothing(position_element) && return false
 
     # TODO: shift pos to desired depth (or is draw_on_top enough?)
     pos = get_tooltip_position(position_element)
@@ -181,7 +180,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     plot = get_plot(position_element)
     copy_local_model_transformations!(di.dynamic_tooltip, plot)
 
-    label = get_tooltip_label(di, element, pos)
+    formatter = di.inspector_attributes[:formatter][]
+    label = get_tooltip_label(formatter, element, pos)
 
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
@@ -196,6 +196,18 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     )
 
     return true
+end
+
+function get_position_element(element::PlotElement)
+    @assert !applicable(get_tooltip_position, PlotElement) "`get_tooltip_position()` must only exist for typed `PlotElement{<:SomePlot}`"
+    while !isempty(element.plot_stack)
+        if applicable(get_tooltip_position, element)
+            return element
+        else
+            element = parent(element)
+        end
+    end
+    return nothing
 end
 
 # Primitives (volume skipped)
@@ -224,7 +236,7 @@ function copy_local_model_transformations!(target::Transformable, source::Transf
 end
 
 
-function get_tooltip_label(di::DataInspector2, element::PlotElement, pos)
+function get_tooltip_label(formatter, element::PlotElement, pos)
     label = get(element, :inspector_label, automatic)
 
     if label isa String
@@ -234,14 +246,13 @@ function get_tooltip_label(di::DataInspector2, element::PlotElement, pos)
     elseif label isa Function
         return label(element, pos)
     elseif label === automatic
-        return get_default_tooltip_label(di, element, pos)
+        return get_default_tooltip_label(formatter, element, pos)
     end
 end
 
-function get_default_tooltip_label(di, element, pos)
+function get_default_tooltip_label(formatter, element, pos)
     data = get_default_tooltip_data(element, pos)
-    number_formatter = di.attributes[:formatter][]
-    return apply_tooltip_format(number_formatter, data)
+    return apply_tooltip_format(formatter, data)
 end
 
 get_default_tooltip_data(element, pos) = pos
@@ -289,7 +300,7 @@ end
 function update_persistent_tooltips!(di::DataInspector2)
     e = events(di.parent)
 
-    if !ispressed(e, di.attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
+    if !ispressed(e, di.inspector_attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
         return
     end
 
@@ -300,15 +311,15 @@ function update_persistent_tooltips!(di::DataInspector2)
         if plot.inspectable[]
             element = pick_element(plot_stack(plot), idx)
             add_persistent_tooltip!(di, element)
-            return
+            return Consume(true)
         elseif rootparent_plot(plot) isa Tooltip
             element = pick_element(plot_stack(plot), idx)
             remove_persistent_tooltip!(di, element)
-            return
+            return Consume(true)
         end
     end
 
-    return
+    return Consume(false)
 end
 
 function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
@@ -317,23 +328,40 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     end
 
     element = TrackedPlotElement(first(plot.arg1[]))
-    parent_plot = get_plot(element)
 
+    # get list of inputs used for positions
+    position_element = get_position_element(element)
+    empty!(position_element)
+    pos = get_tooltip_position(position_element)
+
+    position_parent = get_plot(position_element)
+    inputs = [plot.arg1, getproperty.(Ref(position_parent), get_accessed_fields(position_element))...]
+
+    map!(plot, inputs, :element_positions) do elements, triggers...
+        return map(elements) do element
+            position_element = get_position_element(element)
+            return get_tooltip_position(position_element)
+        end
+    end
+
+    # get list of inputs used for labels
     empty!(element)
-    pos = get_tooltip_position(element)
-    get_tooltip_label(element, pos)
+    get_tooltip_label(plot._formatter[], element, pos)
 
-    inputs = [plot.arg1, getproperty.(Ref(parent_plot), get_accessed_fields(element))...]
-    map!(plot, inputs, [:element_positions, :element_labels]) do elements, triggers...
-        positions = get_tooltip_position.(elements)
-        labels = get_tooltip_label.(elements, positions)
-        # TODO: add z shift to labels
-        return positions, labels
+    parent_plot = get_plot(element)
+    inputs = [
+        plot._formatter, plot.arg1, plot.element_positions,
+        getproperty.(Ref(parent_plot), get_accessed_fields(element))...
+    ]
+
+    map!(plot, inputs, :element_labels) do formatter, elements, positions, triggers...
+        return get_tooltip_label.(Ref(formatter), elements, positions)
     end
 
     tooltip!(
         plot, Attributes(plot), plot.element_positions; text = plot.element_labels,
-        transformation = parent_plot.transformation
+        transformation = position_parent.transformation,
+        space = position_parent.space
     )
     return plot
 end
@@ -345,7 +373,11 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
         elements = push!(tt.arg1[], element)
         update!(tt, arg1 = elements)
     else
-        di.persistent_tooltips[id] = tooltip!(di.parent, PlotElement{PT}[element])
+        formatter = di.inspector_attributes[:formatter][]
+        di.persistent_tooltips[id] = tooltip!(
+            di.parent, PlotElement{PT}[element],
+            _formatter = formatter; di.tooltip_attributes...
+        )
     end
     return
 end
@@ -356,7 +388,7 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
 
     # If we don't find the tooltip plot then we don't own it and shouldn't touch it
     if key !== nothing
-        idx = tooltip_element.index[1]
+        idx = tooltip_element.index.index[1]
         elements = tt.arg1[]
         deleteat!(elements, idx)
 

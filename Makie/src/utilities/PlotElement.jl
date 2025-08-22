@@ -11,7 +11,6 @@ element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element
 
 # TODO: Should this be called child() instead? Or something else? Because its
 # not the PlotElement containing the parent plot...
-Base.parent(element::PlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
 get_plot(element::PlotElement) = first(element.plot_stack)
 accessor(element::PlotElement) = element.index
 
@@ -51,35 +50,45 @@ end
 
 PlotElement(plot_stack::Tuple, elem::PlotElement) = SimplePlotElement(plot_stack, elem.index)
 PlotElement(plot_stack::Tuple, accessor::AbstractElementAccessor) = SimplePlotElement(plot_stack, accessor)
+Base.parent(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
 
 
 
-struct TrackedPlotElement{PlotType, ElementType <: SimplePlotElement{PlotType}} <: PlotElement{PlotType}
-    element::ElementType
+struct TrackedPlotElement{
+        PlotType,
+        IndexType <: AbstractElementAccessor,
+        PlotStack <: Tuple{PlotType, Vararg{Plot}}
+    } <: PlotElement{PlotType}
+    plot_stack::PlotStack
+    index::IndexType
     accessed_fields::Vector{Symbol}
 end
+
 
 # Manual
 track!(::PlotElement, ::Symbol...) = nothing
 track!(e::TrackedPlotElement, names::Symbol...) = push!(e.accessed_fields, names...)
 
 # Automatic
-function Base.getproperty(element::T, name::Symbol) where {PT, ET, T <: TrackedPlotElement{PT, ET}}
-    if hasfield(T, name)
+function Base.getproperty(element::TrackedPlotElement, name::Symbol)
+    if hasfield(TrackedPlotElement, name)
         return getfield(element, name)
     else
-        hasfield(ET, name) && track!(element, name)
-        return getproperty(element.element, name)
+        plot = get_plot(element)
+        if haskey(plot.attributes, name)
+            track!(element, name)
+            return element_getindex(getproperty(plot, name)[], element.index)
+        else
+            return getproperty(plot, name)
+        end
     end
 end
 
 # Util
-TrackedPlotElement(e::PlotElement) = TrackedPlotElement(e, Symbol[])
+TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.index, Symbol[])
 Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
-Base.parent(e::TrackedPlotElement) = TrackedPlotElement(parent(e.element), e.accessed_fields)
-get_plot(e::TrackedPlotElement) = get_plot(e.element)
-
+Base.parent(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.index, e.accessed_fields)
 
 
 struct IndexedElement{D} <: AbstractElementAccessor
