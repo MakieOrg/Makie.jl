@@ -673,7 +673,7 @@ function get_ticks(l::LogTicks, scale::typeof(pseudolog10), ::Automatic, vmin, v
         if iszero(t)
             rich("0")
         else
-            rich(l_base, superscript(replace(l_super, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+            rich(l_base, superscript(replace(l_super, "-" => ""), offset = Vec2f(0.1f0, 0.0f0)))
         end
     end
     prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # pseudolog10 allows actual negative values
