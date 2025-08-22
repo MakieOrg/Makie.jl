@@ -662,14 +662,22 @@ function get_ticks(l::LogTicks, scale::typeof(pseudolog10), ::Automatic, vmin, v
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
 
-    labels_scaled = get_ticklabels(
+    labels_superscripts = get_ticklabels(
         # avoid unicode superscripts in ticks, as the '-' are removed next
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
 
+    l_base = _logbase(scale)
+    labels_body = map(zip(ticks, labels_superscripts)) do (t, l_super)
+        if iszero(t)
+            rich("0")
+        else
+            rich(l_base, superscript(replace(l_super, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+        end
+    end
     prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # pseudolog10 allows actual negative values
-    labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => ""), offset = Vec2f(0.1f0, 0.0f0)))
+    labels = rich.(prefix, labels_body)
     return ticks, labels
 end
 
