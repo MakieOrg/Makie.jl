@@ -51,18 +51,28 @@ function getuniquevalue(v::AbstractVector, idxs)
 end
 
 function plot!(plot::Violin)
-    map!(plot, [:x, :width, :gap, :dodge, :n_dodge, :dodge_gap], [:x̂, :violinwidth]) do x, width, gap, dodge, n_dodge, dodge_gap
-        x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-        return x̂, violinwidth
-    end
+    map!(
+        compute_x_and_width, plot,
+        [:x, :width, :gap, :dodge, :n_dodge, :dodge_gap],
+        [:x̂, :violinwidth]
+    )
 
     map!(plot, [:x̂, :side], :sides) do x̂, side
+        options = (left = -1, right = +1, both = 0)
         return broadcast(x̂, side) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : s === :both ? 0 : error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
+            if hasproperty(options, s)
+                return getproperty(options, s)
+            else
+                error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
+            end
         end
     end
 
-    map!(plot, [:x̂, :y, :sides, :npoints, :boundary, :bandwidth, :weights, :datalimits, :color], :specs) do x̂, y, sides, npoints, bound, bw, w, limits, color
+    map!(
+        plot,
+        [:x̂, :y, :sides, :npoints, :boundary, :bandwidth, :weights, :datalimits, :color],
+        :specs
+    ) do x̂, y, sides, npoints, bound, bw, w, limits, color
         sa = StructArray((x = x̂, side = sides))
 
         map(StructArrays.finduniquesorted(sa)) do (key, idxs)
@@ -90,7 +100,11 @@ function plot!(plot::Violin)
         return colors
     end
 
-    map!(plot, [:specs, :scale, :show_median, :max_density, :orientation, :violinwidth], [:vertices, :lines]) do specs, scale_type, show_median, max_density, orientation, violinwidth
+    map!(
+        plot,
+        [:specs, :scale, :show_median, :max_density, :orientation, :violinwidth],
+        [:vertices, :lines]
+    ) do specs, scale_type, show_median, max_density, orientation, violinwidth
         @assert scale_type ∈ [:area, :count, :width] "Invalid scale type: $(scale_type)"
 
         # for horizontal violin just flip all components
@@ -163,7 +177,7 @@ function plot!(plot::Violin)
         strokecolor = plot.strokecolor,
         strokewidth = plot.strokewidth,
     )
-    return linesegments!(
+    linesegments!(
         plot,
         plot.lines;
         color = plot.mediancolor,
@@ -171,4 +185,5 @@ function plot!(plot::Violin)
         visible = plot.show_median,
         inspectable = plot.inspectable
     )
+    return plot
 end

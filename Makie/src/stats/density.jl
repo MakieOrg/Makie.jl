@@ -83,32 +83,36 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         return lowerv, upperv
     end
 
-    map!(plot, [:lower, :upper, :strokearound], :linepoints) do l, u, sa
-        if sa
-            ps = copy(u)
-            push!(ps, l[end])
-            push!(ps, l[1])
-            push!(ps, l[2])
-            ps
+    map!(plot, [:lower, :upper, :strokearound], :linepoints) do lower, upper, strokearound
+        if strokearound
+            ps = copy(upper)
+            push!(ps, lower[end])
+            push!(ps, lower[1])
+            push!(ps, lower[2])
+            return ps
         else
-            u
+            return upper
         end
     end
 
-    map!(plot, [:color, :lower, :upper, :direction, :offset], :colorobs) do c, l, u, dir, o
-        if (dir === :x && c === :x) || (dir === :y && c === :y)
+    map!(
+        plot,
+        [:color, :lower, :upper, :direction, :offset],
+        :computed_color
+    ) do color, lower, upper, dir, o
+        if (dir === :x && color === :x) || (dir === :y && color === :y)
             dim = dir === :x ? 1 : 2
-            return Float32[l[dim] for l in l]
-        elseif (dir === :y && c === :x) || (dir === :x && c === :y)
+            return getindex.(lower, dim)
+        elseif (dir === :y && color === :x) || (dir === :x && color === :y)
             dim = dir === :x ? 2 : 1
-            return vcat(Float32[l[dim] - o for l in l], Float32[l[dim] - o for l in u])::Vector{Float32}
+            return vcat(getindex.(lower, dim), getindex.(upper, dim)) .- o
         else
-            return c
+            return color
         end
     end
 
     band!(
-        plot, plot.lower, plot.upper, color = plot.colorobs, colormap = plot.colormap, colorscale = plot.colorscale,
+        plot, plot.lower, plot.upper, color = plot.computed_color, colormap = plot.colormap, colorscale = plot.colorscale,
         colorrange = plot.colorrange, inspectable = plot.inspectable, alpha = plot.alpha, visible = plot.visible
     )
     l = lines!(

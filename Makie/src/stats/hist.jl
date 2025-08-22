@@ -67,11 +67,11 @@ function Makie.plot!(plot::StepHist)
         return Point2.(edges, heights)
     end
 
-    map!(plot, [:points, :color], :colors) do points, color
+    map!(plot, [:points, :color], :computed_colors) do points, color
         return color === :values ? last.(points) : color
     end
 
-    stairs!(plot, Attributes(plot), plot.points; color = plot.colors)
+    stairs!(plot, Attributes(plot), plot.points; color = plot.computed_colors)
     return plot
 end
 
@@ -163,18 +163,18 @@ function Makie.plot!(plot::Hist)
     end
 
     map!(diff, plot, :edges, :widths)
-    map!(plot, [:points, :color], :colors) do points, color
+    map!(plot, [:points, :color], :computed_colors) do points, color
         return color === :values ? last.(points) : color
     end
 
-    map!(plot, :bar_labels, :barlabels) do x
+    map!(plot, :bar_labels, :computed_bar_labels) do x
         return x === :values ? :y : x
     end
 
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(
+    barplot!(
         plot, Attributes(plot), plot.points; width = plot.widths, fillto = plot.fillto,
-        offset = plot.offset, bar_labels = plot.barlabels, color = plot.colors
+        offset = plot.offset, bar_labels = plot.computed_bar_labels, color = plot.computed_colors
     )
 
     return plot

@@ -49,8 +49,8 @@ function Makie.plot!(p::Waterfall)
 
     map!(stack_bars, p, [:converted_1, :dodge, :stack], [:xy, :fillto, :final])
 
-    map!(p, [:final_gap, :gap, :dodge], :finalgap) do final_gap, gap, dodge
-        return final_gap === automatic ? dodge == automatic ? 0 : gap : final_gap
+    map!(p, [:final_gap, :gap, :dodge], :computed_final_gap) do final_gap, gap, dodge
+        return final_gap === automatic ? (dodge == automatic ? 0 : gap) : final_gap
     end
 
     # TODO: change to use `visible` after bounding box issue is fixed (see https://github.com/MakieOrg/Makie.jl/pull/5184#issuecomment-3191231795)
@@ -60,7 +60,7 @@ function Makie.plot!(p::Waterfall)
             dodge = p.dodge,
             color = p.final_color,
             dodge_gap = p.final_dodge_gap,
-            gap = p.finalgap,
+            gap = p.computed_final_gap,
         )
     end
 

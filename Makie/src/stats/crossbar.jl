@@ -111,9 +111,9 @@ function Makie.plot!(plot::CrossBar)
         visible = plot.visible
     )
     map!(plot, [:midlinecolor, :strokecolor], :linesegmentcolor) do mc, sc
-        mc === automatic ? sc : mc
+        return mc === automatic ? sc : mc
     end
-    return linesegments!(
+    linesegments!(
         plot,
         color = plot.linesegmentcolor,
         linewidth = plot.midlinewidth,
@@ -121,4 +121,5 @@ function Makie.plot!(plot::CrossBar)
         inspectable = plot.inspectable,
         plot.midlines,
     )
+    return plot
 end

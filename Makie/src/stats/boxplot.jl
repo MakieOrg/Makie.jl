@@ -79,12 +79,10 @@ flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.width
 function Makie.plot!(plot::BoxPlot)
 
     map!(
-        plot,
+        compute_x_and_width, plot,
         [:x, :width, :gap, :dodge, :n_dodge, :dodge_gap],
         [:x̂, :widths]
-    ) do x, width, gap, dodge, n_dodge, dodge_gap
-        return compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-    end
+    )
 
     map!(StructArrays.finduniquesorted, plot, :x̂, :groups)
 
@@ -93,8 +91,8 @@ function Makie.plot!(plot::BoxPlot)
     end
 
     map!(plot, [:y, :weights, :groups], [:quantiles, :Ns]) do y, weights, groups
-        quantiles = []
-        Ns = []
+        quantiles = Vector{Float64}[]
+        Ns = Int64[]
         for (_, idxs) in groups
             values = view(y, idxs)
             w = weights === automatic ? () : (StatsBase.weights(view(weights, idxs)),)
@@ -105,18 +103,18 @@ function Makie.plot!(plot::BoxPlot)
     end
 
     map!(plot, [:quantiles, :Ns, :show_notch], [:notchmin, :notchmax]) do quantiles, Ns, show_notch
-        notchmin, notchmax = Float32[], Float32[]
         if show_notch
+            notchmin, notchmax = Float32[], Float32[]
             for (q, N) in zip(quantiles, Ns)
                 _, q2, q3, q4, _ = q
                 nh = notchheight(q2, q4, N)
                 push!(notchmin, q3 - nh)
                 push!(notchmax, q3 + nh)
             end
+            return notchmin, notchmax
         else
-            notchmin, notchmax = automatic, automatic
+            return automatic, automatic
         end
-        return notchmin, notchmax
     end
 
     map!(
@@ -167,12 +165,12 @@ function Makie.plot!(plot::BoxPlot)
             bw = getuniquevalue(widths, idxs)
             ww = whiskerwidth === :match ? bw : whiskerwidth * bw
             lw, rw = center - ww / 2, center + ww / 2
-            segs = [
+            push!(boxwidth, bw)
+            push!(
+                t_segments,
                 (center, q[2]), (center, q1), (lw, q1), (rw, q1), # lower T
                 (center, q[4]), (center, q5), (rw, q5), (lw, q5), # upper T
-            ]
-            push!(boxwidth, bw)
-            append!(t_segments, segs)
+            )
         end
         if orientation === :horizontal
             t_segments = flip_xy.(t_segments)
@@ -183,17 +181,13 @@ function Makie.plot!(plot::BoxPlot)
     end
 
     map!(plot, [:color, :groups], :boxcolor) do color, groups
-        CT = color isa AbstractVector ? eltype(color) : typeof(color)
         return [getuniquevalue(color, idxs) for (_, idxs) in groups]
     end
 
     map!(plot, :quantiles, [:boxmin, :medians, :boxmax]) do quantiles
-        boxmin, medians, boxmax = Float32[], Float32[], Float32[]
-        for q in quantiles
-            push!(boxmin, q[2])
-            push!(medians, q[3])
-            push!(boxmax, q[4])
-        end
+        boxmin = getindex.(quantiles, 2)
+        medians = getindex.(quantiles, 3)
+        boxmax = getindex.(quantiles, 4)
         return boxmin, medians, boxmax
     end
 
@@ -223,7 +217,7 @@ function Makie.plot!(plot::BoxPlot)
         inspectable = plot.inspectable,
         visible = plot.visible
     )
-    return crossbar!(
+    crossbar!(
         plot,
         plot.centers,
         plot.medians,
@@ -248,4 +242,5 @@ function Makie.plot!(plot::BoxPlot)
         inspectable = plot.inspectable,
         visible = plot.visible
     )
+    return plot
 end
