@@ -640,7 +640,7 @@ function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{LogFunctions, typeof(pseudolog10)}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
 
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
@@ -652,9 +652,24 @@ function get_ticks(l::LogTicks, scale::Union{LogFunctions, typeof(pseudolog10)},
         ticks_scaled
     )
 
-    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # only useful for pseudolog10
-    labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+    labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
 
+    return ticks, labels
+end
+
+function get_ticks(l::LogTicks, scale::typeof(pseudolog10), ::Automatic, vmin, vmax)
+    ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
+
+    ticks = Makie.inverse_transform(scale).(ticks_scaled)
+
+    labels_scaled = get_ticklabels(
+        # avoid unicode superscripts in ticks, as the '-' are removed next
+        xs -> Showoff.showoff(xs, :plain),
+        ticks_scaled
+    )
+
+    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # pseudolog10 allows actual negative values
+    labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => ""), offset = Vec2f(0.1f0, 0.0f0)))
     return ticks, labels
 end
 
