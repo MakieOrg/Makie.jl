@@ -77,169 +77,170 @@ flip_xy(p::Point2f) = reverse(p)
 flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.widths))
 
 function Makie.plot!(plot::BoxPlot)
-    args = @extract plot (weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap)
 
-    signals = lift(
-        plot,
-        plot[1],
-        plot[2],
-        plot[:color],
-        args...,
-    ) do x, y, color, weights, width, range, show_outliers, whiskerwidth, show_notch, orientation, gap, dodge, n_dodge, dodge_gap
-        x̂, widths = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-        if !(whiskerwidth === :match || whiskerwidth >= 0)
-            error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
-        end
-        outlier_points = Point2f[]
-        centers = Float32[]
-        medians = Float32[]
-        boxmin = Float32[]
-        boxmax = Float32[]
-        notchmin = Float32[]
-        notchmax = Float32[]
-        t_segments = Point2f[]
-        outlier_indices = Int[]
-        CT = color isa AbstractVector ? eltype(color) : typeof(color)
-        boxcolor = CT[]
-        WT = widths isa AbstractVector ? eltype(widths) : typeof(widths)
-        boxwidth = WT[]
-        for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
+    map!(
+        compute_x_and_width, plot,
+        [:x, :width, :gap, :dodge, :n_dodge, :dodge_gap],
+        [:x̂, :widths]
+    )
+
+    map!(StructArrays.finduniquesorted, plot, :x̂, :groups)
+
+    map!(plot, :groups, :centers) do groups
+        return Float32[center for (center, _) in groups]
+    end
+
+    map!(plot, [:y, :weights, :groups], [:quantiles, :Ns]) do y, weights, groups
+        quantiles = Vector{Float64}[]
+        Ns = Int64[]
+        for (_, idxs) in groups
             values = view(y, idxs)
-
-            # compute quantiles
             w = weights === automatic ? () : (StatsBase.weights(view(weights, idxs)),)
-            q1, q2, q3, q4, q5 = quantile(values, w..., LinRange(0, 1, 5))
+            push!(quantiles, quantile(values, w..., LinRange(0, 1, 5)))
+            push!(Ns, length(values))
+        end
+        return quantiles, Ns
+    end
 
-            # notches
-            if show_notch
-                nh = notchheight(q2, q4, length(values))
-                nmin, nmax = q3 - nh, q3 + nh
-                push!(notchmin, nmin)
-                push!(notchmax, nmax)
+    map!(plot, [:quantiles, :Ns, :show_notch], [:notchmin, :notchmax]) do quantiles, Ns, show_notch
+        if show_notch
+            notchmin, notchmax = Float32[], Float32[]
+            for (q, N) in zip(quantiles, Ns)
+                _, q2, q3, q4, _ = q
+                nh = notchheight(q2, q4, N)
+                push!(notchmin, q3 - nh)
+                push!(notchmax, q3 + nh)
             end
+            return notchmin, notchmax
+        else
+            return automatic, automatic
+        end
+    end
 
-            # outliers
-            if !iszero(range)  # if the range is 0, the whiskers will extend to the data
+    map!(
+        plot,
+        [:y, :groups, :quantiles, :range, :show_outliers, :orientation],
+        [:outlier_points, :outlier_indices, :q1s, :q5s]
+    ) do y, groups, quantiles, range, show_outliers, orientation
+        outlier_points, outlier_indices = Point2f[], Int[]
+        q1s, q5s = Float32[], Float32[]
+        for (q, (center, idxs)) in zip(quantiles, groups)
+            q1, q2, _, q4, q5 = q
+            values = view(y, idxs)
+            if !iszero(range)
                 limit = range * (q4 - q2)
                 inside = Float64[]
                 for (value, idx) in zip(values, idxs)
                     if (value < (q2 - limit)) || (value > (q4 + limit))
                         if show_outliers
-                            push!(outlier_points, (center, value))
-                            # register outlier box indices
+                            pt = orientation === :horizontal ? (value, center) : (center, value)
+                            push!(outlier_points, pt)
                             push!(outlier_indices, idx)
                         end
                     else
                         push!(inside, value)
                     end
                 end
-                # change q1 and q5 to show outliers
-                # using maximum and minimum values inside the limits
+                # change q1 and q5 to show outliers using maximum and minimum values inside the limits
                 q1, q5 = extrema_nan(inside)
             end
-
-            # whiskers
-            bw = getuniquevalue(widths, idxs) # Box width
-            ww = whiskerwidth === :match ? bw : whiskerwidth * bw # Whisker width
-            lw, rw = center - ww / 2, center + ww / 2
-            push!(t_segments, (center, q2), (center, q1), (lw, q1), (rw, q1)) # lower T
-            push!(t_segments, (center, q4), (center, q5), (rw, q5), (lw, q5)) # upper T
-
-            # box
-            push!(boxcolor, getuniquevalue(color, idxs))
-            push!(centers, center)
-            push!(boxwidth, bw)
-            push!(boxmin, q2)
-            push!(medians, q3)
-            push!(boxmax, q4)
+            push!(q1s, q1)
+            push!(q5s, q5)
         end
+        return outlier_points, outlier_indices, q1s, q5s
+    end
 
-        # for horizontal boxplots just flip all components
+    map!(
+        plot,
+        [:groups, :widths, :q1s, :quantiles, :q5s, :whiskerwidth, :orientation],
+        [:t_segments, :boxwidth]
+    ) do groups, widths, q1s, quantiles, q5s, whiskerwidth, orientation
+        if !(whiskerwidth === :match || whiskerwidth >= 0)
+            error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
+        end
+        t_segments = Point2f[]
+        WT = widths isa AbstractVector ? eltype(widths) : typeof(widths)
+        boxwidth = WT[]
+        for ((center, idxs), q1, q, q5) in zip(groups, q1s, quantiles, q5s)
+            bw = getuniquevalue(widths, idxs)
+            ww = whiskerwidth === :match ? bw : whiskerwidth * bw
+            lw, rw = center - ww / 2, center + ww / 2
+            push!(boxwidth, bw)
+            push!(
+                t_segments,
+                (center, q[2]), (center, q1), (lw, q1), (rw, q1), # lower T
+                (center, q[4]), (center, q5), (rw, q5), (lw, q5), # upper T
+            )
+        end
         if orientation === :horizontal
-            outlier_points = flip_xy.(outlier_points)
             t_segments = flip_xy.(t_segments)
         elseif orientation !== :vertical
             error("Invalid orientation $orientation. Valid options: :horizontal or :vertical.")
         end
-
-        return (
-            centers = centers,
-            boxmin = boxmin,
-            boxmax = boxmax,
-            medians = medians,
-            notchmin = notchmin,
-            notchmax = notchmax,
-            outliers = outlier_points,
-            t_segments = t_segments,
-            boxwidth = boxwidth,
-            outlier_indices = outlier_indices,
-            boxcolor = boxcolor,
-        )
+        return t_segments, boxwidth
     end
-    centers = @lift($signals.centers)
-    boxmin = @lift($signals.boxmin)
-    boxmax = @lift($signals.boxmax)
-    medians = @lift($signals.medians)
-    notchmin = @lift($show_notch ? $signals.notchmin : automatic)
-    notchmax = @lift($show_notch ? $signals.notchmax : automatic)
-    outliers = @lift($signals.outliers)
-    t_segments = @lift($signals.t_segments)
-    boxwidth = @lift($signals.boxwidth)
-    outlier_indices = @lift($signals.outlier_indices)
-    boxcolor = @lift($signals.boxcolor)
 
-    outliercolor = lift(plot[:outliercolor], plot[:color], outlier_indices) do outliercolor, color, outlier_indices
+    map!(plot, [:color, :groups], :boxcolor) do color, groups
+        return [getuniquevalue(color, idxs) for (_, idxs) in groups]
+    end
+
+    map!(plot, :quantiles, [:boxmin, :medians, :boxmax]) do quantiles
+        boxmin = getindex.(quantiles, 2)
+        medians = getindex.(quantiles, 3)
+        boxmax = getindex.(quantiles, 4)
+        return boxmin, medians, boxmax
+    end
+
+    map!(plot, [:outliercolor, :color, :outlier_indices], :outlier_color) do outliercolor, color, outlier_indices
         c = outliercolor === automatic ? color : outliercolor
-        if c isa AbstractVector
-            return c[outlier_indices]
-        else
-            return c
-        end
+        return c isa AbstractVector ? c[outlier_indices] : c
     end
 
     scatter!(
         plot,
-        color = outliercolor,
-        marker = plot[:marker],
-        markersize = plot[:markersize],
-        strokecolor = plot[:outlierstrokecolor],
-        strokewidth = plot[:outlierstrokewidth],
-        outliers,
-        inspectable = plot[:inspectable],
-        colorrange = @lift($boxcolor isa AbstractArray{<:Real} ? extrema($boxcolor) : automatic), # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        plot.outlier_points,
+        color = plot.outlier_color,
+        marker = plot.marker,
+        markersize = plot.markersize,
+        strokecolor = plot.outlierstrokecolor,
+        strokewidth = plot.outlierstrokewidth,
+        inspectable = plot.inspectable,
+        # if only one group has outliers, the colorrange will be width 0 otherwise, if it's not an array, it shouldn't matter
+        colorrange = plot.boxcolor isa AbstractArray{<:Real} ? extrema(plot.boxcolor) : automatic,
         visible = plot.visible,
     )
     linesegments!(
         plot,
-        color = plot[:whiskercolor],
-        linewidth = plot[:whiskerlinewidth],
-        t_segments,
-        inspectable = plot[:inspectable],
+        plot.t_segments,
+        color = plot.whiskercolor,
+        linewidth = plot.whiskerlinewidth,
+        inspectable = plot.inspectable,
         visible = plot.visible
     )
-    return crossbar!(
+    crossbar!(
         plot,
-        color = boxcolor,
-        colorrange = plot[:colorrange],
-        colormap = plot[:colormap],
-        colorscale = plot[:colorscale],
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
-        midlinecolor = plot[:mediancolor],
-        midlinewidth = plot[:medianlinewidth],
-        show_midline = plot[:show_median],
-        orientation = orientation,
-        width = boxwidth,
+        plot.centers,
+        plot.medians,
+        plot.boxmin,
+        plot.boxmax,
         gap = 0,
-        show_notch = show_notch,
-        notchmin = notchmin,
-        notchmax = notchmax,
-        notchwidth = plot[:notchwidth],
-        inspectable = plot[:inspectable],
-        centers,
-        medians,
-        boxmin,
-        boxmax,
+        color = plot.boxcolor,
+        colorrange = plot.colorrange,
+        colormap = plot.colormap,
+        colorscale = plot.colorscale,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
+        midlinecolor = plot.mediancolor,
+        midlinewidth = plot.medianlinewidth,
+        show_midline = plot.show_median,
+        orientation = plot.orientation,
+        width = plot.boxwidth,
+        show_notch = plot.show_notch,
+        notchmin = plot.notchmin,
+        notchmax = plot.notchmax,
+        notchwidth = plot.notchwidth,
+        inspectable = plot.inspectable,
         visible = plot.visible
     )
+    return plot
 end
