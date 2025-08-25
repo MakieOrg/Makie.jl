@@ -12,6 +12,7 @@ element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element
 # TODO: Should this be called child() instead? Or something else? Because its
 # not the PlotElement containing the parent plot...
 get_plot(element::PlotElement) = first(element.plot_stack)
+get_plot(plot::Plot) = plot
 accessor(element::PlotElement) = element.index
 
 function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
@@ -35,6 +36,19 @@ function Base.get(element::PlotElement{PT}, name::Symbol, default) where {PT}
         return default
     end
 end
+
+sample_color(plotlike::Union{Plot, PlotElement}, color::Colorant) = color
+
+function sample_color(plotlike::Union{Plot, PlotElement}, value::Real)
+    plot = get_plot(plotlike)
+    color = sample_color(
+        plot.alpha_colormap[], value, plot.scaled_colorrange[],
+        plot.lowclip_color[], plot.highclip_color[],
+        plot.nan_color[]
+    )
+    return color
+end
+
 
 
 

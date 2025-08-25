@@ -129,6 +129,7 @@ end
 function update_tooltip!(di::DataInspector2)
     e = events(di.parent)
     mp = e.mouseposition[]
+    hide_indicators!(di)
 
     # TODO: This is not enough. We'd need to check if anything in the scene
     # changed - i.e. scene.viewport, camera matrices, any of the renderobjects...
@@ -143,7 +144,6 @@ function update_tooltip!(di::DataInspector2)
 
     di.update_counter[2] += 1 # TODO: for performance checks, remove later
     di.last_mouseposition = mp
-    hide_indicators!(di)
 
     for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes.range[])
         # Areas of scenes can overlap so we need to make sure the plot is
@@ -205,7 +205,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
         #; kwargs...
     )
 
-    if di.inspector_attributes[:show_indicators][]
+    # TODO: Why not also allow plots to disable their indicator?
+    if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
         update_indicator!(di, element, pos)
     end
 
@@ -350,7 +351,7 @@ function get_indicator_plot(di::DataInspector2, PlotType)
         plot = construct_indicator_plot(di, PlotType)
 
         # Restore camera
-        cc isa Camera3D && update_cam!(scene, eyeposition, lookat, upvector)
+        cc isa Camera3D && update_cam!(di.parent, eyeposition, lookat, upvector)
 
         return plot
     end
@@ -382,7 +383,10 @@ function construct_indicator_plot(di::DataInspector2, ::Type{<:Scatter})
     a = di.inspector_attributes
     return scatter!(
         di.parent, Point3d(0), color = RGBAf(0, 0, 0, 0),
-        marker = Rect, markersize = map((r, w) -> 2r - 2 - w, a.range, a.indicator_linewidth),
+        marker = Rect,
+        # draw marker occupies (markersize + 2 * strokewidth + ~1 AA pixel)
+        # To be able to pick the plot behind the indicator, this needs to be < 2 * range
+        markersize = map((r, w) -> min(2r - 4 - 2w, 100), a.range, a.indicator_linewidth),
         strokecolor = a.indicator_color,
         strokewidth = a.indicator_linewidth,
         inspectable = false, visible = false,
@@ -414,6 +418,75 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:MeshScatte
 
     return
 end
+
+function update_indicator!(di::DataInspector2, element::PlotElement{<:Mesh}, pos)
+    # get and update indicator
+    bbox = data_limits(get_plot(element))
+    indicator = get_indicator_plot(di, LineSegments)
+    update!(indicator, arg1 = convert_arguments(LineSegments, bbox)[1], visible = true)
+
+    return
+end
+
+function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Image, Heatmap}}, pos)
+    if element.interpolate[]
+        indicator = get_indicator_plot(di, Scatter)
+        p3d = to_ndim(Point3d, pos, 0)
+        color = sample_color(element, element.image)
+        update!(indicator; arg1 = p3d, color = color, visible = true)
+    else
+        # TODO: Should this be a function?
+        i, j = Tuple(accessor(element).index)
+
+        plot = get_plot(element)
+        bbox = _pixelated_image_bbox(plot.x[], plot.y[], plot.image[], i, j, plot isa Heatmap)
+        ps = to_ndim.(Point3d, convert_arguments(Lines, bbox)[1], 0)
+        indicator = get_indicator_plot(di, Lines)
+        update!(indicator, arg1 = ps, visible = true)
+    end
+
+    return
+end
+
+function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, pos)
+    poly_element = parent(element)
+    rect = poly_element.arg1
+    ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
+
+    indicator = get_indicator_plot(di, Lines)
+    update!(indicator, arg1 = ps, visible = true)
+
+    return
+end
+
+function update_indicator!(di::DataInspector2, element::PlotElement{<:Contourf}, pos)
+    poly_element = parent(element)
+    polygon = poly_element.arg1
+    # Careful, convert_arguments() may return just return exterior (===)
+    line_collection = copy(convert_arguments(Lines, polygon.exterior)[1])
+    for int in polygon.interiors
+        push!(line_collection, Point2f(NaN))
+        append!(line_collection, convert_arguments(PointBased(), int)[1])
+    end
+    ps = to_ndim.(Point3d, line_collection, 0)
+
+    indicator = get_indicator_plot(di, Lines)
+    update!(indicator, arg1 = ps, visible = true)
+
+    return
+end
+
+function update_indicator!(di::DataInspector2, element::PlotElement{<:Band}, pos)
+    p1 = to_ndim(Point3d, element.lowerpoints, 0)
+    p2 = to_ndim(Point3d, element.upperpoints, 0)
+
+    indicator = get_indicator_plot(di, LineSegments)
+    update!(indicator, arg1 = [p1, p2], visible = true)
+
+    return
+end
+
+
 
 ################################################################################
 ### persistent tooltips
