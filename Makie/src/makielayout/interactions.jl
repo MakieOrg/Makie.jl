@@ -1,6 +1,23 @@
+const DEFAULT_INTERACTIONS = Dict(
+    Axis => Dict(
+        :rectanglezoom => (true, RectangleZoom()),
+        :limitreset => (true, LimitReset()),
+        :scrollzoom => (true, ScrollZoom(0.1, 0.2)),
+        :dragpan => (true, DragPan(0.2)),
+    ),
+    Axis3 => Dict(
+        :dragrotate => (true, DragRotate()),
+        :limitreset => (true, LimitReset()),
+        :scrollzoom => (true, ScrollZoom(0.05, NaN)),
+        :translation => (true, DragPan(NaN)),
+        :cursorfocus => (true, FocusOnCursor()),
+    ),
+)
+
 # overloadable for other types that might want to offer similar interactions
 function interactions end
 
+interactions(::Type{T}) where {T} = DEFAULT_INTERACTIONS[T]
 interactions(ax::Axis) = ax.interactions
 interactions(ax3::Axis3) = ax3.interactions
 
@@ -54,11 +71,11 @@ function deregister_interaction!(parent, name::Symbol)
 end
 
 function registration_setup!(parent, interaction)
-    # do nothing in the default case
+    return parent # do nothing in the default case
 end
 
 function deregistration_cleanup!(parent, interaction)
-    # do nothing in the default case
+    return parent # do nothing in the default case
 end
 
 """
@@ -177,7 +194,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
 
     elseif event.type === MouseEventTypes.leftdragstop
         try
-            r.callback(r.rectnode[])
+            r.callback(ax, r.rectnode[])
         catch e
             @warn "error in rectangle zoom" exception = (e, Base.catch_backtrace())
         end
@@ -199,6 +216,12 @@ function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_x = Keyboard.y in event.keys
     r.active[] || return Consume(false)
 
+    # Deactivate when modifier is released before the mouse.
+    if r.modifier !== true && r.modifier ∉ event.keys
+        r.active[] = false
+        return Consume(true)
+    end
+
     r.rectnode[] = _chosen_limits(r, ax)
     return Consume(true)
 end
@@ -210,11 +233,11 @@ function positivize(r::Rect2)
     return Rect2(Point2(newori), Vec2(newwidths))
 end
 
-function process_interaction(::LimitReset, event::MouseEvent, ax::Axis)
+function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
-    if event.type === MouseEventTypes.leftclick
-        if ispressed(ax.scene, Keyboard.left_control)
-            if ispressed(ax.scene, Keyboard.left_shift)
+    if event.type === l.mouseevent
+        if ispressed(ax.scene, l.modifier1)
+            if ispressed(ax.scene, l.modifier2)
                 autolimits!(ax)
             else
                 reset_limits!(ax)

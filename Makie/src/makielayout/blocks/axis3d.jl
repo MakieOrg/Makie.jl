@@ -206,11 +206,12 @@ function initialize_block!(ax::Axis3)
     on(process_event, scene, ax.scrollevents)
     on(process_event, scene, ax.keysevents)
 
-    register_interaction!(ax, :dragrotate, DragRotate())
-    register_interaction!(ax, :limitreset, LimitReset())
-    register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
-    register_interaction!(ax, :translation, DragPan(NaN))
-    register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
+    for (name, (active, interaction)) in interactions(Axis3)
+        active && register_interaction!(
+            ax, name,
+            interaction isa Function ? interaction : deepcopy(interaction),
+        )
+    end
 
     # in case the user set limits already
     notify(ax.limits)

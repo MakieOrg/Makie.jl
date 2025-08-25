@@ -50,13 +50,12 @@ function register_events!(ax, scene)
     onany(process_axis_event, scene, ax, scrollevents)
     onany(process_axis_event, scene, ax, keysevents)
 
-    register_interaction!(ax, :rectanglezoom, RectangleZoom(ax))
-
-    register_interaction!(ax, :limitreset, LimitReset())
-
-    register_interaction!(ax, :scrollzoom, ScrollZoom(0.1, 0.2))
-
-    register_interaction!(ax, :dragpan, DragPan(0.2))
+    for (name, (active, interaction)) in Makie.interactions(Axis)
+        active && register_interaction!(
+            ax, name,
+            interaction isa Function ? interaction : deepcopy(interaction),
+        )
+    end
 
     return
 end
