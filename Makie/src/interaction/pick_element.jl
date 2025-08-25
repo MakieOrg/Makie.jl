@@ -136,7 +136,7 @@ function interpolated_edge_to_cell_index(i_interp, size, one_based = false)
 end
 
 function InterpolatedElement(
-        plot::Plot, rect::Rect2;
+        plot::Plot, rect::Rect2, idx::Integer;
         edge_based = false,
         model = plot.model_f32c[],
         ray = transform(inv(model), ray_at_cursor(parent_scene(plot))),
@@ -165,7 +165,7 @@ function pick_element(plot::Union{Image, Heatmap}, idx, plot_stack::Tuple{})
         # model matrix may add a z component to the Rect2f, which we can't represent,
         # so we instead inverse-transform the ray
         rect = get_picked_model_space_rect(plot, idx)
-        return InterpolatedElement(plot, rect, edge_based = plot isa Heatmap)
+        return InterpolatedElement(plot, rect, idx, edge_based = plot isa Heatmap)
     else
         _size = size(plot.image[])
         cart = CartesianIndices(_size)[idx]

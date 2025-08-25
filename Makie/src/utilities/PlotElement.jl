@@ -90,6 +90,9 @@ Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
 Base.parent(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.index, e.accessed_fields)
 
+################################################################################
+### Accessors
+################################################################################
 
 struct IndexedElement{D} <: AbstractElementAccessor
     index::CartesianIndex{D}
@@ -217,14 +220,28 @@ end
 function dimensional_element_getindex(x, element::InterpolatedElement{2}, dim::Integer)
     if x isa AbstractArray{T, 2} where T
         return element_getindex(x, element)
+
     elseif x isa Union{EndPoints, EndPointsLike}
+
         x0, x1 = x
-        f = (element.index0[dim] + element.interpolation[dim] - 0.5) / element.size[dim]
+        if element.edge_based
+            f = (element.index0[dim] + element.interpolation[dim] - 1.0) / element.size[dim]
+        else
+            f = (element.index0[dim] + element.interpolation[dim] - 0.5) / element.size[dim]
+        end
         return lerp(x0, x1, f)
+
     elseif is_array_attribute(x)
-        x0 = sv_getindex(x, element.index0[dim])
-        x1 = sv_getindex(x, element.index1[dim])
-        return lerp(x0, x1, element.interpolation[dim])
+
+        i0 = element.index0[dim]
+        i1 = element.index1[dim]
+        interp = element.interpolation[dim]
+
+        if element.edge_based && length(x) == element.size[dim] # center based values
+            i0, i1, interp = interpolated_edge_to_cell_index(i0 + interp, element.size[dim], true)
+        end
+
+        return lerp(x[i0], x[i1], interp)
     else
         return x
     end
