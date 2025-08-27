@@ -108,28 +108,35 @@ Base.parent(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack),
 ### Accessors
 ################################################################################
 
-struct IndexedElement{D} <: AbstractElementAccessor
+"""
+    IndexedAccessor(index, length)
+    IndexedAccessor(index, size)
+
+Constructs an accessor representing an index into data of a given size. The
+dimensionality of the index must match the dimensionality of the given size.
+"""
+struct IndexedAccessor{D} <: AbstractElementAccessor
     index::CartesianIndex{D}
     size::Vec{D, Int64}
 
-    function IndexedElement(idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {N}
+    function IndexedAccessor(idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {N}
         return new{N}(idx, Vec{N, Int64}(size))
     end
 end
 
-function IndexedElement(idx::Integer, size::Integer)
-    return IndexedElement(CartesianIndex(idx), Vec{1, Int64}(size))
+function IndexedAccessor(idx::Integer, size::Integer)
+    return IndexedAccessor(CartesianIndex(idx), Vec{1, Int64}(size))
 end
 
-function IndexedElement(idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
-    return IndexedElement(CartesianIndex(idx...), Vec{N, Int64}(size))
+function IndexedAccessor(idx::VecTypes{N, <:Integer}, size::VecTypes{N, <:Integer}) where {N}
+    return IndexedAccessor(CartesianIndex(idx...), Vec{N, Int64}(size))
 end
 
-function element_getindex(x, element::IndexedElement)
+function element_getindex(x, element::IndexedAccessor)
     return sv_getindex(x, element.index)
 end
 
-function dimensional_element_getindex(x, element::IndexedElement{2}, dim::Integer)
+function dimensional_element_getindex(x, element::IndexedAccessor{2}, dim::Integer)
     if x isa AbstractArray{T, 2} where T
         return element_getindex(x, element)
     elseif x isa Union{EndPoints, EndPointsLike}
@@ -152,7 +159,7 @@ function dimensional_element_getindex(x, element::IndexedElement{2}, dim::Intege
 end
 
 
-struct InterpolatedElement{D} <: AbstractElementAccessor
+struct InterpolatedAccessor{D} <: AbstractElementAccessor
     index0::CartesianIndex{D}
     index1::CartesianIndex{D}
     interpolation::Vec{D, Float32}
@@ -160,22 +167,22 @@ struct InterpolatedElement{D} <: AbstractElementAccessor
     edge_based::Bool
 end
 
-function InterpolatedElement(
+function InterpolatedAccessor(
         i0::Integer, i1::Integer, interpolation::AbstractFloat, size::Integer, edge_based = false
     )
-    return InterpolatedElement(
+    return InterpolatedAccessor(
         CartesianIndex(i0), CartesianIndex(i1), Vec{1, Float32}(interpolation),
         Vec{1, Int64}(size), edge_based
     )
 end
 
-function InterpolatedElement(
+function InterpolatedAccessor(
         i0::VecTypes{D, <:Integer}, i1::VecTypes{D, <:Integer},
         interpolation::VecTypes{D, <:AbstractFloat}, size::VecTypes{D, <:Integer},
         edge_based = false
     ) where {D}
 
-    return InterpolatedElement(
+    return InterpolatedAccessor(
         CartesianIndex(i0...), CartesianIndex(i1...), Vec{D, Float32}(interpolation),
         Vec{D, Int64}(size), edge_based
     )
@@ -190,7 +197,7 @@ is_array_attribute(x::VecTypes) = false
 is_array_attribute(x::ScalarOrVector) = x.sv isa Vector
 is_array_attribute(x) = false
 
-function element_getindex(x, element::InterpolatedElement{1})
+function element_getindex(x, element::InterpolatedAccessor{1})
     if is_array_attribute(x)
         low = sv_getindex(x, element.index0)
         high = sv_getindex(x, element.index1)
@@ -200,7 +207,7 @@ function element_getindex(x, element::InterpolatedElement{1})
     end
 end
 
-function element_getindex(x, element::InterpolatedElement{2})
+function element_getindex(x, element::InterpolatedAccessor{2})
     if is_array_attribute(x)
         i0, j0 = Tuple(element.index0)
         i1, j1 = Tuple(element.index1)
@@ -231,7 +238,7 @@ function element_getindex(x, element::InterpolatedElement{2})
     end
 end
 
-function dimensional_element_getindex(x, element::InterpolatedElement{2}, dim::Integer)
+function dimensional_element_getindex(x, element::InterpolatedAccessor{2}, dim::Integer)
     if x isa AbstractArray{T, 2} where T
         return element_getindex(x, element)
 
@@ -263,7 +270,7 @@ end
 
 
 
-struct InterpolatedMeshElement <: AbstractElementAccessor
+struct MeshAccessor <: AbstractElementAccessor
     N_vertices::Int64
     N_submeshes::Int64
 
@@ -271,7 +278,7 @@ struct InterpolatedMeshElement <: AbstractElementAccessor
     face::GLTriangleFace
     uv::Vec2f
 
-    function InterpolatedMeshElement(
+    function MeshAccessor(
             N_vertices::Integer, N_submeshes::Integer,
             submesh_index::Integer, face::TriangleFace, uv::VecTypes{2}
         )
@@ -279,7 +286,7 @@ struct InterpolatedMeshElement <: AbstractElementAccessor
     end
 end
 
-function element_getindex(x, element::InterpolatedMeshElement)
+function element_getindex(x, element::MeshAccessor)
     if is_array_attribute(x)
         if length(x) == element.N_vertices
             i, j, k = element.face
