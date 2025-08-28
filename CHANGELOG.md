@@ -2,7 +2,7 @@
 
 ## Unreleased
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
--  Fixed `Symlog10` to work correctly with `lo` or `hi` smaller than 1. [#9999]
+-  Fixed `Symlog10` to work correctly with `lo` or `hi` smaller than 1, and adds a `linscale` argument [#9999]
 
 ## [0.24.6] - 2025-08-19
 
