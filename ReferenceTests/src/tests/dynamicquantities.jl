@@ -1,5 +1,5 @@
 using Test
-import DynamicQuantities as DQ
+import ReferenceTests.DynamicQuantities as DQ
 
 @reference_test "DQ combining units, error for numbers" begin
     f, ax, pl = scatter(((1:600:(100 * 60))DQ.u"s" .|> DQ.us"min"), 1:10, markersize = 20, color = 1:10)
