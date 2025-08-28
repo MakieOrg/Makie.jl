@@ -444,17 +444,16 @@ const pseudolog10 = ReversibleScale(
 )
 
 """
-    Symlog10([lo=hi,] hi; [linscale])
+    Symlog10([lo=hi,] hi; linscale=1)
 
 A scaling which is linear in the interval `[-lo, hi]` and logarithmic outside, thus representing both positive and negative values.
 
-The parameter `linscale` controls the half-width of the linear region. By default,
-this is given by `(log10(abs(lo)) + log10(hi)) / 2`. This region is shifted so that zero maps to zero.
+The parameter `linscale` controls the half-width of the linear region (default: 1). This region is shifted so that zero maps to zero.
 
 If only one argument is given, `lo` is set to `-hi`, and the linear region is symmetric around zero.
 """
-Symlog10(hi; linscale=1) = Symlog10(-hi, hi; linscale)
-function Symlog10(lo, hi; linscale = (log10(abs(lo)) + log10(hi)) / 2)
+Symlog10(hi; kwargs...) = Symlog10(-hi, hi; kwargs...)
+function Symlog10(lo, hi; linscale = 1)
 
     lo > 0 && throw(ArgumentError("Argument `lo` must be <= 0. Got: $lo"))
     hi < 0 && throw(ArgumentError("Argument `hi` must be >= 0. Got: $hi"))
