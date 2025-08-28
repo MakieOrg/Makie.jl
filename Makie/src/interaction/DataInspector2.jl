@@ -628,3 +628,16 @@ function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
 end
 
 get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color
+
+function get_tooltip_position(element::PlotElement{<:Errorbars})
+	x, y, low, high = element.val_low_high
+	return Point(x, y)
+end
+
+function get_tooltip_position(element::PlotElement{<:Rangebars})
+    plot = get_plot(element)
+    i = 2 * accessor(element).index[1]
+    linepoints = plot.linesegpairs[]
+    center = 0.5 * (linepoints[i-1] .+ linepoints[i])
+	return center
+end

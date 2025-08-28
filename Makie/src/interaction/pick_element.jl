@@ -376,3 +376,7 @@ function get_accessor(plot::Band, idx, plot_stack)
 end
 
 get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing
+
+function get_accessor(plot::Union{Errorbars, Rangebars}, idx, plot_stack)
+    return IndexedAccessor(fld1(idx, 2), length(plot.val_low_high[]))
+end
