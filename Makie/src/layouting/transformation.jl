@@ -443,25 +443,34 @@ const pseudolog10 = ReversibleScale(
     name = :pseudolog10
 )
 
-Symlog10(hi) = Symlog10(-hi, hi)
-function Symlog10(lo, hi)
+"""
+    Symlog10([lo=hi,] hi; linscale=1.0)
+
+A scaling which is linear in the interval `[-lo, hi]` and logarithmic outside, thus representing both positive and negative values.
+The parameter `linscale` controls the size of the linear region; that is, the linear region spans `[-linscale, +linscale]`.
+
+If only one argument is given, `lo` is set to `-hi`, and the linear region is symmetric around zero.
+"""
+Symlog10(hi; linscale=1) = Symlog10(-hi, hi; linscale)
+function Symlog10(lo, hi; linscale=1.0)
+
+    lo > 0 && throw(ArgumentError("Argument `lo` must be <= 0. Got: $lo"))
+    hi < 0 && throw(ArgumentError("Argument `hi` must be >= 0. Got: $hi"))
+    linscale <= 0 && throw(ArgumentError("Argument `linscale` must be > 0. Got: $linscale"))
+
     forward(x) =
-        if x > 0
-            x <= hi ? x / hi : log10(x/hi) + 1
-        elseif x < 0
-            x >= lo ? x / abs(lo) : -(log10(abs(x/lo)) + 1)
+        if lo < x < hi
+            x = ((x - lo) / (hi - lo) * 2 - 1) * linscale  # map to [-linscale, linscale]
         else
-            x
+            x = sign(x) * (linscale + log10(abs(x) / (x > 0 ? hi : abs(lo))))
         end
     inverse(x) =
-        if x > 0
-            x <= 1 ? x * hi : exp10(x-1) * hi
-        elseif x < 0
-            x >= -1 ? x * abs(lo) : -exp10(abs(x + 1)) * abs(lo)
+        if abs(x) < linscale
+            x = (x / linscale + 1) / 2 * (hi - lo) + lo
         else
-            x
+            x = sign(x) * exp10(abs(x) - linscale) * (x > 0 ? hi : abs(lo))
         end
-    return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
+    return ReversibleScale(forward, inverse; limits=(-3.0f0, 3.0f0), name=:Symlog10)
 end
 
 """
