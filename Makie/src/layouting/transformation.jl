@@ -445,23 +445,23 @@ const pseudolog10 = ReversibleScale(
 
 Symlog10(hi) = Symlog10(-hi, hi)
 function Symlog10(lo, hi)
-    forward(x) = if x > 0
-        x <= hi ? x / hi * log10(hi) : log10(x)
-    elseif x < 0
-        x >= lo ? x / abs(lo) * log10(abs(lo)) : -log10(abs(x))
-    else
-        x
-    end
-    inverse(x) = if x > 0
-        l = log10(hi)
-        x <= l ? x / l * hi : exp10(x)
-    elseif x < 0
-        l = -log10(abs(lo))
-        x >= l ? x / l * abs(lo) : -exp10(abs(x))
-    else
-        x
-    end
-    return ReversibleScale(forward, inverse; limits = (0.0f0, 3.0f0), name = :Symlog10)
+    forward(x) =
+        if x > 0
+            x <= hi ? x / hi : log10(x/hi) + 1
+        elseif x < 0
+            x >= lo ? x / abs(lo) : -(log10(abs(x/lo)) + 1)
+        else
+            x
+        end
+    inverse(x) =
+        if x > 0
+            x <= 1 ? x * hi : exp10(x-1) * hi
+        elseif x < 0
+            x >= -1 ? x * abs(lo) : -exp10(abs(x + 1)) * abs(lo)
+        else
+            x
+        end
+    return ReversibleScale(forward, inverse; limits=(0.0f0, 3.0f0), name=:Symlog10)
 end
 
 """
