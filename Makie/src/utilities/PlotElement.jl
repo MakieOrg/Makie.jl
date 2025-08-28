@@ -9,8 +9,6 @@ function dimensional_element_getindex(x, element::PlotElement, dim::Integer)
 end
 element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element))
 
-# TODO: Should this be called child() instead? Or something else? Because its
-# not the PlotElement containing the parent plot...
 get_plot(element::PlotElement) = first(element.plot_stack)
 get_plot(plot::Plot) = plot
 accessor(element::PlotElement) = element.index
@@ -64,7 +62,7 @@ end
 
 PlotElement(plot_stack::Tuple, elem::PlotElement) = SimplePlotElement(plot_stack, elem.index)
 PlotElement(plot_stack::Tuple, accessor::AbstractElementAccessor) = SimplePlotElement(plot_stack, accessor)
-Base.parent(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
+child(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
 
 
 
@@ -102,7 +100,7 @@ end
 TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.index, Symbol[])
 Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
-Base.parent(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.index, e.accessed_fields)
+child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.index, e.accessed_fields)
 
 ################################################################################
 ### Accessors

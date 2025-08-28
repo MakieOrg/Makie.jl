@@ -68,6 +68,9 @@ picked.
 
 Note that this function is also allowed to return a full `PlotElement` to
 overwrite the (tail of the) `plot_stack`.
+
+And finally, note that this function can return `nothing` to signal that it can
+not create a valid accessor.
 """
 function get_accessor(plot, index, child_stack)
     return get_accessor(first(child_stack), index, Base.tail(child_stack))

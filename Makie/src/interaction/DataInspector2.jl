@@ -229,7 +229,7 @@ function get_position_element(element::PlotElement)
         if applicable(get_tooltip_position, element)
             return element
         else
-            element = parent(element)
+            element = child(element)
         end
     end
     return nothing
@@ -257,6 +257,7 @@ end
 ### Label generation + default formatting
 ########################################
 
+# TODO: Consider renaming this and using the name for `get_default_tooltip_label` instead
 function get_tooltip_label(formatter, element::PlotElement, pos)
     label = get(element, :inspector_label, automatic)
 
@@ -301,7 +302,7 @@ end
 apply_tooltip_format(fmt::String, x::Number) = Format.format(fmt, x)
 apply_tooltip_format(fmt::Function, x::Number) = fmt(x)
 
-function default_tooltip_formatter(x)
+function default_tooltip_formatter(x::Real)
     if 1e-3 < abs(x) < 1e-1
         return @sprintf("%0.6f", x)
     elseif 1e-1 < abs(x) < 1e3
@@ -449,7 +450,7 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Imag
 end
 
 function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, pos)
-    poly_element = parent(element)
+    poly_element = child(element)
     rect = poly_element.arg1
     ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
 
@@ -460,7 +461,7 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, 
 end
 
 function update_indicator!(di::DataInspector2, element::PlotElement{<:Contourf}, pos)
-    poly_element = parent(element)
+    poly_element = child(element)
     polygon = poly_element.arg1
     # Careful, convert_arguments() may return just return exterior (===)
     line_collection = copy(convert_arguments(Lines, polygon.exterior)[1])
@@ -623,7 +624,7 @@ function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
 end
 
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
-    return parent(element).color
+    return child(element).color
 end
 
-get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = parent(element).color
+get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color
