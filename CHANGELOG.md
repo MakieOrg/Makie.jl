@@ -12,6 +12,8 @@
 - Fixed double application of `alpha` regression in `Band` plots in CairoMakie [#5258](https://github.com/MakieOrg/Makie.jl/pull/5258).
 - Updated `boxplot`, `crossbar`, `density`, `hist`, `stephist`, `violin` and `waterfall` to use the new compute graph instead of observables. [#5184](https://github.com/MakieOrg/Makie.jl/pull/5184)
 
+- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
+
 ## [0.24.5] - 2025-08-06
 
 - Added new scales based on `ReversibleScale` for use as `colorscale`, `xscale`, and `yscale` attributes. The new scales are `AsinhScale`, `SinhScale`, `LogScale`, `LuptonAsinhScale`, and `PowerScale`.

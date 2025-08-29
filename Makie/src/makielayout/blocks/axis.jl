@@ -1256,6 +1256,13 @@ function Makie.xlims!(ax::Axis, xlims)
 
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
+
+    # update xlims for linked axes
+    for xlink in ax.xaxislinks
+        xlink_mlims = convert_limit_attribute(xlink.limits[])
+        xlink.limits.val = (xlims, xlink_mlims[2])
+    end
+
     reset_limits!(ax, yauto = false)
     return nothing
 end
@@ -1274,6 +1281,13 @@ function Makie.ylims!(ax::Axis, ylims)
     end
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (mlims[1], ylims)
+
+    # update ylims for linked axes
+    for ylink in ax.yaxislinks
+        ylink_mlims = convert_limit_attribute(ylink.limits[])
+        ylink.limits.val = (ylink_mlims[1], ylims)
+    end
+
     reset_limits!(ax, xauto = false)
     return nothing
 end
