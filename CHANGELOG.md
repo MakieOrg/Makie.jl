@@ -2,6 +2,7 @@
 
 ## Unreleased
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fix `display(figurelike)` causing the REPL to hang when using CairoMakie on a Linux system [#5281](https://github.com/MakieOrg/Makie.jl/pull/5281)
 
 ## [0.24.6] - 2025-08-19
 

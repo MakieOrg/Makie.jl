@@ -7,12 +7,26 @@
 Try to run a command. Return `true` if `cmd` runs and is successful (exits with a code of `0`).
 Return `false` otherwise.
 """
-function tryrun(cmd::Cmd)
-    try
-        return success(cmd)
-    catch e
-        return false
-    end
+function tryrun(cmd::Cmd; wait = true)
+    if wait
+        try
+            return success(cmd)
+        catch e
+            return false
+        end
+    else
+        proc = try
+            run(cmd; wait = false)
+        catch e
+            return false
+        end
+        sleep(1e-3)
+        if proc.exitcode == typemin(Int) || proc.exitcode == 0
+            # still running || ran successfully
+            return true
+        else
+            return false
+        end
 end
 
 function openurl(url::String)
@@ -21,8 +35,8 @@ function openurl(url::String)
     elseif Sys.iswindows()
         tryrun(`powershell.exe start $url`) && return
     elseif Sys.isunix()
-        tryrun(`xdg-open $url`) && return
-        tryrun(`gnome-open $url`) && return
+        tryrun(`xdg-open $url`; wait = false) && return
+        tryrun(`gnome-open $url`; wait = false) && return
     end
     tryrun(`python -mwebbrowser $(url)`) && return
     # our last hope
