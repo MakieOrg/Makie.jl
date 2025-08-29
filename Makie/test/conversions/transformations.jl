@@ -397,14 +397,14 @@ end
 
         # Helper for checking log behavior
         function is_log(f, bound, delta; atol=1e-10)
-            # Should be approximately log10 scaling outside the linear region
-            xs = sign(bound) * logrange(abs(bound), abs(bound * delta); length=10)
+            # Should be log scaling outside the linear region
+            log_xs = range(log(abs(bound)), log(abs(bound * delta)); length=10)
+            xs = sign(bound) .* exp.(log_xs)
             ys = f.(xs)
             diffs = diff(ys)
             return all(isapprox.(diffs, diffs[1]; atol))
         end
 
-        # Test various parameter combinations
         symlog = Makie.Symlog10(lo, hi; linscale)
         reverse_symlog = Makie.inverse_transform(symlog)
 
