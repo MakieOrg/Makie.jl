@@ -1,5 +1,5 @@
 """
-    contourf(xs, ys, zs; kwargs...)
+    contourf(xs, ys, zs; attributes...)
 
 Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
 and vertical grid positions `ys`.

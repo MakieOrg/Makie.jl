@@ -6,7 +6,7 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
 """
-    boxplot(x, y; kwargs...)
+    boxplot(x, y; attributes...)
 Draw a Tukey style boxplot.
 The boxplot has 3 components:
 - a `crossbar` spanning the interquartile (IQR) range with a midline marking the

@@ -38,7 +38,7 @@ function convert_arguments(P::Type{<:Plot}, x0::AbstractInterval, ecdf::StatsBas
 end
 
 """
-    ecdfplot(values; npoints=10_000[, weights])
+    ecdfplot(values; npoints=10_000[, weights]; attributes...)
 
 Plot the empirical cumulative distribution function (ECDF) of `values`.
 

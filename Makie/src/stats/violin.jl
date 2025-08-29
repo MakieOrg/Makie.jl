@@ -1,5 +1,5 @@
 """
-    violin(x, y)
+    violin(x, y; attributes...)
 Draw a violin plot.
 ## Arguments
 - `x`: positions of the categories
