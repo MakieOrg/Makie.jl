@@ -165,6 +165,7 @@ pages = [
         "explanations/layouting.md",
         "explanations/headless.md",
         "explanations/inspector.md",
+        "explanations/DataInspector.md",
         "explanations/latex.md",
         "explanations/observables.md",
         "explanations/plot_method_signatures.md",
