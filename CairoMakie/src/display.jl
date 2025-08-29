@@ -21,8 +21,15 @@ function openurl(url::String)
     elseif Sys.iswindows()
         tryrun(`powershell.exe start $url`) && return
     elseif Sys.isunix()
-        tryrun(`xdg-open $url`) && return
-        tryrun(`gnome-open $url`) && return
+        # On Linux, `xdg-open` only stops when you close the window it opens,
+        # causing the Julia REPL to block while that happens.
+        # `wait=false` to `run` launches the command asynchronously,
+        # and we don't actually care what happens.
+        try
+            !isnothing(Sys.which("xdg-open")) && (run(`xdg-open $url`; wait = false); return)
+            !isnothing(Sys.which("gnome-open")) && (run(`gnome-open $url`; wait = false); return)
+        catch e
+        end
     end
     tryrun(`python -mwebbrowser $(url)`) && return
     # our last hope
