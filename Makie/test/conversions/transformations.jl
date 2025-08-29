@@ -381,3 +381,69 @@ end
         @test p.transformation.model[] == Makie.translationmatrix(Vec3f(1, 2, 3))
     end
 end
+
+@testset "Axis scales" begin
+
+    @testset "Symlog10: lo=$lo, hi=$hi, linscale=$linscale" for lo in (-10.0, -0.1), hi in (0.1, 0.3, 1.0, 10.0), linscale in (0.5, 1.0)
+        atol = 1e-10
+
+        # Helper for checking linearity
+        function is_linear(f, lo, hi; atol=1e-10)
+            xs = range(lo, hi; length=10)
+            ys = f.(xs)
+            diffs = diff(ys)
+            return all(isapprox.(diffs, diffs[1]; atol))
+        end
+
+        # Helper for checking log behavior
+        function is_log(f, bound, delta; atol=1e-10)
+            # Should be approximately log10 scaling outside the linear region
+            xs = sign(bound) * logrange(abs(bound), abs(bound * delta); length=10)
+            ys = f.(xs)
+            diffs = diff(ys)
+            return all(isapprox.(diffs, diffs[1]; atol))
+        end
+
+        # Test various parameter combinations
+        symlog = Makie.Symlog10(lo, hi; linscale)
+        reverse_symlog = Makie.inverse_transform(symlog)
+
+        @test symlog.name == :Symlog10
+
+        # Check that forward and inverse are consistent
+        x = [range(lo, hi; length=5); [lo-5, lo-2, hi+2, hi+5]]
+        y = symlog.(x)
+        x2 = reverse_symlog.(y)
+        @test isapprox(x, x2; atol)
+
+        # Check that forward(hi) - forward(lo) == 2*linscale
+        @test isapprox(symlog.forward(hi) - symlog.forward(lo), 2*linscale; atol)
+
+        # Check that forward is linear inside region
+        @test is_linear(symlog, lo, hi; atol)
+
+        # Check that forward is log outside region
+        for bound in (lo, hi)
+            @test is_log(symlog, bound, 100; atol)
+        end
+
+        # Check continuity at boundaries
+        ε = 1e-10
+        @test isapprox(
+            symlog.forward(lo + ε),
+            symlog.forward(lo - ε);
+            atol=1e-8,
+        )
+        @test isapprox(
+            symlog.forward(hi + ε),
+            symlog.forward(hi - ε);
+            atol=1e-8,
+        )
+    end
+
+    @testset "Symlog10: error handling" begin
+        @test_throws ArgumentError Makie.Symlog10(1.0, -2.0)
+        @test_throws ArgumentError Makie.Symlog10(-2.0, 2.0; linscale=0.0)
+    end
+
+end
