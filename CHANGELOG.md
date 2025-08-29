@@ -42,6 +42,8 @@
 - Fixed broadcast error in `position_on_plot` for mesh [#5196](https://github.com/MakieOrg/Makie.jl/pull/5196)
 - Added support for plotting units with DynamicQuantities.jl [#5137](https://github.com/MakieOrg/Makie.jl/pull/5137)
 
+- Add a global Axis/Axis3D registry for default interactions [#4531](https://github.com/MakieOrg/Makie.jl/pull/4531).
+
 ## [0.24.3] - 2025-07-04
 
 - Fixed empty plotlist [#5150](https://github.com/MakieOrg/Makie.jl/pull/5150).

@@ -167,7 +167,21 @@ mutable struct LineAxis
     minortickvalues::Observable{Vector{Float32}}
 end
 
-struct LimitReset end
+
+struct LimitReset
+    mouseevent::MouseEventTypes.MouseEventType # e.g. MouseEventTypes.leftclick, or some other mouse event to start limit reset.
+    modifier1::Optional{Keyboard.Button} # e.g. Keyboard.left_control, or some other keyboard button to reset limits.
+    modifier2::Optional{Keyboard.Button} # e.g. Keyboard.left_shift, or some other keyboard button to auto limits.
+
+    function LimitReset(
+            mouseevent = MouseEventTypes.leftclick,
+            modifier1 = Keyboard.left_control,
+            modifier2 = Keyboard.left_shift,
+        )
+        return new(mouseevent, modifier1, modifier2)
+    end
+end
+
 
 mutable struct RectangleZoom
     callback::Function
@@ -180,12 +194,48 @@ mutable struct RectangleZoom
     modifier::Any # e.g. Keyboard.left_alt, or some other button that needs to be pressed to start rectangle... Defaults to `true`, which means no modifier needed
 end
 
-function RectangleZoom(callback::Function; restrict_x = false, restrict_y = false, modifier = true)
+function RectangleZoom(restrict_x::Bool = false, restrict_y::Bool = false, modifier::Bool = true)
+    callback = (ax, newlims) -> let
+        if !(0 in widths(newlims))
+            ax.targetlimits[] = newlims
+        end
+        return
+    end
     return RectangleZoom(
         callback, Observable(false), restrict_x, restrict_y,
         nothing, nothing, Observable(Rect2d(0, 0, 1, 1)), modifier
     )
 end
+RectangleZoom(callback::Function, restrict_x::Bool = false, restrict_y::Bool = false, modifier::Bool = true) =
+    RectangleZoom(callback, restrict_x, restrict_y, modifier)
+
+function registration_setup!(ax::AbstractAxis, r::RectangleZoom)
+    rect_scene = Scene(ax.scene)
+    selection_vertices = lift(
+        _selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
+        r.rectnode
+    )
+    # manually specify correct faces for a rectangle with a rectangle hole inside
+    faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
+    # plot to blockscene, so ax.scene stays exclusive for user plots
+    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
+    mesh = mesh!(
+        rect_scene,
+        selection_vertices, faces, space = :pixel,
+        color = (:black, 0.2), shading = NoShading,
+        inspectable = false, transparency = true, overdraw = true, visible = r.active
+    )
+    # translate forward so selection mesh and frame are never behind data
+    translate!(mesh, 0, 0, 1000)
+
+    return ax
+end
+
+function deregistration_cleanup!(ax::AbstractAxis, r::RectangleZoom)
+    # TODO: Remove mesh?
+    return ax
+end
+
 
 struct ScrollZoom
     speed::Float32
@@ -199,6 +249,7 @@ function ScrollZoom(speed, reset_delay)
     return ScrollZoom(speed, RefValue{Union{Nothing, Timer}}(nothing), RefValue{Union{Automatic, Symbol, Float64}}(0.0), RefValue{Union{Automatic, Symbol, Float64}}(0.0), reset_delay)
 end
 
+
 struct DragPan
     reset_timer::RefValue{Union{Nothing, Timer}}
     prev_xticklabelspace::RefValue{Union{Automatic, Symbol, Float64}}
@@ -211,15 +262,21 @@ function DragPan(reset_delay)
 end
 
 
-struct DragRotate
-end
+struct DragRotate end
+
 
 mutable struct FocusOnCursor
     last_time::Float64
     timeout::Float64
     skip::Int64
 end
-FocusOnCursor(skip, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+FocusOnCursor(skip = 0, timeout = 0.1) = FocusOnCursor(time(), timeout, skip)
+
+function registration_setup!(ax::AbstractAxis, focus::FocusOnCursor)
+    focus.skip = length(ax.scene.plots)
+    return ax
+end
+
 
 struct ScrollEvent
     x::Float32
@@ -730,36 +787,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     end
 end
 
-function RectangleZoom(f::Function, ax::Axis; kw...)
-    r = RectangleZoom(f; kw...)
-    rect_scene = Scene(ax.scene)
-    selection_vertices = lift(
-        _selection_vertices, rect_scene, Observable(ax.scene), ax.finallimits,
-        r.rectnode
-    )
-    # manually specify correct faces for a rectangle with a rectangle hole inside
-    faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
-    # plot to blockscene, so ax.scene stays exclusive for user plots
-    # That's also why we need to pass `ax.scene` to _selection_vertices, so it can project to that space
-    mesh = mesh!(
-        rect_scene,
-        selection_vertices, faces, space = :pixel,
-        color = (:black, 0.2), shading = NoShading,
-        inspectable = false, transparency = true, overdraw = true, visible = r.active
-    )
-    # translate forward so selection mesh and frame are never behind data
-    translate!(mesh, 0, 0, 1000)
-    return r
-end
-
-function RectangleZoom(ax::Axis; kw...)
-    return RectangleZoom(ax; kw...) do newlims
-        if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
-        end
-        return
-    end
-end
 
 """
 Create a colorbar that shows a continuous or categorical colormap with ticks
