@@ -5,6 +5,7 @@
 
 ## [0.24.6] - 2025-08-19
 
+- Fix an error in CairoMakie's screen management where corrupted (null-pointer) screens were not reconstructed on the next display [#5207](https://github.com/MakieOrg/Makie.jl/pull/5207).
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
 - Fixed `getlimits(::Axis3)` error related to unchecked access of `:visible` attribute.
 - Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
