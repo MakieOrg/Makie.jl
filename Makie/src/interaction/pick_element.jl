@@ -83,7 +83,7 @@ function pick_line_element(scene::Scene, plot, idx)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))
     idx = max(2, idx)
     interpolation = closest_point_on_line_interpolation(pos[idx - 1], pos[idx], ray)
-    return InterpolatedAccessor(idx-1, idx, interpolation, length(pos))
+    return InterpolatedAccessor(idx - 1, idx, interpolation, length(pos))
 end
 
 get_picked_model_space_rect(plot::Image, idx) = Rect2d(model_space_boundingbox(plot))
@@ -96,22 +96,22 @@ function get_picked_model_space_rect(plot::Heatmap, idx)
 
     j, i = fldmod1(idx, size(plot.image[], 1))
     p0 = Point2d.(plot.x_transformed_f32c[][i], plot.y_transformed_f32c[][j])
-    p1 = Point2d.(plot.x_transformed_f32c[][i+1], plot.y_transformed_f32c[][j+1])
+    p1 = Point2d.(plot.x_transformed_f32c[][i + 1], plot.y_transformed_f32c[][j + 1])
 
     return Rect2d(p0, p1 .- p0)
 end
 
-function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<: VecTypes{2}}, ref::VecTypes)
+function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<:VecTypes{2}}, ref::VecTypes)
     a, b, c = positions[face]
     # ref = a + (b-a) * u + (c-a) * v
     # ref - a = Mat2f(b-a, c-a) * Vec(u, v)
     # (u, v) = inv(Mat2f(b-a, c-a)) * (ref - a)
-    M = Mat2f((b-a)..., (c-a)...)
-    uv = inv(M) * (ref[Vec(1,2)] - a)
+    M = Mat2f((b - a)..., (c - a)...)
+    uv = inv(M) * (ref[Vec(1, 2)] - a)
     return uv
 end
 
-function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<: VecTypes{3}}, ref::VecTypes{3})
+function triangle_interpolation_parameters(face::TriangleFace, positions::AbstractArray{<:VecTypes{3}}, ref::VecTypes{3})
     # same thing, but with a throw-away surface normal to complete the Mat3
     a, b, c = positions[face]
     v1 = b - a
@@ -169,7 +169,7 @@ function InterpolatedAccessor(
         j, i = fldmod1(idx, size[1]) # cell index
         local_interpolation = (pos - origin(rect)) ./ widths(rect)
         return InterpolatedAccessor(
-            Vec2i(i, j), Vec2i(i+1, j+1), local_interpolation, size, edge_based
+            Vec2i(i, j), Vec2i(i + 1, j + 1), local_interpolation, size, edge_based
         )
     end
 end
@@ -367,12 +367,12 @@ function get_accessor(plot::Band, idx, plot_stack)
 
     # Get index of of the quad/first point in ps1/ps2
     N = div(length(ps), 2)
-    idx = mod1(face_index, N-1)
+    idx = mod1(face_index, N - 1)
 
     # interpolate to quad paramater
     f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
 
-    return InterpolatedAccessor(idx, idx+1, f, N)
+    return InterpolatedAccessor(idx, idx + 1, f, N)
 end
 
 get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing

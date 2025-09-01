@@ -170,8 +170,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 
         placement = :above
         placement = ifelse(py > max(0.5wy, wy - t), :below, placement)
-        placement = ifelse(px < min(0.5wx, l),      :right, placement)
-        placement = ifelse(px > max(0.5wx, wx - r), :left,  placement)
+        placement = ifelse(px < min(0.5wx, l), :right, placement)
+        placement = ifelse(px > max(0.5wx, wx - r), :left, placement)
 
         return placement
     end
@@ -303,11 +303,11 @@ apply_tooltip_format(fmt::String, x::Number) = Format.format(fmt, x)
 apply_tooltip_format(fmt::Function, x::Number) = fmt(x)
 
 function default_tooltip_formatter(x::Real)
-    if 1e-3 < abs(x) < 1e-1
+    if 1.0e-3 < abs(x) < 1.0e-1
         return @sprintf("%0.6f", x)
-    elseif 1e-1 < abs(x) < 1e3
+    elseif 1.0e-1 < abs(x) < 1.0e3
         return @sprintf("%0.3f", x)
-    elseif 1e3 < abs(x) < 1e5
+    elseif 1.0e3 < abs(x) < 1.0e5
         return @sprintf("%0.0f", x)
     elseif iszero(x)
         return "0"
@@ -488,7 +488,6 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Band}, pos
 end
 
 
-
 ################################################################################
 ### persistent tooltips
 ################################################################################
@@ -547,7 +546,7 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     parent_plot = get_plot(element)
     inputs = [
         plot._formatter, plot.arg1, plot.element_positions,
-        getproperty.(Ref(parent_plot), get_accessed_fields(element))...
+        getproperty.(Ref(parent_plot), get_accessed_fields(element))...,
     ]
 
     map!(plot, inputs, :element_labels) do formatter, elements, positions, triggers...
@@ -630,14 +629,14 @@ end
 get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color
 
 function get_tooltip_position(element::PlotElement{<:Errorbars})
-	x, y, low, high = element.val_low_high
-	return Point(x, y)
+    x, y, low, high = element.val_low_high
+    return Point(x, y)
 end
 
 function get_tooltip_position(element::PlotElement{<:Rangebars})
     plot = get_plot(element)
     i = 2 * accessor(element).index[1]
     linepoints = plot.linesegpairs[]
-    center = 0.5 * (linepoints[i-1] .+ linepoints[i])
-	return center
+    center = 0.5 * (linepoints[i - 1] .+ linepoints[i])
+    return center
 end

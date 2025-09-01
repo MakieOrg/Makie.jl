@@ -366,7 +366,7 @@ function find_picked_triangle(
         end
     end
 
-    return GLTriangleFace(1,1,1), 0, Point3d(NaN)
+    return GLTriangleFace(1, 1, 1), 0, Point3d(NaN)
 end
 
 function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
@@ -375,7 +375,7 @@ function position_on_plot(plot::Mesh, idx, ray::Ray; apply_transform = true)
 
     if !isnan(pos)
         pos = inv_f32_convert(plot, pos)
-       if apply_transform
+        if apply_transform
             p4d = plot.model_f32c[] * to_ndim(Point4d, pos, 1)
             return Point3d(p4d) / p4d[4]
         else
@@ -409,7 +409,7 @@ function find_picked_surface_cell(plot::Surface, idx, ray::Ray)
     ps = plot.positions_transformed_f32c[]
     w, h = size(plot.z[])
     _j, _i = fldmod1(idx, w)
-    linear_index(i, j, w) = i + (j-1) * w
+    linear_index(i, j, w) = i + (j - 1) * w
 
     # TODO: Is this still true?
     # This isn't the most accurate so we include some neighboring faces

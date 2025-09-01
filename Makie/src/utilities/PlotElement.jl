@@ -1,3 +1,8 @@
+
+################################################################################
+### Generic/Abstract
+################################################################################
+
 abstract type AbstractElementAccessor end
 
 abstract type PlotElement{PlotType} end
@@ -47,13 +52,14 @@ function sample_color(plotlike::Union{Plot, PlotElement}, value::Real)
     return color
 end
 
-
-
+################################################################################
+### PlotElement
+################################################################################
 
 struct SimplePlotElement{
         PlotType,
         IndexType <: AbstractElementAccessor,
-        PlotStack <: Tuple{PlotType, Vararg{Plot}}
+        PlotStack <: Tuple{PlotType, Vararg{Plot}},
     } <: PlotElement{PlotType}
 
     plot_stack::PlotStack
@@ -65,11 +71,10 @@ PlotElement(plot_stack::Tuple, accessor::AbstractElementAccessor) = SimplePlotEl
 child(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
 
 
-
 struct TrackedPlotElement{
         PlotType,
         IndexType <: AbstractElementAccessor,
-        PlotStack <: Tuple{PlotType, Vararg{Plot}}
+        PlotStack <: Tuple{PlotType, Vararg{Plot}},
     } <: PlotElement{PlotType}
     plot_stack::PlotStack
     index::IndexType
@@ -135,7 +140,7 @@ function element_getindex(x, element::IndexedAccessor)
 end
 
 function dimensional_element_getindex(x, element::IndexedAccessor{2}, dim::Integer)
-    if x isa AbstractArray{T, 2} where T
+    if x isa AbstractArray{T, 2} where {T}
         return element_getindex(x, element)
     elseif x isa Union{EndPoints, EndPointsLike}
         x0, x1 = x
@@ -146,7 +151,7 @@ function dimensional_element_getindex(x, element::IndexedAccessor{2}, dim::Integ
             return sv_getindex(x, element.index[dim])
         elseif length(x) == element.size[dim] + 1 # edge based
             low = sv_getindex(x, element.index[dim])
-            high = sv_getindex(x, element.index[dim]+1)
+            high = sv_getindex(x, element.index[dim] + 1)
             return 0.5 * (low + high)
         else
             error("Got unexpected length $(length(x)).")
@@ -237,7 +242,7 @@ function element_getindex(x, element::InterpolatedAccessor{2})
 end
 
 function dimensional_element_getindex(x, element::InterpolatedAccessor{2}, dim::Integer)
-    if x isa AbstractArray{T, 2} where T
+    if x isa AbstractArray{T, 2} where {T}
         return element_getindex(x, element)
 
     elseif x isa Union{EndPoints, EndPointsLike}
@@ -267,7 +272,6 @@ function dimensional_element_getindex(x, element::InterpolatedAccessor{2}, dim::
 end
 
 
-
 struct MeshAccessor <: AbstractElementAccessor
     N_vertices::Int64
     N_submeshes::Int64
@@ -292,7 +296,7 @@ function element_getindex(x, element::MeshAccessor)
             b = sv_getindex(x, j)
             c = sv_getindex(x, k)
             u, v = element.uv
-            return a + u * (b-a) + v * (c-a)
+            return a + u * (b - a) + v * (c - a)
         elseif length(x) == element.N_submeshes
             return x[element.submesh_index]
         else

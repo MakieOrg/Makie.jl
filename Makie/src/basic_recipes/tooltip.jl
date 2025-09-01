@@ -66,7 +66,7 @@ function convert_arguments(::Type{<:Tooltip}, x, y, str::AbstractString)
 end
 
 function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractString)
-    return (convert_arguments(PointBased(), x, yz, )[1], [str])
+    return (convert_arguments(PointBased(), x, y, z)[1], [str])
 end
 
 function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractArray{<:AbstractString})
@@ -78,7 +78,7 @@ function convert_arguments(::Type{<:Tooltip}, x, y, str::AbstractArray{<:Abstrac
 end
 
 function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractArray{<:AbstractString})
-    return (convert_arguments(PointBased(), x, yz, )[1], str)
+    return (convert_arguments(PointBased(), x, y, z)[1], str)
 end
 
 convert_arguments(::Type{<:Tooltip}, args...) = convert_arguments(PointBased(), args...)

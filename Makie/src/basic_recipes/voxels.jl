@@ -270,7 +270,8 @@ end
 function voxel_positions(p::Voxels)
     voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     _size = size(voxel_id)
-    return [voxel_position(p, i, j, k)
+    return [
+        voxel_position(p, i, j, k)
             for k in 1:_size[3] for j in 1:_size[2] for i in 1:_size[1]
             if voxel_id[i, j, k] !== 0x00
     ]
