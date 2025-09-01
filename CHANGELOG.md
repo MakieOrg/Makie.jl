@@ -3,6 +3,8 @@
 ## Unreleased
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 
+- Add Tooltips for blocks [#4451](https://github.com/MakieOrg/Makie.jl/pull/4451)
+
 ## [0.24.6] - 2025-08-19
 
 - Widened types for axis keys [#5243](https://github.com/MakieOrg/Makie.jl/pull/5243)
