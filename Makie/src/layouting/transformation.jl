@@ -477,7 +477,7 @@ function Symlog10(lo, hi; linscale = 1)
         return x
     end
 
-    return ReversibleScale(forward, inverse; limits=(-3.0f0, 3.0f0), name=:Symlog10)
+    return ReversibleScale(forward, inverse; limits = (-3.0f0, 3.0f0), name = :Symlog10)
 end
 
 """
