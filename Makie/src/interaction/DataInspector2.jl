@@ -207,7 +207,7 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 
     # TODO: Why not also allow plots to disable their indicator?
     if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
-        update_indicator!(di, element, pos)
+        update_indicator_internal!(di, element, pos)
     end
 
     return true
