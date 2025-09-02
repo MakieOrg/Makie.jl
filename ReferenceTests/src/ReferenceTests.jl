@@ -28,6 +28,7 @@ using GeometryBasics
 using DelimitedFiles
 using DelaunayTriangulation
 using SparseArrays
+using DynamicQuantities
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 using Makie: loadasset
