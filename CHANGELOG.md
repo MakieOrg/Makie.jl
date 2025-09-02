@@ -1,7 +1,9 @@
 # Changelog
 
 ## Unreleased
+
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 
 ## [0.24.6] - 2025-08-19
 
@@ -11,8 +13,6 @@
 - Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange`, colormap resolution, and changed colormap extractor for `Colorbar` to ignore alpha. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
 - Fixed double application of `alpha` regression in `Band` plots in CairoMakie [#5258](https://github.com/MakieOrg/Makie.jl/pull/5258).
 - Updated `boxplot`, `crossbar`, `density`, `hist`, `stephist`, `violin` and `waterfall` to use the new compute graph instead of observables. [#5184](https://github.com/MakieOrg/Makie.jl/pull/5184)
-
-- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 
 ## [0.24.5] - 2025-08-06
 
