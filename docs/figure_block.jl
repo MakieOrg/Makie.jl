@@ -198,7 +198,6 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
         @info "An error occurred while processing"
         @info "node: $node"
         @info "page: $page"
-        @info "doc: $doc"
         rethrow(e)
     end
 end
