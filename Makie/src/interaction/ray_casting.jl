@@ -321,6 +321,9 @@ function model_space_boundingbox(plot::Heatmap)
         return model_space_boundingbox(plot.plots[1])
     end
 
+    # make sure x/y_transformed_f32c exist
+    add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
+
     p0, p1 = Point2d.(
         extrema(plot.x_transformed_f32c[]),
         extrema(plot.y_transformed_f32c[])
@@ -433,6 +436,7 @@ function find_picked_surface_cell(plot::Surface, idx, ray::Ray)
 end
 
 function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
+    add_computation!(plot.attributes, parent_scene(plot), Val(:surface_transform))
     ray = transform(inv(plot.model_f32c[]), ray)
     _, pos = find_picked_surface_cell(plot, idx, ray)
     pos = inv_f32_convert(plot, pos)

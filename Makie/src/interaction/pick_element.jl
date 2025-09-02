@@ -94,6 +94,9 @@ function get_picked_model_space_rect(plot::Heatmap, idx)
         return get_picked_model_space_rect(plot.plots[1], idx)
     end
 
+    # make sure x/y_transformed_f32c exist
+    add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
+
     j, i = fldmod1(idx, size(plot.image[], 1))
     p0 = Point2d.(plot.x_transformed_f32c[][i], plot.y_transformed_f32c[][j])
     p1 = Point2d.(plot.x_transformed_f32c[][i + 1], plot.y_transformed_f32c[][j + 1])
@@ -208,6 +211,7 @@ end
 
 
 function get_accessor(plot::Surface, idx, plot_stack)
+    add_computation!(plot.attributes, parent_scene(plot), Val(:surface_transform))
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     # the face picked here is always (pos, change first matrix index, change second matrix index)
     # so calculated uv's match first and second matrix index too
