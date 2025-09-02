@@ -129,70 +129,78 @@ end
 const IMAGE_COUNTER = Ref(0)
 
 function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
-    title = first(
-        Iterators.filter(page.elements) do el
-            el isa Markdown.Header{1}
-        end
-    ).text[]
-
-    if title isa Markdown.Link
-        title = title.text[]
-    end
-
-    el = node.element
-    infoexpr = Meta.parse(el.info)
-    args = infoexpr.args[3:end]
-    if !isempty(args) && args[1] isa Symbol
-        blockname = string(args[1])
-        kwargs = args[2:end]
-    else
-        blockname = ""
-        kwargs = args
-    end
-
-    is_continued = false
-    # check if any previous code block is an @example block and has the same name (previous @figure blocks are
-    # already converted at this point)
-    if blockname != ""
-        # iterate all the previous siblings
-        prev = node.previous
-        while prev !== nothing
-            if prev.element isa Documenter.MultiOutput && prev.element.codeblock.info == "@example $blockname"
-                is_continued = true
-                break
+    try
+        title = first(
+            Iterators.filter(page.elements) do el
+                el isa Markdown.Header{1}
             end
-            prev = prev.previous
-        end
-    end
+        ).text[]
 
-    kwargs = Dict(
-        map(kwargs) do expr
-            if !(expr isa Expr) && expr.head !== :(=) && length(expr.args) == 2 && expr.args[1] isa Symbol && expr.args[2] isa Union{String, Number, Symbol}
-                error("Invalid keyword arg expression: $expr")
+        if title isa Markdown.Link
+            title = title.text[]
+        end
+
+        el = node.element
+        infoexpr = Meta.parse(el.info)
+        args = infoexpr.args[3:end]
+        if !isempty(args) && args[1] isa Symbol
+            blockname = string(args[1])
+            kwargs = args[2:end]
+        else
+            blockname = ""
+            kwargs = args
+        end
+
+        is_continued = false
+        # check if any previous code block is an @example block and has the same name (previous @figure blocks are
+        # already converted at this point)
+        if blockname != ""
+            # iterate all the previous siblings
+            prev = node.previous
+            while prev !== nothing
+                if prev.element isa Documenter.MultiOutput && prev.element.codeblock.info == "@example $blockname"
+                    is_continued = true
+                    break
+                end
+                prev = prev.previous
             end
-            expr.args[1] => expr.args[2]
         end
-    )
-    el.info = "@example $blockname"
 
-    id = string(hash(IMAGE_COUNTER[], hash(el.code)), base = 16)[1:7]
-    IMAGE_COUNTER[] += 1
-    el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
-    Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
+        kwargs = Dict(
+            map(kwargs) do expr
+                if !(expr isa Expr) && expr.head !== :(=) && length(expr.args) == 2 && expr.args[1] isa Symbol && expr.args[2] isa Union{String, Number, Symbol}
+                    error("Invalid keyword arg expression: $expr")
+                end
+                expr.args[1] => expr.args[2]
+            end
+        )
+        el.info = "@example $blockname"
 
-    last_png = MakieDocsHelpers.FIGURES[MakieDocsHelpers.PageInfo(page.source, title)][end]
-    @assert last_png.id == id
-    size_px = last_png.size_px
+        id = string(hash(IMAGE_COUNTER[], hash(el.code)), base = 16)[1:7]
+        IMAGE_COUNTER[] += 1
+        el.code = transform_figure_code(el.code; id, page = page.source, pagetitle = title, is_continued, kwargs...)
+        Documenter.Selectors.runner(Documenter.Expanders.ExampleBlocks, node, page, doc)
 
-    mime = get(kwargs, :mime, :png)
-    image_name = "$id.$mime"
+        last_png = MakieDocsHelpers.FIGURES[MakieDocsHelpers.PageInfo(page.source, title)][end]
+        @assert last_png.id == id
+        size_px = last_png.size_px
 
-    MarkdownAST.insert_before!(node, @ast Documenter.RawNode(:html, "<a id=\"example-$id\" />"))
-    # we save and insert the image manually, just because we want to be able to set width and height.
-    # this makes images look sharp as intended, and it improves the accuracy with which one gets to
-    # image examples from the overview pages, as with annotated width and height the right locations can
-    # be computed even before all the images have been loaded. Otherwise they are usually wrong the first time.
-    return MarkdownAST.insert_after!(node, @ast Documenter.RawNode(:html, "<img src=\"./$image_name\" width=\"$(size_px[1])px\" height=\"$(size_px[2])px\"/>"))
+        mime = get(kwargs, :mime, :png)
+        image_name = "$id.$mime"
+
+        MarkdownAST.insert_before!(node, @ast Documenter.RawNode(:html, "<a id=\"example-$id\" />"))
+        # we save and insert the image manually, just because we want to be able to set width and height.
+        # this makes images look sharp as intended, and it improves the accuracy with which one gets to
+        # image examples from the overview pages, as with annotated width and height the right locations can
+        # be computed even before all the images have been loaded. Otherwise they are usually wrong the first time.
+        return MarkdownAST.insert_after!(node, @ast Documenter.RawNode(:html, "<img src=\"./$image_name\" width=\"$(size_px[1])px\" height=\"$(size_px[2])px\"/>"))
+    catch e
+        @info "An error occurred while processing"
+        @info "node: $node"
+        @info "page: $page"
+        @info "doc: $doc"
+        rethrow(e)
+    end
 end
 
 function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime = :png)
