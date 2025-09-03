@@ -392,3 +392,29 @@ get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing
 function get_accessor(plot::Union{Errorbars, Rangebars}, idx, plot_stack)
     return IndexedAccessor(fld1(idx, 2), length(plot.val_low_high[]))
 end
+
+function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
+    a = get_accessor(first(plot_stack), idx, Base.tail(plot_stack))
+    upper = plot.upper[]
+    N = length(upper)
+    # The outline can be closed, which adds [lower[end], lower[1], upper[1]] to
+    # close the loop. To get back to indices of upper (which contains density
+    # information) we need to figure out related indices in the 1 .. N range
+    if a.index1[1] > N
+        if a.index1[1] == N + 3
+            return InterpolatedAccessor(1, 2, 0.0, N)
+        elseif  a.index1[1] == N + 1
+            return InterpolatedAccessor(N-1, N, 1.0, N)
+        else
+            picked_pos = element_getindex(plot.linepoints[], a)
+            dim = 1 + (plot.direction[] == :y)
+            i = findfirst(p -> p[dim] > picked_pos[dim], upper)
+            if i == 1
+                return InterpolatedAccessor(1, 2, 0.0, N)
+            end
+            f = (picked_pos[dim] - upper[i - 1][dim]) / (upper[i][dim] - upper[i - 1][dim])
+            return InterpolatedAccessor(i-1, i, f, N)
+        end
+    end
+    return a
+end

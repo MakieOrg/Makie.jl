@@ -55,6 +55,7 @@ Plot a kernel density estimate of `values`.
     """
     alpha = 1.0
     visible = true
+    space = :data
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
@@ -88,7 +89,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
             ps = copy(upper)
             push!(ps, lower[end])
             push!(ps, lower[1])
-            push!(ps, lower[2])
+            push!(ps, upper[1])
             return ps
         else
             return upper

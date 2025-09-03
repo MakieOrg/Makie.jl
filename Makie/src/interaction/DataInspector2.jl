@@ -201,7 +201,7 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     update!(
         di.dynamic_tooltip, to_ndim(Point3d, pos, 0), text = label, visible = true,
         placement = border_dodging_placement(di, px_pos),
-        space = plot.space[]
+        space = to_value(get(plot, :space, :data))
         #; kwargs...
     )
 
@@ -623,6 +623,18 @@ function get_tooltip_position(element::PlotElement{<:Band})
 end
 function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
     return element.upperpoints, element.lowerpoints
+end
+
+function get_tooltip_position(element::PlotElement{<:Density})
+    return element.upper
+end
+
+function get_default_tooltip_data(element::PlotElement{<:Density}, pos)
+    if element.direction == :y
+        return Vec(pos[2], pos[1])
+    else
+        return pos
+    end
 end
 
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
