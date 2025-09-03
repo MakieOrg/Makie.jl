@@ -640,7 +640,7 @@ function get_default_tooltip_data(element::PlotElement{<:Density}, pos)
     end
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
+function get_default_tooltip_data(element::PlotElement{<:Union{Contourf, Tricontourf}}, pos)
     return child(element).color
 end
 
