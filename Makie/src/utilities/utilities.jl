@@ -315,6 +315,8 @@ function to_ndim(T::Type{<:VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {
 end
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = a .+ val * (b .- a)
+lerp(a::RGBAf, b::RGBAf, val::AbstractFloat) = a .+ val * (b .- a)
+lerp(a::Colorant, b::Colorant, val::AbstractFloat) = lerp(RGBAf(a), RGBAf(b), val)
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
