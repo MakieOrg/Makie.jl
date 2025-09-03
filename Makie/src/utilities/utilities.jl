@@ -520,10 +520,12 @@ sv_getindex(x::VecTypes, ::CartesianIndex) = x
 sv_getindex(x::VecTypes, ::Integer) = x
 sv_getindex(x::Mat, ::CartesianIndex) = x
 sv_getindex(x::Mat, ::Integer) = x
+sv_getindex(x::AbstractMatrix{<:Colorant}, idx::CartesianIndex{2}) = x[idx]
+sv_getindex(x::ShaderAbstractions.Sampler, idx::CartesianIndex{2}) = x[idx]
 # for CairoMakie meshscatter we don't want images and patterns to get indexed
 sv_getindex(x::AbstractMatrix{<:Colorant}, ::CartesianIndex) = x
-sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::CartesianIndex) = x
+sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
 # TODO: move to GeometryBasics
