@@ -373,10 +373,18 @@ function get_accessor(plot::Band, idx, plot_stack)
     N = div(length(ps), 2)
     idx = mod1(face_index, N - 1)
 
-    # interpolate to quad paramater
-    f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
+    if eltype(plot[1][]) <: VecTypes{3}
+        # TODO: 3D case
+        # This needs an algorithm that can find an interpolation parameter f
+        # such that pos is on the line
+        #   (ps[idx] + f * ps[idx+1]) .. (ps[idx + N + 1] + f * ps[idx + N])
+        return InterpolatedAccessor(idx, idx + 1, 0.5, N)
+    else
+        # interpolate to quad paramater
+        f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
 
-    return InterpolatedAccessor(idx, idx + 1, f, N)
+        return InterpolatedAccessor(idx, idx + 1, f, N)
+    end
 end
 
 get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing

@@ -133,7 +133,7 @@ this computes parameter `f` such that the line from `A + f * (B - A)` to
 inside the quad and that none of the edges cross.
 """
 function point_in_quad_parameter(
-        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2;
+        A::VecTypes{2}, B::VecTypes{2}, C::VecTypes{2}, D::VecTypes{2}, P::VecTypes{2};
         iterations = 50, epsilon = 1.0e-6
     )
 
