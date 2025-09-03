@@ -608,8 +608,9 @@ get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = e
 # Once barplot is refactored to use the compute graph, grab positions after
 # stack & dodge here and add a label_data method using these positions instead
 function get_tooltip_position(element::PlotElement{<:BarPlot})
-    pos = element.positions
-    return ifelse(element.direction == :x, Vec(pos[2], pos[1]), pos)
+    x, y = element.positions
+    y += element.offset
+    return ifelse(element.direction == :x, Point(y, x), Point(x, y))
 end
 get_default_tooltip_data(element::PlotElement{<:BarPlot}, pos) = element.positions
 
@@ -688,3 +689,10 @@ function get_default_tooltip_label(formatter, element::PlotElement{<:Rangebars},
 end
 
 get_default_tooltip_data(element::PlotElement{<:Hexbin}, pos) = element.count_hex
+
+function get_default_tooltip_data(element::PlotElement{<:Hist}, pos)
+    # Undo flips (+ -> - bin height)
+    # TODO: Should we undo more here? E.g. normalization, weights, ...?
+    bin_pos, bin_height = child(element).positions
+    return Point(bin_pos, abs(bin_height))
+end
