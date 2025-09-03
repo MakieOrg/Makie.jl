@@ -100,7 +100,7 @@ Plots the given text(s) with a background(s) at the given position(s).
     "Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends"
     overdraw = false
     "Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`."
-    inspectable = @inherit inspectable
+    inspectable = false
     "sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs."
     space = :data
     # "adjusts whether the plot is rendered with fxaa (anti-aliasing, GLMakie only)."
