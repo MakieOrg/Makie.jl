@@ -303,11 +303,11 @@ apply_tooltip_format(fmt::String, x::Number) = Format.format(fmt, x)
 apply_tooltip_format(fmt::Function, x::Number) = fmt(x)
 
 function default_tooltip_formatter(x::Real)
-    if 1.0e-3 < abs(x) < 1.0e-1
+    if 1.0e-3 <= abs(x) < 1.0e-1
         return @sprintf("%0.6f", x)
-    elseif 1.0e-1 < abs(x) < 1.0e3
+    elseif 1.0e-1 <= abs(x) < 1.0e3
         return @sprintf("%0.3f", x)
-    elseif 1.0e3 < abs(x) < 1.0e5
+    elseif 1.0e3 <= abs(x) < 1.0e5
         return @sprintf("%0.0f", x)
     elseif iszero(x)
         return "0"
@@ -664,4 +664,23 @@ function get_tooltip_position(element::PlotElement{<:Rangebars})
     linepoints = plot.linesegpairs[]
     center = 0.5 * (linepoints[i - 1] .+ linepoints[i])
     return center
+end
+
+function get_default_tooltip_label(formatter, element::PlotElement{<:Errorbars}, pos)
+    x, y, low, high = element.val_low_high
+    if low ≈ high
+        return "±" * apply_tooltip_format(formatter, low)
+    else
+        return "+" * apply_tooltip_format(formatter, (high, -low))
+    end
+end
+
+function get_default_tooltip_label(formatter, element::PlotElement{<:Rangebars}, pos)
+    plot = get_plot(element)
+    i = 2 * accessor(element).index[1]
+    linepoints = plot.linesegpairs[]
+    dim = 1 + plot.is_in_y_direction[]
+    low = apply_tooltip_format(formatter, linepoints[i - 1][dim])
+    high = apply_tooltip_format(formatter, linepoints[i][dim])
+    return low * " .. " * high
 end
