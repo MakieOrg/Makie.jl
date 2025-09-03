@@ -261,8 +261,8 @@ function find_triangle_in_submesh(
 end
 
 function get_accessor(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plot}})
-    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     meshplot = plot.plots[1]
+    ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     positions = meshplot.positions_transformed_f32c[]
 
     face, face_index, pos = find_triangle_in_submesh(
@@ -272,7 +272,7 @@ function get_accessor(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plo
     if isnan(pos)
         return nothing
     else
-        submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
+        submesh_index = something(findfirst(range -> face_index in range, meshplot.mesh[].views), 1)
         uv = triangle_interpolation_parameters(face, positions, pos)
         accessor = MeshAccessor(
             length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
@@ -298,7 +298,7 @@ function get_accessor(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
         return nothing
     else
         face_index = range[face_index]
-        submesh_index = findfirst(range -> face_index in range, meshplot.mesh[].views)
+        submesh_index = something(findfirst(range -> face_index in range, meshplot.mesh[].views), 1)
         uv = triangle_interpolation_parameters(face, positions, pos)
         accessor = MeshAccessor(
             length(positions), length(meshplot.mesh[].views), submesh_index, face, uv
@@ -319,7 +319,7 @@ function fast_submesh_index(plot::Mesh, idx::Integer, plot_stack = nothing)
         for (face_index, face) in enumerate(plot.faces[])
             if idx in face
                 views = plot.mesh[].views
-                submesh_index = findfirst(range -> face_index in range, views)
+                submesh_index = something(findfirst(range -> face_index in range, views), 1)
                 return submesh_index, length(views)
             end
         end
