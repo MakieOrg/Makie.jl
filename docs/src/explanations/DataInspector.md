@@ -4,7 +4,7 @@
 By default these tooltips will contain relevant data for plot which is usually the position of the plot element or cursor.
 To initialize DataInspector it needs to be constructed with an axis-like Block or with a scene.
 
-```@figure
+```@figure backend=CairoMakie
 f, a, p = lines(0..2pi, sin)
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (300, 300) # hide
