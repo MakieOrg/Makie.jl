@@ -608,8 +608,10 @@ get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = e
 # Once barplot is refactored to use the compute graph, grab positions after
 # stack & dodge here and add a label_data method using these positions instead
 function get_tooltip_position(element::PlotElement{<:BarPlot})
-    return element.positions
+    pos = element.positions
+    return ifelse(element.direction == :x, Vec(pos[2], pos[1]), pos)
 end
+get_default_tooltip_data(element::PlotElement{<:BarPlot}, pos) = element.positions
 
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
     return 0.5 * (element.startpoints + element.endpoints)
@@ -684,3 +686,5 @@ function get_default_tooltip_label(formatter, element::PlotElement{<:Rangebars},
     high = apply_tooltip_format(formatter, linepoints[i][dim])
     return low * " .. " * high
 end
+
+get_default_tooltip_data(element::PlotElement{<:Hexbin}, pos) = element.count_hex

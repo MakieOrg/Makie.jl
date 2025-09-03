@@ -352,6 +352,11 @@ function get_accessor(plot::BarPlot, idx, plot_stack)
     return IndexedAccessor(idx, N)
 end
 
+function get_accessor(plot::BarPlot, idx, plot_stack::Tuple{<:Text, Vararg{Plot}})
+    a = get_accessor(first(plot_stack), idx, Base.tail(plot_stack))
+    return PlotElement((plot, plot.plots[1]), a)
+end
+
 function get_accessor(plot::Arrows2D, idx, plot_stack)
     idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
     N_components = sum(plot.should_component_render[])
