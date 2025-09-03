@@ -696,3 +696,7 @@ function get_default_tooltip_data(element::PlotElement{<:Hist}, pos)
     bin_pos, bin_height = child(element).positions
     return Point(bin_pos, abs(bin_height))
 end
+
+function get_default_tooltip_data(element::PlotElement{<:Pie}, pos)
+    return element.values
+end
