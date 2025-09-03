@@ -321,7 +321,7 @@ end
 ################################################################################
 
 function update_indicator_internal!(di::DataInspector2, element::PlotElement, pos)
-    maybe_indicator = update_indicator!!(di, element, pos)
+    maybe_indicator = update_indicator!(di, element, pos)
     # TODO: Are these really things that should always happen?
     if maybe_indicator isa Plot
         copy_local_model_transformations!(maybe_indicator, get_plot(element))
