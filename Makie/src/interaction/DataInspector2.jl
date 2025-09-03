@@ -700,3 +700,7 @@ end
 function get_default_tooltip_data(element::PlotElement{<:Pie}, pos)
     return element.values
 end
+
+function get_default_tooltip_data(element::PlotElement{<:VolumeSlices}, pos)
+    return get_default_tooltip_data(child(element), pos)
+end
