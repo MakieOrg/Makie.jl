@@ -288,11 +288,11 @@ function apply_tooltip_format(fmt, data::VecTypes)
 end
 
 function apply_tooltip_format(fmt, c::RGB)
-    return "RGB" * apply_tooltip_format(fmt, (red(c), green(c), blue(c)))
+    return "RGB" * apply_tooltip_format(fmt, Vec(red(c), green(c), blue(c)))
 end
 
 function apply_tooltip_format(fmt, c::RGBA)
-    return "RGBA" * apply_tooltip_format(fmt, (red(c), green(c), blue(c), alpha(c)))
+    return "RGBA" * apply_tooltip_format(fmt, Vec(red(c), green(c), blue(c), alpha(c)))
 end
 
 function apply_tooltip_format(fmt, c::Gray)
@@ -604,6 +604,9 @@ end
 
 get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
+# TODO:
+# Once barplot is refactored to use the compute graph, grab positions after
+# stack & dodge here and add a label_data method using these positions instead
 function get_tooltip_position(element::PlotElement{<:BarPlot})
     return element.positions
 end
@@ -624,6 +627,16 @@ end
 
 function get_default_tooltip_data(element::PlotElement{<:Contourf}, pos)
     return child(element).color
+end
+
+function get_default_tooltip_data(element::PlotElement{<:Union{Contour, Contour3d}}, pos)
+    rgba_color = child(element).color
+    selected = Vec4f(red(rgba_color), green(rgba_color), blue(rgba_color), alpha(rgba_color))
+    _, idx = findmin(get_plot(element).level_colors[]) do c
+        v = Vec4f(red(c), green(c), blue(c), alpha(c))
+        return norm(v - selected)
+    end
+    return get_plot(element).zlevels[][idx]
 end
 
 get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color

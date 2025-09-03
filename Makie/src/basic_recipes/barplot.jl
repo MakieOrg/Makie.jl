@@ -311,6 +311,8 @@ function Makie.plot!(p::BarPlot)
             end
             i_stack = stack
 
+            # TODO: make this available to DataInspector when rewriting this
+            # with the compute graph
             from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
             y, fillto = to, from
         else
