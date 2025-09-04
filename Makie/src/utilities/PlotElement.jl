@@ -305,3 +305,22 @@ function element_getindex(x, element::MeshAccessor)
         return x
     end
 end
+
+
+struct GroupAccessor{IA<:AbstractElementAccessor} <: AbstractElementAccessor
+    group_index::Int64
+    group_size::Int64
+    internal_accessor::IA
+end
+
+function element_getindex(x, element::GroupAccessor)
+    if is_array_attribute(x)
+        if length(x) == element.group_size
+            return element_getindex(x[element.group_index], element.internal_accessor)
+        else
+            return element_getindex(x, element.internal_accessor)
+        end
+    else
+        return element_getindex(x, element.internal_accessor)
+    end
+end

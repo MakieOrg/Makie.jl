@@ -704,3 +704,13 @@ end
 function get_default_tooltip_data(element::PlotElement{<:VolumeSlices}, pos)
     return get_default_tooltip_data(child(element), pos)
 end
+
+function get_tooltip_position(element::PlotElement{<:Violin})
+    return element.vertices
+end
+
+function get_default_tooltip_data(element::PlotElement{<:Violin}, pos)
+    spec = element.specs # applies group index
+    density = element_getindex(spec.kde.density, element) # applies interpolation
+    return density
+end

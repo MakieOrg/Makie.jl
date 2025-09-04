@@ -423,3 +423,45 @@ function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot
     end
     return a
 end
+
+function get_accessor(plot::Violin, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
+    # Each violin/density becomes one submesh
+    violin_idx, N_violins = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+
+    # Within a violin/density we have (value, density) pairs either as (x, y) or
+    # (y, x) depending on orientation. Find the closest two values to the current
+    # mouseposition to derive another index + interpolation factor. These can
+    # then be used to sample values & densities later
+    meshplot = plot.plots[1].plots[1]
+    mpos = (inv(meshplot.model_f32c[]) * to_ndim(Point4d, mouseposition(plot), 1))[Vec(1, 2)]
+    dim = 1 + (plot.orientation[] !== :horizontal)
+
+    # range of vertices relevant to the picked violin/density
+    violin_start = mapreduce(i -> length(plot.vertices[][i]), +, 1 : (violin_idx - 1), init = 1)
+    N = length(plot.vertices[][violin_idx])
+    violin_range = violin_start : (violin_start + N - 1)
+
+    # Relevant vertex positions after transform_func f32c, pre model_f32c application
+    verts = view(meshplot.positions_transformed_f32c[], violin_range)
+
+    # Find two closest indices & interpolation factor between them
+    _, point_idx = findmin(p -> abs(p[dim] - mpos[dim]), verts)
+    if point_idx == 1
+        f = (mpos[dim] - verts[1][dim]) / (verts[2][dim] - verts[1][dim])
+        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(1, 2, f, N))
+
+    elseif point_idx == N
+        f = (mpos[dim] - verts[end - 1][dim]) / (verts[end][dim] - verts[end - 1][dim])
+        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(N - 1, N, f, N))
+
+    elseif abs(verts[point_idx - 1][dim] - mpos[dim]) < abs(verts[point_idx + 1][dim] - mpos[dim])
+        f = (mpos[dim] - verts[point_idx - 1][dim]) / (verts[point_idx][dim] - verts[point_idx - 1][dim])
+        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx - 1, point_idx, f, N))
+
+    else
+        f = (mpos[dim] - verts[point_idx][dim]) / (verts[point_idx + 1][dim] - verts[point_idx][dim])
+        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx, point_idx + 1, f, N))
+    end
+end
+
+get_accessor(plot::Violin, idx, plot_stack::Tuple{<:LineSegments, Vararg{Plot}}) = nothing
