@@ -1,11 +1,13 @@
 mutable struct DataInspector2
     parent::Scene
+
     persistent_tooltips::Dict{UInt64, Tooltip}
     dynamic_tooltip::Tooltip
     indicator_cache::Dict{Type, Plot}
 
     last_mouseposition::Tuple{Float64, Float64}
     last_selection::UInt64
+    last_plot_element::PlotElement
     update_counter::Vector{Int}
 
     inspector_attributes::Attributes
@@ -15,12 +17,17 @@ mutable struct DataInspector2
     update_channel::Channel{Nothing}
 
     function DataInspector2(
-            parent, persistent, dynamic, plot_cache, lastmp, lastsel, counter,
+            parent, persistent, dynamic, plot_cache,
             inspector_attr, tooltip_attr, obsfuncs, channel
         )
+
         inspector = new(
-            parent, persistent, dynamic, plot_cache, lastmp, lastsel, counter,
-            inspector_attr, tooltip_attr, obsfuncs, channel
+            parent,
+            persistent, dynamic, plot_cache,
+            (0.0, 0.0), 0x00, PlotElement((persistent,), IndexedAccessor(0,0)),
+            [0, 0, 0, 0, 0],
+            inspector_attr, tooltip_attr,
+            obsfuncs, channel
         )
 
         finalizer(inspector) do inspector
@@ -33,6 +40,8 @@ mutable struct DataInspector2
             empty!(inspector.persistent_tooltips)
 
             delete!(inspector.parent, inspector.dynamic_tooltip)
+
+            foreach(p -> delete!(inspector.parent, tt), values(inspector.indicator_cache))
 
             inspector.parent.data_inspector = nothing
             return
@@ -76,7 +85,6 @@ function DataInspector2(obj; blocking = false, kwargs...)
 
     inspector = DataInspector2(
         parent, Dict{UInt64, Tooltip}(), tt, Dict{Type, Plot}(),
-        (0.0, 0.0), UInt64(0), [0, 0, 0],
         inspector_attr, Attributes(kwarg_dict),
         Any[], Channel{Nothing}(Inf)
     )
@@ -95,17 +103,23 @@ function DataInspector2(obj; blocking = false, kwargs...)
             take!(ch) # wait for event
             if isopen(parent)
                 update_tooltip!(inspector)
+                @info inspector.update_counter
             end
         end
     end
     inspector.update_channel = channel
 
     tick_listener = on(e.tick) do tick
-        is_interactive_tick = tick.state === RegularRenderTick ||
-            tick.state === SkippedRenderTick
+        inspector.update_counter[1] += 1 # TODO: for performance checks, remove later
 
-        if is_interactive_tick
-            inspector.update_counter[1] += 1 # TODO: for performance checks, remove later
+        # This should be one frame behind in GLMakie. Maybe we should make ticks
+        # predictive based on whether renderobjects need updates.
+        # Not sure if this expands to WGLMakie...
+        has_rendered = tick.state === RegularRenderTick
+        tooltip_needs_to_move = inspector.last_mouseposition != e.mouseposition[]
+
+        if has_rendered || tooltip_needs_to_move
+            inspector.update_counter[2] += 1 # TODO: for performance checks, remove later
             empty_channel!(channel) # remove queued up hover requests
             put!(channel, nothing)
         end
@@ -115,7 +129,10 @@ function DataInspector2(obj; blocking = false, kwargs...)
 
     # TODO: remove priority, make compatible with 3D axis
     # persistent tooltip
-    mouse_listener = on(event -> update_persistent_tooltips!(inspector), e.mousebutton, priority = typemax(Int))
+    mouse_listener = on(e.mousebutton, priority = typemax(Int)) do event
+        update_persistent_tooltips!(inspector)
+        return
+    end
 
     push!(inspector.obsfuncs, tick_listener, mouse_listener)
 
@@ -129,12 +146,13 @@ end
 function update_tooltip!(di::DataInspector2)
     e = events(di.parent)
     mp = e.mouseposition[]
+    di.last_mouseposition = mp
     hide_indicators!(di)
 
-    # TODO: This is not enough. We'd need to check if anything in the scene
-    # changed - i.e. scene.viewport, camera matrices, any of the renderobjects...
-    # This update wont change state, ignore it
-    # mp == di.last_mouseposition && return
+    # TODO: It would be nice to discard updates where the scene hasn't changed,
+    # but that's hard to do. We'd need to check for any update triggering a re-
+    # render but exclude the ones caused by tooltip updates.
+    # di.needs_update || return
 
     # Mouse outside relevant area, hide tooltip
     if !is_mouseinside(di.parent)
@@ -142,14 +160,13 @@ function update_tooltip!(di::DataInspector2)
         return
     end
 
-    di.update_counter[2] += 1 # TODO: for performance checks, remove later
-    di.last_mouseposition = mp
+    di.update_counter[3] += 1 # TODO: for performance checks, remove later
 
     for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes.range[])
         # Areas of scenes can overlap so we need to make sure the plot is
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
-            di.update_counter[3] += 1 # TODO: for performance checks, remove later
+            di.update_counter[4] += 1 # TODO: for performance checks, remove later
             if update_tooltip!(di, plot, idx)
                 return
             end
@@ -178,6 +195,10 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 
     element = pick_element(plot_stack(source_plot), source_index)
     isnothing(element) && return false
+
+    # If the plotelement did not change the tooltip wont change either
+    di.last_plot_element == element && return true
+    di.last_plot_element = element
 
     # We need to grab transformations and space from the plot we grab the
     # position from
@@ -209,6 +230,8 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
         update_indicator_internal!(di, element, pos)
     end
+
+    di.update_counter[5] += 1 # TODO: for performance checks, remove later
 
     return true
 end
