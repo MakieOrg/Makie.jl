@@ -1,0 +1,402 @@
+using Bonito, WGLMakie, Colors
+
+# Global styles for widget containers
+const WIDGET_CONTAINER_STYLES = Styles(
+    "position" => "absolute",
+    "padding" => "0px",
+    "margin" => "0px",
+    "display" => "flex",
+    "align-items" => "center",
+    "justify-content" => "center",
+    "font-family" =>  "'TeXGyreHerosMakie', sans-serif"
+)
+
+const FONT_STYLE = Styles(
+    CSS("@font-face",
+        "font-family" => "TeXGyreHerosMakie",
+        "src" => Asset(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
+    ),
+)
+
+
+function resize_parent(parent, block)
+    scene = Makie.rootparent(block.blockscene)
+    height_box = map(block.layoutobservables.computedbbox, scene.viewport; ignore_equal_values=true) do box, vp
+        (xmin, ymin), (xmax, ymax) = extrema(box)
+        fig_height = vp.widths[2]  # Get figure height
+        return [fig_height, xmin, ymin, xmax, ymax]
+    end
+    return js"""
+        $(scene).then(scene => {
+            const div = $(parent);
+            const {canvas} = scene.screen;
+            // Update position when either bbox or viewport changes
+            function update_position(height_box) {
+                const [fig_height, xmin, ymin, xmax, ymax] = height_box;
+                const web_top = fig_height - ymax;
+                // Get canvas offset to account for container positioning
+                const canvasRect = canvas.getBoundingClientRect();
+                const offsetX = canvasRect.left;
+                const offsetY = canvasRect.top;
+
+                div.style.left = (xmin + offsetX) + "px";
+                div.style.top = (web_top + offsetY) + "px";
+                div.style.width = (xmax - xmin) + "px";
+                div.style.height = (ymax - ymin) + "px";
+            }
+            $(height_box).on(update_position);
+            update_position($(height_box).value); // Initial positioning
+        });
+    """
+end
+
+function replace_widget!(slider::Makie.Slider)
+    Makie.hide!(slider)
+    initial_value = slider.value[]
+    range_vals = slider.range[]
+    min_val = minimum(range_vals)
+    max_val = maximum(range_vals)
+    step_val = length(range_vals) > 1 ? range_vals[2] - range_vals[1] : 0.01
+    is_horizontal = slider.horizontal[]
+
+    # Base styles for the input
+    input_styles = Styles(
+        "margin" => "0px",
+        "padding" => "0px",
+        "outline" => "none",
+        "cursor" => "pointer",
+        "width" => "100%",
+        "height" => "100%",
+    )
+
+    # Add orientation-specific styles
+    if !is_horizontal
+        # For vertical sliders, use webkit-appearance: slider-vertical
+        input_styles = merge(input_styles, Styles(
+            "-webkit-appearance" => "slider-vertical",
+        ))
+    end
+    callback = js"""
+        function(event) {
+            const value = event.srcElement.valueAsNumber
+            $(slider.value).notify(value);
+        }
+    """
+    callback_kw = if slider.update_while_dragging[]
+        (; oninput = callback)
+    else
+        (; ochange = callback)
+    end
+
+
+    slider_input = DOM.input(;
+        type="range",
+        min="$(min_val)",
+        max="$(max_val)",
+        step="$(step_val)",
+        value="$(initial_value)",
+        style=input_styles,
+        callback_kw...
+    )
+    value_from_index = map(slider.selected_index) do idx
+        return slider.range[][idx]
+    end
+    update_val_js = js"""
+        $(value_from_index).on(x=> {
+            const sliderInput = $(slider_input);
+            sliderInput.value = x;
+        });
+    """
+
+    slider_div = DOM.div(
+        slider_input,
+        style=WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(slider_div, slider)
+    return DOM.div(FONT_STYLE, slider_div, jss, update_val_js)
+end
+
+function replace_widget!(menu::Makie.Menu)
+    Makie.hide!(menu)
+    scene = Makie.rootparent(menu.blockscene)
+    initial_selection = menu.selection[]
+    initial_selection_idx = menu.i_selected[]
+    options = menu.options[]
+
+    # Extract Makie styling attributes
+    cell_color_inactive = menu.cell_color_inactive_even[]
+    cell_color_hover = menu.cell_color_hover[]
+    cell_color_active = menu.cell_color_active[]
+    text_color = menu.textcolor[]
+    text_size = menu.fontsize[]
+    text_padding = menu.textpadding[]
+
+    # Convert Makie colors to CSS hex
+    bg_color = Bonito.convert_css_attribute(cell_color_inactive)
+    hover_color = Bonito.convert_css_attribute(cell_color_hover)
+    active_color = Bonito.convert_css_attribute(cell_color_active)
+    text_color_css = Bonito.convert_css_attribute(text_color)
+    # Create custom dropdown items
+    dropdown_items = []
+    option_style = Styles(
+        CSS(
+            "background-color" => bg_color,
+            "color" => text_color_css,
+            "font-size" => "$(text_size)px",
+            "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
+            "cursor" => "pointer",
+        ),
+        CSS(":hover", "background-color" => hover_color),
+        CSS(".selected", "background-color" => active_color),
+    )
+    for (i, option) in enumerate(options)
+        label_text = Makie.optionlabel(option)
+        is_selected = (i == initial_selection_idx)
+
+        push!(dropdown_items, DOM.div(
+            label_text,
+            dataValue=i,
+            style=option_style,
+        ))
+    end
+
+    # Current selection display
+    current_label = Makie.optionlabel(initial_selection)
+    dropdown_style = Styles(
+        CSS(
+            "width" => "100%",
+            "height" => "100%",
+            "background-color" => bg_color,
+            "color" => text_color_css,
+            "font-size" => "$(text_size)px",
+            "cursor" => "pointer",
+            "outline" => "none",
+            "user-select" => "none",
+            "box-sizing" => "border-box",
+            "display" => "flex",
+            "align-items" => "center",
+            "justify-content" => "flex-start",
+            "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
+        ),
+        CSS(":hover", "background-color" => hover_color),
+    )
+    dropdown_display = DOM.div(
+        current_label,
+        class="dropdown-display",
+        style=dropdown_style
+    )
+
+    # Dropdown list container
+    dropdown_list = DOM.div(
+        dropdown_items...,
+        class="dropdown-list",
+        style=Styles(
+            "position" => "absolute",
+            "left" => "0",
+            "right" => "0",
+            "background-color" => "red",
+            "display" => "none",
+            "z-index" => "1000",
+            "max-height" => "500px",
+            "overflow-y" => "auto",
+        )
+    )
+
+    select_element = DOM.div(
+        dropdown_display,
+        dropdown_list,
+        style=Styles(
+            "position" => "relative",
+            "width" => "100%",
+            "height" => "100%",
+            "margin" => "0px",
+            "padding" => "0px",
+        )
+    )
+
+    # JavaScript for dropdown functionality
+    dropdown_js = js"""
+    const dropdown = $(select_element);
+    const display = dropdown.querySelector('.dropdown-display');
+    const list = dropdown.querySelector('.dropdown-list');
+    const items = list.querySelectorAll('[data-value]');
+
+    // Toggle dropdown
+    display.onclick = function() {
+        if (list.style.display === 'none' || list.style.display === '')  {
+            // Check available space and position dropdown
+            const dropdownRect = dropdown.getBoundingClientRect();
+            const listHeight = 400; // max-height
+            const spaceBelow = window.innerHeight - dropdownRect.bottom;
+            const spaceAbove = dropdownRect.top;
+
+            if (spaceBelow < listHeight && spaceAbove > spaceBelow) {
+                // Open upward
+                list.style.top = 'auto';
+                list.style.bottom = '100%';
+            } else {
+                // Open downward (default)
+                list.style.top = '100%';
+                list.style.bottom = 'auto';
+            }
+            list.style.display = 'block';
+        } else {
+            list.style.display = 'none';
+        }
+    };
+
+    function update_background() {
+        const selected_index = $(menu.i_selected).value;
+        items.forEach((item, index) => {
+            if (index + 1 === selected_index) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    // Handle item selection
+    items.forEach(item => {
+        item.onclick = function() {
+            const selected_index = parseInt(this.dataset.value);
+            $(menu.i_selected).notify(selected_index);
+            display.textContent = this.textContent;
+            list.style.display = 'none';
+            // Update active styling
+            update_background();
+        };
+    });
+    update_background()
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!dropdown.contains(e.target)) {
+            list.style.display = 'none';
+        }
+    });
+    """
+
+    menu_div = DOM.div(
+        select_element,
+        style=WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(menu_div, menu)
+    return DOM.div(FONT_STYLE, menu_div, jss, dropdown_js)
+end
+
+function replace_widget!(textbox::Makie.Textbox)
+    Makie.hide!(textbox)
+    scene = Makie.rootparent(textbox.blockscene)
+    initial_value = textbox.displayed_string[]
+    validator = textbox.validator[]
+
+    # Determine input type based on validator
+    input_type = "text"
+    if validator == Float64 || validator == Float32
+        input_type = "number"
+    elseif validator == Int || validator == Int32 || validator == Int64
+        input_type = "number"
+    end
+
+    input_styles = Styles(
+        "width" => "100%",
+        "height" => "100%",
+        "font-family" => "inherit",
+        "font-size" => "14px",
+        "border" => "1px solid #ccc",
+        "border-radius" => "4px",
+        "background-color" => "white",
+        "padding" => "4px 8px",
+        "outline" => "none",
+        "box-sizing" => "border-box",
+    )
+
+    # Add number-specific attributes for numeric validators
+    input_attrs = Dict(:type => input_type, :value => string(initial_value))
+    if input_type == "number"
+        input_attrs[:step] = "any"  # Allow any decimal precision
+    end
+
+    textbox_input = DOM.input(;
+        input_attrs...,
+        style=input_styles,
+        onchange=js"""
+            function(event) {
+                let value = event.target.value;
+                console.log("Textbox value changed:", value);
+                // Handle validation for numeric types
+                if ($(input_type) === "number") {
+                    const numValue = parseFloat(value);
+                    if (!isNaN(numValue)) {
+                        $(textbox.displayed_string).notify(value);
+                        $(textbox.stored_string).notify(value);
+                    }
+                } else {
+                    $(textbox.displayed_string).notify(value);
+                    $(textbox.stored_string).notify(value);
+                }
+            }
+        """,
+        oninput=js"""
+            function(event) {
+                const value = event.target.value;
+                $(textbox.displayed_string).notify(value);
+            }
+        """
+    )
+
+    textbox_div = DOM.div(
+        textbox_input,
+        style=WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(textbox_div, textbox)
+    return DOM.div(FONT_STYLE, textbox_div, jss)
+end
+
+function replace_widget!(button::Makie.Button)
+    Makie.hide!(button)
+    button_text = button.label[]
+
+    button_element = DOM.button(
+        button_text,
+        style=Styles(
+            "width" => "100%",
+            "height" => "100%",
+            "font-family" => "inherit",
+            "font-size" => "14px",
+            "border" => "1px solid #ccc",
+            "border-radius" => "4px",
+            "background-color" => "#f5f5f5",
+            "cursor" => "pointer",
+            "outline" => "none",
+            "transition" => "background-color 0.2s",
+        ),
+        onclick=js"""
+            function(event) {
+                console.log("Button clicked");
+                $(button.clicks).notify($(button.clicks).value + 1);
+            }
+        """,
+        onmouseenter=js"""
+            function(event) {
+                event.target.style.backgroundColor = "#e0e0e0";
+            }
+        """,
+        onmouseleave=js"""
+            function(event) {
+                event.target.style.backgroundColor = "#f5f5f5";
+            }
+        """
+    )
+    button_div = DOM.div(
+        button_element,
+        style=WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(button_div, button)
+    return DOM.div(FONT_STYLE, button_div, jss)
+end
+
+replace_widget!(x::Any) = nothing # not implemented
+function replace_widget!(fig::Figure)
+    DOM.div(map(replace_widget!, fig.content))
+end
