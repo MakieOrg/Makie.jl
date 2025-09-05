@@ -4,7 +4,7 @@
 By default these tooltips will contain relevant data for plot which is usually the position of the plot element or cursor.
 To initialize DataInspector it needs to be constructed with an axis-like Block or with a scene.
 
-```@figure backend=CairoMakie
+```@example backend=CairoMakie
 f, a, p = lines(0..2pi, sin)
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (300, 300) # hide
@@ -26,7 +26,7 @@ DataInspector will check the `inspector_label` attribute of the hovered plot whe
 You have three options for setting it.
 The first is a plain String, which will be displayed when hovering any element of the plot.
 
-```@figure
+```@example
 f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (300, 300) # hide
@@ -37,7 +37,7 @@ The second is an array (or other indexable collection) of strings.
 This will map the labels to the elements of the plot.
 For this the plot needs to be discrete like `scatter` rather than continuous like `lines`.
 
-```@figure
+```@example
 f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (340, 255) # hide
@@ -51,7 +51,7 @@ The position should be in the same space as the arguments passed to the function
 The `PlotElement` combines the plot with indexing or interpolation information to represent the currently hovered element.
 When accessing an attribute on a `PlotElement`, e.g. `element.color`, the attribute will automatically be indexed or interpolated.
 
-```@figure
+```@example
 function mylabel(element, pos)
 	# As a discrete plot, scatter elements contain an index.
 `element.attribute`
@@ -197,24 +197,37 @@ It then uses the plot associated with that method to copy `space` and transforma
 ### Default labels
 
 If no `inspector_label` is passed to the inspected plot a default tooltip label is generated.
-This default label can also be adjusted by either extending `get_default_tooltip_label(formatter, element, position)` or `get_default_tooltip_data(element, position)`.
-Unlike the other two systems this one does not fall back onto child plots when no specialized method is implemented.
-It instead defaults to a generic method which builds a string from the given position.
+It can be adjusted by extending `get_default_tooltip_label(formatter, element, position)` or `get_default_tooltip_label(element, position)`.
+If a string is returned be either method, it is used as the default label.
+If other data is returned it is converted to a string the formatter.
+Like the other two systems this one also falls back onto child plots.
 
-`get_default_tooltip_label(formatter, element, position)` allows you to return a custom string to be used as the tooltip label.
-
-`get_default_tooltip_data(element, position)` allows you to return data which will be inserted into the tooltip label.
-This data will be processed by the unspecialized
+For our `errorbars` example we want the tooltip to show errors, i.e. the `low, high` values from above.
+The simplest way to do this is to have `get_default_tooltip_label()` return them:
 
 ```julia
-function get_default_tooltip_label(formatter, element, pos)
-    data = get_default_tooltip_data(element, pos)
-    return apply_tooltip_format(formatter, data)
+function get_default_tooltip_label(element::PlotElement{<:Errorbars}, pos)
+	x, y, low, high = element.val_low_high
+	return low, high
 end
 ```
 
-The default formatter will split multiple return values (or tuples) into multiple lines.
+This will generate `"$low\n$high"` as a string, with `low` and `high` truncated to a few significant digits.
+If we want to improve this we can also construct our own string.
+We can use `"±$low"` for symmetric (`low == high`) and `"+$high\n-$low` for asymmetric errorbars like this:
 
+```julia
+function get_default_tooltip_label(formatter, element::PlotElement{<:Errorbars}, pos)
+    x, y, low, high = element.val_low_high
+    if low ≈ high
+		# apply formatter so numbers continue to get truncated
+        return "±" * apply_tooltip_format(formatter, low)
+    else
+		# Passing a tuple (a, b) results in "$a\n$b"
+        return "+" * apply_tooltip_format(formatter, (high, -low))
+    end
+end
+```
 
 ### Indicators
 

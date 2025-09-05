@@ -130,11 +130,16 @@ const IMAGE_COUNTER = Ref(0)
 
 function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     try
-        title = first(
-            Iterators.filter(page.elements) do el
-                el isa Markdown.Header{1}
-            end
-        ).text[]
+        title = try
+            first(
+                Iterators.filter(page.elements) do el
+                    el isa Markdown.Header{1}
+                end
+            ).text[]
+        catch e
+            @info "Could not find title of figure block \"```@figure title ...\"."
+            rethrow(e)
+        end
 
         if title isa Markdown.Link
             title = title.text[]
