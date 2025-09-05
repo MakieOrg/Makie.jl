@@ -147,7 +147,6 @@ function update_tooltip!(di::DataInspector2)
     e = events(di.parent)
     mp = e.mouseposition[]
     di.last_mouseposition = mp
-    hide_indicators!(di)
 
     # TODO: It would be nice to discard updates where the scene hasn't changed,
     # but that's hard to do. We'd need to check for any update triggering a re-
@@ -156,6 +155,7 @@ function update_tooltip!(di::DataInspector2)
 
     # Mouse outside relevant area, hide tooltip
     if !is_mouseinside(di.parent)
+        hide_indicators!(di)
         update!(di.dynamic_tooltip, visible = false)
         return
     end
@@ -174,6 +174,7 @@ function update_tooltip!(di::DataInspector2)
     end
 
     # Did not find inspectable plot, hide tooltip & indicators
+    hide_indicators!(di)
     update!(di.dynamic_tooltip, visible = false)
 
     return
@@ -346,6 +347,7 @@ get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = e
 ################################################################################
 
 function update_indicator_internal!(di::DataInspector2, element::PlotElement, pos)
+    hide_indicators!(di)
     maybe_indicator = update_indicator!(di, element, pos)
     # TODO: Are these really things that should always happen?
     if maybe_indicator isa Plot
