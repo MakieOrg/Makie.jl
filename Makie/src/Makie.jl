@@ -123,7 +123,6 @@ include("interaction/liftmacro.jl")
 include("colorsampler.jl")
 include("patterns.jl")
 include("utilities/utilities.jl") # need Makie.AbstractPattern
-include("utilities/PlotElement.jl")
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
@@ -231,8 +230,12 @@ include("interaction/events.jl")
 include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
-include("interaction/pick_element.jl")
-include("interaction/DataInspector2.jl")
+
+# DataInspector
+include("DataInspector/PlotElement.jl")
+include("DataInspector/pick_element.jl")
+include("DataInspector/DataInspector.jl")
+include("DataInspector/extension.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")

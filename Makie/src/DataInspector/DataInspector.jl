@@ -339,6 +339,8 @@ function default_tooltip_formatter(x::Real)
     end
 end
 
+get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
+
 ################################################################################
 ### Indicator infrastructure
 ################################################################################
@@ -418,10 +420,6 @@ function construct_indicator_plot(di::DataInspector2, ::Type{<:Scatter})
     )
 end
 
-########################################
-### Usage
-########################################
-
 function update_indicator!(di::DataInspector2, element::PlotElement{<:MeshScatter}, pos)
     # Attribute based transformations of scattered mesh
     translation = to_ndim(Point3d, pos, 0)
@@ -471,45 +469,6 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Imag
 
     return
 end
-
-function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, pos)
-    poly_element = child(element)
-    rect = poly_element.arg1
-    ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
-
-    indicator = get_indicator_plot(di, Lines)
-    update!(indicator, arg1 = ps, visible = true)
-
-    return
-end
-
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Contourf}, pos)
-    poly_element = child(element)
-    polygon = poly_element.arg1
-    # Careful, convert_arguments() may return just return exterior (===)
-    line_collection = copy(convert_arguments(Lines, polygon.exterior)[1])
-    for int in polygon.interiors
-        push!(line_collection, Point2f(NaN))
-        append!(line_collection, convert_arguments(PointBased(), int)[1])
-    end
-    ps = to_ndim.(Point3d, line_collection, 0)
-
-    indicator = get_indicator_plot(di, Lines)
-    update!(indicator, arg1 = ps, visible = true)
-
-    return
-end
-
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Band}, pos)
-    p1 = to_ndim(Point3d, element.lowerpoints, 0)
-    p2 = to_ndim(Point3d, element.upperpoints, 0)
-
-    indicator = get_indicator_plot(di, LineSegments)
-    update!(indicator, arg1 = [p1, p2], visible = true)
-
-    return
-end
-
 
 ################################################################################
 ### persistent tooltips
@@ -584,6 +543,12 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     return plot
 end
 
+# Produce useful PlotElements for tooltips (text already does, just need to handle Poly branch)
+function get_accessor(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
+    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
+    return IndexedAccessor(idx, N)
+end
+
 function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) where {PT}
     id = objectid(get_plot(element))
     if haskey(di.persistent_tooltips, id)
@@ -619,121 +584,4 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
     end
 
     return
-end
-
-################################################################################
-### Overwrites/Extension
-################################################################################
-
-get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
-
-# TODO:
-# Once barplot is refactored to use the compute graph, grab positions after
-# stack & dodge here and add a label_data method using these positions instead
-function get_tooltip_position(element::PlotElement{<:BarPlot})
-    x, y = element.positions
-    y += element.offset
-    return ifelse(element.direction == :x, Point(y, x), Point(x, y))
-end
-get_default_tooltip_data(element::PlotElement{<:BarPlot}, pos) = element.positions
-
-function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
-    return 0.5 * (element.startpoints + element.endpoints)
-end
-function get_default_tooltip_data(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
-    return pos, element.endpoints - element.startpoints
-end
-
-function get_tooltip_position(element::PlotElement{<:Band})
-    return 0.5(element.lowerpoints + element.upperpoints)
-end
-function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
-    return element.upperpoints, element.lowerpoints
-end
-
-function get_tooltip_position(element::PlotElement{<:Density})
-    return element.upper
-end
-
-function get_default_tooltip_data(element::PlotElement{<:Density}, pos)
-    if element.direction == :y
-        return Vec(pos[2], pos[1])
-    else
-        return pos
-    end
-end
-
-function get_default_tooltip_data(element::PlotElement{<:Union{Contourf, Tricontourf}}, pos)
-    return child(element).color
-end
-
-function get_default_tooltip_data(element::PlotElement{<:Union{Contour, Contour3d}}, pos)
-    rgba_color = child(element).color
-    selected = Vec4f(red(rgba_color), green(rgba_color), blue(rgba_color), alpha(rgba_color))
-    _, idx = findmin(get_plot(element).level_colors[]) do c
-        v = Vec4f(red(c), green(c), blue(c), alpha(c))
-        return norm(v - selected)
-    end
-    return get_plot(element).zlevels[][idx]
-end
-
-get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color
-
-function get_tooltip_position(element::PlotElement{<:Errorbars})
-    x, y, low, high = element.val_low_high
-    return Point(x, y)
-end
-
-function get_tooltip_position(element::PlotElement{<:Rangebars})
-    plot = get_plot(element)
-    i = 2 * accessor(element).index[1]
-    linepoints = plot.linesegpairs[]
-    center = 0.5 * (linepoints[i - 1] .+ linepoints[i])
-    return center
-end
-
-function get_default_tooltip_label(formatter, element::PlotElement{<:Errorbars}, pos)
-    x, y, low, high = element.val_low_high
-    if low ≈ high
-        return "±" * apply_tooltip_format(formatter, low)
-    else
-        return "+" * apply_tooltip_format(formatter, (high, -low))
-    end
-end
-
-function get_default_tooltip_label(formatter, element::PlotElement{<:Rangebars}, pos)
-    plot = get_plot(element)
-    i = 2 * accessor(element).index[1]
-    linepoints = plot.linesegpairs[]
-    dim = 1 + plot.is_in_y_direction[]
-    low = apply_tooltip_format(formatter, linepoints[i - 1][dim])
-    high = apply_tooltip_format(formatter, linepoints[i][dim])
-    return low * " .. " * high
-end
-
-get_default_tooltip_data(element::PlotElement{<:Hexbin}, pos) = element.count_hex
-
-function get_default_tooltip_data(element::PlotElement{<:Hist}, pos)
-    # Undo flips (+ -> - bin height)
-    # TODO: Should we undo more here? E.g. normalization, weights, ...?
-    bin_pos, bin_height = child(element).positions
-    return Point(bin_pos, abs(bin_height))
-end
-
-function get_default_tooltip_data(element::PlotElement{<:Pie}, pos)
-    return element.values
-end
-
-function get_default_tooltip_data(element::PlotElement{<:VolumeSlices}, pos)
-    return get_default_tooltip_data(child(element), pos)
-end
-
-function get_tooltip_position(element::PlotElement{<:Violin})
-    return element.vertices
-end
-
-function get_default_tooltip_data(element::PlotElement{<:Violin}, pos)
-    spec = element.specs # applies group index
-    density = element_getindex(spec.kde.density, element) # applies interpolation
-    return density
 end

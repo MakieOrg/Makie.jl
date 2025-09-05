@@ -241,9 +241,7 @@ end
 # TODO:
 get_accessor(plot::Volume, idx, plot_stack) = nothing
 
-################################################################################
-# Overloads
-################################################################################
+# submesh index fast-path for poly/mesh
 
 function find_triangle_in_submesh(
         positions::AbstractArray{<:VecTypes},
@@ -337,131 +335,7 @@ function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{P
     increment_at = plot.increment_at[]
     return findfirst(separation_idx -> idx < separation_idx, increment_at), length(increment_at)
 end
+
 function fast_submesh_index(plot::Poly, idx, plot_stack::Tuple{<:Wireframe, Vararg{Plot}})
     return 1, 1
 end
-
-# Text produces the element we want so we just need to handle Poly
-function get_accessor(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
-    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedAccessor(idx, N)
-end
-
-function get_accessor(plot::BarPlot, idx, plot_stack)
-    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    return IndexedAccessor(idx, N)
-end
-
-function get_accessor(plot::BarPlot, idx, plot_stack::Tuple{<:Text, Vararg{Plot}})
-    a = get_accessor(first(plot_stack), idx, Base.tail(plot_stack))
-    return PlotElement((plot, plot.plots[1]), a)
-end
-
-function get_accessor(plot::Arrows2D, idx, plot_stack)
-    idx, N = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-    N_components = sum(plot.should_component_render[])
-    idx = fld1(idx, N_components)
-    N = fld1(N, N_components)
-    return IndexedAccessor(idx, N)
-end
-
-function get_accessor(plot::Band, idx, plot_stack)
-    meshplot = first(plot_stack)
-
-    # find selected triangle
-    ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
-    ps = meshplot.positions_transformed_f32c[]
-    face, face_index, pos = find_picked_triangle(ps, meshplot.faces[], ray, idx)
-    isnan(pos) && return nothing
-
-    # Get index of of the quad/first point in ps1/ps2
-    N = div(length(ps), 2)
-    idx = mod1(face_index, N - 1)
-
-    if eltype(plot[1][]) <: VecTypes{3}
-        # TODO: 3D case
-        # This needs an algorithm that can find an interpolation parameter f
-        # such that pos is on the line
-        #   (ps[idx] + f * ps[idx+1]) .. (ps[idx + N + 1] + f * ps[idx + N])
-        return InterpolatedAccessor(idx, idx + 1, 0.5, N)
-    else
-        # interpolate to quad paramater
-        f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
-
-        return InterpolatedAccessor(idx, idx + 1, f, N)
-    end
-end
-
-get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing
-
-function get_accessor(plot::Union{Errorbars, Rangebars}, idx, plot_stack)
-    return IndexedAccessor(fld1(idx, 2), length(plot.val_low_high[]))
-end
-
-function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
-    a = get_accessor(first(plot_stack), idx, Base.tail(plot_stack))
-    upper = plot.upper[]
-    N = length(upper)
-    # The outline can be closed, which adds [lower[end], lower[1], upper[1]] to
-    # close the loop. To get back to indices of upper (which contains density
-    # information) we need to figure out related indices in the 1 .. N range
-    if a.index1[1] > N
-        if a.index1[1] == N + 3
-            return InterpolatedAccessor(1, 2, 0.0, N)
-        elseif  a.index1[1] == N + 1
-            return InterpolatedAccessor(N-1, N, 1.0, N)
-        else
-            picked_pos = element_getindex(plot.linepoints[], a)
-            dim = 1 + (plot.direction[] == :y)
-            i = findfirst(p -> p[dim] > picked_pos[dim], upper)
-            if i == 1
-                return InterpolatedAccessor(1, 2, 0.0, N)
-            end
-            f = (picked_pos[dim] - upper[i - 1][dim]) / (upper[i][dim] - upper[i - 1][dim])
-            return InterpolatedAccessor(i-1, i, f, N)
-        end
-    end
-    return a
-end
-
-function get_accessor(plot::Violin, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}})
-    # Each violin/density becomes one submesh
-    violin_idx, N_violins = fast_submesh_index(first(plot_stack), idx, Base.tail(plot_stack))
-
-    # Within a violin/density we have (value, density) pairs either as (x, y) or
-    # (y, x) depending on orientation. Find the closest two values to the current
-    # mouseposition to derive another index + interpolation factor. These can
-    # then be used to sample values & densities later
-    meshplot = plot.plots[1].plots[1]
-    mpos = (inv(meshplot.model_f32c[]) * to_ndim(Point4d, mouseposition(plot), 1))[Vec(1, 2)]
-    dim = 1 + (plot.orientation[] !== :horizontal)
-
-    # range of vertices relevant to the picked violin/density
-    violin_start = mapreduce(i -> length(plot.vertices[][i]), +, 1 : (violin_idx - 1), init = 1)
-    N = length(plot.vertices[][violin_idx])
-    violin_range = violin_start : (violin_start + N - 1)
-
-    # Relevant vertex positions after transform_func f32c, pre model_f32c application
-    verts = view(meshplot.positions_transformed_f32c[], violin_range)
-
-    # Find two closest indices & interpolation factor between them
-    _, point_idx = findmin(p -> abs(p[dim] - mpos[dim]), verts)
-    if point_idx == 1
-        f = (mpos[dim] - verts[1][dim]) / (verts[2][dim] - verts[1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(1, 2, f, N))
-
-    elseif point_idx == N
-        f = (mpos[dim] - verts[end - 1][dim]) / (verts[end][dim] - verts[end - 1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(N - 1, N, f, N))
-
-    elseif abs(verts[point_idx - 1][dim] - mpos[dim]) < abs(verts[point_idx + 1][dim] - mpos[dim])
-        f = (mpos[dim] - verts[point_idx - 1][dim]) / (verts[point_idx][dim] - verts[point_idx - 1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx - 1, point_idx, f, N))
-
-    else
-        f = (mpos[dim] - verts[point_idx][dim]) / (verts[point_idx + 1][dim] - verts[point_idx][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx, point_idx + 1, f, N))
-    end
-end
-
-get_accessor(plot::Violin, idx, plot_stack::Tuple{<:LineSegments, Vararg{Plot}}) = nothing
