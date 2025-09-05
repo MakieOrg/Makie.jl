@@ -220,11 +220,14 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     px_pos = di.dynamic_tooltip.pixel_positions[][1]
 
     update!(
-        di.dynamic_tooltip, to_ndim(Point3d, pos, 0), text = label, visible = true,
+        di.dynamic_tooltip,
+        to_ndim(Point3d, pos, 0), text = label, visible = true,
         placement = border_dodging_placement(di, px_pos),
-        space = to_value(get(plot, :space, :data))
-        #; kwargs...
+        space = to_value(get(plot, :space, :data));
+        di.tooltip_attributes...
     )
+
+    apply_tooltip_overwrites!(element, di.dynamic_tooltip)
 
     # TODO: Why not also allow plots to disable their indicator?
     if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
@@ -345,6 +348,8 @@ function default_tooltip_formatter(x::Real)
         return @sprintf("%0.3e", x)
     end
 end
+
+apply_tooltip_overwrites!(::PlotElement, tt) = nothing
 
 ################################################################################
 ### Indicator infrastructure
@@ -561,13 +566,16 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
     if haskey(di.persistent_tooltips, id)
         tt = di.persistent_tooltips[id]
         elements = push!(tt.arg1[], element)
-        update!(tt, arg1 = elements)
+        update!(tt, arg1 = elements; di.tooltip_attributes...)
+        apply_tooltip_overwrites!(element, tt)
     else
         formatter = di.inspector_attributes[:formatter][]
-        di.persistent_tooltips[id] = tooltip!(
+        tt = tooltip!(
             di.parent, PlotElement{PT}[element],
             _formatter = formatter; di.tooltip_attributes...
         )
+        apply_tooltip_overwrites!(element, tt)
+        di.persistent_tooltips[id] = tt
     end
     return true
 end
