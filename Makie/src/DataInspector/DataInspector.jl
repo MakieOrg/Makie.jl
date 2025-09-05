@@ -103,7 +103,6 @@ function DataInspector2(obj; blocking = false, kwargs...)
             take!(ch) # wait for event
             if isopen(parent)
                 update_tooltip!(inspector)
-                @info inspector.update_counter
             end
         end
     end
@@ -292,20 +291,27 @@ function get_tooltip_label(formatter, element::PlotElement, pos)
     elseif label isa Function
         return label(element, pos)
     elseif label === automatic
-        return get_default_tooltip_label(formatter, element, pos)
+        maybe_data = get_default_tooltip_label(formatter, element, pos)
+        return apply_tooltip_format(formatter, maybe_data)
     end
 end
 
 function get_default_tooltip_label(formatter, element, pos)
-    data = get_default_tooltip_data(element, pos)
-    return apply_tooltip_format(formatter, data)
+    if Base.applicable(get_default_tooltip_label, element, pos)
+        return get_default_tooltip_label(element, pos)
+    else
+        return get_default_tooltip_label(formatter, child(element), pos)
+    end
 end
 
-get_default_tooltip_data(element, pos) = pos
+get_default_tooltip_label(element::PlotElement{<:PrimitivePlotTypes}, pos) = pos
+get_default_tooltip_label(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
 function apply_tooltip_format(fmt, data::Tuple)
     return mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a\n$b", data)
 end
+
+apply_tooltip_format(fmt, data::String) = data
 
 function apply_tooltip_format(fmt, data::VecTypes)
     return '(' * mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a, $b", data) * ')'
@@ -339,8 +345,6 @@ function default_tooltip_formatter(x::Real)
         return @sprintf("%0.3e", x)
     end
 end
-
-get_default_tooltip_data(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
 
 ################################################################################
 ### Indicator infrastructure

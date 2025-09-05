@@ -21,9 +21,9 @@ function get_tooltip_position(element::PlotElement{<:BarPlot})
     return ifelse(element.direction == :x, Point(y, x), Point(x, y))
 end
 
-get_default_tooltip_data(element::PlotElement{<:BarPlot}, pos) = element.positions
+get_default_tooltip_label(element::PlotElement{<:BarPlot}, pos) = element.positions
 
-function get_default_tooltip_data(element::PlotElement{<:Hist}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Hist}, pos)
     # Undo flips (+ -> - bin height)
     # TODO: Should we undo more here? E.g. normalization, weights, ...?
     bin_pos, bin_height = child(element).positions
@@ -57,7 +57,7 @@ function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
     return 0.5 * (element.startpoints + element.endpoints)
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
     return pos, element.endpoints - element.startpoints
 end
 
@@ -65,11 +65,11 @@ end
 ### Contour, Contour4d, Contourf, Tricontourf
 ################################################################################
 
-function get_default_tooltip_data(element::PlotElement{<:Union{Contourf, Tricontourf}}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Union{Contourf, Tricontourf}}, pos)
     return child(element).color
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Union{Contour, Contour3d}}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Union{Contour, Contour3d}}, pos)
     rgba_color = child(element).color
     selected = Vec4f(red(rgba_color), green(rgba_color), blue(rgba_color), alpha(rgba_color))
     _, idx = findmin(get_plot(element).level_colors[]) do c
@@ -202,11 +202,11 @@ function get_tooltip_position(element::PlotElement{<:Density})
     return element.upper
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Band}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Band}, pos)
     return element.upperpoints, element.lowerpoints
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Density}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Density}, pos)
     if element.direction == :y
         return Vec(pos[2], pos[1])
     else
@@ -274,7 +274,7 @@ function get_tooltip_position(element::PlotElement{<:Violin})
     return element.vertices
 end
 
-function get_default_tooltip_data(element::PlotElement{<:Violin}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Violin}, pos)
     spec = element.specs # applies group index
     density = element_getindex(spec.kde.density, element) # applies interpolation
     return density
@@ -286,14 +286,10 @@ end
 
 get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing
 
-get_default_tooltip_data(element::PlotElement{<:Spy}, pos) = child(element).color
+get_default_tooltip_label(element::PlotElement{<:Spy}, pos) = child(element).color
 
-get_default_tooltip_data(element::PlotElement{<:Hexbin}, pos) = element.count_hex
+get_default_tooltip_label(element::PlotElement{<:Hexbin}, pos) = element.count_hex
 
-function get_default_tooltip_data(element::PlotElement{<:Pie}, pos)
+function get_default_tooltip_label(element::PlotElement{<:Pie}, pos)
     return element.values
-end
-
-function get_default_tooltip_data(element::PlotElement{<:VolumeSlices}, pos)
-    return get_default_tooltip_data(child(element), pos)
 end
