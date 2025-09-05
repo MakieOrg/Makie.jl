@@ -37,11 +37,11 @@ mutable struct DataInspector2
             close(inspector.update_channel)
 
             foreach(tt -> delete!(inspector.parent, tt), values(inspector.persistent_tooltips))
-            empty!(inspector.persistent_tooltips)
-
             delete!(inspector.parent, inspector.dynamic_tooltip)
+            foreach(p -> delete!(inspector.parent, p), values(inspector.indicator_cache))
 
-            foreach(p -> delete!(inspector.parent, tt), values(inspector.indicator_cache))
+            empty!(inspector.persistent_tooltips)
+            empty!(inspector.indicator_cache)
 
             inspector.parent.data_inspector = nothing
             return
