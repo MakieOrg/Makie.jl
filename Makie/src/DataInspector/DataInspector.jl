@@ -484,7 +484,7 @@ function update_persistent_tooltips!(di::DataInspector2)
     end
 
     mp = e.mouseposition[]
-    for (plot, idx) in pick_sorted(di.parent, mp, 10)
+    for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes[:range][])
         (parent_scene(plot) != di.parent) && continue
 
         if plot.inspectable[]
@@ -493,8 +493,9 @@ function update_persistent_tooltips!(di::DataInspector2)
             return Consume(true)
         elseif rootparent_plot(plot) isa Tooltip
             element = pick_element(plot_stack(plot), idx)
-            remove_persistent_tooltip!(di, element)
-            return Consume(true)
+            if remove_persistent_tooltip!(di, element)
+                return Consume(true)
+            end
         end
     end
 
@@ -564,7 +565,7 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
             _formatter = formatter; di.tooltip_attributes...
         )
     end
-    return
+    return true
 end
 
 function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotElement{<:Tooltip})
@@ -583,7 +584,9 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
         else
             update!(tt, arg1 = elements)
         end
+
+        return true
     end
 
-    return
+    return false
 end
