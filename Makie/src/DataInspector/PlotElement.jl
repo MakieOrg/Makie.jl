@@ -4,10 +4,45 @@
 
 abstract type AbstractElementAccessor end
 
+"""
+    abstract type PlotElement{PlotType}
+
+A PlotElement represents an element of a plot selected through picking. Unlike
+with `pick()` and related functions, the plot is not restricted to a primitive
+plot. Instead it can be any plot.
+
+This object is typically constructed by `pick_element(...)`
+
+## Related functions:
+- `getproperty(element, name)` or `element.name` will return an attribute value
+of the encapsulated plot relevant to the picked element
+- `get_plot(element)` will return the encapsulated plot
+- `child(element)` will construct a new `PlotElement` using the child plot from
+which the pick originated. Note that the accessor is not recomputed and may not
+be compatible with the child plot.
+- `accessor(element)` returns the `<:AbstractElementAccessor` of the element,
+which represents the indexing or interpolation information necessary to identify
+the picked element.
+- `element_getindex(data, element)` will apply the accessor to the given
+(plot external) data
+- `dimensional_element_getindex(data, element, dim)` will apply a specific
+dimension of the accessor to the data
+"""
 abstract type PlotElement{PlotType} end
 
 PlotElement(@nospecialize(::Any), ::Nothing) = nothing
 
+"""
+    dimensional_element_getindex(data, element, dim)
+    dimensional_element_getindex(data, accessor, dim)
+
+Applies a specific dimension of a multidimensional accessor to the given data.
+
+For example, a 2D `IndexedAccessor{2}` contains a 2D index `(i, j)`. With
+`dim = 1`, the first index `i` would be applied to the given `data`. This is
+useful, for example, with `heatmap` where the indexing is 2D to match the plots
+z/image values but needs to be accessed per dimensional for x and y data.
+"""
 function dimensional_element_getindex(x, element::PlotElement, dim::Integer)
     return dimensional_element_getindex(x, accessor(element), dim)
 end
@@ -39,6 +74,12 @@ function Base.get(element::PlotElement{PT}, name::Symbol, default) where {PT}
     end
 end
 
+"""
+    sample_color(element, value)
+
+Resolves colormapping for given element at the given color `value`. If the
+`value` is a color, it is returned as is.
+"""
 sample_color(plotlike::Union{Plot, PlotElement}, color::Colorant) = color
 
 function sample_color(plotlike::Union{Plot, PlotElement}, value::Real)
@@ -55,28 +96,43 @@ end
 ### PlotElement
 ################################################################################
 
+"""
+    SimplePlotElement{PlotType, AccessorType, PlotStackType}
+
+Basic implementation of a `PlotElement` containing just a `plot_stack` and
+`accessor`.
+"""
 struct SimplePlotElement{
         PlotType,
-        IndexType <: AbstractElementAccessor,
+        AccessorType <: AbstractElementAccessor,
         PlotStack <: Tuple{PlotType, Vararg{Plot}},
     } <: PlotElement{PlotType}
 
     plot_stack::PlotStack
-    index::IndexType
+    accessor::AccessorType
 end
 
-PlotElement(plot_stack::Tuple, elem::PlotElement) = SimplePlotElement(plot_stack, elem.index)
+PlotElement(plot_stack::Tuple, elem::PlotElement) = SimplePlotElement(plot_stack, elem.accessor)
 PlotElement(plot_stack::Tuple, accessor::AbstractElementAccessor) = SimplePlotElement(plot_stack, accessor)
-child(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.index)
+child(element::SimplePlotElement) = PlotElement(Base.tail(element.plot_stack), element.accessor)
 
+"""
+    TrackedPlotElement{PlotType, AccessorType, PlotStackType}
 
+Implementation of `PlotElement` which adds tracking of the accessed attributes.
+This is used internally to figure out which attributes a persistent tooltip
+needs to track.
+
+An attribute can be explicitly tracked by `track!(element, names...)`. This is
+safe to call from any `PlotElement`.
+"""
 struct TrackedPlotElement{
         PlotType,
-        IndexType <: AbstractElementAccessor,
+        AccessorType <: AbstractElementAccessor,
         PlotStack <: Tuple{PlotType, Vararg{Plot}},
     } <: PlotElement{PlotType}
     plot_stack::PlotStack
-    index::IndexType
+    accessor::AccessorType
     accessed_fields::Vector{Symbol}
 end
 
@@ -93,7 +149,7 @@ function Base.getproperty(element::TrackedPlotElement, name::Symbol)
         plot = get_plot(element)
         if haskey(plot.attributes, name)
             track!(element, name)
-            return element_getindex(getproperty(plot, name)[], element.index)
+            return element_getindex(getproperty(plot, name)[], element.accessor)
         else
             return getproperty(plot, name)
         end
@@ -101,10 +157,10 @@ function Base.getproperty(element::TrackedPlotElement, name::Symbol)
 end
 
 # Util
-TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.index, Symbol[])
+TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.accessor, Symbol[])
 Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
 get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
-child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.index, e.accessed_fields)
+child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.accessor, e.accessed_fields)
 
 ################################################################################
 ### Accessors
@@ -116,9 +172,14 @@ child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.ind
 
 Constructs an accessor representing an index into data of a given size. The
 dimensionality of the index must match the dimensionality of the given size.
+
+## Fields
+$(TYPEDFIELDS)
 """
 struct IndexedAccessor{D} <: AbstractElementAccessor
+    "The index to be accessed."
     index::CartesianIndex{D}
+    "The size which the index relates to. This is used to avoid indexing data of different sizes."
     size::Vec{D, Int64}
 
     function IndexedAccessor(idx::CartesianIndex{N}, size::VecTypes{N, <:Integer}) where {N}
@@ -160,12 +221,44 @@ function dimensional_element_getindex(x, element::IndexedAccessor{2}, dim::Integ
     end
 end
 
+"""
+    InterpolatedAccessor(index0, index1, interpolation, length[, edge_based = false])
+    InterpolatedAccessor(index0, index1, interpolation, size[, edge_based = false])
 
+Constructs an accessor representing (repeated) linear interpolation. For data of
+the appropriate size `Makie.lerp(data[index0], data[index1], interpolation)` is
+called to get the relevant element. Note that `interpolation` is not clamped
+internally. For `InterpolatedAccessor{2}` this expands to bilinear interpolation.
+
+If `edge_based == true`, the given indices and interpolation factor are assumed
+to apply to edge based data. The `size` is still assumed to be cell based. If
+the accessed data is detected to be edge based (size + 1), the indices and
+interpolation are applied as is. If the data is cell based (size) then the
+indices and interpolation are resampled by `interpolated_edge_to_cell_index()`.
+This only applies to `InterpolatedAccessor{2}`.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct InterpolatedAccessor{D} <: AbstractElementAccessor
+    "Lower index used to get data for the interpolation."
     index0::CartesianIndex{D}
+    "Higher index used to get data for the interpolation"
     index1::CartesianIndex{D}
+    """
+    Interpolation factor used to linearly interpolate between data points. This
+    should generally be between 0 and 1
+    """
     interpolation::Vec{D, Float32}
+    """
+    Size of the data which the indices refer to. Data with a different size will
+    not be interpolated unless `edge_based = true` and the data size is `size + 1`.
+    """
     size::Vec{D, Int64}
+    """
+    Marks that indices are given for edge based data of size `size + 1` and need
+    to be downsampled for cell based data.
+    """
     edge_based::Bool
 end
 
@@ -270,13 +363,42 @@ function dimensional_element_getindex(x, element::InterpolatedAccessor{2}, dim::
     end
 end
 
+"""
+    MeshAccessor(N_vertices, N_submeshes, submesh_index, face, uv)
+    MeshAccessor(N_vertices, N_submeshes, submesh_index, face, uv)
 
+Constructs an accessor representing indexing and interpolation information on a
+mesh.
+
+If the accessed data is vertex like, i.e. `length(data) == N_vertices` the
+stored (triangle) `face` is used to 3 relevant vertices. These vertices are then
+interpolated using `uv` values:
+
+```
+a = sv_getindex(data, face[1])
+b = sv_getindex(data, face[2])
+c = sv_getindex(data, face[3])
+return a + u * (b - a) + v * (c - a)
+```
+
+If the accessed data matches the length of submeshes `length(data) == N_submeshes`
+it is instead accessed by the `submesh_index`. Submeshes are generated when
+merging meshes e.g. by `poly([...])`.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct MeshAccessor <: AbstractElementAccessor
+    "Number of vertices of the parent mesh."
     N_vertices::Int64
+    "Number of submeshes of the parent mesh, i.e. `length(mesh.views)."
     N_submeshes::Int64
 
+    "Index of the submesh the selected face belongs to."
     submesh_index::Int64
+    "The selected triangle face of the mesh."
     face::GLTriangleFace
+    "The interpolation factors (u, v) which represent the selected point on the face."
     uv::Vec2f
 
     function MeshAccessor(
@@ -306,10 +428,22 @@ function element_getindex(x, element::MeshAccessor)
     end
 end
 
+"""
+    GroupAccessor(group_index, group_size, accessor)
 
+Constructs an accessor which allows for nested data access. If the
+`length(data) == group_size`, the data is first accessed by the `group_index`
+and passed to the given `accessor`. Otherwise it is passed on directly.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct GroupAccessor{IA<:AbstractElementAccessor} <: AbstractElementAccessor
+    "Initial index used to access data."
     group_index::Int64
+    "Size of the data to be accessed by the `group_index`."
     group_size::Int64
+    "Second accessor which is used after the `group_index`."
     internal_accessor::IA
 end
 
