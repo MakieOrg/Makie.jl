@@ -1,7 +1,9 @@
 # Changelog
 
 ## Unreleased
+
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 
 ## [0.24.6] - 2025-08-19
 
