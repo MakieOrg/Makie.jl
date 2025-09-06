@@ -1,10 +1,12 @@
+# DataInspector
+
 ## Basic Usage
 
 `DataInspector` provides a way to display tooltips when hovering over plots.
 By default these tooltips will contain relevant data for plot which is usually the position of the plot element or cursor.
 To initialize DataInspector it needs to be constructed with an axis-like Block or with a scene.
 
-```@example backend=CairoMakie
+```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin)
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (300, 300) # hide
@@ -26,7 +28,7 @@ DataInspector will check the `inspector_label` attribute of the hovered plot whe
 You have three options for setting it.
 The first is a plain String, which will be displayed when hovering any element of the plot.
 
-```@example
+```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (300, 300) # hide
@@ -37,7 +39,7 @@ The second is an array (or other indexable collection) of strings.
 This will map the labels to the elements of the plot.
 For this the plot needs to be discrete like `scatter` rather than continuous like `lines`.
 
-```@example
+```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (340, 255) # hide
@@ -51,7 +53,7 @@ The position should be in the same space as the arguments passed to the function
 The `PlotElement` combines the plot with indexing or interpolation information to represent the currently hovered element.
 When accessing an attribute on a `PlotElement`, e.g. `element.color`, the attribute will automatically be indexed or interpolated.
 
-```@example
+```@figure backend=GLMakie
 function mylabel(element, pos)
 	# As a discrete plot, scatter elements contain an index.
 `element.attribute`
@@ -82,7 +84,7 @@ Tooltips can be disabled per-plot using the `inspectable` attribute.
 When it is set to false DataInspector will not generate a tooltip for the given plot.
 If there are other plots nearby, tooltips will be generated for the next closest plot.
 
-```@example backend=CairoMakie
+```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspectable = false)
 Makie.DataInspector2(a)
 events(f).mouseposition[] = (340, 255) # hide

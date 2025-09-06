@@ -40,6 +40,7 @@ unnest(p::Pair) = p[2] isa String ? [p[2]] : unnest(p[2])
 unnest(s::String) = [s]
 
 pages = [
+    #=
     "Home" => "index.md",
     "Reference" => [
         "Blocks" => [
@@ -141,7 +142,9 @@ pages = [
         "tutorials/pixel-perfect-rendering.md",
         "tutorials/inset-plot-tutorial.md",
     ],
+    =#
     "Explanations" => [
+        #=
         "Backends" => [
             "explanations/backends/backends.md",
             "explanations/backends/cairomakie.md",
@@ -163,7 +166,9 @@ pages = [
         "explanations/layouting.md",
         "explanations/headless.md",
         "explanations/inspector.md",
+        =#
         "explanations/DataInspector.md",
+        #=
         "explanations/latex.md",
         "explanations/observables.md",
         "explanations/plot_method_signatures.md",
@@ -186,6 +191,7 @@ pages = [
         "API" => "api.md",
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
+        =#
     ],
 ]
 

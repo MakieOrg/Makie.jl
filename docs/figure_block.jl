@@ -137,7 +137,7 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
                 end
             ).text[]
         catch e
-            @info "Could not find title of figure block \"```@figure title ...\"."
+            @info "Document containing `@figure` Block must have a top level Header `# Header`"
             rethrow(e)
         end
 
