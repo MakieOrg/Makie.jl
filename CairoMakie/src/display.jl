@@ -27,6 +27,7 @@ function tryrun(cmd::Cmd; wait = true)
         else
             return false
         end
+    end
 end
 
 function openurl(url::String)
