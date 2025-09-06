@@ -133,7 +133,7 @@ this computes parameter `f` such that the line from `A + f * (B - A)` to
 inside the quad and that none of the edges cross.
 """
 function point_in_quad_parameter(
-        A::Point2, B::Point2, C::Point2, D::Point2, P::Point2;
+        A::VecTypes{2}, B::VecTypes{2}, C::VecTypes{2}, D::VecTypes{2}, P::VecTypes{2};
         iterations = 50, epsilon = 1.0e-6
     )
 
@@ -871,11 +871,11 @@ function show_data(inspector::DataInspector, plot::Arrows2D, _idx, source)
     N = plot.taillength[] > 0 && plot.tailwidth[] > 0 ? length(coordinates(plot.tail[])) : 0
     N += plot.shaftwidth[] > 0 ? length(coordinates(plot.shaft[])) : 0
     N += plot.tiplength[] > 0 && plot.tipwidth[] > 0 ? length(coordinates(plot.tip[])) : 0
+    N += Int(source isa Lines)
     @assert N != 0
 
     # arrow index
     idx = fld1(_idx, N)
-
     pos = plot[1][][idx]
 
     mpos = Point2f(mouseposition_px(inspector.root))
