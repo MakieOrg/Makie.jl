@@ -50,7 +50,7 @@ element_getindex(x, element::PlotElement) = element_getindex(x, accessor(element
 
 get_plot(element::PlotElement) = first(element.plot_stack)
 get_plot(plot::Plot) = plot
-accessor(element::PlotElement) = element.index
+accessor(element::PlotElement) = element.accessor
 
 function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     if hasfield(T, name)
@@ -58,7 +58,7 @@ function Base.getproperty(element::T, name::Symbol) where {T <: PlotElement}
     else
         plot = get_plot(element)
         if haskey(plot.attributes, name)
-            return element_getindex(getproperty(plot, name)[], element.index)
+            return element_getindex(getproperty(plot, name)[], accessor(element))
         else
             return getproperty(plot, name)
         end
