@@ -35,7 +35,7 @@ function pick_element(plot_stack::Tuple, idx)
 end
 
 """
-    get_accessor(plot::Plot, index::Integer, plot_stack::Tuple)
+    get_accessor(plot::Plot, pick_index, plot_stack::Tuple{Vararg{Plot}})
 
 Returns an `AbstractElementAccessor` describing the picked element of the given
 root parent `plot`. This function is meant for overloading and should not be
@@ -44,13 +44,14 @@ called directly. Use `pick_element()` instead.
 This function is called by `pick_element()` with
 
 ```julia
-primitive, index = pick(...)
+primitive, pick_index = pick(...)
 plot_stack = Makie.plot_stack(primitive)
-get_accessor(first(plot_stack), index, Base.tail(plot_stack))
+get_accessor(first(plot_stack), pick_index, Base.tail(plot_stack))
 ```
 
-where the plot stack contains a trace of parent plots from the primitive to the
-root parent parent plot, i.e. the plot created by a user. The accessor should
+where the plot stack contains a trace of parent plots
+`(plot, ..., primitive.parent, primitive)` from the primitive to the
+root parent parent plot, that is the plot created by a user. The accessor should
 describe the picked element of the root plot.
 
 By default this function will recursively fall back onto lower level plots. I.e.
