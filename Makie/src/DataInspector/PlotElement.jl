@@ -429,32 +429,50 @@ function element_getindex(x, element::MeshAccessor)
 end
 
 """
-    GroupAccessor(group_index, group_size, accessor)
+    ViolinAccessor(violin_index, num_violins, vertex_index0, vertex_index1, vertex_interpolation, N_vertices)
 
-Constructs an accessor which allows for nested data access. If the
-`length(data) == group_size`, the data is first accessed by the `group_index`
-and passed to the given `accessor`. Otherwise it is passed on directly.
+Specialized accessor for Violin plots.
+
+This deals with categories/x-values creating multiple separate violins and the
+different number of elements between `plot.vertices` and
+`plot.specs[][violin_index].kde.density`.
 
 ## Fields
 $(TYPEDFIELDS)
 """
-struct GroupAccessor{IA<:AbstractElementAccessor} <: AbstractElementAccessor
-    "Initial index used to access data."
-    group_index::Int64
-    "Size of the data to be accessed by the `group_index`."
-    group_size::Int64
-    "Second accessor which is used after the `group_index`."
-    internal_accessor::IA
+struct ViolinAccessor <: AbstractElementAccessor
+    "Index of the selected violin or half-violin/density."
+    violin_index::Int64
+    "Number of (half-)violins"
+    num_violins::Int64
+
+    "Lower index into violin vertices"
+    index0::Int64
+    "Upper index into violin vertices"
+    index1::Int64
+    "Interpolation factor used to linearly interpolate the selected vertex."
+    interpolation::Float32
+    "Number of vertices"
+    N_vertices::Int64
 end
 
-function element_getindex(x, element::GroupAccessor)
+function element_getindex(x, element::ViolinAccessor)
     if is_array_attribute(x)
-        if length(x) == element.group_size
-            return element_getindex(x[element.group_index], element.internal_accessor)
+        if length(x) == element.num_violins
+            return element_getindex(x[element.violin_index], element)
+        elseif length(x) == element.N_vertices # e.g. vertices
+            low = sv_getindex(x, element.index0)
+            high = sv_getindex(x, element.index1)
+            return lerp(low, high, element.interpolation)
+        elseif length(x) == element.N_vertices - 2
+            # e.g. kde.density whose edge values are duplicated in vertices
+            low = sv_getindex(x, clamp(element.index0 - 1, 1, length(x)))
+            high = sv_getindex(x, clamp(element.index1 - 1, 1, length(x)))
+            return lerp(low, high, element.interpolation)
         else
-            return element_getindex(x, element.internal_accessor)
+            return x
         end
     else
-        return element_getindex(x, element.internal_accessor)
+        return x
     end
 end

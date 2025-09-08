@@ -254,19 +254,19 @@ function get_accessor(plot::Violin, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}}
     _, point_idx = findmin(p -> abs(p[dim] - mpos[dim]), verts)
     if point_idx == 1
         f = (mpos[dim] - verts[1][dim]) / (verts[2][dim] - verts[1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(1, 2, f, N))
+        return ViolinAccessor(violin_idx, N_violins, 1, 2, f, N)
 
     elseif point_idx == N
         f = (mpos[dim] - verts[end - 1][dim]) / (verts[end][dim] - verts[end - 1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(N - 1, N, f, N))
+        return ViolinAccessor(violin_idx, N_violins, N - 1, N, f, N)
 
     elseif abs(verts[point_idx - 1][dim] - mpos[dim]) < abs(verts[point_idx + 1][dim] - mpos[dim])
         f = (mpos[dim] - verts[point_idx - 1][dim]) / (verts[point_idx][dim] - verts[point_idx - 1][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx - 1, point_idx, f, N))
+        return ViolinAccessor(violin_idx, N_violins, point_idx - 1, point_idx, f, N)
 
     else
         f = (mpos[dim] - verts[point_idx][dim]) / (verts[point_idx + 1][dim] - verts[point_idx][dim])
-        return GroupAccessor(violin_idx, N_violins, InterpolatedAccessor(point_idx, point_idx + 1, f, N))
+        return ViolinAccessor(violin_idx, N_violins, point_idx, point_idx + 1, f, N)
     end
 end
 
