@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: "Download artifact"
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           debug: true
           script: |
@@ -39,7 +39,7 @@ jobs:
         run: unzip n_missing_refimages.zip
 
       - name: Add reference images status
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           debug: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
