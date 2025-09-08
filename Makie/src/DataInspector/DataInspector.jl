@@ -312,15 +312,15 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
 
-    px_pos = di.dynamic_tooltip.pixel_positions[][1]
-
     update!(
         di.dynamic_tooltip,
         to_ndim(Point3d, pos, 0), text = label, visible = true,
-        placement = border_dodging_placement(di, px_pos),
         space = to_value(get(plot, :space, :data));
         di.tooltip_attributes...
     )
+
+    px_pos = di.dynamic_tooltip.pixel_positions[][1]
+    update!(di.dynamic_tooltip, placement = border_dodging_placement(di, px_pos))
 
     apply_tooltip_overwrites!(element, di.dynamic_tooltip)
 
