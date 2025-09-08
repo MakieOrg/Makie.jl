@@ -617,22 +617,18 @@ end
     p = waterfall!(scene, [230, 240], [25, -15])
     translate!(p, 0, 190, 0)
 
-
-    on(events(scene).mousebutton) do _
-        println(events(scene).mouseposition[])
-    end
-
     # mouse positions for targetting each plot
     mps = [
         # 0..285 x 0..135 block
         (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
         (90, 110), (130, 20), (150, 90), (200, 10), (200, 35),
         (217, 79), (200, 45), (181, 67), (260, 30), (260, 90), (205, 110),
-        # next block
-        (17, 153), (67, 163), (90, 152), (139, 153), (160, 163), (175, 150), (210, 156), (235, 145), (265, 154),
-        (20, 175),
-        (17, 209), (32, 194), (39, 193), (61, 211), (56, 195), (76, 207), (101, 199), (130, 195),
-        (155, 214), (185, 193), (205, 193), (214, 208), (242, 208)
+        # top-1 row
+        (17, 153), (67, 163), (90, 152), (139, 153), (160, 163), (175, 150), (210, 156),
+        (235, 145), (265, 154), (20, 175),
+        # top row
+        (17, 209), (32, 194), (39, 193), (61, 211), (56, 195), (76, 207), (101, 199),
+        (130, 195), (155, 214), (185, 193), (205, 193), (214, 208), (242, 208)
     ]
 
     e = events(scene)
@@ -653,15 +649,18 @@ end
     st = Makie.Stepper(scene)
 
     # record
-    # is_wglmakie = Symbol(Makie.current_backend()) === :WGLMakie
-    is_wglmakie = true
+    is_wglmakie = Symbol(Makie.current_backend()) === :WGLMakie
+
     for mp in mps
         # remove tooltip so we don't select it
-        e.mouseposition[] = (1, 1)
+        e.mouseposition[] = (1.0, 1.0)
+        notify(e.tick) # trigger DataInspector update
         colorbuffer(scene) # force update of picking buffer
         is_wglmakie && sleep(0.15) # wait for WGLMakie
-        # @test !di.dynamic_tooltip.visible[] # verify cleanup
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
+
         e.mouseposition[] = mp
+        notify(e.tick)
         is_wglmakie && sleep(0.15) # wait for WGLMakie
         Makie.step!(st)
     end

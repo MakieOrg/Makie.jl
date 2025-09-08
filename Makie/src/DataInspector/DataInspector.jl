@@ -98,6 +98,10 @@ left/right/bottom/top side of the axis/scene below which the tooltip will change
 its placement to avoid the edge
 - `show_indicators = true` allows disabling all indicators for this DataInspector.
 Note that plots can disable indicators individually by setting `show_indicator = false`.
+- `blocking = false` when set to true tooltip updates block further event processing
+and rendering.
+- `no_tick_discard = false` when set to true any tick update triggers a tooltip
+update.
 
 ### Indicator Attributes
 
@@ -135,7 +139,7 @@ an indicator
 
 See the relevant functions for more detail.
 """
-function DataInspector2(obj; blocking = false, kwargs...)
+function DataInspector2(obj; blocking = false, no_tick_discard = false, kwargs...)
     parent = get_scene(obj)
     if !isnothing(parent.data_inspector)
         return parent.data_inspector
@@ -172,7 +176,8 @@ function DataInspector2(obj; blocking = false, kwargs...)
 
     tt = tooltip!(
         obj, Point3d(0), text = "", visible = false,
-        xautolimits = false, yautolimits = false, zautolimits = false;
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        transformation = :nothing;
         kwarg_dict...
     )
     register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
@@ -209,7 +214,7 @@ function DataInspector2(obj; blocking = false, kwargs...)
         # This should be one frame behind in GLMakie. Maybe we should make ticks
         # predictive based on whether renderobjects need updates.
         # Not sure if this expands to WGLMakie...
-        has_rendered = tick.state === RegularRenderTick
+        has_rendered = no_tick_discard || (tick.state === RegularRenderTick)
         tooltip_needs_to_move = inspector.last_mouseposition != e.mouseposition[]
 
         if has_rendered || tooltip_needs_to_move
