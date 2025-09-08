@@ -335,8 +335,13 @@ function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::In
 end
 
 function copy_local_model_transformations!(target::Transformable, source::Transformable)
-    t = source.transformation
-    transform!(target, translation = t.translation, rotation = t.rotation, scale = t.scale)
+    src_t = transformation(source)
+    trg_t = transformation(target)
+
+    trg_t.parent[] = src_t
+    trg_t.parent_model[] = src_t.model[]
+    trg_t.transform_func[] = src_t.transform_func[]
+
     return
 end
 
@@ -752,7 +757,7 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
 
     tooltip!(
         plot, Attributes(plot), plot.element_positions; text = plot.element_labels,
-        transformation = position_parent.transformation,
+        transformation = Transformation(position_parent.transformation),
         space = position_parent.space
     )
     return plot
