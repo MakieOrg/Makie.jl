@@ -732,7 +732,7 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     pos = get_tooltip_position(position_element)
 
     position_parent = get_plot(position_element)
-    inputs = [plot.arg1, getproperty.(Ref(position_parent), get_accessed_fields(position_element))...]
+    inputs = [plot.arg1, get_accessed_nodes(position_element)...]
 
     map!(plot, inputs, :element_positions) do elements, triggers...
         return map(elements) do element
@@ -745,10 +745,9 @@ function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
     empty!(element)
     get_tooltip_label(plot._formatter[], element, pos)
 
-    parent_plot = get_plot(element)
     inputs = [
         plot._formatter, plot.arg1, plot.element_positions,
-        getproperty.(Ref(parent_plot), get_accessed_fields(element))...,
+        get_accessed_nodes(element)...,
     ]
 
     map!(plot, inputs, :element_labels) do formatter, elements, positions, triggers...

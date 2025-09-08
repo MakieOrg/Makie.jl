@@ -133,13 +133,18 @@ struct TrackedPlotElement{
     } <: PlotElement{PlotType}
     plot_stack::PlotStack
     accessor::AccessorType
-    accessed_fields::Vector{Symbol}
+    accessed::Vector{Computed}
 end
 
 
 # Manual
 track!(::PlotElement, ::Symbol...) = nothing
-track!(e::TrackedPlotElement, names::Symbol...) = push!(e.accessed_fields, names...)
+function track!(e::TrackedPlotElement, names::Symbol...)
+    for name in names
+        push!(e.accessed, getproperty(get_plot(e), name))
+    end
+    return
+end
 
 # Automatic
 function Base.getproperty(element::TrackedPlotElement, name::Symbol)
@@ -157,10 +162,10 @@ function Base.getproperty(element::TrackedPlotElement, name::Symbol)
 end
 
 # Util
-TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.accessor, Symbol[])
-Base.empty!(e::TrackedPlotElement) = empty!(e.accessed_fields)
-get_accessed_fields(e::TrackedPlotElement) = e.accessed_fields
-child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.accessor, e.accessed_fields)
+TrackedPlotElement(e::SimplePlotElement) = TrackedPlotElement(e.plot_stack, e.accessor, Computed[])
+Base.empty!(e::TrackedPlotElement) = empty!(e.accessed)
+get_accessed_nodes(e::TrackedPlotElement) = e.accessed
+child(e::TrackedPlotElement) = TrackedPlotElement(Base.tail(e.plot_stack), e.accessor, e.accessed)
 
 ################################################################################
 ### Accessors
