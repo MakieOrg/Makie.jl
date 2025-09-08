@@ -287,7 +287,11 @@ function get_accessor(plot::Poly, idx, plot_stack::Tuple{<:Lines, Vararg{Plot}})
     meshplot = plot.plots[1]
     ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     positions = meshplot.positions_transformed_f32c[]
-    range = meshplot.mesh[].views[submesh_index]
+    range = if length(meshplot.mesh[].views) > 0
+        meshplot.mesh[].views[submesh_index]
+    else
+        1:length(meshplot.mesh[].faces)
+    end
 
     face, face_index, pos = find_triangle_in_submesh(
         positions, view(meshplot.faces[], range), ray
