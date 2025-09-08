@@ -578,33 +578,34 @@ end
 ```
 """
 function construct_indicator_plot(di::DataInspector2, ::Type{<:LineSegments})
-    a = di.inspector_attributes
+    a = di.indicator_attributes
     return linesegments!(
-        di.parent, Point3d[], color = a.indicator_color,
-        linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+        di.parent, Point3d[], color = a.color,
+        linewidth = a.linewidth, linestyle = a.linestyle,
         visible = false, inspectable = false, depth_shift = -1.0f-6
     )
 end
 
 function construct_indicator_plot(di::DataInspector2, ::Type{<:Lines})
-    a = di.inspector_attributes
+    a = di.indicator_attributes
     return lines!(
-        di.parent, Point3d[], color = a.indicator_color,
-        linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+        di.parent, Point3d[], color = a.color,
+        linewidth = a.linewidth, linestyle = a.linestyle,
         visible = false, inspectable = false, depth_shift = -1.0f-6
     )
 end
 
 function construct_indicator_plot(di::DataInspector2, ::Type{<:Scatter})
-    a = di.inspector_attributes
+    a = di.indicator_attributes
+    range = di.inspector_attributes.range
     return scatter!(
         di.parent, Point3d(0), color = RGBAf(0, 0, 0, 0),
         marker = Rect,
         # draw marker occupies (markersize + 2 * strokewidth + ~1 AA pixel)
         # To be able to pick the plot behind the indicator, this needs to be < 2 * range
-        markersize = map((r, w) -> min(2r - 4 - 2w, 100), a.range, a.indicator_linewidth),
-        strokecolor = a.indicator_color,
-        strokewidth = a.indicator_linewidth,
+        markersize = map((r, w) -> min(2r - 4 - 2w, 100), range, a.linewidth),
+        strokecolor = a.color,
+        strokewidth = a.linewidth,
         inspectable = false, visible = false,
         depth_shift = -1.0f-6
     )
