@@ -148,10 +148,16 @@ function get_accessor(plot::Band, idx, plot_stack)
     ray = transform(inv(meshplot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     ps = meshplot.positions_transformed_f32c[]
     face, face_index, pos = find_picked_triangle(ps, meshplot.faces[], ray, idx)
-    isnan(pos) && return nothing
+
+    N = div(length(ps), 2)
+
+    if isnan(pos)
+        # if triangles get very thin the triangle intersection may not find an
+        # intersection. In this case interpolation doesn't matter.
+        return InterpolatedAccessor(mod1(idx, N), mod1(idx, N), 0.0, N)
+    end
 
     # Get index of of the quad/first point in ps1/ps2
-    N = div(length(ps), 2)
     idx = mod1(face_index, N - 1)
 
     if eltype(plot[1][]) <: VecTypes{3}
