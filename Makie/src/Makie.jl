@@ -229,7 +229,8 @@ include("stats/dendrogram.jl")
 include("interaction/events.jl")
 include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
-include("interaction/inspector.jl")
+include("DataInspector/util.jl")
+include("interaction/inspector.jl") # TODO: remove
 
 # DataInspector
 include("DataInspector/PlotElement.jl")
