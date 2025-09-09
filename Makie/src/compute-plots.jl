@@ -916,7 +916,6 @@ function calculated_attributes!(::Type{Image}, plot::Plot)
         maxi = Vec3d(last(x), last(y), 0)
         return decompose(Point2d, Rect2d(mini, maxi .- mini))
     end
-    Makie.register_position_transforms!(attr)
     return register_position_transforms!(attr)
 end
 

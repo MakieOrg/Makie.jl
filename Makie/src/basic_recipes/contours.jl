@@ -216,18 +216,16 @@ function color_per_level(::Nothing, colormap, colorscale, colorrange, a, levels)
     end
 end
 
-function contourlines(x, y, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
+function to_contour(x, y, z::AbstractMatrix{ET}, levels) where {ET}
     # Compute contours
     xv, yv = to_vector(x, size(z, 1), ET), to_vector(y, size(z, 2), ET)
-    contours = Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
-    return contourlines(T, contours, level_colors, labels)
+    return Contours.contours(xv, yv, z, convert(Vector{ET}, levels))
 end
 
 # Overload for matrix-like x and y lookups for contours
 # Just removes the `to_vector` invocation
-function contourlines(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels, level_colors, labels, T) where {ET}
-    contours = Contours.contours(x, y, z, convert(Vector{ET}, levels))
-    return contourlines(T, contours, level_colors, labels)
+function to_contour(x::AbstractMatrix{<:Real}, y::AbstractMatrix{<:Real}, z::AbstractMatrix{ET}, levels) where {ET}
+    return Contours.contours(x, y, z, convert(Vector{ET}, levels))
 end
 
 function has_changed(old_args, new_args)
@@ -257,12 +255,14 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         :level_colors
     )
 
+    map!(to_contour, plot, [:converted_1, :converted_2, :converted_3, :zlevels], :contour)
+
     map!(
         plot,
-        [:converted_1, :converted_2, :converted_3, :zlevels, :level_colors, :labels],
+        [:contour, :level_colors, :labels],
         [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
     ) do args...
-        return contourlines(args..., T)
+        return contourlines(T, args...)
     end
 
     # TODO:

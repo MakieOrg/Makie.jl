@@ -314,7 +314,9 @@ function to_ndim(T::Type{<:VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {
     )
 end
 
-lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
+lerp(a::T, b::T, val::AbstractFloat) where {T} = a .+ val * (b .- a)
+lerp(a::RGBAf, b::RGBAf, val::AbstractFloat) = a .+ val * (b .- a)
+lerp(a::Colorant, b::Colorant, val::AbstractFloat) = lerp(RGBAf(a), RGBAf(b), val)
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
@@ -514,10 +516,17 @@ Returns `x[i]` if x is a `AbstractArray` and `x` otherwise. `VecTypes` and `Mat`
 are treated as values rather than Arrays for this, i.e. they do not get indexed.
 """
 sv_getindex(v::AbstractArray, i::Integer) = v[i]
-sv_getindex(x, ::Integer) = x
+sv_getindex(v::AbstractArray{T, D}, i::CartesianIndex{D}) where {T, D} = v[i]
+sv_getindex(x, ::Union{CartesianIndex, Integer}) = x
+sv_getindex(x::VecTypes, ::CartesianIndex) = x
 sv_getindex(x::VecTypes, ::Integer) = x
+sv_getindex(x::Mat, ::CartesianIndex) = x
 sv_getindex(x::Mat, ::Integer) = x
+sv_getindex(x::AbstractMatrix{<:Colorant}, idx::CartesianIndex{2}) = x[idx]
+sv_getindex(x::ShaderAbstractions.Sampler, idx::CartesianIndex{2}) = x[idx]
 # for CairoMakie meshscatter we don't want images and patterns to get indexed
+sv_getindex(x::AbstractMatrix{<:Colorant}, ::CartesianIndex) = x
+sv_getindex(x::ShaderAbstractions.Sampler, ::CartesianIndex) = x
 sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
@@ -646,3 +655,13 @@ function spawnat(f, tid)
     schedule(task)
     return task
 end
+
+print_plot_tree(plot::Plot) = show_plot_tree(stdout, plot)
+function show_plot_tree(io::IO, plot::Plot, depth::Integer = 0)
+    println(io, ' '^(4 * depth), plot)
+    foreach(p -> show_plot_tree(io, p, depth + 1), plot.plots)
+    return
+end
+
+# TODO: Can this extend rootparent()?
+rootparent_plot(plot::Plot) = parent(plot) isa Scene ? plot : rootparent_plot(parent(plot))

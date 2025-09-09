@@ -74,7 +74,7 @@ function plot!(plot::Pie)
                 push!(points, Point2(x, y))
             end
 
-            points
+            return points
         end
     end
 
