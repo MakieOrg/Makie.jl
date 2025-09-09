@@ -1,6 +1,17 @@
 # Changelog
 
 ## Unreleased
+
+- Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
+  - Fixed issues with tooltips reading `inspector_label` from the wrong plot
+  - (Probably) fixed issues with tooltips reporting positions of the wrong space
+  - Broke up `show_data` into multiple parts:
+    - `get_accessor()` which produces picking information for a higher level plot
+    - `get_tooltip_position()` which extracts the position using that information
+    - `get_default_tooltip_label()` which generates a default label from picking information
+    - `update_indicator_plot!()` for drawing indicator plots
+  - Added functionality for persistent tooltips
+
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 
 ## [0.24.6] - 2025-08-19
