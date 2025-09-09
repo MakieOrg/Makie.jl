@@ -26,7 +26,7 @@ mutable struct DataInspector2
         inspector = new(
             parent,
             persistent, dynamic, plot_cache,
-            (0.0, 0.0), 0x00, PlotElement((persistent,), IndexedAccessor(0,0)),
+            (0.0, 0.0), 0x00, PlotElement((persistent,), IndexedAccessor(0, 0)),
             [0, 0, 0, 0, 0],
             inspector_attr, tooltip_attr, indicator_attr,
             obsfuncs, channel

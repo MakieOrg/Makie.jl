@@ -491,7 +491,7 @@ end
     # lines!(scene, [0, 285, 285], [135, 135, 0])
 
     # below top row
-    arc!(scene, Point2f(25, 140), 15, pi/3, pi, linewidth = 10)
+    arc!(scene, Point2f(25, 140), 15, pi / 3, pi, linewidth = 10)
     contour!(scene, 40:5:80, 140:5:180, [sqrt(x^2 + y^2) for x in -4:4, y in -4:4], levels = 3, linewidth = 5)
     crossbar!(scene, [90, 105], [160, 160], [140, 145], [170, 165], width = 15)
     p = density!(scene, 10 .* sin.(1:100))
@@ -502,7 +502,7 @@ end
     hexbin!(scene, 200 .+ 10 .* sin.(1:100), 160 .+ 10 .* cos.(1:100), bins = 4)
     p = hist!(scene, 230 .+ 10 .* sin.(1:100), bins = 4)
     translate!(p, 0, 140, 0)
-    pie!(scene, 260, 160, [3,5,7,11,13], radius = 15, color = 1:5)
+    pie!(scene, 260, 160, [3, 5, 7, 11, 13], radius = 15, color = 1:5)
 
     poly!(scene, [10, 30, 20], [170, 165, 180])
 
@@ -517,7 +517,7 @@ end
     p = stephist!(scene, 150 .+ 10 .* sin.(1:70), bins = 4, linewidth = 4)
     translate!(p, 0, 190, 0)
     tricontourf!(scene, 180 .+ 15 .* sin.(1:100), 200 .+ 15 .* cos.(1:100), 1:100, levels = 3)
-    p = violin!(scene, ones(100), 200 .+ 10 .* sin.(range(0, 10, length = 100).^2), side = ifelse.(1:100 .> 50, :left, :right))
+    p = violin!(scene, ones(100), 200 .+ 10 .* sin.(range(0, 10, length = 100) .^ 2), side = ifelse.(1:100 .> 50, :left, :right))
     translate!(p, 190, 0, 0)
     scale!(p, 20, 1, 1)
     v = p
@@ -535,7 +535,7 @@ end
         (235, 145), (265, 154), (20, 175),
         # top row
         (17, 209), (32, 194), (39, 193), (61, 211), (56, 195), (76, 207), (101, 199),
-        (130, 195), (155, 214), (185, 193), (205, 193), (214, 208), (242, 208)
+        (130, 195), (155, 214), (185, 193), (205, 193), (214, 208), (242, 208),
     ]
 
     e = events(scene)
@@ -582,7 +582,7 @@ end
     volumeslices(col3d[1, 1], 1:10, 1:10, 1:10, data3d)
     voxels(col3d[2, 1], data3d)
     contour3d(col3d[3, 1], 1:10, 1:10, reshape(10 .* sin.(1:100), (10, 10)), linewidth = 3)
-    wireframe(col3d[4, 1], Rect3d(0,0,0,1,1,1))
+    wireframe(col3d[4, 1], Rect3d(0, 0, 0, 1, 1, 1))
 
     col2d = f[1, 2]
     x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
@@ -615,7 +615,7 @@ end
         (97.0, 658.0), (65.0, 634.0), (98.0, 471.0), (75.0, 314.0), (102.0, 140.0),
         # 2D
         (315.0, 632.0), (312.0, 387.0), (362.0, 226.0), (410.0, 146.0), (311.0, 134.0),
-        (210.0, 151.0), (305.0, 41.0)
+        (210.0, 151.0), (305.0, 41.0),
     ]
 
     st = Makie.Stepper(f)

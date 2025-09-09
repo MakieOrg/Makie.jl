@@ -203,7 +203,7 @@ function IndexedAccessor(plot::Heatmap, idx)
     src_ij = Tuple(cart)
     for offset in offsets
         i, j = clamp.(src_ij .+ offset, 1, _size)
-        idx = i + _size[1] * (j-1)
+        idx = i + _size[1] * (j - 1)
         rect = get_picked_model_space_rect(plot, idx)
         pos = Vec2d(ray_rect_intersection(rect, ray))
         !isnan(pos) && return IndexedAccessor((i, j), _size)

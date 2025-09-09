@@ -184,8 +184,8 @@ function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot
     if a.index1[1] > N
         if a.index1[1] == N + 3
             return InterpolatedAccessor(1, 2, 0.0, N)
-        elseif  a.index1[1] == N + 1
-            return InterpolatedAccessor(N-1, N, 1.0, N)
+        elseif a.index1[1] == N + 1
+            return InterpolatedAccessor(N - 1, N, 1.0, N)
         else
             picked_pos = element_getindex(plot.linepoints[], a)
             dim = 1 + (plot.direction[] == :y)
@@ -194,7 +194,7 @@ function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot
                 return InterpolatedAccessor(1, 2, 0.0, N)
             end
             f = (picked_pos[dim] - upper[i - 1][dim]) / (upper[i][dim] - upper[i - 1][dim])
-            return InterpolatedAccessor(i-1, i, f, N)
+            return InterpolatedAccessor(i - 1, i, f, N)
         end
     end
     return a
@@ -249,9 +249,9 @@ function get_accessor(plot::Violin, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}}
     dim = 1 + (plot.orientation[] !== :horizontal)
 
     # range of vertices relevant to the picked violin/density
-    violin_start = mapreduce(i -> length(plot.vertices[][i]), +, 1 : (violin_idx - 1), init = 1)
+    violin_start = mapreduce(i -> length(plot.vertices[][i]), +, 1:(violin_idx - 1), init = 1)
     N = length(plot.vertices[][violin_idx])
-    violin_range = violin_start : (violin_start + N - 1)
+    violin_range = violin_start:(violin_start + N - 1)
 
     # Relevant vertex positions after transform_func f32c, pre model_f32c application
     verts = view(meshplot.positions_transformed_f32c[], violin_range)
