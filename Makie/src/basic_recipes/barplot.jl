@@ -37,42 +37,82 @@ end
 """
     barplot(positions, heights; kwargs...)
 
-Plots a barplot.
+Plots bars of the given `heights` at the given (scalar) `positions`.
 """
 @recipe BarPlot (positions,) begin
-    """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
-    With a log scale, the automatic default is half the minimum value because zero is an invalid value for a log scale.
+    """
+    Controls the baseline of the bars. This is zero in the default `automatic` case
+    unless the barplot is in a log-scaled `Axis`. With a log scale, the automatic
+    default is half the minimum value because zero is an invalid value for a log scale.
     """
     fillto = automatic
+    "Offsets all bars by the given real value. Can also be set per-bar."
     offset = 0.0
+    "Sets the color of bars."
     color = @inherit patchcolor
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
+    """
+    Dodge can be used to separate bars drawn at the same `positions`. For this
+    each bar is given an integer value corresponding to its position relative to
+    the given `positions`. E.g. with `positions = [1, 1, 1, 2, 2, 2]` we have
+    3 bars at each positions which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
+    """
     dodge = automatic
+    """
+    Sets the maximum integer for `dodge`. This sets how many bars can be placed
+    at a given position, controlling their width.
+    """
     n_dodge = automatic
     """
     The final width of the bars is calculated as `w * (1 - gap)` where `w` is the width of each bar
-    as determined with the `width` attribute.
+    as determined with the `width` attribute. When `dodge` is used the `w` corresponds to the width
+    of undodged bars, making this control the gap between groups.
     """
     gap = 0.2
+    "Sets the gap between dodged bars relative to the size of the dodged bars."
     dodge_gap = 0.03
+    """
+    Similar to `dodge`, this allows bars at the same `positions` to be stacked
+    by identifying their stack position with integers. E.g. with
+    `positions = [1, 1, 1, 2, 2, 2]` each group of 3 bars can be stacked with
+    `stack = [1, 2, 3, 1, 2, 3]`.
+    """
     stack = automatic
+    "Sets the outline linewidth of bars."
     strokewidth = @inherit patchstrokewidth
+    "Sets the outline color of bars."
     strokecolor = @inherit patchstrokecolor
     """
     The gapless width of the bars. If `automatic`, the width `w` is calculated as `minimum(diff(sort(unique(positions)))`.
     The actual width of the bars is calculated as `w * (1 - gap)`.
     """
     width = automatic
-    "Controls the direction of the bars, can be `:y` (vertical) or `:x` (horizontal)."
+    """
+    Controls the direction of the bars. can be `:y` (`height` is vertical) or
+    `:x` (`height` is horizontal).
+    """
     direction = :y
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
     "Labels added at the end of each bar."
     bar_labels = nothing
+    "Sets a `height` value beyond which labels are drawn inside the bar instead of outside."
     flip_labels_at = Inf
+    "Sets the text rotation of labels in radians."
     label_rotation = 0π
+    "Sets the color of labels."
     label_color = @inherit textcolor
+    "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
     color_over_background = automatic
+    "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
     color_over_bar = automatic
     "The distance of the labels from the bar ends in screen units. Does not apply when `label_position = :center`."
     label_offset = 5
@@ -80,7 +120,9 @@ Plots a barplot.
     label_font = @inherit font
     "The font size of the bar labels."
     label_size = @inherit fontsize
+    "Formatting function which is applied to bar labels before they are passed on `text()`"
     label_formatter = bar_label_formatter
+    "Sets the text alignment of labels."
     label_align = automatic
     "The position of each bar's label relative to the bar. Possible values are `:end` or `:center`."
     label_position = :end
