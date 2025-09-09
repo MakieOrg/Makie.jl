@@ -417,7 +417,8 @@ function get_tooltip_position(
 end
 
 function get_tooltip_position(element::PlotElement{<:Voxels})
-    return voxel_position(get_plot(element), Tuple(element.index.index)...)
+    i, j, k = Tuple(accessor(element).index)
+    return voxel_position(get_plot(element), i, j, k)
 end
 
 ########################################
