@@ -668,6 +668,77 @@ end
     st
 end
 
+@reference_test "DataInspector2 part 2" begin
+    f = Figure(size = (450, 750))
+    col3d = f[1, 1]
+    data3d = reshape(sin.(1:1000), (10, 10, 10))
+    volumeslices(col3d[1, 1], 1:10, 1:10, 1:10, data3d)
+    voxels(col3d[2, 1], data3d)
+    contour3d(col3d[3, 1], 1:10, 1:10, reshape(10 .* sin.(1:100), (10, 10)), linewidth = 3)
+    wireframe(col3d[4, 1], Rect3d(0,0,0,1,1,1))
+
+    col2d = f[1, 2]
+    x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
+    y = sin.(2:2:20000) .* sin.(5:5:50000)
+    datashader(col2d[1, 1], Point2f.(x, y), async = false)
+    heatmap(col2d[2, 1], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
+    ablines(col2d[3, 1], 0, 1.0)
+    hlines!(1)
+    vlines!(1)
+    hspan!(9, 10)
+    vspan!(9, 10)
+
+    colsize!(f.layout, 1, 125)
+
+    e = events(f)
+    e.window_open[] = true # Prevent the hover event Channel from getting closed
+
+    dis = []
+    for a in f.content
+        di = Makie.DataInspector2(a, blocking = true, no_tick_discard = true)
+        # force indicator plots to be created for WGLMakie
+        Makie.get_indicator_plot(di, LineSegments)
+        Makie.get_indicator_plot(di, Lines)
+        Makie.get_indicator_plot(di, Scatter)
+        push!(dis, di)
+    end
+
+    on(events(f).mousebutton, priority = typemax(Int)) do e
+        @info events(f).mouseposition[]
+    end
+
+    mps = [
+        # 3D
+        (97.0, 658.0), (65.0, 634.0), (98.0, 471.0), (75.0, 314.0), (102.0, 140.0),
+        # 2D
+        (315.0, 632.0), (312.0, 387.0), (362.0, 226.0), (410.0, 146.0), (311.0, 134.0),
+        (210.0, 151.0), (305.0, 41.0)
+    ]
+
+    st = Makie.Stepper(f)
+
+    # record
+    is_wglmakie = Symbol(Makie.current_backend()) === :WGLMakie
+
+    for mp in mps
+        # remove tooltip so we don't select it
+        e.mouseposition[] = (1.0, 1.0)
+        notify(e.tick) # trigger DataInspector update
+        colorbuffer(f) # force update of picking buffer
+        is_wglmakie && sleep(0.15) # wait for WGLMakie
+
+        # verify cleanup
+        @test !any(di -> di.dynamic_tooltip.visible[], dis)
+
+        e.mouseposition[] = mp
+        notify(e.tick)
+        is_wglmakie && sleep(0.15) # wait for WGLMakie
+        Makie.step!(st)
+    end
+
+    st
+end
+
 function create_test_plot()
     # Grid scatter
     x, y = repeat(1:10, 8), repeat(1:8, inner = 10)
