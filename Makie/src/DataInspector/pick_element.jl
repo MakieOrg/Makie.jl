@@ -178,6 +178,46 @@ function InterpolatedAccessor(
     end
 end
 
+function IndexedAccessor(plot::Image, idx)
+    rect = get_picked_model_space_rect(plot, idx)
+    model = plot.model_f32c[]
+    ray = transform(inv(model), ray_at_cursor(parent_scene(plot)))
+    pos = Vec2d(ray_rect_intersection(rect, ray))
+    isnan(pos) && return nothing
+
+    size = Base.size(plot.image[])
+    ij_interp = (pos - origin(rect)) ./ widths(rect) .* size
+    ij = clamp.(ceil.(Int, ij_interp), 1, size)
+    return IndexedAccessor(ij, size)
+end
+
+function IndexedAccessor(plot::Heatmap, idx)
+    # Heatmap can be irregular, so we can't rely (solely) on interpolation
+
+    # Does idx point to the picked cell?
+    rect = get_picked_model_space_rect(plot, idx)
+    model = plot.model_f32c[]
+    ray = transform(inv(model), ray_at_cursor(parent_scene(plot)))
+    pos = Vec2d(ray_rect_intersection(rect, ray))
+    _size = size(plot.image[])
+    cart = CartesianIndices(_size)[idx]
+    !isnan(pos) && return IndexedAccessor(cart, _size)
+
+    # If not it's probably a neighboring cell
+    offsets = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]
+    src_ij = Tuple(cart)
+    for offset in offsets
+        i, j = clamp.(src_ij .+ offset, 1, _size)
+        idx = i + _size[1] * (j-1)
+        rect = get_picked_model_space_rect(plot, idx)
+        pos = Vec2d(ray_rect_intersection(rect, ray))
+        !isnan(pos) && return IndexedAccessor((i, j), _size)
+    end
+
+    # If we still haven't found it we're probably outside the Heatmap
+    return nothing
+end
+
 function get_accessor(plot::Union{Image, Heatmap}, idx, plot_stack::Tuple{})
     if plot.interpolate[]
         # Heatmap and Image are always a Rect2f. The transform function is currently
@@ -187,9 +227,15 @@ function get_accessor(plot::Union{Image, Heatmap}, idx, plot_stack::Tuple{})
         rect = get_picked_model_space_rect(plot, idx)
         return InterpolatedAccessor(plot, rect, idx, edge_based = plot isa Heatmap)
     else
-        _size = size(plot.image[])
-        cart = CartesianIndices(_size)[idx]
-        return IndexedAccessor(cart, _size)
+        # Indicators can cause this to flick between neighboring cells when the
+        # drawn line affects which cell is the closest drawn element. If we could
+        # render indicators without producing picking data and without discarding
+        # the draw of heatmap/image data this code could be used.
+        # _size = size(plot.image[])
+        # cart = CartesianIndices(_size)[idx]
+        # return IndexedAccessor(cart, _size)
+
+        return IndexedAccessor(plot, idx)
     end
 end
 
