@@ -287,7 +287,7 @@ function get_default_tooltip_label(element::PlotElement{<:Violin}, pos)
 end
 
 ################################################################################
-### Spy, Hexbin, Pie, VolumeSlices
+### Spy, Hexbin, Pie, VolumeSlices, datashader
 ################################################################################
 
 get_accessor(plot::Spy, idx, plot_stack::Tuple{<:Lines}) = nothing
@@ -298,4 +298,10 @@ get_default_tooltip_label(element::PlotElement{<:Hexbin}, pos) = element.count_h
 
 function get_default_tooltip_label(element::PlotElement{<:Pie}, pos)
     return element.values
+end
+
+function get_default_tooltip_label(element::PlotElement{<:DataShader}, pos)
+    p = get_plot(element)
+    data = reshape(p.canvas[].pixelbuffer, p.canvas[].resolution)
+    return element_getindex(data, element)
 end

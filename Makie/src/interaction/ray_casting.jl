@@ -316,11 +316,6 @@ function position_on_plot(plot::Union{Lines, LineSegments}, idx, ray::Ray; apply
 end
 
 function model_space_boundingbox(plot::Heatmap)
-    # Workaround for Resampler
-    if !isempty(plot.plots)
-        return model_space_boundingbox(plot.plots[1])
-    end
-
     # make sure x/y_transformed_f32c exist
     add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
 

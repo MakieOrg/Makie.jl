@@ -90,11 +90,6 @@ end
 get_picked_model_space_rect(plot::Image, idx) = Rect2d(model_space_boundingbox(plot))
 
 function get_picked_model_space_rect(plot::Heatmap, idx)
-    # Workaround for Resampler
-    if !isempty(plot.plots)
-        return get_picked_model_space_rect(plot.plots[1], idx)
-    end
-
     # make sure x/y_transformed_f32c exist
     add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
 

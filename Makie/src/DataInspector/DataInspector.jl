@@ -400,6 +400,9 @@ function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
 end
 ```
 """
+function get_tooltip_position(element::PlotElement{<:HeatmapShader})
+    return get_tooltip_position(child(element))
+end
 function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
     plot = get_plot(element)
     x = dimensional_element_getindex(plot.x[], element, 1)
@@ -474,6 +477,9 @@ end
 
 get_default_tooltip_label(element::PlotElement{<:PrimitivePlotTypes}, pos) = pos
 get_default_tooltip_label(element::PlotElement{<:Union{Image, Heatmap}}, pos) = element.image
+function get_default_tooltip_label(element::PlotElement{<:HeatmapShader}, pos)
+    return get_default_tooltip_label(child(element), pos)
+end
 
 function apply_tooltip_format(fmt, data::Tuple)
     return mapreduce(x -> apply_tooltip_format(fmt, x), (a, b) -> "$a\n$b", data)
@@ -662,7 +668,7 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:MeshScatte
     indicator = get_indicator_plot(di, LineSegments)
     update!(indicator, arg1 = ps, visible = true)
 
-    return
+    return indicator
 end
 
 function update_indicator!(di::DataInspector2, element::PlotElement{<:Mesh}, pos)
@@ -671,15 +677,19 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Mesh}, pos
     indicator = get_indicator_plot(di, LineSegments)
     update!(indicator, arg1 = convert_arguments(LineSegments, bbox)[1], visible = true)
 
-    return
+    return indicator
 end
 
+function update_indicator!(di::DataInspector2, element::PlotElement{<:HeatmapShader}, pos)
+    return update_indicator!(di, child(element), pos)
+end
 function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Image, Heatmap}}, pos)
     if element.interpolate[]
         indicator = get_indicator_plot(di, Scatter)
         p3d = to_ndim(Point3d, pos, 0)
         color = sample_color(element, element.image)
         update!(indicator; arg1 = p3d, color = color, visible = true)
+        return indicator
     else
         # TODO: Should this be a function?
         i, j = Tuple(accessor(element).index)
@@ -689,6 +699,7 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Imag
         ps = to_ndim.(Point3d, convert_arguments(Lines, bbox)[1], 0)
         indicator = get_indicator_plot(di, Lines)
         update!(indicator, arg1 = ps, visible = true)
+        return indicator
     end
 
     return
