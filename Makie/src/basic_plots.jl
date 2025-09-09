@@ -421,7 +421,14 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     joinstyle = @inherit joinstyle
     "Sets the minimum inner join angle below which miter joins truncate. See also `Makie.miter_distance_to_angle`."
     miter_limit = @inherit miter_limit
-    "Sets which attributes to cycle when creating multiple plots."
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color]
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
@@ -451,7 +458,14 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
     linestyle = nothing
     "Sets the type of linecap used, i.e. :butt (flat with no extrusion), :square (flat with 1 linewidth extrusion) or :round."
     linecap = @inherit linecap
-    "Sets which attributes to cycle when creating multiple plots."
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color]
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
@@ -477,6 +491,14 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
     color = @inherit patchcolor
     "sets whether colors should be interpolated"
     interpolate = true
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
     """
     Applies a "material capture" texture to the generated mesh. A matcap encodes
@@ -543,7 +565,14 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     font = "default"
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
-    "Sets which attributes to cycle when creating multiple plots"
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color]
     "Enables depth-sorting of markers which can improve border artifacts. Currently supported in GLMakie only."
     depthsorting = false
@@ -576,6 +605,14 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
     markersize = 0.1
     "Sets the rotation of the mesh. A numeric rotation is around the z-axis, a `Vec3f` causes the mesh to rotate such that the the z-axis is now that vector, and a quaternion describes a general rotation. This can be given as a Vector to apply to each scattered mesh individually."
     rotation = 0.0
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color]
     """
     Sets a transform for uv coordinates, which controls how a texture is mapped to the scattered mesh.
@@ -774,6 +811,14 @@ Plots polygons, which are defined by
     "Controls whether lights affect the polygon."
     shading = false
 
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
     """
     Depth shift of stroke plot. This is useful to avoid z-fighting between the stroke and the fill.
