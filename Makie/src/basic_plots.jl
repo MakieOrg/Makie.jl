@@ -508,7 +508,6 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     Sets the font to be used for character markers
     """
     font = "default"
-    uv_offset_width = (0.0, 0.0, 0.0, 0.0)
     "Sets the space in which `markersize` is given. See `Makie.spaces()` for possible inputs"
     markerspace = :pixel
     "Sets which attributes to cycle when creating multiple plots"
