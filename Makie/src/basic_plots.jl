@@ -79,7 +79,7 @@ function mixin_generic_plot_attributes()
         transformation = :automatic
         "Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`."
         model = automatic
-        "Controls whether the plot will be rendered or not."
+        "Controls whether the plot gets rendered or not."
         visible = true
         "Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency."
         transparency = false
