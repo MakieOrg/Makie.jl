@@ -29,11 +29,21 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     linewidth = 1.0
     "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
-    "Sets the cap style for non-looping contour lines. See `?lines`."
+    """
+    Sets the type of line cap used for contour lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
-    "Controls how line segments are joined. See `?lines`."
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
-    "Controls how far a line joint can extend before getting cut off. See `?lines`."
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
     """
     If `true`, adds text labels to the contour lines.

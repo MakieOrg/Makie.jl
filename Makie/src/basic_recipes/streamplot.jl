@@ -58,13 +58,23 @@ See the function `Makie.streamplot_impl` for implementation details.
     "Sets the quality of the cone mesh generated for 3D arrow markers."
     quality = 16
 
-    "Sets the linewidth of streamlines. See `?lines`."
+    "Sets the linewidth of streamlines."
     linewidth = @inherit linewidth
-    "Sets the linecap of streamlines, allowing e.g. rounded line ends. See `?lines`."
+    """
+    Sets the type of line cap used for streamlines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
-    "Controls how the points where line segments join are rendered. See `?lines`."
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
-    "Controls how far sharp line joins may extend. See `?lines`."
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
     "Sets the dash pattern for lines. See `?lines`."
     linestyle = nothing

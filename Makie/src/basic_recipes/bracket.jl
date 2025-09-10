@@ -49,13 +49,20 @@ By default each label is rotated parallel to the line between the bracket points
     linewidth = @inherit linewidth
     "Sets the line pattern of the bracket line. See `?lines` for more information."
     linestyle = nothing
-    "Sets the cap style of the bracket line. See `?lines` for more information."
-    linecap = @inherit linecap
-    "Sets the corner style of the bracket line. See `?lines` for more information."
-    joinstyle = @inherit joinstyle
     """
-    Controls thresholding between sharp and truncated corners of the bracket line.
-    See `?lines` for more information.
+    Sets the type of line cap used for bracket lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
+    linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
+    joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
     """
     miter_limit = @inherit miter_limit
     "Sets the justification of multi-line text."
