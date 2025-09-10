@@ -151,8 +151,8 @@ function colormap_attributes(attr)
     )
 end
 
-function mixin_colormap_attributes()
-    return @DocumentedAttributes begin
+function mixin_colormap_attributes(; kwargs...)
+    attr = @DocumentedAttributes begin
         """
         Sets the colormap that is sampled for numeric `color`s.
         `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils.
@@ -174,6 +174,7 @@ function mixin_colormap_attributes()
         "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied."
         alpha = 1.0
     end
+    return filter_attributes!(attr; kwargs...)
 end
 
 """
