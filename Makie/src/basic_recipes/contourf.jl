@@ -27,8 +27,6 @@ similar to how [`surface`](@ref) works.
     This can be used for example to draw bands for the upper 90% while excluding the lower 10% with `levels = 0.1:0.1:1.0, mode = :relative`.
     """
     mode = :normal
-    colormap = @inherit colormap
-    colorscale = identity
     """
     In `:normal` mode, if you want to show a band from `-Inf` to the low edge,
     set `extendlow` to `:auto` to give the extension the same color as the first level,
@@ -41,9 +39,9 @@ similar to how [`surface`](@ref) works.
     (default `nothing` means no extended band).
     """
     extendhigh = nothing
-    # TODO, Isoband doesn't seem to support nans?
-    nan_color = :transparent
     mixin_generic_plot_attributes()...
+    # TODO, Isoband doesn't seem to support nans?
+    mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
 end
 
 # these attributes are computed dynamically and needed for colorbar e.g.

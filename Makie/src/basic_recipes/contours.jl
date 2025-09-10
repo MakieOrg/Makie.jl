@@ -25,12 +25,16 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
+    "Sets the width of contour lines."
     linewidth = 1.0
+    "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
+    "Sets the cap style for non-looping contour lines. See `?lines`."
     linecap = @inherit linecap
+    "Controls how line segments are joined. See `?lines`."
     joinstyle = @inherit joinstyle
+    "Controls how far a line joint can extend before getting cut off. See `?lines`."
     miter_limit = @inherit miter_limit
-    enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
     """
@@ -49,6 +53,8 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
+    "Controls whether 3D contours consider depth. Turning this off may improve perfomance."
+    enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
