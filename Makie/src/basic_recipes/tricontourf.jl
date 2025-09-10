@@ -9,7 +9,11 @@ vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can als
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
 @recipe Tricontourf begin
-    "Can be either an `Int` which results in n bands delimited by n+1 equally spaced levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 bands."
+    """
+    Can be either an `Int` which results in n bands delimited by n+1 equally spaced
+    levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges
+    from low to high, which result in n-1 bands.
+    """
     levels = 10
     """
     Sets the way in which a vector of levels is interpreted,
@@ -42,6 +46,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
+    "Sets the color used for nan values in the generated contour."
     nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
@@ -51,7 +56,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     or as a `Triangulation` from DelaunayTriangulation.jl.
     """
     triangulation = DelaunayTriangulation()
-    edges = nothing
+    # edges = nothing # unused?
     mixin_generic_plot_attributes()...
 end
 
