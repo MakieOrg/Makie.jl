@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- When plotting `PlotSpec`s, allow them to inherit all attributes of the provided `plotlist`.  This includes `transformation` and `transform_func`, which fix plotspecs in e.g. log-scaled axes, PolarAxis, and GeoAxis [#5206](https://github.com/MakieOrg/Makie.jl/pull/5206).
 
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
