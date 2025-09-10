@@ -10,20 +10,50 @@ Curves can be:
 If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` is set != nothing, a scatterplot is added.
 """
 @recipe Series (curves::AbstractVector{<:Union{BezierPath, AbstractVector{<:Point}}},) begin
-    linewidth = 2
+    documented_attributes(Lines)...
+    # TODO: All the scatter attributes should probably work but need to be
+    # implemented. May also need a logic rework on the lines-scatterlines switch
+    # documented_attributes(Scatter)...
+
+    # TODO: This should probably get updated to rely on colormap + integer colors?
+    "Sets a categorical colormap to sample colors per curve."
     color = :lighttest
+    "Sets a constant color for all curves. This acts as an overwrite for `color`"
     solid_color = nothing
+
+    "Sets a label per curve. By default, curves are labeled `series \$i`."
     labels = nothing
-    linestyle = :solid
-    linecap = @inherit linecap
-    joinstyle = @inherit joinstyle
-    miter_limit = @inherit miter_limit
+
+    # Scatterlines vs Lines
+    """
+    Sets the marker for scatter. Setting this to a value other than `nothing`
+    at construction will include a scatter plot in the visualization.
+    """
     marker = nothing
+    """
+    Sets the markersize for scatter. Setting this to a value other than `nothing`
+    at construction will include a scatter plot in the visualization.
+    """
     markersize = nothing
-    markercolor = automatic
+    """
+    Sets the outline color for scatter markers. Setting this to a value other than
+    `nothing` at construction will include a scatter plot in the visualization.
+    """
     strokecolor = nothing
+    """
+    Sets the outline width for scatter markers. Setting this to a value other than
+    `nothing` at construction will include a scatter plot in the visualization.
+    """
     strokewidth = nothing
-    space = :data
+
+    """
+    Sets the colors of scatter markers when they are drawn. This defaults to the
+    same color that is used for lines.
+    """
+    markercolor = automatic
+
+    # Value overwrite
+    linewidth = 2
 end
 
 replace_missing(x) = ismissing(x) ? NaN : x
@@ -92,7 +122,7 @@ function plot!(plot::Series)
             scatterlines!(
                 plot, positions;
                 linewidth = linewidth, linecap = plot.linecap, joinstyle = joinstyle,
-                miter_limit = miter_limit, color = series_color, markercolor = series_color,
+                miter_limit = miter_limit, color = series_color, markercolor = markercolor,
                 label = label[], scatter..., space = space, linestyle = series_linestyle
             )
         else
