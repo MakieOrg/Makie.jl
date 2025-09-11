@@ -68,7 +68,7 @@ function mixin_generic_plot_attributes()
         - `:inherit`: Inherit transformations
         - `:inherit_model`: Inherit only model transformations
         - `:inherit_transform_func`: Inherit only the transform function
-        - `:nothing`: Inherit neither, fully disconnecting the childs transformations from the parent
+        - `:nothing`: Inherit neither, fully disconnecting the child's transformations from the parent
 
         Another option is to pass arguments to the `transform!()` function which
         then get applied to the plot. For example `transformation = (:xz, 1.0)`

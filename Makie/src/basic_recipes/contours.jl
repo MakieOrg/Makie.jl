@@ -63,7 +63,7 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
-    "Controls whether 3D contours consider depth. Turning this off may improve perfomance."
+    "Controls whether 3D contours consider depth. Turning this off may improve performance."
     enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...

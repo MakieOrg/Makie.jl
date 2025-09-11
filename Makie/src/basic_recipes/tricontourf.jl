@@ -56,7 +56,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     or as a `Triangulation` from DelaunayTriangulation.jl.
     """
     triangulation = DelaunayTriangulation()
-    # edges = nothing # unused?
     mixin_generic_plot_attributes()...
 end
 

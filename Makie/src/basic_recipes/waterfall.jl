@@ -6,7 +6,7 @@ positive and negative components that add up to a net result as a barplot with s
 to each other.
 """
 @recipe Waterfall begin
-    filtered_attributes(BarPlot, exclude = (:fillto, ))...
+    filtered_attributes(BarPlot, exclude = (:fillto, :direction))...
 
     "When true, markers are drawn to indicate the direction of the bar."
     show_direction = false
