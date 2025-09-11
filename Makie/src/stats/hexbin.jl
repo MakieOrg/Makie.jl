@@ -30,6 +30,7 @@ Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
     strokecolor = :black
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
+    fxaa = false # set to true by generic attributes
 end
 
 # xy hardcoded scale factors
