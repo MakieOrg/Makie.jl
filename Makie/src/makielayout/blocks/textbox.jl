@@ -87,7 +87,7 @@ function initialize_block!(tbox::Textbox)
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values = true) do ci, bbs
-
+        isempty(bbs) && return Point2f(0)
         textplot = t.blockscene.plots[1]
 
         hadvances = Float32[]
