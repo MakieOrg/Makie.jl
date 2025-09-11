@@ -28,7 +28,7 @@ It is most commonly used as part of the `boxplot`.
     Dodge can be used to separate crossbars drawn at the same `x` positions. For this
     each crossbar is given an integer value corresponding to its position relative to
     the given `positions`. E.g. with `positions = [1, 1, 1, 2, 2, 2]` we have
-    3 bars at each positions which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
+    3 crossbars at each position which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
     """
     dodge = automatic
     """
