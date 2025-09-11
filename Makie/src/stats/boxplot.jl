@@ -219,12 +219,10 @@ function Makie.plot!(plot::BoxPlot)
     crossbar!(
         plot, Attributes(plot),
         plot.centers, plot.medians, plot.boxmin, plot.boxmax,
-        gap = 0,
-        color = plot.boxcolor,
-        midlinecolor = plot.mediancolor,
-        midlinewidth = plot.medianlinewidth,
-        show_midline = plot.show_median,
-        width = plot.boxwidth,
+        gap = 0, color = plot.boxcolor, width = plot.boxwidth,
+        show_midline = plot.show_median, midlinecolor = plot.mediancolor, midlinewidth = plot.medianlinewidth,
+        # These should not be passed/defaulted
+        n_dodge = automatic, dodge = automatic
     )
     return plot
 end
