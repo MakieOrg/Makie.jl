@@ -110,10 +110,12 @@ Plot a histogram of `values`.
     """
     scale_to = nothing
 
-    filtered_attributes(BarPlot, exclude = (
-        :dodge, :n_dodge, :dodge_gap, :stack, :width,
-        :color_over_background, :color_over_bar # renamed here :(
-    ))...
+    filtered_attributes(
+        BarPlot, exclude = (
+            :dodge, :n_dodge, :dodge_gap, :stack, :width,
+            :color_over_background, :color_over_bar, # renamed here :(
+        )
+    )...
     "Sets the gap between bars relative to their width. The new width is `w * (1 - gap)`."
     gap = 0
     "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
