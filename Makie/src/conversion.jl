@@ -20,8 +20,6 @@ function used_attributes end
 
 abstract type ConversionTrait end
 
-const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
-
 struct NoConversion <: ConversionTrait end
 
 # No conversion by default
@@ -35,7 +33,34 @@ Plots with the `PointBased` trait convert their input data to a
 `Vector{Point{D, Float32}}`.
 """
 struct PointBased <: ConversionTrait end
-conversion_trait(::Type{<:XYBased}) = PointBased()
+
+argument_docs(::PointBased) = """
+## Arguments (`PointBased()`)
+- `x`: A `Real`, `AbstractVector{<:Real}` or `ClosedInterval[<:Real]` corresponding to \
+x positions. Intervals require another dimension to be given as an `AbstractVector`. \
+Defaults to `eachindex(y)` if omitted.
+- `y`: A `Real`, `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` corresponding to \
+y positions. Intervals require another dimension to be given as an `AbstractVector`.
+- `z`: A `Real`, `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` corresponding to \
+z positions. Using a matrix will change `x` and `y` to be interpreted per matrix axis.
+- `position`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` \
+corresponding to `(x, y)` or `(x, y, z)` positions. Used instead of `x`, `y`, `z` arguments.
+- `matrix`: A 2 or 3 by N matrix interpreted to contain N 2 or 3 dimensional positions. \
+The matrix can also be transposed, i.e. N by 2 or 3.
+- `geometry_primitive`: Coordinates of a `GeometryBasics.GeometryPrimitive` which can \
+be decomposed into points. This includes for example `Rect`, `Sphere` and `GeometryBasics.Mesh`.
+- `multi_point`: A `GeometryBasics.MultiPoint` or `AbstractVector` thereof, interpreted \
+as a collection of positions.
+- `line_string`: A `GeometryBasics.LineString`, `GeometryBasics.MultiLineString` or \
+`AbstractVector{<:LineString}` interpreted as a collection of positions. The latter \
+two will separate line strings by NaN points to disconnect them.
+- `polygon`: A `GeometryBasics.Polygon`, `GeometryBasics.MultiPolygon` or \
+`AbstractVector{<:Polygon}` disassembled into positions of the exterior and \
+interior coordinates. Each polygon, interior and exterior is separated by a NaN \
+point. Each exterior and interior is closed, meaning the first point is duplicated \
+after the last.
+- `bezierpath`: A `Makie.BezierPath` discretized into 2D positions.
+"""
 
 """
     GridBased <: ConversionTrait
@@ -44,7 +69,6 @@ GridBased is an abstract conversion trait for data that exists on a grid.
 
 Child types: [`VertexGrid`](@ref), [`CellGrid`](@ref)
 
-Used for: Scatter, Lines \\
 See also: [`ImageLike`](@ref)
 """
 abstract type GridBased <: ConversionTrait end
@@ -62,7 +86,6 @@ Used for: Surface \\
 See also: [`CellGrid`](@ref), [`ImageLike`](@ref)
 """
 struct VertexGrid <: GridBased end
-conversion_trait(::Type{<:Surface}) = VertexGrid()
 
 """
     CellGrid() <: GridBased <: ConversionTrait
@@ -76,7 +99,6 @@ Used for: Heatmap \\
 See also: [`VertexGrid`](@ref), [`ImageLike`](@ref)
 """
 struct CellGrid <: GridBased end
-conversion_trait(::Type{<:Heatmap}) = CellGrid()
 
 """
     ImageLike() <: ConversionTrait
@@ -89,12 +111,10 @@ Used for: Image \\
 See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
 """
 struct ImageLike <: ConversionTrait end
-conversion_trait(::Type{<:Image}) = ImageLike()
 # Rect2f(xmin, ymin, xmax, ymax)
 
 
 struct VolumeLike <: ConversionTrait end
-conversion_trait(::Type{<:Volume}) = VolumeLike()
 
 function convert_arguments end
 

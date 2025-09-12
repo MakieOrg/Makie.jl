@@ -465,11 +465,12 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 end
 
 """
-    scatter(positions)
-    scatter(x, y)
-    scatter(x, y, z)
+    scatter([x], y[, z]; attributes...)
+    scatter(positions; attributes...)
 
-Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
+Plots a marker at each position.
+
+$(argument_docs(PointBased()))
 """
 @recipe Scatter (positions,) begin
     "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
@@ -749,3 +750,14 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
     documented_attributes(LineSegments)...
     depth_shift = -1.0f-5
 end
+
+################################################################################
+#                              Conversion Traits                               #
+################################################################################
+
+const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+conversion_trait(::Type{<:XYBased}) = PointBased()
+conversion_trait(::Type{<:Surface}) = VertexGrid()
+conversion_trait(::Type{<:Heatmap}) = CellGrid()
+conversion_trait(::Type{<:Image}) = ImageLike()
+conversion_trait(::Type{<:Volume}) = VolumeLike()
