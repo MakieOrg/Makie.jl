@@ -4,8 +4,10 @@ The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
     crossbar(x, y, ymin, ymax; kwargs...)
+
 Draw a crossbar. A crossbar represents a range with a (potentially notched) box.
 It is most commonly used as part of the `boxplot`.
+
 ## Arguments
 - `x`: position of the box
 - `y`: position of the midline within the box
@@ -13,39 +15,67 @@ It is most commonly used as part of the `boxplot`.
 - `ymax`: upper limit of the box
 """
 @recipe CrossBar (x, y, ymin, ymax) begin
+    "Sets the color of the drawn boxes. These can be values for colormapping."
     color = @inherit patchcolor
-    colormap = @inherit colormap
-    colorscale = identity
-    colorrange = automatic
+
     "Orientation of box (`:vertical` or `:horizontal`)."
     orientation = :vertical
+
     # box and dodging
-    "Width of the box before shrinking."
+    "(Unscaled) width of the box."
     width = automatic
+    """
+    Dodge can be used to separate crossbars drawn at the same `x` positions. For this
+    each crossbar is given an integer value corresponding to its position relative to
+    the given `positions`. E.g. with `positions = [1, 1, 1, 2, 2, 2]` we have
+    3 crossbars at each position which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
+    """
     dodge = automatic
+    """
+    Sets the maximum integer for `dodge`. This sets how many crossbars can be placed
+    at a given position, controlling their width.
+    """
     n_dodge = automatic
-    "Shrinking factor, `width -> width * (1 - gap)`."
+    "Size of the gap between crossbars. The modified width is `width * (1 - gap)`."
     gap = 0.2
+    "Sets the gap between dodged crossbars relative to the size of them."
     dodge_gap = 0.03
-    strokecolor = @inherit patchstrokecolor
+
+    "Sets the outline linewidth of crossbars."
     strokewidth = @inherit patchstrokewidth
+    "Sets the outline color of crossbars."
+    strokecolor = @inherit patchstrokecolor
+
     # notch
-    "Whether to draw the notch."
+    "Whether to draw the notch, which refers to a narrowed region around the midline/`y`."
     show_notch = false
-    "Lower limit of the notch."
+    "Lower limit of the notch. These are given per position."
     notchmin = automatic
-    "Upper limit of the notch."
+    "Upper limit of the notch. These are given per position."
     notchmax = automatic
-    "Multiplier of `width` for narrowest width of notch."
+    "Multiplier of `width` for narrowest width of notch at the midline/`y`."
     notchwidth = 0.5
+
     # median line
-    "Show midline."
+    "Shows the midline."
     show_midline = true
+    "Sets the color of the midline."
     midlinecolor = automatic
+    "Sets the width of the midline."
     midlinewidth = @inherit linewidth
-    inspectable = @inherit inspectable
+
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
-    visible = true
+
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
 end
 
 function Makie.plot!(plot::CrossBar)
@@ -98,18 +128,8 @@ function Makie.plot!(plot::CrossBar)
         end
         return boxes, midlines
     end
-    poly!(
-        plot,
-        plot.boxes,
-        color = plot.color,
-        colorrange = plot.colorrange,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        strokecolor = plot.strokecolor,
-        strokewidth = plot.strokewidth,
-        inspectable = plot.inspectable,
-        visible = plot.visible
-    )
+    poly!(plot, Attributes(plot), plot.boxes)
+
     map!(plot, [:midlinecolor, :strokecolor], :linesegmentcolor) do mc, sc
         return mc === automatic ? sc : mc
     end

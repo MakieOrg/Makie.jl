@@ -1,11 +1,13 @@
 """
     volumeslices(x, y, z, v)
 
-Draws heatmap slices of the volume v
+Draws heatmap slices of the volume `v`.
 """
 @recipe VolumeSlices (x, y, z, volume) begin
     documented_attributes(Heatmap)...
+    "Controls whether the bounding box outline is visible"
     bbox_visible = true
+    "Sets the color of the bounding box outline"
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 

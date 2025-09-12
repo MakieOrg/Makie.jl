@@ -25,12 +25,26 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
+    "Sets the width of contour lines."
     linewidth = 1.0
+    "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
+    """
+    Sets the type of line cap used for contour lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
-    enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
     """
@@ -49,6 +63,8 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
+    "Controls whether 3D contours consider depth. Turning this off may improve performance."
+    enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end

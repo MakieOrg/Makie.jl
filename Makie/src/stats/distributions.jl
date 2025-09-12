@@ -28,6 +28,7 @@ end
 
 """
     qqplot(x, y; kwargs...)
+
 Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
 samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - a list of samples,
@@ -46,17 +47,7 @@ whereas `qqline = :fit` and `qqline = :fitrobust` are useful to see if the distr
 obtained from the distribution of `x` via an affine transformation.
 """
 @recipe QQPlot begin
-    "Control color of both line and markers (if `markercolor` is not specified)."
-    color = @inherit linecolor
-    linestyle = nothing
-    linewidth = @inherit linewidth
-    markercolor = automatic
-    markersize = @inherit markersize
-    strokecolor = @inherit markerstrokecolor
-    strokewidth = @inherit markerstrokewidth
-    marker = @inherit marker
-    mixin_generic_plot_attributes()...
-    cycle = [:color]
+    filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
 end
 
 """
@@ -119,25 +110,17 @@ used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 plottype(::Type{<:QQNorm}, args...) = QQPlot
 
 function Makie.plot!(p::QQPlot)
-    map!(p, [:color, :markercolor], :real_markercolor) do color, markercolor
-        return to_color(markercolor === automatic ? color : markercolor)
-    end
+    map!(default_automatic, p, [:markercolor, :color], :real_markercolor)
+    map!(default_automatic, p, [:markercolormap, :colormap], :real_markercolormap)
+    map!(default_automatic, p, [:markercolorrange, :colorrange], :real_markercolorrange)
 
     scatter!(
-        p, p[1];
+        p, Attributes(p), p[1];
         color = p.real_markercolor,
-        strokecolor = p.strokecolor,
-        strokewidth = p.strokewidth,
-        marker = p.marker,
-        markersize = p.markersize,
-        inspectable = p.inspectable
+        colormap = p.real_markercolormap,
+        colorrange = p.real_markercolorrange,
     )
-    linesegments!(
-        p, p[2];
-        color = p.color,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        inspectable = p.inspectable
-    )
+    linesegments!(p, Attributes(p), p[2])
+
     return p
 end

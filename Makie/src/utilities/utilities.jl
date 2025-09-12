@@ -41,6 +41,7 @@ Returns `default` if `a == automatic` and `a` otherwise.
 default_automatic(::Automatic, b) = b
 default_automatic(a, b) = a
 default_automatic(x, ::Automatic) = throw(MethodError(default_automatic, (x, automatic)))
+default_automatic(::Automatic, ::Automatic) = automatic
 
 """
     default_automatic(default)

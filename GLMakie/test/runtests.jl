@@ -41,8 +41,8 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 44
-        @test length(p.attributes.outputs) == 88
+        @test length(p.attributes.inputs) == 43
+        @test length(p.attributes.outputs) == 87
     end
 
     @testset "Reference Tests" begin

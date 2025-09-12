@@ -342,11 +342,11 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
 end
 
 function print_root_inputs(io::IO, edge::ComputeEdge)
-    root_inputs = Symbol[]
+    root_inputs = Set{Symbol}()
     for input in edge.inputs
         trace_inputs!(input, root_inputs)
     end
-    return println(io, "Triggered by update of:\n  ", join(root_inputs, ", ", " or "))
+    return println(io, "Triggered by update of:\n  ", join(values(root_inputs), ", ", " or "))
 end
 function trace_inputs!(edge::ComputeEdge, root_inputs)
     foreach(c -> trace_inputs!(c, root_inputs), edge.inputs)

@@ -6,21 +6,27 @@ positive and negative components that add up to a net result as a barplot with s
 to each other.
 """
 @recipe Waterfall begin
-    color = @inherit patchcolor
-    dodge = automatic
-    n_dodge = automatic
-    gap = 0.2
-    dodge_gap = 0.03
-    width = automatic
-    cycle = [:color => :patchcolor]
-    stack = automatic
+    filtered_attributes(BarPlot, exclude = (:fillto, :direction))...
+
+    "When true, markers are drawn to indicate the direction of the bar."
     show_direction = false
+    "Marker used for bars corresponding to positive `y` values."
     marker_pos = :utriangle
+    "Marker used for bars corresponding to negative `y` values."
     marker_neg = :dtriangle
+    "Color of the bar direction marker."
     direction_color = @inherit backgroundcolor
+
+    """
+    When true a bar with the total change is drawn. When `dodge` is used this
+    bar is drawn per group.
+    """
     show_final = false
+    "Color of the final bar."
     final_color = plot_color(:grey90, 0.5)
+    "Sets the gap of final bars. This defaults to 0 without `dodge` and `gap` with."
     final_gap = automatic
+    "Sets the dodge_gap of final bars."
     final_dodge_gap = 0
 end
 

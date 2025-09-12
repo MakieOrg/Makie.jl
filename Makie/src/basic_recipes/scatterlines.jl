@@ -4,17 +4,14 @@
 Plots `scatter` markers and `lines` between them.
 """
 @recipe ScatterLines (positions,) begin
+    documented_attributes(Lines)...
     "The color of the line, and by default also of the scatter markers."
     color = @inherit linecolor
-    "Sets the pattern of the line e.g. `:solid`, `:dot`, `:dashdot`. For custom patterns look at `Linestyle(Number[...])`"
-    linestyle = nothing
-    "Sets the width of the line in screen units"
-    linewidth = @inherit linewidth
-    linecap = @inherit linecap
-    joinstyle = @inherit joinstyle
-    miter_limit = @inherit miter_limit
+    "Sets the color of scatter markers. These default to `color`"
     markercolor = automatic
+    "Sets the colormap for scatter markers. This defaults to `colormap`"
     markercolormap = automatic
+    "Sets the colorrange for scatter markers. This defaults to `colorrange`"
     markercolorrange = automatic
     "Sets the size of the marker."
     markersize = @inherit markersize
@@ -24,9 +21,6 @@ Plots `scatter` markers and `lines` between them.
     strokewidth = @inherit markerstrokewidth
     "Sets the scatter marker."
     marker = @inherit marker
-    mixin_generic_plot_attributes()...
-    mixin_colormap_attributes()...
-    cycle = [:color]
 end
 
 conversion_trait(::Type{<:ScatterLines}) = PointBased()
