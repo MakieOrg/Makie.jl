@@ -1,7 +1,10 @@
 # Changelog
 
 ## Unreleased
+
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
+- Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
 
 ## [0.24.6] - 2025-08-19
 
@@ -10,6 +13,7 @@
 - Add simple compression for arrays containing only the same value in WGLMakie [#5252](https://github.com/MakieOrg/Makie.jl/pull/5252).
 - Fixed 3D `contour` plots not rendering the correct isosurfaces when `colorrange` is given. Also fixed `isorange` not working, tweaked default `isorange`, colormap resolution, and changed colormap extractor for `Colorbar` to ignore alpha. [#5213](https://github.com/MakieOrg/Makie.jl/pull/5213)
 - Fixed double application of `alpha` regression in `Band` plots in CairoMakie [#5258](https://github.com/MakieOrg/Makie.jl/pull/5258).
+- Updated `boxplot`, `crossbar`, `density`, `hist`, `stephist`, `violin` and `waterfall` to use the new compute graph instead of observables. [#5184](https://github.com/MakieOrg/Makie.jl/pull/5184)
 
 ## [0.24.5] - 2025-08-06
 
@@ -24,7 +28,6 @@
 - Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 
 ## [0.24.4] - 2025-07-17
-
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
 - Added some validation for compute node initialization (which guards against some error in `map!()` callbacks) [#5170](https://github.com/MakieOrg/Makie.jl/pull/5170)
 - Added support for `GeometryBasics.MultiPoint` [#5182](https://github.com/MakieOrg/Makie.jl/pull/5182).
