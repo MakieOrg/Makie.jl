@@ -70,11 +70,6 @@ _cycle(v, idx::Integer) = v
 flip_xy(p::Point2f) = reverse(p)
 flip_xy(r::Rect{2, T}) where {T} = Rect{2, T}(reverse(r.origin), reverse(r.widths))
 
-function convert_attribute(whiskerwidth::Symbol, ::key"whiskerwidth", ::key"boxplot")
-    whiskerwidth === :match || error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
-    return 1.0
-end
-
 function Makie.plot!(plot::BoxPlot)
 
     map!(
@@ -154,7 +149,8 @@ function Makie.plot!(plot::BoxPlot)
         [:groups, :widths, :q1s, :quantiles, :q5s, :whiskerwidth, :orientation],
         [:t_segments, :boxwidth]
     ) do groups, widths, q1s, quantiles, q5s, whiskerwidth, orientation
-        if !(whiskerwidth >= 0)
+        whiskerwidth = ifelse(whiskerwidth === :match, 1.0, whiskerwidth)
+        if !(whiskerwidth isa Real) || !(whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
         t_segments = Point2f[]
