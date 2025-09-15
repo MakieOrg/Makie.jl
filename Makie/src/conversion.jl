@@ -169,3 +169,95 @@ function should_dim_convert(P, arg)
     isnothing(types_for_plot_arguments(P)) && return false
     return should_dim_convert(get_element_type(arg))
 end
+
+################################################################################
+### Utilities
+################################################################################
+
+function collect_applicable_onversion_methods(plot_type)
+    # methodswith does not return applicable methods with abstract types when
+    # using a concrete subtype. So we filter ourself...
+    methodlist = methods(convert_arguments)
+    CT = Makie.conversion_trait(plot_type)
+
+    # Methods with `(..., x::T) where T` have UnionAll's in method.sig
+    extract_arg_types(x::UnionAll) = extract_arg_types(x.body)
+    extract_arg_types(x::DataType) = x.types
+
+    return filter(methodlist) do method
+        # method.sig = Tuple{function_type, arg_types...}
+        f, arg_types... = extract_arg_types(method.sig)
+        length(arg_types) > 1 || return false
+        # plot_type or its trait are the first argument
+        is_applicable = plot_type isa arg_types[1] || CT isa arg_types[1]
+        # remaining args aren't a catchall foo(x, args...)
+        is_applicable &= arg_types[2] !== Vararg{Any}
+        return is_applicable
+    end
+end
+
+function method_docstrings(methodlist)
+    # get the module's multidoc
+    binding = Docs.Binding(Makie, Symbol(convert_arguments))
+    dict = Docs.meta(Makie)
+    multidoc = dict[binding]
+
+    function remove_func(sig::UnionAll)
+        vars = TypeVar[]
+        body = remove_func(sig, vars)
+        final_body = Union{map(x -> Tuple{x}, vars)..., body}
+        union_type = final_body
+        for var in vars
+            union_type = UnionAll(var, union_type)
+        end
+        return union_type
+    end
+
+    function remove_func(sig::UnionAll, vars)
+        pushfirst!(vars, sig.var)
+        return remove_func(sig.body, vars)
+    end
+
+    remove_func(sig::DataType, vars = nothing) = Tuple{sig.types[2:end]...}
+
+    # for each module, attempt to get the docstring as markdown
+    docstrings = String[]
+    for m in methodlist
+        # cleanup signature
+        sig = remove_func(m.sig)
+
+        if haskey(multidoc.docs, sig)
+            push!(docstrings, multidoc.docs[sig].text[1])
+        else
+            push!(docstrings, "")
+        end
+    end
+
+    return docstrings
+end
+
+function build_conversion_docs(PlotType)
+    methods = collect_applicable_onversion_methods(PlotType)
+    docstrings = method_docstrings(methods)
+
+    output = map(methods, docstrings) do method, docstring
+        func_signature, location = split(string(method), " @ ")
+        # remove `convert_argument(first_arg, ` and `) ...`
+        # func_signature = replace(func_signature, r"^[^,]+, " => "")
+        # func_signature = replace(func_signature, r"\).*" => "")
+
+        if isempty(docstring)
+            return "- `$func_signature`"
+        else
+            # Try to compact docstring
+            str = replace(docstring, r"convert_arguments\(.+\).+\n" => "")
+            str = replace(str, '\n' => ' ')
+            str = replace(str, r"  +" => ' ')
+            str = replace(str, r"^ +" => "", r" +$" => "")
+            return "- `$func_signature`: $str"
+        end
+    end
+
+    str = "Conversion applicable to $PlotType:\n" * join(output, '\n')
+    return Markdown.parse(str)
+end
