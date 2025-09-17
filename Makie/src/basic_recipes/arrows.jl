@@ -54,6 +54,25 @@ function convert_arguments(
     return (vec(points), vec(f_out))
 end
 
+argument_docs(::ArrowLike) = """
+## Arguments (`ArrowLike()`)
+- `points`: A `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or \
+`AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the \
+default `align = :tail` these are the positions arrows start from.
+- `directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining \
+the direction arrows point in. These maybe reinterpreted as positions arrows \
+point towards if `argmode = :endpoint`.
+- `x, y, [z]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for \
+each dimension. This replaces `points` as an argument and is affected by `align` \
+in the same way.
+- `u, v, [w]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` \
+for each dimension. This replaces `directions` as an argument and is affected by
+`argmode` in the same way.
+- `f`: A callback function `point -> direction` which returns a direction for \
+each anchor point. Replaces `directions` and can be used with either `x, y, [z]` \
+or `points`.
+"""
+
 function _arrow_align_val(align::Symbol)
     if align === :tail
         return 0.0
@@ -130,17 +149,6 @@ function mixin_arrow_attributes()
     end
 end
 
-const _arrow_args_docs = """
-Their positions are given by a vector of `points` or component vectors `x`, `y`
-and optionally `z`. A single point or value of `x`, `y` and `z` is also allowed.
-Which part of the arrow is aligned with the position depends on the `align` attribute.
-
-Their directions are given by a vector of `directions` or component vectors `u`,
-`v` and optionally `w` just like positions. Additionally they can also be
-calculated by a function `f` which should return a `Point` or `Vec` for each
-arrow `position::Point`.
-Note that direction can also be interpreted as end points with `argmode = :endpoint`.
-"""
 
 arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
 arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
@@ -238,7 +246,7 @@ end
 
 Plots arrows as 2D shapes.
 
-$_arrow_args_docs
+$(argument_docs(ArrowLike()))
 """
 @recipe Arrows2D (points, directions) begin
     """
@@ -516,7 +524,7 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 Plots arrows as 3D shapes.
 
-$_arrow_args_docs
+$(argument_docs(ArrowLike()))
 """
 @recipe Arrows3D (points, directions) begin
     """

@@ -64,6 +64,14 @@ connections between labels and targets, typically in the form of an arrow.
 If no label positions are given, they will be determined automatically such
 that overlaps between labels and data points are reduced. In this mode, the labels should
 be very close to their associated data points so connection plots are typically not visible.
+
+## Arguments
+- `x_target, y_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
+- `x_label, y_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
+- `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
+an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
+- `points_label`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}`
+defining 2D label positions.
 """
 @recipe Annotation begin
     """
@@ -166,40 +174,40 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
     return ([Vec4d(NaN, NaN, p...)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
     return ([Vec4d(x, y, x2, y2)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
     return ([Vec4d(p1..., p2...)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(getindex.(v1, 1), getindex.(v1, 2), getindex.(v2, 1), getindex.(v2, 2)),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
     return (Vec4d.(NaN, NaN, v1, v2),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
     return (Vec4d.(v1, v2, v3, v4),)
 end
 
-function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
-    scene = Makie.get_scene(p)
+function plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
+    scene = get_scene(p)
 
     textpositions = lift(p[1]) do vecs
         Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
@@ -537,8 +545,8 @@ function startpoint(::Ann.Paths.Corner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
-Makie.boundingbox(p::Annotation, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
+data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
+boundingbox(p::Annotation, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
     return BezierPath(
@@ -965,7 +973,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
+annotation_style_plotspecs(::Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
 function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth)
     length(path.commands) < 2 && return PlotSpec[]
@@ -1005,7 +1013,7 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
     ]
 end
 
-_auto(x::Makie.Automatic, default) = default
+_auto(x::Automatic, default) = default
 _auto(x, default) = x
 
 shrinksize(other) = 0.0
@@ -1023,7 +1031,7 @@ function plotspecs(l::Ann.Arrows.Line, pos; rotation, color, linewidth)
     p1 = pos + dir1 * sidelen
     p2 = pos + dir2 * sidelen
     return [
-        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
+        PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
     ]
 end
 
@@ -1037,7 +1045,7 @@ function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
 
     marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
     return [
-        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
+        PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
     ]
 end
 
