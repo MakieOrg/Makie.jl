@@ -34,34 +34,6 @@ Plots with the `PointBased` trait convert their input data to a
 """
 struct PointBased <: ConversionTrait end
 
-argument_docs(::PointBased) = """
-## Arguments (`PointBased()`)
-- `x`: A `Real`, `AbstractVector{<:Real}` or `ClosedInterval[<:Real]` corresponding to \
-x positions. Intervals require another dimension to be given as an `AbstractVector`. \
-Defaults to `eachindex(y)` if omitted.
-- `y`: A `Real`, `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` corresponding to \
-y positions. Intervals require another dimension to be given as an `AbstractVector`.
-- `z`: A `Real`, `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` corresponding to \
-z positions. Using a matrix will change `x` and `y` to be interpreted per matrix axis.
-- `position`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` \
-corresponding to `(x, y)` or `(x, y, z)` positions. Used instead of `x`, `y`, `z` arguments.
-- `matrix`: A 2 or 3 by N matrix interpreted to contain N 2 or 3 dimensional positions. \
-The matrix can also be transposed, i.e. N by 2 or 3.
-- `geometry_primitive`: Coordinates of a `GeometryBasics.GeometryPrimitive` which can \
-be decomposed into points. This includes for example `Rect`, `Sphere` and `GeometryBasics.Mesh`.
-- `multi_point`: A `GeometryBasics.MultiPoint` or `AbstractVector` thereof, interpreted \
-as a collection of positions.
-- `line_string`: A `GeometryBasics.LineString`, `GeometryBasics.MultiLineString` or \
-`AbstractVector{<:LineString}` interpreted as a collection of positions. The latter \
-two will separate line strings by NaN points to disconnect them.
-- `polygon`: A `GeometryBasics.Polygon`, `GeometryBasics.MultiPolygon` or \
-`AbstractVector{<:Polygon}` disassembled into positions of the exterior and \
-interior coordinates. Each polygon, interior and exterior is separated by a NaN \
-point. Each exterior and interior is closed, meaning the first point is duplicated \
-after the last.
-- `bezierpath`: A `Makie.BezierPath` discretized into 2D positions.
-"""
-
 """
     GridBased <: ConversionTrait
 
@@ -171,6 +143,86 @@ function should_dim_convert(P, arg)
 end
 
 ################################################################################
+### Trait based Argument Docstrings
+################################################################################
+
+"""
+    argument_docs(::ConversionTrait)
+
+Returns a string documenting the most common arguments associated with a
+conversion trait so that the documentation can be reused over multiple recipes.
+May refer to `conversion_docs(PlotType)` for more information.
+
+Sample:
+\"\"\"
+## Arguments (trait_type):
+- `option1`: ...
+- `option2`: ...
+\"\"\"
+"""
+argument_docs
+
+argument_docs(::PointBased; item = "") = """
+## Arguments (`PointBased()`)
+- `position`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` \
+corresponding to `(x, y)` or `(x, y, z)` positions.
+- `x, y[, z]`: Positions given per dimension. Can be `Real` to define \
+a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to \
+define multiple. Using `ClosedInterval` requires at least one dimension to be \
+given as an array. `z` can also be given as a `AbstractMatrix` which will cause \
+`x` and `y` to be interpreted per matrix axis.
+- `y`: Defaults `x` positions to `eachindex(y)`.
+$item
+See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
+"""
+
+argument_docs(::VertexGrid) = """
+## Arguments (`VertexGrid()`)
+- `z`: Defines z values for vertices of a grid using an `AbstractMatrix{<:Real}`.
+- `x, y`: Defines the (x, y) positions of grid vertices. A `ClosedInterval{<:Real}` or \
+`Tuple{<:Real, <:Real}` is interpreted as the outer limits of the grid, between \
+which vertices are spaced regularly. An `AbstractVector{<:Real}` defines vertex \
+positions directly for the respective dimension. An `AbstractMatrix{<:Real}` \
+allows grid positions to be defined per vertex, i.e. in a non-repeating fashion. \
+If `x` and `y` are omitted they default to `axes(data, dim)`.
+
+See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
+"""
+
+argument_docs(::CellGrid) = """
+## Arguments (`CellGrid()`)
+- `data`: Defines data values for cells of a grid using an `AbstractMatrix{<:Real}`.
+- `x, y`: Defines the positions of grid cells. A `ClosedInterval{<:Real}` or \
+`Tuple{<:Real, <:Real}` is interpreted as the outer edges of the grid, between \
+which cells are spaced regularly. An `AbstractVector{<:Real}` defines cell positions \
+directly for the respective dimension. This define either `size(data, dim)` cell \
+centers or `size(data, dim) + 1` cell edges. These are allowed to be spaced \
+irregularly. If `x` and `y` are omitted they default to `axes(data, dim)`.
+
+See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
+"""
+
+argument_docs(::ImageLike) = """
+## Arguments (`ImageLike()`)
+- `image`: An `AbstractMatrix{<:Colorant}` defining the colors of an image, or \
+an `AbstractMatrix{<:Real}` defining colors through colormapping.
+- `x, y`: Defines the boundary of the image rectangle. Can be a `Tuple{<:Real, <:Real}` \
+or `ClosedInterval{<:Real}`. Defaults to `0 .. size(z, 1)` and `0 .. size(z, 2)` respectively.
+
+See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
+"""
+
+argument_docs(::VolumeLike) = """
+## Arguments (`VolumeLike()`)
+- `volume_data`: An `AbstractArray{<:Real, 3}` defining volume data.
+- `x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` \
+or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(volume)`.
+
+See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
+"""
+
+
+################################################################################
 ### Utilities
 ################################################################################
 
@@ -236,7 +288,7 @@ function method_docstrings(methodlist)
     return docstrings
 end
 
-function build_conversion_docs(PlotType)
+function conversion_docs(PlotType)
     methods = collect_applicable_onversion_methods(PlotType)
     docstrings = method_docstrings(methods)
 
@@ -258,6 +310,13 @@ function build_conversion_docs(PlotType)
         end
     end
 
-    str = "Conversion applicable to $PlotType:\n" * join(output, '\n')
+    CT = conversion_trait(PlotType)
+    conversion_trait_str = if CT isa NoConversion
+        ""
+    else
+        " and its conversion trait $CT"
+    end
+
+    str = "Conversion applicable to $(PlotType)$(conversion_trait_str):\n" * join(output, '\n')
     return Markdown.parse(str)
 end
