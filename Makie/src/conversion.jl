@@ -176,9 +176,9 @@ $item
 See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
 """
 
-argument_docs(::VertexGrid) = """
-## Arguments (`VertexGrid()`)
-- `z`: Defines z values for vertices of a grid using an `AbstractMatrix{<:Real}`.
+argument_docs(::VertexGrid; arg3 = "z", title_info = "") = """
+## Arguments ($title_info`VertexGrid()`)
+- `$arg3`: Defines $arg3 values for vertices of a grid using an `AbstractMatrix{<:Real}`.
 - `x, y`: Defines the (x, y) positions of grid vertices. A `ClosedInterval{<:Real}` or \
 `Tuple{<:Real, <:Real}` is interpreted as the outer limits of the grid, between \
 which vertices are spaced regularly. An `AbstractVector{<:Real}` defines vertex \
@@ -212,9 +212,9 @@ or `ClosedInterval{<:Real}`. Defaults to `0 .. size(z, 1)` and `0 .. size(z, 2)`
 See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
 """
 
-argument_docs(::VolumeLike) = """
-## Arguments (`VolumeLike()`)
-- `volume_data`: An `AbstractArray{<:Real, 3}` defining volume data.
+argument_docs(::VolumeLike; arg4 = "volume_data", title_info = "") = """
+## Arguments ($title_info`VolumeLike()`)
+- `$arg4`: An `AbstractArray{<:Real, 3}` defining volume data.
 - `x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` \
 or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(volume)`.
 

@@ -4,13 +4,15 @@ function contour_label_formatter(level::Real)::String
 end
 
 """
-    contour(x, y, z)
-    contour(z::Matrix)
+    contour([x, y], data; attributes...)
+    contour([x, y, z], data; attributes...)
 
-Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
-If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
+Draws 2D lines on the grid defined by `x` and `y` where the `data` value matches
+a level value. In the 3D case lines generalize to surfaces.
 
-`x` and `y` can also be Matrices that define a curvilinear grid, similar to how [`surface`](@ref) works.
+$(argument_docs(VertexGrid(), title_info = "2D ", arg3 = "data"))
+
+$(argument_docs(VolumeLike(), title_info = "3D ", arg4 = "data"))
 """
 @recipe Contour begin
     """
@@ -54,10 +56,12 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
 end
 
 """
-    contour3d(x, y, z)
+    contour3d(x, y, z; attributes...)
 
-Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-with z-elevation for each level.
+Draws 3D lines on the grid defined by `x` and `y` where the `z` value matches
+a level value. The line will be drawn with a matching z value.
+
+$(argument_docs(VertexGrid()))
 """
 @recipe Contour3d begin
     documented_attributes(Contour)...

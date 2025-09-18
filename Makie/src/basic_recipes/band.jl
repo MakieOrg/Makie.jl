@@ -1,11 +1,22 @@
 """
-    band(x, ylower, yupper; kwargs...)
-    band(lower, upper; kwargs...)
-    band(x, lowerupper; kwargs...)
+    band(x, ylower, yupper; attributes...)
+    band(lower, upper; attributes...)
+    band(x, lowerupper; attributes...)
 
-Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
-between the points in `lower` and `upper`.
-Both bounds can be passed together as `lowerupper`, a vector of intervals.
+Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)`
+plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface) between the
+points in `lower` and `upper`.
+
+## Arguments
+- `x`: An `AbstractVector{<:Real}` containing x-values. These are interpreted
+as y-values if `direction = :y`.
+- `ylower, yupper`: An `AbstractVector{<:Real}` containing the lower and upper
+y-limits of the band. These are interpreted as x-limits if `direction = :y`.
+- `lowerupper`: An `AbstractVector{<:Interval}` containing the lower and upper
+y-limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
+- `lower, upper`: An `AbstractVector{<:Point{D, <:Real}}` containing the (x, y)
+or (x, y, z) coordinates of the lower and upper limits of the band respectively.
+Setting `direction = :y` will swap x and y in the 2D case.
 """
 @recipe Band (lowerpoints, upperpoints) begin
     documented_attributes(Mesh)...
@@ -18,8 +29,9 @@ function convert_arguments(::Type{<:Band}, x, ylower, yupper)
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
 end
 
-convert_arguments(P::Type{<:Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
-    convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
+function convert_arguments(P::Type{<:Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval})
+    return convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
+end
 
 function band_connect(n)
     ns = 1:(n - 1)
@@ -27,7 +39,7 @@ function band_connect(n)
     return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
-function Makie.plot!(plot::Band)
+function plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
     nanpoint(::Type{<:Point3}) = Point3(NaN)
     nanpoint(::Type{<:Point2}) = Point2(NaN)
