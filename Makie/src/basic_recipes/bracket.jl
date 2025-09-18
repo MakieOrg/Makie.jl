@@ -9,12 +9,12 @@ between the bracket points.
 
 ## Arguments
 - `x1, y1, x2, y1`: A `Real` or `AbstractVector{<:Real}` setting the respective
-`x` or `y` coordinate of the start (1) or end point (2) of a bracket.
+  `x` or `y` coordinate of the start (1) or end point (2) of a bracket.
 - `point1, point2`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
-`AbstractVector{<:VecTypes}` setting the (x, y) coordinate of a start point
-`point1` or end point `point2` of a bracket.
+  `AbstractVector{<:VecTypes}` setting the (x, y) coordinate of a start point
+  `point1` or end point `point2` of a bracket.
 - `point12`: An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}`
-containing the start and end points of the bracket as tuples `(startpoint, endpoint)`.
+  containing the start and end points of the bracket as tuples `(startpoint, endpoint)`.
 """
 @recipe Bracket (positions,) begin
     "The offset of the bracket perpendicular to the line from start to end point in screen units.

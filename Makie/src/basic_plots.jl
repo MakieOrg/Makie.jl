@@ -436,15 +436,15 @@ Plots a 2D or 3D mesh.
 
 ## Arguments
 - `mesh_object`: A [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl)
-`Mesh` or `MetaMesh` containing vertex and face data. The latter may also include
-material data for which Makie has some support.
+  `Mesh` or `MetaMesh` containing vertex and face data. The latter may also include
+  material data for which Makie has some support.
 - `x, y[, z]`: An `AbstractVector{<:Real}` representing vertex positions per dimension.
 - `positions`: An `AbstractVector{<:VecTypes{D, <:Real}}` representing vertex
-positions, where `VecTypes` include `Point`, `Vec` and `Tuple` and `D = 2` or
-`3` is the dimension of the data.
+  positions, where `VecTypes` include `Point`, `Vec` and `Tuple` and `D = 2` or
+  `3` is the dimension of the data.
 - `faces`: An `AbstractVector{<:GeometryBasics.AbstractFace}` containing information
-for how vertices connect to faces. If omitted, each consecutive triplet of vertex
-positions is connected as a triangle face with no overlap. E.g. `(1, 2, 3), (4, 5, 6)`.
+  for how vertices connect to faces. If omitted, each consecutive triplet of vertex
+  positions is connected as a triangle face with no overlap. E.g. `(1, 2, 3), (4, 5, 6)`.
 
 Note that `meshscatter` is much better for plotting a single mesh at multiple positions.
 """
@@ -650,9 +650,9 @@ Plots a 3D array of data as voxels, i.e. small cubes within the limits defined b
 
 ## Arguments (`VolumeLike()`)
 - `data`: An `AbstractArray{<:Real, 3}` defining voxel data for colormapping or
-an `AbstractArray{<:UInt8, 3}` defining voxel ids for texture mapping.
+  an `AbstractArray{<:UInt8, 3}` defining voxel ids for texture mapping.
 - `x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` \
-or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(data)`.
+  or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(data)`.
 
 See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
 
@@ -762,11 +762,11 @@ Draws a wireframe of surface or mesh data.
 
 ## Arguments
 - `x, y, z`: Surface-like data where vertices are part of a grid. `x, y` are given
-as `AbstractVector{<:Real}` and `z` is given as an `AbstractMatrix{<:Real}`. The
-lengths of `x, y` must match the size of `z`.
+  as `AbstractVector{<:Real}` and `z` is given as an `AbstractMatrix{<:Real}`. The
+  lengths of `x, y` must match the size of `z`.
 - `mesh`: An object implementing [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl)
-`decompose()` methods for `Point` and `LineFace`. This is typically a GeometryBasics
-`Mesh`, `MetaMesh` or `GeometryPrimitive`.
+  `decompose()` methods for `Point` and `LineFace`. This is typically a GeometryBasics
+  `Mesh`, `MetaMesh` or `GeometryPrimitive`.
 """
 @recipe Wireframe begin
     documented_attributes(LineSegments)...

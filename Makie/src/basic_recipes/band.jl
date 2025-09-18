@@ -9,14 +9,14 @@ points in `lower` and `upper`.
 
 ## Arguments
 - `x`: An `AbstractVector{<:Real}` containing x-values. These are interpreted
-as y-values if `direction = :y`.
+  as y-values if `direction = :y`.
 - `ylower, yupper`: An `AbstractVector{<:Real}` containing the lower and upper
-y-limits of the band. These are interpreted as x-limits if `direction = :y`.
+  y-limits of the band. These are interpreted as x-limits if `direction = :y`.
 - `lowerupper`: An `AbstractVector{<:Interval}` containing the lower and upper
-y-limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
+  y-limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
 - `lower, upper`: An `AbstractVector{<:Point{D, <:Real}}` containing the (x, y)
-or (x, y, z) coordinates of the lower and upper limits of the band respectively.
-Setting `direction = :y` will swap x and y in the 2D case.
+  or (x, y, z) coordinates of the lower and upper limits of the band respectively.
+  Setting `direction = :y` will swap x and y in the 2D case.
 """
 @recipe Band (lowerpoints, upperpoints) begin
     documented_attributes(Mesh)...

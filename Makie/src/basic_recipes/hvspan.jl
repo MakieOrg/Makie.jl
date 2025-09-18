@@ -33,11 +33,11 @@ Draws vertical bands spanning across an `Axis`.
 - `xs_low`: A `Real` or `AbstractVector{<:Real}` setting the x start position of bands.
 - `xs_high`: A `Real` or `AbstractVector{<:Real}` setting the x end position of bands.
 - `xs_lowhigh`: An `Interval` or `AbstractVector{<:Interval}` setting the x start and
-end positions together.
+  end positions together.
 - `ymin`: A `Real` or `AbstractVector{<:Real}` setting the y start position of bands
-in relative (0 .. 1) space. (Attribute)
+  in relative (0 .. 1) space. (Attribute)
 - `ymax`: A `Real` or `AbstractVector{<:Real}` setting the y end position of bands
-in relative (0 .. 1) space. (Attribute)
+  in relative (0 .. 1) space. (Attribute)
 """
 @recipe VSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."

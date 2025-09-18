@@ -57,20 +57,20 @@ end
 argument_docs(::ArrowLike) = """
 ## Arguments (`ArrowLike()`)
 - `points`: A `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or \
-`AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the \
-default `align = :tail` these are the positions arrows start from.
+  `AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the \
+  default `align = :tail` these are the positions arrows start from.
 - `directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining \
-the direction arrows point in. These maybe reinterpreted as positions arrows \
-point towards if `argmode = :endpoint`.
+  the direction arrows point in. These maybe reinterpreted as positions arrows \
+  point towards if `argmode = :endpoint`.
 - `x, y, [z]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for \
-each dimension. This replaces `points` as an argument and is affected by `align` \
-in the same way.
+  each dimension. This replaces `points` as an argument and is affected by `align` \
+  in the same way.
 - `u, v, [w]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` \
-for each dimension. This replaces `directions` as an argument and is affected by
-`argmode` in the same way.
+  for each dimension. This replaces `directions` as an argument and is affected by
+  `argmode` in the same way.
 - `f`: A callback function `point -> direction` which returns a direction for \
-each anchor point. Replaces `directions` and can be used with either `x, y, [z]` \
-or `points`.
+  each anchor point. Replaces `directions` and can be used with either `x, y, [z]` \
+  or `points`.
 """
 
 function _arrow_align_val(align::Symbol)

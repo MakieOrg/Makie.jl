@@ -59,15 +59,15 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 
 ## Arguments
 - `val`: A `Real` or `AbstractVector{<:Real}` setting x positions of bars. If
-`direction = :x` this sets the y position instead.
+  `direction = :x` this sets the y position instead.
 - `low, high`: A `Real` or `AbstractVector{<:Real}` setting lower and upper y
-positions of bars. If `direction = :x` this sets the x position instead.
+  positions of bars. If `direction = :x` this sets the x position instead.
 - `low_high`: An `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which
-sets the lower and upper bar y positions together. Sets x positions instead if
-`direction = :x`.
+  sets the lower and upper bar y positions together. Sets x positions instead if
+  `direction = :x`.
 - `val_low_high`: An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position,
-lower y position and upper y position of bars together. The coordinate interpretation
-will be swapped if `direction = :x`.
+  lower y position and upper y position of bars together. The coordinate interpretation
+  will be swapped if `direction = :x`.
 """
 @recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     "The width of the whiskers or line caps in screen units."

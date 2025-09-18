@@ -69,9 +69,9 @@ be very close to their associated data points so connection plots are typically 
 - `x_target, y_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
 - `x_label, y_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
 - `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
-an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
+  an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
 - `points_label`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}`
-defining 2D label positions.
+  defining 2D label positions.
 """
 @recipe Annotation begin
     """

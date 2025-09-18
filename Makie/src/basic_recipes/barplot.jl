@@ -42,15 +42,15 @@ Plots bars of the given `heights` at the given 1D `positions`.
 
 ## Arguments (`PointBased()`)
 - `positions`: A `Real` or `AbstractVector{<:Real}` setting the x positions
-of bars. These are interpreted as y positions if `direction = :x`. The final
-positions may be further modified by `dodge`
+  of bars. These are interpreted as y positions if `direction = :x`. The final
+  positions may be further modified by `dodge`
 - `heights`: A `Real` or `AbstractVector{<:Real}` setting the y heights of bars.
-These are interpreted as x heights if `direction = :y`. The start and end height
-of bars may be further modified by `offset` and `stack`.
+  These are interpreted as x heights if `direction = :y`. The start and end height
+  of bars may be further modified by `offset` and `stack`.
 - `position_heights`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
-`AbstractVector{<:VecTypes}` setting the positions and heights together. The x
-and y components are affected by attributes in the same way as `positions` and
-`heights`.
+  `AbstractVector{<:VecTypes}` setting the positions and heights together. The x
+  and y components are affected by attributes in the same way as `positions` and
+  `heights`.
 """
 @recipe BarPlot (positions,) begin
     """Controls the baseline of the bars. This is zero in the default `automatic` case unless the barplot is in a log-scaled `Axis`.
