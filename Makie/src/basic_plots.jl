@@ -221,7 +221,7 @@ calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 
-$(argument_docs(ImageLike()))
+$(argument_docs(:ImageLike))
 """
 @recipe Image (
     x::EndPoints,
@@ -253,7 +253,7 @@ based on the values in `data`.
 Note that `heatmap` is slower to render than `image` so `image` should be
 preferred for large, regularly spaced grids.
 
-$(argument_docs(CellGrid()))
+$(argument_docs(:CellGrid))
 """
 @recipe Heatmap (
     x::Union{EndPoints, RealVector, RealMatrix},
@@ -275,7 +275,7 @@ All volume plots are derived from casting rays for each drawn pixel. These rays
 intersect with the volume data to derive some color, usually based on the given
 colormap. How exactly the color is derived depends on the algorithm used.
 
-$(argument_docs(VolumeLike()))
+$(argument_docs(:VolumeLike))
 """
 @recipe Volume (
     x::EndPoints,
@@ -321,7 +321,7 @@ const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
 
 Plots of surface defined by a grid of vertices.
 
-$(argument_docs(VertexGrid()))
+$(argument_docs(:VertexGrid))
 """
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
@@ -352,7 +352,7 @@ end
 Plots a line connecting consecutive positions. `NaN` values are displayed as
 gaps in the line.
 
-$(argument_docs(PointBased()))
+$(argument_docs(:PointBased))
 """
 @recipe Lines (positions,) begin
     "The color of the line."
@@ -397,11 +397,7 @@ Plots line segments between each consecutive pair of positions.
 
 This does not draw a connected line. It connects positions 1 and 2, 3 and 4, etc.
 
-$(argument_docs(
-    PointBased(),
-    item = "- `pairs`: An `AbstractVector{Tuple{<:VecTypes, <:VecTypes}}` representing \
-    pairs of points to be connected.\n"
-))
+$(argument_docs(:LineSegments))
 """
 @recipe LineSegments (positions,) begin
     "The color of the line."
@@ -480,7 +476,7 @@ end
 
 Plots a marker at each position.
 
-$(argument_docs(PointBased()))
+$(argument_docs(:PointBased))
 """
 @recipe Scatter (positions,) begin
     "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
@@ -545,7 +541,7 @@ end
 Plots a single mesh at multiple position. The mesh can be scaled and rotated
 through attributes.
 
-$(argument_docs(PointBased()))
+$(argument_docs(:PointBased))
 """
 @recipe MeshScatter (positions,) begin
     matcap = nothing
@@ -591,7 +587,7 @@ end
 
 Plots one or multiple texts passed via the `text` keyword.
 
-$(argument_docs(PointBased()))
+$(argument_docs(:PointBased))
 """
 @recipe Text (positions,) begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
@@ -772,14 +768,3 @@ Draws a wireframe of surface or mesh data.
     documented_attributes(LineSegments)...
     depth_shift = -1.0f-5
 end
-
-################################################################################
-#                              Conversion Traits                               #
-################################################################################
-
-const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
-conversion_trait(::Type{<:XYBased}) = PointBased()
-conversion_trait(::Type{<:Surface}) = VertexGrid()
-conversion_trait(::Type{<:Heatmap}) = CellGrid()
-conversion_trait(::Type{<:Image}) = ImageLike()
-conversion_trait(::Type{<:Volume}) = VolumeLike()

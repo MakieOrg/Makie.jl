@@ -10,9 +10,9 @@ end
 Draws 2D lines on the grid defined by `x` and `y` where the `data` value matches
 a level value. In the 3D case lines generalize to surfaces.
 
-$(argument_docs(VertexGrid(), title_info = "2D ", arg3 = "data"))
+$(argument_docs(:VertexGrid, title_note = "2D ", item_kwargs = (arg3 = "data",), ref = ""))
 
-$(argument_docs(VolumeLike(), title_info = "3D ", arg4 = "data"))
+$(argument_docs(:VolumeLike, title_note = "3D ", item_kwargs = (arg4 = "data",)))
 """
 @recipe Contour begin
     """
@@ -61,7 +61,7 @@ end
 Draws 3D lines on the grid defined by `x` and `y` where the `z` value matches
 a level value. The line will be drawn with a matching z value.
 
-$(argument_docs(VertexGrid()))
+$(argument_docs(:VertexGrid))
 """
 @recipe Contour3d begin
     documented_attributes(Contour)...

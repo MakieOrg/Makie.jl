@@ -4,7 +4,7 @@
 Plots a filled contour where each pixel in the grid defined by `x` and `y` is
 colored based on the level its `data` value maps to.
 
-$(argument_docs(VertexGrid(), arg3 = "data"))
+$(argument_docs(:VertexGrid, item_kwargs = (arg3 = "data",)))
 """
 @recipe Contourf (x, y, z) begin
     """
