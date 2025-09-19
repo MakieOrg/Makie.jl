@@ -245,7 +245,7 @@ $(argument_docs(:ImageLike))
 end
 
 """
-    heatmap([x, y], data; attributes...)
+    heatmap([xs, ys], data; attributes...)
 
 Plots a `data` matrix as a heatmap, i.e. a collection of rectangles colored
 based on the values in `data`.
@@ -316,8 +316,8 @@ end
 const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
 
 """
-    surface([x, y], z; attributes...)
-    surface(z; attributes...)
+    surface([xs, ys], zs; attributes...)
+    surface(zs; attributes...)
 
 Plots of surface defined by a grid of vertices.
 
@@ -346,8 +346,8 @@ end
 
 """
     lines(positions; attributes...)
-    lines([x], y; attributes...)
-    lines(x, y, z; attributes...)
+    lines([xs], ys; attributes...)
+    lines(xs, ys, zs; attributes...)
 
 Plots a line connecting consecutive positions. `NaN` values are displayed as
 gaps in the line.
@@ -390,8 +390,8 @@ end
 """
     linesegments(positions; attributes...)
     linesegments(pairs; attributes...)
-    linesegments([x], y; attributes...)
-    linesegments(x, y, z; attributes...)
+    linesegments([xs], ys; attributes...)
+    linesegments(xs, ys, zs; attributes...)
 
 Plots line segments between each consecutive pair of positions.
 
@@ -424,8 +424,8 @@ end
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
     mesh(mesh_object; attributes...)
-    mesh(x, y, z; attributes...)
-    mesh(x, y[, z], faces; attributes...)
+    mesh(xs, ys, zs; attributes...)
+    mesh(xs, ys[, zs], faces; attributes...)
     mesh(positions[, faces]; attributes...)
 
 Plots a 2D or 3D mesh.
@@ -434,7 +434,7 @@ Plots a 2D or 3D mesh.
 - `mesh_object`: A [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl)
   `Mesh` or `MetaMesh` containing vertex and face data. The latter may also include
   material data for which Makie has some support.
-- `x, y[, z]`: An `AbstractVector{<:Real}` representing vertex positions per dimension.
+- `xs, ys[, zs]`: An `AbstractVector{<:Real}` representing vertex positions per dimension.
 - `positions`: An `AbstractVector{<:VecTypes{D, <:Real}}` representing vertex
   positions, where `VecTypes` include `Point`, `Vec` and `Tuple` and `D = 2` or
   `3` is the dimension of the data.
@@ -470,8 +470,8 @@ Note that `meshscatter` is much better for plotting a single mesh at multiple po
 end
 
 """
-    scatter([x], y; attributes...)
-    scatter(x, y, z; attributes...)
+    scatter([xs], ys; attributes...)
+    scatter(xs, ys, zs; attributes...)
     scatter(positions; attributes...)
 
 Plots a marker at each position.
@@ -535,8 +535,8 @@ end
 
 """
     meshscatter(positions; attributes...)
-    meshscatter(x, y; attributes...)
-    meshscatter(x, y, z; attributes...)
+    meshscatter(xs, ys; attributes...)
+    meshscatter(xs, ys, zs; attributes...)
 
 Plots a single mesh at multiple position. The mesh can be scaled and rotated
 through attributes.
@@ -582,8 +582,8 @@ end
 
 """
     text(positions; text, attributes...)
-    text(x, y; text, attributes...)
-    text(x, y, z; text, attributes...)
+    text(xs, ys; text, attributes...)
+    text(xs, ys, zs; text, attributes...)
 
 Plots one or multiple texts passed via the `text` keyword.
 
@@ -751,15 +751,15 @@ vertices) and `connectivity` (the edges between the vertices).
 end
 
 """
-    wireframe(x, y, z; attributes...)
+    wireframe(xs, ys, zs; attributes...)
     wireframe(mesh; attributes...)
 
 Draws a wireframe of surface or mesh data.
 
 ## Arguments
-- `x, y, z`: Surface-like data where vertices are part of a grid. `x, y` are given
-  as `AbstractVector{<:Real}` and `z` is given as an `AbstractMatrix{<:Real}`. The
-  lengths of `x, y` must match the size of `z`.
+- `xs, ys, zs`: Surface-like data where vertices are part of a grid. `xs, ys` are given
+  as `AbstractVector{<:Real}` and `zs` is given as an `AbstractMatrix{<:Real}`. The
+  lengths of `xs, ys` must match the size of `zs`.
 - `mesh`: An object implementing [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl)
   `decompose()` methods for `Point` and `LineFace`. This is typically a GeometryBasics
   `Mesh`, `MetaMesh` or `GeometryPrimitive`.

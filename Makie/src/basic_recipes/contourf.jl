@@ -1,7 +1,7 @@
 """
-    contourf(x, y, data; attributes...)
+    contourf(xs, ys, data; attributes...)
 
-Plots a filled contour where each pixel in the grid defined by `x` and `y` is
+Plots a filled contour where each pixel in the grid defined by `xs` and `ys` is
 colored based on the level its `data` value maps to.
 
 $(argument_docs(:VertexGrid, item_kwargs = (arg3 = "data",)))

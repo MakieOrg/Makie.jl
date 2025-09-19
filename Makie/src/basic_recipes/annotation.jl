@@ -53,10 +53,10 @@ end
 using .Ann
 
 """
-    annotation(x_target, y_target)
-    annotation(x_label, y_label, x_target, y_target)
-    annotation(points_target)
-    annotation(points_label, points_target)
+    annotation(xs_target, ys_target; attributes...)
+    annotation(xs_label, ys_label, xs_target, ys_target; attributes...)
+    annotation(points_target; attributes...)
+    annotation(points_label, points_target; attributes...)
 
 Annotate one or more target points with a combination of optional text labels and
 connections between labels and targets, typically in the form of an arrow.
@@ -66,8 +66,8 @@ that overlaps between labels and data points are reduced. In this mode, the labe
 be very close to their associated data points so connection plots are typically not visible.
 
 ## Arguments
-- `x_target, y_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
-- `x_label, y_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
+- `xs_target, ys_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
+- `xs_label, ys_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
 - `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
   an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
 - `points_label`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}`

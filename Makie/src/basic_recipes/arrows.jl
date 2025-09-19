@@ -61,14 +61,14 @@ argument_docs_items(::Val{:ArrowLike}) = [
     "`directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining
     the direction arrows point in. These maybe reinterpreted as positions arrows
     point towards if `argmode = :endpoint`.",
-    "`x, y, [z]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for
+    "`xs, ys, [zs]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for
     each dimension. This replaces `points` as an argument and is affected by `align`
     in the same way.",
-    "`u, v, [w]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}`
+    "`us, vs, [ws]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}`
     for each dimension. This replaces `directions` as an argument and is affected by
     `argmode` in the same way.",
     "`f`: A callback function `point -> direction` which returns a direction for
-    each anchor point. Replaces `directions` and can be used with either `x, y, [z]`
+    each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]`
     or `points`."
 ]
 
@@ -240,8 +240,8 @@ end
 
 """
     arrows2d(points, directions; kwargs...)
-    arrows2d(x, y, [z], u, v, [w])
-    arrows2d(x, y, [z], f::Function)
+    arrows2d(xs, ys, [zs], us, vs, [ws])
+    arrows2d(xs, ys, [zs], f::Function)
 
 Plots arrows as 2D shapes.
 
@@ -518,8 +518,8 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 """
     arrows3d(points, directions; kwargs...)
-    arrows3d(x, y, [z], u, v, [w])
-    arrows3d(x, y, [z], f::Function)
+    arrows3d(xs, ys, [zs], us, vs, [ws])
+    arrows3d(xs, ys, [zs], f::Function)
 
 Plots arrows as 3D shapes.
 

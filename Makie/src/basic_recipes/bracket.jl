@@ -1,19 +1,19 @@
 """
-    bracket(x1, y1, x2, y2; kwargs...)
-    bracket(point1, point2; kwargs...)
-    bracket(point12; kwargs...)
+    bracket(xs1, ys1, xs2, ys2; kwargs...)
+    bracket(points1, points2; kwargs...)
+    bracket(points12; kwargs...)
 
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text
 label at the midpoint. By default each label is rotated parallel to the line
 between the bracket points.
 
 ## Arguments
-- `x1, y1, x2, y1`: A `Real` or `AbstractVector{<:Real}` setting the respective
+- `xs1, ys1, xs2, ys1`: A `Real` or `AbstractVector{<:Real}` setting the respective
   `x` or `y` coordinate of the start (1) or end point (2) of a bracket.
-- `point1, point2`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
+- `points1, points2`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
   `AbstractVector{<:VecTypes}` setting the (x, y) coordinate of a start point
-  `point1` or end point `point2` of a bracket.
-- `point12`: An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}`
+  in `points1` or end point in `points2` of a bracket.
+- `points12`: An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}`
   containing the start and end points of the bracket as tuples `(startpoint, endpoint)`.
 """
 @recipe Bracket (positions,) begin

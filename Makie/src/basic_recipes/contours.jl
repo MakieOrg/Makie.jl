@@ -4,10 +4,10 @@ function contour_label_formatter(level::Real)::String
 end
 
 """
-    contour([x, y], data; attributes...)
-    contour([x, y, z], data; attributes...)
+    contour([xs, ys], data; attributes...)
+    contour([xs, ys, zs], data; attributes...)
 
-Draws 2D lines on the grid defined by `x` and `y` where the `data` value matches
+Draws 2D lines on the grid defined by `xs` and `ys` where the `data` value matches
 a level value. In the 3D case lines generalize to surfaces.
 
 $(argument_docs(:VertexGrid, title_note = "2D ", item_kwargs = (arg3 = "data",), ref = ""))
@@ -56,9 +56,9 @@ $(argument_docs(:VolumeLike, title_note = "3D ", item_kwargs = (arg4 = "data",))
 end
 
 """
-    contour3d(x, y, z; attributes...)
+    contour3d(xs, ys, zs; attributes...)
 
-Draws 3D lines on the grid defined by `x` and `y` where the `z` value matches
+Draws 3D lines on the grid defined by `xs` and `ys` where the `z` value matches
 a level value. The line will be drawn with a matching z value.
 
 $(argument_docs(:VertexGrid))

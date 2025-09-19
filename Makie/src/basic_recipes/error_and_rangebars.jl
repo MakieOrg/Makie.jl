@@ -1,11 +1,11 @@
 """
-    errorbars(x, y, error_both; attributes...)
-    errorbars(x, y, error_low, error_high; attributes...)
-    errorbars(x, y, error_low_high; attributes...)
+    errorbars(xs, ys, error_both; attributes...)
+    errorbars(xs, ys, error_low, error_high; attributes...)
+    errorbars(xs, ys, error_low_high; attributes...)
 
-    errorbars(xy, error_both; attributes...)
-    errorbars(xy, error_low, error_high; attributes...)
-    errorbars(xy, error_low_high; attributes...)
+    errorbars(xys, error_both; attributes...)
+    errorbars(xys, error_low, error_high; attributes...)
+    errorbars(xys, error_low_high; attributes...)
 
     errorbars(xy_error_both; attributes...)
     errorbars(xy_error_low_high; attributes...)
@@ -15,8 +15,8 @@ Plots errorbars at (x, y) positions, extending by errors in the given `direction
 If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
 
 ## Arguments
-- `x, y`: A `Real` or `AbstractVector{<:Real}` setting positions per dimensions.
-- `xy`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`
+- `xs, ys`: A `Real` or `AbstractVector{<:Real}` setting positions per dimensions.
+- `xys`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`
 setting (x, y) positions.
 - `error_both`: A `Real` or `AbstractVector{<:Real}` setting symmetric (±) y errors. If
 `direction = :x` these are interpreted as symmetric x errors instead.
@@ -47,9 +47,9 @@ end
 const RealOrVec = Union{Real, RealVector}
 
 """
-    rangebars(val, low, high; kwargs...)
-    rangebars(val, low_high; kwargs...)
-    rangebars(val_low_high; kwargs...)
+    rangebars(vals, lows, highs; kwargs...)
+    rangebars(vals, low_highs; kwargs...)
+    rangebars(val_low_highs; kwargs...)
 
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the
 other dimension given the chosen `direction`.
@@ -58,14 +58,14 @@ The `low_high` argument can be a vector of tuples or intervals.
 If you want to plot errors relative to a reference value, use `errorbars`.
 
 ## Arguments
-- `val`: A `Real` or `AbstractVector{<:Real}` setting x positions of bars. If
+- `vals`: A `Real` or `AbstractVector{<:Real}` setting x positions of bars. If
   `direction = :x` this sets the y position instead.
-- `low, high`: A `Real` or `AbstractVector{<:Real}` setting lower and upper y
+- `lows, highs`: A `Real` or `AbstractVector{<:Real}` setting lower and upper y
   positions of bars. If `direction = :x` this sets the x position instead.
-- `low_high`: An `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which
+- `low_highs`: An `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which
   sets the lower and upper bar y positions together. Sets x positions instead if
   `direction = :x`.
-- `val_low_high`: An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position,
+- `val_low_highs`: An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position,
   lower y position and upper y position of bars together. The coordinate interpretation
   will be swapped if `direction = :x`.
 """

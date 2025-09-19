@@ -1,16 +1,16 @@
 """
-    band(x, ylower, yupper; attributes...)
+    band(xs, ys_lower, ys_upper; attributes...)
     band(lower, upper; attributes...)
-    band(x, lowerupper; attributes...)
+    band(xs, lowerupper; attributes...)
 
-Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)`
+Plots a band from `ys_lower` to `ys_upper` along `xs`. The form `band(lower, upper)`
 plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface) between the
 points in `lower` and `upper`.
 
 ## Arguments
-- `x`: An `AbstractVector{<:Real}` containing x-values. These are interpreted
+- `xs`: An `AbstractVector{<:Real}` containing x-values. These are interpreted
   as y-values if `direction = :y`.
-- `ylower, yupper`: An `AbstractVector{<:Real}` containing the lower and upper
+- `ys_lower, ys_upper`: An `AbstractVector{<:Real}` containing the lower and upper
   y-limits of the band. These are interpreted as x-limits if `direction = :y`.
 - `lowerupper`: An `AbstractVector{<:Interval}` containing the lower and upper
   y-limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
