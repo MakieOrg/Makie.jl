@@ -23,9 +23,9 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values)
+    stephist(values::AbstractVector{<:Real}; attributes...)
 
-Plot a step histogram of `values`.
+Plots a step histogram of `values` which shows the outline of the histogram.
 """
 @recipe StepHist (values,) begin
     "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
@@ -76,9 +76,10 @@ function Makie.plot!(plot::StepHist)
 end
 
 """
-    hist(values)
+    hist(values::AbstractVector{<:Real}; attributes...)
 
-Plot a histogram of `values`.
+Plots a histogram of `values` which draws bars whose height corresponds to the
+number of values that full into certain ranges.
 """
 @recipe Hist (values,) begin
     """

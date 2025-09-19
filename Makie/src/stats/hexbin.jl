@@ -1,7 +1,9 @@
 """
-    hexbin(xs, ys; kwargs...)
+    hexbin(xs, ys; attributes...)
 
 Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
+
+$(argument_docs(:PointBased2D))
 """
 @recipe Hexbin begin
     "If an `Int`, sets the number of bins in x and y direction. If a `NTuple{2, Int}`, sets the number of bins for x and y separately."

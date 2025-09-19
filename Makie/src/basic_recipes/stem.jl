@@ -1,9 +1,10 @@
 """
-    stem(xs, ys, [zs]; kwargs...)
+    stem(xs, ys, [zs]; attributes...)
+    stem(positions; attributes...)
 
 Plots markers at the given positions extending from `offset` along stem lines.
 
-The conversion trait of `stem` is `PointBased`.
+$(argument_docs(:PointBased))
 """
 @recipe Stem begin
     stemcolor = @inherit linecolor

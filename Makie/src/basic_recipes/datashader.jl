@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<: Point})
+    datashader(points::AbstractVector{<:Point}; attributes...)
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
@@ -288,9 +288,11 @@ using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
 datashader(points)
 ```
-Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower than just copying the data into a new array.
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented,
+this might be slower than just copying the data into a new array.
 
-For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto`
+or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
 """
 @recipe DataShader (points,) begin
     """

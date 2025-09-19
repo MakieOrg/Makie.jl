@@ -1,8 +1,12 @@
 """
-    ablines(intercepts, slopes; attrs...)
+    ablines(intercepts, slopes; attributes...)
 
-Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Scene` with 2D projection at its current limits.
-You can pass one or multiple intercepts or slopes.
+Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Axis`
+at its current limits.
+
+## Arguments
+- `intercepts`: A `Real` or `AbstractVector{<:Real}` containing y intercepts.
+- `slopes`: A `Real` or `AbstractVector{<:Real}` containing slops.
 """
 @recipe ABLines (intercept, slope) begin
     documented_attributes(LineSegments)...

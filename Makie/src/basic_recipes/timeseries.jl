@@ -1,7 +1,7 @@
 """
-    timeseries(x::Observable{{Union{Number, Point2}}})
+    timeseries(x::Observable{Union{Number, Point2}}; attributes...)
 
-Plots a sampled signal.
+Plots the history of a signal `x` as a line plot.
 
 Usage:
 ```julia
@@ -18,7 +18,6 @@ display(scene)
     # It's important to yield here though, otherwise nothing will be rendered
     sleep(1/30)
 end
-
 ```
 """
 @recipe TimeSeries (signal,) begin
