@@ -1,8 +1,8 @@
 """
-    tooltip(position, string)
-    tooltip(x, y, string)
+    tooltip(position, string; atttributes...)
+    tooltip(x, y, string; atttributes...)
 
-Creates a tooltip pointing at `position` displaying the given `string
+Creates a tooltip pointing at `position` displaying the given `string`.
 """
 @recipe Tooltip begin
     # General
