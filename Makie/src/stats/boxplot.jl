@@ -6,16 +6,15 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
 """
-    boxplot(x, y; kwargs...)
-Draw a Tukey style boxplot.
-The boxplot has 3 components:
-- a `crossbar` spanning the interquartile (IQR) range with a midline marking the
-    median
-- an `errorbar` whose whiskers span `range * iqr`
-- points marking outliers, that is, data outside the whiskers
-## Arguments
-- `x`: positions of the categories
-- `y`: variables within the boxes
+    boxplot(x, y; attributes...)
+
+Draw a Tukey style boxplot consisting of 3 components:
+- a `crossbar` spanning the interquartile (IQR) range (values from the 25th to
+  the 75th percentile) with a midline marking the median
+- an `errorbar` including values from the interquartile range extended by `range * iqr`
+- points marking outliers, that is, data outside the errorbar
+
+$(argument_docs(:SampleBased))
 """
 @recipe BoxPlot (x, y) begin
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."

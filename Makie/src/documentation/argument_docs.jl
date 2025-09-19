@@ -54,7 +54,7 @@ argument_docs_items(::Val{:PointBased}) = [
 argument_docs_title(::Val{:PointBased2D}, title_note) = argument_docs_title(Val{:PointBased}(), title_note)
 argument_docs_items(::Val{:PointBased2D}) = [
     "`positions`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`
-    corresponding to `(x, y)`positions.",
+    corresponding to `(x, y)` positions.",
     "`xs, ys`: Positions given per dimension. Can be `Real` to define
     a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to
     define multiple. Using `ClosedInterval` requires at least one dimension to be
@@ -99,7 +99,15 @@ argument_docs_title(::Val{:LineSegments}, title_note) = argument_docs_title(Val{
 function argument_docs_items(::Val{:LineSegments})
     return push!(
         argument_docs_items(Val{:PointBased}()),
-        "- `pairs`: An `AbstractVector{Tuple{<:VecTypes, <:VecTypes}}` representing
+        "`pairs`: An `AbstractVector{Tuple{<:VecTypes, <:VecTypes}}` representing
         pairs of points to be connected."
     )
 end
+
+argument_docs_items(::Val{:SampleBased}) = [
+    "`ys`: An `AbstractVector{<:Real} defining samples."
+    "`xs`: An `AbstractVector{<:Real} defining the x positions and grouping
+    of `ys`. This can typically be reinterpreted as y positions by adjusting the
+    `orientation` or `direction` attribute. (x, y) pairs with the same x value
+    are considered part of the same group, category or sample."
+]
