@@ -148,9 +148,8 @@ $(argument_docs(:PointBased))
     depth_shift = 0.0
 end
 
-conversion_trait(::Type{<:TextLabel}) = PointBased()
-
 convert_arguments(::Type{<:TextLabel}, args...) = convert_arguments(Text, args...)
+convert_arguments(::Type{<:TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
 convert_arguments(::Type{<:TextLabel}, p::VecTypes, str) = ([(str, p)],)
 convert_arguments(::Type{<:TextLabel}, ps::AbstractVector{<:VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
 convert_arguments(::Type{<:TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]),)

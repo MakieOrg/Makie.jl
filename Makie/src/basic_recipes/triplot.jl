@@ -177,7 +177,8 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
 end
 
 # TODO: restrict to Point2?
-conversion_trait(::Type{<:Triplot}) = PointBased()
+convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
+convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 
 function plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})

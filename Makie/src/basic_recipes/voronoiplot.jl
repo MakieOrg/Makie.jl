@@ -126,8 +126,10 @@ end
 function convert_arguments(::Type{<:Voronoiplot}, mat::AbstractMatrix)
     return convert_arguments(PointBased(), axes(mat, 1), axes(mat, 2), mat)
 end
+convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
 # For scatter-like inputs
-conversion_trait(::Type{<:Voronoiplot}) = PointBased()
+convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
+convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 convert_arguments(::Type{<:Voronoiplot}, x::DelTri.VoronoiTessellation) = (x,)
 
 function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
