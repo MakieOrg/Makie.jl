@@ -1,6 +1,6 @@
 """
-    tooltip(position, string; atttributes...)
-    tooltip(x, y, string; atttributes...)
+    tooltip(position, string; attributes...)
+    tooltip(x, y, string; attributes...)
 
 Creates a tooltip pointing at `position` displaying the given `string`.
 """
