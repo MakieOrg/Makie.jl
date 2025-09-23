@@ -212,6 +212,12 @@ function Base.push!(pipeline::RenderPipeline, stage::Stage)
     push!(pipeline.stages, stage)
     return stage # for convenience
 end
+function Base.push!(pipeline::RenderPipeline, stages::Stage...)
+    for stage in stages
+        push!(pipeline, stage)
+    end
+    return stages
+end
 function Base.push!(pipeline::RenderPipeline, other::RenderPipeline)
     N = length(pipeline.stages); M = length(pipeline.formats)
     append!(pipeline.stages, other.stages)
@@ -220,6 +226,26 @@ function Base.push!(pipeline::RenderPipeline, other::RenderPipeline)
     end
     append!(pipeline.formats, other.formats)
     return other # for convenience
+end
+
+function get_connection_index(pipeline::RenderPipeline; from = nothing, to = nothing)
+    if from !== nothing
+        stage_index, name = from
+        stage = pipeline.stages[stage_index]
+        output_index = stage.outputs[name]
+        return pipeline.stageio2idx[(stage_index, output_index)]
+    elseif to !== nothing
+        stage_index, name = to
+        stage = pipeline.stages[stage_index]
+        input_index = stage.inputs[name]
+        return pipeline.stageio2idx[(stage_index, -input_index)]
+    else
+        error("Either `from` or `to` must be given as (stage index, input/output name).")
+    end
+end
+
+function get_connection_buffer(pipeline::RenderPipeline; from = nothing, to = nothing)
+    return pipeline.format[get_connection_index(pipeline; from, to)]
 end
 
 
@@ -534,11 +560,18 @@ end
 
 
 function Base.show(io::IO, format::BufferFormat)
+    print(io, "BufferFormat($(format.dims), $(format.type))")
+    return io
+end
+
+function Base.show(io::IO, ::MIME"text/plain", format::BufferFormat)
     print(io, "BufferFormat($(format.dims), $(format.type)")
-    for (k, v) in format.extras
-        print(io, ", :", k, " => ", v)
-    end
-    return print(io, ")")
+
+    print(io, ", minfilter = :$(format.minfilter)")
+    print(io, ", magfilter = :$(format.magfilter)")
+    print(io, ", repeat = $(format.repeat)")
+    print(io, ", mipmap = $(format.mipmap))")
+    return io
 end
 
 Base.show(io::IO, stage::Stage) = print(io, "Stage($(stage.name))")
