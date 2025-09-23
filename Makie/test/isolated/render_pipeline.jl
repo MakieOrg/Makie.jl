@@ -236,6 +236,290 @@ using Makie: generate_buffers, default_pipeline
         @test buffers[remap[3]] == pipeline.formats[3]
     end
 
+    @testset "RenderPipeline resolution" begin
+        @testset "sanity checks" begin
+            # Nothing to generate in an empty pipeline
+            pipeline = RenderPipeline()
+            buffers, mapping = generate_buffers(pipeline)
+            @test isempty(buffers)
+            @test isempty(mapping)
+
+            # no connections means no buffer usage
+            push!(pipeline, Makie.RenderStage())
+            push!(pipeline, Makie.DisplayStage())
+            buffers, mapping = generate_buffers(pipeline)
+            @test isempty(buffers)
+            @test isempty(mapping)
+
+            # direct connection between two stages without any type changes or reuse
+            pipeline = RenderPipeline()
+            render = push!(pipeline, Makie.RenderStage())
+            display = push!(pipeline, Makie.DisplayStage())
+            connect!(pipeline, render, display)
+            buffers, mapping = generate_buffers(pipeline)
+            @test length(buffers) == 2
+            @test length(mapping) == 2
+            @test buffers[mapping[1]] == Makie.get_output_format(render, :color)
+            @test buffers[mapping[2]] == Makie.get_output_format(render, :objectid)
+            @test buffers[mapping[1]] == Makie.get_input_format(display, :color)
+            @test buffers[mapping[2]] == Makie.get_input_format(display, :objectid)
+        end
+
+        @testset "Verify complete output usage check" begin
+            pipeline = RenderPipeline()
+            stage1 = Makie.Stage(
+                :first,
+                outputs = [:dropped => BufferFormat(3, N0f8), :color => BufferFormat(3, N0f8)]
+            )
+            stage2 = Makie.Stage(
+                :second,
+                inputs = [:color => BufferFormat(3, N0f8)]
+            )
+            push!(pipeline, stage1, stage2)
+            # connects color -> color, leaving dropped. This is not allowed to remain
+            connect!(pipeline, stage1, stage2)
+            @test_throws ErrorException generate_buffers(pipeline)
+        end
+
+        function build_pipeline(connections...)
+            pipeline = RenderPipeline()
+
+            stages = [Makie.Stage(:stage1, outputs = first(connections))]
+            for i in 2:length(connections)
+                stage = Makie.Stage(
+                    Symbol(:stage, i),
+                    inputs = connections[i-1], outputs = connections[i]
+                )
+                push!(stages, stage)
+            end
+            push!(stages, Makie.Stage(Symbol(:stage, length(connections)+1), inputs = last(connections)))
+
+            push!(pipeline, stages...)
+            for i in eachindex(connections)
+                connect!(pipeline, stages[i], stages[i + 1])
+            end
+
+            return pipeline
+        end
+
+        @testset "Exact type reuse" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f16 => BufferFormat(3, Float16), :f32 => BufferFormat(3, Float32)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out => BufferFormat(3, Float16)]
+
+            for _ in 1:2
+                pipeline = build_pipeline(conn1, conn2, conn3)
+                @test length(pipeline.formats) == 5 # no reuse here
+
+                # trans is not allowed to reuse anything from conn1, but :out is and should
+                buffers, mapping = generate_buffers(pipeline)
+                @test length(buffers) == 4
+
+                # verify types (specifically the last one which should not pick Float32)
+                for i in eachindex(conn1)
+                    @test buffers[mapping[pipeline.stageio2idx[(1, i)]]] == conn1[i][2]
+                end
+                @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(3, 1)]]] == conn3[1][2]
+
+                # verify correct reuse
+                unique_buffer_idxs = [
+                    mapping[pipeline.stageio2idx[(1, 1)]]
+                    mapping[pipeline.stageio2idx[(1, 2)]]
+                    mapping[pipeline.stageio2idx[(1, 3)]]
+                    mapping[pipeline.stageio2idx[(2, 1)]]
+                ]
+                @test allunique(unique_buffer_idxs) # these do not reuse
+                @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs # :out does
+                @test mapping[pipeline.stageio2idx[(3, 1)]] == unique_buffer_idxs[2] # reuses Float16 buffer
+
+                # retest with different buffer order in first stage
+                reverse!(conn1)
+            end
+        end
+
+        # Here the exact match Float16 does not exist, but a buffer with a larger
+        # element type still exists (Float32). It should be picked
+        @testset "Big type reuse" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f32 => BufferFormat(3, Float32)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out => BufferFormat(3, Float16)]
+
+            for picked_idx in (2, 1)
+                pipeline = build_pipeline(conn1, conn2, conn3)
+                @test length(pipeline.formats) == 4
+
+                buffers, mapping = generate_buffers(pipeline)
+                @test length(buffers) == 3
+
+                for i in eachindex(conn1)
+                    @test buffers[mapping[pipeline.stageio2idx[(1, i)]]] == conn1[i][2]
+                end
+                @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(3, 1)]]] == BufferFormat(3, Float32)
+                # ^ type is now Float32
+
+                unique_buffer_idxs = [
+                    mapping[pipeline.stageio2idx[(1, 1)]]
+                    mapping[pipeline.stageio2idx[(1, 2)]]
+                    mapping[pipeline.stageio2idx[(2, 1)]]
+                ]
+                @test allunique(unique_buffer_idxs)
+                @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs
+                @test mapping[pipeline.stageio2idx[(3, 1)]] == unique_buffer_idxs[picked_idx]
+                # ^ reuses Float32 buffer from conn1 (last in iteration 1, first in interation 2)
+
+                reverse!(conn1)
+            end
+        end
+
+        # Now we target Float32 without an existing Float32 buffer. It is cheaper
+        # to expand 3x Float16 -> 3x Float32 (+48 bits per fragment) than to add
+        # a new buffer (+96 bits per fragment) so that should happen
+        @testset "Type widening reuse" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f16 => BufferFormat(3, Float16)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out => BufferFormat(3, Float32)]
+
+            for picked_idx in (2, 1)
+                pipeline = build_pipeline(conn1, conn2, conn3)
+                @test length(pipeline.formats) == 4
+
+                buffers, mapping = generate_buffers(pipeline)
+                @test length(buffers) == 3
+
+                @test buffers[mapping[pipeline.stageio2idx[(1, 3 - picked_idx)]]] == BufferFormat(3, N0f8)
+                @test buffers[mapping[pipeline.stageio2idx[(1, picked_idx)]]] == BufferFormat(3, Float32)
+                @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(3, 1)]]] == conn3[1][2]
+
+                unique_buffer_idxs = [
+                    mapping[pipeline.stageio2idx[(1, 1)]]
+                    mapping[pipeline.stageio2idx[(1, 2)]]
+                    mapping[pipeline.stageio2idx[(2, 1)]]
+                ]
+                @test allunique(unique_buffer_idxs)
+                @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs
+                @test mapping[pipeline.stageio2idx[(3, 1)]] == unique_buffer_idxs[picked_idx]
+
+                reverse!(conn1)
+            end
+        end
+
+        # Right type but too few channels. Buffer should get another channel
+        @testset "element widening reuse" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f16 => BufferFormat(3, Float16), :f32 => BufferFormat(3, Float32)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out => BufferFormat(4, Float16)] # 4 channels
+
+            for _ in 1:2
+                pipeline = build_pipeline(conn1, conn2, conn3)
+                @test length(pipeline.formats) == 5
+
+                buffers, mapping = generate_buffers(pipeline)
+                @test length(buffers) == 4
+
+                @test buffers[mapping[pipeline.stageio2idx[(1, 1)]]] == conn1[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(1, 2)]]] == BufferFormat(4, Float16)
+                @test buffers[mapping[pipeline.stageio2idx[(1, 3)]]] == conn1[3][2]
+                @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(3, 1)]]] == conn3[1][2]
+
+                unique_buffer_idxs = [
+                    mapping[pipeline.stageio2idx[(1, 1)]]
+                    mapping[pipeline.stageio2idx[(1, 2)]]
+                    mapping[pipeline.stageio2idx[(1, 3)]]
+                    mapping[pipeline.stageio2idx[(2, 1)]]
+                ]
+                @test allunique(unique_buffer_idxs)
+                @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs
+                @test mapping[pipeline.stageio2idx[(3, 1)]] == unique_buffer_idxs[2]
+
+                reverse!(conn1)
+            end
+        end
+
+        # Two Float16 buffers are needed here, but only one is available. The
+        # other one will need to use the FLoat32 buffer
+        @testset "no duplicate reuse" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f16 => BufferFormat(3, Float16), :f32 => BufferFormat(3, Float32)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out1 => BufferFormat(3, Float16), :out2 => BufferFormat(3, Float16)]
+
+            for picked_idx in (3, 1)
+                for _ in 1:2
+                    pipeline = build_pipeline(conn1, conn2, conn3)
+                    @test length(pipeline.formats) == 6
+
+                    # 2 reused
+                    buffers, mapping = generate_buffers(pipeline)
+                    @test length(buffers) == 4
+
+                    for i in 1:3
+                        @test buffers[mapping[pipeline.stageio2idx[(1, i)]]] == conn1[i][2]
+                    end
+                    @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                    # Either :out1 must reuse :f32 or :out2 must do it. The other must use :f16
+                    out1_buffer = buffers[mapping[pipeline.stageio2idx[(3, 1)]]]
+                    out2_buffer = buffers[mapping[pipeline.stageio2idx[(3, 2)]]]
+                    @test (out1_buffer == conn1[2][2] && out2_buffer == conn1[picked_idx][2]) ||
+                        (out2_buffer == conn1[2][2] && out1_buffer == conn1[picked_idx][2])
+
+                    unique_buffer_idxs = [
+                        mapping[pipeline.stageio2idx[(1, 1)]]
+                        mapping[pipeline.stageio2idx[(1, 2)]]
+                        mapping[pipeline.stageio2idx[(1, 3)]]
+                        mapping[pipeline.stageio2idx[(2, 1)]]
+                    ]
+                    @test allunique(unique_buffer_idxs)
+                    @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs
+                    @test mapping[pipeline.stageio2idx[(3, 2)]] in unique_buffer_idxs
+                    # Same as above
+                    out1_idx = mapping[pipeline.stageio2idx[(3, 1)]]
+                    out2_idx = mapping[pipeline.stageio2idx[(3, 2)]]
+                    @test (out1_idx == unique_buffer_idxs[2] && out2_idx == unique_buffer_idxs[picked_idx]) ||
+                        (out2_idx == unique_buffer_idxs[2] && out1_idx == unique_buffer_idxs[picked_idx])
+
+                    reverse!(conn3)
+                end
+
+                reverse!(conn1)
+            end
+        end
+
+        # A buffer does not stop being in use once it's used as input. That's
+        # controlled by the connections of the pipeline. Here the :f8 and :f16
+        # buffers are still in use and :trans is not yet free, so a new buffer is needed
+        @testset "don't reuse what's in use" begin
+            conn1 = [:f8 => BufferFormat(3, N0f8), :f16 => BufferFormat(3, Float16)]
+            conn2 = [:trans => BufferFormat(3, N0f8)]
+            conn3 = [:out1 => BufferFormat(3, Float16)]
+
+            for picked_idx in (3, 1)
+                pipeline = build_pipeline(conn1, conn2, conn3)
+                stage1 = first(pipeline.stages)
+                stage5 = push!(pipeline, Stage(:stage5, inputs = conn1))
+                connect!(pipeline, stage1, stage5)
+                # stage5 doesn't add anything new because it connects with stage1
+                @test length(pipeline.formats) == 4
+
+                buffers, mapping = generate_buffers(pipeline)
+                @test length(buffers) == 4
+
+                @test buffers[mapping[pipeline.stageio2idx[(1, 1)]]] == conn1[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(1, 2)]]] == conn1[2][2]
+                @test buffers[mapping[pipeline.stageio2idx[(2, 1)]]] == conn2[1][2]
+                @test buffers[mapping[pipeline.stageio2idx[(3, 1)]]] == conn3[1][2]
+
+                # no buffer reuse, so every pipeline.format index maps to a
+                # unique index in buffers
+                @test allunique(mapping)
+
+                reverse!(conn1)
+            end
+        end
+    end
+
     @testset "default pipeline" begin
         pipeline = default_pipeline()
 
