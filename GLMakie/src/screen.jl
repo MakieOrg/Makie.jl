@@ -202,9 +202,9 @@ mutable struct Screen{GLWindow} <: MakieScreen
 
         s = size(framebuffer_factory)
         screen = new{GLWindow}(
-            glscreen, (10,10), owns_glscreen, shader_cache, framebuffer_factory,
+            glscreen, (10, 10), owns_glscreen, shader_cache, framebuffer_factory,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
-            Observable(0f0), screen2scene,
+            Observable(0.0f0), screen2scene,
             screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0.0f0), nothing, reuse, true, false
@@ -833,7 +833,7 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     return
 end
 
-function Makie.colorbuffer(screen::Screen, source::Texture{T, 2}) where T
+function Makie.colorbuffer(screen::Screen, source::Texture{T, 2}) where {T}
     gl_switch_context!(screen.glscreen)
     # render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering

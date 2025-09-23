@@ -10,16 +10,19 @@ oit = push!(pipeline, Makie.OITStage())
 fxaa = push!(pipeline, Makie.FXAAStage()) # includes FXAA1 & FXAA2 with color_luma connection
 
 # Our new stage takes a 32bit color and produces a new 32 bit color
-color_tint = Makie.Stage(:Tint,
+color_tint = Makie.Stage(
+    :Tint,
     # BufferFormat defaults to 4x N0f8, i.e. 32Bit color
     inputs = [:color => Makie.BufferFormat()],
     outputs = [:color => Makie.BufferFormat()],
-    color_transform = Observable(Makie.Mat3f(
-        # sepia filter
-        0.393, 0.349, 0.272,
-        0.769, 0.686, 0.534,
-        0.189, 0.168, 0.131
-    ))
+    color_transform = Observable(
+        Makie.Mat3f(
+            # sepia filter
+            0.393, 0.349, 0.272,
+            0.769, 0.686, 0.534,
+            0.189, 0.168, 0.131
+        )
+    )
 )
 push!(pipeline, color_tint)
 display_stage = push!(pipeline, Makie.DisplayStage())

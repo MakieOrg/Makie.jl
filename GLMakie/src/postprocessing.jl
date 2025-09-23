@@ -87,10 +87,9 @@ function run_step(screen, glscene, ::SortPlots)
         # return Makie.zvalue2d(plot)
     end
 
-    sort!(screen.renderlist; by=sortby)
+    sort!(screen.renderlist; by = sortby)
     return
 end
-
 
 
 @enum FilterOptions begin
@@ -98,7 +97,7 @@ end
     FilterTrue = 1
     FilterAny = 2
 end
-compare(val::Bool, filter::FilterOptions)    = (filter == FilterAny) || (val == Int(filter))
+compare(val::Bool, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
 compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
 
 struct RenderPlots <: AbstractRenderStep
@@ -116,7 +115,7 @@ function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
     ssao = FilterOptions(get(parent.attributes, :ssao, 2)) # can't do FilterOptions(::FilterOptions) ???
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
     transparency = FilterOptions(get(parent.attributes, :transparency, 2))
-    return RenderPlots(framebuffer,  [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
+    return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
 end
 
 function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, parent)
@@ -138,8 +137,8 @@ renders_in_stage(robj, ::AbstractRenderStep) = false
 renders_in_stage(robj::RenderObject, step::RenderPlots) = renders_in_stage(robj.uniforms, step)
 function renders_in_stage(robj, step::RenderPlots)
     return compare(to_value(get(robj, :ssao, false)), step.ssao) &&
-           compare(to_value(get(robj, :transparency, false)), step.transparency) &&
-           compare(to_value(get(robj, :fxaa, false)), step.fxaa)
+        compare(to_value(get(robj, :transparency, false)), step.transparency) &&
+        compare(to_value(get(robj, :fxaa, false)), step.fxaa)
 end
 
 function run_step(screen, glscene, step::RenderPlots)
@@ -202,8 +201,6 @@ function run_step(screen, glscene, step::RenderPlots)
     end
     return
 end
-
-
 
 
 # TODO: maybe call this a PostProcessor?
@@ -333,7 +330,7 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
         # scenes. It should be a leaf scene to avoid repeatedly shading
         # the same region (though this is not guaranteed...)
         if !isempty(scene.children) || isempty(scene.plots) ||
-            !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
+                !any(p -> to_value(get(p.attributes, :ssao, false)), scene.plots)
             continue
         end
         a = viewport(scene)[]
@@ -436,7 +433,6 @@ function run_step(screen, glscene, step::RenderPass{:FXAA2})
     GLAbstraction.render(step.robj)
     return
 end
-
 
 
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct

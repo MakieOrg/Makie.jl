@@ -34,13 +34,13 @@ end
     @test length(cache.program_cache) == 10
 
     # heatmap hasn't been compiled so one new program should be added
-    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
     @test length(cache.program_cache) == 11
 
     # For second time no new shaders should be added
-    display(screen, heatmap([1,2,2.5,3], [1,2,2.5,3], rand(4,4)))
+    display(screen, heatmap([1, 2, 2.5, 3], [1, 2, 2.5, 3], rand(4, 4)))
     @test length(cache.shader_cache) == 19
     @test length(cache.template_cache) == 19
     @test length(cache.program_cache) == 11

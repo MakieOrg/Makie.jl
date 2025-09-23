@@ -35,7 +35,7 @@ end
 
 Renders a single frame of a `screen`
 """
-function render_frame(screen::Screen; resize_buffers=true)
+function render_frame(screen::Screen; resize_buffers = true)
     if isempty(screen.framebuffer_factory.children) || isnothing(screen.scene)
         return
     end

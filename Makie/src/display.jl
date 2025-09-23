@@ -67,7 +67,7 @@ function set_screen_config!(backend::Module, new_values)
     return backend_defaults
 end
 
-function merge_screen_config(::Type{Config}, _config::Dict) where Config
+function merge_screen_config(::Type{Config}, _config::Dict) where {Config}
     backend = parentmodule(Config)
     key = nameof(backend)
     backend_defaults = CURRENT_DEFAULT_THEME[key]
@@ -79,7 +79,7 @@ function merge_screen_config(::Type{Config}, _config::Dict) where Config
                     (to_value(backend_defaults[:render_pipeline]) == automatic)
                 ssao = to_value(get(config, :ssao, backend_defaults[:ssao]))
                 fxaa = to_value(get(config, :fxaa, backend_defaults[:fxaa]))
-                oit  = to_value(get(config, :oit, backend_defaults[:oit]))
+                oit = to_value(get(config, :oit, backend_defaults[:oit]))
                 return default_pipeline(; ssao, fxaa, oit)
             else
                 return to_value(backend_defaults[:render_pipeline])

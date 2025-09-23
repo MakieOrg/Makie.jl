@@ -139,7 +139,7 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
     # (1) requires us to keep depth/stenctil/depth_stencil at end so that the first
     # fb.counter buffers are usable draw buffers.
     for (k, v) in fb.name2idx
-        fb.name2idx[k] = ifelse(v < idx, v, v+1)
+        fb.name2idx[k] = ifelse(v < idx, v, v + 1)
     end
     fb.name2idx[key] = idx
     insert!(fb.attachments, idx, attachment)
@@ -148,10 +148,10 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
 end
 
 function gl_attach(t::Texture{T, 2}, attachment::GLenum) where {T}
-    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
+    return glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
 function gl_attach(buffer::RenderBuffer, attachment::GLenum)
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
+    return glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
 end
 
 # (1) disallows random deletion because that could disrupt the order of draw buffers -> no delete!()
@@ -165,7 +165,7 @@ function pop_colorbuffer!(fb::GLFramebuffer)
     key = :unknown
     for (k, v) in fb.name2idx
         (v == fb.counter) && (key = k)
-        (v > fb.counter) && (fb.name2idx[k] = v-1)
+        (v > fb.counter) && (fb.name2idx[k] = v - 1)
     end
     delete!(fb.name2idx, key)
     fb.counter -= 1
@@ -209,7 +209,7 @@ function Base.show(io::IO, fb::GLFramebuffer)
     X, Y = fb.size
     print(io, "$X×$Y GLFrameBuffer(:")
     join(io, string.(keys(fb.name2idx)), ", :")
-    print(io, ") with id ", fb.id)
+    return print(io, ") with id ", fb.id)
 end
 
 function attachment_enum_to_string(x::GLenum)
@@ -238,4 +238,5 @@ function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
     for (key, attachment, buffer) in zip(key_strings, attachments, fb.buffers)
         print(io, "\n  ", key, " => ", attachment, " ::", typeof(buffer))
     end
+    return
 end

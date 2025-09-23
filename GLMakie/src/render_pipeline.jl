@@ -91,7 +91,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
         end
         N = length(connection_indices)
         while (N > 0) && (connection_indices[N] == -1)
-            N = N-1
+            N = N - 1
         end
 
         if isempty(connection_indices)

@@ -155,7 +155,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # image so we have a user generated texture in the mix
         # texture atlas is triggered by text
         # include SSAO to make sure its cleanup works too
-        f,a,p = image(rand(4,4))
+        f, a, p = image(rand(4, 4))
 
         # make sure switching the render pipeline doesn't cause errors
         screen = display(f, ssao = true, visible = false)

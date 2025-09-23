@@ -32,7 +32,7 @@ function (sp::StandardPrerender)()
     end
 
     # Disable cullface for now, until all rendering code is corrected!
-    glDisable(GL_CULL_FACE)
+    return glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 end
 

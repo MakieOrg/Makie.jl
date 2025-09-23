@@ -6,9 +6,9 @@ module BFT
     import FixedPointNumbers: N0f8
 
     @enum BufferFormatType::UInt8 begin
-        float8 = 0; float16 = 1; float32 = 3;
-        int8 = 4; int16 = 5; int32 = 7;
-        uint8 = 8; uint16 = 9; uint32 = 11;
+        float8 = 0; float16 = 1; float32 = 3
+        int8 = 4; int16 = 5; int32 = 7
+        uint8 = 8; uint16 = 9; uint32 = 11
     end
 
     # lowest 2 bits do variation between 8, 16 and 32 bit types, others do variation of base type
@@ -135,7 +135,8 @@ represents an action taken during rendering, e.g. rendering (a subset of) render
 objects, running a post processor or sorting render objects.
 """
 function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[], kwargs...)
-    return Stage(Symbol(name),
+    return Stage(
+        Symbol(name),
         Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(inputs)]),
         BufferFormat[v for (k, v) in inputs],
         Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(outputs)]),
@@ -259,7 +260,8 @@ will be updated appropriately.
 is connected to every stage in target with an appropriately named input. Use with
 caution.
 """
-function Observables.connect!(pipeline::RenderPipeline,
+function Observables.connect!(
+        pipeline::RenderPipeline,
         src::Union{RenderPipeline, Stage}, output::Symbol,
         trg::Union{RenderPipeline, Stage}, input::Symbol
     )
@@ -313,7 +315,7 @@ function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::In
     # Don't make a new connection if the connection already exists
     # (the format must be correct if it exists)
     if get(pipeline.stageio2idx, (src, output), 0) ===
-        get(pipeline.stageio2idx, (trg, -input), -1)
+            get(pipeline.stageio2idx, (trg, -input), -1)
         return
     end
 
@@ -390,7 +392,7 @@ function generate_buffers(pipeline::RenderPipeline)
     # sum must be 1 + 2 + ... + n = n(n+1)/2
     for i in eachindex(output_sum)
         s = output_sum[i]; m = output_max[i]
-        if s != div(m*(m+1), 2)
+        if s != div(m * (m + 1), 2)
             error("Stage $i has an incomplete set of output connections.")
         end
     end
@@ -405,7 +407,7 @@ function generate_buffers(pipeline::RenderPipeline)
     end
     filter!(x -> x != (999_999, 0), endpoints)
 
-    usage_per_transfer = [Int[] for _ in 1:length(pipeline.stages)-1]
+    usage_per_transfer = [Int[] for _ in 1:(length(pipeline.stages) - 1)]
     for (conn_idx, (start, stop)) in enumerate(endpoints)
         start <= stop || error("Connection $conn_idx is read before it is written to. $start $stop")
         for i in start:stop
@@ -424,8 +426,8 @@ function generate_buffers(pipeline::RenderPipeline)
         # - collect available buffers (not in use now or last iteration)
         copyto!(resize!(available, length(buffers)), eachindex(buffers))
         empty!(needs_buffer)
-        for j in max(1, i-1):i
-        # for j in i:min(length(usage_per_transfer), i+1) # reverse
+        for j in max(1, i - 1):i
+            # for j in i:min(length(usage_per_transfer), i+1) # reverse
             for conn_idx in usage_per_transfer[j]
                 if conn2merged[conn_idx] != -1
                     idx = conn2merged[conn_idx]
@@ -501,7 +503,7 @@ function Base.show(io::IO, format::BufferFormat)
     for (k, v) in format.extras
         print(io, ", :", k, " => ", v)
     end
-    print(io, ")")
+    return print(io, ")")
 end
 
 Base.show(io::IO, stage::Stage) = print(io, "Stage($(stage.name))")
@@ -643,12 +645,14 @@ function OITStage(; kwargs...)
 end
 
 function FXAAStage(; kwargs...)
-    stage1 = Stage(:FXAA1,
+    stage1 = Stage(
+        :FXAA1,
         Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
         Dict(:color_luma => 1), [BufferFormat(4, N0f8)]; kwargs...
     )
 
-    stage2 = Stage(:FXAA2,
+    stage2 = Stage(
+        :FXAA2,
         Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
         Dict(:color => 1), [BufferFormat(4, N0f8)]; kwargs...
     )
@@ -660,9 +664,11 @@ function FXAAStage(; kwargs...)
 end
 
 function DisplayStage()
-    return Stage(:Display,
+    return Stage(
+        :Display,
         Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
-        Dict{Symbol, Int}(), BufferFormat[])
+        Dict{Symbol, Int}(), BufferFormat[]
+    )
 end
 
 
@@ -724,11 +730,11 @@ function test_pipeline_3D()
     display = push!(pipeline, DisplayStage())
 
     connect!(pipeline, render1, ssao)
-    connect!(pipeline, ssao,    fxaa,    :color)
-    connect!(pipeline, render2, fxaa,    :color)
+    connect!(pipeline, ssao, fxaa, :color)
+    connect!(pipeline, render2, fxaa, :color)
     connect!(pipeline, render3, oit)
-    connect!(pipeline, oit,     fxaa,    :color)
-    connect!(pipeline, fxaa,    display, :color)
+    connect!(pipeline, oit, fxaa, :color)
+    connect!(pipeline, fxaa, display, :color)
     connect!(pipeline, render4, display)
     connect!(pipeline, :objectid)
 
@@ -748,8 +754,8 @@ function test_pipeline_2D()
 
     connect!(pipeline, render1, fxaa)
     connect!(pipeline, render2, oit)
-    connect!(pipeline, oit,     fxaa,    :color)
-    connect!(pipeline, fxaa,    display, :color)
+    connect!(pipeline, oit, fxaa, :color)
+    connect!(pipeline, fxaa, display, :color)
     connect!(pipeline, render3, display)
     connect!(pipeline, :objectid)
 
@@ -791,12 +797,12 @@ end
 function pipeline_gui!(ax, pipeline)
     width = 5
 
-    rects       = Rect2f[]
+    rects = Rect2f[]
     header_line = Point2f[]
-    header      = Tuple{String, Point2f}[]
-    marker_pos  = Vector{Point2f}[]
-    input       = Vector{Tuple{String, Point2f}}[]
-    output      = Vector{Tuple{String, Point2f}}[]
+    header = Tuple{String, Point2f}[]
+    marker_pos = Vector{Point2f}[]
+    input = Vector{Tuple{String, Point2f}}[]
+    output = Vector{Tuple{String, Point2f}}[]
     stageio_lookup = Tuple{Int, Int}[]
 
     max_size = 0
@@ -806,21 +812,22 @@ function pipeline_gui!(ax, pipeline)
         output_height = length(stage.outputs)
         height = length(stage.inputs) + output_height
 
-        r = Rect2f(-width/2, -height, width, height+2)
+        r = Rect2f(-width / 2, -height, width, height + 2)
         push!(rects, r)
         push!(header_line, Point2f(-0.5width, 0), Point2f(0.5width, 0))
         push!(header, (string(stage.name), Point2f(0, 1)))
 
-        ops = sort!([(string(s), Point2f(0.5width, 0.5-y)) for (s, y) in stage.outputs], by = x -> -x[2][2])
+        ops = sort!([(string(s), Point2f(0.5width, 0.5 - y)) for (s, y) in stage.outputs], by = x -> -x[2][2])
         ips = sort!(
             [(string(s), Point2f(-0.5width, 0.5 - y - output_height)) for (s, y) in stage.inputs],
-            by = x -> -x[2][2])
+            by = x -> -x[2][2]
+        )
 
         push!(input, ips)
         push!(output, ops)
         push!(marker_pos, vcat(last.(ips), last.(ops)))
         append!(stageio_lookup, [(idx, -i) for i in 1:length(stage.inputs)])
-        append!(stageio_lookup, [(idx,  i) for i in 1:length(stage.outputs)])
+        append!(stageio_lookup, [(idx, i) for i in 1:length(stage.outputs)])
 
         if max_size < length(stage.inputs) + length(stage.outputs)
             max_size2 = max_size
@@ -854,7 +861,7 @@ function pipeline_gui!(ax, pipeline)
             end
 
             if !isempty(targets)
-                y0 = 0.5 * (length(targets)+1)
+                y0 = 0.5 * (length(targets) + 1)
                 for (j, stage_idx) in enumerate(targets)
                     origins[][stage_idx] = Point2f(origins[][stage_idx][1], origins[][i][2]) + Point2f(0, shift * (y0 - j))
                 end
@@ -872,9 +879,9 @@ function pipeline_gui!(ax, pipeline)
     path_cs_obs = Observable(RGBf[])
 
     on(origins) do origins
-        rects_obs[]       = rects .+ origins
-        header_line_obs[] = [origins[i] .+ header_line[2(i-1) + j] for i in eachindex(origins) for j in 1:2]
-        header_obs[]      = map((x, pos) -> (x[1], pos + x[2]), header, origins)
+        rects_obs[] = rects .+ origins
+        header_line_obs[] = [origins[i] .+ header_line[2(i - 1) + j] for i in eachindex(origins) for j in 1:2]
+        header_obs[] = map((x, pos) -> (x[1], pos + x[2]), header, origins)
 
         marker_pos_obs[] = mapreduce(vcat, marker_pos, origins) do ps, pos
             return [p + pos for p in ps]
@@ -890,10 +897,11 @@ function pipeline_gui!(ax, pipeline)
     function bezier_connect(p0, p1)
         x0, y0 = ifelse(p0[1] < p1[1], p0, p1)
         x1, y1 = ifelse(p0[1] < p1[1], p1, p0)
-        mid = 0.5 * (x0+x1)
+        mid = 0.5 * (x0 + x1)
         path = Any[Makie.MoveTo(x0, y0)]
         if (x1 - x0) > 10
-            push!(path,
+            push!(
+                path,
                 Makie.LineTo(Point2f(mid - 5, y0)),
                 Makie.CurveTo(Point2f(mid + 1, y0), Point2f(mid - 1, y1), Point2f(mid + 5, y1)),
                 Makie.LineTo(Point2f(x1, y1))
@@ -918,10 +926,10 @@ function pipeline_gui!(ax, pipeline)
         for (idx, stageio) in enumerate(conn2stageio)
             sort!(stageio, by = first)
             N = length(stageio)
-            for i in 1:N-1
+            for i in 1:(N - 1)
                 start_stage, start_idx = stageio[i]
                 start_idx < 0 && continue # is a stage input
-                for j in i+1:N
+                for j in (i + 1):N
                     stop_stage, stop_idx = stageio[j]
                     stop_idx > 0 && continue # is a stage output
                     p0 = output[start_stage][start_idx][2] + origins[start_stage]
@@ -930,7 +938,7 @@ function pipeline_gui!(ax, pipeline)
                     append!(paths, ps)
                     push!(paths, Point2f(NaN))
                     append!(cs, [color_pool[mod1(idx, end)] for _ in ps])
-                    push!(cs, RGBf(0,0,0))
+                    push!(cs, RGBf(0, 0, 0))
                 end
             end
         end
@@ -942,18 +950,26 @@ function pipeline_gui!(ax, pipeline)
 
     notify(origins)
 
-    scale = map(pv -> max(0.5, 10*min(pv[1,1], pv[2,2])), get_scene(ax).camera.projectionview)
+    scale = map(pv -> max(0.5, 10 * min(pv[1, 1], pv[2, 2])), get_scene(ax).camera.projectionview)
 
-    poly!(ax, rects_obs, strokewidth = scale, strokecolor = :black, fxaa = false,
-        shading = NoShading, color = :lightgray, transparency = false)
+    poly!(
+        ax, rects_obs, strokewidth = scale, strokecolor = :black, fxaa = false,
+        shading = NoShading, color = :lightgray, transparency = false
+    )
     linesegments!(ax, header_line_obs, linewidth = scale, color = :black)
-    text!(ax, header_obs, markerspace = :data, fontsize = 0.8, color = :black,
-        align = (:center, :center))
+    text!(
+        ax, header_obs, markerspace = :data, fontsize = 0.8, color = :black,
+        align = (:center, :center)
+    )
 
-    text!(ax, output_obs, markerspace = :data, fontsize = 0.75, color = :black,
-        align = (:right, :center), offset = (-0.25, 0))
-    text!(ax, input_obs, markerspace = :data, fontsize = 0.75, color = :black,
-        align = (:left, :center), offset = (0.25, 0))
+    text!(
+        ax, output_obs, markerspace = :data, fontsize = 0.75, color = :black,
+        align = (:right, :center), offset = (-0.25, 0)
+    )
+    text!(
+        ax, input_obs, markerspace = :data, fontsize = 0.75, color = :black,
+        align = (:left, :center), offset = (0.25, 0)
+    )
 
     p = scatter!(ax, marker_pos_obs, color = :black, markerspace = :data, marker = Circle, markersize = 0.3)
     translate!(p, 0, 0, 1)
@@ -1033,7 +1049,7 @@ function pipeline_gui!(ax, pipeline)
         return Consume(false)
     end
 
-    on(events(ax).keyboardbutton, priority = 100) do event
+    return on(events(ax).keyboardbutton, priority = 100) do event
         if (event.key == Keyboard.o) && (event.action == Keyboard.press)
             @info origins[]
         end

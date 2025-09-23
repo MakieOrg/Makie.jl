@@ -538,8 +538,8 @@ function TextureParameters(
     else
         GLenum[]
     end
-    TextureParameters(
-        minfilter, magfilter, ntuple(i->repeat[i], NDim),
+    return TextureParameters(
+        minfilter, magfilter, ntuple(i -> repeat[i], NDim),
         anisotropic, swizzle_mask, mipmap
     )
 end

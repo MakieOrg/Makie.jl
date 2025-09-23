@@ -177,14 +177,15 @@ end
     GLMakie.closeall() # (mostly?) for recompilation of plot shaders
     GLMakie.activate!(ssao = true)
     f = Figure()
-    ps = [Point3f(x, y, sin(x * y + y-x)) for x in range(-2, 2, length=21) for y in range(-2, 2, length=21)]
+    ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
     for (i, ssao) in zip(1:2, (false, true))
         for (j, fxaa) in zip(1:2, (false, true))
             for (k, transparency) in zip(1:2, (false, true))
-                Label(f[2i-1, k + 2(j-1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                Label(f[2i - 1, k + 2(j - 1)], "$ssao, $fxaa, $transparency", tellwidth = false)
                 a, p = meshscatter(
-                    f[2i, k + 2(j-1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
-                    markersize = 1, color = :white; ssao, fxaa, transparency)
+                    f[2i, k + 2(j - 1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency
+                )
             end
         end
     end
@@ -195,14 +196,15 @@ end
     GLMakie.closeall()
     GLMakie.activate!(ssao = false)
     f = Figure()
-    ps = [Point3f(x, y, sin(x * y + y-x)) for x in range(-2, 2, length=21) for y in range(-2, 2, length=21)]
+    ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
     for (i, ssao) in zip(1:2, (false, true))
         for (j, fxaa) in zip(1:2, (false, true))
             for (k, transparency) in zip(1:2, (false, true))
-                Label(f[2i-1, k + 2(j-1)], "$ssao, $fxaa, $transparency", tellwidth = false)
+                Label(f[2i - 1, k + 2(j - 1)], "$ssao, $fxaa, $transparency", tellwidth = false)
                 a, p = meshscatter(
-                    f[2i, k + 2(j-1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
-                    markersize = 1, color = :white; ssao, fxaa, transparency)
+                    f[2i, k + 2(j - 1)], ps, marker = Rect3f(Point3f(-0.5), Vec3f(1)),
+                    markersize = 1, color = :white; ssao, fxaa, transparency
+                )
             end
         end
     end
@@ -237,7 +239,8 @@ end
 
         inputs[:color_transform] = parent.attributes[:color_transform]
 
-        robj = GLMakie.RenderObject(inputs, shader,
+        robj = GLMakie.RenderObject(
+            inputs, shader,
             GLMakie.PostprocessPrerender(), nothing, screen.glscreen
         )
         robj.postrenderfunction = () -> GLMakie.draw_fullscreen(robj.vertexarray.id)
@@ -264,24 +267,29 @@ end
         oit = push!(pipeline, Makie.OITStage())
         fxaa = push!(pipeline, Makie.FXAAStage(filter_in_shader = false))
         render3 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = false))
-        color_tint = push!(pipeline, Makie.Stage(:Tint,
-            inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
-            outputs = [:color => Makie.BufferFormat()],
-            color_transform = Observable(Makie.Mat3f(
-                # sepia filter
-                0.393, 0.349, 0.272,
-                0.769, 0.686, 0.534,
-                0.189, 0.168, 0.131
-            ))
-        ))
+        color_tint = push!(
+            pipeline, Makie.Stage(
+                :Tint,
+                inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
+                outputs = [:color => Makie.BufferFormat()],
+                color_transform = Observable(
+                    Makie.Mat3f(
+                        # sepia filter
+                        0.393, 0.349, 0.272,
+                        0.769, 0.686, 0.534,
+                        0.189, 0.168, 0.131
+                    )
+                )
+            )
+        )
         display_stage = push!(pipeline, Makie.DisplayStage())
 
         connect!(pipeline, render1, fxaa)
         connect!(pipeline, render1, display_stage, :objectid)
         connect!(pipeline, render2, oit)
         connect!(pipeline, render2, display_stage, :objectid)
-        connect!(pipeline, oit,     fxaa,    :color)
-        connect!(pipeline, fxaa,    color_tint, :color)
+        connect!(pipeline, oit, fxaa, :color)
+        connect!(pipeline, fxaa, color_tint, :color)
         connect!(pipeline, render3, color_tint, :color)
         connect!(pipeline, render3, display_stage, :objectid)
         connect!(pipeline, color_tint, display_stage, :color)
@@ -290,5 +298,5 @@ end
 
     GLMakie.activate!(render_pipeline = pipeline)
     cow = load(Makie.assetpath("cow.png"))
-    f,a,p = image(rotr90(cow))
+    f, a, p = image(rotr90(cow))
 end
