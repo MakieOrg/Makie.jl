@@ -117,13 +117,18 @@ end
 struct Stage
     name::Symbol
 
+    # input/output name -> index into input/output_formats
     # these are "const" after init
     inputs::Dict{Symbol, Int}
     outputs::Dict{Symbol, Int}
-    # order matters for outputs
+
+    # formats of inputs and outputs
+    # order matters for stageio2idx in RenderPipeline
+    # order matters for outputs also matters for OpenGL
     input_formats::Vector{BufferFormat}
     output_formats::Vector{BufferFormat}
 
+    # Optional settings/uniforms
     attributes::Dict{Symbol, Any}
 end
 
@@ -172,9 +177,13 @@ end
 struct RenderPipeline
     stages::Vector{Stage}
 
-    # (stage_idx, negative input index or positive output index) -> connection format index
+    # maps a stage input or output to an index into `formats`
+    # input: (stage index, input/output index)
+    # where negative indices are inputs, positive outputs
     stageio2idx::Dict{Tuple{Int, Int}, Int}
-    formats::Vector{BufferFormat} # of connections
+
+    # resolved buffer format of an edge connecting one or multiple inputs & outputs
+    formats::Vector{BufferFormat}
 end
 
 """
@@ -313,16 +322,22 @@ function Observables.connect!(pipeline::RenderPipeline, src::Integer, output::In
     end
 
     # Don't make a new connection if the connection already exists
-    # (the format must be correct if it exists)
+    # (the format has already been checked when this connection was created)
     if get(pipeline.stageio2idx, (src, output), 0) ===
             get(pipeline.stageio2idx, (trg, -input), -1)
         return
     end
 
-    # format for the requested connection
-    format = BufferFormat(pipeline.stages[src].output_formats[output], pipeline.stages[trg].input_formats[input])
+    # (joint) format for the requested connection
+    format = BufferFormat(
+        pipeline.stages[src].output_formats[output],
+        pipeline.stages[trg].input_formats[input]
+    )
 
     # Resolve format and update existing connection of src & trg
+    # I.e. check if there is already a connection associated with the source
+    # output or target input and merge the new connection with it if it exists.
+    # Otherwise create a new connection
     if haskey(pipeline.stageio2idx, (src, output))
         # at least src exists, update format
         format_idx = pipeline.stageio2idx[(src, output)]
@@ -381,23 +396,31 @@ optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
 function generate_buffers(pipeline::RenderPipeline)
-    # Verify that outputs are continuously connected (i.e. if N then 1..N-1 as well)
+    # Verify that outputs are continuously connected, i.e. that if stage.outputs[N]
+    # is connected all the outputs from 1:N-1 are too. (Otherwise there may be
+    # mapping issues in the backend, because output[i] != shader output i)
     output_max = zeros(Int, length(pipeline.stages))
     output_sum = zeros(Int, length(pipeline.stages))
     for (stage_idx, io_idx) in keys(pipeline.stageio2idx)
-        io_idx > 0 || continue # inputs irrelevant
+        # io_idx < 0 signifies inputs which are not relevant for this
+        io_idx < 0 && continue
+
         output_max[stage_idx] = max(output_max[stage_idx], io_idx)
         output_sum[stage_idx] = output_sum[stage_idx] + io_idx # or use max(0, io_idx) and skip continue?
     end
-    # sum must be 1 + 2 + ... + n = n(n+1)/2
+    # If all outputs are connected we get a sum: 1 + 2 + ... + n = n(n+1)/2
+    # check that we calculated that sum with n = maximum output index
     for i in eachindex(output_sum)
-        s = output_sum[i]; m = output_max[i]
+        s = output_sum[i]
+        m = output_max[i]
         if s != div(m * (m + 1), 2)
             error("Stage $i has an incomplete set of output connections.")
         end
     end
 
     # Group connections that exist between stages
+
+    # Find the first output writing to and the last input reading from each connection
     endpoints = [(999_999, 0) for _ in pipeline.formats]
     for ((stage_idx, io_idx), format_idx) in pipeline.stageio2idx
         start, stop = endpoints[format_idx]
@@ -405,15 +428,22 @@ function generate_buffers(pipeline::RenderPipeline)
         stop = max(stop, (io_idx < 0) * stage_idx - 1) # pick stop if io_idx is output
         endpoints[format_idx] = (start, stop)
     end
-    filter!(x -> x != (999_999, 0), endpoints)
 
+    # Collect the connection indices used between each pair of stages (transfer)
     usage_per_transfer = [Int[] for _ in 1:(length(pipeline.stages) - 1)]
     for (conn_idx, (start, stop)) in enumerate(endpoints)
-        start <= stop || error("Connection $conn_idx is read before it is written to. $start $stop")
+        # This implies the connection has not been set, i.e. it is unused. Skip those.
+        # (Filtering those beforehand could mess up conn_idx)
+        start > stop && continue
+
         for i in start:stop
             push!(usage_per_transfer[i], conn_idx)
         end
     end
+
+    # Generate the minimal* set of buffers needed for the pipeline. This allows
+    # buffers to be reused and types to be widened for reuse.
+    # *minimal is the goal, not a guarantee
 
     buffers = BufferFormat[]
     conn2merged = fill(-1, length(pipeline.formats))
@@ -422,12 +452,11 @@ function generate_buffers(pipeline::RenderPipeline)
 
     for i in eachindex(usage_per_transfer)
         # prepare:
-        # - collect connections without buffers
+        # - collect used connections without buffers
         # - collect available buffers (not in use now or last iteration)
         copyto!(resize!(available, length(buffers)), eachindex(buffers))
         empty!(needs_buffer)
         for j in max(1, i - 1):i
-            # for j in i:min(length(usage_per_transfer), i+1) # reverse
             for conn_idx in usage_per_transfer[j]
                 if conn2merged[conn_idx] != -1
                     idx = conn2merged[conn_idx]
@@ -441,6 +470,8 @@ function generate_buffers(pipeline::RenderPipeline)
         # Handle most expensive connections first
         sort!(needs_buffer, by = i -> format_complexity(pipeline.formats[i]), rev = true)
 
+        # for each connection, look for a free matching buffer, a compatible
+        # buffer (which might need its type widened) or create a new buffer
         for conn_idx in needs_buffer
             # search for most compatible buffer
             best_match = 0
@@ -455,15 +486,19 @@ function generate_buffers(pipeline::RenderPipeline)
                 elseif is_compatible(buffers[i], conn_format)
                     # found compatible buffer, but we only use it if
                     # - using it is cheaper than using the last
-                    # - using it is cheaper than creating a new buffer
+                    # - using it is not more expensive than creating a new buffer
                     # - it is more compatible than the last when both are 0 cost
-                    #   (i.e prefer 3, Float16 over 3 Float8 for 3 Float16 target)
+                    #   (i.e prefer (3, Float16) over (3, Float8) for (3, Float16) target)
                     updated_comp = format_complexity(buffers[i], conn_format)
                     buffer_comp = format_complexity(buffers[i])
                     delta = updated_comp - buffer_comp
-                    is_cheaper = (delta < prev_delta) && (delta <= conn_comp)
-                    more_compatible = (delta == prev_delta == 0) && (buffer_comp < prev_comp)
-                    if is_cheaper || more_compatible
+                    is_cheaper_than_last = delta < prev_delta # in terms of added bits
+                    is_cheaper_than_new = delta <= conn_comp
+                    is_cheaper = is_cheaper_than_last && is_cheaper_than_new
+                    # delta = 0 means the buffer we check is bigger than it needs to be
+                    # if it's smaller than the last it's thus more compatible
+                    is_more_compatible = (delta == prev_delta == 0) && (buffer_comp < prev_comp)
+                    if is_cheaper || is_more_compatible
                         best_match = i
                         prev_comp = updated_comp
                         prev_delta = delta
