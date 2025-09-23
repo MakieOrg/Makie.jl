@@ -116,7 +116,7 @@ argument_docs_items(::Val{:SampleBased}) = [
 ### convert_arguments method collection
 ################################################################################
 
-function collect_applicable_onversion_methods(plot_type)
+function collect_applicable_conversion_methods(plot_type)
     # methodswith does not return applicable methods with abstract types when
     # using a concrete subtype. So we filter ourself...
     methodlist = methods(convert_arguments)
@@ -179,7 +179,7 @@ function method_docstrings(methodlist)
 end
 
 function conversion_docs(PlotType)
-    methods = collect_applicable_onversion_methods(PlotType)
+    methods = collect_applicable_conversion_methods(PlotType)
     docstrings = method_docstrings(methods)
 
     output = map(methods, docstrings) do method, docstring
@@ -208,5 +208,8 @@ function conversion_docs(PlotType)
     end
 
     str = "Conversion applicable to $(PlotType)$(conversion_trait_str):\n" * join(output, '\n')
+    str *= "\nNote that these methods are automatically collected. Some may not \
+    be applicable based on their return type or due to a more specialized method \
+    existing and some may not be listed due to being called by another method recursively."
     return Markdown.parse(str)
 end
