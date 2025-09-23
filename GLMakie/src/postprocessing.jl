@@ -168,6 +168,7 @@ function run_step(screen, glscene, step::RenderPlots)
 
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            elem[:px_per_unit] = ppu
 
             if step.for_oit
                 # disable depth buffer writing

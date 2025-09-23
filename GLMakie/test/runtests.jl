@@ -155,110 +155,109 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # image so we have a user generated texture in the mix
         # texture atlas is triggered by text
         # include SSAO to make sure its cleanup works too
-        f, a, p = image(rand(4, 4))
+        f,a,p = image(rand(4,4))
+
+        # make sure switching the render pipeline doesn't cause errors
+        screen = display(f, ssao = true, visible = false)
+        colorbuffer(screen)
+        screen = display(f, ssao = false, visible = false)
+        colorbuffer(screen)
         screen = display(f, ssao = true, visible = false)
         colorbuffer(screen)
 
         # verify that SSAO is active
-        @test screen.postprocessors[1] != GLMakie.empty_postprocessor()
+        @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
 
-        framebuffer = screen.framebuffer
-        framebuffer_textures = copy(screen.framebuffer.buffers)
+        framebuffer = screen.framebuffer_factory
+        framebuffer_depth = GLMakie.get_buffer(screen.framebuffer_factory.fb, :depth_stencil)
+        framebuffer_textures = copy(screen.framebuffer_factory.buffers)
+        framebuffer_children = copy(screen.framebuffer_factory.children)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
-        postprocessors = copy(screen.postprocessors)
+        pipeline = copy(screen.render_pipeline.steps)
         robjs = last.(screen.renderlist)
 
-    # image so we have a user generated texture in the mix
-    # texture atlas is triggered by text
-    # include SSAO to make sure its cleanup works too
-    f,a,p = image(rand(4,4))
+        GLMakie.destroy!(screen)
 
-    # make sure switching the render pipeline doesn't cause errors
-    screen = display(f, ssao = true, visible = false)
-    colorbuffer(screen)
-    screen = display(f, ssao = false, visible = false)
-    colorbuffer(screen)
-    screen = display(f, ssao = true, visible = false)
-    colorbuffer(screen)
-
-    # verify that SSAO is active
-    @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
-
-    framebuffer = screen.framebuffer_factory
-    framebuffer_depth = GLMakie.get_buffer(screen.framebuffer_factory.fb, :depth_stencil)
-    framebuffer_textures = copy(screen.framebuffer_factory.buffers)
-    framebuffer_children = copy(screen.framebuffer_factory.children)
-    atlas_textures = first.(values(GLMakie.atlas_texture_cache))
-    shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
-    programs = [program for program in values(screen.shader_cache.program_cache)]
-    pipeline = copy(screen.render_pipeline.steps)
-    robjs = last.(screen.renderlist)
-
-    GLMakie.destroy!(screen)
-
-    @testset "Texture Atlas" begin
-        @test !isempty(atlas_textures)
-        for tex in atlas_textures
-            @test tex.id == 0
-        end
-    end
-
-    @testset "Framebuffer" begin
-        # GLFramebuffer object
-        @test framebuffer.fb.id == 0
-        @test all(x -> x.id == 0, framebuffer.fb.buffers)
-
-        # FramebufferFactory object
-        @test isempty(framebuffer.children)
-        @test isempty(framebuffer.buffers)
-
-        @test !isempty(framebuffer_textures)
-        for tex in framebuffer_textures
-            @test tex.id == 0
-        end
-
-        @test !isempty(framebuffer_children)
-        for fb in framebuffer_children
-            @test fb.id == 0
-            @test framebuffer.fb.id == 0
-            # should automatically be true if all framebuffer_textures == 0
-            @test all(x -> x.id == 0, framebuffer.fb.buffers)
-        end
-    end
-
-    @testset "ShaderCache" begin
-        @test !isempty(shaders)
-        for shader in shaders
-            @test shader.id == 0
-        end
-        @test !isempty(programs)
-        for program in programs
-            @test program.id == 0
-        end
-    end
-
-    function validate_robj(robj)
-        for uniform in robj.uniforms
-            if to_value(uniform) isa GLMakie.GLAbstraction.GPUArray
-                @test to_value(uniform).id == 0
+        @testset "Texture Atlas" begin
+            @test !isempty(atlas_textures)
+            for tex in atlas_textures
+                @test tex.id == 0
             end
         end
 
-    @testset "PostProcessors" begin
-        @test length(pipeline) == 10
-        for step in pipeline
-            if hasfield(typeof(step), :robj)
-                validate_robj(getfield(step, :robj))
+        @testset "Framebuffer" begin
+            # GLFramebuffer object
+            @test framebuffer.fb.id == 0
+            @test all(x -> x.id == 0, framebuffer.fb.buffers)
+
+            # FramebufferFactory object
+            @test isempty(framebuffer.children)
+            @test isempty(framebuffer.buffers)
+
+            @test !isempty(framebuffer_textures)
+            for tex in framebuffer_textures
+                @test tex.id == 0
+            end
+
+            @test !isempty(framebuffer_children)
+            for fb in framebuffer_children
+                @test fb.id == 0
+                @test framebuffer.fb.id == 0
+                # should automatically be true if all framebuffer_textures == 0
+                @test all(x -> x.id == 0, framebuffer.fb.buffers)
+            end
+        end
+
+        @testset "ShaderCache" begin
+            @test !isempty(shaders)
+            for shader in shaders
+                @test shader.id == 0
+            end
+            @test !isempty(programs)
+            for program in programs
+                @test program.id == 0
+            end
+        end
+
+        function validate_robj(robj)
+            for uniform in robj.uniforms
+                if to_value(uniform) isa GLMakie.GLAbstraction.GPUArray
+                    @test to_value(uniform).id == 0
+                end
+            end
+            @test robj.vertexarray.id == 0
+            if robj.vertexarray.indices isa GLMakie.GLAbstraction.GPUArray
+                @test robj.vertexarray.indices.id == 0
+            end
+            for buffer in values(robj.vertexarray.buffers)
+                @test buffer.id == 0
+            end
+            @test robj.vertexarray.program.id == 0
+            for shader in robj.vertexarray.program.shader
+                @test shader.id == 0
+            end
+        end
+
+        @testset "PostProcessors" begin
+            @test length(pipeline) == 10
+            for step in pipeline
+                if hasfield(typeof(step), :robj)
+                    validate_robj(getfield(step, :robj))
+                end
+            end
+        end
+
+        @testset "RenderObjects" begin
+            @test !isempty(robjs)
+            for robj in robjs
+                validate_robj(robj)
             end
         end
 
         # Check that no finalizers triggered on un-freed objects throughout all tests
+        GC.gc(true)
         @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
     end
-
-    # Check that no finalizers triggered on un-freed objects throughout all tests
-    GC.gc(true)
-    @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
 end
