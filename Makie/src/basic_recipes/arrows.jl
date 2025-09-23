@@ -69,7 +69,7 @@ argument_docs_items(::Val{:ArrowLike}) = [
     `argmode` in the same way.",
     "`f`: A callback function `point -> direction` which returns a direction for
     each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]`
-    or `points`."
+    or `points`.",
 ]
 
 function _arrow_align_val(align::Symbol)

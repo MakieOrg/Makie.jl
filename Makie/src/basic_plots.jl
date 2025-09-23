@@ -648,7 +648,7 @@ Plots a 3D array of data as voxels, i.e. small cubes within the limits defined b
 - `data`: An `AbstractArray{<:Real, 3}` defining voxel data for colormapping or
   an `AbstractArray{<:UInt8, 3}` defining voxel ids for texture mapping.
 - `x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` \
-  or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(data)`.
+or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(data)`.
 
 See `conversion_docs(PlotType)` for a full list of applicable conversion methods.
 

@@ -49,10 +49,12 @@ function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::V
 end
 
 function convert_arguments(::Type{<:Bracket}, point1::AbstractVector{<:VecTypes{2}}, point2::AbstractVector{<:VecTypes{2}})
-    return (tuple.(
-        convert_arguments(PointBased(), point1)[1],
-        convert_arguments(PointBased(), point2)[1]
-    ),)
+    return (
+        tuple.(
+            convert_arguments(PointBased(), point1)[1],
+            convert_arguments(PointBased(), point2)[1]
+        ),
+    )
 end
 
 function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)
