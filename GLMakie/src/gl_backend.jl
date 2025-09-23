@@ -1,12 +1,14 @@
 try
     using GLFW
 catch e
-    @warn("""
-        OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
-        This likely means, you're on a headless server without having OpenGL support setup correctly.
-        Have a look at the troubleshooting section in the readme:
-        https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
-    """)
+    @warn(
+        """
+            OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
+            This likely means, you're on a headless server without having OpenGL support setup correctly.
+            Have a look at the troubleshooting section in the readme:
+            https://github.com/MakieOrg/Makie.jl/tree/master/GLMakie#troubleshooting-opengl.
+        """
+    )
     rethrow(e)
 end
 
@@ -43,25 +45,16 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         return atlas_texture_cache[(atlas, context)][1]
     else
         require_context(context)
-        tex = Texture(
-            context, atlas.data,
-            minfilter = :linear,
-            magfilter = :linear,
-            # TODO: Consider alternatives to using the builtin anisotropic
-            # samplers for signed distance fields; the anisotropic
-            # filtering should happen *after* the SDF thresholding, but
-            # with the builtin sampler it happens before.
-            anisotropic = 16f0,
-            mipmap = true
-        )
+        # anisotropic filtering sometimes creates artifacts with aspect/distortion
+        # corrected anti-aliasing radius, mipmap seems irrelevant
+        tex = Texture(context, atlas.data, minfilter = :linear, magfilter = :linear)
 
         function callback(distance_field, rectangle)
             ctx = tex.context
-            if GLAbstraction.context_alive(ctx)
-                prev_ctx = GLAbstraction.current_context()
-                ShaderAbstractions.switch_context!(ctx)
-                tex[rectangle] = distance_field
-                ShaderAbstractions.switch_context!(prev_ctx)
+            return if GLAbstraction.context_alive(ctx)
+                GLAbstraction.with_context(ctx) do
+                    tex[rectangle] = distance_field
+                end
             end
         end
         Makie.font_render_callback!(callback, atlas)
@@ -85,5 +78,5 @@ include("glshaders/voxel.jl")
 include("picking.jl")
 include("rendering.jl")
 include("events.jl")
-include("drawing_primitives.jl")
+include("plot-primitives.jl")
 include("display.jl")

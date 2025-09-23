@@ -56,6 +56,9 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
         @async try
+            @handle msg.window_open begin
+                e.window_open[] = window_open
+            end
             @handle msg.mouseposition begin
                 x, y = Float64.((mouseposition...,))
                 e.mouseposition[] = (x, y)
@@ -95,7 +98,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
                 end
-                if length(keydown[2])==1 && isascii(keydown[2])
+                if length(keydown[2]) == 1 && isascii(keydown[2])
                     e.unicode_input[] = keydown[2][1]
                 end
             end
@@ -113,7 +116,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 resize!(scene, tuple(resize...))
             end
         catch err
-            @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
+            @warn "Error in window event callback" exception = (err, Base.catch_backtrace())
         end
         return
     end
@@ -121,30 +124,18 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
     return
 end
 
-
 function connect_post_init_events(screen, scene)
-    for attempt in 1:10
-        isopen(screen) && break
-        sleep(0.1 * attempt)
-    end
-    @assert isopen(screen) "Window must be initialized first"
-
     e = events(scene)
     tick_callback = Makie.TickCallback(e.tick)
-
     # key = rand(UInt16) # Is the right clock closing?
     Makie.start!(screen.tick_clock) do timer
-        if isopen(screen)
+        if !Makie.isclosed(scene)
             tick_callback(Makie.RegularRenderTick)
-            # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
-            # @info "stopping $key"
             Makie.stop!(timer)
             e.window_open[] = false
         end
         return
     end
-
     return
 end
-

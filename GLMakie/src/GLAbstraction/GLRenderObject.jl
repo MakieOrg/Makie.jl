@@ -1,16 +1,17 @@
 function Base.show(io::IO, obj::RenderObject)
-    print(io, "RenderObject with ID: ", obj.id)
+    return print(io, "RenderObject(id = ", obj.id, ", visible = ", obj.visible, ")")
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
 Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
+Base.haskey(obj::RenderObject, symbol::Symbol) = haskey(obj.uniforms, symbol)
 
 Base.getindex(obj::RenderObject, symbol::Symbol, x::Function) = getindex(obj, Val(symbol), x)
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x]
 Base.getindex(obj::RenderObject, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x]
 
-Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = setindex!(obj, value, Val(symbol), x)
-Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
+Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function) = setindex!(obj, value, Val(symbol), x)
+Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 
 """
@@ -41,7 +42,7 @@ struct StandardPostrender
 end
 
 function (sp::StandardPostrender)()
-    render(sp.vao, sp.primitive)
+    return render(sp.vao, sp.primitive)
 end
 
 struct StandardPostrenderInstanced

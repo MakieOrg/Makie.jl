@@ -104,7 +104,7 @@ materials = [glass chrome;
                 gold dielectric;
                 emissive plastic]
 
-mesh!(ax, load(Makie.assetpath("matball_floor.obj")); color=:white)
+mesh!(ax, GeometryBasics.Mesh(load(Makie.assetpath("matball_floor.obj"))); color=:white)
 palette = reshape(Makie.wong_colors()[1:6], size(materials))
 
 for i in CartesianIndices(materials)

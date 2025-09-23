@@ -31,7 +31,7 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -44,7 +44,7 @@ jobs:
           pkg"registry up"
           Pkg.update()
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./RPRMakie ./ReferenceTests"
+          pkg"dev ./ComputePipeline ./Makie ./RPRMakie ./ReferenceTests"
       - name: Run the tests
         continue-on-error: true
         run: >
@@ -59,6 +59,8 @@ jobs:
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info

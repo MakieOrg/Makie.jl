@@ -42,7 +42,7 @@ function render_frame(screen::Screen; resize_buffers=true)
 
     # Make sure this context is active (for multi-window rendering)
     nw = to_native(screen)
-    ShaderAbstractions.switch_context!(nw)
+    gl_switch_context!(nw)
     GLAbstraction.require_context(nw)
 
     # Resize framebuffer to window size

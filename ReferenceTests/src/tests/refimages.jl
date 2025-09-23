@@ -17,17 +17,17 @@ using Makie: Record, volume
 function click(events::Events, pos::VecTypes{2}, button::Mouse.Button = Mouse.left)
     events.mouseposition[] = pos
     events.mousebutton[] = Makie.MouseButtonEvent(button, Mouse.press)
-    events.mousebutton[] = Makie.MouseButtonEvent(button, Mouse.release)
+    return events.mousebutton[] = Makie.MouseButtonEvent(button, Mouse.release)
 end
 click(events::Events, x, y, button::Mouse.Button = Mouse.left) = click(events, (x, y), button)
 
 function send(events::Events, key::Keyboard.Button)
     events.keyboardbutton[] = Makie.KeyEvent(key, Keyboard.press)
-    events.keyboardbutton[] = Makie.KeyEvent(key, Keyboard.release)
+    return events.keyboardbutton[] = Makie.KeyEvent(key, Keyboard.release)
 end
 function send(events::Events, pos::VecTypes{2}, key::Keyboard.Button)
     events.mouseposition[] = pos
-    send(events, key)
+    return send(events, key)
 end
 send(events::Events, x, y, key::Keyboard.Button) = click(events, (x, y), key)
 
@@ -41,6 +41,9 @@ end
 @testset "unitful" begin
     include("unitful.jl")
 end
+@testset "dynamicquantities" begin
+    include("dynamicquantities.jl")
+end
 @testset "specapi" begin
     include("specapi.jl")
 end
@@ -49,6 +52,9 @@ end
 end
 @testset "text.jl" begin
     include("text.jl")
+end
+@testset "float32convert" begin
+    include("float32_conversion.jl")
 end
 @testset "attributes.jl" begin
     include("attributes.jl")

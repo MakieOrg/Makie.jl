@@ -1,3 +1,5 @@
+ENV["JULIA_DEBUG"] = "Documenter"
+
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
@@ -8,6 +10,7 @@ using CairoMakie
 using GLMakie
 using WGLMakie
 using RPRMakie
+using Graphviz_jll
 
 ##
 
@@ -19,41 +22,19 @@ using Documenter.MarkdownAST: @ast
 using DocumenterVitepress
 using Markdown
 
-include("buildutils/deploydocs.jl")
-include("buildutils/redirect_generation.jl")
-
-# remove GLMakie's renderloop completely, because any time `GLMakie.activate!()`
-# is called somewhere, it's reactivated and slows down CI needlessly
-function GLMakie.renderloop(screen)
-    return
-end
 
 include("figure_block.jl")
+include("graphviz_block.jl")
 include("attrdocs_block.jl")
 include("shortdocs_block.jl")
 include("fake_interaction.jl")
-
-docs_url = "docs.makie.org"
-repo = "github.com/MakieOrg/Makie.jl.git"
-push_preview = true
-devbranch = "master"
-devurl = "dev"
-
-params = deployparameters(; repo, devbranch, devurl, push_preview)
-deploy_decision = Documenter.DeployDecision(;
-    params.all_ok,
-    params.branch,
-    params.is_preview,
-    params.repo,
-    params.subfolder,
-)
 
 function nested_filter(x, regex)
     _match(x::String) = match(regex, x) !== nothing
     _match(x::Pair) = x[2] isa String ? match(regex, x[2]) !== nothing : true
     fn(el::Pair) = el[2] isa Vector ? el[1] => nested_filter(el[2], regex) : el
     fn(el) = el
-    filter(_match, map(fn, x))
+    return filter(_match, map(fn, x))
 end
 
 unnest(vec::Vector) = collect(Iterators.flatten([unnest(el) for el in vec]))
@@ -86,6 +67,7 @@ pages = [
         "Plots" => [
             "reference/plots/overview.md",
             "reference/plots/ablines.md",
+            "reference/plots/annotation.md",
             "reference/plots/arc.md",
             "reference/plots/arrows.md",
             "reference/plots/band.md",
@@ -97,6 +79,7 @@ pages = [
             "reference/plots/contourf.md",
             "reference/plots/crossbar.md",
             "reference/plots/datashader.md",
+            "reference/plots/dendrogram.md",
             "reference/plots/density.md",
             "reference/plots/ecdf.md",
             "reference/plots/errorbars.md",
@@ -126,6 +109,7 @@ pages = [
             "reference/plots/streamplot.md",
             "reference/plots/surface.md",
             "reference/plots/text.md",
+            "reference/plots/textlabel.md",
             "reference/plots/tooltip.md",
             "reference/plots/tricontourf.md",
             "reference/plots/triplot.md",
@@ -148,7 +132,7 @@ pages = [
             "reference/scene/lighting.md",
             "reference/scene/matcap.md",
             "reference/scene/SSAO.md",
-        ]
+        ],
     ],
     "Tutorials" => [
         "tutorials/getting-started.md",
@@ -168,6 +152,7 @@ pages = [
             "explanations/backends/wglmakie.md",
         ],
         "explanations/animation.md",
+        "explanations/architecture.md",
         "explanations/blocks.md",
         "explanations/cameras.md",
         "explanations/conversion_pipeline.md",
@@ -191,6 +176,7 @@ pages = [
             "explanations/theming/predefined_themes.md",
         ],
         "explanations/transparency.md",
+        "explanations/compute-pipeline.md",
     ],
     "How-Tos" => [
         "how-to/match-figure-size-font-sizes-and-dpi.md",
@@ -210,15 +196,14 @@ pages = [
 function make_docs(; pages)
     empty!(MakieDocsHelpers.FIGURES)
 
-    Documenter.makedocs(;
-        sitename="Makie",
-        format=DocumenterVitepress.MarkdownVitepress(;
+    return Documenter.makedocs(;
+        sitename = "Makie",
+        format = DocumenterVitepress.MarkdownVitepress(;
             repo = "github.com/MakieOrg/Makie.jl",
             devurl = "dev",
             devbranch = "master",
             deploy_url = "https://docs.makie.org", # for local testing not setting this has broken links with Makie.jl in them
             description = "Create impressive data visualizations with Makie, the plotting ecosystem for the Julia language. Build aesthetic plots with beautiful customizable themes, control every last detail of publication quality vector graphics, assemble complex layouts and quickly prototype interactive applications to explore your data live.",
-            deploy_decision,
         ),
         pages,
         expandfirst = unnest(nested_filter(pages, r"reference/(plots|blocks)/(?!overview)")),
@@ -234,20 +219,26 @@ make_docs(;
 
 ##
 
-# DocumenterVitepress moves rendered files from `build/final_site` into `build` on CI by default, but not when running locally
+include("buildutils/redirect_generation.jl")
+generate_redirects(
+    [
+        r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
+        r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
+        r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
+        r"/reference/plots/(.*).html" => s"/reference/plots/\1/index.html",
+        r"/explanations/(.*).html" => s"/documentation/\1/index.html",
+        r"/tutorials/(.*).html" => s"/tutorials/\1/index.html",
+        r"/explanations/(.*).html" => s"/explanations/\1/index.html",
+        "/explanations/observables.html" => "/explanations/nodes/index.html",
+        "/reference/plots/overview.html" => "/reference/plots/index.html",
+        "/reference/blocks/overview.html" => "/reference/blocks/index.html",
+        "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
+    ], dry_run = false
+)
 
-generate_redirects([
-    r"/reference/blocks/(.*).html" => s"/examples/blocks/\1/index.html",
-    r"/reference/blocks/(.*).html" => s"/reference/blocks/\1/index.html",
-    r"/reference/plots/(.*).html" => s"/examples/plotting_functions/\1/index.html",
-    r"/reference/plots/(.*).html" => s"/reference/plots/\1/index.html",
-    r"/explanations/(.*).html" => s"/documentation/\1/index.html",
-    r"/tutorials/(.*).html" => s"/tutorials/\1/index.html",
-    r"/explanations/(.*).html" => s"/explanations/\1/index.html",
-    "/explanations/observables.html" => "/explanations/nodes/index.html",
-    "/reference/plots/overview.html" => "/reference/plots/index.html",
-    "/reference/blocks/overview.html" => "/reference/blocks/index.html",
-    "/tutorials/getting-started.html" => "/tutorials/basic-tutorial.html",
-], dry_run = false)
-
-deploy(params; target = "build")
+DocumenterVitepress.deploydocs(
+    repo = "github.com/MakieOrg/Makie.jl.git",
+    push_preview = true,
+    devbranch = "master",
+    devurl = "dev",
+)

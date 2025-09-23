@@ -16,7 +16,7 @@ function (sp::PostprocessPrerender)()
     return
 end
 
-rcpframe(x) = 1f0 ./ Vec2f(x[1], x[2])
+rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 
 
 # or maybe Task? Stage?

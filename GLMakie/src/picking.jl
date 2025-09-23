@@ -1,11 +1,10 @@
-
 ################################################################################
 ### Point picking
 ################################################################################
 
 function pick_native(screen::Screen, rect::Rect2i)
     isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     fb = screen.framebuffer_factory.fb
     buff = get_buffer(fb, :objectid)
     GLAbstraction.bind(fb)
@@ -26,7 +25,7 @@ end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     fb = screen.framebuffer_factory.fb
     buff = get_buffer(fb, :objectid)
     GLAbstraction.bind(fb)
@@ -54,7 +53,7 @@ function Makie.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
 end
 
 function Makie.pick(scene::Scene, screen::Screen, rect::Rect2i)
-    map(pick_native(screen, rect)) do sid
+    return map(pick_native(screen, rect)) do sid
         if haskey(screen.cache2plot, sid.id)
             (screen.cache2plot[sid.id], sid.index)
         else
@@ -77,7 +76,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     GLAbstraction.bind(fb)
     glReadBuffer(get_attachment(fb, :objectid))
     buff = get_buffer(fb, :objectid)
@@ -88,7 +87,7 @@ function Makie.pick_closest(scene::Scene, screen::Screen, xy, range)
     id = SelectionID{Int}(0, 0)
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
+        d = (x - i)^2 + (y - j)^2
         sid = sids[i, j]
         if (d < min_dist) && (sid.id > 0) && haskey(screen.cache2plot, sid.id)
             min_dist = d
@@ -118,7 +117,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     x1, y1 = min.((w, h), ceil.(Int, ppu .* (xy .+ range)))
     dx = x1 - x0; dy = y1 - y0
 
-    ShaderAbstractions.switch_context!(screen.glscreen)
+    gl_switch_context!(screen.glscreen)
     GLAbstraction.bind(fb)
     glReadBuffer(get_attachment(fb, :objectid))
     buff = get_buffer(fb, :objectid)
@@ -130,7 +129,7 @@ function Makie.pick_sorted(scene::Scene, screen::Screen, xy, range)
     x, y = xy .* ppu .+ 1 .- Vec2f(x0, y0)
     for i in 1:dx, j in 1:dy
         if picks[i, j].id > 0
-            d = (x-i)^2 + (y-j)^2
+            d = (x - i)^2 + (y - j)^2
             idx = findfirst(isequal(picks[i, j]), selected)
             if idx === nothing
                 continue

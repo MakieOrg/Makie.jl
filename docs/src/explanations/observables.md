@@ -1,6 +1,6 @@
 # Observables
 
-Interaction and animations in Makie are handled using [`Observables.jl`](https://juliagizmos.github.io/Observables.jl/stable/).
+Interaction and animations in Makie can be handled using [`Observables.jl`](https://juliagizmos.github.io/Observables.jl/stable/).
 An `Observable` is a container object whose stored value you can update interactively.
 You can create functions that are executed whenever an observable changes.
 You can also create observables whose values are updated whenever other observables change.
@@ -11,6 +11,10 @@ On this page you will learn how the `Observable`s pipeline and the event-based i
 ```@raw html
 <iframe width="560" height="315" src="https://www.youtube.com/embed/L-gyDvhjzGQ?controls=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 ```
+
+!!! info
+    Makie 0.24 introduced the `ComputeGraph` for processing updates within plots.
+    With that `Makie.update!(plot, attribute1 = new_value1, ...)` was added, which can be used instead of updating Observables.
 
 ## The `Observable` structure
 
@@ -160,6 +164,9 @@ container = (x = Observable(1), y = Observable(2))
 ```
 
 ## Problems With Synchronous Updates
+
+!!! info
+    As of Makie 0.24, synchronous update issues with plots can be circumvented by using `Makie.update!(plot, attrib1 = ..., attrib2 = ...)`.
 
 One very common problem with a pipeline based on multiple observables is that you can only change observables one by one.
 Theoretically, each observable change triggers its listeners immediately.

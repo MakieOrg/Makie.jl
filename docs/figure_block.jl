@@ -1,8 +1,8 @@
 abstract type FigureBlocks <: Documenter.Expanders.NestedExpanderPipeline end
 
 
-Documenter.Selectors.order(::Type{FigureBlocks})  = 8.0 # like @example
-Documenter.Selectors.matcher(::Type{FigureBlocks},  node, page, doc) = Documenter.iscode(node, r"^@figure")
+Documenter.Selectors.order(::Type{FigureBlocks}) = 8.0 # like @example
+Documenter.Selectors.matcher(::Type{FigureBlocks}, node, page, doc) = Documenter.iscode(node, r"^@figure")
 
 module MakieDocsHelpers
     import ImageTransformations
@@ -11,7 +11,7 @@ module MakieDocsHelpers
 
     struct Png
         bytes::Vector{UInt8}
-        size_px::Tuple{Int,Int}
+        size_px::Tuple{Int, Int}
         id::String
     end
 
@@ -20,14 +20,14 @@ module MakieDocsHelpers
         title::String
     end
 
-    FIGURES = Dict{PageInfo,Vector{Png}}()
-    struct AsMIME{M<:MIME,V}
+    FIGURES = Dict{PageInfo, Vector{Png}}()
+    struct AsMIME{M <: MIME, V}
         mime::M
         value::V
     end
 
-    Base.show(io::IO, m::MIME"image/svg+xml", a::AsMIME{MIME"image/svg+xml"}) = show(io,m, a.value)
-    Base.show(io::IO, m::MIME"image/png", a::AsMIME{MIME"image/png"}) = show(io,m, a.value)
+    Base.show(io::IO, m::MIME"image/svg+xml", a::AsMIME{MIME"image/svg+xml"}) = show(io, m, a.value)
+    Base.show(io::IO, m::MIME"image/png", a::AsMIME{MIME"image/png"}) = show(io, m, a.value)
 
     function register_figure!(page, pagetitle, id, figurelike)
         vec = get!(Vector, FIGURES, PageInfo(page, pagetitle))
@@ -39,7 +39,7 @@ module MakieDocsHelpers
         size_px = Tuple(round.(Int, reverse(size(img)) ./ px_per_unit))
 
         ntrim = 3 # `restrict` makes dark border pixels which we cut off
-        img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
+        img = @view ImageTransformations.restrict(img)[ntrim:(end - ntrim), ntrim:(end - ntrim)]
         # img = @view ImageTransformations.restrict(img)[ntrim:end-ntrim,ntrim:end-ntrim]
         io = IOBuffer()
         FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
@@ -50,10 +50,10 @@ module MakieDocsHelpers
     struct FileInfo
         filename::String
         id::String
-        size_px::Tuple{Int,Int}
+        size_px::Tuple{Int, Int}
     end
     struct OverviewSection
-        d::Dict{PageInfo,Vector{FileInfo}}
+        d::Dict{PageInfo, Vector{FileInfo}}
     end
 
     function OverviewSection(page::String)
@@ -63,7 +63,7 @@ module MakieDocsHelpers
             match(r, pageinfo.path) !== nothing
         end
 
-        fileinfo_dict = Dict{PageInfo,Vector{FileInfo}}()
+        fileinfo_dict = Dict{PageInfo, Vector{FileInfo}}()
         for (pageinfo, pngs) in pairs(filtered)
             fileinfos = map(pngs) do png
                 filename = "$(string(hash(png.bytes), base = 62)).png"
@@ -75,7 +75,7 @@ module MakieDocsHelpers
             fileinfo_dict[pageinfo] = fileinfos
         end
 
-        OverviewSection(fileinfo_dict)
+        return OverviewSection(fileinfo_dict)
     end
 
     function Base.show(io::IO, ::MIME"text/markdown", o::OverviewSection)
@@ -87,47 +87,53 @@ module MakieDocsHelpers
             println(io)
             println(io, """<div :class="\$style.container">""")
             for fileinfo in fileinfos
-                println(io, """
-                <a href="./$pagename.html#example-$(fileinfo.id)">
-                    <img src=\"./$(fileinfo.filename)\" />
-                </a>
-                """)
+                println(
+                    io, """
+                    <a href="./$pagename.html#example-$(fileinfo.id)">
+                        <img src=\"./$(fileinfo.filename)\" />
+                    </a>
+                    """
+                )
             end
             println(io, "</div>")
             println(io)
         end
 
-        println(io, """
-        <style module>
-            .container {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                grid-gap: 1.5em;
-                padding: 2em 0;
-            }
-
-            @media (min-width: 640px) {
+        return println(
+            io, """
+            <style module>
                 .container {
-                    grid-template-columns: repeat(3, 1fr);
+                    display: grid;
+                    grid-template-columns: repeat(2, 1fr);
+                    grid-gap: 1.5em;
+                    padding: 2em 0;
                 }
-            }
 
-            @media (min-width: 960px) {
-                .container {
-                    grid-template-columns: repeat(4, 1fr);
+                @media (min-width: 640px) {
+                    .container {
+                        grid-template-columns: repeat(3, 1fr);
+                    }
                 }
-            }
-        </style>
-        """)
+
+                @media (min-width: 960px) {
+                    .container {
+                        grid-template-columns: repeat(4, 1fr);
+                    }
+                }
+            </style>
+            """
+        )
     end
 end
 
 const IMAGE_COUNTER = Ref(0)
 
 function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
-    title = first(Iterators.filter(page.elements) do el
-        el isa Markdown.Header{1}
-    end).text[]
+    title = first(
+        Iterators.filter(page.elements) do el
+            el isa Markdown.Header{1}
+        end
+    ).text[]
 
     if title isa Markdown.Link
         title = title.text[]
@@ -159,12 +165,14 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
         end
     end
 
-    kwargs = Dict(map(kwargs) do expr
-        if !(expr isa Expr) && expr.head !== :(=) && length(expr.args) == 2 && expr.args[1] isa Symbol && expr.args[2] isa Union{String,Number,Symbol}
-            error("Invalid keyword arg expression: $expr")
+    kwargs = Dict(
+        map(kwargs) do expr
+            if !(expr isa Expr) && expr.head !== :(=) && length(expr.args) == 2 && expr.args[1] isa Symbol && expr.args[2] isa Union{String, Number, Symbol}
+                error("Invalid keyword arg expression: $expr")
+            end
+            expr.args[1] => expr.args[2]
         end
-        expr.args[1] => expr.args[2]
-    end)
+    )
     el.info = "@example $blockname"
 
     id = string(hash(IMAGE_COUNTER[], hash(el.code)), base = 16)[1:7]
@@ -184,24 +192,26 @@ function Documenter.Selectors.runner(::Type{FigureBlocks}, node, page, doc)
     # this makes images look sharp as intended, and it improves the accuracy with which one gets to
     # image examples from the overview pages, as with annotated width and height the right locations can
     # be computed even before all the images have been loaded. Otherwise they are usually wrong the first time.
-    MarkdownAST.insert_after!(node, @ast Documenter.RawNode(:html, "<img src=\"./$image_name\" width=\"$(size_px[1])px\" height=\"$(size_px[2])px\"/>"))
+    return MarkdownAST.insert_after!(node, @ast Documenter.RawNode(:html, "<img src=\"./$image_name\" width=\"$(size_px[1])px\" height=\"$(size_px[2])px\"/>"))
 end
 
-function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime=:png)
+function transform_figure_code(code::String; id::String, page::String, pagetitle::String, is_continued::Bool, backend::Symbol = :CairoMakie, mime = :png)
     backend in (:CairoMakie, :GLMakie) || error("Invalid backend $backend")
     mimetype = mime == :svg ? "image/svg+xml" : mime == :png ? "image/png" : error("Unknown mimetype $mime")
 
-    (is_continued ? "" : """
-    using $backend
-    $backend.activate!(; px_per_unit = 2) # hide
-    """) *
-    """
-    import ..MakieDocsHelpers # hide
-    var"#result" = begin # hide
-    $code
-    end # hide
-    MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result") # hide
-    save("$id.$mime", var"#result") # hide
-    nothing # hide
-    """
+    return (
+        is_continued ? "" : """
+            using $backend
+            $backend.activate!(; px_per_unit = 2) # hide
+            """
+    ) *
+        """
+        import ..MakieDocsHelpers # hide
+        var"#result" = begin # hide
+        $code
+        end # hide
+        MakieDocsHelpers.register_figure!("$page", "$pagetitle", "$id", var"#result") # hide
+        save("$id.$mime", var"#result") # hide
+        nothing # hide
+        """
 end

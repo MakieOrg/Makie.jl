@@ -7,8 +7,8 @@ struct SelectionID{T <: Integer}
     id::T
     index::T
 end
-Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
-Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
+Base.convert(::Type{SelectionID{T}}, s::SelectionID) where {T} = SelectionID{T}(T(s.id), T(s.index))
+Base.zero(::Type{GLMakie.SelectionID{T}}) where {T} = SelectionID{T}(T(0), T(0))
 
 
 
@@ -35,7 +35,7 @@ function reset_main_framebuffer!(factory::FramebufferFactory)
 end
 
 function create_main_framebuffer(context, fb_size)
-    ShaderAbstractions.switch_context!(context)
+    gl_switch_context!(context)
     require_context(context)
 
     # holds depth and stencil values
@@ -52,7 +52,7 @@ function create_main_framebuffer(context, fb_size)
 end
 
 function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
-    ShaderAbstractions.switch_context!(first(values(fb.buffers)).context)
+    gl_switch_context!(first(values(fb.buffers)).context)
     foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), fb.buffers)
     resize!(fb.fb, w, h)
     filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok for cleanup?
@@ -130,7 +130,7 @@ function MonitorProperties(monitor::GLFW.Monitor)
     dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
     videomode_supported = GLFW.GetVideoModes(monitor)
 
-    MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
+    return MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
 end
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
@@ -143,11 +143,11 @@ function GLContext()
 end
 
 function ShaderAbstractions.native_switch_context!(x::GLFW.Window)
-    GLFW.MakeContextCurrent(x)
+    return GLFW.MakeContextCurrent(x)
 end
 
 function ShaderAbstractions.native_context_alive(x::GLFW.Window)
-    GLFW.is_initialized() && !was_destroyed(x)
+    return GLFW.is_initialized() && !was_destroyed(x)
 end
 
 function check_context(ctx)
@@ -171,7 +171,7 @@ function destroy!(nw::GLFW.Window)
         GLFW.DestroyWindow(nw)
         nw.handle = C_NULL
     end
-    was_current && ShaderAbstractions.switch_context!()
+    return was_current && gl_switch_context!()
 end
 
 function window_size(nw::GLFW.Window)
@@ -187,7 +187,7 @@ function framebuffer_size(nw::GLFW.Window)
     return Tuple(GLFW.GetFramebufferSize(nw))
 end
 function scale_factor(nw::GLFW.Window)
-    was_destroyed(nw) && return 1f0
+    was_destroyed(nw) && return 1.0f0
     return minimum(GLFW.GetWindowContentScale(nw))
 end
 

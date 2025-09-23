@@ -9,6 +9,7 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 uniform vec2 resolution;
+uniform float px_per_unit;
 uniform float pattern_length;
 {{pattern_type}} pattern;
 uniform int linecap;
@@ -49,17 +50,17 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2)
     float d1, d2;
     for (int i = 0; i < _num_clip_planes; i++) {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {
             p2 = p1;
             return true;
         }
-        
+
         // one outside - shorten segment
-        else if (d1 < 0.0) 
+        else if (d1 < 0.0)
         {
             // solve 0 = m * t + b = (d2 - d1) * t + d1 with t in (0, 1)
             p1       = p1       - d1 * (p2 - p1)             / (d2 - d1);
@@ -77,7 +78,7 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2)
 
 
 vec3 screen_space(vec4 vertex) {
-    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution, vertex.z / vertex.w);
 }
 
 vec2 normal_vector(in vec2 v) { return vec2(-v.y, v.x); }
@@ -102,18 +103,13 @@ void main(void)
     {
         vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
 
-        // Shorten segments to fit clip planes
-        // returns true if segments are fully clipped
-        if (process_clip_planes(_p1, _p2))
-            return;
-
-        // remaining world -> clip projection 
+        // remaining world -> clip projection
         _p1 = projectionview * _p1;
         _p2 = projectionview * _p2;
 
         _p1.z += _p1.w * depth_shift;
         _p2.z += _p2.w * depth_shift;
-        
+
         // Handle near/far clip planes
         vec4 v1 = _p2 - _p1;
 
@@ -125,6 +121,11 @@ void main(void)
             _p2      = _p2      + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
             f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(_p1, _p2))
+            return;
 
         // clip -> pixel/screen projection
         p1 = screen_space(_p1);
@@ -168,7 +169,7 @@ void main(void)
             // Get offset in y direction & compute vertex position
             float n_offset = (2 * y - 1) * (halfwidth + AA_THICKNESS);
             vec3 position = vec3[2](p1, p2)[x] + v_offset * v1 + n_offset * vec3(n1, 0);
-            gl_Position = vec4(2.0 * position.xy / resolution - 1.0, position.z, 1.0);
+            gl_Position = vec4(2.0 * position.xy / (px_per_unit * resolution) - 1.0, position.z, 1.0);
 
             // Generate SDF's
 
