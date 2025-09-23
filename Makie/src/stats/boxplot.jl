@@ -49,7 +49,7 @@ The boxplot has 3 components:
     mediancolor = @inherit linecolor
     medianlinewidth = @inherit linewidth
     # whiskers
-    "Multiple of IQR controlling whisker length."
+    "Multiple of IQR controlling whisker length. Setting to 0 extends whiskers to the range of the data."
     range = 1.5
     "Multiplier of `width` for width of T's on whiskers, or `:match` to match `width`."
     whiskerwidth = 0.0
