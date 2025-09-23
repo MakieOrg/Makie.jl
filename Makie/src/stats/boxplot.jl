@@ -38,6 +38,7 @@ the 75% percentile) with a midline marking the median
     multiple of it. The final value range for errorbars is `Q2 - range * (Q4 - Q2)`
     to `Q4 + range * (Q4 - Q2)` where `Q2` and `Q4` include 25% and 75% of the
     values respectively.
+    Setting to 0 extends whiskers to the range of the data.
     """
     range = 1.5
     "Sets the width of whiskers on errorbars as a multiplier of the crossbar width."
