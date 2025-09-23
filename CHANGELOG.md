@@ -5,6 +5,7 @@
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
+- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 
 ## [0.24.6] - 2025-08-19
 
@@ -145,7 +146,6 @@
 
 ## [0.22.5] - 2025-05-12
 
-- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 - Added LegendElements for meshscatter, mesh, image, heatmap and surface [#4924](https://github.com/MakieOrg/Makie.jl/pull/4924)
 - Moved some of the TextureAtlas logic to JS, speeding up text updates and fixing texture atlas updates [4942](https://github.com/MakieOrg/Makie.jl/pull/4942).
 - Added ability to hide and show individual plot elements by clicking their corresponding `Legend` entry [#2276](https://github.com/MakieOrg/Makie.jl/pull/2276).
