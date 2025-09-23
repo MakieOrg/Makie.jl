@@ -2,7 +2,7 @@
 
 import FixedPointNumbers: N0f8
 
-module BFT
+module BFT # BufferFormatType
     import FixedPointNumbers: N0f8
 
     @enum BufferFormatType::UInt8 begin
@@ -712,80 +712,6 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
         connect!(pipeline, _fxaa, display, :color)
     end
     connect!(pipeline, :objectid)
-
-    return pipeline
-end
-
-function test_pipeline_3D()
-    pipeline = RenderPipeline()
-
-    render1 = push!(pipeline, RenderStage(ssao = true, transparency = false, fxaa = true))
-    ssao = push!(pipeline, SSAOStage())
-    render2 = push!(pipeline, RenderStage(ssao = false, transparency = false, fxaa = true))
-    render3 = push!(pipeline, TransparentRenderStage())
-    oit = push!(pipeline, OITStage())
-    fxaa = push!(pipeline, FXAAStage(filter_in_shader = false))
-    # dedicated fxaa = false render improves sdf (lines, scatter, text) intersections with FXAA
-    render4 = push!(pipeline, RenderStage(transparency = false, fxaa = false))
-    display = push!(pipeline, DisplayStage())
-
-    connect!(pipeline, render1, ssao)
-    connect!(pipeline, ssao, fxaa, :color)
-    connect!(pipeline, render2, fxaa, :color)
-    connect!(pipeline, render3, oit)
-    connect!(pipeline, oit, fxaa, :color)
-    connect!(pipeline, fxaa, display, :color)
-    connect!(pipeline, render4, display)
-    connect!(pipeline, :objectid)
-
-    return pipeline
-end
-
-function test_pipeline_2D()
-    pipeline = RenderPipeline()
-
-    # dedicated fxaa = false pass + no SSAO
-    render1 = push!(pipeline, RenderStage(transparency = false, fxaa = true))
-    render2 = push!(pipeline, TransparentRenderStage())
-    oit = push!(pipeline, OITStage())
-    fxaa = push!(pipeline, FXAAStage(filter_in_shader = false))
-    render3 = push!(pipeline, RenderStage(transparency = false, fxaa = false))
-    display = push!(pipeline, DisplayStage())
-
-    connect!(pipeline, render1, fxaa)
-    connect!(pipeline, render2, oit)
-    connect!(pipeline, oit, fxaa, :color)
-    connect!(pipeline, fxaa, display, :color)
-    connect!(pipeline, render3, display)
-    connect!(pipeline, :objectid)
-
-    return pipeline
-end
-
-function test_pipeline_GUI()
-    pipeline = RenderPipeline()
-
-    # GUI elements don't need OIT because they are (usually?) layered plot by
-    # plot, rather than element by element. Do need FXAA occasionally, e.g. Toggle
-    render1 = push!(pipeline, RenderStage(fxaa = true))
-    fxaa = push!(pipeline, FXAAStage(filter_in_shader = false))
-    render2 = push!(pipeline, RenderStage(fxaa = false))
-    display = push!(pipeline, DisplayStage())
-
-    connect!(pipeline, render1, display)
-    connect!(pipeline, render1, fxaa)
-    connect!(pipeline, fxaa, display)
-    connect!(pipeline, render2, display)
-
-    return pipeline
-end
-
-function test_pipeline_minimal()
-    pipeline = RenderPipeline()
-
-    render = push!(pipeline, RenderStage())
-    display = push!(pipeline, DisplayStage())
-    connect!(pipeline, render, display)
 
     return pipeline
 end
