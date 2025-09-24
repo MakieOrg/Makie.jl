@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.24.5"
+version = "0.24.6"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -65,8 +65,11 @@ TriplotBase = "981d1d27-644d-49a2-9326-4793e63143c3"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
-[sources]
-ComputePipeline = {path = "../ComputePipeline"}
+[weakdeps]
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+
+[extensions]
+MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 Animations = "0.4"
@@ -82,7 +85,8 @@ DelaunayTriangulation = "1.0"
 Distributions = "0.17, 0.18, 0.19, 0.20, 0.21, 0.22, 0.23, 0.24, 0.25"
 DocStringExtensions = "0.8, 0.9"
 Downloads = "1, 1.6"
-FFMPEG_jll = "4, 6"
+DynamicQuantities = "1, 1.8"
+FFMPEG_jll = "4, 6, 7"
 FileIO = "1.6"
 FilePaths = "0.8"
 FixedPointNumbers = "0.6, 0.7, 0.8"
@@ -129,3 +133,6 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
+
+[sources.ComputePipeline]
+path = "../ComputePipeline"

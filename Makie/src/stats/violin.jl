@@ -51,36 +51,35 @@ function getuniquevalue(v::AbstractVector, idxs)
 end
 
 function plot!(plot::Violin)
-    x, y = plot[1], plot[2]
-    args = @extract plot (
-        width, side, scale, color, show_median, npoints, boundary, bandwidth, weights,
-        datalimits, max_density, dodge, n_dodge, gap, dodge_gap, orientation,
+    map!(
+        compute_x_and_width, plot,
+        [:x, :width, :gap, :dodge, :n_dodge, :dodge_gap],
+        [:x̂, :violinwidth]
     )
-    signals = lift(
-        plot, x, y,
-        args...
-    ) do x, y, width, vside, scale_type, color, show_median, n, bound, bw, w, limits, max_density,
-            dodge, n_dodge, gap, dodge_gap, orientation
-        x̂, violinwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
-        # for horizontal violin just flip all components
-        point_func = Point2f
-        if orientation === :horizontal
-            point_func = flip_xy ∘ point_func
+    map!(plot, [:x̂, :side], :sides) do x̂, side
+        options = (left = -1, right = +1, both = 0)
+        return broadcast(x̂, side) do _, s
+            if hasproperty(options, s)
+                return getproperty(options, s)
+            else
+                error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
+            end
         end
+    end
 
-        # Allow `side` to be either scalar or vector
-        sides = broadcast(x̂, vside) do _, s
-            return s === :left ? - 1 : s === :right ? 1 : s === :both ? 0 : error("Invalid side $(repr(s)), only :left, :right or :both are allowed.")
-        end
-
+    map!(
+        plot,
+        [:x̂, :y, :sides, :npoints, :boundary, :bandwidth, :weights, :datalimits, :color],
+        :specs
+    ) do x̂, y, sides, npoints, bound, bw, w, limits, color
         sa = StructArray((x = x̂, side = sides))
 
-        specs = map(StructArrays.finduniquesorted(sa)) do (key, idxs)
+        map(StructArrays.finduniquesorted(sa)) do (key, idxs)
             v = view(y, idxs)
             k = KernelDensity.kde(
                 v;
-                npoints = n,
+                npoints = npoints,
                 (bound === automatic ? NamedTuple() : (boundary = bound,))...,
                 (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
                 (w === automatic ? NamedTuple() : (weights = StatsBase.weights(view(w, idxs)),))...
@@ -91,8 +90,28 @@ function plot!(plot::Violin)
             c = getuniquevalue(color, idxs)
             return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v), amount = length(idxs))
         end
+    end
 
-        (scale_type ∈ [:area, :count, :width]) || error("Invalid scale type: $(scale_type)")
+    map!(plot, :specs, :colors) do specs
+        colors = RGBA{Float32}[]
+        for spec in specs
+            push!(colors, spec.color)
+        end
+        return colors
+    end
+
+    map!(
+        plot,
+        [:specs, :scale, :show_median, :max_density, :orientation, :violinwidth],
+        [:vertices, :lines]
+    ) do specs, scale_type, show_median, max_density, orientation, violinwidth
+        @assert scale_type ∈ [:area, :count, :width] "Invalid scale type: $(scale_type)"
+
+        # for horizontal violin just flip all components
+        point_func = Point2f
+        if orientation === :horizontal
+            point_func = flip_xy ∘ point_func
+        end
 
         max = if max_density === automatic
             maximum(specs) do spec
@@ -110,7 +129,6 @@ function plot!(plot::Violin)
 
         vertices = Vector{Point2f}[]
         lines = Pair{Point2f, Point2f}[]
-        colors = RGBA{Float32}[]
 
         for spec in specs
             scale = 0.5 * violinwidth
@@ -136,8 +154,8 @@ function plot!(plot::Violin)
             verts = point_func.(x_coord, y_coord)
             push!(vertices, verts)
 
+            # interpolate median bounds between corresponding points
             if show_median
-                # interpolate median bounds between corresponding points
                 xm = spec.median
                 ip = Base.max(2, something(findfirst(>(xm), spec.kde.x), length(spec.kde.x)))
                 ym₋, ym₊ = spec.kde.density[Base.max(1, ip - 1)], spec.kde.density[ip]
@@ -147,26 +165,25 @@ function plot!(plot::Violin)
                 median_right = point_func(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
                 push!(lines, median_left => median_right)
             end
-
-            push!(colors, spec.color)
         end
 
-        return (vertices = vertices, lines = lines, colors = colors)
+        return vertices, lines
     end
 
     poly!(
         plot,
-        lift(s -> s.vertices, plot, signals);
-        color = lift(s -> s.colors, plot, signals),
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
+        plot.vertices;
+        color = plot.colors,
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
     )
-    return linesegments!(
+    linesegments!(
         plot,
-        lift(s -> s.lines, plot, signals);
-        color = plot[:mediancolor],
-        linewidth = plot[:medianlinewidth],
-        visible = plot[:show_median],
-        inspectable = plot[:inspectable]
+        plot.lines;
+        color = plot.mediancolor,
+        linewidth = plot.medianlinewidth,
+        visible = plot.show_median,
+        inspectable = plot.inspectable
     )
+    return plot
 end
