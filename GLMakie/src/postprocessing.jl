@@ -29,9 +29,21 @@ tasks are collected in the RenderPipeline.
 Each task may implement:
 - `prepare_step(screen, glscene, step)`: Initialize the task.
 - `run_step(screen, glscene, step)`: Run the task.
+- `destroy!(step)`: Cleanup of the object. This defaults to calling `destroy!(step.robj)`.
 
 Initialization is grouped together and runs before all run steps. If you need
 to initialize just before your run, bundle it with the run.
+
+A render step is constructed from a `Makie.Stage` using
+`construct(::Val{stage.name}, screen, framebuffer, inputs, parent)`. The `inputs`
+are the buffers/textures that feed into this step according to the render pipeline.
+The `parent` is the `Makie.Stage` which may contain additional settings/uniforms.
+The framebuffer is specifically created for this step, containing the outputs
+specified in the render pipeline in the same order and with the same names.
+
+Optionally, `reconstruct(old_step, screen, framebuffer, inputs, parent)` can be
+used to construct a step from a previous version. This can be used to avoid a
+full destruction and re-creation of a step when the pipeline gets replaced.
 """
 abstract type AbstractRenderStep end
 run_step(screen, glscene, ::AbstractRenderStep) = nothing
@@ -52,6 +64,12 @@ end
 Broadcast.broadcastable(x::AbstractRenderStep) = Ref(x)
 
 
+"""
+    GLRenderPipeline(pipeline::Makie.RenderPipeline, steps::Vector{AbstractRenderStep})
+
+Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of steps
+which run in sequence when calling `render_frame!(screen, scene, pipeline)`.
+"""
 struct GLRenderPipeline
     parent::Makie.RenderPipeline
     steps::Vector{AbstractRenderStep}
@@ -100,6 +118,12 @@ end
 compare(val::Bool, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
 compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
 
+"""
+    struct RenderPlots <: AbstractRenderStep
+
+A render pipeline step which renders plots. This includes filtering options to
+distribute plots into, e.g. a pass for OIT.
+"""
 struct RenderPlots <: AbstractRenderStep
     framebuffer::GLFramebuffer
     clear::Vector{Pair{Int, Vec4f}} # target index -> color

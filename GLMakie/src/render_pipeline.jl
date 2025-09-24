@@ -1,3 +1,9 @@
+"""
+    initialize_attachments!(manager::FramebufferManager, formats)
+
+Populates a `FramebufferManager` with buffers corresponding to the given formats.
+These are then used to create Framebuffers.
+"""
 function initialize_attachments!(manager::FramebufferManager, formats::Vector{Makie.BufferFormat})
     # Implies `empty!(manager)` has not been called
     @assert isempty(manager.buffers) "Cannot initialize FramebufferManager that has already been initialized."
@@ -33,6 +39,13 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
     return manager
 end
 
+"""
+    gl_render_pipeline!(screen, pipeline::Makie.RenderPipeline)
+
+Constructs a new `GLRenderPipeline` from a `Makie.RenderPipeline` and adds it
+to the given `screen`. If a `GLRenderPipeline` already exists, it is destroyed
+and replaced. This will also reset the `FramebufferManager`.
+"""
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     pipeline.stages[end].name === :Display || error("RenderPipeline must end with a Display stage")
     previous_pipeline = screen.render_pipeline

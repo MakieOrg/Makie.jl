@@ -11,12 +11,26 @@ Base.convert(::Type{SelectionID{T}}, s::SelectionID) where {T} = SelectionID{T}(
 Base.zero(::Type{GLMakie.SelectionID{T}}) where {T} = SelectionID{T}(T(0), T(0))
 
 
+"""
+    FramebufferManager(context, size)
+
+Creates a `FramebufferManager` which is responsible for producing framebuffers
+for the render pipeline using `generate_framebuffer()`. For this it manages
+framebuffer attachments.
+
+All the framebuffers are kept track of in the manager to allow resizing and
+deletion from a central location. The output color, objectid and depth buffers
+are collected in a separate framebuffer in the manager to simplify access for
+picking and `colorbuffer()`.
+"""
 mutable struct FramebufferManager
     fb::GLFramebuffer # core framebuffer (more or less for #4150)
     # holding depth, stencil, objectid[, output_color]
 
     buffers::Vector{Texture}
-    children::Vector{GLFramebuffer} # TODO: how else can we handle resizing?
+    # TODO: Consider removing this and handling resize and deletion in framebuffer.
+    # This might be useful to allow half-resolution rendering for example.
+    children::Vector{GLFramebuffer}
 end
 
 Base.size(fb::FramebufferManager) = size(fb.fb)
@@ -81,14 +95,15 @@ function Base.push!(manager::FramebufferManager, tex::Texture)
     return manager
 end
 
-function generate_framebuffer(manager::FramebufferManager, args...)
-    parse_arg(name::Symbol) = name => name
-    parse_arg(p::Pair{Symbol, Symbol}) = p
-    parse_arg(x::Any) = error("$x not accepted")
+"""
+    generate_framebuffer(manager, index_to_name...)
 
-    return generate_framebuffer(manager, parse_arg.(args)...)
-end
+Creates a `GLFramebuffer` containing attachments present in the manager.
 
+The attachments are referenced to by index and named with a Symbol via
+`index_to_name = integer => name`. The indices are directly used for
+`manager.buffers` which is filled via `push!(manager, texture)`.
+"""
 Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, idx2name::Pair{Int, Symbol}...)
     filter!(fb -> fb.id != 0, manager.children) # cleanup?
 
