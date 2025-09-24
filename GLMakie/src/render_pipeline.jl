@@ -1,6 +1,6 @@
-function initialize_attachments!(factory::FramebufferFactory, formats::Vector{Makie.BufferFormat})
-    # Implies `empty!(factory)` has not been called
-    @assert isempty(factory.buffers) "Cannot initialize FramebufferFactory that has already been initialized."
+function initialize_attachments!(manager::FramebufferManager, formats::Vector{Makie.BufferFormat})
+    # Implies `empty!(manager)` has not been called
+    @assert isempty(manager.buffers) "Cannot initialize FramebufferManager that has already been initialized."
 
     # function barrier for types?
     function get_buffer!(context, T, format)
@@ -19,18 +19,18 @@ function initialize_attachments!(factory::FramebufferFactory, formats::Vector{Ma
         format.mipmap && error("Mipmaps not yet implemented for Pipeline buffers")
 
         return Texture(
-            context, T, size(factory), minfilter = minfilter, magfilter = magfilter,
+            context, T, size(manager), minfilter = minfilter, magfilter = magfilter,
             x_repeat = format.repeat[1], y_repeat = format.repeat[2]
         )
     end
 
     # Add buffers in the order of `formats`
     for format in formats
-        tex = get_buffer!(factory.fb.context, Makie.format_to_type(format), format)
-        push!(factory.buffers, tex)
+        tex = get_buffer!(manager.fb.context, Makie.format_to_type(format), format)
+        push!(manager.buffers, tex)
     end
 
-    return factory
+    return manager
 end
 
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
@@ -41,7 +41,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     previous_pipeline.parent == pipeline && return
 
     # Reset GL renderpipeline
-    factory = screen.framebuffer_factory
+    manager = screen.framebuffer_manager
     ShaderAbstractions.switch_context!(screen.glscreen)
     screen.render_pipeline = GLRenderPipeline()
 
@@ -50,9 +50,9 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
 
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
-    destroy!(factory)
-    reset_main_framebuffer!(factory)
-    initialize_attachments!(factory, buffers)
+    destroy!(manager)
+    reset_main_framebuffer!(manager)
+    initialize_attachments!(manager, buffers)
 
     # Add back output color and objectid attachments
     # This assumes the last stage to be the Display stage with inputs (color, objectid)
@@ -62,9 +62,9 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
 
     N = length(pipeline.stages)
     buffer_idx = remap[pipeline.stageio2idx[(N, -1)]]
-    attach_colorbuffer(factory.fb, :color, get_buffer(factory, buffer_idx))
+    attach_colorbuffer(manager.fb, :color, get_buffer(manager, buffer_idx))
     buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
-    attach_colorbuffer(factory.fb, :objectid, get_buffer(factory, buffer_idx))
+    attach_colorbuffer(manager.fb, :objectid, get_buffer(manager, buffer_idx))
 
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them
     # if possible. Steps that aren't reused and thus need to be deleted are
@@ -77,7 +77,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
         inputs = Dict{Symbol, Any}()
         for (key, input_idx) in stage.inputs
             idx = remap[pipeline.stageio2idx[(stage_idx, -input_idx)]]
-            inputs[Symbol(key, :_buffer)] = get_buffer(factory, idx)
+            inputs[Symbol(key, :_buffer)] = get_buffer(manager, idx)
         end
 
         # Get buffer indices for stage outputs.
@@ -102,7 +102,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
                 outputs = ntuple(N) do n
                     remap[connection_indices[n]] => idx2name[n]
                 end
-                framebuffer = generate_framebuffer(factory, outputs...)
+                framebuffer = generate_framebuffer(manager, outputs...)
             catch e
                 rethrow(e)
             end

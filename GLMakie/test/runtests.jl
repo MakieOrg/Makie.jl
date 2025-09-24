@@ -168,10 +168,10 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # verify that SSAO is active
         @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
 
-        framebuffer = screen.framebuffer_factory
-        framebuffer_depth = GLMakie.get_buffer(screen.framebuffer_factory.fb, :depth_stencil)
-        framebuffer_textures = copy(screen.framebuffer_factory.buffers)
-        framebuffer_children = copy(screen.framebuffer_factory.children)
+        framebuffer = screen.framebuffer_manager
+        framebuffer_depth = GLMakie.get_buffer(screen.framebuffer_manager.fb, :depth_stencil)
+        framebuffer_textures = copy(screen.framebuffer_manager.buffers)
+        framebuffer_children = copy(screen.framebuffer_manager.children)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
@@ -192,7 +192,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
             @test framebuffer.fb.id == 0
             @test all(x -> x.id == 0, framebuffer.fb.buffers)
 
-            # FramebufferFactory object
+            # FramebufferManager object
             @test isempty(framebuffer.children)
             @test isempty(framebuffer.buffers)
 

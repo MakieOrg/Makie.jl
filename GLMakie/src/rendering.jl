@@ -36,7 +36,7 @@ end
 Renders a single frame of a `screen`
 """
 function render_frame(screen::Screen; resize_buffers = true)
-    if isempty(screen.framebuffer_factory.children) || isnothing(screen.scene)
+    if isempty(screen.framebuffer_manager.children) || isnothing(screen.scene)
         return
     end
 
@@ -49,10 +49,10 @@ function render_frame(screen::Screen; resize_buffers = true)
     # TODO: Hacky, assumes our first draw is a render (ZSort doesn't draw) and
     #       no earlier stage uses color or objectid
     #       Also assumes specific names
-    fb = screen.framebuffer_factory.children[1]
+    fb = screen.framebuffer_manager.children[1]
     if resize_buffers
         ppu = screen.px_per_unit[]
-        resize!(screen.framebuffer_factory, round.(Int, ppu .* size(screen.scene))...)
+        resize!(screen.framebuffer_manager, round.(Int, ppu .* size(screen.scene))...)
     end
 
     GLAbstraction.bind(fb)

@@ -11,7 +11,7 @@ Base.convert(::Type{SelectionID{T}}, s::SelectionID) where {T} = SelectionID{T}(
 Base.zero(::Type{GLMakie.SelectionID{T}}) where {T} = SelectionID{T}(T(0), T(0))
 
 
-mutable struct FramebufferFactory
+mutable struct FramebufferManager
     fb::GLFramebuffer # core framebuffer (more or less for #4150)
     # holding depth, stencil, objectid[, output_color]
 
@@ -19,18 +19,18 @@ mutable struct FramebufferFactory
     children::Vector{GLFramebuffer} # TODO: how else can we handle resizing?
 end
 
-Base.size(fb::FramebufferFactory) = size(fb.fb)
-GLAbstraction.get_buffer(fb::FramebufferFactory, idx::Int) = fb.buffers[idx]
-GLAbstraction.bind(fb::FramebufferFactory) = GLAbstraction.bind(fb.fb)
+Base.size(fb::FramebufferManager) = size(fb.fb)
+GLAbstraction.get_buffer(fb::FramebufferManager, idx::Int) = fb.buffers[idx]
+GLAbstraction.bind(fb::FramebufferManager) = GLAbstraction.bind(fb.fb)
 
-Makie.@noconstprop function FramebufferFactory(context, fb_size::NTuple{2, Int})
-    return FramebufferFactory(create_main_framebuffer(context, fb_size), Texture[], GLFramebuffer[])
+Makie.@noconstprop function FramebufferManager(context, fb_size::NTuple{2, Int})
+    return FramebufferManager(create_main_framebuffer(context, fb_size), Texture[], GLFramebuffer[])
 end
 
-function reset_main_framebuffer!(factory::FramebufferFactory)
-    @assert factory.fb.id == 0 "Main framebuffer must be destroyed before being reset"
-    factory.fb = create_main_framebuffer(factory.fb.context, factory.fb.size)
-    return factory
+function reset_main_framebuffer!(manager::FramebufferManager)
+    @assert manager.fb.id == 0 "Main framebuffer must be destroyed before being reset"
+    manager.fb = create_main_framebuffer(manager.fb.context, manager.fb.size)
+    return manager
 end
 
 function create_main_framebuffer(context, fb_size)
@@ -50,7 +50,7 @@ function create_main_framebuffer(context, fb_size)
     return fb
 end
 
-function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
+function Base.resize!(fb::FramebufferManager, w::Int, h::Int)
     gl_switch_context!(first(values(fb.buffers)).context)
     foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), fb.buffers)
     resize!(fb.fb, w, h)
@@ -60,48 +60,48 @@ function Base.resize!(fb::FramebufferFactory, w::Int, h::Int)
 end
 
 # destroys everything
-function destroy!(factory::FramebufferFactory)
-    ctx = factory.fb.context
+function destroy!(manager::FramebufferManager)
+    ctx = manager.fb.context
     ShaderAbstractions.switch_context!(ctx)
     # avoid try .. catch at call site, and allow cleanup to run
     GLAbstraction.require_context_no_error(ctx)
 
-    GLAbstraction.free.(factory.buffers)
-    GLAbstraction.free.(factory.children)
+    GLAbstraction.free.(manager.buffers)
+    GLAbstraction.free.(manager.children)
     # make sure depth, stencil get cleared too (and maybe core color buffers in the future)
-    GLAbstraction.free.(factory.fb.buffers)
-    GLAbstraction.free(factory.fb)
-    empty!(factory.buffers)
-    empty!(factory.children)
+    GLAbstraction.free.(manager.fb.buffers)
+    GLAbstraction.free(manager.fb)
+    empty!(manager.buffers)
+    empty!(manager.children)
     return
 end
 
-function Base.push!(factory::FramebufferFactory, tex::Texture)
-    push!(factory.buffers, tex)
-    return factory
+function Base.push!(manager::FramebufferManager, tex::Texture)
+    push!(manager.buffers, tex)
+    return manager
 end
 
-function generate_framebuffer(factory::FramebufferFactory, args...)
+function generate_framebuffer(manager::FramebufferManager, args...)
     parse_arg(name::Symbol) = name => name
     parse_arg(p::Pair{Symbol, Symbol}) = p
     parse_arg(x::Any) = error("$x not accepted")
 
-    return generate_framebuffer(factory, parse_arg.(args)...)
+    return generate_framebuffer(manager, parse_arg.(args)...)
 end
 
-Makie.@noconstprop function generate_framebuffer(factory::FramebufferFactory, idx2name::Pair{Int, Symbol}...)
-    filter!(fb -> fb.id != 0, factory.children) # cleanup?
+Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, idx2name::Pair{Int, Symbol}...)
+    filter!(fb -> fb.id != 0, manager.children) # cleanup?
 
-    fb = GLFramebuffer(factory.fb.context, size(factory))
+    fb = GLFramebuffer(manager.fb.context, size(manager))
 
     for (idx, name) in idx2name
         haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")
-        attach_colorbuffer(fb, name, factory.buffers[idx])
+        attach_colorbuffer(fb, name, manager.buffers[idx])
     end
 
-    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(factory.fb, :depth_stencil))
+    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(manager.fb, :depth_stencil))
 
-    push!(factory.children, fb)
+    push!(manager.children, fb)
 
     return fb
 end

@@ -443,7 +443,7 @@ end
 
 function construct(::Val{:Display}, screen, ::Nothing, inputs, parent::Makie.Stage)
     require_context(screen.glscreen)
-    framebuffer = screen.framebuffer_factory.fb
+    framebuffer = screen.framebuffer_manager.fb
     id = get(parent.attributes, :screen_framebuffer_id, 0)
     return BlitToScreen(framebuffer, id)
 end
