@@ -162,7 +162,9 @@ function target_stage(screen, data)
     idx = findfirst(step -> renders_in_stage(data, step), screen.render_pipeline.steps)
     @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
 
-    # Keep it simple for now
+    # Activate the required outputs + code via `#define` and `#ifdef` blocks.
+    # For now we can just check the number of outputs to figure out what branch
+    # we need. If render stages get more complex this may need to be more generative.
     fb = screen.render_pipeline.steps[idx].framebuffer
     if fb.counter == 2
         return "#define DEFAULT_TARGET"

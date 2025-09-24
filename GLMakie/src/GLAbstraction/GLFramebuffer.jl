@@ -11,7 +11,7 @@ mutable struct GLFramebuffer
     counter::UInt32 # for color attachments
 
     function GLFramebuffer(context, size::NTuple{2, Int})
-        require_context(context)
+        gl_switch_context!(context)
 
         # Create framebuffer
         id = glGenFramebuffers()
@@ -46,19 +46,19 @@ Activates the first N color buffers attached to the given GLFramebuffer. If N
 is not given all color attachments are activated.
 """
 function set_draw_buffers(fb::GLFramebuffer, N::Integer = fb.counter)
-    require_context(fb.context)
+    gl_switch_context!(fb.context)
     bind(fb)
     glDrawBuffers(N, fb.attachments)
     return
 end
 function set_draw_buffers(fb::GLFramebuffer, key::Symbol)
-    require_context(fb.context)
+    gl_switch_context!(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment(fb, key))
     return
 end
 function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
-    require_context(fb.context)
+    gl_switch_context!(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment.(Ref(fb), keys))
     return
@@ -108,7 +108,7 @@ function attach_depthstencilbuffer(fb::GLFramebuffer, key::Symbol, buffer)
 end
 
 function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment::GLenum)
-    require_context(fb.context)
+    gl_switch_context!(fb.context)
     haskey(fb, key) && error("Cannot attach " * string(key) * " to Framebuffer because it is already set.")
     if attachment in fb.attachments
         if attachment == GL_DEPTH_ATTACHMENT
@@ -156,6 +156,7 @@ end
 
 # (1) disallows random deletion because that could disrupt the order of draw buffers -> no delete!()
 function pop_colorbuffer!(fb::GLFramebuffer)
+    gl_switch_context!(fb.context)
     # (1) depth, stencil are attached after the last colorbuffer, after fb.counter.
     # Need to fix their indices after deletion
     attachment = fb.attachments[fb.counter]

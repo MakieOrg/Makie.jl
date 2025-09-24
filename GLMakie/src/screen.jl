@@ -725,8 +725,10 @@ function destroy!(screen::Screen)
     # before texture atlas, otherwise it regenerates
     destroy!(screen.render_pipeline)
     destroy!(screen.framebuffer_factory)
-    cleanup_texture_atlas!(window)
-    GLAbstraction.free(screen.shader_cache)
+    with_context(window) do
+        cleanup_texture_atlas!(window)
+        GLAbstraction.free(screen.shader_cache)
+    end
 
     destroy!(window)
     return
@@ -958,7 +960,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop = screen.close_
         try
             wait(screen)  # isnothing(rendertask) handled in wait(screen)
         catch e
-            @warn "Error while waiting for render task to finish. Cleanup will continue" excetion = (e, Base.catch_backtrace())
+            @warn "Error while waiting for render task to finish. Cleanup will continue" exception = (e, Base.catch_backtrace())
         end
     end
     # after done, we can set the task to nothing
