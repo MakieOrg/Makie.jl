@@ -288,11 +288,11 @@ using Makie: generate_buffers, default_pipeline
             for i in 2:length(connections)
                 stage = Makie.Stage(
                     Symbol(:stage, i),
-                    inputs = connections[i-1], outputs = connections[i]
+                    inputs = connections[i - 1], outputs = connections[i]
                 )
                 push!(stages, stage)
             end
-            push!(stages, Makie.Stage(Symbol(:stage, length(connections)+1), inputs = last(connections)))
+            push!(stages, Makie.Stage(Symbol(:stage, length(connections) + 1), inputs = last(connections)))
 
             push!(pipeline, stages...)
             for i in eachindex(connections)
