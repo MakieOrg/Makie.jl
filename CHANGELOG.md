@@ -4,6 +4,7 @@
 
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
 
