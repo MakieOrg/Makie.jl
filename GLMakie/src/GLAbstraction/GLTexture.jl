@@ -4,6 +4,7 @@ struct TextureParameters{NDim}
     repeat::NTuple{NDim, Symbol}
     anisotropic::Float32
     swizzle_mask::Vector{GLenum}
+    mipmap::Bool
 end
 
 abstract type OpenglTexture{T, NDIM} <: GPUArray{T, NDIM} end
@@ -92,7 +93,7 @@ Makie.@noconstprop function Texture(
         mipmap = false,
         parameters... # rest should be texture parameters
     ) where {T, NDim}
-    texparams = TextureParameters(T, NDim; parameters...)
+    texparams = TextureParameters(T, NDim; mipmap, parameters...)
     id = glGenTextures()
     glBindTexture(texturetype, id)
     set_packing_alignment(data)
@@ -230,7 +231,7 @@ Creates a texture from an Image
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
 # https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589
 
-Base.show(io::IO, t::Texture) = show(IOContext(io), MIME"text/plain"(), t)
+Base.show(io::IO, t::Texture{T, D}) where {T, D} = print(io, "Texture{$T, $D}(ID: $(t.id), Size: $(size(t)))")
 
 function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T, D}) where {T, D}
     return if get(io, :compact, false)
@@ -525,7 +526,8 @@ function TextureParameters(
         x_repeat = :clamp_to_edge, #wrap_s
         y_repeat = x_repeat, #wrap_t
         z_repeat = x_repeat, #wrap_r
-        anisotropic = 1.0f0
+        anisotropic = 1.0f0,
+        mipmap = false
     )
     T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
@@ -538,7 +540,7 @@ function TextureParameters(
     end
     return TextureParameters(
         minfilter, magfilter, ntuple(i -> repeat[i], NDim),
-        anisotropic, swizzle_mask
+        anisotropic, swizzle_mask, mipmap
     )
 end
 function TextureParameters(t::Texture{T, NDim}; kw_args...) where {T, NDim}

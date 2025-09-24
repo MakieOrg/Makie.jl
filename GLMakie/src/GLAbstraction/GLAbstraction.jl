@@ -149,4 +149,12 @@ export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
 
+include("GLFramebuffer.jl")
+export GLRenderbuffer
+export GLFramebuffer
+export attach_colorbuffer, attach_depthbuffer, attach_stencilbuffer, attach_depthstencilbuffer
+export get_attachment, get_buffer
+export set_draw_buffers
+export check_framebuffer
+
 end # module

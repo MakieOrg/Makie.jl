@@ -188,6 +188,9 @@ pages = [
         "Changelog" => "changelog.md",
         "Ecosystem" => "ecosystem.md",
     ],
+    "Dev Docs" => [
+        "devdocs/render_pipeline.md",
+    ],
 ]
 
 function make_docs(; pages)
