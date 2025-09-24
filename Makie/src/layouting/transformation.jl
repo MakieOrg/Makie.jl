@@ -318,6 +318,7 @@ end
 
 """
     apply_transform(f, data)
+
 Apply the data transform func to the data
 """
 apply_transform(f::typeof(identity), x) = x
@@ -338,6 +339,39 @@ apply_transform(f::NTuple{3, typeof(identity)}, x::AbstractArray) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
 apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
+
+
+"""
+    apply_transform_to_direction(transform_func, position::VecTypes{D}, direction::VecTypes{D}, delta)
+
+Applies the `transform_func` to a `direction` vector at given `position`.
+
+By default the transformed directions are calculated by transforming
+`position + delta * direction` and `position - delta * direction` and taking
+their difference. The array version of this function uses the single element
+version.
+
+This method can be overwritten for specific `transform_func`s to provide a more
+accurate and/or faster algorithm. For example, the Jacobian at `position` can be
+used to locally transform the `direction`.
+"""
+function apply_transform_to_direction(f, positions::AbstractArray, directions::AbstractArray, delta)
+    return map((pos, dir) -> apply_transform_to_direction(f, pos, dir, delta), positions, directions)
+end
+
+function apply_transform_to_direction(f, position::VecTypes{D1, T1}, direction::VT, delta) where {D1, T1, D2, T2, VT <: VecTypes{D2, T2}}
+    D = max(D1, D2)
+    T = float_type(T1, T2)
+    pos = to_ndim(Point{D, T}, position, 0)
+    dir = to_ndim(Point{D, T}, normalize(direction), 0)
+    p0 = apply_transform(f, pos .- delta .* dir)
+    p1 = apply_transform(f, pos .+ delta .* dir)
+    return normalize(to_ndim(VT, p1 .- p0, 0))
+end
+
+function apply_transform_to_direction(f::typeof(identity), position::VecTypes, direction::VecTypes, delta)
+    return direction
+end
 
 struct PointTrans{N, F}
     f::F
