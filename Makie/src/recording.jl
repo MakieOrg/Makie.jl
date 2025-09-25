@@ -192,7 +192,8 @@ function Base.show(io::IO, ::Union{WEB_MIMES...}, vs::VideoStream)
         # Temporarily save video (converting to MP4 if necessary)
         save_format = format in ("gif", "mp4", "webm") ? format : "mp4"
         mktempdir() do dir
-            save(joinpath(dir, "video.$save_format"), vs)
+            path = joinpath(dir, "video.$save_format")
+            save(path, vs)
             blob = base64encode(read(path))
             html = video_blob_to_html(blob, save_format, size = video_size, loop = loop)
             print(io, html)
