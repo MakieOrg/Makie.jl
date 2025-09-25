@@ -286,12 +286,13 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     # all the extra work for it entirely?
     # (i.e. no text plot, no boundingboxes, no projections?)
 
-    # TODO: Is this necessary?
-    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], :text_positions) do ps1, ps2, ps3
-        return map(ps1, ps2, ps3) do p1, p2, p3
+    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], [:text_positions, :raw_lbl_directions]) do ps1, ps2, ps3
+        # TODO: Is this necessary?
+        pos = map(ps1, ps2, ps3) do p1, p2, p3
             p = ifelse(isnan(p2), p1, p2)
             return ifelse(isnan(p), p3, p)
         end
+        return pos, ps3 .- ps1
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
@@ -302,9 +303,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
+    # transform directions to pixel-space angles
     register_projected_rotations_2d!(
         plot,
-        startpoint_name = :lbl_pos1, endpoint_name = :lbl_pos3,
+        position_name = :text_positions, direction_name = :raw_lbl_directions,
         output_name = :text_rotation,
         rotation_transform = to_upright_angle
     )
