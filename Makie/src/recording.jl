@@ -183,10 +183,10 @@ function Base.show(io::IO, ::Union{WEB_MIMES...}, vs::VideoStream)
     video_size = (hasproperty(vs.screen, :scene) && vs.screen.scene isa Scene) ? size(vs.screen.scene) : nothing
     loop = vs.options.loop >= 0
     format = vs.options.format
-    if isfile(vs.path) && format in ("gif", "mp4", "webm")
+    if !isopen(vs.process) && isfile(vs.path) && format in ("gif", "mp4", "webm")
         # Load existing video if already saved and format is supported
         blob = base64encode(read(vs.path))
-        html = video_blob_to_html(blob, format, size=video_size, loop=loop)
+        html = video_blob_to_html(blob, format, size = video_size, loop = loop)
         print(io, html)
     else
         # Temporarily save video (converting to MP4 if necessary)
@@ -194,24 +194,21 @@ function Base.show(io::IO, ::Union{WEB_MIMES...}, vs::VideoStream)
         mktempdir() do dir
             save(joinpath(dir, "video.$save_format"), vs)
             blob = base64encode(read(path))
-            html = video_blob_to_html(blob, save_format, size=video_size, loop=loop)
+            html = video_blob_to_html(blob, save_format, size = video_size, loop = loop)
             print(io, html)
         end
     end
+    return nothing
 end
 
-function video_blob_to_html(blob, format; size=nothing, loop=false)
+function video_blob_to_html(blob, format; size = nothing, loop = false)
     size_attr = isnothing(size) ? "" : "width=\"$(size[1])\" height=\"$(size[2])\"" 
     loop_attr = loop ? "loop" : ""
     if format == "gif"
         return "<img $size_attr src=\"data:image/gif;base64,$blob\">"
     elseif format == "mp4" || format == "webm"
-        return  """<video autoplay controls $loop_attr $size_attr>
-            <source src=\"data:video/$format;base64,$blob\" type=\"video/mp4\">
-        </video>"""
-    elseif format == "webm"
-        return  """<video autoplay controls $loop_attr $size_attr>
-            <source src=\"data:video/webm;base64,$blob\" type=\"video/webm\">
+        return """<video autoplay controls $loop_attr $size_attr>
+            <source src=\"data:video/$format;base64,$blob\" type=\"video/$format\">
         </video>"""
     else
         error("Unrecognized format: $format")
