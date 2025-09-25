@@ -34,6 +34,7 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 # using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
+include("html-widgets.jl")
 include("shader-abstractions.jl")
 include("display.jl")
 include("three_plot.jl")
