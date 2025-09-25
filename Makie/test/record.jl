@@ -88,8 +88,11 @@ end
             lines!(ax, sin.(i .* x))
             return nothing
         end
-        for mime_type in Makie.WEB_MIMES
+        @testset "MIME: $(mime_type())" for mime_type in Makie.WEB_MIMES
             html = repr(mime_type(), vio)
+            if !istextmime(mime_type())
+                html = String(html)
+            end
             if fmt == "mkv" # mkv gets rendered as mp4
                 @test occursin(r"<video .*>", html)
                 @test occursin("data:video/mp4", html)
