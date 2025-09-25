@@ -212,44 +212,125 @@ Maps an angle from [-π, π] to [-π/2; π/2] by adding or subtracting π.
 """
 to_upright_angle(angle) = angle - ifelse(abs(angle) > 0.5f0 * π, copysign(Float32(π), angle), 0)
 
+function local_basis_transformation_matrix(M, p)
+    #=
+    A projection matrix is applied as
+    f(p) = (M * p)[1:3] / (M * p)[4]
+    Because of the division (perpsective projection), the local basis may change
+    in space. To calulate it, we need to calculate the jacobian and evaluate it
+    at the given position.
+    =#
+    p3d = to_ndim(Point3d, p, 0)
+    p4d = to_ndim(Point4d, p3d, 1)
+    w = dot(M[4, :], p4d)
+    deriv1 = M[Vec(1, 2, 3), Vec(1, 2, 3)] * w
+    deriv2 = (M[Vec(1, 2, 3), :] * p4d) * M[4, Vec(1, 2, 3)]'
+    return (deriv1 .- deriv2) ./ (w * w)
+end
+
+function contains_perspective_projection(M::Mat4)
+    return (M[4, 1] != 0) || (M[4, 2] != 0) || (M[4, 3] != 0)
+end
+
 """
-    register_projected_rotations_2d!(plot; kwargs...)
+    register_projected_rotations_2d!(plot; position_name, direction_name, kwargs...)
 
-From two arrays of points, computes the 2D angle between the x-axis (1, 0) and
-the direction vector between the points `atan(y1 - y0, x1 - x0)`.
+Computes the angles of direction vectors at given positions while taking into
+account distortions picked up in the transformation and projection pipeline.
 
-Note that this computes projections to correctly deal with transformations.
+To do this, `apply_transform_to_direction()` is used to apply the transform
+function to directions. Then the remaining matrix transformations (including
+float32convert) are applied under the assumption that they do not include
+perspective projection. Finally the 2D angle to the x-axis (1, 0) is calculated
+using `atan(dir[2], dir[1])` and the optional `rotation_transform` is applied.
 
 ## Keyword Arguments
 
-- `startpoint_name::Symbol` name of the start points used to derive angles
-- `endpoint_name::Symbol` name of the end points used to derive angles
+- `position_name::Symbol` name of the positions where the directions apply
+- `direction_name::Symbol` name of the directions to be processed
 - `output_name::Symbol = :rotations` name of the rotation output
 - `rotation_transform = identity` A transformation that is applied to angles before outputting them. E.g. `to_upright_angle`.
+- `relative_delta = 1e-3` sets the delta for `apply_transform_to_direction()` relative to the data scale
 """
-function register_projected_rotations_2d!(@nospecialize(plot::Plot); kwargs...)
+function register_projected_rotations_2d!(plot::Plot; kwargs...)
     return register_projected_rotations_2d!(parent_scene(plot).compute, plot.attributes; kwargs...)
 end
 function register_projected_rotations_2d!(
         scene_graph::ComputeGraph, plot_graph::ComputeGraph;
-        startpoint_name::Symbol,
-        endpoint_name::Symbol,
+        position_name::Symbol,
+        direction_name::Symbol,
         output_name::Symbol = :rotations,
-        rotation_transform = identity
+        rotation_transform = identity,
+        relative_delta = 1.0e-3
     )
 
-    px_startpoints = register_projected_positions!(
-        scene_graph, plot_graph, input_name = startpoint_name, output_space = :pixel
-    )
-    px_endpoints = register_projected_positions!(
-        scene_graph, plot_graph, input_name = endpoint_name, output_space = :pixel
-    )
+    projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, :space, :pixel)
+    register_model_f32c!(plot_graph)
 
-    map!(plot_graph, [px_startpoints, px_endpoints], output_name) do ps1, ps2
-        angles = angle2d.(ps1, ps2)
-        angles .= rotation_transform.(angles)
-        return angles
+    map!(
+        plot_graph,
+        [projection_matrix_name, :model_f32c, :f32c, :transform_func, position_name, direction_name],
+        output_name
+    ) do proj_matrix, model, f32c, transform_func, positions, directions
+
+        pvmf32 = proj_matrix * model
+
+        if f32c !== nothing
+            pvmf32 *= f32_convert_matrix(f32c)
+        end
+
+        delta = relative_delta * norm(widths(Rect3d(positions)))
+
+        if contains_perspective_projection(pvmf32)
+            # Perspective projection makes the basis position dependent
+            map(positions, directions) do pos, dir
+                transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
+                local_pvmf32 = local_basis_transformation_matrix(pvmf32, pos)
+                transformed_dir = local_pvmf32 * to_ndim(Vec3f, transformed_dir, 0)
+                angle = atan(transformed_dir[2], transformed_dir[1])
+                return rotation_transform(angle)
+            end
+        else
+            pvmf32_3 = pvmf32[Vec(1, 2, 3), Vec(1, 2, 3)]
+            map(positions, directions) do pos, dir
+                transformed_dir = apply_transform_to_direction(transform_func, pos, dir, delta)
+                transformed_dir = pvmf32_3 * to_ndim(Vec3f, transformed_dir, 0)
+                angle = atan(transformed_dir[2], transformed_dir[1])
+                return rotation_transform(angle)
+            end
+        end
     end
 
     return getindex(plot_graph, output_name)
+end
+
+"""
+    register_transformed_rotations_3d!(plot; position_name, direction_name, kwargs...)
+
+Computes `transform_func`-aware 3D direction vectors using
+`apply_transform_to_direction()`.
+
+## Keyword Arguments
+
+- `position_name::Symbol` name of the positions where the directions apply
+- `direction_name::Symbol` name of the directions to be processed
+- `output_name::Symbol = :rotations` name of the rotation output
+- `relative_delta = 1e-3` sets the delta for `apply_transform_to_direction()` relative to the data scale
+"""
+function register_transformed_rotations_3d!(
+        @nospecialize(plot::Plot);
+        position_name::Symbol,
+        direction_name::Symbol,
+        output_name::Symbol = :rotations,
+        relative_delta = 1.0e-3
+    )
+
+    map!(
+        plot, [:transform_func, position_name, direction_name], output_name
+    ) do transform_func, positions, directions
+        delta = relative_delta * norm(widths(Rect3d(positions)))
+        return apply_transform_to_direction(transform_func, positions, directions, delta)
+    end
+
+    return getproperty(plot, output_name)
 end
