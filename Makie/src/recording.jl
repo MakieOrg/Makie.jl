@@ -206,7 +206,8 @@ function video_blob_to_html(blob, format; size = nothing, loop = false)
     size_attr = isnothing(size) ? "" : "width=\"$(size[1])\" height=\"$(size[2])\""
     loop_attr = loop ? "loop" : ""
     if format == "gif"
-        return "<img $size_attr src=\"data:image/gif;base64,$blob\">"
+        style_attr = "style=\"object-fit: contain; height: auto;\""
+        return "<img $size_attr $style_attr src=\"data:image/gif;base64,$blob\">"
     elseif format == "mp4" || format == "webm"
         return """<video autoplay muted controls $loop_attr $size_attr>
             <source src=\"data:video/$format;base64,$blob\" type=\"video/$format\">
