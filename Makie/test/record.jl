@@ -84,7 +84,7 @@ end
     x = 0:(n - 1)
     @testset "Format: $fmt" for fmt in ("mkv", "mp4", "webm", "gif")
         fig, ax, _ = lines(x, zeros(size(x)))
-        vio = Record(fig, 1:n, format=fmt) do i
+        vio = Record(fig, 1:n, format = fmt) do i
             lines!(ax, sin.(i .* x))
             return nothing
         end
@@ -93,7 +93,7 @@ end
             if fmt == "mkv" # mkv gets rendered as mp4
                 @test occursin(r"<video .*>", html)
                 @test occursin("data:video/mp4", html)
-                @test occursin("type=\"video/mp4\"", html)                
+                @test occursin("type=\"video/mp4\"", html)
             elseif fmt == "mp4"
                 @test occursin(r"<video .*>", html)
                 @test occursin("data:video/mp4", html)

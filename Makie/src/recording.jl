@@ -202,7 +202,7 @@ function Base.show(io::IO, ::Union{WEB_MIMES...}, vs::VideoStream)
 end
 
 function video_blob_to_html(blob, format; size = nothing, loop = false)
-    size_attr = isnothing(size) ? "" : "width=\"$(size[1])\" height=\"$(size[2])\"" 
+    size_attr = isnothing(size) ? "" : "width=\"$(size[1])\" height=\"$(size[2])\""
     loop_attr = loop ? "loop" : ""
     if format == "gif"
         return "<img $size_attr src=\"data:image/gif;base64,$blob\">"
