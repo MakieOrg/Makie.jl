@@ -8,6 +8,7 @@
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
 - Adjusted compute nodes to keep unspecialized types when transitioning from one graph to another [#5302](https://github.com/MakieOrg/Makie.jl/pull/5302)
+- Support inline video display for more formats (gif, mp4, webm) in more applications (VS Code, etc.) [#5313](https://github.com/MakieOrg/Makie.jl/pull/5313)
 
 ## [0.24.6] - 2025-08-19
 
