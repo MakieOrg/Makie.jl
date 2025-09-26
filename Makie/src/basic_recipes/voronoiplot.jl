@@ -23,6 +23,7 @@ DelaunayTriangulation.jl.
 @recipe Voronoiplot begin
     "Determines whether to plot the individual generators."
     show_generators = true
+    "If true, then the Voronoi tessellation is smoothed into a centroidal tessellation."
     smooth = false
 
     # Point settings

@@ -20,7 +20,6 @@ in relative (0 .. 1) space. (Attribute)
     "The end of the bands in relative axis units (0 to 1) along the x dimension."
     xmax = 1
     documented_attributes(Poly)...
-    cycle = [:color => :patchcolor]
 end
 
 """
@@ -45,7 +44,6 @@ Draws vertical bands spanning across an `Axis`.
     "The end of the bands in relative axis units (0 to 1) along the y dimension."
     ymax = 1
     documented_attributes(Poly)...
-    cycle = [:color => :patchcolor]
 end
 
 function Makie.plot!(p::Union{HSpan, VSpan})

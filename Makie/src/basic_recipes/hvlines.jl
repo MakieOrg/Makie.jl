@@ -12,7 +12,6 @@ in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:R
     "The end of the lines in relative axis units (0 to 1) along the x dimension."
     xmax = 1
     documented_attributes(LineSegments)...
-    cycle = [:color]
 end
 
 """
@@ -29,7 +28,6 @@ in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:R
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
     ymax = 1
     documented_attributes(LineSegments)...
-    cycle = [:color]
 end
 
 function projview_to_2d_limits(plot::AbstractPlot)

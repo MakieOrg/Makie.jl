@@ -120,6 +120,14 @@ between each.
     A single color, or a vector of colors, one for each point.
     """
     color = @inherit patchcolor
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
 end
 

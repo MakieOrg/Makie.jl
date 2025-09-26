@@ -30,18 +30,14 @@ which sets the position together with `error_both`.
 which sets the position together with `error_low` and `error_high`.
 """
 @recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+    documented_attributes(LineSegments)...
+
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
     "The color of the lines. Can be an array to color each bar separately."
     color = @inherit linecolor
-    "The thickness of the lines in screen units."
-    linewidth = @inherit linewidth
-    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
-    cycle = [:color]
-    mixin_colormap_attributes()...
-    mixin_generic_plot_attributes()...
 end
 
 const RealOrVec = Union{Real, RealVector}
@@ -70,18 +66,14 @@ If you want to plot errors relative to a reference value, use `errorbars`.
   will be swapped if `direction = :x`.
 """
 @recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+    documented_attributes(LineSegments)...
+
     "The width of the whiskers or line caps in screen units."
     whiskerwidth = 0
     "The color of the lines. Can be an array to color each bar separately."
     color = @inherit linecolor
-    "The thickness of the lines in screen units."
-    linewidth = @inherit linewidth
-    linecap = @inherit linecap
     "The direction in which the bars are drawn. Can be `:x` or `:y`."
     direction = :y
-    cycle = [:color]
-    mixin_colormap_attributes()...
-    mixin_generic_plot_attributes()...
 end
 
 ### conversions for errorbars
@@ -215,9 +207,9 @@ function _plot_bars!(plot)
             return to_color(color)::RGBAf
         end
     end
-    lattr = shared_attributes(plot, LineSegments; drop = [:fxaa])
+    lattr = shared_attributes(plot, LineSegments)
     linesegments!(plot, lattr, attr.linesegpairs)
-    sattr = shared_attributes(plot, Scatter; drop = [:fxaa])
+    sattr = shared_attributes(plot, Scatter)
 
     scatter!(
         plot, sattr, attr.linesegpairs; color = attr.whiskercolors,

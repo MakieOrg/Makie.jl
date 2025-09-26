@@ -28,13 +28,18 @@ end
 Plots a step histogram of `values` which shows the outline of the histogram.
 """
 @recipe StepHist (values,) begin
-    "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
+    documented_attributes(Stairs)...
+
+    """
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
+    """
     bins = 15 # Int or iterable of edges
-    """Allows to apply a normalization to the histogram.
-    Possible values are:
+    """
+    Sets the normalization applied to the histogram. Possible values are:
 
     * `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-      has norm 1 and represents a PDF.
+      has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
       count density of input and does not have norm 1. Will not modify the
       histogram if it already represents a density (`h.isdensity == 1`).
@@ -44,17 +49,13 @@ Plots a step histogram of `values` which shows the outline of the histogram.
     * `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to provide statistical weights."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
-    color = @inherit patchcolor
-    linewidth = @inherit linewidth
-    linestyle = :solid
-    "Allows to scale all values to a certain height."
+    "Scales the histogram by a common factor such that the largest bin reaches the given value."
     scale_to = nothing
 end
 
-function Makie.plot!(plot::StepHist)
+function plot!(plot::StepHist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
@@ -83,14 +84,15 @@ number of values that full into certain ranges.
 """
 @recipe Hist (values,) begin
     """
-    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges.
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
     """
     bins = 15
     """
-    Allows to normalize the histogram. Possible values are:
+    Sets the normalization applied to the histogram. Possible values are:
 
     *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-       has norm 1 and represents a PDF.
+       has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
        count density of input and does not have norm 1. Will not modify the
        histogram if it already represents a density (`h.isdensity == 1`).
@@ -100,41 +102,27 @@ number of values that full into certain ranges.
     *  `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to statistically weight the observations."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
     """
-    Color can either be:
-    * a vector of `bins` colors
-    * a single color
-    * `:values`, to color the bars with the values from the histogram
-    """
-    color = @inherit patchcolor
-    strokewidth = @inherit patchstrokewidth
-    strokecolor = @inherit patchstrokecolor
-    "Adds an offset to every value."
-    offset = 0.0
-    "Defines where the bars start."
-    fillto = automatic
-    """
-    Allows to scale all values to a certain height. This can also be set to
-    `:flip` to flip the direction of histogram bars without scaling them to a
-    common height.
+    Scales the histogram by a common factor such that the largest bin reaches the
+    given value. This can also be set to `:flip` to flip the direction of histogram
+    bars without scaling them.
     """
     scale_to = nothing
-    bar_labels = nothing
-    flip_labels_at = Inf
-    label_color = @inherit textcolor
-    over_background_color = automatic
-    over_bar_color = automatic
-    label_offset = 5
-    label_font = @inherit font
-    label_size = 20
-    label_formatter = bar_label_formatter
-    "Set the direction of the bars."
-    direction = :y
-    "Gap between the bars (see barplot)."
+
+    filtered_attributes(
+        BarPlot, exclude = (
+            :dodge, :n_dodge, :dodge_gap, :stack, :width,
+            :color_over_background, :color_over_bar, # renamed here :(
+        )
+    )...
+    "Sets the gap between bars relative to their width. The new width is `w * (1 - gap)`."
     gap = 0
+    "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
+    over_background_color = automatic
+    "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
+    over_bar_color = automatic
 end
 
 function pick_hist_edges(vals, bins)
@@ -154,7 +142,7 @@ function pick_hist_edges(vals, bins)
     end
 end
 
-function Makie.plot!(plot::Hist)
+function plot!(plot::Hist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
@@ -174,8 +162,8 @@ function Makie.plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     barplot!(
-        plot, Attributes(plot), plot.points; width = plot.widths, fillto = plot.fillto,
-        offset = plot.offset, bar_labels = plot.computed_bar_labels, color = plot.computed_colors
+        plot, Attributes(plot), plot.points;
+        bar_labels = plot.computed_bar_labels, color = plot.computed_colors
     )
 
     return plot

@@ -149,6 +149,7 @@ be very close to their associated data points so connection plots are typically 
     The positioning of the labels with a given input may change between non-breaking versions.
     """
     algorithm = automatic
+    "Controls whether the plot gets rendered or not."
     visible = true
 end
 

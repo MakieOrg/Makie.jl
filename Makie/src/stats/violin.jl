@@ -7,35 +7,74 @@ The density pairs can be sourced from the same or from different data.
 $(argument_docs(:SampleBased))
 """
 @recipe Violin (x, y) begin
+    "Number of points used per density plot."
     npoints = 200
+    "Boundary of the density estimation, determined automatically if `automatic`."
     boundary = automatic
+    "Kernel density bandwidth, determined automatically if `automatic`."
     bandwidth = automatic
-    "vector of statistical weights (length of data). By default, each observation has weight `1`."
+    "Vector of statistical weights (length of data). By default, each observation has weight `1`."
     weights = automatic
-    "Specify `:left` or `:right` to only plot the violin on one side."
+    """
+    Specify `:left` or `:right` to only plot the density on one side of the violin.
+    This can be set for each data point to source the left and right densities from
+    different data sets.
+    """
     side = :both
     "Scale density by area (`:area`), count (`:count`), or width (`:width`)."
     scale = :area
     "Orientation of the violins (`:vertical` or `:horizontal`)"
     orientation = :vertical
-    "Width of the box before shrinking."
+    """
+    Sets the width of the bounding box of each violin. When `dodge` is used this
+    sets combined width of all dodged violins in a single category/x value.
+    """
     width = automatic
+    """
+    Dodge can be used to separate violins drawn at the same `x` position/category.
+    For this each violin is given an integer value corresponding to its position
+    relative to the given `x` positions. E.g. with `positions = [1, 1, 1, 2, 2, 2]`
+    we have 3 violins at each position which can be separated by `dodge = [1, 2, 3, 1, 2, 3]`.
+    """
     dodge = automatic
+    """
+    Sets the maximum integer for `dodge`. This sets how many violins can be placed
+    at a given position, controlling their width.
+    """
     n_dodge = automatic
-    "Shrinking factor, `width -> width * (1 - gap)`."
+    "Size of the gap between violins. The modified width is `width * (1 - gap)`."
     gap = 0.2
+    "Sets the gap between dodged violins relative to their size."
     dodge_gap = 0.03
     "Specify values to trim the `violin`. Can be a `Tuple` or a `Function` (e.g. `datalimits=extrema`)."
     datalimits = (-Inf, Inf)
+    "Sets the maximum density value to which violin plots are scaled."
     max_density = automatic
     "Show median as midline."
     show_median = false
+    "Sets the color of the median line."
     mediancolor = @inherit linecolor
+    "Sets the width of the median line."
     medianlinewidth = @inherit linewidth
+    """
+    Sets the color of violin plots. Can be given per data point to set the color
+    for individual violins or densities. For this the color within each data set
+    must be consistent.
+    """
     color = @inherit patchcolor
+    "Sets the outline color of violins or densities (if sampled separately). This requires `strokewidth > 0`."
     strokecolor = @inherit patchstrokecolor
+    "Sets the width of the outline of violins or densities (if sampled separately)."
     strokewidth = @inherit patchstrokewidth
     mixin_generic_plot_attributes()...
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
 end
 

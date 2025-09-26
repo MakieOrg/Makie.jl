@@ -21,6 +21,7 @@ end
 ```
 """
 @recipe TimeSeries (signal,) begin
+    "Number of tracked points."
     history = 100
     documented_attributes(Lines)...
 end
@@ -39,7 +40,7 @@ function Makie.plot!(plot::TimeSeries)
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))
     buffer = copy(points[])
-    lines!(plot, points)
+    lines!(plot, Attributes(plot), points)
     start = time()
     on(plot, plot.signal) do x
         points[][end] = signal2point(x, start)

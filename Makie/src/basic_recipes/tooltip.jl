@@ -13,8 +13,11 @@ Creates a tooltip pointing at `position` displaying the given `string`.
     placement = :above
     "Sets the alignment of the tooltip relative `position`. With `align = 0.5` the tooltip is centered above/below/left/right the `position`."
     align = 0.5
+    "Controls whether the plot is included when calculating x limits."
     xautolimits = false
+    "Controls whether the plot is included when calculating y limits."
     yautolimits = false
+    "Controls whether the plot is included when calculating z limits."
     zautolimits = false
 
     # Text

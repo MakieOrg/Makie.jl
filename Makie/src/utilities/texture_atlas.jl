@@ -538,9 +538,9 @@ is_all_equal_scale(::Vector{Real}) = true
 is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
-function compute_marker_attributes((atlas, uv_off, m, f, scale), changed, last)
+function compute_marker_attributes((atlas, m, f, scale), changed, last)
     # TODO, only calculate offset if needed
-    # [atlas_sym, :uv_offset_width, :marker, :font, :markersize]
+    # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
     if m isa Matrix{<:Colorant} # single image marker
         return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), m)
@@ -576,7 +576,7 @@ end
 
 function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
-    inputs = [:atlas, :uv_offset_width, markername, :font, :markersize]
+    inputs = [:atlas, markername, :font, :markersize]
     outputs = [:sdf_marker_shape, :sdf_uv, :image]
     return register_computation!(
         compute_marker_attributes, attr, inputs, outputs
