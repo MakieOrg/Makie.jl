@@ -17,17 +17,17 @@ If you want to plot intervals from low to high values instead of relative errors
 ## Arguments
 - `xs, ys`: A `Real` or `AbstractVector{<:Real}` setting positions per dimensions.
 - `xys`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`
-setting (x, y) positions.
+  setting (x, y) positions.
 - `error_both`: A `Real` or `AbstractVector{<:Real}` setting symmetric (±) y errors. If
-`direction = :x` these are interpreted as symmetric x errors instead.
+  `direction = :x` these are interpreted as symmetric x errors instead.
 - `error_low, error_high`: A `Real` or `AbstractVector{<:Real}` setting the lower
-and upper errors. These are still relative to the position and are affected by `direction`.
+  and upper errors. These are still relative to the position and are affected by `direction`.
 - `error_low_high`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}` which
-sets `error_low` and `error_high` together.
+  sets `error_low` and `error_high` together.
 - `xy_error_both`: A `VecTypes{3, <:Real}` or `AbstractVector{<:VecTypes{3, <:Real}}`
-which sets the position together with `error_both`.
+  which sets the position together with `error_both`.
 - `xy_error_low_high`: A `VecTypes{4, <:Real}` or `AbstractVector{<:VecTypes{4, <:Real}}`
-which sets the position together with `error_low` and `error_high`.
+  which sets the position together with `error_low` and `error_high`.
 """
 @recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
     documented_attributes(LineSegments)...
