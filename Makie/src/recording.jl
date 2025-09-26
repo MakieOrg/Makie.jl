@@ -178,21 +178,41 @@ function Record(func, figlike, iter; kw_args...)
     return io
 end
 
-function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
-    scene = vs.screen.scene
-    if !(scene isa Scene)
-        error("Expected Screen to hold a reference to a Scene but got $(repr(scene))")
+function Base.show(io::IO, ::Union{WEB_MIMES...}, vs::VideoStream)
+    # Determine video properties
+    video_size = (hasproperty(vs.screen, :scene) && vs.screen.scene isa Scene) ? size(vs.screen.scene) : nothing
+    loop = vs.options.loop >= 0
+    format = vs.options.format
+    if !isopen(vs.process) && isfile(vs.path) && format in ("gif", "mp4", "webm")
+        # Load existing video if already saved and format is supported
+        blob = base64encode(read(vs.path))
+        html = video_blob_to_html(blob, format, size = video_size, loop = loop)
+        print(io, html)
+    else
+        # Temporarily save video (converting to MP4 if necessary)
+        save_format = format in ("gif", "mp4", "webm") ? format : "mp4"
+        mktempdir() do dir
+            path = joinpath(dir, "video.$save_format")
+            save(path, vs)
+            blob = base64encode(read(path))
+            html = video_blob_to_html(blob, save_format, size = video_size, loop = loop)
+            print(io, html)
+        end
     end
-    w, h = size(scene)
-    return mktempdir() do dir
-        path = save(joinpath(dir, "video.mp4"), vs)
-        # <video> only supports infinite looping, so we loop forever even when a finite number is requested
-        loopoption = vs.options.loop ≥ 0 ? "loop" : ""
-        print(
-            io,
-            """<video autoplay controls $loopoption width="$w" height="$h"><source src="data:video/x-m4v;base64,""",
-            base64encode(open(read, path)),
-            """" type="video/mp4"></video>"""
-        )
+    return nothing
+end
+
+function video_blob_to_html(blob, format; size = nothing, loop = false)
+    size_attr = isnothing(size) ? "" : "width=\"$(size[1])\" height=\"$(size[2])\""
+    loop_attr = loop ? "loop" : ""
+    if format == "gif"
+        style_attr = "style=\"object-fit: contain; height: auto;\""
+        return "<img $size_attr $style_attr src=\"data:image/gif;base64,$blob\">"
+    elseif format == "mp4" || format == "webm"
+        return """<video autoplay muted controls $loop_attr $size_attr>
+            <source src=\"data:video/$format;base64,$blob\" type=\"video/$format\">
+        </video>"""
+    else
+        error("Unrecognized format: $format")
     end
 end
