@@ -711,7 +711,7 @@ end
     voxels([x, y, z], data; attributes...)
     voxels(data; attributes...)
 
-Plots a 3D array of data as voxels, i.e. small cubes within the limits defined by
+Plots a 3D array of data as voxels (small cubes) within the limits defined by
 `x`, `y` and `z`.
 
 ## Arguments (`VolumeLike()`)

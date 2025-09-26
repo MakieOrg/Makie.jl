@@ -19,7 +19,7 @@ function argument_docs(
         items = argument_docs_items(Val(key); item_kwargs...),
         title_note = "",
         title = argument_docs_title(Val(key), title_note),
-        ref = "See `conversion_docs(PlotType)` for a full list of applicable conversion methods."
+        ref = "See `conversion_docs(PlotType)` for a list of applicable conversion methods."
     )
     all_items = vcat(items, additional_items)
     # constructs item list an appends to title
