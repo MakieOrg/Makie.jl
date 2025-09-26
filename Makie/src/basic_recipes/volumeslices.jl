@@ -1,5 +1,5 @@
 """
-    volumeslices(x, y, z, v)
+    volumeslices(x, y, z, v; attributes...)
 
 Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
 

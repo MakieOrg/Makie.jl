@@ -1,7 +1,7 @@
 """
-    triplot(x, y; kwargs...)
-    triplot(positions; kwargs...)
-    triplot(triangles::Triangulation; kwargs...)
+    triplot(x, y; attributes...)
+    triplot(positions; attributes...)
+    triplot(triangles::Triangulation; attributes...)
 
 Plots a triangulation based on the provided positions or `Triangulation` from DelaunayTriangulation.jl.
 

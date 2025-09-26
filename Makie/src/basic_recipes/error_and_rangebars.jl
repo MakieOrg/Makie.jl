@@ -43,9 +43,9 @@ end
 const RealOrVec = Union{Real, RealVector}
 
 """
-    rangebars(vals, lows, highs; kwargs...)
-    rangebars(vals, low_highs; kwargs...)
-    rangebars(val_low_highs; kwargs...)
+    rangebars(vals, lows, highs; attributes...)
+    rangebars(vals, low_highs; attributes...)
+    rangebars(val_low_highs; attributes...)
 
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the
 other dimension given the chosen `direction`.

@@ -1,5 +1,5 @@
 """
-    hlines(ys; xmin = 0.0, xmax = 1.0, attrs...)
+    hlines(ys; xmin = 0.0, xmax = 1.0, attributes...)
 
 Draws horizontal lines across an `Axis`.
 
@@ -15,7 +15,7 @@ in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:R
 end
 
 """
-    vlines(xs; ymin = 0.0, ymax = 1.0, attrs...)
+    vlines(xs; ymin = 0.0, ymax = 1.0, attributes...)
 
 Draws vertical lines across an `Axis`.
 

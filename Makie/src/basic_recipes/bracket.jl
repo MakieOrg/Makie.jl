@@ -1,7 +1,7 @@
 """
-    bracket(xs1, ys1, xs2, ys2; kwargs...)
-    bracket(points1, points2; kwargs...)
-    bracket(points12; kwargs...)
+    bracket(xs1, ys1, xs2, ys2; attributes...)
+    bracket(points1, points2; attributes...)
+    bracket(points12; attributes...)
 
 Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text
 label at the midpoint. By default each label is rotated parallel to the line

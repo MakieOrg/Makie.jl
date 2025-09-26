@@ -1,5 +1,5 @@
 """
-    violin(x, y)
+    violin(x, y; attributes)
 
 Draws a violin plot which consists of pairs of density plots draw side by side.
 The density pairs can be sourced from the same or from different data.

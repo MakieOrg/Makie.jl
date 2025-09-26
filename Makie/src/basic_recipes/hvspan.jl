@@ -1,6 +1,6 @@
 """
-    hspan(ys_low, ys_high; xmin = 0.0, xmax = 1.0, attrs...)
-    hspan(ys_lowhigh; xmin = 0.0, xmax = 1.0, attrs...)
+    hspan(ys_low, ys_high; xmin = 0.0, xmax = 1.0, attributes...)
+    hspan(ys_lowhigh; xmin = 0.0, xmax = 1.0, attributes...)
 
 Draws horizontal bands spanning across an `Axis`.
 
@@ -23,8 +23,8 @@ in relative (0 .. 1) space. (Attribute)
 end
 
 """
-    vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attrs...)
-    vspan(xs_lowhigh; ymin = 0.0, ymax = 1.0, attrs...)
+    vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attributes...)
+    vspan(xs_lowhigh; ymin = 0.0, ymax = 1.0, attributes...)
 
 Draws vertical bands spanning across an `Axis`.
 
