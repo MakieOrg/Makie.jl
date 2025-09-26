@@ -135,6 +135,24 @@ float rand(){
     return fract(sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453);
 }
 
+#ifdef ENABLE_DEPTH
+
+uniform sampler2D depth_buffer;
+vec2 frag_uv = gl_FragCoord.xy / textureSize(depth_buffer, 0).xy;
+
+bool is_behind_geometry(vec3 sample_pos) {
+    vec4 frag_coord = projectionview * model * vec4(sample_pos, 1);
+    float sample_depth = 0.5 * (frag_coord.z / frag_coord.w + depth_shift + 1);
+    float recorded_depth = texture(depth_buffer, frag_uv).x;
+    return is_clipped(frag_coord) || (recorded_depth < sample_depth);
+}
+
+#else
+
+bool is_behind_geometry(vec3 sample_pos) { return false; }
+
+#endif
+
 vec4 volume(vec3 front, vec3 dir)
 {
     // The per-voxel alpha channel is specified in units of opacity/length.
@@ -145,6 +163,9 @@ vec4 volume(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
+        if (is_behind_geometry(pos))
+            break;
+
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = step_size * density.a * absorption;
