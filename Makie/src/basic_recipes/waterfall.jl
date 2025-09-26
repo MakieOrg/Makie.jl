@@ -1,9 +1,12 @@
 """
-    waterfall(x, y; kwargs...)
+    waterfall(xs, ys; attributes...)
+    waterfall(positions; attributes...)
 
 Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visualize individual
 positive and negative components that add up to a net result as a barplot with stacked bars next
 to each other.
+
+$(argument_docs(:PointBased2D))
 """
 @recipe Waterfall begin
     filtered_attributes(BarPlot, exclude = (:fillto, :direction))...
