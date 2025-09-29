@@ -79,6 +79,41 @@ mktempdir() do tempdir
     end
 end
 
+@testset "Video display" begin
+    n = 2
+    x = 0:(n - 1)
+    @testset "Format: $fmt" for fmt in ("mkv", "mp4", "webm", "gif")
+        fig, ax, _ = lines(x, zeros(size(x)))
+        vio = Record(fig, 1:n, format = fmt) do i
+            lines!(ax, sin.(i .* x))
+            return nothing
+        end
+        @testset "MIME: $(mime_type())" for mime_type in Makie.WEB_MIMES
+            html = repr(mime_type(), vio)
+            if !istextmime(mime_type())
+                html = String(html)
+            end
+            if fmt == "mkv" # mkv gets rendered as mp4
+                @test occursin(r"<video .*>", html)
+                @test occursin("data:video/mp4", html)
+                @test occursin("type=\"video/mp4\"", html)
+            elseif fmt == "mp4"
+                @test occursin(r"<video .*>", html)
+                @test occursin("data:video/mp4", html)
+                @test occursin("type=\"video/mp4\"", html)
+            elseif fmt == "webm"
+                @test occursin(r"<video .*>", html)
+                @test occursin("data:video/webm", html)
+                @test occursin("type=\"video/webm\"", html)
+            else # fmt == "gif"
+                @test fmt == "gif"
+                @test occursin(r"<img .*>", html)
+                @test occursin("data:image/gif", html)
+            end
+        end
+    end
+end
+
 @testset "No hang when closing IOCapture.capture over VideoStream" begin
     # @test_nowarn IOCapture.capture() do
     #     f = Figure()
