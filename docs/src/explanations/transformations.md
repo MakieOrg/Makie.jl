@@ -17,6 +17,8 @@ For a user perspective, see [transformations_reference_docs](@ref).
 By default `Transformation` objects are inherited from scene/plot to scene/plot.
 
 ```@example transformation_inheritance
+using Makie
+
 double(x) = 2 * x
 t = Transformation(double, translation = Vec3f(1,2,3))
 scene = Scene(transformation = t);
@@ -128,6 +130,6 @@ end
 As an alternative to `inverse_transform`, `defaultlimits` and `defined_interval` a transform function can also be wrapped in a `ReversibleScale`.
 This allows bundling the inverse, limits and interval with the transform function.
 
-```@docs
+```@docs; canonical=false
 ReversibleScale
 ```
