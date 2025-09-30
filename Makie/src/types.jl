@@ -523,11 +523,11 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
     """
     inverse::I
     """
-    default limits (optional)
+    default limits (optional, defaults to `(0, 10)`)
     """
     limits::NTuple{2, Float32}
     """
-    valid limits interval (optional)
+    valid limits interval (optional, defaults to `(-Inf32, Inf32)`)
     """
     interval::T
     name::Symbol
