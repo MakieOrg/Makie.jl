@@ -10,7 +10,7 @@ The latter is a matrix which encodes scaling, rotation and translation in 3D spa
 It can be set via `translate!()`, `scale!()`, `rotate!()` and `origin!()`.
 
 This page will discuss transformations from a developer perspective, i.e. how they work and how they can be extended.
-For a user perspective, see [transformations_reference_docs](@ref).
+For a user perspective, see the [Transformation](@ref transformations_reference_docs) reference docs.
 
 ## Inheritance
 
