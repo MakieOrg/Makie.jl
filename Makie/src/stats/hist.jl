@@ -23,9 +23,9 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values)
+    stephist(values::AbstractVector{<:Real}; attributes...)
 
-Plot a step histogram of `values`.
+Plots a step histogram of `values` which shows the outline of the histogram.
 """
 @recipe StepHist (values,) begin
     documented_attributes(Stairs)...
@@ -77,9 +77,10 @@ function plot!(plot::StepHist)
 end
 
 """
-    hist(values)
+    hist(values::AbstractVector{<:Real}; attributes...)
 
-Plot a histogram of `values`.
+Plots a histogram of `values` which draws bars whose height corresponds to the
+number of values that full into certain ranges.
 """
 @recipe Hist (values,) begin
     """

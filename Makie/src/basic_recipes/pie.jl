@@ -1,9 +1,18 @@
 """
-    pie(values; kwargs...)
-    pie(point, values; kwargs...)
-    pie(x, y, values; kwargs...)
+    pie([points], values; attributes...)
+    pie([xs, ys], values; attributes...)
 
 Creates a pie chart from the given `values`.
+
+## Arguments
+- `values`: An `AbstractVector{<:Real}` containing the values each sector
+  represents. If `normalize = false` this is the opening angle of the sector.
+- `points`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
+  `AbstractVector{<:VecTypes{2, <:Real}}` setting the origin of the pie sectors.
+  To draw multiple pie charts normalization should be done externally and sectors
+  of the same chart should be given the same position.
+- `xs, ys`: A `Real` or `AbstractVector{<:Real}` setting the origin of pie sectors
+  per dimension.
 """
 @recipe Pie (xs, ys, values) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
