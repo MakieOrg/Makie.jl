@@ -73,6 +73,7 @@ struct TypedEdge{InputTuple, OutputTuple, F}
     inputs_dirty::Vector{Bool}
     outputs::OutputTuple
     output_nodes::Vector{Computed}
+    lock::ReentrantLock
 end
 
 """
@@ -123,10 +124,9 @@ end
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
-    result = f(map(getindex, inputs), dirty, nothing)
+    result = fetch(f(map(getindex, inputs), dirty, nothing))
 
     if result isa Tuple
-
         if !all(is_node_value_valid, result)
             invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
             strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
@@ -155,11 +155,10 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
             return v
         end
         foreach(node -> node.dirty = false, edge.outputs)
-
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output, Task, or nothing. Value: $result")
     end
-    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs, edge.graph.lock)
 end
 
 
@@ -578,27 +577,6 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
     return
 end
 
-function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
-        edge.output_nodes[i].dirty = false
-    else
-        edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
-    end
-    if !isempty(result)
-        next_val = first(result)
-        rem = Base.tail(result)
-        set_result!(edge, rem, i + 1, next_val)
-    end
-    return
-end
-
-function set_result!(edge::TypedEdge, result)
-    next_val = first(result)
-    rem = Base.tail(result)
-    return set_result!(edge, rem, 1, next_val)
-end
-
 is_same(@nospecialize(a), @nospecialize(b)) = false
 is_same(a::Symbol, b::Symbol) = a == b
 function is_same(a::T, b::T) where {T}
@@ -614,8 +592,69 @@ function is_same(a::T, b::T) where {T}
     end
 end
 
+function set_result!(edge::TypedEdge, result, i, value)
+    if isnothing(value) || is_same(edge.outputs[i][], value)
+        edge.output_nodes[i].dirty = false
+    else
+        edge.output_nodes[i].dirty = true
+        edge.outputs[i][] = deref(value)
+    end
+    if !isempty(result)
+        next_val = first(result)
+        rem = Base.tail(result)
+        set_result!(edge, rem, i + 1, next_val)
+    end
+    return nothing
+end
+
+function set_result!(edge::TypedEdge, result)
+    next_val = first(result)
+    rem = Base.tail(result)
+    return set_result!(edge, rem, 1, next_val)
+end
+
+function resolve_result!(edge::TypedEdge, result)
+    if result isa Task
+        # Implements
+        # map!(graph, inputs, outputs) do inputs, changed, cached
+        #    return @spawn longrunning(inputs)
+        #end
+        # Spawn async task to fetch and apply result
+        @async try
+            @lock edge.lock begin
+                task_result = fetch(result)
+            # Lock the graph before applying the result to prevent race conditions
+                apply_result!(edge, task_result)
+            end
+        catch e
+            @error "Failed to resolve task result" exception = (e, catch_backtrace())
+        end
+    else
+        # Synchronous result - apply immediately (we're already outside the lock)
+        @lock edge.lock begin
+            apply_result!(edge, result)
+        end
+    end
+    return nothing
+end
+
+function apply_result!(edge::TypedEdge, result)
+    if result isa Tuple
+        if length(result) != length(edge.outputs)
+            error("Did not return correct length: $(result)")
+        end
+        set_result!(edge, result)
+    elseif isnothing(result)
+        foreach(x -> x.dirty = false, edge.output_nodes)
+    else
+        error("Needs to return a Tuple with one element per output, or nothing")
+    end
+    return nothing
+end
+
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
+# NOTE: This should be called WITHOUT holding the graph lock, so callbacks can run in parallel
 function resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
@@ -624,17 +663,9 @@ function resolve!(edge::TypedEdge)
             edge.output_nodes[i].name
         end
         last = NamedTuple{names}(vals)
+        # Execute callback without holding the lock - this allows parallel execution
         result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(result), $(edge.callback)")
-            end
-            set_result!(edge, result)
-        elseif isnothing(result)
-            foreach(x -> x.dirty = false, edge.output_nodes)
-        else
-            error("Needs to return a Tuple with one element per output, or nothing")
-        end
+        resolve_result!(edge, result)
     end
     return
 end
@@ -656,15 +687,23 @@ end
 
 function resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
-    return lock(edge.graph.lock) do
+
+    # Lock to resolve inputs and get typed_edge
+    typed = lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
         if !isassigned(edge.typed_edge)
             # constructor does first resolve to determine fully typed outputs
             edge.typed_edge[] = TypedEdge(edge)
-        else
-            resolve!(edge.typed_edge[])
         end
+        return edge.typed_edge[]
+    end
+
+    # Execute callback WITHOUT holding the lock - allows parallel execution
+    resolve!(typed)
+
+    # Lock again to mark as resolved
+    return lock(edge.graph.lock) do
         edge.got_resolved[] = true
         fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
