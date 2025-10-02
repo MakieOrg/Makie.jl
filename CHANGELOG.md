@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
