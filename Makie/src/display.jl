@@ -168,7 +168,7 @@ function Base.display(
         end
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene, config)
-        display(screen, scene)
+        display(screen, scene; figure=get_figure(figlike))
         return screen
     end
 end
@@ -227,7 +227,7 @@ const WEB_MIMES = (
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
 # fallback show when no backend is selected
-function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
+function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene, figure = nothing)
     if backend isa Missing
         @warn """
         Printing Scene as text because no backend is available (GLMakie, CairoMakie, WGLMakie).
@@ -257,7 +257,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backe
     # get current screen the scene is already displayed on, or create a new screen
     update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible => false), io, m)
-    backend_show(screen, io, m, scene)
+    backend_show(screen, io, m, scene, figlike)
     return screen
 end
 
@@ -354,7 +354,7 @@ function FileIO.save(
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
             events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
-            backend_show(screen, io, mime, scene)
+            backend_show(screen, io, mime, scene, fig)
         end
     catch e
         # So, if open(io-> error(...), "w"), the file will get created, but not removed...
@@ -496,7 +496,7 @@ end
 px_per_unit(screen::MakieScreen)::Float64 = 1.0 # fallback for backends who don't have upscaling
 
 # Fallback for any backend that will just use colorbuffer to write out an image
-function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene, figure = nothing)
     img = colorbuffer(screen)
     px_per_unit = Makie.px_per_unit(screen)::Float64
     dpi = px_per_unit * 96 # attach dpi metadata corresponding to 1 unit == 1 CSS pixel
@@ -504,16 +504,16 @@ function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Sce
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene, figure = nothing)
     img = colorbuffer(screen)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene, figure = nothing)
     w, h = size(scene)
     png_io = IOBuffer()
-    backend_show(screen, png_io, MIME"image/png"(), scene)
+    backend_show(screen, png_io, MIME"image/png"(), scene, figure)
     b64 = Base64.base64encode(String(take!(png_io)))
     style = "object-fit: contain; height: auto;"
     print(io, "<img width=$w height=$h style='$style' src=\"data:image/png;base64, $(b64)\"/>")
