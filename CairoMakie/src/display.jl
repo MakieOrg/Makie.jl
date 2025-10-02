@@ -49,7 +49,7 @@ function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false, scre
     return screen
 end
 
-function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene)
+function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", scene::Scene, figure = nothing)
     mark(io)
     # fix for #4970, to avoid that the finalizer of this surface tries to write to `io` later
     # when `io` is possibly not valid anymore
@@ -95,14 +95,14 @@ function Makie.backend_show(screen::Screen{SVG}, io::IO, ::MIME"image/svg+xml", 
     return screen
 end
 
-function Makie.backend_show(screen::Screen{PDF}, io::IO, ::MIME"application/pdf", scene::Scene)
+function Makie.backend_show(screen::Screen{PDF}, io::IO, ::MIME"application/pdf", scene::Scene, figure = nothing)
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
 end
 
-function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/postscript", scene::Scene)
+function Makie.backend_show(screen::Screen{EPS}, io::IO, ::MIME"application/postscript", scene::Scene, figure = nothing)
     Makie.push_screen!(scene, screen)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
