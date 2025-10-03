@@ -8,19 +8,19 @@ end
 # Loses dispatch to specific traits, e.g.
 # argument_dims(trait::PointBased, args...; kwargs...)
 function argument_dims(trait::ConversionTrait, args...; kwargs...)
-    return _argument_dims(args...; kwargs...)
+    return _argument_dims(args; kwargs...)
 end
 
 # Default handling
-function _argument_dims(arg1, args...; direction::Symbol = :y, orientation::Symbol = :vertrical)
-    dims = ntuple(identity, 1 + length(args))
+function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :vertrical)
+    # Block any one argument case by default, e.g. VecTypes, GeometryPrimitive
+    length(args) in (2, 3) || return nothing
+
+    dims = ntuple(identity, length(args))
     dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
     dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
     return dims
 end
-
-# Block any one argument case by default, e.g. VecTypes, GeometryPrimitive
-_argument_dims(::Any; kwargs...) = nothing
 
 # attributes that are needed to map args to dims, e.g. direction/orientation
 # TODO: This is completely unrelated to args, right?
