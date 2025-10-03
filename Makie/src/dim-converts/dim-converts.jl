@@ -184,11 +184,11 @@ convert_dim_value(conv, attr, value, last_value) = value
 
 function update_dim_conversion!(conversions::DimConversions, dim, value)
     conversion = conversions[dim]
-    if !(conversion isa Union{Nothing, NoDimConversion})
-        return
+    if conversion isa Union{Nothing, NoDimConversion}
+        c = dim_conversion_from_args(value)
+        return conversions[dim] = c
     end
-    c = dim_conversion_from_args(value)
-    return conversions[dim] = c
+    return
 end
 
 function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
