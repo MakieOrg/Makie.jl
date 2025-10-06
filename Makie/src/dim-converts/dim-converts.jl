@@ -77,6 +77,20 @@ function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, v
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
 
+# Should this trigger an error or just return ""?
+get_label_suffix(dc, format) = apply_format(get_label_suffix(dc), format)
+get_label_suffix(dc) = error("No axis label suffix defined for conversion $dc.")
+get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
+
+# Don't default to generating a suffix for no dim conversion.
+# TODO: Maybe allow option cases to go through though so `suffix` can be used w/o dimconverts?
+show_dim_convert_in_axis_label(::Union{Nothing, NoDimConversion}, ::Automatic) = false
+
+show_dim_convert_in_axis_label(::AbstractDimConversion, ::Automatic) = true
+function show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Symbol)
+    return option in (:label, :both)
+end
+
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
 # TODO, should a recipe always set the dim convert to it's parent?

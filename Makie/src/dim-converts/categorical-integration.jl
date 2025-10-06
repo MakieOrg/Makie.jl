@@ -159,3 +159,8 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
     labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
     return numbers, labels_str
 end
+
+# TODO:
+# Allow this to succeed so x/ylabel_suffix can be used?
+# Or just error and force people to use x/ylabel instead?
+get_label_suffix(dc::CategoricalConversion) = ""

@@ -228,6 +228,12 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
+function get_label_suffix(conversion::UnitfulConversion, format)
+    str = unit_string(conversion.unit[])
+    formatted = apply_format(str, format)
+    return unit_string_to_rich(formatted)
+end
+
 function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)
     unit = conversion.unit[]
     if !isempty(values)

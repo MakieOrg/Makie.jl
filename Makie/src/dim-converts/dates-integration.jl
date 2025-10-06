@@ -512,3 +512,10 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
         error("invalid kind $kind")
     end
 end
+
+# TODO: Consider reworking offset ticks so that the origin time stamp is in the label?
+# show_dim_convert_in_ticklabel(::DateTimeConversion, ::Automatic) = true
+# get_label_suffix(dc::DateTimeConversion, format) = get_formatted_timestamp(dc)
+
+# This only makes sense for Time which goes through units, not Dates or DateTime
+get_label_suffix(::DateTimeConversion) = error("Cannot produce a label suffix for Dates.")

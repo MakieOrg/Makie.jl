@@ -36,6 +36,8 @@ function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, 
     return tick_vals, labels
 end
 
+M.get_label_suffix(conversion::M.DQConversion) = unit_string(conversion.quantity[])
+
 function M.convert_dim_value(conversion::M.DQConversion, attr, values, last_values)
     if conversion.quantity[] isa M.Automatic
         conversion.quantity[] = oneunit(first(values))

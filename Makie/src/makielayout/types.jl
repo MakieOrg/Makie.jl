@@ -298,6 +298,23 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         dim2_conversion = nothing
 
         """
+        Controls where x dim_converts are shown. Can be `:label`, `:ticklabel`,
+        `:both` or `:none`.
+
+        The label produced by dim_converts is affected by `use_short_x_units`.
+        If `:label` is selected the `xlabel_suffix` attribute is used as a
+        formatter for the produced label.
+        """
+        show_x_dim_convert_in::Union{Symbol, Automatic} = automatic
+        show_y_dim_convert_in::Union{Symbol, Automatic} = automatic
+        "Format.jl compatible format string or `string -> string` format function"
+        xlabel_suffix = "[{}]"
+        ylabel_suffix = "[{}]"
+        "Does anyone care about long labels?"
+        use_short_x_units::Bool = true
+        use_short_y_units::Bool = true
+
+        """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
         """

@@ -38,7 +38,10 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0.0f0
     else
-        boundingbox(labeltext, :data).widths[horizontal[] ? 2 : 1]
+        # TODO: This can probably be something like
+        #   maximum(widths, fast_string_boundingboxes_obs(labeltext))
+        # to skip positions?
+        widths(boundingbox(labeltext, :data))[horizontal[] ? 2 : 1]
     end
 
     labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0.0f0
@@ -412,8 +415,23 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end::Float32
     end
 
+    # label + dim convert suffix
+    # TODO probably make these mandatory
+    suffix_formatter = get(attrs, :label_suffix, Observable(""))
+    dim_convert_in = get(attrs, :dim_convert_in, Observable(automatic))
+    label_with_suffix = map(label, suffix_formatter, dim_convert_in) do label, format, show_option
+        dc = dim_convert[]
+        should_show = show_dim_convert_in_axis_label(dc, show_option)
+        if should_show
+            suffix = get_label_suffix(dc, format)
+            return isempty(label) ? suffix : rich("$label ", suffix)
+        else
+            return label
+        end
+    end
+
     labeltext = text!(
-        parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
+        parent, labelpos, text = label_with_suffix, fontsize = labelsize, color = labelcolor,
         visible = labelvisible,
         align = labelalign, rotation = labelrot, font = labelfont,
         markerspace = :data, inspectable = false
@@ -425,7 +443,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0.0f0, 0.0f0
         else
-            wx, wy = widths(boundingbox(labeltext, :data))
+            # There is only one string here and if we only case about widths
+            # we don't need to include positions through a higher level bbox function
+            wx, wy = widths(string_boundingboxes(labeltext)[1])
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0.0f0, Float32(sign * 0.5f0 * wy)
@@ -510,8 +530,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
         calculate_protrusion, parent, protrusion,
         # we pass these as observables, to not trigger on them
         Observable((horizontal, labeltext, ticklabel_annotation_obs)),
-        ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
-        # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrusion
+        ticksvisible, label_with_suffix, labelvisible, labelpadding, tickspace,
+        ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
+        # TODO: this can rely on a ...boundingbox_obs() function instead now
+        # we don't need these as arguments to calculate it, but we need to pass it because it
+        # indirectly influences the protrusion
         labelfont, labelalign, labelrot, labelsize, ticklabelfont, tickalign
     )
 
