@@ -62,6 +62,8 @@ Plot a kernel density estimate of `values`.
     cycle = [:color => :patchcolor]
 end
 
+argument_dim_kwargs(::Type{<:Density}) = (:direction,)
+
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     map!(
         plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],

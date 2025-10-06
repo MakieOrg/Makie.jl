@@ -78,6 +78,8 @@ It is most commonly used as part of the `boxplot`.
     mixin_generic_plot_attributes()...
 end
 
+argument_dim_kwargs(::Type{<:CrossBar}) = (:orientation,)
+
 function Makie.plot!(plot::CrossBar)
     map!(
         plot, [

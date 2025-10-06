@@ -81,6 +81,7 @@ The density pairs can be sourced from the same or from different data.
 end
 
 conversion_trait(::Type{<:Violin}) = SampleBased()
+argument_dim_kwargs(::Type{<:Violin}) = (:orientation,)
 
 getuniquevalue(v, idxs) = v
 

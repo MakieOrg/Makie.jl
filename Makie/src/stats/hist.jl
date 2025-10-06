@@ -124,6 +124,8 @@ Plot a histogram of `values`.
     over_bar_color = automatic
 end
 
+argument_dim_kwargs(::Type{<:Hist}) = (:direction,)
+
 function pick_hist_edges(vals, bins)
     if bins isa Int
         mi, ma = float.(extrema(vals))
