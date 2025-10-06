@@ -168,6 +168,8 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
     end
 end
 
+show_dim_convert_in_axis_label(::CategoricalConversion, ::Automatic) = false
+
 # TODO:
 # Allow this to succeed so x/ylabel_suffix can be used?
 # Or just error and force people to use x/ylabel instead?

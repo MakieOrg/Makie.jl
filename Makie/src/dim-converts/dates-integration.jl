@@ -523,4 +523,6 @@ end
 # get_label_suffix(dc::DateTimeConversion, format) = get_formatted_timestamp(dc)
 
 # This only makes sense for Time which goes through units, not Dates or DateTime
+show_dim_convert_in_axis_label(::DateTimeConversion, ::Automatic) = false
+show_dim_convert_in_axis_label(::DateTimeConversion, ::Symbol) = false
 get_label_suffix(::DateTimeConversion) = error("Cannot produce a label suffix for Dates.")
