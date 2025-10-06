@@ -12,7 +12,7 @@ function argument_dims(trait::ConversionTrait, args...; kwargs...)
 end
 
 # Default handling
-function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :vertrical)
+function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :vertical)
     # Block any one argument case by default, e.g. VecTypes, GeometryPrimitive
     length(args) in (2, 3) || return nothing
 
