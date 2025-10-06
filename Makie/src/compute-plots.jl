@@ -429,9 +429,11 @@ function add_convert_kwargs!(attr, user_kw, P, args)
     intrinsics = default_theme(nothing)
     conv_attr_input = Symbol[]
     for key in conv_attributes
-        if !haskey(attr.inputs, key) && !haskey(intrinsics, key) # can be added from plot attributes
-            default = key === :space ? :data : nothing
-            add_input!(attr, key, pop!(user_kw, key, default))
+        if !haskey(intrinsics, key) # can be added from plot attributes
+            if !haskey(attr.inputs, key)
+                default = key === :space ? :data : nothing
+                add_input!(attr, key, pop!(user_kw, key, default))
+            end
             push!(conv_attr_input, key)
         end
     end
@@ -783,6 +785,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 
     attr = ComputeGraph()
 
+    add_attributes!(P, attr, user_attributes)
+
     register_arguments!(P, attr, user_attributes, user_args)
     converted = attr.converted[]
     PTrait = conversion_trait(P, attr.args[]...)
@@ -791,7 +795,6 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
-    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
