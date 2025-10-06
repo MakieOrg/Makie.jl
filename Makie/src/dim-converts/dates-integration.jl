@@ -85,7 +85,12 @@ function convert_dim_value(conversion::DateTimeConversion, attr, values, previou
     return date_to_number.(conversion.type[], values)
 end
 
-function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax)
+# TODO: Is there a point in allowing Date ticks to not be displayed?
+# What would be shown instead?
+show_dim_convert_in_ticklabel(::DateTimeConversion, ::Automatic) = true
+show_dim_convert_in_ticklabel(::DateTimeConversion, ::Symbol) = true
+
+function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     T = conversion.type[]
 
     # When automatic, we haven't actually plotted anything yet, so no unit chosen

@@ -73,8 +73,13 @@ end
 
 # get_ticks needs overloading for Dim Conversion
 # Which gets ignored for no conversion/nothing
-function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax)
+function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax, show_in_label)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
+end
+
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, ::Automatic) = false
+function show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Symbol)
+    return option in (:ticklabel, :both)
 end
 
 # Should this trigger an error or just return ""?

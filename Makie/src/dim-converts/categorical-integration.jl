@@ -144,8 +144,11 @@ function convert_dim_value(conversion::CategoricalConversion, attr, values, prev
     return convert_categorical.(Ref(conversion), unwrapped_values)
 end
 
+# TODO: Does it make sense to allow discarding all the categorical information
+# and go back to default tick finding?
+show_dim_convert_in_ticklabel(::CategoricalConversion, ::Automatic) = true
 
-function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax)
+function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     scale != identity && error("Scale $(scale) not supported for categorical conversion")
     if ticks isa Automatic
         # TODO, do we want to support leaving out conversion? Right now, every category will become a tick
@@ -156,8 +159,13 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
     end
     # TODO filter out ticks greater vmin vmax?
     numbers = convert_dim_value.(Ref(conversion), categories)
-    labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
-    return numbers, labels_str
+    if show_in_label
+        labels_str = formatter isa Automatic ? string.(categories) : get_ticklabels(formatter, categories)
+        return numbers, labels_str
+    else
+        vmin, vmax = extrema(numbers)
+        return get_ticks(ticks, scale, formatter, vmin, vmax)
+    end
 end
 
 # TODO:

@@ -24,13 +24,14 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
 end
 
 needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
+show_dim_convert_in_ticklabel(::M.DQConversion, ::Automatic) = true
 
-function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax)
+function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     quantity = conversion.quantity[]
     quantity isa M.Automatic && return [], []
     unit_str = unit_string(quantity)
     tick_vals, labels = M.get_ticks(ticks, scale, formatter, vmin, vmax)
-    if conversion.units_in_label[]
+    if show_in_label
         labels = labels .* unit_str
     end
     return tick_vals, labels

@@ -355,7 +355,8 @@ function initialize_block!(ax::Axis; palette = nothing)
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         minorticksused = ax.xminorgridvisible,
-        label_suffix = ax.xlabel_suffix, dim_convert_in = ax.show_x_dim_convert_in
+        label_suffix = ax.xlabel_suffix, unit_in_label = ax.show_x_dim_convert_in,
+        use_short_units = ax.use_short_x_units
     )
 
     ax.xaxis = xaxis
@@ -372,7 +373,8 @@ function initialize_block!(ax::Axis; palette = nothing)
         tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
-        label_suffix = ax.ylabel_suffix, dim_convert_in = ax.show_y_dim_convert_in
+        label_suffix = ax.ylabel_suffix, dim_convert_in = ax.show_y_dim_convert_in,
+        use_short_units = ax.use_short_y_units
     )
 
     ax.yaxis = yaxis

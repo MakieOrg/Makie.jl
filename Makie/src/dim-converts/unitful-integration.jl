@@ -156,13 +156,12 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion
 struct UnitfulConversion <: AbstractDimConversion
     unit::Observable{Any}
     automatic_units::Bool
-    units_in_label::Observable{Bool}
     extrema::Dict{String, Tuple{Any, Any}}
 end
 
-function UnitfulConversion(unit = automatic; units_in_label = true)
+function UnitfulConversion(unit = automatic)
     extrema = Dict{String, Tuple{Any, Any}}()
-    return UnitfulConversion(unit, unit isa Automatic, units_in_label, extrema)
+    return UnitfulConversion(unit, unit isa Automatic, extrema)
 end
 
 function update_extrema!(conversion::UnitfulConversion, id::String, vals)
@@ -215,14 +214,16 @@ function unit_string_to_rich(str::String)
     return rich(output...)
 end
 
-function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax)
+show_dim_convert_in_ticklabel(::UnitfulConversion, ::Automatic) = true
+
+function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     unit = conversion.unit[]
     unit isa Automatic && return [], []
     unit_str = unit_string(unit)
     rich_unit_str = unit_string_to_rich(unit_str)
     tick_vals = get_tickvalues(ticks, scale, vmin, vmax)
     labels = get_ticklabels(formatter, tick_vals)
-    if conversion.units_in_label[]
+    if show_in_label
         labels = map(lbl -> rich(lbl, rich_unit_str), labels)
     end
     return tick_vals, labels

@@ -464,9 +464,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
     obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
-        attrs.scale
-    ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale
-        return get_ticks(dim_convert[], ticks, scale, tickformat, limits...)
+        attrs.scale, dim_convert_in
+    ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale, show_option
+        dc = dim_convert[]
+        should_show = show_dim_convert_in_ticklabel(dc, show_option)
+        return get_ticks(dim_convert[], ticks, scale, tickformat, limits..., should_show)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values = true)
