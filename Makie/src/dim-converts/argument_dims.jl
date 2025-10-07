@@ -22,6 +22,11 @@ function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :ver
     return dims
 end
 
+argument_dims(::ImageLike, x, y, z) = (1, 2)
+argument_dims(::VertexGrid, x, y, z) = (1, 2)
+argument_dims(::CellGrid, x, y, z) = (1, 2)
+argument_dims(::VolumeLike, x, y, z, volume) = (1, 2, 3)
+
 # attributes that are needed to map args to dims, e.g. direction/orientation
 # TODO: This is completely unrelated to args, right?
 argument_dim_kwargs(::Type{<:Plot}) = tuple()

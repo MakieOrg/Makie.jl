@@ -469,17 +469,17 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
 end
 
 function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tuple::Tuple)
-    # TODO: Could this be valid? E.g. excluding some trailing args? Or returning
-    # more dims than needed (e.g. (1,2,3) for (xs, ys) and (xs, ys, zs))?
-    if length(args) != length(dim_tuple)
-        error("Number of dimensions ($(length(dim_tuple))) does not match number of arguments ($(length(arguments)))")
-    end
+    # TODO: Currently not checking this to allow trailing arguments to be skipped
+    # for GridBased and friends
+    # if length(args) != length(dim_tuple)
+    #     error("Number of dimensions ($(length(dim_tuple))) does not match number of arguments ($(length(args)))")
+    # end
 
     # This sets conversions per dimension if they have not already been set.
     # If a recipe has multiple arguments for one dimension that dimension may
     # be set multiple times here (but only the first one will actually be used)
-    for (i, arg) in zip(dim_tuple, args)
-        update_dim_conversion!(dim_converts, i, arg)
+    for (i, dim) in enumerate(dim_tuple)
+        update_dim_conversion!(dim_converts, dim, args[i])
     end
 
     # Add input containing Symbol(:dim_convert_, i) which triggers when the
@@ -499,9 +499,13 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
         ) do (expanded, dims, converts...), changed, last
 
         last_vals = isnothing(last) ? ntuple(i -> nothing, length(dims)) : last.dim_converted
-        result = ntuple(length(dims)) do i
+        result = ntuple(length(expanded)) do i
             # argument i is associated with the dim convert of dimension dims[i]
-            return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+            if i <= length(dims)
+                return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+            else
+                return expanded[i]
+            end
         end
         return (Ref{Any}(result),)
     end

@@ -368,10 +368,6 @@ convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_argume
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
-function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
-    return convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
-end
-
 function convert_arguments(
         ::VertexGrid, x::EndPointsLike, y::EndPointsLike,
         z::AbstractMatrix{<:Union{Real, Colorant}}
