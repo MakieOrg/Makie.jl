@@ -4,17 +4,33 @@
 Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
 """
 @recipe Hexbin begin
-    "If an `Int`, sets the number of bins in x and y direction. If a `NTuple{2, Int}`, sets the number of bins for x and y separately."
+    """
+    Sets the number of bins in the x and y direction. They can be set separately
+    with a tuple or together with an integer.
+    """
     bins = 20
-    "Weights for each observation.  Can be `nothing` (each observation carries weight 1) or any `AbstractVector{<: Real}` or `StatsBase.AbstractWeights`."
+    """
+    Weights for each observation. Can be `nothing` (each observation carries
+    weight 1), any `AbstractVector{<: Real}` or any `StatsBase.AbstractWeights`.
+    """
     weights = nothing
-    "If a `Real`, makes equally-sided hexagons with width `cellsize`. If a `Tuple{Real, Real}` specifies hexagon width and height separately."
+    """
+    Sets the size of hexagons. The width and height can be set separately with
+    a tuple or together with a real number.
+    """
     cellsize = nothing
-    "The minimal number of observations in the bin to be shown. If 0, all zero-count hexagons fitting into the data limits will be shown."
+    """
+    The minimal number of observations in the bin for it to be shown. If 0, all
+    zero-count hexagons fitting into the data limits will be shown.
+    """
     threshold = 1
+    "Sets the width of hexagon outlines."
     strokewidth = 0
+    "Sets the color of hexagon outlines. Requires `strokewidth > 0`."
     strokecolor = :black
     mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
+    fxaa = false # set to true by generic attributes
 end
 
 # xy hardcoded scale factors
@@ -172,19 +188,12 @@ function plot!(hb::Hexbin{<:Tuple{<:AbstractVector{<:Point2}}})
         hb.colorscale
     end
     return scatter!(
-        hb, hb.points;
+        hb, Attributes(hb), hb.points;
         colorrange = hb.computed_colorrange,
         color = hb.count_hex,
-        colormap = hb.colormap,
         colorscale = scale,
-        lowclip = hb.lowclip,
-        highclip = hb.highclip,
-        nan_color = hb.nan_color,
         marker = hexmarker,
-        markersize = hb.markersize,
         markerspace = :data,
-        strokewidth = hb.strokewidth,
-        strokecolor = hb.strokecolor,
         transformation = :inherit_model
     )
 end
