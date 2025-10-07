@@ -775,6 +775,30 @@ end
 
 compute_identity(inputs, changed, cached) = values(inputs)
 
+function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
+    if length(inputs) != length(edge.outputs)
+        error("A `compute_identity` callback requires the length of inputs and outputs to match.")
+    end
+
+    # use input refs as output refs so we don't even need to evaluate the callback
+    for i in eachindex(values(inputs))
+        edge.outputs[i].value = inputs[i]
+        edge.outputs[i].dirty = true
+    end
+
+    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+end
+
+function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
+    # outputs are identical to inputs, so just copy the input state. To be safe
+    # don't overwrite any `dirty = true` state with false (maybe a problem if
+    # the input gets resolved?)
+    for i in eachindex(edge.inputs_dirty)
+        edge.output_nodes[i].dirty |= edge.inputs_dirty[i]
+    end
+    return
+end
+
 """
     add_input!([callback], compute_graph, name::Symbol, node::Computed)
 

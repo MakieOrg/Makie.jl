@@ -9,30 +9,72 @@ Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text la
 By default each label is rotated parallel to the line between the bracket points.
 """
 @recipe Bracket (positions,) begin
-    "The offset of the bracket perpendicular to the line from start to end point in screen units.
-    The direction depends on the `orientation` attribute."
+    """
+    The offset of the bracket perpendicular to the line from start to end point in screen units.
+    The direction depends on the `orientation` attribute.
+    """
     offset = 0
     """
     The width of the bracket (perpendicularly away from the line from start to end point) in screen units.
     """
     width = 15
+    """
+    The text(s) displayed at the center of the bracket(s).
+    """
     text = ""
+    "The font used for text."
     font = @inherit font
     "Which way the bracket extends relative to the line from start to end point. Can be `:up` or `:down`."
     orientation = :up
+    "The alignment of text."
     align = (:center, :center)
+    """
+    Undirected offset between text and the center of the bracket. By default
+    this is set to 75% of the fontsize. The direction of the offset is always
+    perpendicular to the line from the start to the end point.
+    """
     textoffset = automatic
+    "Sets the fontsize of text"
     fontsize = @inherit fontsize
+    """
+    Sets the rotation of text. By default text is rotated to be parallel to the
+    line from the start to end point of the bracket, and never upside-down.
+    """
     rotation = automatic
+    "Sets the color of the bracket line."
     color = @inherit linecolor
+    "Sets the color of the text."
     textcolor = @inherit textcolor
+    "Sets the width of the bracket line."
     linewidth = @inherit linewidth
-    linestyle = :solid
+    "Sets the line pattern of the bracket line. See `?lines` for more information."
+    linestyle = nothing
+    """
+    Sets the type of line cap used for bracket lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
+    "Sets the justification of multi-line text."
     justification = automatic
+    """
+    Sets the style of drawn bracket. The current options are `:curly` for curly
+    braces `}` and `:square` for brackets `]`. More bracket types can be
+    implemented by providing a method of `Makie.bracket_bezierpath(...)`, see
+    `?Makie.bracket_bezierpath`.
+    """
     style = :curly
+    "Sets the space for the start and end points of brackets."
     space = :data
 end
 
@@ -133,6 +175,14 @@ function data_limits(pl::Bracket)
 end
 boundingbox(pl::Bracket, space::Symbol = :data) = apply_transform_and_model(pl, data_limits(pl))
 
+"""
+    bracket_bezierpath(::Val{style}, p1, p2, dir, width)
+
+Returns a `BezierPath` connecting the given endpoints of a bracket `p1` and
+`p2` as well as an anchor point for text. `dir` is the direction perpendicular
+to `p2 - p1` in which bracket should expand. `width` is how much it should expand.
+This method can be overloaded to implement a new `style::Symbol` for `bracket()`.
+"""
 bracket_bezierpath(style::Symbol, args...) = bracket_bezierpath(Val(style), args...)
 
 function bracket_bezierpath(::Val{:curly}, p1, p2, d, width)

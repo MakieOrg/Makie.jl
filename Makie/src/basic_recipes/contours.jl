@@ -25,12 +25,26 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
+    "Sets the width of contour lines."
     linewidth = 1.0
+    "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
+    """
+    Sets the type of line cap used for contour lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
-    enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
     """
@@ -49,6 +63,8 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     Sets the tolerance for sampling of a `level` in 3D contour plots.
     """
     isorange = automatic
+    "Controls whether 3D contours consider depth. Turning this off may improve performance."
+    enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
@@ -270,12 +286,13 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     # all the extra work for it entirely?
     # (i.e. no text plot, no boundingboxes, no projections?)
 
-    # TODO: Is this necessary?
-    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], :text_positions) do ps1, ps2, ps3
-        return map(ps1, ps2, ps3) do p1, p2, p3
+    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], [:text_positions, :raw_lbl_directions]) do ps1, ps2, ps3
+        # TODO: Is this necessary?
+        pos = map(ps1, ps2, ps3) do p1, p2, p3
             p = ifelse(isnan(p2), p1, p2)
             return ifelse(isnan(p), p3, p)
         end
+        return pos, ps3 .- ps1
     end
 
     map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
@@ -286,9 +303,10 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         return ifelse(user_color === nothing, computed_color, to_color(user_color))
     end
 
+    # transform directions to pixel-space angles
     register_projected_rotations_2d!(
         plot,
-        startpoint_name = :lbl_pos1, endpoint_name = :lbl_pos3,
+        position_name = :text_positions, direction_name = :raw_lbl_directions,
         output_name = :text_rotation,
         rotation_transform = to_upright_angle
     )

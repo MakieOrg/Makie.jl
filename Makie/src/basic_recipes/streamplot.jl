@@ -1,8 +1,13 @@
 """
-    streamplot(f::function, xinterval, yinterval; color = norm, kwargs...)
+    streamplot(f::function, xinterval, yinterval[, zinterval]; color = norm, kwargs...)
+    streamplot(f::function, rect; color = norm, kwargs...)
 
-f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
-f must return a Point2.
+Plots streamlines of the function `f` in the given bounding box. A streamline is
+defined by matching its tangent vector with `f(p)` at any point `p`.
+
+`f`` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
+and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a
+`Vec2f` or `Point3d`.
 
 Example:
 ```julia
@@ -14,8 +19,18 @@ streamplot(v, -2..2, -2..2)
 See the function `Makie.streamplot_impl` for implementation details.
 """
 @recipe StreamPlot (f, limits) begin
+    """
+    Controls the discretization of streamlines. The smaller `stepsize`, the
+    closer line points are together. The stepsize acts on the normalized output
+    of `f` without taking limits into account.
+    """
     stepsize = 0.01
+    """
+    Controls the discretization of the bounding box. With `density = 1` each
+    square/cube will be visited by at least one streamline.
+    """
     gridsize = (32, 32, 32)
+    "Controls the maximum number of points per streamline."
     maxsteps = 500
     """
     One can choose the color of the lines by passing a function `color_func(dx::Point)` to the `color` attribute.
@@ -24,15 +39,44 @@ See the function `Makie.streamplot_impl` for implementation details.
     """
     color = norm
 
+    """
+    Sets the size of arrow markers. The default is scaled to the bounding box
+    and gridsize of the plot
+    """
     arrow_size = automatic
+    """
+    Sets the marker for arrows which show the direction of the streamline. The
+    default marker is either a (scatter) triangle or cone mesh, depending on
+    dimensionality.
+    """
     arrow_head = automatic
+    """
+    Sets the number of cells which need to be visited by streamlines. This must
+    be between 0 and 1.
+    """
     density = 1.0
+    "Sets the quality of the cone mesh generated for 3D arrow markers."
     quality = 16
 
+    "Sets the linewidth of streamlines."
     linewidth = @inherit linewidth
+    """
+    Sets the type of line cap used for streamlines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
+    "Sets the dash pattern for lines. See `?lines`."
     linestyle = nothing
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
@@ -125,7 +169,7 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                 end
             )
             point = apply_f(x0, CallType)
-            if !(point isa Point2 || point isa Point3)
+            if !(point isa Union{VecTypes{2}, VecTypes{3}})
                 error("Function passed to streamplot must return Point2 or Point3")
             end
             pnorm = norm(point)
@@ -192,17 +236,22 @@ function plot!(p::StreamPlot)
 
     N = ndims(p.limits[])
 
-    rotation_name = :arrow_directions
-    if N == 2 # && scatterplot.markerspace[] == Pixel (default)
-        # Calculate arrow head rotations as angles. To avoid distortions from
-        # (extreme) aspect ratios we need to project to pixel space and renormalize.
-        map!((pos, dir) -> pos .+ dir, p, [:arrow_positions, :arrow_directions], :arrow_endpoints)
+    if N == 2
+        # In 2D rotations apply in markerspace (pixel space here), which means
+        # they may be affected by the transform_func (e.g. curved space) and
+        # scaling from projection pipeline (including float32convert). To correct
+        # for this we use:
         register_projected_rotations_2d!(
             p,
-            startpoint_name = :arrow_positions, endpoint_name = :arrow_endpoints,
+            position_name = :arrow_positions, direction_name = :arrow_directions,
             rotation_transform = x -> x - 0.5f0 * pi
         )
-        rotation_name = :rotations
+    else
+        # In 3D rotations apply in model space, i.e. after `transform_func` and
+        # before `model`. So here we only need to consider `transform_func` with:
+        register_transformed_rotations_3d!(
+            p, position_name = :arrow_positions, direction_name = :arrow_directions
+        )
     end
 
     map!(p, [:arrow_size, :limits, :gridsize], :computed_arrow_size) do arrow_size, limits, gridsize
@@ -224,7 +273,7 @@ function plot!(p::StreamPlot)
         p.attributes,
         p.arrow_positions;
         markersize = p.computed_arrow_size,
-        rotation = getindex(p, rotation_name),
+        rotation = getindex(p, :rotations),
         color = p.arrow_colors,
         marker = p.arrow_marker,
         fxaa = N == 3

@@ -7,65 +7,60 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
 =#
 """
     boxplot(x, y; kwargs...)
-Draw a Tukey style boxplot.
-The boxplot has 3 components:
-- a `crossbar` spanning the interquartile (IQR) range with a midline marking the
-    median
-- an `errorbar` whose whiskers span `range * iqr`
-- points marking outliers, that is, data outside the whiskers
+
+Draw a Tukey style boxplot.The boxplot has 3 components:
+- a `crossbar` spanning the interquartile (IQR) range (values from the 25th to
+the 75% percentile) with a midline marking the median
+- an `errorbar` including values from the interquartile range extended by `range * iqr`
+- points marking outliers, that is, data outside the errorbar
+
 ## Arguments
 - `x`: positions of the categories
 - `y`: variables within the boxes
 """
 @recipe BoxPlot (x, y) begin
+    filtered_attributes(CrossBar, exclude = (:notchmin, :notchmax, :show_midline, :midlinecolor, :midlinewidth))...
+
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."
     weights = automatic
-    color = @inherit patchcolor
-    colormap = @inherit colormap
-    colorscale = identity
-    colorrange = automatic
-    "Orientation of box (`:vertical` or `:horizontal`)."
-    orientation = :vertical
-    # box and dodging
-    "Width of the box before shrinking."
-    width = automatic
-    "Vector of `Integer` (length of data) of grouping variable to create multiple side-by-side boxes at the same `x` position."
-    dodge = automatic
-    n_dodge = automatic
-    "Shrinking factor, `width -> width * (1 - gap)`."
-    gap = 0.2
-    "Spacing between dodged boxes."
-    dodge_gap = 0.03
-    strokecolor = @inherit patchstrokecolor
-    strokewidth = @inherit patchstrokewidth
-    # notch
-    "Draw the notch."
-    show_notch = false
-    "Multiplier of `width` for narrowest width of notch."
-    notchwidth = 0.5
+
     # median line
-    "Show median as midline."
+    "Shows the median as the midline of the crossbar."
     show_median = true
+    "Sets the color of median line."
     mediancolor = @inherit linecolor
+    "Sets the width of the median line."
     medianlinewidth = @inherit linewidth
+
     # whiskers
-    "Multiple of IQR controlling whisker length."
+    """
+    Sets how far the errorbar range expands beyond the interquartile range as a
+    multiple of it. The final value range for errorbars is `Q2 - range * (Q4 - Q2)`
+    to `Q4 + range * (Q4 - Q2)` where `Q2` and `Q4` include 25% and 75% of the
+    values respectively.
+    Setting to 0 extends whiskers to the range of the data.
+    """
     range = 1.5
-    "Multiplier of `width` for width of T's on whiskers, or `:match` to match `width`."
+    "Sets the width of whiskers on errorbars as a multiplier of the crossbar width."
     whiskerwidth = 0.0
+    "Sets the color of errorbars."
     whiskercolor = @inherit linecolor
+    "Sets the linewidth of errorbars."
     whiskerlinewidth = @inherit linewidth
+
     # outliers points
-    "Show outliers as points."
+    "Show outliers as points. Any point outside the errorbars is consider one."
     show_outliers = true
+    "Sets the marker for outliers."
     marker = @inherit marker
+    "Sets the markersize for outliers."
     markersize = @inherit markersize
+    "Sets the color for outliers."
     outliercolor = automatic
+    "Sets the marker strokecolor for outliers."
     outlierstrokecolor = @inherit markerstrokecolor
+    "Sets the marker strokewidth for outliers."
     outlierstrokewidth = @inherit markerstrokewidth
-    cycle = [:color => :patchcolor]
-    inspectable = @inherit inspectable
-    visible = true
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
@@ -155,7 +150,8 @@ function Makie.plot!(plot::BoxPlot)
         [:groups, :widths, :q1s, :quantiles, :q5s, :whiskerwidth, :orientation],
         [:t_segments, :boxwidth]
     ) do groups, widths, q1s, quantiles, q5s, whiskerwidth, orientation
-        if !(whiskerwidth === :match || whiskerwidth >= 0)
+        whiskerwidth = ifelse(whiskerwidth === :match, 1.0, whiskerwidth)
+        if !(whiskerwidth isa Real) || !(whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
         t_segments = Point2f[]
@@ -163,7 +159,7 @@ function Makie.plot!(plot::BoxPlot)
         boxwidth = WT[]
         for ((center, idxs), q1, q, q5) in zip(groups, q1s, quantiles, q5s)
             bw = getuniquevalue(widths, idxs)
-            ww = whiskerwidth === :match ? bw : whiskerwidth * bw
+            ww = whiskerwidth * bw
             lw, rw = center - ww / 2, center + ww / 2
             push!(boxwidth, bw)
             push!(
@@ -218,29 +214,12 @@ function Makie.plot!(plot::BoxPlot)
         visible = plot.visible
     )
     crossbar!(
-        plot,
-        plot.centers,
-        plot.medians,
-        plot.boxmin,
-        plot.boxmax,
-        gap = 0,
-        color = plot.boxcolor,
-        colorrange = plot.colorrange,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        strokecolor = plot.strokecolor,
-        strokewidth = plot.strokewidth,
-        midlinecolor = plot.mediancolor,
-        midlinewidth = plot.medianlinewidth,
-        show_midline = plot.show_median,
-        orientation = plot.orientation,
-        width = plot.boxwidth,
-        show_notch = plot.show_notch,
-        notchmin = plot.notchmin,
-        notchmax = plot.notchmax,
-        notchwidth = plot.notchwidth,
-        inspectable = plot.inspectable,
-        visible = plot.visible
+        plot, Attributes(plot),
+        plot.centers, plot.medians, plot.boxmin, plot.boxmax,
+        gap = 0, color = plot.boxcolor, width = plot.boxwidth,
+        show_midline = plot.show_median, midlinecolor = plot.mediancolor, midlinewidth = plot.medianlinewidth,
+        # These should not be passed/defaulted
+        n_dodge = automatic, dodge = automatic
     )
     return plot
 end
