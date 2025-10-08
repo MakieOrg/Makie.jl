@@ -99,7 +99,13 @@ function plot_updates(args, changed)
             _val = if value isa Sampler
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
-                serialize_three(value)
+                # Check if value is an array with all identical elements
+                if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
+                    # Use compressed format for arrays with identical elements
+                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                else
+                    serialize_three(value)
+                end
             end
             push!(new_values, [name, _val])
         end
@@ -384,7 +390,7 @@ to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
     instance = Dict(
-        :position => args.position,
+        :vertex_position => args.vertex_position,
         :faces => args.faces,
         :normal => args.normal,
     )
@@ -416,20 +422,10 @@ function meshscatter_program(args)
 end
 
 
-function disassemble_mesh!(attr, mesh_sym = :marker)
-    return map!(attr, [mesh_sym], [:position, :faces, :normal, :uv]) do mesh
-        faces = decompose(GLTriangleFace, mesh)
-        normals = decompose_normals(mesh)
-        texturecoordinates = decompose_uv(mesh)
-        positions = decompose(Point3f, mesh)
-        return (positions, faces, normals, texturecoordinates)
-    end
-end
-
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
 
-    disassemble_mesh!(attr)
+    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     map!(to_3x3, attr, :packed_uv_transform, :wgl_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -440,7 +436,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
 
     inputs = [
-        :position, :faces, :normal, :uv, # marker mesh
+        :vertex_position, :faces, :normal, :uv, # marker mesh
         :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
         :wgl_uv_transform, :pattern,
         :positions_transformed_f32c, :markersize, :converted_rotation, :f32c_scale,
@@ -739,8 +735,6 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
-    # TODO: This always sets a pattern, so we are rendering solid lines as a
-    # gapless pattern... We probably shouldn't so we don't require lastlength
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 

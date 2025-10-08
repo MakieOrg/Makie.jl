@@ -736,6 +736,30 @@ end
 
 compute_identity(inputs, changed, cached) = values(inputs)
 
+function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
+    if length(inputs) != length(edge.outputs)
+        error("A `compute_identity` callback requires the length of inputs and outputs to match.")
+    end
+
+    # use input refs as output refs so we don't even need to evaluate the callback
+    for i in eachindex(values(inputs))
+        edge.outputs[i].value = inputs[i]
+        edge.outputs[i].dirty = true
+    end
+
+    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+end
+
+function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
+    # outputs are identical to inputs, so just copy the input state. To be safe
+    # don't overwrite any `dirty = true` state with false (maybe a problem if
+    # the input gets resolved?)
+    for i in eachindex(edge.inputs_dirty)
+        edge.output_nodes[i].dirty |= edge.inputs_dirty[i]
+    end
+    return
+end
+
 """
     add_input!([callback], compute_graph, name::Symbol, node::Computed)
 
@@ -908,13 +932,11 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     end
 
     # Check that the requested inputs are the inputs of the new edge
-    if length(e.inputs) != length(inputs)
-        error("Cannot register computation: At least one parent compute exists with a different set of inputs.")
-    elseif e.inputs != inputs
-        missmatched = [old.name => new.name for (old, new) in zip(e.inputs, inputs) if old !== new]
+    if length(e.inputs) != length(inputs) || e.inputs != inputs
         error(
-            "Cannot register computation: There already exists a parent compute edge for the given outputs " *
-                "that uses a different set of inputs. Missmatched inputs: $missmatched (existing, new)"
+            "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
+                "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
+                "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
         )
     end
 

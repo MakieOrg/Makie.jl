@@ -27,7 +27,6 @@ excludes = Set(
         "Image on Surface Sphere", # TODO: texture rotated 180°
         "Array of Images Scatter", # scatter does not support texture images
         "Order Independent Transparency",
-        "3D Contour with 2D contour slices", # looks like a z-fighting issue
         "Mesh with 3d volume texture", # Not implemented yet
         "matcap", # not yet implemented
     ]
@@ -45,8 +44,8 @@ edisplay = Bonito.use_electron_display(devtools = true)
         # are modified in which case the numbers should just be updated
         f, a, p = scatter(rand(10))
         colorbuffer(f)
-        @test length(p.attributes.inputs) == 44
-        @test length(p.attributes.outputs) == 96
+        @test length(p.attributes.inputs) == 43
+        @test length(p.attributes.outputs) == 95
     end
 
     @testset "refimages" begin

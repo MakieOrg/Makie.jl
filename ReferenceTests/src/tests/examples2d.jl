@@ -183,11 +183,11 @@ end
     # vertical version
     ax2, p = lines(f[1, 2], μ, t, color = :yellow, linewidth = 2)
     translate!(p, 0, 0, 1)
-    band!(ax2, t, μ + σ, μ - σ, direction = :y)   # plot stddev band
+    band!(ax2, t, μ + σ, μ - σ, direction = :y, alpha = 0.5)   # plot stddev band
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
-    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues)
+    band(f[2, 2], t, μ + σ, μ - σ, direction = :y, color = eachindex(t), colormap = :Blues, alpha = 0.5)
     f
 end
 
@@ -2402,6 +2402,33 @@ end
         ax, 7, -0.5, 3pi / 2, -1.0,
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30)
+    )
+
+    f
+end
+
+@reference_test "Transformed rotations" begin
+    f = Figure(size = (600, 700))
+    a = PolarAxis(f[1, 1])
+    p = streamplot!(a, p -> Point2f(1, 0), 0 .. 2pi, 0 .. 5, gridsize = (10, 10))
+    a = PolarAxis(f[2, 1])
+    p = contour!(
+        a, 0 .. 2pi, 0 .. 5, [sqrt(x^2 + y^2) for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3
+    )
+
+    a = LScene(f[1, 2])
+    p = streamplot!(
+        a, p -> Point3f(p[2], p[3], p[1]), -1 .. 1, -1 .. 1, -1 .. 1, gridsize = (5, 5, 5),
+        arrow_size = 0.2, transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
+    )
+    a = LScene(f[2, 2])
+    cam3d!(a)
+    p = contour3d!(
+        a, -1 .. 1, -1 .. 1,
+        [cos(x) - sin(y) - x * y for x in range(-1, 1, 30), y in range(-1, 1, 30)],
+        labels = true, colormap = :magma, linewidth = 3,
+        transformation = Transformation(Makie.PointTrans{3}(p -> Point(p[2], p[3], p[1])))
     )
 
     f

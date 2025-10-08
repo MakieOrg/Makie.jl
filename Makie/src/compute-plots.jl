@@ -554,7 +554,7 @@ end
 function default_attribute(user_attributes, (key, value))
     if haskey(user_attributes, key)
         if value isa Attributes
-            return merge(value, Attributes(pairs(user_attributes[key])))
+            return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
         else
             val = user_attributes[key]
             val isa NamedTuple && return Attributes(val)
@@ -613,7 +613,9 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             let plotcycle = cycle
                 add_input!(attr, k, get(kwargs, k, nothing)) do key, value
                     palettes = attr.palettes[]
-                    value isa Cycled && return get_cycle_attribute(palettes, key, value.i, plotcycle)
+                    if value isa Cycled
+                        value = get_cycle_attribute(palettes, key, value.i, plotcycle)
+                    end
                     if !isnothing(value)
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
