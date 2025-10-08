@@ -375,6 +375,9 @@ function convert_arguments(
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
 
+# for dim_converts
+to_endpoints(x::Tuple{<:Any, <:Any}) = x
+
 function to_endpoints(x::Tuple{<:Real, <:Real})
     T = float_type(x...)
     return EndPoints(T.(x))

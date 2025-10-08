@@ -112,6 +112,14 @@ best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} 
 
 unit_convert(::Automatic, x) = x
 
+function unit_convert(unit::T, x::Tuple) where {T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}}
+    return unit_convert.(Ref(unit), x)
+end
+
+function unit_convert(unit::Unitful.MixedUnits, x::Tuple)
+    return unit_convert.(Ref(unit), x)
+end
+
 function unit_convert(unit::T, x::AbstractArray) where {T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}}
     return unit_convert.(Ref(unit), x)
 end
