@@ -55,6 +55,8 @@ Plot a step histogram of `values`.
     scale_to = nothing
 end
 
+argument_dims(::Type{<:StepHist}, vals) = (1, )
+
 function plot!(plot::StepHist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
@@ -125,6 +127,7 @@ Plot a histogram of `values`.
 end
 
 argument_dim_kwargs(::Type{<:Hist}) = (:direction,)
+argument_dims(::Type{<:Hist}, vals; direction) = (ifelse(direction === :y, 1, 2), )
 
 function pick_hist_edges(vals, bins)
     if bins isa Int
