@@ -419,14 +419,17 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # TODO probably make these mandatory
     suffix_formatter = get(attrs, :label_suffix, Observable(""))
     dim_convert_in = get(attrs, :dim_convert_in, Observable(automatic))
-    label_with_suffix = map(label, suffix_formatter, dim_convert_in) do label, format, show_option
+
+    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    label_with_suffix = map(label, suffix_formatter, dim_convert_in, obs) do label, format, show_option, _
         dc = dim_convert[]
         should_show = show_dim_convert_in_axis_label(dc, show_option)
         if should_show
             suffix = get_label_suffix(dc, format)
             return isempty(label) ? suffix : rich("$label ", suffix)
         else
-            return label
+            # TODO: Is this required for type stability?
+            return rich(label, " ")
         end
     end
 
@@ -461,7 +464,6 @@ function LineAxis(parent::Scene, attrs::Attributes)
     tickvalues = Observable(Float64[]; ignore_equal_values = true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
-    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
         attrs.scale, dim_convert_in

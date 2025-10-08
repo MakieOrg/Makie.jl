@@ -163,48 +163,25 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion
 """
 struct UnitfulConversion <: AbstractDimConversion
     unit::Observable{Any}
-    automatic_units::Bool
-    extrema::Dict{String, Tuple{Any, Any}}
 end
 
-function UnitfulConversion(unit = automatic)
-    extrema = Dict{String, Tuple{Any, Any}}()
-    return UnitfulConversion(unit, unit isa Automatic, extrema)
-end
+UnitfulConversion() = UnitfulConversion(automatic)
 
-function update_extrema!(conversion::UnitfulConversion, id::String, vals)
-    conversion.automatic_units || return
+function update_extrema!(conversion::UnitfulConversion, vals)
+    if conversion.unit[] === automatic
+        eltype, extrema = eltype_extrema(vals)
+        imini, imaxi = extrema
 
-    eltype, extrema = eltype_extrema(vals)
-    conversion.extrema[id] = if eltype <: Unitful.LogScaled
-        extrema
-    else
-        promote(Quantity.(extrema)...)
-    end
-    imini, imaxi = extrema
-    for (mini, maxi) in values(conversion.extrema)
-        imini = min(imini, mini)
-        imaxi = max(imaxi, maxi)
-    end
-    # If a unit only consists off of one element, e.g. "mm" or "J", try to find
-    # the best prefix. Otherwise (e.g. "kg/m^3") use the unit as is and don't
-    # change it.
-    if is_compound_unit(imini)
-        if conversion.unit[] === automatic
-            new_unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
-        else
-            return
-        end
-    else
-        new_unit = best_unit(imini, imaxi)
-    end
-    return if new_unit != conversion.unit[]
-        conversion.unit[] = new_unit
+        unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
+        @info "yo: $unit"
+        conversion.unit[] = unit
+
         # TODO, somehow we need another notify to update the axis label
         # The interactions in Lineaxis are too complex to debug this in a sane amount of time
         # So, I think we should just revisit this once we move lineaxis to use compute graph
         notify(conversion.unit)
     end
+    return
 end
 
 needs_tick_update_observable(conversion::UnitfulConversion) = conversion.unit
@@ -238,7 +215,9 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
 end
 
 function get_label_suffix(conversion::UnitfulConversion, format)
-    str = unit_string(conversion.unit[])
+    unit = conversion.unit[]
+    unit isa Automatic && return rich("")
+    str = unit_string(unit)
     formatted = apply_format(str, format)
     return unit_string_to_rich(formatted)
 end
@@ -250,7 +229,8 @@ function convert_dim_value(conversion::UnitfulConversion, attr, values, last_val
         # Is there a function for this to check in Unitful?
         unit_convert(unit, values[1])
     end
-    update_extrema!(conversion, string(objectid(attr)), values)
+
+    update_extrema!(conversion, values)
     return unit_convert(conversion.unit[], values)
 end
 
