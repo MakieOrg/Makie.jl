@@ -421,16 +421,17 @@ function LineAxis(parent::Scene, attrs::Attributes)
     dim_convert_in = get(attrs, :dim_convert_in, Observable(automatic))
 
     obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
-    label_with_suffix = map(label, suffix_formatter, dim_convert_in, obs) do label, format, show_option, _
+    label_with_suffix = Observable{Any}()
+    map!(
+        label_with_suffix, label, suffix_formatter, dim_convert_in, obs, update = true
+    ) do label, format, show_option, _
         dc = dim_convert[]
         should_show = show_dim_convert_in_axis_label(dc, show_option)
-        # TODO: forcing rich text avoids errors when suffixes are generated from
-        # units, but breaks LaTeXStrings in labels
         if should_show
             suffix = get_label_suffix(dc, format)
             return isempty(label) ? suffix : rich("$label ", suffix)
         else
-            return rich(label)
+            return label
         end
     end
 
