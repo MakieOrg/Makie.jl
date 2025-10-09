@@ -79,6 +79,9 @@ It is most commonly used as part of the `boxplot`.
 end
 
 argument_dim_kwargs(::Type{<:CrossBar}) = (:orientation,)
+function argument_dims(::Type{<:CrossBar}, x, y, ymin, ymax; orientation)
+    return ifelse(orientation === :vertical, (1, 2, 2, 2), (2, 1, 1, 1))
+end
 
 function Makie.plot!(plot::CrossBar)
     map!(

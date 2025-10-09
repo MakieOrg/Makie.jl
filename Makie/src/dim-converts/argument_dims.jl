@@ -16,11 +16,17 @@ function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :ver
     # Block any one argument case by default, e.g. VecTypes, GeometryPrimitive
     length(args) in (2, 3) || return nothing
 
+    # disallow VecTypes
+    if any(arg -> arg isa Union{VecTypes, AbstractArray{<:VecTypes}}, args)
+        return nothing
+    end
+
     dims = ntuple(identity, length(args))
     dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
     dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
     return dims
 end
+
 
 argument_dims(::ImageLike, x, y, z) = (1, 2)
 argument_dims(::VertexGrid, x, y, z) = (1, 2)

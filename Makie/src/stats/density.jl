@@ -63,6 +63,7 @@ Plot a kernel density estimate of `values`.
 end
 
 argument_dim_kwargs(::Type{<:Density}) = (:direction,)
+argument_dims(::Type{<:Density}, vals; direction) = (ifelse(direction === :x, 1, 2), )
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     map!(

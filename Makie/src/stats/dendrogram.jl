@@ -248,6 +248,9 @@ function find_merge(n1::DNode, n2::DNode; height = 1, index = max(n1.idx, n2.idx
     return DNode(index, Point2d(newx, newy), (n1.idx, n2.idx))
 end
 
+# TODO: What about rotation? Does this make sense with units/categorical in the first place?
+argument_dims(::Type{<:Dendrogram}, x, y, merges) = (1, 2)
+
 function convert_arguments(::Type{<:Dendrogram}, x::RealVector, y::RealVector, merges::Vector{<:Tuple{<:Integer, <:Integer}})
     return convert_arguments(Dendrogram, convert_arguments(PointBased(), x, y)[1], merges)
 end

@@ -88,6 +88,10 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
+# TODO: May need typing here and on convert_arguments to work properly
+argument_dims(::Type{<:QQPlot}, x, y) = (1, 2)
+argument_dims(::Type{<:QQNorm}, y) = (2,)
+
 function convert_arguments(
         ::Type{<:QQPlot}, points::AbstractVector{<:Point2},
         lines::AbstractVector{<:Point2}; qqline = :none
@@ -95,13 +99,13 @@ function convert_arguments(
     return (points, lines)
 end
 
-function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
+function convert_arguments(::Type{<:QQPlot}, x′, y::RealVector; qqline = :none)
     x = maybefit(x′, y)
     points, line = fit_qqplot(x, y; qqline = qqline)
     return (points, line)
 end
 
-convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
+convert_arguments(::Type{<:QQNorm}, y::RealVector; qqline = :none) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
