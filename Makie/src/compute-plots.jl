@@ -479,6 +479,7 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
     # If a recipe has multiple arguments for one dimension that dimension may
     # be set multiple times here (but only the first one will actually be used)
     for (i, dim) in enumerate(dim_tuple)
+        dim == 0 && continue
         update_dim_conversion!(dim_converts, dim, args[i])
     end
 
