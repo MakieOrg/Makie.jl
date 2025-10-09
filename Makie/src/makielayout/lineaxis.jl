@@ -424,12 +424,13 @@ function LineAxis(parent::Scene, attrs::Attributes)
     label_with_suffix = map(label, suffix_formatter, dim_convert_in, obs) do label, format, show_option, _
         dc = dim_convert[]
         should_show = show_dim_convert_in_axis_label(dc, show_option)
+        # TODO: forcing rich text avoids errors when suffixes are generated from
+        # units, but breaks LaTeXStrings in labels
         if should_show
             suffix = get_label_suffix(dc, format)
             return isempty(label) ? suffix : rich("$label ", suffix)
         else
-            # TODO: Is this required for type stability?
-            return rich(label, " ")
+            return rich(label)
         end
     end
 

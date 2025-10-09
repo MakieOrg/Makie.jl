@@ -1060,6 +1060,8 @@ end
 function process_rt_node!(lines, gs::GlyphState, s::String, _)
     y = gs.baseline
     x = gs.x
+    # to avoid empty rich("") from erroring treat them as rich(" ")
+    s = isempty(s) ? " " : s
     for char in s
         if char === '\n'
             x = 0
