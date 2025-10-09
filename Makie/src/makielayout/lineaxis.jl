@@ -38,9 +38,9 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0.0f0
     else
-        # TODO: This can probably be something like
-        #   maximum(widths, fast_string_boundingboxes_obs(labeltext))
-        # to skip positions?
+        # TODO: This can probably be
+        #   widths(fast_string_boundingboxes(labeltext)[1])
+        # to skip positions? (This only runs for axis labels)
         widths(boundingbox(labeltext, :data))[horizontal[] ? 2 : 1]
     end
 

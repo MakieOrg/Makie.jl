@@ -501,7 +501,7 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
         last_vals = isnothing(last) ? ntuple(i -> nothing, length(dims)) : last.dim_converted
         result = ntuple(length(expanded)) do i
             # argument i is associated with the dim convert of dimension dims[i]
-            if i <= length(dims)
+            if i <= length(dims) && dims[i] != 0
                 return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
             else
                 return expanded[i]

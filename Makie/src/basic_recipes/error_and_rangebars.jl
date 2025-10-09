@@ -51,6 +51,21 @@ end
 
 ### conversions for errorbars
 
+argument_dim_kwargs(::Type{<:Union{Errorbars, Rangebars}}) = (:direction,)
+
+# Note: (x, y, error) would default to argument_dims(::Any, x, y, z) = (1, 2, 3)
+# if not explicitly implemented here
+argument_dims(::Type{<:Errorbars}, x, y, lh::AbstractArray{<:VecTypes}; direction) = nothing
+argument_dims(::Type{<:Errorbars}, xy::AbstractArray{<:VecTypes}, l, h; direction) = nothing
+argument_dims(::Type{<:Errorbars}, xy, e; direction) = nothing
+function argument_dims(::Type{<:Errorbars}, x, y, e; direction)
+    return ifelse(direction === :y, (1, 2, 2), (1, 2, 1))
+end
+function argument_dims(::Type{<:Errorbars}, x, y, l, h; direction)
+    return ifelse(direction === :y, (1, 2, 2, 2), (1, 2, 1, 1))
+end
+
+
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealOrVec)
     T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
@@ -110,6 +125,11 @@ function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:
 end
 
 ### conversions for rangebars
+
+argument_dims(::Type{<:Rangebars}, x, lh; direction) = nothing
+function argument_dims(::Type{<:Rangebars}, x, l, h; direction)
+    return ifelse(direction === :y, (1, 2, 2), (2, 1, 1))
+end
 
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, high::RealOrVec)
     T = float_type(val, low, high)

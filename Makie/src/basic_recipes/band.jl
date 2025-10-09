@@ -14,7 +14,12 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     shading = NoShading
 end
 
-function convert_arguments(::Type{<:Band}, x, ylower, yupper)
+argument_dim_kwargs(::Type{<:Band}) = (:direction, )
+function argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
+    return direction === :x ? (1, 2, 2) : (2, 1, 1)
+end
+
+function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yupper::RealVector)
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
 end
 
