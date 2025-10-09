@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
@@ -363,7 +362,7 @@ end
 convert_arguments(ct::VertexGrid, x::RealMatrix, y::RealMatrix) = convert_arguments(ct, x, y, zeros(size(y)))
 
 """
-    convert_arguments(P, x::RangeLike, y::RangeLike, z::AbstractMatrix)
+    convert_arguments(P, x::EndPointsLike, y::EndPointsLike, z::AbstractMatrix)
 
 Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
@@ -437,6 +436,7 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
+# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}}

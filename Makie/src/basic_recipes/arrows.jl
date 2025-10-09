@@ -4,32 +4,38 @@
 
 struct ArrowLike <: ConversionTrait end
 
+argument_dims(::ArrowLike, xy, uv) = nothing
+argument_dims(::ArrowLike, x, y, f) = (1, 2)
+argument_dims(::ArrowLike, x, y, z, f::Function) = (1, 2, 3)
+argument_dims(::ArrowLike, x, y, u, v) = (1, 2, 1, 2)
+argument_dims(::ArrowLike, x, y, z, u, v, w) = (1, 2, 3, 1, 2, 3)
+
 # vec(::Point) and vec(::Vec) works (returns input), but vec(::Tuple) errors
 convert_arguments(::ArrowLike, pos::VecTypes{N}, dir::VecTypes{N}) where {N} = ([pos], [dir])
 
 function convert_arguments(::ArrowLike, pos::AbstractArray, dir::AbstractArray)
     return (
-        convert_arguments(PointBased(), vec(pos))[1],
-        convert_arguments(PointBased(), vec(dir))[1],
+        convert_arguments(PointBased(), vec(pos))...,
+        convert_arguments(PointBased(), vec(dir))...,
     )
 end
 
 function convert_arguments(::ArrowLike, x, y, u, v)
     return (
-        convert_arguments(PointBased(), vec(x), vec(y))[1],
-        convert_arguments(PointBased(), vec(u), vec(v))[1],
+        convert_arguments(PointBased(), vec(x), vec(y))...,
+        convert_arguments(PointBased(), vec(u), vec(v))...,
     )
 end
 function convert_arguments(::ArrowLike, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
     return (
         vec(Point{2, float_type(x, y)}.(x, y')),
-        convert_arguments(PointBased(), vec(u), vec(v))[1],
+        convert_arguments(PointBased(), vec(u), vec(v))...,
     )
 end
 function convert_arguments(::ArrowLike, x, y, z, u, v, w)
     return (
-        convert_arguments(PointBased(), vec(x), vec(y), vec(z))[1],
-        convert_arguments(PointBased(), vec(u), vec(v), vec(w))[1],
+        convert_arguments(PointBased(), vec(x), vec(y), vec(z))...,
+        convert_arguments(PointBased(), vec(u), vec(v), vec(w))...,
     )
 end
 

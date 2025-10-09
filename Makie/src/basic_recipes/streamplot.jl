@@ -82,13 +82,24 @@ See the function `Makie.streamplot_impl` for implementation details.
     mixin_generic_plot_attributes()...
 end
 
-function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange, yrange)
+argument_dims(::Type{<:StreamPlot}, f, x, y) = (0, 1, 2)
+argument_dims(::Type{<:StreamPlot}, f, x, y, z) = (0, 1, 2, 3)
+
+# Normalize x, y, (z) types for dim converts
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange::RangeLike, yrange::RangeLike)
+    return (f, extrema(xrange), extrema(yrange))
+end
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange::RangeLike, yrange::RangeLike, zrange::RangeLike)
+    return (f, extrema(xrange), extrema(yrange), extrema(zrange))
+end
+
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange::RangeLike{<:Real}, yrange::RangeLike{<:Real})
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
 end
 
-function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange, yrange, zrange)
+function convert_arguments(::Type{<:StreamPlot}, f::Function, xrange::RangeLike{<:Real}, yrange::RangeLike{<:Real}, zrange::RangeLike{<:Real})
     xmin, xmax = extrema(xrange)
     ymin, ymax = extrema(yrange)
     zmin, zmax = extrema(zrange)

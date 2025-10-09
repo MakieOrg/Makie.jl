@@ -11,6 +11,8 @@ Draws heatmap slices of the volume `v`.
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 
+argument_dims(::Type{<:VolumeSlices}, x, y, z, vol) = (1, 2, 3)
+
 function Makie.plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
 

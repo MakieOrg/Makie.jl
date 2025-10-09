@@ -59,6 +59,9 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     mixin_generic_plot_attributes()...
 end
 
+argument_dims(::Type{<:Tricontourf}, x, y, z) = (1, 2)
+argument_dims(::Type{<:Tricontourf}, triangulation, z) = nothing
+
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end

@@ -163,3 +163,5 @@ Base.broadcasted(f, a, b::EndPoints) = EndPoints(f.(a, b.data))
 Base.:(==)(a::EndPoints, b::NTuple{2}) = a.data == b
 # Something we can convert to an EndPoints type
 const EndPointsLike = Union{ClosedInterval, Tuple{Real, Real}}
+
+const RangeLike = Union{AbstractVector{T}, ClosedInterval{T}, Tuple{T, T}} where {T}

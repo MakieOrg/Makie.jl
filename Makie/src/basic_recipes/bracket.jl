@@ -78,6 +78,8 @@ By default each label is rotated parallel to the line between the bracket points
     space = :data
 end
 
+argument_dims(::Type{<:Bracket}, x1, y1, x2, y2) = (1, 2, 1, 2)
+
 function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
     return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
 end

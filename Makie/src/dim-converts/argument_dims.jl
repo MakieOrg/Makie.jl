@@ -28,6 +28,7 @@ argument_dims(::CellGrid, x, y, z) = (1, 2)
 argument_dims(::VolumeLike, x, y, z, volume) = (1, 2, 3)
 
 argument_dims(::Type{<:Mesh}, ps::AbstractVector{<:VecTypes}, faces) = nothing
+argument_dims(::Type{<:Mesh}, x, y, z, faces) = (1, 2, 3)
 
 # attributes that are needed to map args to dims, e.g. direction/orientation
 # TODO: This is completely unrelated to args, right?

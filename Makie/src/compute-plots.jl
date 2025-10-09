@@ -532,9 +532,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         map!(attr, :args, :dim_converted) do args
             return Ref{Any}(args)
         end
-    elseif isnothing(status) || status == true # we don't know (e.g. recipes)
-        add_dim_converts!(P, attr, dim_converts, args)
-    elseif status === false
+    elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
         if args_converted !== args
             # Not at target conversion, but something got converted
             # This means we need to convert the args before doing a dim conversion
