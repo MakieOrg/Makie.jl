@@ -173,7 +173,6 @@ function update_extrema!(conversion::UnitfulConversion, vals)
         imini, imaxi = extrema
 
         unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
-        @info "yo: $unit"
         conversion.unit[] = unit
 
         # TODO, somehow we need another notify to update the axis label
