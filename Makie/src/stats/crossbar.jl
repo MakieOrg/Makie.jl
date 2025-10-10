@@ -14,7 +14,7 @@ It is most commonly used as part of the `boxplot`.
 - `ymin`: lower limit of the box
 - `ymax`: upper limit of the box
 """
-@recipe CrossBar (x, y, ymin, ymax) begin
+@recipe CrossBar (x::RealVector, y::RealVector, ymin::RealVector, ymax::RealVector) begin
     "Sets the color of the drawn boxes. These can be values for colormapping."
     color = @inherit patchcolor
 

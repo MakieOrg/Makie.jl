@@ -225,7 +225,10 @@ end
         )
         test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
         test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
-        # 3D contour is broken
+        test_plot(
+            contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0..1, rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
 
         test_plot(
             errorbars, 1:3, (1:3) .* u"m", (1:3) .* u"dm",
@@ -285,10 +288,10 @@ end
     end
 
     @testset "stats" begin
-        # test_plot(
-        #     boxplot, Categorical(rand(["A", "B"], 10)), rand(10) .* u"m",
-        #     dims = (1, 2)
-        # ) # Broken due to application in child plot
+        test_plot(
+            boxplot, Categorical(rand(["A", "B"], 10)), rand(10) .* u"m",
+            dims = (1, 2)
+        )
 
         test_plot(
             crossbar, Categorical(["A", "B", "C", "D"]), rand(4) .* u"m",

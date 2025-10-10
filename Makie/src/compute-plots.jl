@@ -523,9 +523,10 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     args_converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
+    parent_is_scene = pop!(user_kw, :parent_is_scene)
     force_dimconverts = needs_dimconvert(dim_converts)
 
-    if force_dimconverts
+    if force_dimconverts && parent_is_scene
         add_dim_converts!(P, attr, dim_converts, args)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
