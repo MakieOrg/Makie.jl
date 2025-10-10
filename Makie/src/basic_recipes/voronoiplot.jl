@@ -117,6 +117,7 @@ function convert_arguments(::Type{<:Voronoiplot}, mat::AbstractMatrix)
     return convert_arguments(PointBased(), axes(mat, 1), axes(mat, 2), mat)
 end
 convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
+argument_dims(::Type{Voronoiplot}, x, y, z) = (1, 2) # last dim treated as colormap values
 # For scatter-like inputs
 convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
 convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
