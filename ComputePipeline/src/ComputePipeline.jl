@@ -620,12 +620,13 @@ function resolve_result!(edge::TypedEdge, result)
         #    return @spawn longrunning(inputs)
         #end
         # Spawn async task to fetch and apply result
-        @async try
+        t = @async try
             task_result = fetch(result)
             @lock edge.lock apply_result!(edge, task_result)
         catch e
             @error "Failed to resolve task result" exception = (e, catch_backtrace())
         end
+        Base.errormonitor(t)
     else
         # Synchronous result - apply immediately (we're already outside the lock)
         @lock edge.lock apply_result!(edge, result)
@@ -688,10 +689,9 @@ function resolve!(edge::ComputeEdge)
     if !isassigned(edge.typed_edge)
         # constructor does first resolve to determine fully typed outputs
         edge.typed_edge[] = TypedEdge(edge)
+    else
+        resolve!(edge.typed_edge[])
     end
-    typed = edge.typed_edge[]
-
-    resolve!(typed)
     # Lock again to mark as resolved
     return lock(edge.graph.lock) do
         edge.got_resolved[] = true
@@ -1035,7 +1035,7 @@ end
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
-    return (result,)
+    return result isa Task ? @async((fetch(result),)) : (result,)
 end
 function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
