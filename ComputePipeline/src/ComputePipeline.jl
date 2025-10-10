@@ -621,19 +621,14 @@ function resolve_result!(edge::TypedEdge, result)
         #end
         # Spawn async task to fetch and apply result
         @async try
-            @lock edge.lock begin
-                task_result = fetch(result)
-            # Lock the graph before applying the result to prevent race conditions
-                apply_result!(edge, task_result)
-            end
+            task_result = fetch(result)
+            @lock edge.lock apply_result!(edge, task_result)
         catch e
             @error "Failed to resolve task result" exception = (e, catch_backtrace())
         end
     else
         # Synchronous result - apply immediately (we're already outside the lock)
-        @lock edge.lock begin
-            apply_result!(edge, result)
-        end
+        @lock edge.lock apply_result!(edge, result)
     end
     return nothing
 end
@@ -688,20 +683,15 @@ end
 function resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
 
-    # Lock to resolve inputs and get typed_edge
-    typed = lock(edge.graph.lock) do
-        # Resolve inputs first
-        foreach(_resolve!, edge.inputs)
-        if !isassigned(edge.typed_edge)
-            # constructor does first resolve to determine fully typed outputs
-            edge.typed_edge[] = TypedEdge(edge)
-        end
-        return edge.typed_edge[]
+    # Resolve inputs first
+    foreach(_resolve!, edge.inputs)
+    if !isassigned(edge.typed_edge)
+        # constructor does first resolve to determine fully typed outputs
+        edge.typed_edge[] = TypedEdge(edge)
     end
+    typed = edge.typed_edge[]
 
-    # Execute callback WITHOUT holding the lock - allows parallel execution
     resolve!(typed)
-
     # Lock again to mark as resolved
     return lock(edge.graph.lock) do
         edge.got_resolved[] = true
@@ -786,7 +776,7 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
         edge.outputs[i].dirty = true
     end
 
-    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs, edge.graph.lock)
 end
 
 function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
