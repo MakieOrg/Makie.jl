@@ -192,6 +192,27 @@ end
     @testset "Primitives" begin
         test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2))
         test_plot(image, 0u"m" .. 1u"m", 0..1, rand(10, 10))
+        test_plot(
+            surface, (1:5) .* u"m", (1:5) .* u"cm", rand(5, 5) .* u"W",
+            dims = (1, 2, 3)
+        )
+        test_plot(scatter, Categorical(["A", "C", "D"]), (1:3) .* u"N")
+        test_plot(meshscatter, (1:3) .* u"m", (1:3) .* u"cm")
+        test_plot(lines, (1:3) .* u"s", Categorical(["A", "C", "D"]))
+        test_plot(linesegments, (4:-1:1) .* u"s", (1:4) .* u"N")
+        test_plot(text, 1u"m", 1u"s", text = "here")
+        test_plot(
+            volume, 0u"m" .. 1u"m", 0u"g" .. 1u"g", 0u"s" .. 1u"s", rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
+        test_plot(
+            mesh, rand(5) .* u"m", rand(5) .* u"s", rand(5) .* u"g",
+            dims = (1, 2, 3)
+        )
+        test_plot(
+            voxels, 0u"m" .. 1u"m", 0u"g" .. 1u"g", 0u"s" .. 1u"s", rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
     end
 
     # Recipes (basic_recipes)
