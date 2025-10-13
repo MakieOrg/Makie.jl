@@ -418,12 +418,12 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # label + dim convert suffix
     # TODO probably make these mandatory
     suffix_formatter = get(attrs, :label_suffix, Observable(""))
-    dim_convert_in = get(attrs, :dim_convert_in, Observable(automatic))
+    unit_in_label = get(attrs, :unit_in_label, Observable(false))
 
     obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
     label_with_suffix = Observable{Any}()
     map!(
-        label_with_suffix, label, suffix_formatter, dim_convert_in, obs, update = true
+        label_with_suffix, label, suffix_formatter, unit_in_label, obs, update = true
     ) do label, format, show_option, _
         dc = dim_convert[]
         should_show = show_dim_convert_in_axis_label(dc, show_option)
@@ -464,11 +464,12 @@ function LineAxis(parent::Scene, attrs::Attributes)
     decorations[:labeltext] = labeltext
 
     tickvalues = Observable(Float64[]; ignore_equal_values = true)
+    unit_in_ticklabel = get(attrs, :unit_in_ticklabel, Observable(true))
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
-        attrs.scale, dim_convert_in
+        attrs.scale, unit_in_ticklabel
     ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale, show_option
         dc = dim_convert[]
         should_show = show_dim_convert_in_ticklabel(dc, show_option)

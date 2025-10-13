@@ -297,22 +297,31 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         dim2_conversion = nothing
 
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
         """
-        Controls where x dim_converts are shown. Can be `:label`, `:ticklabel`,
-        `:both` or `:none`.
-
-        The label produced by dim_converts is affected by `use_short_x_units`.
-        If `:label` is selected the `xlabel_suffix` attribute is used as a
-        formatter for the produced label.
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
         """
-        show_x_dim_convert_in::Union{Symbol, Automatic} = automatic
-        show_y_dim_convert_in::Union{Symbol, Automatic} = automatic
-        "Format.jl compatible format string or `string -> string` format function"
         xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
         ylabel_suffix = "[{}]"
-        "Does anyone care about long labels?"
-        use_short_x_units::Bool = true
-        use_short_y_units::Bool = true
+        # "Does anyone care about long labels?"
+        # use_short_x_units::Bool = true
+        # use_short_y_units::Bool = true
 
         """
         The content of the x axis label.

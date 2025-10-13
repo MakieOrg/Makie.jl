@@ -88,7 +88,7 @@ end
 # TODO: Is there a point in allowing Date ticks to not be displayed?
 # What would be shown instead?
 show_dim_convert_in_ticklabel(::DateTimeConversion, ::Automatic) = true
-show_dim_convert_in_ticklabel(::DateTimeConversion, ::Symbol) = true
+show_dim_convert_in_ticklabel(::DateTimeConversion, ::Bool) = true
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     T = conversion.type[]
@@ -524,5 +524,5 @@ end
 
 # This only makes sense for Time which goes through units, not Dates or DateTime
 show_dim_convert_in_axis_label(::DateTimeConversion, ::Automatic) = false
-show_dim_convert_in_axis_label(::DateTimeConversion, ::Symbol) = false
+show_dim_convert_in_axis_label(::DateTimeConversion, ::Bool) = false
 get_label_suffix(::DateTimeConversion) = error("Cannot produce a label suffix for Dates.")

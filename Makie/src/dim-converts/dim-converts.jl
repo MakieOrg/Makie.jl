@@ -83,9 +83,7 @@ function get_ticks(c::Union{Nothing, AbstractDimConversion}, ticks, scale, forma
 end
 
 show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, ::Automatic) = false
-function show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Symbol)
-    return option in (:ticklabel, :both)
-end
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Should this trigger an error or just return ""?
 get_label_suffix(dc, format) = apply_format(get_label_suffix(dc), format)
@@ -97,9 +95,7 @@ get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
 show_dim_convert_in_axis_label(::Union{Nothing, NoDimConversion}, ::Automatic) = false
 
 show_dim_convert_in_axis_label(::AbstractDimConversion, ::Automatic) = true
-function show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Symbol)
-    return option in (:label, :both)
-end
+show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
