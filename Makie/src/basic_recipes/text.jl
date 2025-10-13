@@ -855,7 +855,7 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
@@ -1060,8 +1060,6 @@ end
 function process_rt_node!(lines, gs::GlyphState, s::String, _)
     y = gs.baseline
     x = gs.x
-    # to avoid empty rich("") from erroring treat them as rich(" ")
-    s = isempty(s) ? " " : s
     for char in s
         if char === '\n'
             x = 0
