@@ -1,13 +1,3 @@
-struct RichText
-    type::Symbol
-    children::Vector{Union{RichText, String}}
-    attributes::Dict{Symbol, Any}
-    function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText, String}[children...]
-        return new(type, cs, Dict(kwargs))
-    end
-end
-
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
