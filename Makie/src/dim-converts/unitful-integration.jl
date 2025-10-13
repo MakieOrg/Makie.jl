@@ -8,9 +8,6 @@ expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y),
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
 should_dim_convert(::Type{<:SupportedUnits}) = true
 
-const UNIT_POWER_OF_TENS = sort!(collect(keys(Unitful.prefixdict)))
-const TIME_UNIT_NAMES = [:yr, :wk, :d, :hr, :minute, :s, :ds, :cs, :ms, :μs, :ns, :ps, :fs, :as, :zs, :ys]
-
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)
 base_unit(::Type{Unitful.FreeUnits{U, DimT, nothing}}) where {DimT, U} = U[1]
@@ -30,41 +27,6 @@ unit_string_long(unit) = unit_string_long(base_unit(unit))
 unit_string_long(::Unitful.Unit{Sym, D}) where {Sym, D} = string(Sym)
 unit_string_long(unit::Unitful.LogScaled) = string(unit)
 
-is_compound_unit(x::Period) = is_compound_unit(Quantity(x))
-is_compound_unit(::Quantity{T, D, U}) where {T, D, U} = is_compound_unit(U)
-is_compound_unit(::Unitful.FreeUnits{U}) where {U} = length(U) != 1
-is_compound_unit(::Type{<:Unitful.FreeUnits{U}}) where {U} = length(U) != 1
-is_compound_unit(::T) where {T <: Union{Unitful.LogScaled, Quantity{<:Unitful.LogScaled, DimT, U}}} where {DimT, U} = false
-
-function eltype_extrema(values)
-    isempty(values) && return (eltype(values), nothing)
-
-    new_eltype = typeof(first(values))
-    new_min = new_max = first(values)
-
-    for elem in Iterators.drop(values, 1)
-        new_eltype = promote_type(new_eltype, typeof(elem))
-        new_min = min(elem, new_min)
-        new_max = max(elem, new_max)
-    end
-    return new_eltype, (new_min, new_max)
-end
-
-function new_unit(unit, values)
-    new_eltype, extrema = eltype_extrema(values)
-    # empty vector case:
-    isnothing(extrema) && return nothing
-    new_min, new_max = extrema
-    if new_eltype <: Union{Quantity, Period}
-        qmin = Quantity(new_min)
-        qmax = Quantity(new_max)
-        return best_unit(qmin, qmax)
-    end
-
-    new_eltype <: Number && isnothing(unit) && return nothing
-
-    error("Plotting $(new_eltype) into an axis set to: $(unit_string(unit)). Please convert the data to $(unit_string(unit))")
-end
 
 to_free_unit(unit::Unitful.FreeUnits, _) = unit
 to_free_unit(unit::Unitful.FreeUnits, ::Quantity) = unit
@@ -77,38 +39,6 @@ to_free_unit(unit::Unitful.FreeUnits) = unit
 function to_free_unit(unit::Unitful.Unit{Sym, Dim}) where {Sym, Dim}
     return Unitful.FreeUnits{(unit,), Dim, nothing}()
 end
-
-get_all_base10_units(value) = get_all_base10_units(base_unit(value))
-
-function get_all_base10_units(value::Unitful.Unit{Sym, Unitful.𝐋}) where {Sym}
-    return Unitful.Unit{Sym, Unitful.𝐋}.(UNIT_POWER_OF_TENS, value.power)
-end
-
-function get_all_base10_units(value::Unitful.Unit)
-    # TODO, why does nothing work in a generic way in Unitful!?
-    # By only returning this one value, we simply don't chose any different unit as a fallback
-    return [value]
-end
-
-function get_all_base10_units(x::Unitful.Unit{Sym, Unitful.𝐓}) where {Sym}
-    return getfield.((Unitful,), TIME_UNIT_NAMES)
-end
-
-function best_unit(min, max)
-    middle = (min + max) / 2.0
-    all_units = get_all_base10_units(middle)
-    _, index = findmin(all_units) do unit
-        raw_value = abs(unit_convert(unit, middle))
-        # We want the unit that displays the value with the smallest number possible, but not something like 1.0e-19
-        # So, for fractions between 0..1, we use inv to penalize really small fractions
-        positive = raw_value < 1.0 ? (inv(raw_value) + 100) : raw_value
-        return positive
-    end
-    return all_units[index]
-end
-
-best_unit(min::LogScaled, max) = Unitful.logunit(min)
-best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
 
 to_unit(x::LogScaled) = Unitful.logunit(x)
 to_unit(x::Quantity{NumT, DimT, U}) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
