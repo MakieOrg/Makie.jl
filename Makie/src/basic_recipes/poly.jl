@@ -28,7 +28,7 @@ function convert_arguments(::Type{<:Poly}, vertices::RealArray, indices::Abstrac
     return convert_arguments(Mesh, vertices, indices)
 end
 
-function convert_arguments(::Type{<:Poly}, vertices::AbstractArray{VecTypes}, indices::AbstractArray)
+function convert_arguments(::Type{<:Poly}, vertices::AbstractArray{<:VecTypes}, indices::AbstractArray)
     return convert_arguments(Mesh, vertices, indices)
 end
 
