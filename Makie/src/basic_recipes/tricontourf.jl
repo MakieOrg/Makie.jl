@@ -40,8 +40,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
-    "Sets the color used for nan values in the generated contour."
-    nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -51,6 +49,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     triangulation = DelaunayTriangulation()
     mixin_generic_plot_attributes()...
+    mixin_colormap_attributes(allow = (:alpha, :colormap, :colorrange, :colorscale, :nan_color))...
 end
 
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})

@@ -9,6 +9,7 @@
 - Added docstrings for undocumented plot attributes. Also fixed some missing attribute passthrough and expanded on the available attributes for recipes [#5294](https://github.com/MakieOrg/Makie.jl/pull/5294)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
 - Adjusted compute nodes to keep unspecialized types when transitioning from one graph to another [#5302](https://github.com/MakieOrg/Makie.jl/pull/5302)
+- Fixed `contourf` such that `colorrange` is a valid attribute. `colorscale` also starts to work with this fix [#5330](https://github.com/MakieOrg/Makie.jl/pull/5330).
 
 ## [0.24.6] - 2025-08-19
 
@@ -136,7 +137,6 @@
 - Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
 - Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
-- Fixed `(tri)contourf` such that `colorrange` is a valid attribute. `colorscale` also starts to work with this fix [#5027](https://github.com/MakieOrg/Makie.jl/pull/5027).
 
 ## [0.22.7] - 2025-05-23
 
