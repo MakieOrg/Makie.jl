@@ -538,8 +538,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         if args_converted !== args
             # Not at target conversion, but something got converted
             # This means we need to convert the args before doing a dim conversion
-            map!(attr, :args, :recursive_convert) do args
-                return convert_arguments(P, args...)
+            map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
+                return convert_arguments(P, args...; kwargs...)
             end
             add_dim_converts!(P, attr, dim_converts, args_converted, :recursive_convert)
         else
