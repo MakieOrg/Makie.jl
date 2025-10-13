@@ -146,9 +146,8 @@ end
 function get_label_suffix(conversion::UnitfulConversion, format)
     unit = conversion.unit[]
     unit isa Automatic && return rich("")
-    str = unit_string(unit)
-    formatted = apply_format(str, format)
-    return unit_string_to_rich(formatted)
+    str = unit_string_to_rich(unit_string(unit))
+    return apply_format(str, format)
 end
 
 function convert_dim_value(conversion::UnitfulConversion, attr, values, last_values)

@@ -464,6 +464,17 @@ function apply_format(value, formatstring::String)
     return Format.format(formatstring, value)
 end
 
+function apply_format(value::RichText, formatstring::String)
+    placeholder = "{PLACEHOLDER}"
+    formatted = Format.format(formatstring, placeholder)
+    if contains(formatted, placeholder)
+        pre, post = String.(split(formatted, placeholder))
+        return rich(pre, value, post)
+    else
+        return rich(formatted)
+    end
+end
+
 Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene
 Makie.get_scene(ax::LScene) = ax.scene
