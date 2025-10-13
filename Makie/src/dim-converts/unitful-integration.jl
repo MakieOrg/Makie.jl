@@ -110,6 +110,10 @@ end
 best_unit(min::LogScaled, max) = Unitful.logunit(min)
 best_unit(min::Quantity{NumT, DimT, U}, max) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
 
+to_unit(x::LogScaled) = Unitful.logunit(x)
+to_unit(x::Quantity{NumT, DimT, U}) where {NumT <: LogScaled, DimT, U} = Unitful.logunit(NumT) * U()
+to_unit(x) = Unitful.unit(x)
+
 unit_convert(::Automatic, x) = x
 
 function unit_convert(unit::T, x::Tuple) where {T <: Union{Type{<:Unitful.AbstractQuantity}, Unitful.FreeUnits, Unitful.Unit}}
@@ -167,13 +171,9 @@ end
 
 UnitfulConversion() = UnitfulConversion(automatic)
 
-function update_extrema!(conversion::UnitfulConversion, vals)
+function update_unit!(conversion::UnitfulConversion, vals)
     if conversion.unit[] === automatic
-        eltype, extrema = eltype_extrema(vals)
-        imini, imaxi = extrema
-
-        unit = Unitful.unit(0.5 * Quantity(imini + imaxi))
-        conversion.unit[] = unit
+        conversion.unit[] = to_unit(first(vals))
 
         # TODO, somehow we need another notify to update the axis label
         # The interactions in Lineaxis are too complex to debug this in a sane amount of time
@@ -229,7 +229,7 @@ function convert_dim_value(conversion::UnitfulConversion, attr, values, last_val
         unit_convert(unit, values[1])
     end
 
-    update_extrema!(conversion, values)
+    update_unit!(conversion, values)
     return unit_convert(conversion.unit[], values)
 end
 
