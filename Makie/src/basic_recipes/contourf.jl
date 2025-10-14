@@ -204,7 +204,7 @@ function register_contourf_computations!(graph, argname)
         return _get_isoband_levels(Val(mode), levels, vec(zs))
     end
 
-    if graph[:colorrange] isa Automatic
+    if graph[:colorrange][] isa Automatic
         map!(extrema_nan, graph, :computed_levels, :computed_colorrange)
     else
         map!(identity, graph, :colorrange, :computed_colorrange)
