@@ -29,7 +29,7 @@ function resize_parent(parent, block)
     return js"""
         $(scene).then(scene => {
             const div = $(parent);
-            const {canvas} = scene.screen;
+            const {canvas, winscale} = scene.screen;
             // Update position when either bbox or viewport changes
             function update_position(height_box) {
                 const [fig_height, xmin, ymin, xmax, ymax] = height_box;
@@ -39,10 +39,23 @@ function resize_parent(parent, block)
                 const offsetX = canvasRect.left;
                 const offsetY = canvasRect.top;
 
-                div.style.left = (xmin + offsetX) + "px";
-                div.style.top = (web_top + offsetY) + "px";
-                div.style.width = (xmax - xmin) + "px";
-                div.style.height = (ymax - ymin) + "px";
+                // Scale coordinates by winscale to match canvas CSS scaling
+                // Canvas CSS size = logical_size * winscale (where winscale = scalefactor / devicePixelRatio)
+                div.style.left = (xmin * winscale + offsetX) + "px";
+                div.style.top = (web_top * winscale + offsetY) + "px";
+                div.style.width = ((xmax - xmin) * winscale) + "px";
+                div.style.height = ((ymax - ymin) * winscale) + "px";
+
+                // Scale font size to match the widget scaling
+                // Apply to all child elements that may contain text
+                const baseFontSize = 14 * winscale;
+                div.style.fontSize = baseFontSize + "px";
+
+                // Also apply to all input, button, select, and div children
+                div.querySelectorAll('input, button, select, div, option').forEach(el => {
+                    el.style.fontSize = baseFontSize + "px";
+                    el.style.whiteSpace = "nowrap";  // Prevent text wrapping
+                });
             }
             $(height_box).on(update_position);
             update_position($(height_box).value); // Initial positioning
@@ -78,6 +91,7 @@ function replace_widget!(slider::Makie.Slider)
     end
     callback = js"""
         function(event) {
+            console.log(event)
             const value = event.srcElement.valueAsNumber
             $(slider.value).notify(value);
         }
@@ -85,7 +99,7 @@ function replace_widget!(slider::Makie.Slider)
     callback_kw = if slider.update_while_dragging[]
         (; oninput = callback)
     else
-        (; ochange = callback)
+        (; onchange = callback)
     end
 
 

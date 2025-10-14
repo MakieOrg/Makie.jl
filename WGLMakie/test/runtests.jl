@@ -55,6 +55,16 @@ edisplay = Bonito.use_electron_display(devtools = true)
         ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
 
+    @testset "HTML widgets refimages" begin
+        # Test HTML widgets with use_html_widgets=true
+        WGLMakie.activate!(use_html_widgets=true)
+        recorded_files, recording_dir = @include_reference_tests WGLMakie "wglmakie_html_widgets_refimages.jl"
+        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie_HTMLWidgets")
+        ReferenceTests.test_comparison(scores; threshold = 0.05)
+        # Reset to default
+        WGLMakie.activate!()
+    end
+
     @testset "js texture atlas" begin
         atlas = Makie.get_texture_atlas()
         marker = collect(keys(atlas.mapping))
