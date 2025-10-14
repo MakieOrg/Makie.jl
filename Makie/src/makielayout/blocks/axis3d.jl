@@ -88,19 +88,66 @@ function initialize_block!(ax::Axis3)
         cam.view_direction[] = viewdir
     end
 
+    x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
+    y_dim_convert_updater = needs_tick_update_observable(ax.dim2_conversion)
+    z_dim_convert_updater = needs_tick_update_observable(ax.dim3_conversion)
+
     ticknode_1 = Observable{Any}()
-    map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[1], ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+    map!(
+        scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
+        x_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[1]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
     end
 
     ticknode_2 = Observable{Any}()
-    map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[2], ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+    map!(
+        scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
+        y_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[2]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
     end
 
     ticknode_3 = Observable{Any}()
-    map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+    map!(
+        scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
+        z_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[3]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+    end
+
+    xlabel_node = Observable{Any}()
+    map!(
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label,
+        x_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[1]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+    end
+
+    ylabel_node = Observable{Any}()
+    map!(
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label,
+        y_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[2]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+    end
+
+    zlabel_node = Observable{Any}()
+    map!(
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label,
+        z_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, _
+        dc = ax.scene.conversions[3]
+        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        return x
     end
 
     add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
@@ -126,12 +173,18 @@ function initialize_block!(ax::Axis3)
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
-    xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+    xticks, xticklabels, xlabel = add_ticks_and_ticklabels!(
+        blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, xlabel_node
+    )
+    yticks, yticklabels, ylabel = add_ticks_and_ticklabels!(
+        blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, ylabel_node
+    )
+    zticks, zticklabels, zlabel = add_ticks_and_ticklabels!(
+        blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, zlabel_node
+    )
 
     titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
@@ -554,7 +607,10 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     return gridline1, gridline2, framelines
 end
 
-function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
+function add_ticks_and_ticklabels!(
+        topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2,
+        azimuth, xreversed, yreversed, zreversed, label
+    )
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -738,9 +794,9 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     end
     notify(attr(:labelalign))
 
-    label = text!(
+    labelplot = text!(
         topscene, label_position,
-        text = attr(:label),
+        text = label,
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
@@ -750,7 +806,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         inspectable = false
     )
 
-    return ticks, ticklabels_text, label
+    return ticks, ticklabels_text, labelplot
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
