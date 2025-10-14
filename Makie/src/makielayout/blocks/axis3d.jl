@@ -124,29 +124,29 @@ function initialize_block!(ax::Axis3)
 
     xlabel_node = Observable{Any}()
     map!(
-        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label,
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, ax.use_short_x_units,
         x_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
         dc = ax.scene.conversions[1]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
     end
 
     ylabel_node = Observable{Any}()
     map!(
-        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label,
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, ax.use_short_y_units,
         y_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
         dc = ax.scene.conversions[2]
-        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
     end
 
     zlabel_node = Observable{Any}()
     map!(
-        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label,
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, ax.use_short_z_units,
         z_dim_convert_updater, update = true
-    ) do label, formatter, show_unit_in_label, _
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
         dc = ax.scene.conversions[3]
-        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label)
+        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
         return x
     end
 

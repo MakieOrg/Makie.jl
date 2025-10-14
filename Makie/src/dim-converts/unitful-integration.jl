@@ -143,10 +143,11 @@ function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin,
     return tick_vals, labels
 end
 
-function get_label_suffix(conversion::UnitfulConversion, format)
+function get_label_suffix(conversion::UnitfulConversion, format, use_short_units)
     unit = conversion.unit[]
     unit isa Automatic && return rich("")
-    str = unit_string_to_rich(unit_string(unit))
+    ustr = use_short_units ? unit_string(unit) : unit_string_long(unit)
+    str = unit_string_to_rich(ustr)
     return apply_format(str, format)
 end
 

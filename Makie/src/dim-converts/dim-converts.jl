@@ -86,7 +86,9 @@ show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, ::Automat
 show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Should this trigger an error or just return ""?
+get_label_suffix(dc, format, use_short) = apply_format(get_label_suffix(dc, use_short), format)
 get_label_suffix(dc, format) = apply_format(get_label_suffix(dc), format)
+get_label_suffix(dc, ::Bool) = get_label_suffix(dc)
 get_label_suffix(dc) = error("No axis label suffix defined for conversion $dc.")
 get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
 

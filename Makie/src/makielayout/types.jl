@@ -319,9 +319,10 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         Can also be a plain String replacing an active dim_convert label.
         """
         ylabel_suffix = "[{}]"
-        # "Does anyone care about long labels?"
-        # use_short_x_units::Bool = true
-        # use_short_y_units::Bool = true
+        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
+        use_short_x_units::Bool = true
+        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
+        use_short_y_units::Bool = true
 
         """
         The content of the x axis label.
@@ -1813,10 +1814,12 @@ end
         Can also be a plain String replacing an active dim_convert label.
         """
         zlabel_suffix = "[{}]"
-        # "Does anyone care about long labels?"
-        # use_short_x_units::Bool = true
-        # use_short_y_units::Bool = true
-        # use_short_z_units::Bool = true
+        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
+        use_short_x_units::Bool = true
+        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
+        use_short_y_units::Bool = true
+        "Switches between short and long z units, e.g. \"s\" vs \"Second\""
+        use_short_z_units::Bool = true
 
         "The height setting of the scene."
         height = nothing

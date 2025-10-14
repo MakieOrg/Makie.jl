@@ -264,10 +264,10 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_
     return
 end
 
-function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label)
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, use_short_units)
     should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
     if should_show
-        suffix = get_label_suffix(dim_convert, formatter)
+        suffix = get_label_suffix(dim_convert, formatter, use_short_units)
         return isempty(label) ? suffix : rich("$label ", suffix)
     else
         return label
@@ -429,13 +429,14 @@ function LineAxis(parent::Scene, attrs::Attributes)
     # TODO probably make these mandatory
     suffix_formatter = get(attrs, :label_suffix, Observable(""))
     unit_in_label = get(attrs, :unit_in_label, Observable(false))
+    use_short_unit = get(attrs, :use_short_unit, Observable(true))
 
     obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
     label_with_suffix = Observable{Any}()
     map!(
-        label_with_suffix, label, suffix_formatter, unit_in_label, obs, update = true
-    ) do label, formatter, show_unit_in_label, _
-        return build_label_with_unit_suffix(dim_convert[], formatter, label, show_unit_in_label)
+        label_with_suffix, label, suffix_formatter, unit_in_label, use_short_unit, obs, update = true
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        return build_label_with_unit_suffix(dim_convert[], formatter, label, show_unit_in_label, use_short_unit)
     end
 
     labeltext = text!(
