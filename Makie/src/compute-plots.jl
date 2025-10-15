@@ -810,7 +810,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
 
-    add_attributes!(P{FinalPlotFunc}, attr, user_attributes)
+    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
 
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
