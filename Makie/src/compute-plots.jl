@@ -442,10 +442,20 @@ function add_convert_kwargs!(attr, user_kw, P, args)
     end
 end
 
-function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, input = :args) where {P}
+function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, user_kw, input = :args) where {P}
     # Get dim of each argument. This needs to be reactive if we allow dynamic
     # attributes that change dim-mapping, e.g. direction
     kwarg_names = argument_dim_kwargs(P)
+
+    # initialize the necessary attributes early
+    defaults = default_theme(nothing, P)
+    for key in kwarg_names
+        if !haskey(attr.inputs, key)
+            haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
+            add_input!(attr, key, pop!(user_kw, key, defaults[key]))
+        end
+    end
+
     map!(attr, [input, kwarg_names...], :arg_dims) do args, kwargs...
         nt = NamedTuple{kwarg_names}(kwargs)
         return argument_dims(P, args...; nt...)
@@ -523,11 +533,15 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     args_converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
+    # parent_is_scene differentiates root plots (plots to a scene) from child
+    # plots (plot to a recipe plot). The first option should strictly match
+    # existing (scene-) given dim_converts, the latter is typically already
+    # converted.
     parent_is_scene = pop!(user_kw, :parent_is_scene)
     force_dimconverts = needs_dimconvert(dim_converts)
 
     if force_dimconverts && parent_is_scene
-        add_dim_converts!(P, attr, dim_converts, args)
+        add_dim_converts!(P, attr, dim_converts, args, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
@@ -541,9 +555,9 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
                 return convert_arguments(P, args...; kwargs...)
             end
-            add_dim_converts!(P, attr, dim_converts, args_converted, :recursive_convert)
+            add_dim_converts!(P, attr, dim_converts, args_converted, user_kw, :recursive_convert)
         else
-            add_dim_converts!(P, attr, dim_converts, args)
+            add_dim_converts!(P, attr, dim_converts, args, user_kw)
         end
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
@@ -789,8 +803,6 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 
     attr = ComputeGraph()
 
-    add_attributes!(P, attr, user_attributes)
-
     register_arguments!(P, attr, user_attributes, user_args)
     converted = attr.converted[]
     PTrait = conversion_trait(P, attr.args[]...)
@@ -799,6 +811,9 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
+
+    add_attributes!(P{FinalPlotFunc}, attr, user_attributes)
+
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
