@@ -737,6 +737,7 @@ end
 ################################################################################
 
 to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x::AbstractVector, N) = x
 to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
