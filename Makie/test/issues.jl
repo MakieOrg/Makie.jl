@@ -88,7 +88,7 @@
         @test propertynames(foo) == (:bar,)
         @test Dict(Makie.default_attribute(Attributes(; foo), (:foo, Attributes()))) == Dict(foo)
 
-        pl = Scatter((1:4,), Dict{Symbol, Any}())
+        pl = Scatter((1:4,), Dict{Symbol, Any}(:parent_is_scene => true))
         @test Set(propertynames(pl)) == keys(pl.attributes.outputs)
     end
 end
