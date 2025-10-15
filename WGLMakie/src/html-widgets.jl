@@ -20,6 +20,7 @@ const FONT_STYLE = Styles(
 
 
 function resize_parent(parent, block)
+    fontsize = hasproperty(block, :fontsize) ? block.fontsize[] : 14
     scene = Makie.rootparent(block.blockscene)
     height_box = map(block.layoutobservables.computedbbox, scene.viewport; ignore_equal_values=true) do box, vp
         (xmin, ymin), (xmax, ymax) = extrema(box)
@@ -48,7 +49,7 @@ function resize_parent(parent, block)
 
                 // Scale font size to match the widget scaling
                 // Apply to all child elements that may contain text
-                const baseFontSize = 14 * winscale;
+                const baseFontSize = $(fontsize) * winscale;
                 div.style.fontSize = baseFontSize + "px";
 
                 // Also apply to all input, button, select, and div children

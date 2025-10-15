@@ -1,6 +1,6 @@
 using Electron, WGLMakie, Bonito, Test
 
-WGLMakie.activate!(resize_to=:body, use_html_widgets=true)
+WGLMakie.activate!(use_html_widgets=true)
 win = Bonito.use_electron_display()
 
 @testset "HTML Widgets" begin
@@ -43,8 +43,6 @@ win = Bonito.use_electron_display()
             node.dispatchEvent(new Event('input', { bubbles: true }));
             node.dispatchEvent(new Event('change', { bubbles: true }));
         })()""")
-
-        sleep(0.2)
         @test sl.value[] ≈ 7.5
     end
 
@@ -84,7 +82,6 @@ win = Bonito.use_electron_display()
             node.dispatchEvent(new Event('change', { bubbles: true }));
         })()""")
 
-        sleep(0.2)
         @test sl_x.value[] ≈ 2.0
     end
 
@@ -119,7 +116,6 @@ win = Bonito.use_electron_display()
             node.click();
         })()""")
 
-        sleep(0.2)
         @test btn.clicks[] == initial_clicks + 1
 
         # Click multiple times
@@ -129,7 +125,6 @@ win = Bonito.use_electron_display()
             node.click();
         })()""")
 
-        sleep(0.2)
         @test btn.clicks[] == initial_clicks + 3
     end
 
@@ -167,7 +162,6 @@ win = Bonito.use_electron_display()
             items[2].click(); // Select "Option C" (0-indexed, so index 2)
         })()""")
 
-        sleep(0.2)
         @test menu.selection[] == "Option C"
         @test menu.i_selected[] == 3
 
@@ -177,7 +171,6 @@ win = Bonito.use_electron_display()
             items[0].click(); // Select "Option A"
         })()""")
 
-        sleep(0.2)
         @test menu.selection[] == "Option A"
         @test menu.i_selected[] == 1
     end
@@ -212,7 +205,6 @@ win = Bonito.use_electron_display()
             items[0].click(); // Select first option (Sine)
         })()""")
 
-        sleep(0.2)
         @test menu.selection[] == sin
         @test menu.i_selected[] == 1
 
@@ -222,7 +214,6 @@ win = Bonito.use_electron_display()
             items[3].click(); // Select fourth option (Square Root)
         })()""")
 
-        sleep(0.2)
         @test menu.selection[] == sqrt
         @test menu.i_selected[] == 4
     end
@@ -257,7 +248,6 @@ win = Bonito.use_electron_display()
             node.dispatchEvent(new Event('change', { bubbles: true }));
         })()""")
 
-        sleep(0.2)
         @test textbox.displayed_string[] == "Hello World"
         @test textbox.stored_string[] == "Hello World"
     end
@@ -291,7 +281,6 @@ win = Bonito.use_electron_display()
             node.dispatchEvent(new Event('change', { bubbles: true }));
         })()""")
 
-        sleep(0.2)
         @test textbox.displayed_string[] == "2.71"
         @test textbox.stored_string[] == "2.71"
     end
@@ -344,7 +333,6 @@ win = Bonito.use_electron_display()
             slider.dispatchEvent(new Event('change', { bubbles: true }));
         })()""")
 
-        sleep(0.2)
         @test sl_x.value[] ≈ 7.0
 
         # Click button to add a point
@@ -353,7 +341,6 @@ win = Bonito.use_electron_display()
             button.click();
         })()""")
 
-        sleep(0.2)
         @test length(points[]) == initial_count + 1
         @test points[][end][1] ≈ 7.0  # X position should be slider value
     end
