@@ -162,7 +162,7 @@ end
                     @test keys(dc.category_to_int[]) == Set(dc_args[i].values)
                 elseif dc isa Makie.UnitfulConversion
                     @test !(dc_args[i] isa Categorical)
-                    @test dc.unit[] == unit(get_value(dc_args[i]))
+                    @test dc.unit[] == Unitful.unit(get_value(dc_args[i]))
                 elseif dc isa Makie.NoDimConversion
                     @test !(dc_args[i] isa Categorical)
                     # @test !(dc_args[i] isa UnitfulThing)

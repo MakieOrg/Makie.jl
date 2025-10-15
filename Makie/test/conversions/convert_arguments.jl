@@ -275,10 +275,15 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         @test apply_conversion(CT, xs, ys, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, r, ys, +) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, i, m) isa
-                            Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                        # Trait doesn't recursively reapply, so it doesn't do the conversion from ranges to Vectors
+                        if CT isa CellGrid
+                            @test apply_conversion(CT, i, r, m) isa Tuple{AbstractRange{T_out}, typeof(r), Matrix{T_in}}
+                            @test apply_conversion(CT, r, i, m) isa Tuple{typeof(r), AbstractRange{T_out}, Matrix{T_in}}
+                        else
+                            @test apply_conversion(CT, i, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                            @test apply_conversion(CT, r, i, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                        end
+                        @test apply_conversion(CT, i, i, m) isa Tuple{EndPoints{T_out}, EndPoints{T_out}, Matrix{Float32}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
@@ -294,14 +299,17 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                         if T_in == T_out
                             @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, AbstractRange{T_out}, Matrix{Float32}}
                             @test apply_conversion(CT, r, ys, +) isa Tuple{AbstractRange{T_out}, Vector{T_out}, Matrix{Float32}}
+                            OT = CT isa VertexGrid ? AbstractRange{T_in} : AbstractRange{T_out}
                         else
                             @test apply_conversion(CT, xs, r, m) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                             @test apply_conversion(CT, r, ys, +) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
+                            OT = CT isa VertexGrid ? AbstractRange{T_in} : Vector{T_out}
                         end
+                        MT = CT isa VertexGrid ? T_in : Float32
                         @test apply_conversion(CT, m) isa Tuple{AbstractRange{Float32}, AbstractRange{Float32}, Matrix{Float32}}
-                        @test apply_conversion(CT, i, r, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, i, r, m) isa Tuple{AbstractRange{T_out}, OT, Matrix{MT}}
                         @test apply_conversion(CT, i, i, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
-                        @test apply_conversion(CT, r, i, m) isa Tuple{AbstractRange{T_out}, AbstractRange{T_out}, Matrix{Float32}}
+                        @test apply_conversion(CT, r, i, m) isa Tuple{OT, AbstractRange{T_out}, Matrix{MT}}
                         @test apply_conversion(CT, xgridvec, ygridvec, xgridvec) isa Tuple{Vector{T_out}, Vector{T_out}, Matrix{Float32}}
                         # TODO OffsetArray
                     end
