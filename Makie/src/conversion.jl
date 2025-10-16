@@ -120,33 +120,3 @@ end
 function types_for_plot_arguments(::PointBased)
     return Tuple{AbstractVector{<:Union{Point2, Point3}}}
 end
-
-should_dim_convert(::Type) = false
-
-"""
-    should_dim_convert(::Type{<: Plot}, args)::Bool
-    should_dim_convert(eltype::DataType)::Bool
-
-Returns `true` if the plot type should convert its arguments via DimConversions.
-Needs to be overloaded for recipes that want to use DimConversions. Also needs
-to be overloaded for DimConversions, e.g. for CategoricalConversion:
-
-```julia
-    should_dim_convert(::Type{Categorical}) = true
-```
-
-`should_dim_convert(::Type{<: Plot}, args)` falls back on checking if
-`has_typed_convert(plot_or_trait)` and `should_dim_convert(get_element_type(args))`
- are true. The former is defined as true by `@convert_target`, i.e. when
-`convert_arguments_typed` is defined for the given plot type or conversion trait.
-The latter marks specific types as convertible.
-
-If a recipe wants to use dim conversions, it should overload this function:
-```julia
-    should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
-``
-"""
-function should_dim_convert(P, arg)
-    isnothing(types_for_plot_arguments(P)) && return false
-    return should_dim_convert(get_element_type(arg))
-end

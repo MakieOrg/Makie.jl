@@ -6,7 +6,6 @@ const SupportedUnits = Union{Period, Unitful.Quantity, Unitful.LogScaled, Unitfu
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
-should_dim_convert(::Type{<:SupportedUnits}) = true
 
 base_unit(q::Quantity) = base_unit(typeof(q))
 base_unit(::Type{Quantity{NumT, DimT, U}}) where {NumT, DimT, U} = base_unit(U)

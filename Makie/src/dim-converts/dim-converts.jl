@@ -66,7 +66,7 @@ end
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-should_dim_convert(::Type{<:Real}) = false
+should_dim_convert() = nothing
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
@@ -211,24 +211,6 @@ function update_dim_conversion!(conversions::DimConversions, dim, value)
         return conversions[dim] = c
     end
     return
-end
-
-function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
-    # Only 2 and 3d conversions are supported, and only
-    if !(length(args_obs) in (2, 3))
-        return args_obs
-    end
-    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return ntuple(length(args_obs)) do i
-        arg = args_obs[i]
-        argval = to_value(arg)
-        # We only convert if we have a conversion struct (which isn't NoDimConversion),
-        # or if we we should dim_convert
-        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
-            return convert_dim_observable(converts, i, arg, deregister)
-        end
-        return arg
-    end
 end
 
 function convert_dim_observable(conversions::DimConversions, dim::Int, value::Observable, deregister)

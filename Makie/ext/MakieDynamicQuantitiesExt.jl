@@ -5,7 +5,6 @@ import DynamicQuantities as DQ
 
 M.expand_dimensions(::M.PointBased, y::AbstractVector{<:DQ.UnionAbstractQuantity}) = (keys(y), y)
 M.create_dim_conversion(::Type{<:DQ.UnionAbstractQuantity}) = M.DQConversion()
-M.should_dim_convert(::Type{<:DQ.UnionAbstractQuantity}) = true
 
 unit_string(quantity::DQ.UnionAbstractQuantity) = string(DQ.dimension(quantity))
 
