@@ -75,7 +75,42 @@ Base.length(x::Attributes) = length(attributes(x))
 
 function Base.merge!(target::Attributes, args::Attributes...)
     for elem in args
-        merge_attributes!(target, elem)
+        # PERF: `Base.merge!` uses `sizehint!` to allocate all at once but most often the input would already have all
+        # the keys from the default attributes so no significant allocation happens.
+        for (key, value) in attributes(elem)
+            tvalue = to_value(value)
+            if haskey(target, key) && (tvalue isa Attributes && target[key] isa Attributes)
+                # if nested attribute, we merge recursively
+                Base.merge!(target[key], tvalue)
+            else
+                target[key] = value
+            end
+        end
+    end
+    return target
+end
+
+# `Base.merge!` with left precedence that merges recursively same as merge on `Attributes`
+function mergeleft!(target::Attributes, args::Attributes...)
+    for elem in args
+        # PERF: Preallocation <- user attributes filled with defaults -> most keys are new to target
+        @static if VERSION >= v"1.11"
+            sizehint!(target.attributes, length(target) + length(attributes(elem)); shrink = false)
+        else
+            sizehint!(target.attributes, length(target) + length(attributes(elem)))
+        end
+        for (key, value) in attributes(elem)
+            if !haskey(target, key)
+                target[key] = value
+            else
+                tvalue = to_value(value)
+                if haskey(target, key) && (tvalue isa Attributes && target[key] isa Attributes)
+                    # if nested attribute, we merge recursively
+                    mergeleft!(target[key], tvalue)
+                end
+            end
+            # target already has a value for `key`
+        end
     end
     return target
 end
@@ -226,17 +261,15 @@ function get_attribute(dict, key, default = nothing)
 end
 
 function merge_attributes!(input::Attributes, theme::Attributes)
+    # PERF: `Base.merge!` uses `sizehint!` to allocate all at once but most often the input would already have all
+    # the keys from the default attributes so no significant allocation happens.
     for (key, value) in attributes(theme)
-        if !haskey(input, key)
-            input[key] = value
+        tvalue = to_value(value)
+        if haskey(input, key) && (tvalue isa Attributes && input[key] isa Attributes)
+            # if nested attribute, we merge recursively
+            merge_attributes!(input[key], tvalue)
         else
-            current_value = input[key]
-            tvalue = to_value(value)
-            if tvalue isa Attributes && current_value isa Attributes
-                # if nested attribute, we merge recursively
-                merge_attributes!(current_value, tvalue)
-            end
-            # we're good! input already has a value, can ignore theme
+            input[key] = value
         end
     end
     return input

@@ -326,9 +326,9 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
         # TODO have a mark that says "theme incomplete" and only then get the defaults
-        d = merge!(to_value(theme(scene, key)), d)
+        d = mergeleft!(to_value(theme(scene, key)), d)
     end
-    return merge!(input, d)
+    return mergeleft!(input, d)
 end
 
 function Base.replace!(target::Attributes, key, scene::SceneLike, overwrite::Attributes)

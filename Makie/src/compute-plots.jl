@@ -554,7 +554,8 @@ end
 function default_attribute(user_attributes, (key, value))
     if haskey(user_attributes, key)
         if value isa Attributes
-            return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
+            # `(key, value)` taken from "documented_attributes", `user_attributes` have precedence
+            return mergeleft!(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
         else
             val = user_attributes[key]
             val isa NamedTuple && return Attributes(val)

@@ -4,7 +4,7 @@
 const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
-    attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+    attrs = mergeleft!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
 end
 
