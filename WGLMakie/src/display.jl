@@ -398,7 +398,7 @@ end
 
 Makie.wait_for_display(screen::Screen) = get_screen_session(screen)
 
-function Base.display(screen::Screen, scene::Scene; figure=nothing, unused...)
+function Base.display(screen::Screen, scene::Scene; figure = nothing, unused...)
     # already displayed!
     if scene_already_displayed(screen, scene)
         return screen

@@ -138,7 +138,7 @@ function Base.display(
             """
             No backend available!
             Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-
+            
             If you imported GLMakie, it may have not built correctly.
             In that case, try `]build GLMakie` and watch out for any warnings.
             """
@@ -160,7 +160,7 @@ function Base.display(
     else
         if inline === true
             @warn """
-
+            
                 Makie.inline!(do_inline) was set to true, but we didn't detect a display that can show the plot,
                 so we aren't inlining the plot and try to show the plot in a window.
                 If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
@@ -168,7 +168,7 @@ function Base.display(
         end
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene, config)
-        display(screen, scene; figure=get_figure(figlike))
+        display(screen, scene; figure = get_figure(figlike))
         return screen
     end
 end
@@ -319,7 +319,7 @@ function FileIO.save(
             """
             No backend available!
             Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-
+            
             If you imported GLMakie, it may have not built correctly.
             In that case, try `]build GLMakie` and watch out for any warnings.
             """

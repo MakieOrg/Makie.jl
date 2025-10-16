@@ -5,7 +5,7 @@ using ReferenceTests: RNG, @reference_test
 using Test
 
 function create_test_figure()
-     fig = Figure(size = (1200, 900))
+    fig = Figure(size = (1200, 900))
 
     # Top row - Plots with vertical slider next to ax2
     ax1 = Axis(fig[1, 1], title = "Sine Wave (Slider controlled)")
@@ -16,15 +16,15 @@ function create_test_figure()
     # Row 2 - Horizontal sliders with labels
     Label(fig[2, 1], "Frequency:", halign = :right, tellwidth = false)
     sl_freq = Makie.Slider(fig[2, 2:3], range = 0.5:0.1:5, startvalue = 2, tellwidth = false)
-    freq_label = Label(fig[2, 4], lift(x -> "$(round(x, digits=1))", sl_freq.value), halign = :left, tellwidth = false)
+    freq_label = Label(fig[2, 4], lift(x -> "$(round(x, digits = 1))", sl_freq.value), halign = :left, tellwidth = false)
 
     Label(fig[3, 1], "Amplitude:", halign = :right, tellwidth = false)
     sl_amp = Makie.Slider(fig[3, 2:3], range = 0.5:0.1:3, startvalue = 1.5, tellwidth = false)
-    amp_label = Label(fig[3, 4], lift(x -> "$(round(x, digits=1))", sl_amp.value), halign = :left, tellwidth = false)
+    amp_label = Label(fig[3, 4], lift(x -> "$(round(x, digits = 1))", sl_amp.value), halign = :left, tellwidth = false)
 
     Label(fig[4, 1], "Phase:", halign = :right, tellwidth = false)
     sl_phase = Makie.Slider(fig[4, 2:3], range = 0:0.1:2π, startvalue = 0, tellwidth = false)
-    phase_label = Label(fig[4, 4], lift(x -> "$(round(x, digits=2))", sl_phase.value), halign = :left, tellwidth = false)
+    phase_label = Label(fig[4, 4], lift(x -> "$(round(x, digits = 2))", sl_phase.value), halign = :left, tellwidth = false)
 
     # Row 5 - Buttons
     btn_add = Makie.Button(fig[5, 2:3], label = "Add Point", tellwidth = false)
@@ -35,19 +35,20 @@ function create_test_figure()
     menu_cmap = Makie.Menu(fig[6, 2], options = ["viridis", "plasma", "inferno", "magma"], default = "viridis", tellwidth = false)
 
     num_func = GridLayout(fig[6:7, 3:4])
-    Label(num_func[1, 1], "Function:"; halign=:right, tellwidth=false)
+    Label(num_func[1, 1], "Function:"; halign = :right, tellwidth = false)
     funcs = [sin, cos, tan]
     menu_func = Makie.Menu(
         num_func[1, 2];
         options = zip(["Sine", "Cosine", "Tangent"], funcs),
-        default = "Sine", tellwidth = false)
+        default = "Sine", tellwidth = false
+    )
 
     # Row 7 - Textboxes
     Label(fig[7, 1], "Text input:", halign = :right, tellwidth = false)
     textbox_text = Makie.Textbox(fig[7, 2], placeholder = "Type here...", stored_string = "Hello!", tellwidth = false)
 
-    Label(num_func[2, 1], "Number:"; halign=:right, tellwidth=false)
-    textbox_num = Makie.Textbox(num_func[2, 2]; validator=Float64, stored_string="3.14", tellwidth=false)
+    Label(num_func[2, 1], "Number:"; halign = :right, tellwidth = false)
+    textbox_num = Makie.Textbox(num_func[2, 2]; validator = Float64, stored_string = "3.14", tellwidth = false)
 
     # Plot 1: Sine wave controlled by sliders
     xs = 0:0.01:10
@@ -102,26 +103,26 @@ function create_test_figure()
     Makie.set!(textbox_text, "Updated!")
     Makie.set!(textbox_num, "2.71")
     # Simulate 3 clicks
-    fig
+    return fig
 end
 
 @reference_test "Widgets layout" begin
-    WGLMakie.activate!(; use_html_widgets=false)
+    WGLMakie.activate!(; use_html_widgets = false)
     create_test_figure()
 end
 
 @reference_test "HTML Widgets layout" begin
-    WGLMakie.activate!(; use_html_widgets=true)
+    WGLMakie.activate!(; use_html_widgets = true)
     create_test_figure()
 end
 @reference_test "HTML Widgets layout px_per_unit=1" begin
-    WGLMakie.activate!(; use_html_widgets=true, px_per_unit=1, scalefactor=1)
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 1, scalefactor = 1)
     create_test_figure()
 end
 
 @reference_test "HTML Widgets layout px_per_unit=2" begin
-    WGLMakie.activate!(; use_html_widgets=true, px_per_unit=2, scalefactor=2)
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     create_test_figure()
 end
 # Reset to default
-WGLMakie.activate!(; use_html_widgets=false, px_per_unit=Makie.automatic, scalefactor=Makie.automatic)
+WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)

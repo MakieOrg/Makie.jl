@@ -8,11 +8,12 @@ const WIDGET_CONTAINER_STYLES = Styles(
     "display" => "flex",
     "align-items" => "center",
     "justify-content" => "center",
-    "font-family" =>  "'TeXGyreHerosMakie', sans-serif"
+    "font-family" => "'TeXGyreHerosMakie', sans-serif"
 )
 
 const FONT_STYLE = Styles(
-    CSS("@font-face",
+    CSS(
+        "@font-face",
         "font-family" => "TeXGyreHerosMakie",
         "src" => Asset(assetpath("fonts", "TeXGyreHerosMakie-Regular.otf"))
     ),
@@ -22,7 +23,7 @@ const FONT_STYLE = Styles(
 function resize_parent(parent, block)
     fontsize = hasproperty(block, :fontsize) ? block.fontsize[] : 14
     scene = Makie.rootparent(block.blockscene)
-    height_box = map(block.layoutobservables.computedbbox, scene.viewport; ignore_equal_values=true) do box, vp
+    height_box = map(block.layoutobservables.computedbbox, scene.viewport; ignore_equal_values = true) do box, vp
         (xmin, ymin), (xmax, ymax) = extrema(box)
         fig_height = vp.widths[2]  # Get figure height
         return [fig_height, xmin, ymin, xmax, ymax]
@@ -39,19 +40,19 @@ function resize_parent(parent, block)
                 const canvasRect = canvas.getBoundingClientRect();
                 const offsetX = canvasRect.left;
                 const offsetY = canvasRect.top;
-
+    
                 // Scale coordinates by winscale to match canvas CSS scaling
                 // Canvas CSS size = logical_size * winscale (where winscale = scalefactor / devicePixelRatio)
                 div.style.left = (xmin * winscale + offsetX) + "px";
                 div.style.top = (web_top * winscale + offsetY) + "px";
                 div.style.width = ((xmax - xmin) * winscale) + "px";
                 div.style.height = ((ymax - ymin) * winscale) + "px";
-
+    
                 // Scale font size to match the widget scaling
                 // Apply to all child elements that may contain text
                 const baseFontSize = $(fontsize) * winscale;
                 div.style.fontSize = baseFontSize + "px";
-
+    
                 // Also apply to all input, button, select, and div children
                 div.querySelectorAll('input, button, select, div, option').forEach(el => {
                     el.style.fontSize = baseFontSize + "px";
@@ -86,9 +87,11 @@ function replace_widget!(slider::Makie.Slider)
     # Add orientation-specific styles
     if !is_horizontal
         # For vertical sliders, use webkit-appearance: slider-vertical
-        input_styles = merge(input_styles, Styles(
-            "-webkit-appearance" => "slider-vertical",
-        ))
+        input_styles = merge(
+            input_styles, Styles(
+                "-webkit-appearance" => "slider-vertical",
+            )
+        )
     end
     callback = js"""
         function(event) {
@@ -105,12 +108,12 @@ function replace_widget!(slider::Makie.Slider)
 
 
     slider_input = DOM.input(;
-        type="range",
-        min="$(min_val)",
-        max="$(max_val)",
-        step="$(step_val)",
-        value="$(initial_value)",
-        style=input_styles,
+        type = "range",
+        min = "$(min_val)",
+        max = "$(max_val)",
+        step = "$(step_val)",
+        value = "$(initial_value)",
+        style = input_styles,
         callback_kw...
     )
     value_from_index = map(slider.selected_index) do idx
@@ -125,7 +128,7 @@ function replace_widget!(slider::Makie.Slider)
 
     slider_div = DOM.div(
         slider_input,
-        style=WIDGET_CONTAINER_STYLES
+        style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(slider_div, slider)
     return DOM.div(FONT_STYLE, slider_div, jss, update_val_js)
@@ -168,11 +171,13 @@ function replace_widget!(menu::Makie.Menu)
         label_text = Makie.optionlabel(option)
         is_selected = (i == initial_selection_idx)
 
-        push!(dropdown_items, DOM.div(
-            label_text,
-            dataValue=i,
-            style=option_style,
-        ))
+        push!(
+            dropdown_items, DOM.div(
+                label_text,
+                dataValue = i,
+                style = option_style,
+            )
+        )
     end
 
     # Current selection display
@@ -197,15 +202,15 @@ function replace_widget!(menu::Makie.Menu)
     )
     dropdown_display = DOM.div(
         current_label,
-        class="dropdown-display",
-        style=dropdown_style
+        class = "dropdown-display",
+        style = dropdown_style
     )
 
     # Dropdown list container
     dropdown_list = DOM.div(
         dropdown_items...,
-        class="dropdown-list",
-        style=Styles(
+        class = "dropdown-list",
+        style = Styles(
             "position" => "absolute",
             "left" => "0",
             "right" => "0",
@@ -220,7 +225,7 @@ function replace_widget!(menu::Makie.Menu)
     select_element = DOM.div(
         dropdown_display,
         dropdown_list,
-        style=Styles(
+        style = Styles(
             "position" => "relative",
             "width" => "100%",
             "height" => "100%",
@@ -235,7 +240,7 @@ function replace_widget!(menu::Makie.Menu)
     const display = dropdown.querySelector('.dropdown-display');
     const list = dropdown.querySelector('.dropdown-list');
     const items = list.querySelectorAll('[data-value]');
-
+    
     // Toggle dropdown
     display.onclick = function() {
         if (list.style.display === 'none' || list.style.display === '')  {
@@ -244,7 +249,7 @@ function replace_widget!(menu::Makie.Menu)
             const listHeight = 400; // max-height
             const spaceBelow = window.innerHeight - dropdownRect.bottom;
             const spaceAbove = dropdownRect.top;
-
+    
             if (spaceBelow < listHeight && spaceAbove > spaceBelow) {
                 // Open upward
                 list.style.top = 'auto';
@@ -259,7 +264,7 @@ function replace_widget!(menu::Makie.Menu)
             list.style.display = 'none';
         }
     };
-
+    
     function update_background() {
         const selected_index = $(menu.i_selected).value;
         items.forEach((item, index) => {
@@ -270,7 +275,7 @@ function replace_widget!(menu::Makie.Menu)
             }
         });
     }
-
+    
     // Handle item selection
     items.forEach(item => {
         item.onclick = function() {
@@ -293,7 +298,7 @@ function replace_widget!(menu::Makie.Menu)
 
     menu_div = DOM.div(
         select_element,
-        style=WIDGET_CONTAINER_STYLES
+        style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(menu_div, menu)
     return DOM.div(FONT_STYLE, menu_div, jss, dropdown_js)
@@ -334,8 +339,8 @@ function replace_widget!(textbox::Makie.Textbox)
 
     textbox_input = DOM.input(;
         input_attrs...,
-        style=input_styles,
-        onchange=js"""
+        style = input_styles,
+        onchange = js"""
             function(event) {
                 let value = event.target.value;
                 console.log("Textbox value changed:", value);
@@ -352,7 +357,7 @@ function replace_widget!(textbox::Makie.Textbox)
                 }
             }
         """,
-        oninput=js"""
+        oninput = js"""
             function(event) {
                 const value = event.target.value;
                 $(textbox.displayed_string).notify(value);
@@ -362,7 +367,7 @@ function replace_widget!(textbox::Makie.Textbox)
 
     textbox_div = DOM.div(
         textbox_input,
-        style=WIDGET_CONTAINER_STYLES
+        style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(textbox_div, textbox)
     return DOM.div(FONT_STYLE, textbox_div, jss)
@@ -374,7 +379,7 @@ function replace_widget!(button::Makie.Button)
 
     button_element = DOM.button(
         button_text,
-        style=Styles(
+        style = Styles(
             "width" => "100%",
             "height" => "100%",
             "font-family" => "inherit",
@@ -386,18 +391,18 @@ function replace_widget!(button::Makie.Button)
             "outline" => "none",
             "transition" => "background-color 0.2s",
         ),
-        onclick=js"""
+        onclick = js"""
             function(event) {
                 console.log("Button clicked");
                 $(button.clicks).notify($(button.clicks).value + 1);
             }
         """,
-        onmouseenter=js"""
+        onmouseenter = js"""
             function(event) {
                 event.target.style.backgroundColor = "#e0e0e0";
             }
         """,
-        onmouseleave=js"""
+        onmouseleave = js"""
             function(event) {
                 event.target.style.backgroundColor = "#f5f5f5";
             }
@@ -405,7 +410,7 @@ function replace_widget!(button::Makie.Button)
     )
     button_div = DOM.div(
         button_element,
-        style=WIDGET_CONTAINER_STYLES
+        style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(button_div, button)
     return DOM.div(FONT_STYLE, button_div, jss)
@@ -413,5 +418,5 @@ end
 
 replace_widget!(x::Any) = nothing # not implemented
 function replace_widget!(fig::Figure)
-    DOM.div(map(replace_widget!, fig.content))
+    return DOM.div(map(replace_widget!, fig.content))
 end

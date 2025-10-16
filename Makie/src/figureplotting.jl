@@ -264,9 +264,9 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposi
         error(
             """
             You have used the non-mutating plotting syntax with a GridSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
-
+            
             $(c)
-
+            
             If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
             If you really want to place an axis on top of other blocks, make your intention clear and create it manually.
             """
@@ -365,11 +365,11 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
                 ArgumentError(
                     """
                     Tried plotting with `$(F)!` into a `FigureAxisPlot` object, this is not allowed.
-
+                    
                     The `FigureAxisPlot` object is returned by plotting functions not ending in `!` like `lines(...)` or `scatter(...)`.
-
+                    
                     It contains the new `Figure`, the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. It exists just as a convenience because returning it displays the contained figure. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-
+                    
                     You can do this with the destructuring syntax `fig, ax, plt = some_plot(...)` and then continue, for example with `$(F)!(ax, ...)`.
                     """
                 )
@@ -380,12 +380,12 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
                 ArgumentError(
                     """
                     Tried plotting with `$(F)!` into an `AxisPlot` object, this is not allowed.
-
+                    
                     The `AxisPlot` object is returned by plotting functions not ending in `!` with
                     a `GridPosition` as the first argument, like `lines(fig[1, 2], ...)` or `scatter(fig[1, 2], ...)`.
-
+                    
                     It contains the new axis object, for example an `Axis`, `LScene` or `Axis3`, and the new plot object. For all further operations, you should split it into its parts instead. This way, it is clear which of its components you are targeting.
-
+                    
                     You can do this with the destructuring syntax `ax, plt = some_plot(fig[1, 2], ...)` and then continue, for example with `$(F)!(ax, ...)`.
                     """
                 )
