@@ -30,13 +30,13 @@ function openurl(url::String)
     return @warn("Can't find a way to open a browser, open $(url) manually!")
 end
 
-function Base.display(screen::Screen, scene::Scene; connect = false)
+function Base.display(screen::Screen, scene::Scene; connect = false, figure = nothing)
     # Nothing to do, since drawing is done in the other functions
     # TODO write to file and implement upenurl
     return screen
 end
 
-function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false, screen_config...)
+function Base.display(screen::Screen{IMAGE}, scene::Scene; connect = false, figure = nothing, screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     screen = Makie.apply_screen_config!(screen, config, scene)
     path = joinpath(mktempdir(), "display.png")

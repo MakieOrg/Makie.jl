@@ -1,4 +1,4 @@
-function Base.display(screen::Screen, scene::Scene; unused...)
+function Base.display(screen::Screen, scene::Scene; figure = nothing, unused...)
     # So, the GLFW window events are not guarantee to fire
     # when we close a window, so we ensure this here!
     if !Makie.is_displayed(screen, scene)

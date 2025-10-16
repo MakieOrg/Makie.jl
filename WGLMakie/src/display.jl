@@ -430,9 +430,9 @@ function session2image(session::Session, scene::Scene)
     return PNGFiles.load(IOBuffer(bytes))
 end
 
-function Makie.colorbuffer(screen::Screen)
+function Makie.colorbuffer(screen::Screen; figure = nothing)
     if isnothing(screen.session)
-        Base.display(screen, screen.scene)
+        Base.display(screen, screen.scene; figure = figure)
     end
     session = get_screen_session(screen; error = "Not able to show scene in a browser")
     poll_all_plots(screen.scene)

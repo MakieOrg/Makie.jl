@@ -138,7 +138,7 @@ function Base.display(
             """
             No backend available!
             Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-            
+
             If you imported GLMakie, it may have not built correctly.
             In that case, try `]build GLMakie` and watch out for any warnings.
             """
@@ -160,7 +160,7 @@ function Base.display(
     else
         if inline === true
             @warn """
-            
+
                 Makie.inline!(do_inline) was set to true, but we didn't detect a display that can show the plot,
                 so we aren't inlining the plot and try to show the plot in a window.
                 If this wasn't set on purpose, call `Makie.inline!()` to restore the default.
@@ -319,7 +319,7 @@ function FileIO.save(
             """
             No backend available!
             Make sure to also `import/using` a backend (GLMakie, CairoMakie, WGLMakie).
-            
+
             If you imported GLMakie, it may have not built correctly.
             In that case, try `]build GLMakie` and watch out for any warnings.
             """
@@ -391,7 +391,7 @@ function jl_to_gl_format(image)
 end
 
 # less specific for overloading by backends
-function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
+function colorbuffer(screen::MakieScreen, format::ImageStorageFormat; figure = nothing)
     image = colorbuffer(screen)
     if format == GLNative
         return jl_to_gl_format(image)
@@ -461,7 +461,7 @@ isvisible(::Nothing) = false
 const COLORBUFFER_LOCK = ReentrantLock()
 
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), figure=nothing, screen_config...)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
@@ -473,8 +473,9 @@ or RGBA.
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependent, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
+- `figure=nothing`: Optional figure argument passed to backend-specific colorbuffer implementations.
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), screen_config...)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), figure = nothing, screen_config...)
     return lock(COLORBUFFER_LOCK) do
         scene = get_scene(fig)
         update && update_state_before_display!(fig)
@@ -484,7 +485,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
         get!(config, :visible, visible)
         get!(config, :start_renderloop, false)
         screen = getscreen(backend, scene, config)
-        img = colorbuffer(screen, format)
+        img = colorbuffer(screen, format; figure = fig)
         if !isroot(scene)
             return get_sub_picture(img, format, viewport(scene)[])
         else
@@ -497,7 +498,7 @@ px_per_unit(screen::MakieScreen)::Float64 = 1.0 # fallback for backends who don'
 
 # Fallback for any backend that will just use colorbuffer to write out an image
 function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene, figure = nothing)
-    img = colorbuffer(screen)
+    img = colorbuffer(screen; figure=figure)
     px_per_unit = Makie.px_per_unit(screen)::Float64
     dpi = px_per_unit * 96 # attach dpi metadata corresponding to 1 unit == 1 CSS pixel
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img; dpi)
@@ -505,7 +506,7 @@ function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Sce
 end
 
 function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene, figure = nothing)
-    img = colorbuffer(screen)
+    img = colorbuffer(screen; figure=figure)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
 end
