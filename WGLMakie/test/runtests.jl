@@ -50,19 +50,9 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
+        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
         missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
         ReferenceTests.test_comparison(scores; threshold = 0.05)
-    end
-
-    @testset "HTML widgets refimages" begin
-        # Test HTML widgets with use_html_widgets=true
-        WGLMakie.activate!(use_html_widgets=true)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "html_widgets_refimages.jl"
-        missing_images, scores = ReferenceTests.record_comparison(recording_dir, "HTMLWidgets")
-        ReferenceTests.test_comparison(scores; threshold = 0.05)
-        # Reset to default
-        WGLMakie.activate!()
     end
 
     @testset "js texture atlas" begin
@@ -250,6 +240,10 @@ edisplay = Bonito.use_electron_display(devtools = true)
             av = last(tick_record).time / round(Int, last(tick_record).time * 30)
             @test abs(av - dt) < 0.005dt
         end
+    end
+
+    @testset "html-widgets" begin
+        include("html-widgets.jl")
     end
 
     @testset "memory leaks" begin
