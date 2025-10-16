@@ -40,19 +40,19 @@ function resize_parent(parent, block)
                 const canvasRect = canvas.getBoundingClientRect();
                 const offsetX = canvasRect.left;
                 const offsetY = canvasRect.top;
-    
+
                 // Scale coordinates by winscale to match canvas CSS scaling
                 // Canvas CSS size = logical_size * winscale (where winscale = scalefactor / devicePixelRatio)
                 div.style.left = (xmin * winscale + offsetX) + "px";
                 div.style.top = (web_top * winscale + offsetY) + "px";
                 div.style.width = ((xmax - xmin) * winscale) + "px";
                 div.style.height = ((ymax - ymin) * winscale) + "px";
-    
+
                 // Scale font size to match the widget scaling
                 // Apply to all child elements that may contain text
                 const baseFontSize = $(fontsize) * winscale;
                 div.style.fontSize = baseFontSize + "px";
-    
+
                 // Also apply to all input, button, select, and div children
                 div.querySelectorAll('input, button, select, div, option').forEach(el => {
                     el.style.fontSize = baseFontSize + "px";
@@ -74,28 +74,85 @@ function replace_widget!(slider::Makie.Slider)
     step_val = length(range_vals) > 1 ? range_vals[2] - range_vals[1] : 0.01
     is_horizontal = slider.horizontal[]
 
-    # Base styles for the input
-    input_styles = Styles(
+    # Extract Makie styling attributes
+    linewidth = round(Int, slider.linewidth[] / 1.5)
+    color_inactive = slider.color_inactive[]
+    color_active = slider.color_active[]
+    color_active_dimmed = slider.color_active_dimmed[]
+
+    # Common style pairs to avoid duplication
+    base_input = [
+        "-webkit-appearance" => "none",
+        "appearance" => "none",
         "margin" => "0px",
         "padding" => "0px",
         "outline" => "none",
         "cursor" => "pointer",
         "width" => "100%",
-        "height" => "100%",
-    )
+        "background" => "transparent",
+    ]
 
-    # Add orientation-specific styles
-    if !is_horizontal
-        # For vertical sliders, use webkit-appearance: slider-vertical
-        input_styles = merge(
-            input_styles, Styles(
-                "-webkit-appearance" => "slider-vertical",
-            )
+    track_common = [
+        "background" => color_inactive,
+        "border-radius" => "$(linewidth ÷ 2)px",
+    ]
+
+    thumb_common = [
+        "-webkit-appearance" => "none",
+        "appearance" => "none",
+        "width" => "$(linewidth)px",
+        "height" => "$(linewidth)px",
+        "border-radius" => "50%",
+        "background" => color_active,
+        "cursor" => "pointer",
+        "border" => "none",
+    ]
+
+    # Build styles based on orientation
+    input_styles, vertical_attrs = if is_horizontal
+        styles = Styles(
+            CSS(base_input...),
+            CSS("::-webkit-slider-runnable-track", track_common..., "height" => "$(linewidth)px"),
+            CSS("::-webkit-slider-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
+            CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
+            # Firefox uses ::-moz-range-progress for the filled portion
+            CSS("::-moz-range-track", track_common..., "height" => "$(linewidth)px"),
+            CSS("::-moz-range-progress",
+                "background" => color_active_dimmed,
+                "border-radius" => "$(linewidth ÷ 2)px",
+                "height" => "$(linewidth)px",
+            ),
+            CSS("::-moz-range-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
+            CSS(":hover::-moz-range-thumb", "transform" => "scale(1.25)"),
         )
+        (styles, Dict())
+    else
+        styles = Styles(
+            CSS(
+                base_input...,
+                "writing-mode" => "vertical-lr",
+                "direction" => "rtl",
+                "vertical-align" => "middle",
+                "width" => "$(linewidth)px",
+                "height" => "100%",
+            ),
+            CSS("::-webkit-slider-runnable-track", track_common..., "width" => "$(linewidth)px"),
+            CSS("::-webkit-slider-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
+            CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
+            CSS("::-moz-range-track", track_common..., "width" => "$(linewidth)px", "height" => "100%"),
+            CSS("::-moz-range-progress",
+                "background" => color_active_dimmed,
+                "border-radius" => "$(linewidth ÷ 2)px",
+                "width" => "$(linewidth)px",
+                "height" => "100%",
+            ),
+            CSS("::-moz-range-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
+            CSS(":hover::-moz-range-thumb", "transform" => "scale(1.25)"),
+        )
+        (styles, Dict(:orient => "vertical"))
     end
     callback = js"""
         function(event) {
-            console.log(event)
             const value = event.srcElement.valueAsNumber
             $(slider.value).notify(value);
         }
@@ -114,7 +171,8 @@ function replace_widget!(slider::Makie.Slider)
         step = "$(step_val)",
         value = "$(initial_value)",
         style = input_styles,
-        callback_kw...
+        callback_kw...,
+        vertical_attrs...
     )
     value_from_index = map(slider.selected_index) do idx
         return slider.range[][idx]
@@ -145,27 +203,22 @@ function replace_widget!(menu::Makie.Menu)
     cell_color_inactive = menu.cell_color_inactive_even[]
     cell_color_hover = menu.cell_color_hover[]
     cell_color_active = menu.cell_color_active[]
+    selection_cell_color_inactive = menu.selection_cell_color_inactive[]
     text_color = menu.textcolor[]
     text_size = menu.fontsize[]
     text_padding = menu.textpadding[]
-
-    # Convert Makie colors to CSS hex
-    bg_color = Bonito.convert_css_attribute(cell_color_inactive)
-    hover_color = Bonito.convert_css_attribute(cell_color_hover)
-    active_color = Bonito.convert_css_attribute(cell_color_active)
-    text_color_css = Bonito.convert_css_attribute(text_color)
     # Create custom dropdown items
     dropdown_items = []
     option_style = Styles(
         CSS(
-            "background-color" => bg_color,
-            "color" => text_color_css,
+            "background-color" => cell_color_inactive,
+            "color" => text_color,
             "font-size" => "$(text_size)px",
             "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
             "cursor" => "pointer",
         ),
-        CSS(":hover", "background-color" => hover_color),
-        CSS(".selected", "background-color" => active_color),
+        CSS(":hover", "background-color" => cell_color_hover),
+        CSS(".selected", "background-color" => cell_color_active),
     )
     for (i, option) in enumerate(options)
         label_text = Makie.optionlabel(option)
@@ -186,8 +239,8 @@ function replace_widget!(menu::Makie.Menu)
         CSS(
             "width" => "100%",
             "height" => "100%",
-            "background-color" => bg_color,
-            "color" => text_color_css,
+            "background-color" => selection_cell_color_inactive,
+            "color" => text_color,
             "font-size" => "$(text_size)px",
             "cursor" => "pointer",
             "outline" => "none",
@@ -198,7 +251,7 @@ function replace_widget!(menu::Makie.Menu)
             "justify-content" => "flex-start",
             "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
         ),
-        CSS(":hover", "background-color" => hover_color),
+        CSS(":hover", "background-color" => cell_color_hover),
     )
     dropdown_display = DOM.div(
         current_label,
@@ -240,7 +293,7 @@ function replace_widget!(menu::Makie.Menu)
     const display = dropdown.querySelector('.dropdown-display');
     const list = dropdown.querySelector('.dropdown-list');
     const items = list.querySelectorAll('[data-value]');
-    
+
     // Toggle dropdown
     display.onclick = function() {
         if (list.style.display === 'none' || list.style.display === '')  {
@@ -249,7 +302,7 @@ function replace_widget!(menu::Makie.Menu)
             const listHeight = 400; // max-height
             const spaceBelow = window.innerHeight - dropdownRect.bottom;
             const spaceAbove = dropdownRect.top;
-    
+
             if (spaceBelow < listHeight && spaceAbove > spaceBelow) {
                 // Open upward
                 list.style.top = 'auto';
@@ -264,7 +317,7 @@ function replace_widget!(menu::Makie.Menu)
             list.style.display = 'none';
         }
     };
-    
+
     function update_background() {
         const selected_index = $(menu.i_selected).value;
         items.forEach((item, index) => {
@@ -275,7 +328,7 @@ function replace_widget!(menu::Makie.Menu)
             }
         });
     }
-    
+
     // Handle item selection
     items.forEach(item => {
         item.onclick = function() {
@@ -310,25 +363,45 @@ function replace_widget!(textbox::Makie.Textbox)
     initial_value = textbox.displayed_string[]
     validator = textbox.validator[]
 
+    # Extract Makie styling attributes
+    text_padding = textbox.textpadding[]
+    fontsize = textbox.fontsize[]
+    textcolor = textbox.textcolor[]
+    boxcolor = textbox.boxcolor[]
+    boxcolor_hover = textbox.boxcolor_hover[]
+    boxcolor_focused = textbox.boxcolor_focused[]
+    bordercolor = Bonito.convert_css_attribute(textbox.bordercolor[])
+    bordercolor_hover = textbox.bordercolor_hover[]
+    bordercolor_focused = textbox.bordercolor_focused[]
+    borderwidth = textbox.borderwidth[]
+    cornerradius = textbox.cornerradius[]
+
     # Determine input type based on validator
     input_type = "text"
-    if validator == Float64 || validator == Float32
-        input_type = "number"
-    elseif validator == Int || validator == Int32 || validator == Int64
-        input_type = "number"
-    end
-
+    tp = round.(Int, text_padding ./ 1.5)
     input_styles = Styles(
-        "width" => "100%",
-        "height" => "100%",
-        "font-family" => "inherit",
-        "font-size" => "14px",
-        "border" => "1px solid #ccc",
-        "border-radius" => "4px",
-        "background-color" => "white",
-        "padding" => "4px 8px",
-        "outline" => "none",
-        "box-sizing" => "border-box",
+        CSS(
+            "width" => "100%",
+            "height" => "100%",
+            "font-family" => "inherit",
+            "font-size" => "$(fontsize)px",
+            "color" => textcolor,
+            "border" => "$(borderwidth)px solid $(bordercolor)",
+            "border-radius" => "$(cornerradius)px",
+            "background-color" => boxcolor,
+            "padding" => "$(tp[1])px $(tp[2])px $(tp[3])px $(tp[4])px",
+            "outline" => "none",
+            "box-sizing" => "border-box",
+            "transition" => "border-color 0.2s, background-color 0.2s",
+        ),
+        CSS(":hover",
+            "border-color" => bordercolor_hover,
+            "background-color" => boxcolor_hover,
+        ),
+        CSS(":focus",
+            "border-color" => bordercolor_focused,
+            "background-color" => boxcolor_focused,
+        ),
     )
 
     # Add number-specific attributes for numeric validators
@@ -375,36 +448,51 @@ end
 
 function replace_widget!(button::Makie.Button)
     Makie.hide!(button)
+
+    # Extract Makie styling attributes
     button_text = button.label[]
+    fontsize = button.fontsize[]
+    padding = round.(Int, button.padding[] ./ 4)
+    cornerradius = button.cornerradius[]
+    strokewidth = button.strokewidth[]
+    strokecolor = button.strokecolor[]
+    buttoncolor = button.buttoncolor[]
+    buttoncolor_hover = button.buttoncolor_hover[]
+    buttoncolor_active = button.buttoncolor_active[]
+    labelcolor = button.labelcolor[]
+    labelcolor_hover = button.labelcolor_hover[]
+    labelcolor_active = button.labelcolor_active[]
 
     button_element = DOM.button(
         button_text,
         style = Styles(
-            "width" => "100%",
-            "height" => "100%",
-            "font-family" => "inherit",
-            "font-size" => "14px",
-            "border" => "1px solid #ccc",
-            "border-radius" => "4px",
-            "background-color" => "#f5f5f5",
-            "cursor" => "pointer",
-            "outline" => "none",
-            "transition" => "background-color 0.2s",
+            CSS(
+                "width" => "100%",
+                "height" => "100%",
+                "font-family" => "inherit",
+                "font-size" => "$(fontsize)px",
+                "padding" => "$(padding[1])px $(padding[2])px $(padding[3])px $(padding[4])px",
+                "border" => "$(strokewidth)px solid $(strokecolor)",
+                "border-radius" => "$(cornerradius)px",
+                "background-color" => buttoncolor,
+                "color" => labelcolor,
+                "cursor" => "pointer",
+                "outline" => "none",
+                "transition" => "background-color 0.2s, color 0.2s",
+            ),
+            CSS(":hover",
+                "background-color" => buttoncolor_hover,
+                "color" => labelcolor_hover,
+            ),
+            CSS(":active",
+                "background-color" => buttoncolor_active,
+                "color" => labelcolor_active,
+            ),
         ),
         onclick = js"""
             function(event) {
                 console.log("Button clicked");
                 $(button.clicks).notify($(button.clicks).value + 1);
-            }
-        """,
-        onmouseenter = js"""
-            function(event) {
-                event.target.style.backgroundColor = "#e0e0e0";
-            }
-        """,
-        onmouseleave = js"""
-            function(event) {
-                event.target.style.backgroundColor = "#f5f5f5";
             }
         """
     )
