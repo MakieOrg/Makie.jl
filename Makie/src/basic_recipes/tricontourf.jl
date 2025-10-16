@@ -22,12 +22,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
     """
     mode = :normal
-    "Sets the colormap from which the band colors are sampled."
-    colormap = @inherit colormap
-    "Color transform function"
-    colorscale = identity
-    "The alpha value of the colormap or color attribute."
-    alpha = 1.0
     """
     This sets the color of an optional additional band from
     `minimum(zs)` to the lowest value in `levels`.
@@ -46,8 +40,6 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     If it's `nothing`, no band is added.
     """
     extendhigh = nothing
-    "Sets the color used for nan values in the generated contour."
-    nan_color = :transparent
     """
     The mode with which the points in `xs` and `ys` are triangulated.
     Passing `DelaunayTriangulation()` performs a Delaunay triangulation.
@@ -57,6 +49,7 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     """
     triangulation = DelaunayTriangulation()
     mixin_generic_plot_attributes()...
+    mixin_colormap_attributes(allow = (:alpha, :colormap, :colorrange, :colorscale, :nan_color))...
 end
 
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
