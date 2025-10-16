@@ -114,12 +114,12 @@ end
     WGLMakie.activate!(; use_html_widgets=true)
     create_test_figure()
 end
-@reference_test "HTML Widgets layout: px_per_unit=1" begin
+@reference_test "HTML Widgets layout px_per_unit=1" begin
     WGLMakie.activate!(; use_html_widgets=true, px_per_unit=1, scalefactor=1)
     create_test_figure()
 end
 
-@reference_test "HTML Widgets layout: px_per_unit=2" begin
+@reference_test "HTML Widgets layout px_per_unit=2" begin
     WGLMakie.activate!(; use_html_widgets=true, px_per_unit=2, scalefactor=2)
     create_test_figure()
 end
