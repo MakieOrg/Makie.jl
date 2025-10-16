@@ -1,7 +1,6 @@
 using Electron, WGLMakie, Bonito, Test
 
 WGLMakie.activate!(use_html_widgets=true)
-win = Bonito.use_electron_display()
 
 @testset "HTML Widgets" begin
     @testset "Slider - basic horizontal" begin
@@ -16,7 +15,7 @@ win = Bonito.use_electron_display()
         limits!(ax, 0, 10, 0, 10)
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test that slider renders as HTML range input
         slider_props = evaljs_value(app.session[], js"""(() => {
@@ -59,7 +58,7 @@ win = Bonito.use_electron_display()
         limits!(ax, 0, 10, 0, 10)
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test both sliders exist
         sliders = evaljs_value(app.session[], js"""(() => {
@@ -95,7 +94,7 @@ win = Bonito.use_electron_display()
         end
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test that button renders as HTML button
         button_props = evaljs_value(app.session[], js"""(() => {
@@ -133,7 +132,7 @@ win = Bonito.use_electron_display()
         menu = Makie.Menu(fig[1, 1], options = ["Option A", "Option B", "Option C"], default = "Option B")
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test that menu renders as custom dropdown with divs
         menu_props = evaljs_value(app.session[], js"""(() => {
@@ -193,7 +192,7 @@ win = Bonito.use_electron_display()
         lines!(ax, xs, ys)
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Verify initial state
         @test menu.selection[] == cos
@@ -223,7 +222,7 @@ win = Bonito.use_electron_display()
         textbox = Makie.Textbox(fig[1, 1], placeholder = "Enter text...")
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test that textbox renders as HTML input
         textbox_props = evaljs_value(app.session[], js"""(() => {
@@ -257,7 +256,7 @@ win = Bonito.use_electron_display()
         textbox = Makie.Textbox(fig[1, 1], validator = Float64, stored_string = "3.14")
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Test that textbox renders as HTML number input
         textbox_props = evaljs_value(app.session[], js"""(() => {
@@ -310,7 +309,7 @@ win = Bonito.use_electron_display()
         limits!(ax, 0, 10, 0, 10)
 
         app = App(fig)
-        display(win, app)
+        display(edisplay, app)
 
         # Verify widgets exist
         widgets_exist = evaljs_value(app.session[], js"""(() => {
