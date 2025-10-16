@@ -8,7 +8,8 @@ const WIDGET_CONTAINER_STYLES = Styles(
     "display" => "flex",
     "align-items" => "center",
     "justify-content" => "center",
-    "font-family" => "'TeXGyreHerosMakie', sans-serif"
+    "font-family" => "'TeXGyreHerosMakie', sans-serif",
+    "white-space" => "nowrap"
 )
 
 const FONT_STYLE = Styles(
@@ -21,7 +22,6 @@ const FONT_STYLE = Styles(
 
 
 function resize_parent(parent, block)
-    fontsize = hasproperty(block, :fontsize) ? block.fontsize[] : 14
     scene = Makie.rootparent(block.blockscene)
     height_box = map(block.layoutobservables.computedbbox, scene.viewport; ignore_equal_values = true) do box, vp
         (xmin, ymin), (xmax, ymax) = extrema(box)
@@ -48,16 +48,8 @@ function resize_parent(parent, block)
                 div.style.width = ((xmax - xmin) * winscale) + "px";
                 div.style.height = ((ymax - ymin) * winscale) + "px";
 
-                // Scale font size to match the widget scaling
-                // Apply to all child elements that may contain text
-                const baseFontSize = $(fontsize) * winscale;
-                div.style.fontSize = baseFontSize + "px";
-
-                // Also apply to all input, button, select, and div children
-                div.querySelectorAll('input, button, select, div, option').forEach(el => {
-                    el.style.fontSize = baseFontSize + "px";
-                    el.style.whiteSpace = "nowrap";  // Prevent text wrapping
-                });
+                // Set CSS variable for winscale so children can use calc(var(--winscale) * 1px)
+                div.style.setProperty('--winscale', winscale);
             }
             $(height_box).on(update_position);
             update_position($(height_box).value); // Initial positioning
@@ -75,7 +67,7 @@ function replace_widget!(slider::Makie.Slider)
     is_horizontal = slider.horizontal[]
 
     # Extract Makie styling attributes
-    linewidth = round(Int, slider.linewidth[] / 1.5)
+    linewidth = slider.linewidth[]
     color_inactive = slider.color_inactive[]
     color_active = slider.color_active[]
     color_active_dimmed = slider.color_active_dimmed[]
@@ -84,8 +76,8 @@ function replace_widget!(slider::Makie.Slider)
     base_input = [
         "-webkit-appearance" => "none",
         "appearance" => "none",
-        "margin" => "0px",
-        "padding" => "0px",
+        "margin" => "0",
+        "padding" => "0",
         "outline" => "none",
         "cursor" => "pointer",
         "width" => "100%",
@@ -94,14 +86,14 @@ function replace_widget!(slider::Makie.Slider)
 
     track_common = [
         "background" => color_inactive,
-        "border-radius" => "$(linewidth ÷ 2)px",
+        "border-radius" => "calc(var(--winscale) * $(linewidth / 2) * 1px)",
     ]
 
     thumb_common = [
         "-webkit-appearance" => "none",
         "appearance" => "none",
-        "width" => "$(linewidth)px",
-        "height" => "$(linewidth)px",
+        "width" => "calc(var(--winscale) * $(linewidth) * 1px)",
+        "height" => "calc(var(--winscale) * $(linewidth) * 1px)",
         "border-radius" => "50%",
         "background" => color_active,
         "cursor" => "pointer",
@@ -112,15 +104,15 @@ function replace_widget!(slider::Makie.Slider)
     input_styles, vertical_attrs = if is_horizontal
         styles = Styles(
             CSS(base_input...),
-            CSS("::-webkit-slider-runnable-track", track_common..., "height" => "$(linewidth)px"),
+            CSS("::-webkit-slider-runnable-track", track_common..., "height" => "calc(var(--winscale) * $(linewidth) * 1px)"),
             CSS("::-webkit-slider-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
             CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
             # Firefox uses ::-moz-range-progress for the filled portion
-            CSS("::-moz-range-track", track_common..., "height" => "$(linewidth)px"),
+            CSS("::-moz-range-track", track_common..., "height" => "calc(var(--winscale) * $(linewidth) * 1px)"),
             CSS("::-moz-range-progress",
                 "background" => color_active_dimmed,
-                "border-radius" => "$(linewidth ÷ 2)px",
-                "height" => "$(linewidth)px",
+                "border-radius" => "calc(var(--winscale) * $(linewidth / 2) * 1px)",
+                "height" => "calc(var(--winscale) * $(linewidth) * 1px)",
             ),
             CSS("::-moz-range-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
             CSS(":hover::-moz-range-thumb", "transform" => "scale(1.25)"),
@@ -133,17 +125,17 @@ function replace_widget!(slider::Makie.Slider)
                 "writing-mode" => "vertical-lr",
                 "direction" => "rtl",
                 "vertical-align" => "middle",
-                "width" => "$(linewidth)px",
+                "width" => "calc(var(--winscale) * $(linewidth) * 1px)",
                 "height" => "100%",
             ),
-            CSS("::-webkit-slider-runnable-track", track_common..., "width" => "$(linewidth)px"),
+            CSS("::-webkit-slider-runnable-track", track_common..., "width" => "calc(var(--winscale) * $(linewidth) * 1px)"),
             CSS("::-webkit-slider-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
             CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
-            CSS("::-moz-range-track", track_common..., "width" => "$(linewidth)px", "height" => "100%"),
+            CSS("::-moz-range-track", track_common..., "width" => "calc(var(--winscale) * $(linewidth) * 1px)", "height" => "100%"),
             CSS("::-moz-range-progress",
                 "background" => color_active_dimmed,
-                "border-radius" => "$(linewidth ÷ 2)px",
-                "width" => "$(linewidth)px",
+                "border-radius" => "calc(var(--winscale) * $(linewidth / 2) * 1px)",
+                "width" => "calc(var(--winscale) * $(linewidth) * 1px)",
                 "height" => "100%",
             ),
             CSS("::-moz-range-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
@@ -213,8 +205,8 @@ function replace_widget!(menu::Makie.Menu)
         CSS(
             "background-color" => cell_color_inactive,
             "color" => text_color,
-            "font-size" => "$(text_size)px",
-            "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
+            "font-size" => "calc(var(--winscale) * $(text_size) * 1px)",
+            "padding" => "calc(var(--winscale) * $(text_padding[1]) * 1px) calc(var(--winscale) * $(text_padding[2]) * 1px) calc(var(--winscale) * $(text_padding[3]) * 1px) calc(var(--winscale) * $(text_padding[4]) * 1px)",
             "cursor" => "pointer",
         ),
         CSS(":hover", "background-color" => cell_color_hover),
@@ -241,7 +233,7 @@ function replace_widget!(menu::Makie.Menu)
             "height" => "100%",
             "background-color" => selection_cell_color_inactive,
             "color" => text_color,
-            "font-size" => "$(text_size)px",
+            "font-size" => "calc(var(--winscale) * $(text_size) * 1px)",
             "cursor" => "pointer",
             "outline" => "none",
             "user-select" => "none",
@@ -249,7 +241,7 @@ function replace_widget!(menu::Makie.Menu)
             "display" => "flex",
             "align-items" => "center",
             "justify-content" => "flex-start",
-            "padding" => "$(text_padding[1])px $(text_padding[2])px $(text_padding[3])px $(text_padding[4])px",
+            "padding" => "calc(var(--winscale) * $(text_padding[1]) * 1px) calc(var(--winscale) * $(text_padding[2]) * 1px) calc(var(--winscale) * $(text_padding[3]) * 1px) calc(var(--winscale) * $(text_padding[4]) * 1px)",
         ),
         CSS(":hover", "background-color" => cell_color_hover),
     )
@@ -378,18 +370,17 @@ function replace_widget!(textbox::Makie.Textbox)
 
     # Determine input type based on validator
     input_type = "text"
-    tp = round.(Int, text_padding ./ 1.5)
     input_styles = Styles(
         CSS(
             "width" => "100%",
             "height" => "100%",
             "font-family" => "inherit",
-            "font-size" => "$(fontsize)px",
+            "font-size" => "calc(var(--winscale) * $(fontsize) * 1px)",
             "color" => textcolor,
-            "border" => "$(borderwidth)px solid $(bordercolor)",
-            "border-radius" => "$(cornerradius)px",
+            "border" => "calc(var(--winscale) * $(borderwidth) * 1px) solid $(bordercolor)",
+            "border-radius" => "calc(var(--winscale) * $(cornerradius) * 1px)",
             "background-color" => boxcolor,
-            "padding" => "$(tp[1])px $(tp[2])px $(tp[3])px $(tp[4])px",
+            "padding" => "calc(var(--winscale) * $(text_padding[1]) * 1px) calc(var(--winscale) * $(text_padding[2]) * 1px) calc(var(--winscale) * $(text_padding[3]) * 1px) calc(var(--winscale) * $(text_padding[4]) * 1px)",
             "outline" => "none",
             "box-sizing" => "border-box",
             "transition" => "border-color 0.2s, background-color 0.2s",
@@ -452,7 +443,8 @@ function replace_widget!(button::Makie.Button)
     # Extract Makie styling attributes
     button_text = button.label[]
     fontsize = button.fontsize[]
-    padding = round.(Int, button.padding[] ./ 4)
+    # Not sure why the button needs extra scaling for padding
+    padding = round.(Int, button.padding[] ./ 1.5)
     cornerradius = button.cornerradius[]
     strokewidth = button.strokewidth[]
     strokecolor = button.strokecolor[]
@@ -470,10 +462,10 @@ function replace_widget!(button::Makie.Button)
                 "width" => "100%",
                 "height" => "100%",
                 "font-family" => "inherit",
-                "font-size" => "$(fontsize)px",
-                "padding" => "$(padding[1])px $(padding[2])px $(padding[3])px $(padding[4])px",
-                "border" => "$(strokewidth)px solid $(strokecolor)",
-                "border-radius" => "$(cornerradius)px",
+                "font-size" => "calc(var(--winscale) * $(fontsize) * 1px)",
+                "padding" => "calc(var(--winscale) * $(padding[1]) * 1px) calc(var(--winscale) * $(padding[2]) * 1px) calc(var(--winscale) * $(padding[3]) * 1px) calc(var(--winscale) * $(padding[4]) * 1px)",
+                "border" => "calc(var(--winscale) * $(strokewidth) * 1px) solid $(strokecolor)",
+                "border-radius" => "calc(var(--winscale) * $(cornerradius) * 1px)",
                 "background-color" => buttoncolor,
                 "color" => labelcolor,
                 "cursor" => "pointer",
