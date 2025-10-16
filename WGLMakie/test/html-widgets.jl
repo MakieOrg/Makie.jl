@@ -154,7 +154,7 @@ WGLMakie.activate!(use_html_widgets = true)
                 const dropdown = document.querySelector('.dropdown-display');
                 const list = document.querySelector('.dropdown-list');
                 const items = document.querySelectorAll('[data-value]');
-            
+
                 return {
                     exists: dropdown !== null,
                     displayText: dropdown ? dropdown.textContent.trim() : "",
@@ -316,6 +316,70 @@ WGLMakie.activate!(use_html_widgets = true)
 
         @test textbox.displayed_string[] == "2.71"
         @test textbox.stored_string[] == "2.71"
+    end
+
+    @testset "Checkbox - toggle state" begin
+        fig = Figure()
+        checkbox = Makie.Checkbox(fig[1, 1])
+
+        app = App(fig)
+        display(edisplay, app)
+
+        # Test that checkbox renders as HTML checkbox input
+        checkbox_props = evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                return {
+                    exists: node !== null,
+                    checked: node ? node.checked : false
+                }
+            })()"""
+        )
+
+        @test checkbox_props["exists"] == true
+        @test checkbox_props["checked"] == false
+        @test checkbox.checked[] == false
+
+        # Test checking the checkbox
+        evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                node.click();
+            })()"""
+        )
+
+        @test checkbox.checked[] == true
+
+        # Test unchecking the checkbox
+        evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                node.click();
+            })()"""
+        )
+
+        @test checkbox.checked[] == false
+    end
+
+    @testset "Checkbox - initial checked state" begin
+        fig = Figure()
+        checkbox = Makie.Checkbox(fig[1, 1], checked = false)
+
+        app = App(fig)
+        display(edisplay, app)
+
+        # Test that checkbox is initially checked
+        checkbox_props = evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                return {
+                    checked: node ? node.checked : false
+                }
+            })()"""
+        )
+
+        @test checkbox_props["checked"] == false
+        @test checkbox.checked[] == false
     end
 
     @testset "Widget interactions - Slider + Button" begin

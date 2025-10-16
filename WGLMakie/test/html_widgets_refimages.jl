@@ -50,12 +50,24 @@ function create_test_figure()
     Label(num_func[2, 1], "Number:"; halign = :right, tellwidth = false)
     textbox_num = Makie.Textbox(num_func[2, 2]; validator = Float64, stored_string = "3.14", tellwidth = false)
 
+    # Row 8 - Checkboxes
+    Label(fig[8, 1], "Enable feature:", halign = :right, tellwidth = false)
+    checkbox_feature = Makie.Checkbox(fig[8, 2], checked = true, tellwidth = false)
+
+    Label(fig[8, 3], "Show grid:", halign = :right, tellwidth = false)
+    checkbox_grid = Makie.Checkbox(fig[8, 4], checked = false, tellwidth = false)
+
     # Plot 1: Sine wave controlled by sliders
     xs = 0:0.01:10
     ys = lift(sl_freq.value, sl_amp.value, sl_phase.value) do freq, amp, phase
         amp .* sin.(freq .* xs .+ phase)
     end
-    lines!(ax1, xs, ys, linewidth = 3, color = :blue)
+    sine_line = lines!(ax1, xs, ys, linewidth = 3, color = :blue)
+
+    # Connect checkbox to control sine wave visibility
+    on(checkbox_feature.checked) do checked
+        sine_line.visible[] = checked
+    end
 
     # Plot 2: Scatter plot controlled by buttons and vertical slider
     points = Observable(Point2f[])
@@ -71,6 +83,13 @@ function create_test_figure()
     end
     scatter!(ax2, current_marker, color = :green, markersize = 25, marker = :cross)
     limits!(ax2, 0, 10, 0, 10)
+
+    # Connect checkbox to control grid visibility
+    on(checkbox_grid.checked) do checked
+        ax2.xgridvisible[] = checked
+        ax2.ygridvisible[] = checked
+    end
+
     # Plot 3: Heatmap controlled by menu
     data = RNG.randn(25, 25)
     hmap = heatmap!(ax3, data, colormap = menu_cmap.selection)
@@ -79,7 +98,7 @@ function create_test_figure()
     preview_text = lift(textbox_text.displayed_string, textbox_num.displayed_string) do text, num
         "Preview: \"$text\" | Number: $num"
     end
-    Label(fig[8, 1:4], preview_text, fontsize = 18, color = :gray50, tellwidth = false)
+    Label(fig[9, 1:4], preview_text, fontsize = 18, color = :gray50, tellwidth = false)
 
     # Show modified function plot
     modified_xs = 0:0.1:10
@@ -102,6 +121,7 @@ function create_test_figure()
     menu_func.i_selected[] = 2  # Select "Cosine"
     Makie.set!(textbox_text, "Updated!")
     Makie.set!(textbox_num, "2.71")
+    checkbox_grid.checked[] = false
     # Simulate 3 clicks
     return fig
 end

@@ -496,6 +496,76 @@ function replace_widget!(button::Makie.Button)
     return DOM.div(FONT_STYLE, button_div, jss)
 end
 
+function replace_widget!(checkbox::Makie.Checkbox)
+    Makie.hide!(checkbox)
+
+    # Extract Makie styling attributes
+    size = checkbox.size[]
+    checkmarksize = checkbox.checkmarksize[]
+    roundness = checkbox.roundness[]
+    checkboxstrokewidth = checkbox.checkboxstrokewidth[]
+    checkboxcolor_checked = checkbox.checkboxcolor_checked[]
+    checkboxcolor_unchecked = checkbox.checkboxcolor_unchecked[]
+    checkboxstrokecolor_checked = checkbox.checkboxstrokecolor_checked[]
+    checkmarkcolor_checked = checkbox.checkmarkcolor_checked[]
+
+    checkbox_element = DOM.input(
+        type = "checkbox",
+        checked = checkbox.checked[],
+        style = Styles(
+            CSS(
+                "width" => "calc(var(--winscale) * $(size + 2checkboxstrokewidth) * 1px)",
+                "height" => "calc(var(--winscale) * $(size + 2checkboxstrokewidth) * 1px)",
+                "flex-shrink" => "0",
+                "appearance" => "none",
+                "-webkit-appearance" => "none",
+                "-moz-appearance" => "none",
+                "cursor" => "pointer",
+                "border-style" => "solid",
+                "border-width" => "calc(var(--winscale) * $(checkboxstrokewidth) * 1px)",
+                "border-color" => checkboxcolor_checked,
+                "background-color" => checkboxcolor_unchecked,
+                "outline" => "none",
+                "position" => "relative",
+                "transition" => "background-color 0.2s, border-color 0.2s",
+            ),
+            CSS(":checked",
+                "background-color" => checkboxcolor_checked,
+                "border-color" => checkboxstrokecolor_checked,
+            ),
+            # Create checkmark using ::after pseudo-element
+            CSS("::after",
+                "content" => "\"\"",
+                "position" => "absolute",
+                "display" => "none",
+                "left" => "50%",
+                "top" => "40%",
+                "width" => "calc(var(--winscale) * $(size * checkmarksize * 0.3) * 1px)",
+                "height" => "calc(var(--winscale) * $(size * checkmarksize * 0.6) * 1px)",
+                "border" => "solid $(checkmarkcolor_checked)",
+                "border-width" => "0 calc(var(--winscale) * $(checkboxstrokewidth * 1.5) * 1px) calc(var(--winscale) * $(checkboxstrokewidth * 1.5) * 1px) 0",
+                "transform" => "translate(-50%, -50%) rotate(45deg)",
+            ),
+            CSS(":checked::after",
+                "display" => "block",
+            ),
+        ),
+        onchange = js"""
+            function(event) {
+                const isChecked = event.target.checked;
+                $(checkbox.checked).notify(isChecked);
+            }
+        """
+    )
+
+    checkbox_div = DOM.div(
+        checkbox_element,
+        style = WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(checkbox_div, checkbox)
+    return DOM.div(FONT_STYLE, checkbox_div, jss)
+end
+
 replace_widget!(x::Any) = nothing # not implemented
 function replace_widget!(fig::Figure)
     return DOM.div(map(replace_widget!, fig.content))
