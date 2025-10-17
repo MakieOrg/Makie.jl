@@ -109,7 +109,8 @@ function replace_widget!(slider::Makie.Slider)
             CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
             # Firefox uses ::-moz-range-progress for the filled portion
             CSS("::-moz-range-track", track_common..., "height" => "calc(var(--winscale) * $(linewidth) * 1px)"),
-            CSS("::-moz-range-progress",
+            CSS(
+                "::-moz-range-progress",
                 "background" => color_active_dimmed,
                 "border-radius" => "calc(var(--winscale) * $(linewidth / 2) * 1px)",
                 "height" => "calc(var(--winscale) * $(linewidth) * 1px)",
@@ -132,7 +133,8 @@ function replace_widget!(slider::Makie.Slider)
             CSS("::-webkit-slider-thumb", thumb_common..., "transition" => "transform 0.1s ease"),
             CSS(":hover::-webkit-slider-thumb", "transform" => "scale(1.25)"),
             CSS("::-moz-range-track", track_common..., "width" => "calc(var(--winscale) * $(linewidth) * 1px)", "height" => "100%"),
-            CSS("::-moz-range-progress",
+            CSS(
+                "::-moz-range-progress",
                 "background" => color_active_dimmed,
                 "border-radius" => "calc(var(--winscale) * $(linewidth / 2) * 1px)",
                 "width" => "calc(var(--winscale) * $(linewidth) * 1px)",
@@ -385,11 +387,13 @@ function replace_widget!(textbox::Makie.Textbox)
             "box-sizing" => "border-box",
             "transition" => "border-color 0.2s, background-color 0.2s",
         ),
-        CSS(":hover",
+        CSS(
+            ":hover",
             "border-color" => bordercolor_hover,
             "background-color" => boxcolor_hover,
         ),
-        CSS(":focus",
+        CSS(
+            ":focus",
             "border-color" => bordercolor_focused,
             "background-color" => boxcolor_focused,
         ),
@@ -472,11 +476,13 @@ function replace_widget!(button::Makie.Button)
                 "outline" => "none",
                 "transition" => "background-color 0.2s, color 0.2s",
             ),
-            CSS(":hover",
+            CSS(
+                ":hover",
                 "background-color" => buttoncolor_hover,
                 "color" => labelcolor_hover,
             ),
-            CSS(":active",
+            CSS(
+                ":active",
                 "background-color" => buttoncolor_active,
                 "color" => labelcolor_active,
             ),
@@ -529,12 +535,14 @@ function replace_widget!(checkbox::Makie.Checkbox)
                 "position" => "relative",
                 "transition" => "background-color 0.2s, border-color 0.2s",
             ),
-            CSS(":checked",
+            CSS(
+                ":checked",
                 "background-color" => checkboxcolor_checked,
                 "border-color" => checkboxstrokecolor_checked,
             ),
             # Create checkmark using ::after pseudo-element
-            CSS("::after",
+            CSS(
+                "::after",
                 "content" => "\"\"",
                 "position" => "absolute",
                 "display" => "none",
@@ -546,7 +554,8 @@ function replace_widget!(checkbox::Makie.Checkbox)
                 "border-width" => "0 calc(var(--winscale) * $(checkboxstrokewidth * 1.5) * 1px) calc(var(--winscale) * $(checkboxstrokewidth * 1.5) * 1px) 0",
                 "transform" => "translate(-50%, -50%) rotate(45deg)",
             ),
-            CSS(":checked::after",
+            CSS(
+                ":checked::after",
                 "display" => "block",
             ),
         ),
@@ -584,9 +593,9 @@ function replace_widget!(toggle::Makie.Toggle)
     border_width = markersize * rimfraction / 2
 
     toggle_input = DOM.input(
-        type="checkbox",
-        checked=toggle.active[],
-        style=Styles(
+        type = "checkbox",
+        checked = toggle.active[],
+        style = Styles(
             CSS(
                 "appearance" => "none",
                 "-webkit-appearance" => "none",
@@ -604,11 +613,13 @@ function replace_widget!(toggle::Makie.Toggle)
                 "box-sizing" => "border-box",
                 "transition" => "background-color 0.15s",
             ),
-            CSS(":checked",
+            CSS(
+                ":checked",
                 "background-color" => framecolor_active,
             ),
             # Create toggle button using ::before pseudo-element
-            CSS("::before",
+            CSS(
+                "::before",
                 "content" => "\"\"",
                 "position" => "absolute",
                 "width" => "calc(var(--winscale) * $(button_size) * 1px)",
@@ -620,11 +631,12 @@ function replace_widget!(toggle::Makie.Toggle)
                 "transform" => "translateY(-50%)",
                 "transition" => "left 0.15s",
             ),
-            CSS(":checked::before",
+            CSS(
+                ":checked::before",
                 "left" => "calc(var(--winscale) * $(track_width - button_size - border_width) * 1px)",
             ),
         ),
-        onchange=js"""
+        onchange = js"""
             function(event) {
                 const isActive = event.target.checked;
                 $(toggle.active).notify(isActive);

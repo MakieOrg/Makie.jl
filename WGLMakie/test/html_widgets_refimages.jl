@@ -25,7 +25,7 @@ function snapshot_figure(edisplay, fig, path)
                 document.body.style.padding = '0';
                 document.documentElement.style.margin = '0';
                 document.documentElement.style.padding = '0';
-
+        
                 // Find the canvas element (Makie renders to canvas)
                 const canvas = document.querySelector('canvas');
                 if (canvas) {
@@ -45,7 +45,7 @@ function snapshot_figure(edisplay, fig, path)
             // Resize window to match content dimensions
             console.log(size);
             win.setContentSize(size.width, size.height);
-
+        
             // Wait a moment for resize to complete, then capture
             setTimeout(() => {
                 win.webContents.capturePage().then(image => {
@@ -62,7 +62,7 @@ end
 
 # YAY we can just overload save_results for our own EScreenshot type :)
 function ReferenceTests.save_result(path::String, es::EScreenshot)
-    isfile(path * ".png") && rm(path * ".png"; force=true)
+    isfile(path * ".png") && rm(path * ".png"; force = true)
     snapshot_figure(es.display, es.fig, path * ".png")
     return true
 end
