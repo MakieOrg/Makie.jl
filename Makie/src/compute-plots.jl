@@ -158,7 +158,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
         if transform_marker
             model = model[Vec(1, 2, 3), Vec(1, 2, 3)]
             corners = [model * p for p in coordinates(marker_bb)]
-            mini = minimum(corners); maxi = maximum(corners)
+            mini = minimum(corners)
+            maxi = maximum(corners)
             return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
         end
         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))
@@ -554,7 +555,8 @@ end
 function default_attribute(user_attributes, (key, value))
     if haskey(user_attributes, key)
         if value isa Attributes
-            return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
+            # `(key, value)` taken from "documented_attributes", `user_attributes` have precedence
+            return mergeleft!(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
         else
             val = user_attributes[key]
             val isa NamedTuple && return Attributes(val)

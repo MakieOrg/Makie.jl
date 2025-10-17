@@ -7,6 +7,23 @@
         @test all(hi .>= (8, 8, 10))
     end
 
+    @testset "#1939 `merge` precendence for `Attributes`" begin
+        # See https://github.com/MakieOrg/Makie.jl/issues/1939
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        @test merge(a1, a2)[:a][] == 4
+
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        merge!(a1, a2)
+        @test a1[:a][] == 4 && haskey(a1, :c)
+
+        a1 = Attributes(a = 1, b = 2)
+        a2 = Attributes(a = 4, c = 3)
+        Makie.mergeleft!(a1, a2)
+        @test a1[:a][] == 1 && haskey(a1, :c)
+    end
+
     @testset "#3979 lossy matrix multiplication" begin
         ps = Point{3, Float64}[[436132.5523666298, 7.002123574681671e6, 505.0239189387989], [436132.5523666298, 7.002123574681671e6, 1279.2437345933633], [436132.5523666298, 7.002884453296079e6, 505.0239189387989], [436132.5523666298, 7.002884453296079e6, 1279.2437345933633], [437151.16775504407, 7.002123574681671e6, 505.0239189387989], [437151.16775504407, 7.002123574681671e6, 1279.2437345933633], [437151.16775504407, 7.002884453296079e6, 505.0239189387989], [437151.16775504407, 7.002884453296079e6, 1279.2437345933633]]
         f, a, p = scatter(ps)

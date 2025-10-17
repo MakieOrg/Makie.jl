@@ -428,7 +428,7 @@ end
 function plot_attributes(scene, T)
     plot_attr = Makie.documented_attributes(T)
     if isnothing(plot_attr)
-        return merge(default_theme(scene, T), default_theme(T))
+        return mergeleft!(default_theme(scene, T), default_theme(T))
     else
         return plot_attr.d
     end

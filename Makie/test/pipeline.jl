@@ -8,7 +8,7 @@ function test_copy(; kw...)
 end
 
 function test_copy2(attr; kw...)
-    return merge!(Attributes(kw), attr)
+    return merge!(attr, Attributes(kw))
 end
 
 @testset "don't copy in theme merge" begin

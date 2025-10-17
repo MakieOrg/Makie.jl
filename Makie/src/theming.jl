@@ -98,9 +98,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         visible = true,
         start_renderloop = false,
         pdf_version = nothing
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -131,9 +129,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
@@ -141,9 +137,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         resize_to_body = nothing,
         px_per_unit = automatic,
         scalefactor = automatic
-    ),
-
-    RPRMakie = Attributes(
+    ), RPRMakie = Attributes(
         iterations = 200,
         resource = automatic,
         plugin = automatic,
@@ -208,8 +202,8 @@ function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
         new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        new_theme = merge!(Theme(kwargs), new_theme)
-        merge!(CURRENT_DEFAULT_THEME, new_theme)
+        new_theme = mergeleft!(Theme(kwargs), new_theme)
+        mergeleft!(CURRENT_DEFAULT_THEME, new_theme)
     end
     return
 end
@@ -282,7 +276,7 @@ update_theme!(Theme(colormap=:greys))
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
-        new_theme = merge!(with_theme, Attributes(kwargs))
+        new_theme = mergeleft!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
     end
