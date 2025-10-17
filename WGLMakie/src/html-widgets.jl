@@ -566,6 +566,80 @@ function replace_widget!(checkbox::Makie.Checkbox)
     return DOM.div(FONT_STYLE, checkbox_div, jss)
 end
 
+function replace_widget!(toggle::Makie.Toggle)
+    Makie.hide!(toggle)
+
+    # Extract Makie styling attributes
+    length = toggle.length[]
+    markersize = toggle.markersize[]
+    framecolor_inactive = toggle.framecolor_inactive[]
+    framecolor_active = toggle.framecolor_active[]
+    buttoncolor = toggle.buttoncolor[]
+    rimfraction = toggle.rimfraction[]
+
+    # Calculate dimensions
+    track_height = markersize
+    track_width = length
+    button_size = markersize * (1 - rimfraction)
+    border_width = markersize * rimfraction / 2
+
+    toggle_input = DOM.input(
+        type="checkbox",
+        checked=toggle.active[],
+        style=Styles(
+            CSS(
+                "appearance" => "none",
+                "-webkit-appearance" => "none",
+                "-moz-appearance" => "none",
+                "width" => "calc(var(--winscale) * $(track_width) * 1px)",
+                "height" => "calc(var(--winscale) * $(track_height) * 1px)",
+                "min-width" => "calc(var(--winscale) * $(track_width) * 1px)",
+                "min-height" => "calc(var(--winscale) * $(track_height) * 1px)",
+                "flex-shrink" => "0",
+                "cursor" => "pointer",
+                "background-color" => framecolor_inactive,
+                "border-radius" => "calc(var(--winscale) * $(track_height / 2) * 1px)",
+                "position" => "relative",
+                "outline" => "none",
+                "box-sizing" => "border-box",
+                "transition" => "background-color 0.15s",
+            ),
+            CSS(":checked",
+                "background-color" => framecolor_active,
+            ),
+            # Create toggle button using ::before pseudo-element
+            CSS("::before",
+                "content" => "\"\"",
+                "position" => "absolute",
+                "width" => "calc(var(--winscale) * $(button_size) * 1px)",
+                "height" => "calc(var(--winscale) * $(button_size) * 1px)",
+                "border-radius" => "50%",
+                "background-color" => buttoncolor,
+                "left" => "calc(var(--winscale) * $(border_width) * 1px)",
+                "top" => "50%",
+                "transform" => "translateY(-50%)",
+                "transition" => "left 0.15s",
+            ),
+            CSS(":checked::before",
+                "left" => "calc(var(--winscale) * $(track_width - button_size - border_width) * 1px)",
+            ),
+        ),
+        onchange=js"""
+            function(event) {
+                const isActive = event.target.checked;
+                $(toggle.active).notify(isActive);
+            }
+        """
+    )
+
+    toggle_div = DOM.div(
+        toggle_input,
+        style = WIDGET_CONTAINER_STYLES
+    )
+    jss = resize_parent(toggle_div, toggle)
+    return DOM.div(FONT_STYLE, toggle_div, jss)
+end
+
 replace_widget!(x::Any) = nothing # not implemented
 function replace_widget!(fig::Figure)
     return DOM.div(map(replace_widget!, fig.content))

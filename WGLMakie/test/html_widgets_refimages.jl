@@ -57,6 +57,13 @@ function create_test_figure()
     Label(fig[8, 3], "Show grid:", halign = :right, tellwidth = false)
     checkbox_grid = Makie.Checkbox(fig[8, 4], checked = false, tellwidth = false)
 
+    # Row 9 - Toggles
+    Label(fig[9, 1], "Dark mode:", halign = :right, tellwidth = false)
+    toggle_dark = Makie.Toggle(fig[9, 2], active = false, tellwidth = false)
+
+    Label(fig[9, 3], "Auto-update:", halign = :right, tellwidth = false)
+    toggle_update = Makie.Toggle(fig[9, 4], active = true, tellwidth = false)
+
     # Plot 1: Sine wave controlled by sliders
     xs = 0:0.01:10
     ys = lift(sl_freq.value, sl_amp.value, sl_phase.value) do freq, amp, phase
@@ -94,11 +101,21 @@ function create_test_figure()
     data = RNG.randn(25, 25)
     hmap = heatmap!(ax3, data, colormap = menu_cmap.selection)
 
-    # Bottom row - Live text preview
-    preview_text = lift(textbox_text.displayed_string, textbox_num.displayed_string) do text, num
-        "Preview: \"$text\" | Number: $num"
+    # Connect toggles to control plot features
+    on(toggle_dark.active) do active
+        # Toggle background color
+        color = to_color(active ? :gray20 : :white)
+        foreach((ax1, ax2, ax3)) do ax
+            ax.backgroundcolor[] = color
+        end
     end
-    Label(fig[9, 1:4], preview_text, fontsize = 18, color = :gray50, tellwidth = false)
+
+    # Bottom row - Live text preview
+    preview_text = lift(textbox_text.displayed_string, textbox_num.displayed_string, toggle_update.active) do text, num, auto
+        status = auto ? "Auto-update: ON" : "Auto-update: OFF"
+        "Preview: \"$text\" | Number: $num | $status"
+    end
+    Label(fig[10, 1:4], preview_text, fontsize = 18, color = :gray50, tellwidth = false)
 
     # Show modified function plot
     modified_xs = 0:0.1:10
@@ -122,17 +139,18 @@ function create_test_figure()
     Makie.set!(textbox_text, "Updated!")
     Makie.set!(textbox_num, "2.71")
     checkbox_grid.checked[] = false
+    toggle_dark.active[] = true
     # Simulate 3 clicks
     return fig
 end
 
 @reference_test "Widgets layout" begin
-    WGLMakie.activate!(; use_html_widgets = false)
+    WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
     create_test_figure()
 end
 
 @reference_test "HTML Widgets layout" begin
-    WGLMakie.activate!(; use_html_widgets = true)
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
     create_test_figure()
 end
 @reference_test "HTML Widgets layout px_per_unit=1" begin

@@ -382,6 +382,70 @@ WGLMakie.activate!(use_html_widgets = true)
         @test checkbox.checked[] == false
     end
 
+    @testset "Toggle - toggle state" begin
+        fig = Figure()
+        toggle = Makie.Toggle(fig[1, 1])
+
+        app = App(fig)
+        display(edisplay, app)
+
+        # Test that toggle renders as HTML checkbox input
+        toggle_props = evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                return {
+                    exists: node !== null,
+                    checked: node ? node.checked : false
+                }
+            })()"""
+        )
+
+        @test toggle_props["exists"] == true
+        @test toggle_props["checked"] == false
+        @test toggle.active[] == false
+
+        # Test activating the toggle
+        evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                node.click();
+            })()"""
+        )
+
+        @test toggle.active[] == true
+
+        # Test deactivating the toggle
+        evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                node.click();
+            })()"""
+        )
+
+        @test toggle.active[] == false
+    end
+
+    @testset "Toggle - initial active state" begin
+        fig = Figure()
+        toggle = Makie.Toggle(fig[1, 1], active = true)
+
+        app = App(fig)
+        display(edisplay, app)
+
+        # Test that toggle is initially active
+        toggle_props = evaljs_value(
+            app.session[], js"""(() => {
+                const node = document.querySelector("input[type=checkbox]");
+                return {
+                    checked: node ? node.checked : false
+                }
+            })()"""
+        )
+
+        @test toggle_props["checked"] == true
+        @test toggle.active[] == true
+    end
+
     @testset "Widget interactions - Slider + Button" begin
         fig = Figure()
         ax = Axis(fig[1, 1], title = "Interactive Plot")
