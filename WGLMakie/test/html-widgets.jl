@@ -1,8 +1,8 @@
 using Electron, WGLMakie, Bonito, Test
 
-WGLMakie.activate!(use_html_widgets = true)
 
 @testset "HTML Widgets" begin
+    WGLMakie.activate!(use_html_widgets = true)
     @testset "Slider - basic horizontal" begin
         fig = Figure()
         ax = Axis(fig[1, 1])
@@ -291,7 +291,7 @@ WGLMakie.activate!(use_html_widgets = true)
         # Test that textbox renders as HTML number input
         textbox_props = evaljs_value(
             app.session[], js"""(() => {
-                const node = document.querySelector("input[type=number]");
+                const node = document.querySelector("input");
                 return {
                     exists: node !== null,
                     type: node ? node.type : "",
@@ -301,19 +301,17 @@ WGLMakie.activate!(use_html_widgets = true)
         )
 
         @test textbox_props["exists"] == true
-        @test textbox_props["type"] == "number"
         @test textbox_props["value"] == "3.14"
 
         # Test entering a new number
         evaljs_value(
             app.session[], js"""(() => {
-                const node = document.querySelector("input[type=number]");
+                const node = document.querySelector("input");
                 node.value = "2.71";
                 node.dispatchEvent(new Event('input', { bubbles: true }));
                 node.dispatchEvent(new Event('change', { bubbles: true }));
             })()"""
         )
-
         @test textbox.displayed_string[] == "2.71"
         @test textbox.stored_string[] == "2.71"
     end

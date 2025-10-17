@@ -368,7 +368,7 @@ raw_io(io::IO) = io
 raw_io(io::IOContext) = raw_io(io.io)
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::MakieScreen)
+function colorbuffer(x::MakieScreen; kw...)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
