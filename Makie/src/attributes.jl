@@ -104,7 +104,7 @@ function mergeleft!(target::Attributes, args::Attributes...)
                 target[key] = value
             else
                 tvalue = to_value(value)
-                if haskey(target, key) && (tvalue isa Attributes && target[key] isa Attributes)
+                if tvalue isa Attributes && target[key] isa Attributes
                     # if nested attribute, we merge recursively
                     mergeleft!(target[key], tvalue)
                 end
