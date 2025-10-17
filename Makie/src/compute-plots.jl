@@ -158,7 +158,8 @@ function meshscatter_boundingbox(_positions, model, transform_marker, marker_bb,
         if transform_marker
             model = model[Vec(1, 2, 3), Vec(1, 2, 3)]
             corners = [model * p for p in coordinates(marker_bb)]
-            mini = minimum(corners); maxi = maximum(corners)
+            mini = minimum(corners)
+            maxi = maximum(corners)
             return Rect3d(minimum(bb) + mini, widths(bb) + maxi - mini)
         end
         return Rect3d(minimum(bb) + minimum(marker_bb), widths(bb) + widths(marker_bb))

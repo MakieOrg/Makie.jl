@@ -260,21 +260,6 @@ function get_attribute(dict, key, default = nothing)
     end
 end
 
-function merge_attributes!(input::Attributes, theme::Attributes)
-    # PERF: `Base.merge!` uses `sizehint!` to allocate all at once but most often the input would already have all
-    # the keys from the default attributes so no significant allocation happens.
-    for (key, value) in attributes(theme)
-        tvalue = to_value(value)
-        if haskey(input, key) && (tvalue isa Attributes && input[key] isa Attributes)
-            # if nested attribute, we merge recursively
-            merge_attributes!(input[key], tvalue)
-        else
-            input[key] = value
-        end
-    end
-    return input
-end
-
 function Base.propertynames(x::Attributes)
     return (keys(x.attributes)...,)
 end
