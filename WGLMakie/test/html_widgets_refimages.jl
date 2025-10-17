@@ -2,7 +2,70 @@
 # This test verifies that all widgets render correctly with proper positioning when use_html_widgets=true
 
 using ReferenceTests: RNG, @reference_test
+using ReferenceTests
 using Test
+import Electron, Bonito
+
+struct EScreenshot
+    display
+    fig
+end
+
+function snapshot_figure(edisplay, fig, path)
+    display(edisplay, Bonito.App(fig))
+    winid = edisplay.window.window.id
+    run(
+        edisplay.window.app,
+        """
+        const win = BrowserWindow.fromId($winid)
+        win.webContents.executeJavaScript(`
+            (() => {
+                // Remove all padding and margins for tight screenshot
+                document.body.style.margin = '0';
+                document.body.style.padding = '0';
+                document.documentElement.style.margin = '0';
+                document.documentElement.style.padding = '0';
+
+                // Find the canvas element (Makie renders to canvas)
+                const canvas = document.querySelector('canvas');
+                if (canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    return {
+                        width: Math.ceil(rect.width),
+                        height: Math.ceil(rect.height)
+                    };
+                }
+                // Fallback to body size if no canvas found
+                return {
+                    width: document.body.scrollWidth,
+                    height: document.body.scrollHeight
+                };
+            })()
+        `).then(size => {
+            // Resize window to match content dimensions
+            console.log(size);
+            win.setContentSize(size.width, size.height);
+
+            // Wait a moment for resize to complete, then capture
+            setTimeout(() => {
+                win.webContents.capturePage().then(image => {
+                    const screenshotPath = '$(path)';
+                    require('fs').writeFileSync(screenshotPath, image.toPNG());
+                });
+            }, 500);
+        });
+        """,
+    )
+    Bonito.wait_for(() -> isfile(path))
+    return path
+end
+
+# YAY we can just overload save_results for our own EScreenshot type :)
+function ReferenceTests.save_result(path::String, es::EScreenshot)
+    isfile(path * ".png") && rm(path * ".png"; force=true)
+    snapshot_figure(es.display, es.fig, path * ".png")
+    return true
+end
 
 function create_test_figure()
     fig = Figure(size = (1200, 900))
@@ -141,7 +204,7 @@ function create_test_figure()
     checkbox_grid.checked[] = false
     toggle_dark.active[] = true
     # Simulate 3 clicks
-    return fig
+    return EScreenshot(edisplay, fig)
 end
 
 @reference_test "Widgets layout" begin
