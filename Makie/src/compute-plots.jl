@@ -477,25 +477,28 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
 end
 
 function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tuple::Tuple)
-    # TODO: Currently not checking this to allow trailing arguments to be skipped
-    # for GridBased and friends
-    # if length(args) != length(dim_tuple)
-    #     error("Number of dimensions ($(length(dim_tuple))) does not match number of arguments ($(length(args)))")
-    # end
-
     # This sets conversions per dimension if they have not already been set.
     # If a recipe has multiple arguments for one dimension that dimension may
     # be set multiple times here (but only the first one will actually be used)
+    maxdim = 0
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
-        update_dim_conversion!(dim_converts, dim, args[i])
+        if dim isa Tuple
+            for (j, d) in enumerate(dim)
+                update_dim_conversion!(dim_converts, d, args[i], j)
+                maxdim = max(maxdim, d)
+            end
+        else
+            update_dim_conversion!(dim_converts, dim, args[i])
+            maxdim = max(maxdim, dim)
+        end
     end
 
     # Add input containing Symbol(:dim_convert_, i) which triggers when the
     # conversion changes. (One per dimension, so use unique on dim_tuple)
     # Note that the order in dim_convert_names is important
     dim_convert_names = Symbol[]
-    for i in 1:maximum(dim_tuple)
+    for i in 1:maxdim
         obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
         converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
         add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
@@ -511,7 +514,14 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
         result = ntuple(length(expanded)) do i
             # argument i is associated with the dim convert of dimension dims[i]
             if i <= length(dims) && dims[i] != 0
-                return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+                if dims[i] isa Tuple
+                    parts = map(eachindex(dims[i]), dims[i]) do idx, dim
+                        return convert_dim_value(converts[dim], attr, expanded[i], last_vals[i], idx)
+                    end
+                    return Point.(parts...)
+                else
+                    return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+                end
             else
                 return expanded[i]
             end
@@ -537,6 +547,10 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # converted.
     parent_is_scene = pop!(user_kw, :parent_is_scene)
     force_dimconverts = needs_dimconvert(dim_converts)
+
+    @info P
+    @info args_converted
+    @info status
 
     if force_dimconverts && parent_is_scene
         add_dim_converts!(P, attr, dim_converts, args, user_kw)

@@ -12,6 +12,22 @@ function argument_dims(trait::ConversionTrait, args...; kwargs...)
 end
 
 # Default handling
+
+# point like data
+function _argument_dims(
+        ::Tuple{<:Union{VecTypes{N}, AbstractVector{<:VecTypes{N}}}};
+        direction::Symbol = :y, orientation::Symbol = :vertical
+    ) where {N}
+
+    dims = ntuple(identity, N)
+    if N == 2
+        dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
+        dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
+    end
+    return (dims,)
+end
+
+# 2 or 3 values/arrays of values
 function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :vertical)
     # Block any one argument case by default, e.g. VecTypes, GeometryPrimitive
     length(args) in (2, 3) || return nothing
@@ -22,8 +38,10 @@ function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :ver
     end
 
     dims = ntuple(identity, length(args))
-    dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
-    dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
+    if length(args) == 2
+        dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
+        dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
+    end
     return dims
 end
 

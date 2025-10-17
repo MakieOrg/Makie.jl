@@ -118,5 +118,5 @@ function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
 end
 
 function types_for_plot_arguments(::PointBased)
-    return Tuple{AbstractVector{<:Union{Point2, Point3}}}
+    return Tuple{AbstractVector{<:Union{Point2{<:Real}, Point3{<:Real}}}}
 end

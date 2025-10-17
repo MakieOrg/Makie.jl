@@ -204,6 +204,32 @@ end
 
 convert_dim_value(conv, attr, value, last_value) = value
 
+function convert_dim_value(conv, attr, value, last_value, element_index)
+    return convert_dim_value(conv, attr, value, last_value)
+end
+
+function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_value, element_index)
+    dim_value = [p[element_index] for p in points]
+    last_dim_value = last_value === nothing ? nothing : [p[element_index] for p in last_value]
+    return convert_dim_value(conv, attr, dim_value, last_dim_value)
+end
+
+function convert_dim_value(conv, attr, point::VecTypes, last_value, element_index)
+    return convert_dim_value(conv, attr, point[element_index], last_value[element_index])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
+    return update_dim_conversion!(conversions, dim, value)
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value::VecTypes, element_idx)
+    return update_dim_conversion!(conversions, dim, value[element_idx])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value::AbstractArray{<:VecTypes}, element_idx)
+    return update_dim_conversion!(conversions, dim, first(value)[element_idx])
+end
+
 function update_dim_conversion!(conversions::DimConversions, dim, value)
     conversion = conversions[dim]
     if conversion isa Union{Nothing, NoDimConversion}
