@@ -374,7 +374,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
         unit_in_ticklabel = ax.y_unit_in_ticklabel, unit_in_label = ax.y_unit_in_label,
-        label_suffix = ax.ylabel_suffix,  use_short_unit = ax.use_short_y_units
+        label_suffix = ax.ylabel_suffix, use_short_unit = ax.use_short_y_units
     )
 
     ax.yaxis = yaxis

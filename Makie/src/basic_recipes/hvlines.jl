@@ -42,8 +42,8 @@ function projview_to_2d_limits(plot::AbstractPlot)
     end
 end
 
-argument_dims(::Type{<:HLines}, y) = (2, )
-argument_dims(::Type{<:VLines}, x) = (1, )
+argument_dims(::Type{<:HLines}, y) = (2,)
+argument_dims(::Type{<:VLines}, x) = (1,)
 
 function Makie.plot!(p::Union{HLines, VLines})
     mi = p isa HLines ? (:xmin) : (:ymin)

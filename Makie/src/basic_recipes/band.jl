@@ -14,7 +14,7 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     shading = NoShading
 end
 
-argument_dim_kwargs(::Type{<:Band}) = (:direction, )
+argument_dim_kwargs(::Type{<:Band}) = (:direction,)
 function argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
     return direction === :x ? (1, 2, 2) : (2, 1, 1)
 end

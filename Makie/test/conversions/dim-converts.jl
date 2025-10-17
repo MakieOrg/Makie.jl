@@ -142,7 +142,7 @@ end
         get_value(x::Makie.ClosedInterval) = minimum(x)
 
         @testset "$func" begin
-            f,a,p = func(args...; kwargs...)
+            f, a, p = func(args...; kwargs...)
 
             @test p.arg_dims[] == dims
 
@@ -191,7 +191,7 @@ end
     # TODO: Primitives
     @testset "Primitives" begin
         test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2))
-        test_plot(image, 0u"m" .. 1u"m", 0..1, rand(10, 10))
+        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10))
         test_plot(
             surface, (1:5) .* u"m", (1:5) .* u"cm", rand(5, 5) .* u"W",
             dims = (1, 2, 3)
@@ -247,7 +247,7 @@ end
         test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
         test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
         test_plot(
-            contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0..1, rand(10, 10, 10),
+            contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0 .. 1, rand(10, 10, 10),
             dims = (1, 2, 3)
         )
 
@@ -328,7 +328,7 @@ end
         )
 
         # probably doesn't make sense but it works...
-        test_plot(dendrogram, (1:16) .* u"m", rand(16) .* u"s", [(2i-1, 2i) for i in 1:15])
+        test_plot(dendrogram, (1:16) .* u"m", rand(16) .* u"s", [(2i - 1, 2i) for i in 1:15])
 
         test_plot(
             density, rand(100) .* u"s",
@@ -363,7 +363,7 @@ end
             hist, rand(100) .* u"g", direction = :x,
             dims = (2,)
         )
-        test_plot(violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s",)
+        test_plot(violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s")
         test_plot(
             violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s", orientation = :horizontal,
             dims = (2, 1)

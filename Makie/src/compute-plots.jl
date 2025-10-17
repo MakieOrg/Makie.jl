@@ -504,8 +504,8 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
 
     # Apply dim_convert
     register_computation!(
-            attr, [input, :arg_dims, dim_convert_names...], [:dim_converted]
-        ) do (expanded, dims, converts...), changed, last
+        attr, [input, :arg_dims, dim_convert_names...], [:dim_converted]
+    ) do (expanded, dims, converts...), changed, last
 
         last_vals = isnothing(last) ? ntuple(i -> nothing, length(dims)) : last.dim_converted
         result = ntuple(length(expanded)) do i
