@@ -655,9 +655,9 @@ accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::AbstractArray,
+        vertices::VecTypesVector{N, <:Real},
         indices::AbstractArray
-    )
+    ) where {N}
     vs = to_vertices(vertices)
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
