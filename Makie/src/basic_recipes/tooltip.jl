@@ -4,7 +4,7 @@
 
 Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe Tooltip (positions::Union{
+@recipe Tooltip (position::Union{
         VecTypes{N, <:Real} where {N},
         Tuple{<:VecTypes{N, <:Real} where {N}, <:AbstractString}
     },) begin
