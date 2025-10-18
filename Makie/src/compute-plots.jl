@@ -483,14 +483,14 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
     maxdim = 0
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
-        if dim isa Tuple
+        if dim isa Integer
+            update_dim_conversion!(dim_converts, dim, args[i])
+            maxdim = max(maxdim, dim)
+        else
             for (j, d) in enumerate(dim)
                 update_dim_conversion!(dim_converts, d, args[i], j)
                 maxdim = max(maxdim, d)
             end
-        else
-            update_dim_conversion!(dim_converts, dim, args[i])
-            maxdim = max(maxdim, dim)
         end
     end
 
@@ -514,13 +514,13 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
         result = ntuple(length(expanded)) do i
             # argument i is associated with the dim convert of dimension dims[i]
             if i <= length(dims) && dims[i] != 0
-                if dims[i] isa Tuple
+                if dims[i] isa Integer
+                    return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+                else
                     parts = map(eachindex(dims[i]), dims[i]) do idx, dim
                         return convert_dim_value(converts[dim], attr, expanded[i], last_vals[i], idx)
                     end
                     return Point.(parts...)
-                else
-                    return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
                 end
             else
                 return expanded[i]
