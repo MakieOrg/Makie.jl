@@ -175,7 +175,13 @@ function convert_arguments(
     return (val_low_high,)
 end
 
-convert_arguments(::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval}) = (x, endpoints.(y))
+function convert_arguments(::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval})
+    return (x, endpoints.(y))
+end
+
+function convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Real}, y::AbstractVector{<:Interval})
+    return convert_arguments(P, x, endpoints.(y))
+end
 
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
