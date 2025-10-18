@@ -215,6 +215,8 @@ Plot a stacked multi-histogram of `values`, which must be a vector of vectors.
     over_background_color = automatic
     "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
     over_bar_color = automatic
+    "Sets the positioning of bars which must be either `:stack` or `:dodge` Defaults to `:stack`"
+    positioning = :stack
 end
 
 function plot!(plot::MultiHist)
@@ -223,8 +225,8 @@ function plot!(plot::MultiHist)
 
     map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
         points = []
-        for (dataset, wgt) in (values, wgts)
-            centers, weights = _hist_center_weights(dataset, edges, normalization, scale_to, wgt)
+        for dataset in values
+            centers, weights = _hist_center_weights(dataset, edges, normalization, scale_to, wgts)
             push!(points, Point2.(centers, weights))
         end
         return points
@@ -234,17 +236,22 @@ function plot!(plot::MultiHist)
     map!(plot, :bar_labels, :computed_bar_labels) do x
         return x === :values ? :y : x
     end
-    map!(plot, :points, [:flatbins, :stack]) do points
+    map!(plot, [:points, :positioning], [:flatbins, :computed_colors, :stack, :dodge]) do points, positioning
         flatbins = collect(Iterators.flatten(points))
-        stack = [i for (i, bin) in enumerate(points) for _ in 1:length(bin)]
-        return (flatbins, stack)
+        color = [i for (i, bin) in enumerate(points) for _ in 1:length(bin)]
+        dodge = stack = [1 for (i, bin) in enumerate(points) for _ in 1:length(bin)]
+        if positioning == :stack
+            stack = color
+        elseif positioning == :dodge
+            dodge = color
+        end
+        return (flatbins, color, stack, dodge)
     end
 
     # plot the values, not the observables, to be in control of updating
     barplot!(
         plot, Attributes(plot), plot.flatbins;
-        #stack = plot.stack,
-        color = plot.stack,
+        color = plot.computed_colors,
         bar_labels = plot.bar_labels,
     )
 

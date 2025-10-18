@@ -1367,12 +1367,19 @@ end
     data1 = rand(100) .* 2.0 .- 1.0
     data2 = rand(100) .* 2.0
     fig = Figure(size=(600,300))
-    multihist(
-        fig[1, 1],
+    multihist!(
+        Axis(fig[1, 1]),
         [data1, data2];
-        #color = (:red, :blue),
         colormap = :Set3_10,
         label = ["red", "blue"],
+        positioning = :stack,
+    )
+    multihist!(
+        Axis(fig[1, 2]),
+        [data1, data2];
+        colormap = :Set3_10,
+        label = ["red", "blue"],
+        positioning = :dodge,
     )
     fig
 end
