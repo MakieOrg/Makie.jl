@@ -209,6 +209,7 @@ function convert_dim_value(conv, attr, value, last_value, element_index)
 end
 
 function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_value, element_index)
+    isempty(points) && return Float64[]
     dim_value = [p[element_index] for p in points]
     last_dim_value = last_value === nothing ? nothing : [p[element_index] for p in last_value]
     return convert_dim_value(conv, attr, dim_value, last_dim_value)
@@ -227,8 +228,9 @@ function update_dim_conversion!(conversions::DimConversions, dim, value::VecType
     return update_dim_conversion!(conversions, dim, value[element_idx])
 end
 
-function update_dim_conversion!(conversions::DimConversions, dim, value::AbstractArray{<:VecTypes}, element_idx)
-    return update_dim_conversion!(conversions, dim, first(value)[element_idx])
+function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
+    isempty(points) && return Float64[]
+    return update_dim_conversion!(conversions, dim, first(points)[element_idx])
 end
 
 function update_dim_conversion!(conversions::DimConversions, dim, value)
