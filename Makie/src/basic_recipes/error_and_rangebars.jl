@@ -61,6 +61,30 @@ function argument_dims(::Type{<:Errorbars}, x, y, l, h; direction)
     return ifelse(direction === :y, (1, 2, 2, 2), (1, 2, 1, 1))
 end
 
+function argument_dims(::Type{<:Errorbars}, x, y, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, (1, 2, (2, 2)), (1, 2, (1, 1)))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, e; direction)
+    return ifelse(direction === :y, ((1, 2), 2), ((1, 2), 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, l, h; direction)
+    return ifelse(direction === :y, ((1, 2), 2, 2), ((1, 2), 1, 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, ((1, 2), (2, 2)), ((1, 2), (1, 1)))
+end
+
+function argument_dims(::Type{<:Errorbars}, xye::VecTypesVector{3}; direction)
+    return ifelse(direction === :y, ((1, 2, 2),), ((1, 2, 1),))
+end
+
+function argument_dims(::Type{<:Errorbars}, xylh::VecTypesVector{4}; direction)
+    return ifelse(direction === :y, ((1, 2, 2, 2),), ((1, 2, 1, 1),))
+end
+
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealOrVec)
     T = float_type(x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
@@ -125,6 +149,14 @@ function argument_dims(::Type{<:Rangebars}, x, l, h; direction)
     return ifelse(direction === :y, (1, 2, 2), (2, 1, 1))
 end
 
+function argument_dims(::Type{<:Rangebars}, x, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, (1, (2, 2)), (2, (1, 1)))
+end
+
+function argument_dims(::Type{<:Rangebars}, xlh::VecTypesVector{3}; direction)
+    return ifelse(direction === :y, ((1, 2, 2),), ((2, 1, 1),))
+end
+
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, high::RealOrVec)
     T = float_type(val, low, high)
     val_low_high = broadcast(Vec3{T}, val, low, high)
@@ -143,8 +175,7 @@ function convert_arguments(
     return (val_low_high,)
 end
 
-Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
-    convert_arguments(P, x, endpoints.(y))
+convert_arguments(::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval}) = (x, endpoints.(y))
 
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`

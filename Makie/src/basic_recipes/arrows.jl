@@ -4,7 +4,8 @@
 
 struct ArrowLike <: ConversionTrait end
 
-argument_dims(::ArrowLike, xy, uv) = nothing
+argument_dims(::ArrowLike, xy::VecTypes{N}, uv::VecTypes{N}) where {N} = (1:N, 1:N)
+argument_dims(::ArrowLike, xy::VecTypesVector{N}, uv::VecTypesVector{N}) where {N} = (1:N, 1:N)
 argument_dims(::ArrowLike, x, y, f) = (1, 2)
 argument_dims(::ArrowLike, x, y, z, f::Function) = (1, 2, 3)
 argument_dims(::ArrowLike, x, y, u, v) = (1, 2, 1, 2)

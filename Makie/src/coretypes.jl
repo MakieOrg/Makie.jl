@@ -165,3 +165,4 @@ Base.:(==)(a::EndPoints, b::NTuple{2}) = a.data == b
 const EndPointsLike = Union{ClosedInterval, Tuple{Real, Real}}
 
 const RangeLike = Union{AbstractVector{T}, ClosedInterval{T}, Tuple{T, T}} where {T}
+const VecTypesVector = AbstractVector{<:VecTypes{N, T}} where {N, T}

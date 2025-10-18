@@ -167,6 +167,12 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
+argument_dims(::Type{<:Annotation}, x, y) = (1, 2)
+argument_dims(::Type{<:Annotation}, xy) = ((1, 2),)
+argument_dims(::Type{<:Annotation}, x, y, x2, y2) = (1, 2, 1, 2)
+argument_dims(::Type{<:Annotation}, xy::VecTypes{2}, xy2::VecTypes{2}) = ((1, 2), (1, 2))
+argument_dims(::Type{<:Annotation}, xy::VecTypesVector{2}, xy2::VecTypesVector{2}) = ((1, 2), (1, 2))
+
 function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
