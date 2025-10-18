@@ -464,7 +464,7 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 end
 
                 @testset "Tooltip" begin
-                    @test apply_conversion(Tooltip, xs[1], ys[1], str) isa Tuple{Point2{T_out}, String}
+                    @test apply_conversion(Tooltip, xs[1], ys[1], str) isa Tuple{Tuple{Point2{T_out}, String}}
                     @test apply_conversion(Tooltip, xs[1], ys[1]) isa Tuple{Point2{T_out}}
                 end
 
