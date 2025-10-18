@@ -1363,6 +1363,20 @@ end
     current_figure()
 end
 
+@reference_test "MultiHist" begin
+    data1 = rand(100) .* 2.0 .- 1.0
+    data2 = rand(100) .* 2.0
+    fig = Figure(size=(600,300))
+    multihist(
+        fig[1, 1],
+        [data1, data2];
+        #color = (:red, :blue),
+        colormap = :Set3_10,
+        label = ["red", "blue"],
+    )
+    fig
+end
+
 @reference_test "LaTeXStrings linesegment offsets" begin
     s = Scene(camera = campixel!, size = (600, 600))
     for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
