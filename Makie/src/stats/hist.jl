@@ -126,7 +126,7 @@ end
 
 function pick_hist_edges(vals, bins)
     if bins isa Int
-        mi, ma = float.(extrema(vals))
+        mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
@@ -163,6 +163,89 @@ function plot!(plot::Hist)
     barplot!(
         plot, Attributes(plot), plot.points;
         bar_labels = plot.computed_bar_labels, color = plot.computed_colors
+    )
+
+    return plot
+end
+
+"""
+    multihist(values)
+
+Plot a stacked multi-histogram of `values`, which must be a vector of vectors.
+"""
+@recipe MultiHist (values,) begin
+    """
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
+    """
+    bins = 15
+    """
+    Sets the normalization applied to the histogram. Possible values are:
+
+    *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
+       has norm 1 and represents a probability density function.
+    * `:density`: Normalize by bin sizes only. Resulting histogram represents
+       count density of input and does not have norm 1. Will not modify the
+       histogram if it already represents a density (`h.isdensity == 1`).
+    * `:probability`: Normalize by sum of weights only. Resulting histogram
+       represents the fraction of probability mass for each bin and does not have
+       norm 1.
+    *  `:none`: Do not normalize.
+    """
+    normalization = :none
+    "Sets optional statistical weights."
+    weights = automatic
+
+    """
+    Scales the histogram by a common factor such that the largest bin reaches the
+    given value. This can also be set to `:flip` to flip the direction of histogram
+    bars without scaling them.
+    """
+    scale_to = nothing
+
+    filtered_attributes(
+        BarPlot, exclude = (
+            :dodge, :n_dodge, :dodge_gap, :stack, :width,
+            :color_over_background, :color_over_bar, # renamed here :(
+        )
+    )...
+    "Sets the gap between bars relative to their width. The new width is `w * (1 - gap)`."
+    gap = 0
+    "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
+    over_background_color = automatic
+    "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
+    over_bar_color = automatic
+end
+
+function plot!(plot::MultiHist)
+
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
+
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
+        points = []
+        for (dataset, wgt) in (values, wgts)
+            centers, weights = _hist_center_weights(dataset, edges, normalization, scale_to, wgt)
+            push!(points, Point2.(centers, weights))
+        end
+        return points
+    end
+
+    map!(diff, plot, :edges, :widths)
+    map!(plot, :bar_labels, :computed_bar_labels) do x
+        return x === :values ? :y : x
+    end
+    map!(plot, :points, [:flatbins, :stack]) do points
+        flatbins = collect(Iterators.flatten(points))
+        stack = [i for (i, bin) in enumerate(points) for _ in 1:length(bin)]
+        return (flatbins, stack)
+    end
+
+    # plot the values, not the observables, to be in control of updating
+    barplot!(
+        plot, Attributes(plot), plot.flatbins;
+        #stack = plot.stack,
+        color = plot.stack,
+        bar_labels = plot.bar_labels,
     )
 
     return plot
