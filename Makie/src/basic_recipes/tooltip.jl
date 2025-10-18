@@ -58,7 +58,7 @@ Creates a tooltip pointing at `position` displaying the given `string
 end
 
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
-    return (Point2{float_type(x, y)}(x, y), str)
+    return ((Point2{float_type(x, y)}(x, y), str),)
 end
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
     return (Point2{float_type(x, y)}(x, y),)
