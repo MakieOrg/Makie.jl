@@ -215,7 +215,8 @@ function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_v
 end
 
 function convert_dim_value(conv, attr, point::VecTypes, last_value, element_index)
-    return convert_dim_value(conv, attr, point[element_index], last_value[element_index])
+    last = last_value === nothing ? nothing : last_value[element_index]
+    return convert_dim_value(conv, attr, point[element_index], last)
 end
 
 function update_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
