@@ -4,7 +4,10 @@
 
 Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe Tooltip begin
+@recipe Tooltip (positions::Union{
+        VecTypes{N, <:Real} where {N},
+        Tuple{<:VecTypes{N, <:Real} where {N}, <:AbstractString}
+    },) begin
     # General
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
@@ -60,9 +63,13 @@ end
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
     return (Point2{float_type(x, y)}(x, y),)
 end
+function convert_arguments(::Type{<:Tooltip}, xy::VecTypes, s::AbstractString)
+    return ((xy, s), )
+end
 
-function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
-    tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
+function plot!(plot::Tooltip{<:Tuple{<:Tuple{<:VecTypes, <:AbstractString}}})
+    map!(identity, plot, :position, [:extracted_position, :extracted_text])
+    tooltip!(plot, Attributes(plot), plot.extracted_position; text = plot.extracted_text)
     return plot
 end
 

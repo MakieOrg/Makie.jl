@@ -308,7 +308,7 @@ end
         # test_plot(waterfall, rand(10) .* u"m") # test doesn't handle expand_arguments()
     end
 
-    @testset "stats" begin
+    @testset "stats plots" begin
         test_plot(
             boxplot, Categorical(rand(["A", "B"], 10)), rand(10) .* u"m",
             dims = (1, 2)
