@@ -503,7 +503,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         scene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        visible = attr(:gridvisible), inspectable = false, force_dimconverts = false
     )
 
     endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
@@ -522,7 +522,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         scene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false
+        visible = attr(:gridvisible), inspectable = false, force_dimconverts = false
     )
 
 
@@ -569,14 +569,16 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     framelines = linesegments!(
         scene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        clip_planes = Plane3f[], force_dimconverts = false
     )
 
     front_framelines = linesegments!(
         overlay, framepoints_front_spines, color = attr(:spinecolor_4),
         linewidth = attr(:spinewidth), visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
         transparency = true, inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        clip_planes = Plane3f[], force_dimconverts = false
     )
 
     #= On transparency and render order

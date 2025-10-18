@@ -325,7 +325,7 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
             end
         end
     end
-    attributes[:parent_is_scene] = true
+    get!(attributes, :force_dimconverts, true)
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
@@ -395,7 +395,7 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
     # inserts global state from axis into plot attributes if they exist
     get!(attributes, :dim_conversions, get_conversions(ax))
 
-    attributes[:parent_is_scene] = true
+    get!(attributes, :force_dimconverts, true)
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     if ax isa Figure && !(plot isa PlotSpecPlot)
         error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
@@ -409,7 +409,7 @@ end
     if !isnothing(conversion)
         get!(attributes, :dim_conversions, conversion)
     end
-    attributes[:parent_is_scene] = scene isa Scene
+    get!(attributes, :force_dimconverts, scene isa Scene)
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot

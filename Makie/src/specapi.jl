@@ -579,7 +579,7 @@ plottype(::Type{<:Plot}, ::Union{GridLayoutSpec, BlockSpec}) = Plot{plot}
 function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
     attr = copy(ps.kwargs)
-    attr[:parent_is_scene] = false
+    get!(attr, :force_dimconverts, false)
     return P((ps.args...,), attr)
 end
 

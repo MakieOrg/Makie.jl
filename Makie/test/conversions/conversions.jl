@@ -17,9 +17,9 @@ using Makie: plotfunc, plotfunc!, func2type
 end
 
 @testset "Heatmapshader with ranges" begin
-    # parent_is_scene is set by plot!(parent, ...) which this doesn't call.
+    # force_dimconverts is set by plot!(parent, ...) which this doesn't call.
     # To avoid erroring we pass it manually
-    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol, Any}(:parent_is_scene => true))
+    hm = Heatmap(((0, 1), (0, 1), Resampler(zeros(4, 4))), Dict{Symbol, Any}(:force_dimconverts => true))
     @test hm.converted[][1] isa Makie.EndPoints{Float32}
     @test hm.converted[][2] isa Makie.EndPoints{Float32}
     @test hm.converted[][3].data == Resampler(zeros(4, 4)).data

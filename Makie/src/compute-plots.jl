@@ -541,14 +541,12 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     args_converted = convert_arguments(P, args...; kw...)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
 
-    # parent_is_scene differentiates root plots (plots to a scene) from child
-    # plots (plot to a recipe plot). The first option should strictly match
-    # existing (scene-) given dim_converts, the latter is typically already
-    # converted.
-    parent_is_scene = pop!(user_kw, :parent_is_scene)
-    force_dimconverts = needs_dimconvert(dim_converts)
+    # Controls whether the plot is forced to apply dim converts or allowed to
+    # use plain data in a dim_convert scene. Typically true for plots to scenes
+    # and false for plots to other plots
+    force_dimconverts = pop!(user_kw, :force_dimconverts)
 
-    if force_dimconverts && parent_is_scene
+    if force_dimconverts && needs_dimconvert(dim_converts)
         add_dim_converts!(P, attr, dim_converts, args, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
