@@ -26,11 +26,7 @@ function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yu
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
 end
 
-function convert_arguments(::Type{<:Band}, x::AbstractVector, y::AbstractVector{<:Interval})
-    return (x, leftendpoint.(y), rightendpoint.(y))
-end
-
-function convert_arguments(P::Type{<:Band}, x::AbstractVector{<:Real}, y::AbstractVector{<:Interval})
+function convert_arguments(P::Type{<:Band}, x::AbstractVector, y::AbstractVector{<:Interval})
     return convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
 end
 

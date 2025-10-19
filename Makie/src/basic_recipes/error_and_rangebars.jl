@@ -175,11 +175,7 @@ function convert_arguments(
     return (val_low_high,)
 end
 
-function convert_arguments(::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval})
-    return (x, endpoints.(y))
-end
-
-function convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Real}, y::AbstractVector{<:Interval})
+function convert_arguments(P::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval})
     return convert_arguments(P, x, endpoints.(y))
 end
 

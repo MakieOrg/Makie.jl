@@ -197,59 +197,102 @@ Makie.DateTimeConversion
 
 ## Developer docs
 
-### Recipe Interface
+### Overview
 
-To apply dim converts to a recipe, its arguments must be matched to dimensions.
-This is done using the `argument_dims()` function which works similar to `convert_arguments()`.
-It can be defined per plot type or conversion trait, takes a set of arguments and returns the respective dimensions.
-Any plot with 2 or 3 arguments will default to dimensions (1, 2) or (1, 2, 3) if the data isn't point-like and no specialized method is defined.
-Plots with more or less arguments require `argument_dims()` methods to apply dim converts.
+When building a plot a few conditions are evaluated to decide whether a plot applies dim converts or not.
+They are given in two layers.
+The first layer checks the state of the plot and conversion: (This is an if, elseif, ... pattern.)
+1. If a plot is not in data space it does not apply dim converts.
+2. If the plot has `force_dimconverts == true` which means it plots to a scene rather than another plot (unless set explicitly), and dim converts are already fixed by the parent they are applied.
+3. If `convert_arguments()` reached the final conversion target or if it returned a SpecApi type then dim converts are not applied.
+4. If `convert_arguments()`  did not reach the final conversion target or if it is unknown, then dim_converts do apply. If applying `convert_arguments()` resulted in a change they are applied before applying dim converts
 
-Arrows is one such example.
-Here are the methods implemented for `ArrowLike`, the conversion trait for `Arrows2D` and `Arrows3d`:
+If the first layer decides to apply dim converts we move to the second.
+Here we check `argument_dims()` with partially converted or raw arguments.
+If it returns `nothing` we assume dim converts can not be applied and continue without.
+Otherwise dim converts get initialized via `update_dim_conversion!()`, added to the plot and included in the conversion pipeline using `convert_dim_value!()`.
 
-```julia
-# Mark arrows with 2 arguments, i.e. point-like data as not dim-convertible.
-# This is not required - it would otherwise be be marked invalid by the default
-# path
-Makie.argument_dims(::ArrowLike, xy, uv) = nothing
+### Target Conversion Types / Target Recipe Types
 
-# Arrows can be called with a function that generates directions from positions.
-# For the 2D case this declares the first two arguments as matching dimensions
-# (1, 2). The last argument is not dimensional and can either be omitted or set
-# to 0.
-Makie.argument_dims(::ArrowLike, x, y, f) = (1, 2)
-# In the 3D case the first 3 arguments map to dimensions (1, 2, 3)
-Makie.argument_dims(::ArrowLike, x, y, z, f::Function) = (1, 2, 3)
-
-# These methods deal with arrows calls with positional and directional arrays.
-# (x, u) act in dimension 1, (y, v) in dimension 2 and (z, w) in dimension 3.
-Makie.argument_dims(::ArrowLike, x, y, u, v) = (1, 2, 1, 2)
-Makie.argument_dims(::ArrowLike, x, y, z, u, v, w) = (1, 2, 3, 1, 2, 3)
-```
-
-Like `convert_argument()`, `argument_dims()` can also include attributes.
-For this `argument_dim_kwargs()` needs to be defined for the relevant plot type,
-returning the relevant attribute names.
-`band` for example uses:
+In order for `convert_arguments()` to reach the final conversion target (i.e. hit case 3.) that type needs to be defined.
+This can be done when creating a recipe for a plot type or for its conversion trait (lower priority):
 
 ```julia
-# Mark `direction` as an attribute that needs to be included
-Makie.argument_dim_kwargs(::Type{<:Band}) = (:direction, )
-
-# The 3 argument version of band is convertible. Depending on `direction`
-# the arguments may swap which direction they act in.
-function Makie.argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
-    return direction === :x ? (1, 2, 2) : (2, 1, 1)
+# Sets the target type of convert_arguments() for a plot type.
+# This doesn't need to be a concrete type and can be a Union of types
+@recipe MyPlot (converted1::TargetType1, converted2::TargetType2) begin
+    ...
 end
+
+# Sets the target type for a conversion trait.
+# This must be a Tuple type
+Makie.type_for_plot_arguments(::ConversionTrait) = Tuple{TargetType1, TargetType2}
 ```
 
-Given how frequent `direction` and `orientation` are as attributes, they are also handled by the default path in 2D.
-With `argument_dim_kwargs()` defined, the default path flips dimensions if `direction != :y` or `orientation != :vertical`.
+### Partial Conversions
+
+`convert_arguments()` is allowed to act on arguments before dim converts.
+Whether a method is used or not depends on its types.
+
+```julia
+# These can match arrays before dim conversion and thus apply
+Makie.convert_arguments(::MyConversionTrait, data::AbstractVector) = ...
+Makie.convert_arguments(::Type{<:MyPlot}, data::AbstractVector) = ...
+
+# These are only defined for numerical data as is present after dim converts.
+# They will not apply before them.
+Makie.convert_arguments(::MyConversionTrait, data::AbstractVector{<:Real}) = ...
+Makie.convert_arguments(::MyConversionTrait, data::AbstractVector{<:VecTypes}) = ...
+Makie.convert_arguments(::Type{<:MyPlot}, data::AbstractVector{<:Real}) = ...
+Makie.convert_arguments(::Type{<:MyPlot}, data::AbstractVector{<:VecTypes}) = ...
+```
+
+### Argument Dims
+
+The `argument_dims(::PlotTypeOrTrait, args...; kwargs...)` function declares how plot arguments map to to dimensions for which dim converts are defined.
+The arguments may be partially converted by `convert_arguments()` methods that apply before dim converts.
+They can include plot attributes as keyword arguments by defining `argument_dim_kwargs(::PlotTypeOrTrait) = (:attribute1, :attribute2, ...)`.
+
+```julia
+# For MyPlot with 4 arguments, args[1] and args[3] act in dimension 1,
+# and args[2] and args[4] act in dimension 2
+Makie.argument_dims(::Type{<:MyPlot}, x, y, dx, dy) = (1, 2, 1, 2)
+
+# Plots with MyConversionTrait have an attribute `direction` which
+# swaps the which dimension arguments apply to
+Makie.argument_dim_kwargs(::MyConversionTrait) = (:direction,)
+function Makie.argument_dims(::MyConversionTrait, x, y; direction)
+    return direction === :y ? (1, 2) : (2, 1)
+end
+
+# MyPlot2 has a 4 argument version where the first and last argument
+# do not relate to a dimension
+# (0 means no dimension and trailing 0s can be omited)
+function Makie.argument_dims(::MyPlot2, f, x, y, color_data)
+    return (0, 1, 2)
+end
+
+# VecTypes (Points, Tuples, ...) can be handled with "inner" dimensions:
+function Makie.argument_dims(
+        ::MyPlot,
+        xy::AbstractVector{VecTypes{N}},
+        dxy::AbstractVector{VecTypes{N}}
+    ) where {N}
+    # can also use ntuple(identity, N) instead of 1:N
+    return (1:N, 1:N)
+end
+
+# These arguments should never be dim converted
+Makie.argument_dims(::MyPlot, unconvertable) = nothing
+```
+
+Note that `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
+These cases also treat `direction` and `orientation` automatically if included via `argument_dim_kwargs()`.
+For this `direction == :y` and `orientation = :vertical` are treated as the neutral (no swap) case.
 
 ### Creating a new dim convert
 
-You can extend the API to define your own dim converts by overloading the following functions:
+You can extend the dim convert API to define your own by overloading the following functions:
 
 ```@figure dimconverts
 # The type you target with the dim conversion
@@ -259,7 +302,7 @@ end
 
 # Required
 
-# The Conversion that resolves your type to something numeric
+# A struct representing the Conversion that resolves your type to something numeric
 struct MyDimConversion <: Makie.AbstractDimConversion end
 
 # Creates the Conversion based on the element type used in plot data.
@@ -346,28 +389,3 @@ barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
 
 For more complex examples, you should look at the implementation in:
 `Makie/src/dim-converts`.
-
-### Early Conversions
-
-`convert_arguments()` is also applied before dim converts.
-This can be helpful to reduce the number of types that need to be handled in `convert_dim_value()`.
-For example `streamplot` implements:
-
-```julia
-function Makie.convert_arguments(
-        ::Type{<:StreamPlot}, f::Function,
-        xrange::Makie.RangeLike, yrange::Makie.RangeLike
-    )
-    return (f, extrema(xrange), extrema(yrange))
-end
-
-function Makie.convert_arguments(
-        ::Type{<:StreamPlot}, f::Function,
-        xrange::Makie.RangeLike, yrange::Makie.RangeLike, zrange::Makie.RangeLike
-    )
-    return (f, extrema(xrange), extrema(yrange), extrema(zrange))
-end
-```
-
-These methods act on untyped `AbstractVector`, `Tuple` and `ClosedInterval` arguments and convert them to a `(min, max)` tuples.
-This means that `convert_dim_value()` will only be called with `(min, max)` tuples.
