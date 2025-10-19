@@ -55,3 +55,27 @@ end
     scatter(fig[1, 2], x, y, t .* u"s", markersize = 15, color = t, alpha = 0.8, transparency = true, axis = (; type = Axis3))
     fig
 end
+
+@reference_test "Axis unit attributes" begin
+    fig = Figure(size = (400, 600))
+    ax = Axis(
+        fig[1, 1],
+        x_unit_in_label = true, x_unit_in_ticklabel = false,
+        xlabel_suffix = "unit: {}", use_short_x_units = true,
+        y_unit_in_label = true, y_unit_in_ticklabel = true,
+        ylabel_suffix = "{}", use_short_y_units = false
+    )
+    scatterlines!(ax, Point2.((1:10) .* u"s", sin.(1:10) .* u"m"))
+
+    ax = Axis3(
+        fig[2, 1],
+        x_unit_in_label = true, x_unit_in_ticklabel = false,
+        xlabel_suffix = "unit: {}", use_short_x_units = true,
+        y_unit_in_label = true, y_unit_in_ticklabel = true,
+        ylabel_suffix = "{}", use_short_y_units = false,
+        z_unit_in_label = false, z_unit_in_ticklabel = true,
+    )
+    scatterlines!(ax, Point3.((1:10) .* u"s", sin.(1:10) .* u"m", cos.(1:10) .* u"m"))
+
+    fig
+end
