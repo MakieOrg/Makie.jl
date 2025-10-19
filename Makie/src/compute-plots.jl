@@ -545,8 +545,15 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
     force_dimconverts = pop!(user_kw, :force_dimconverts)
+    defaults = default_theme(nothing, P)
+    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
 
-    if force_dimconverts && needs_dimconvert(dim_converts)
+    if !is_data_space(space)
+        # dim converts do not apply in relative, pixel or clip space
+        map!(attr, :args, :dim_converted) do args
+            return Ref{Any}(args)
+        end
+    elseif force_dimconverts && needs_dimconvert(dim_converts)
         add_dim_converts!(P, attr, dim_converts, args, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
