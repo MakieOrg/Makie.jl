@@ -53,8 +53,12 @@ end
 Units can be shown in both axis labels and tick labels.
 This can be controlled from the axis:
 
+```@setup dc_axis
+using Makie.Unitful
+```
+
 ```@figure dc_axis
-using Makie.Dates, Makie.Unitful
+using Makie.Unitful
 
 f,a,p = scatter((0:15:150) .* u"s", (0:1:10).^2 .* u"m")
 a.x_unit_in_ticklabel = false
@@ -87,7 +91,7 @@ f
 The dim converts are kept track of in the (generated) axis.
 They can be accessed with `ax.dim1_conversion` and `ax.dim2_conversion`:
 
-```@figure dc_axis
+```@example dc_axis
 (a.dim1_conversion[], a.dim2_conversion[])
 ```
 
@@ -101,7 +105,11 @@ f
 
 An axis can also be created explicitly with a dimensional conversion by setting those attributes in the constructor:
 
-```@figure
+```@setup dc_axis_construction
+using Makie.Unitful
+```
+
+```@figure dc_axis_construction
 using Makie.Unitful
 
 f = Figure()
@@ -315,21 +323,22 @@ end
 # observable here to trigger updates when the unit changes.
 Makie.needs_tick_update_observable(conversion::MyDimConversion) = nothing
 
-# Handles the resolution of `ax.x_unit_in_ticklabel = automatic` etc.
+# Handles the resolution of `ax.x/y/z_unit_in_ticklabel = automatic`.
 # The result is passed to `get_ticks(..., show_unit)`.
-show_dim_convert_in_ticklabel(::MyDimConversion, ::Automatic) = true
+Makie.show_dim_convert_in_ticklabel(::MyDimConversion, ::Makie.Automatic) = true
 
-# Handles the resolution of `ax.x_unit_in_label = automatic` etc.
-show_dim_convert_in_label(::MyDimConversion, ::Automatic) = true
+# Handles the resolution of `ax.x/y/z_unit_in_label = automatic`.
+Makie.show_dim_convert_in_axis_label(::MyDimConversion, ::Makie.Automatic) = true
 
 # Generates axis labels for the conversion.
-# This is called when `x_unit_in_label` etc. resolves to true.
+# This is called when `x/y/z_unit_in_label` resolves to true, and defaults to
+# an error when not implemented.
 # `format` contains the content of x/y/zlabel_suffix
 # `use_short_units` is a bool for switching to a long representation of a unit
-function get_label_suffix(::MyDimConversion, format, use_short_units)
+function Makie.get_label_suffix(::MyDimConversion, format, use_short_units)
     # Here we just use "my unit" as the unit string for the label and apply
     # the passed formatter.
-    return apply_format("my unit", format)
+    return Makie.apply_format("my unit", format)
 end
 
 barplot([MyUnit(1), MyUnit(2), MyUnit(3)], 1:3)
