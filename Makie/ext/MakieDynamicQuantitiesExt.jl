@@ -23,7 +23,7 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
 end
 
 needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
-show_dim_convert_in_ticklabel(::M.DQConversion, ::M.Automatic) = true
+show_dim_convert_in_ticklabel(::M.DQConversion) = true
 
 function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     quantity = conversion.quantity[]

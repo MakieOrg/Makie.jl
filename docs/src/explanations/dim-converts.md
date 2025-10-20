@@ -368,10 +368,10 @@ Makie.needs_tick_update_observable(conversion::MyDimConversion) = nothing
 
 # Handles the resolution of `ax.x/y/z_unit_in_ticklabel = automatic`.
 # The result is passed to `get_ticks(..., show_unit)`.
-Makie.show_dim_convert_in_ticklabel(::MyDimConversion, ::Makie.Automatic) = true
+Makie.show_dim_convert_in_ticklabel(::MyDimConversion) = true
 
 # Handles the resolution of `ax.x/y/z_unit_in_label = automatic`.
-Makie.show_dim_convert_in_axis_label(::MyDimConversion, ::Makie.Automatic) = true
+Makie.show_dim_convert_in_axis_label(::MyDimConversion) = true
 
 # Generates axis labels for the conversion.
 # This is called when `x/y/z_unit_in_label` resolves to true, and defaults to

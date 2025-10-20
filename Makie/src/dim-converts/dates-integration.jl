@@ -86,8 +86,8 @@ end
 
 # TODO: Is there a point in allowing Date ticks to not be displayed?
 # What would be shown instead?
-show_dim_convert_in_ticklabel(::DateTimeConversion, ::Automatic) = true
-show_dim_convert_in_ticklabel(::DateTimeConversion, ::Bool) = true
+# show_dim_convert_in_ticklabel(::DateTimeConversion, ::Bool) = true
+show_dim_convert_in_ticklabel(::DateTimeConversion) = true
 
 function get_ticks(conversion::DateTimeConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     T = conversion.type[]
@@ -518,10 +518,10 @@ function datetime_range_ticklabels(tickobj::DateTimeTicks, datetimes::Vector{<:D
 end
 
 # TODO: Consider reworking offset ticks so that the origin time stamp is in the label?
-# show_dim_convert_in_ticklabel(::DateTimeConversion, ::Automatic) = true
+# show_dim_convert_in_ticklabel(::DateTimeConversion) = true
 # get_label_suffix(dc::DateTimeConversion, format) = get_formatted_timestamp(dc)
 
 # This only makes sense for Time which goes through units, not Dates or DateTime
-show_dim_convert_in_axis_label(::DateTimeConversion, ::Automatic) = false
-show_dim_convert_in_axis_label(::DateTimeConversion, ::Bool) = false
+show_dim_convert_in_axis_label(::DateTimeConversion) = false
+# show_dim_convert_in_axis_label(::DateTimeConversion, ::Bool) = false
 get_label_suffix(::DateTimeConversion) = error("Cannot produce a label suffix for Dates.")

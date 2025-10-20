@@ -144,7 +144,7 @@ end
 
 # TODO: Does it make sense to allow discarding all the categorical information
 # and go back to default tick finding?
-show_dim_convert_in_ticklabel(::CategoricalConversion, ::Automatic) = true
+show_dim_convert_in_ticklabel(::CategoricalConversion) = true
 
 function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     scale != identity && error("Scale $(scale) not supported for categorical conversion")
@@ -166,7 +166,7 @@ function get_ticks(conversion::CategoricalConversion, ticks, scale, formatter, v
     end
 end
 
-show_dim_convert_in_axis_label(::CategoricalConversion, ::Automatic) = false
+show_dim_convert_in_axis_label(::CategoricalConversion) = false
 
 # TODO:
 # Allow this to succeed so x/ylabel_suffix can be used?

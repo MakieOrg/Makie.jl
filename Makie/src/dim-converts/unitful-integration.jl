@@ -127,7 +127,7 @@ function unit_string_to_rich(str::String)
     return rich(output...)
 end
 
-show_dim_convert_in_ticklabel(::UnitfulConversion, ::Automatic) = true
+show_dim_convert_in_ticklabel(::UnitfulConversion) = true
 
 function get_ticks(conversion::UnitfulConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     unit = conversion.unit[]
