@@ -15,20 +15,22 @@ function snapshot_figure(edisplay, fig, path)
     rm(path; force = true)
     display(edisplay, Bonito.App(fig))
     win = edisplay.window.window
-    win_size = run(win, """(()=>{
-        document.body.style.margin = '0';
-        document.body.style.padding = '0';
-        document.documentElement.style.margin = '0';
-        document.documentElement.style.padding = '0';
-        // Find the canvas element (Makie renders to canvas)
-        const canvas = document.querySelector('canvas');
-        const rect = canvas.getBoundingClientRect();
-        return [
-                Math.ceil(rect.width),
-                Math.ceil(rect.height)
-            ];
-        })();
-    """)
+    win_size = run(
+        win, """(()=>{
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            document.documentElement.style.margin = '0';
+            document.documentElement.style.padding = '0';
+            // Find the canvas element (Makie renders to canvas)
+            const canvas = document.querySelector('canvas');
+            const rect = canvas.getBoundingClientRect();
+            return [
+                    Math.ceil(rect.width),
+                    Math.ceil(rect.height)
+                ];
+            })();
+        """
+    )
     @show win_size
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
@@ -46,7 +48,7 @@ function snapshot_figure(edisplay, fig, path)
         });
         """,
     )
-    Bonito.wait_for(() -> isfile(path); timeout=30)
+    Bonito.wait_for(() -> isfile(path); timeout = 30)
     return path
 end
 
@@ -202,7 +204,7 @@ end
 # ReferenceTests.RECORDING_DIR[] = pwd()
 # ReferenceTests.REGISTERED_TESTS |> empty!
 function close_devtools(w)
-    run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
+    return run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
 end
 
 # Devtools cut off the screenshot!
