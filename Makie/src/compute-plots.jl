@@ -440,7 +440,7 @@ function add_convert_kwargs!(attr, user_kw, P, args)
     end
 end
 
-function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, user_kw, input = :args) where {P}
+function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, args_converted, user_kw) where {P}
     # Get dim of each argument. This needs to be reactive if we allow dynamic
     # attributes that change dim-mapping, e.g. direction
     kwarg_names = argument_dim_kwargs(P)
@@ -454,29 +454,38 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, us
         end
     end
 
+    kwargs = NamedTuple{kwarg_names}([getproperty(attr, name)[] for name in kwarg_names])
+    dim_tuple = argument_dims(P, args_converted...; kwargs...)
+
+    if dim_tuple === nothing
+        # args declared not dim-convertible by argument_dims().
+        # TODO: Should this be an error?
+        map!(args -> Ref{Any}(args), attr, :args, :dim_converted)
+        return
+
+    elseif !(dim_tuple isa Tuple)
+        # Format check
+        error("`arguments_dims() must return a `Tuple` of integers or `Nothing` but returned $dim_tuple")
+    end
+
+    # If convert_arguments() caused a change in dim-convertable arguments they
+    # should apply before treating dim converts
+    if args_converted !== args
+        map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
+            return convert_arguments(P, args...; kwargs...)
+        end
+        input = :recursive_convert
+    else
+        input = :args
+    end
+
+    # Add node for arg -> dim mapping. Should be dynamic for attributes like
+    # direction at least.
     map!(attr, [input, kwarg_names...], :arg_dims) do args, kwargs...
         nt = NamedTuple{kwarg_names}(kwargs)
         return argument_dims(P, args...; nt...)
     end
 
-    return add_dim_converts!(attr, dim_converts, args, input, attr.arg_dims[])
-end
-
-function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tuple)
-    error("`arguments_dims() must return a `Tuple` of integers or `Nothing` but returned $dim_tuple")
-end
-
-function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tuple::Nothing)
-    # Dimensions of arguments not defined, so we can't map them to dim_converts.
-    # TODO: Is this an error case? I.e. is this function required to apply
-    # dim_converts or could not applying them be valid?
-    map!(attr, :args, :dim_converted) do args
-        return Ref{Any}(args)
-    end
-    return
-end
-
-function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tuple::Tuple)
     # This sets conversions per dimension if they have not already been set.
     # If a recipe has multiple arguments for one dimension that dimension may
     # be set multiple times here (but only the first one will actually be used)
@@ -484,11 +493,11 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
     for (i, dim) in enumerate(dim_tuple)
         dim == 0 && continue
         if dim isa Integer
-            update_dim_conversion!(dim_converts, dim, args[i])
+            update_dim_conversion!(dim_converts, dim, args_converted[i])
             maxdim = max(maxdim, dim)
         else
             for (j, d) in enumerate(dim)
-                update_dim_conversion!(dim_converts, d, args[i], j)
+                update_dim_conversion!(dim_converts, d, args_converted[i], j)
                 maxdim = max(maxdim, d)
             end
         end
@@ -506,6 +515,7 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
     end
 
     # Apply dim_convert
+    # TODO: Do we really need last here?
     register_computation!(
         attr, [input, :arg_dims, dim_convert_names...], [:dim_converted]
     ) do (expanded, dims, converts...), changed, last
@@ -517,6 +527,10 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input, dim_tu
                 if dims[i] isa Integer
                     return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
                 else
+                    # Vector{<:VecTypes} case, where dim converts are expected to
+                    # return an array for VecTypes dimension
+                    # These arrays are repackaged as a Point array which hopefully
+                    # goes through the remaining conversions without issues
                     parts = map(eachindex(dims[i]), dims[i]) do idx, dim
                         return convert_dim_value(converts[dim], attr, expanded[i], last_vals[i], idx)
                     end
@@ -554,7 +568,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             return Ref{Any}(args)
         end
     elseif force_dimconverts && needs_dimconvert(dim_converts)
-        add_dim_converts!(P, attr, dim_converts, args, user_kw)
+        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
@@ -562,16 +576,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             return Ref{Any}(args)
         end
     elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
-        if args_converted !== args
-            # Not at target conversion, but something got converted
-            # This means we need to convert the args before doing a dim conversion
-            map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
-                return convert_arguments(P, args...; kwargs...)
-            end
-            add_dim_converts!(P, attr, dim_converts, args_converted, user_kw, :recursive_convert)
-        else
-            add_dim_converts!(P, attr, dim_converts, args, user_kw)
-        end
+        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 

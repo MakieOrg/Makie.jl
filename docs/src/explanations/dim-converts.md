@@ -203,9 +203,9 @@ When building a plot a few conditions are evaluated to decide whether a plot app
 They are given in two layers.
 The first layer checks the state of the plot and conversion: (This is an if, elseif, ... pattern.)
 1. If a plot is not in data space it does not apply dim converts.
-2. If the plot has `force_dimconverts == true` which means it plots to a scene rather than another plot (unless set explicitly), and dim converts are already fixed by the parent they are applied.
+2. If the plot has `force_dimconverts == true` which means it plots to a scene rather than another plot (unless set explicitly), and dim converts are already fixed by the parent, then they are applied. If applying `convert_arguments()` resulted in a change they are applied before applying dim converts.
 3. If `convert_arguments()` reached the final conversion target or if it returned a SpecApi type then dim converts are not applied.
-4. If `convert_arguments()`  did not reach the final conversion target or if it is unknown, then dim_converts do apply. If applying `convert_arguments()` resulted in a change they are applied before applying dim converts
+4. If `convert_arguments()`  did not reach the final conversion target or if it is unknown, then dim_converts do apply. If applying `convert_arguments()` resulted in a change they are applied before applying dim converts.
 
 If the first layer decides to apply dim converts we move to the second.
 Here we check `argument_dims()` with partially converted or raw arguments.
