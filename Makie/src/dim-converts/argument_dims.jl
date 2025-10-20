@@ -15,7 +15,7 @@ end
 
 # point like data
 function _argument_dims(
-        ::Tuple{<:Union{VecTypes{N}, AbstractVector{<:VecTypes{N}}}};
+        t::Tuple{Vararg{Union{VecTypes{N}, VecTypesVector{N}}}};
         direction::Symbol = :y, orientation::Symbol = :vertical
     ) where {N}
 
@@ -24,7 +24,7 @@ function _argument_dims(
         dims = ifelse(direction === :y, dims, (dims[2], dims[1]))
         dims = ifelse(orientation === :vertical, dims, (dims[2], dims[1]))
     end
-    return (dims,)
+    return ntuple(i -> dims, length(t))
 end
 
 # 2 or 3 values/arrays of values
