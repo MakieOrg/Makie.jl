@@ -398,6 +398,7 @@ end
         test_plot(annotation, ps, ps, text = string.(1:10), dims = ((1, 2, 1, 2),))
         test_plot(arrows2d, ps, ps, dims = ((1, 2), (1, 2)))
         test_plot(bracket, ps, ps, dims = ((1, 2), (1, 2)))
+        test_plot(band, ps, ps, dims = ((1, 2), (1, 2)))
         test_plot(errorbars, ps, y, dims = ((1, 2), 2))
         test_plot(errorbars, ps, Vec.(y, y), dims = ((1, 2), (2, 2)))
         test_plot(errorbars, Point.(x, y, x), direction = :x, dims = ((1, 2, 1),))

@@ -19,7 +19,7 @@ function argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
     return direction === :x ? (1, 2, 2) : (2, 1, 1)
 end
 function argument_dims(::Type{<:Band}, lower::VecTypesVector{N}, upper::VecTypesVector{N}; direction) where {N}
-    return direction === :x ? (1, 2) : (2, 1)
+    return direction === :x ? ((1, 2), (1, 2)) : ((2, 1), (2, 1))
 end
 
 function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yupper::RealVector)
@@ -36,7 +36,7 @@ function band_connect(n)
     return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
-function Makie.plot!(plot::Band)
+function plot!(plot::Band)
     @extract plot (lowerpoints, upperpoints)
     nanpoint(::Type{<:Point3}) = Point3(NaN)
     nanpoint(::Type{<:Point2}) = Point2(NaN)
