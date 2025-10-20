@@ -5,12 +5,14 @@
 
 Plots the given text(s) with a background(s) at the given position(s).
 """
-@recipe TextLabel (positions::Union{
+@recipe TextLabel (
+    positions::Union{
         VecTypesVector{N, <:Real} where {N},
         AbstractArray{<:Tuple{<:AbstractString, <:VecTypes{N, <:Real} where {N}}},
         AbstractArray{<:AbstractString},
-        AbstractString
-    },) begin
+        AbstractString,
+    },
+) begin
     # text-like args interface
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
