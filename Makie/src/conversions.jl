@@ -655,7 +655,7 @@ accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::VecTypesVector{N, <:Real},
+        vertices::AbstractArray{<:Union{VecTypes{N, <:Real}, <:Real}},
         indices::AbstractArray
     ) where {N}
     vs = to_vertices(vertices)
