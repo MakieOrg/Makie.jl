@@ -141,16 +141,29 @@ end
         get_value(x) = first(x)
         get_value(x::Makie.ClosedInterval) = minimum(x)
 
+        simplify(t::Tuple) = simplify.(t)
+        simplify(r::AbstractRange) = ntuple(i -> r[i], length(r))
+        simplify(::Nothing) = nothing
+        simplify(i::Integer) = i
+
         @testset "$func" begin
             f, a, p = func(args...; kwargs...)
 
-            @test p.arg_dims[] == dims
+            args = convert_arguments(typeof(p), args...)
+
+            @test simplify(p.arg_dims[]) == dims
 
             dc_args = Any[nothing, nothing, nothing]
             # UnitfulConversion only sees the first arg, so overwrite back to front
             for i in reverse(eachindex(dims))
                 dims[i] == 0 && continue
-                dc_args[dims[i]] = args[i]
+                if dims[i] isa Integer
+                    dc_args[dims[i]] = args[i]
+                else
+                    for (j, d) in enumerate(dims[i])
+                        dc_args[d] = getindex.(args[i], j)
+                    end
+                end
             end
 
             dim_converts = p.dim_conversions[]
@@ -368,5 +381,30 @@ end
             violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s", orientation = :horizontal,
             dims = (2, 1)
         )
+    end
+
+    # Sample plots that allow unique Point[] args
+    @testset "point-like conversions" begin
+        # PointBased() with different input types
+        x = rand(10) * u"s"
+        y = rand(10) * u"m"
+        test_plot(scatter, collect(zip(x, y)), dims = ((1, 2),))
+        test_plot(barplot, Vec.(x, y), direction = :x, dims = ((2, 1),))
+        test_plot(scatterlines, Point.(x, y, y), dims = ((1, 2, 3),))
+
+        # Other independent cases
+        ps = Point.(x, y)
+        test_plot(annotation, ps, text = string.(1:10), dims = ((1, 2),))
+        test_plot(annotation, ps, ps, text = string.(1:10), dims = ((1, 2, 1, 2),))
+        test_plot(arrows2d, ps, ps, dims = ((1, 2), (1, 2),))
+        test_plot(bracket, ps, ps, dims = ((1, 2), (1, 2),))
+        test_plot(errorbars, ps, y, dims = ((1, 2), 2,))
+        test_plot(errorbars, ps, Vec.(y, y), dims = ((1, 2), (2, 2),))
+        test_plot(errorbars, Point.(x, y, x), direction = :x, dims = ((1, 2, 1),))
+        test_plot(errorbars, Point.(x, y, x, x), direction = :x, dims = ((1, 2, 1, 1),))
+        test_plot(rangebars, x, tuple.(y, y), dims = (1, (2, 2),))
+        test_plot(rangebars, tuple.(x, y, y), dims = ((1, 2, 2),))
+        test_plot(poly, ps, 1:9, dims = ((1, 2),))
+        test_plot(dendrogram, ps, [(i, i+1) for i in 1:2:13], dims = ((1, 2),))
     end
 end

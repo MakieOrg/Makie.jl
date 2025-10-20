@@ -14,7 +14,7 @@ Plots errorbars at xy positions, extending by errors in the given `direction`.
 
 If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
 """
-@recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Errorbars (val_low_high::AbstractVector{<:Vec{4, <:Real}},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -38,7 +38,7 @@ The `low_high` argument can be a vector of tuples or intervals.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
 """
-@recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Vec{3, <:Real}},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -119,7 +119,7 @@ function convert_arguments(
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T}
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T <: Real}
     T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4{T_out}(x, y, el, eh)
@@ -127,7 +127,7 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1 <: Real, T2 <: Real}
     T_out = float_type(T1, T2)
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4{T_out}(x, y, el, eh)
@@ -135,10 +135,18 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T}
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T <: Real}
     T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
         Vec4{T_out}(x, y, e, e)
+    end
+    return (xyerr,)
+end
+
+function convert_arguments(::Type{<:Errorbars}, xy_low_high::VecTypesVector{4, T}) where {T <: Real}
+    T_out = float_type(T)
+    xyerr = broadcast(xy_low_high) do (x, y, l, h)
+        Vec4{T_out}(x, y, l, h)
     end
     return (xyerr,)
 end
@@ -166,7 +174,7 @@ end
 function convert_arguments(
         ::Type{<:Rangebars}, val::RealOrVec,
         low_high::AbstractVector{<:VecTypes{2, T}}
-    ) where {T}
+    ) where {T <: Real}
     T_out = float_type(float_type(val), T)
     T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
@@ -179,13 +187,21 @@ function convert_arguments(P::Type{<:Rangebars}, x::AbstractVector, y::AbstractV
     return convert_arguments(P, x, endpoints.(y))
 end
 
+function convert_arguments(::Type{<:Rangebars}, x_low_high::VecTypesVector{3, T}) where {T <: Real}
+    T_out = float_type(T)
+    xlh = broadcast(x_low_high) do (x, l, h)
+        Vec3{T_out}(x, l, h)
+    end
+    return (xlh,)
+end
+
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
+function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4, <:Real}}}})
     return _plot_bars!(plot)
 end
-function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
+function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3, <:Real}}}})
     return _plot_bars!(plot)
 end
 

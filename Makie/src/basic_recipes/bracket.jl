@@ -82,8 +82,12 @@ argument_dims(::Type{<:Bracket}, xy1::VecTypes{2}, xy2::VecTypes{2}) = ((1, 2), 
 argument_dims(::Type{<:Bracket}, xy1::VecTypesVector{2}, xy2::VecTypesVector{2}) = ((1, 2), (1, 2))
 argument_dims(::Type{<:Bracket}, x1, y1, x2, y2) = (1, 2, 1, 2)
 
-function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1 <: Real, T2 <: Real}
     return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
+end
+
+function convert_arguments(::Type{<:Bracket}, point1::VecTypesVector{2, T1}, point2::VecTypesVector{2, T2}) where {T1 <: Real, T2 <: Real}
+    return (tuple.(Point2{float_type(T1)}.(point1), Point2{float_type(T2)}.(point2)),)
 end
 
 function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)

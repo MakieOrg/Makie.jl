@@ -256,7 +256,7 @@ function convert_arguments(::Type{<:Dendrogram}, x::RealVector, y::RealVector, m
     return convert_arguments(Dendrogram, convert_arguments(PointBased(), x, y)[1], merges)
 end
 
-function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
+function convert_arguments(::Type{<:Dendrogram}, leaves::Vector{<:VecTypes{2, <:Real}}, merges::Vector{<:Tuple{<:Integer, <:Integer}})
     nodes = [DNode(i, n, nothing) for (i, n) in enumerate(leaves)]
     for m in merges
         push!(nodes, find_merge(nodes[m[1]], nodes[m[2]]; index = length(nodes) + 1))
