@@ -18,45 +18,76 @@ function snapshot_figure(edisplay, fig, path)
         edisplay.window.app,
         """
         const win = BrowserWindow.fromId($winid)
+
+        // First, wait for content to fully load
         win.webContents.executeJavaScript(`
-            (() => {
-                // Remove all padding and margins for tight screenshot
-                document.body.style.margin = '0';
-                document.body.style.padding = '0';
-                document.documentElement.style.margin = '0';
-                document.documentElement.style.padding = '0';
-        
-                // Find the canvas element (Makie renders to canvas)
-                const canvas = document.querySelector('canvas');
-                if (canvas) {
+            new Promise((resolve) => {
+                if (document.readyState === 'complete') {
+                    resolve();
+                } else {
+                    window.addEventListener('load', resolve);
+                }
+            })
+        `).then(() => {
+            return win.webContents.executeJavaScript(`
+                (() => {
+                    // Remove all padding, margins, and scrollbars
+                    document.body.style.margin = '0';
+                    document.body.style.padding = '0';
+                    document.body.style.overflow = 'hidden';
+                    document.documentElement.style.margin = '0';
+                    document.documentElement.style.padding = '0';
+                    document.documentElement.style.overflow = 'hidden';
+
+                    // Find the canvas element (Makie renders to canvas)
+                    const canvas = document.querySelector('canvas');
                     const rect = canvas.getBoundingClientRect();
                     return {
                         width: Math.ceil(rect.width),
                         height: Math.ceil(rect.height)
                     };
-                }
-                // Fallback to body size if no canvas found
-                return {
-                    width: document.body.scrollWidth,
-                    height: document.body.scrollHeight
-                };
-            })()
-        `).then(size => {
-            // Resize window to match content dimensions
-            console.log(size);
+                })()
+            `);
+        }).then(size => {
+            console.log('Target size:', size);
+
+            // Set minimum window size first to ensure content fits
             win.setContentSize(size.width, size.height);
-        
-            // Wait a moment for resize to complete, then capture
-            setTimeout(() => {
-                win.webContents.capturePage().then(image => {
-                    const screenshotPath = '$(path)';
-                    require('fs').writeFileSync(screenshotPath, image.toPNG());
-                });
-            }, 500);
+
+            // Wait longer for CI environments and ensure layout is complete
+            return new Promise(resolve => setTimeout(resolve, 1000));
+        }).then(() => {
+            // Verify no scrollbars by checking again
+            return win.webContents.executeJavaScript(`
+                ({
+                    hasHScroll: document.body.scrollWidth > window.innerWidth,
+                    hasVScroll: document.body.scrollHeight > window.innerHeight,
+                    bodyWidth: document.body.scrollWidth,
+                    bodyHeight: document.body.scrollHeight,
+                    windowWidth: window.innerWidth,
+                    windowHeight: window.innerHeight
+                })
+            `);
+        }).then(info => {
+            console.log('Scroll info:', info);
+
+            // If there are still scrollbars, adjust size
+            if (info.hasHScroll || info.hasVScroll) {
+                win.setContentSize(info.bodyWidth, info.bodyHeight);
+                return new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }).then(() => {
+            return win.webContents.capturePage();
+        }).then(image => {
+            const screenshotPath = '$(path)';
+            require('fs').writeFileSync(screenshotPath, image.toPNG());
+            console.log('Screenshot saved to', screenshotPath);
+        }).catch(err => {
+            console.error('Screenshot error:', err);
         });
         """,
     )
-    Bonito.wait_for(() -> isfile(path))
+    Bonito.wait_for(() -> isfile(path); timeout=30)
     return path
 end
 
