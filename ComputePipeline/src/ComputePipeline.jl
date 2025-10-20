@@ -162,8 +162,10 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
     else
         error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output, Task, or nothing. Value: $result")
     end
-    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs,
-                     edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false))
+    return TypedEdge(
+        f, inputs, edge.inputs_dirty, outputs, edge.outputs,
+        edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false)
+    )
 end
 
 
@@ -829,8 +831,10 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
         edge.outputs[i].dirty = true
     end
 
-    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs,
-                     edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false))
+    return TypedEdge(
+        f, inputs, edge.inputs_dirty, inputs, edge.outputs,
+        edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false)
+    )
 end
 
 function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
