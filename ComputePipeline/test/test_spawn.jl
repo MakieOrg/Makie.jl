@@ -128,5 +128,32 @@ using Test
         @test graph[:async_result][] == 30
         @test graph[:combined][] == 50
     end
+    @testset "properly polling result" begin
+        graph = ComputePipeline.ComputeGraph()
+        Makie.add_input!(graph, :a, rand(Point2f, 100))
+        map!(graph, :a, :b) do x
+            Makie.spawnat(2) do
+                t = time()
+                while time() - t < 1
+                end
+                return x .+ Point2f(1, 1)
+            end
+        end
+        Makie.register_computation!(graph, [:b], [:c]) do input, changed, last
+            return (input.b,)
+        end
+        result1 = copy(graph.c[]) # first resolve should be sync
 
+        graph.a = rand(Point2f, 100)
+        @test graph.c[] == result1
+        @test !ComputePipeline.isdirty(graph.c)
+        @test graph.b.parent.typed_edge[].async_pending[]
+        while graph.b.parent.typed_edge[].async_pending[]
+            sleep(0.01)
+        end
+        # Now after async is done, c should be dirty
+        # And return a new value
+        @test ComputePipeline.isdirty(graph.c)
+        @test graph.c[] != result1
+    end
 end
