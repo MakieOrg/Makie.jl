@@ -2,7 +2,7 @@
 # This test verifies that all widgets render correctly with proper positioning when use_html_widgets=true
 
 using ReferenceTests: RNG, @reference_test
-using ReferenceTests
+using ReferenceTests, WGLMakie
 using Test
 import Electron, Bonito
 
@@ -12,73 +12,32 @@ struct EScreenshot
 end
 
 function snapshot_figure(edisplay, fig, path)
+    rm(path; force = true)
     display(edisplay, Bonito.App(fig))
-    winid = edisplay.window.window.id
+    win = edisplay.window.window
+    win_size = run(win, """(()=>{
+        document.body.style.margin = '0';
+        document.body.style.padding = '0';
+        document.documentElement.style.margin = '0';
+        document.documentElement.style.padding = '0';
+        // Find the canvas element (Makie renders to canvas)
+        const canvas = document.querySelector('canvas');
+        const rect = canvas.getBoundingClientRect();
+        return [
+                Math.ceil(rect.width),
+                Math.ceil(rect.height)
+            ];
+        })();
+    """)
+    @show win_size
+    Electron.ElectronAPI.setContentSize(win, win_size...)
+    winid = win.id
+    sleep(0.5) # do we need time for resize?
     run(
         edisplay.window.app,
         """
         const win = BrowserWindow.fromId($winid)
-
-        // First, wait for content to fully load
-        win.webContents.executeJavaScript(`
-            new Promise((resolve) => {
-                if (document.readyState === 'complete') {
-                    resolve();
-                } else {
-                    window.addEventListener('load', resolve);
-                }
-            })
-        `).then(() => {
-            return win.webContents.executeJavaScript(`
-                (() => {
-                    // Remove all padding, margins, and scrollbars
-                    document.body.style.margin = '0';
-                    document.body.style.padding = '0';
-                    document.body.style.overflow = 'hidden';
-                    document.documentElement.style.margin = '0';
-                    document.documentElement.style.padding = '0';
-                    document.documentElement.style.overflow = 'hidden';
-
-                    // Find the canvas element (Makie renders to canvas)
-                    const canvas = document.querySelector('canvas');
-                    const rect = canvas.getBoundingClientRect();
-                    return {
-                        width: Math.ceil(rect.width),
-                        height: Math.ceil(rect.height)
-                    };
-                })()
-            `);
-        }).then(size => {
-            console.log('Target size:', size);
-
-            // Set minimum window size first to ensure content fits
-            win.setContentSize(size.width, size.height);
-
-            // Wait longer for CI environments and ensure layout is complete
-            return new Promise(resolve => setTimeout(resolve, 1000));
-        }).then(() => {
-            // Verify no scrollbars by checking again
-            return win.webContents.executeJavaScript(`
-                ({
-                    hasHScroll: document.body.scrollWidth > window.innerWidth,
-                    hasVScroll: document.body.scrollHeight > window.innerHeight,
-                    bodyWidth: document.body.scrollWidth,
-                    bodyHeight: document.body.scrollHeight,
-                    windowWidth: window.innerWidth,
-                    windowHeight: window.innerHeight
-                })
-            `);
-        }).then(info => {
-            console.log('Scroll info:', info);
-
-            // If there are still scrollbars, adjust size
-            if (info.hasHScroll || info.hasVScroll) {
-                win.setContentSize(info.bodyWidth, info.bodyHeight);
-                return new Promise(resolve => setTimeout(resolve, 500));
-            }
-        }).then(() => {
-            return win.webContents.capturePage();
-        }).then(image => {
+        win.webContents.capturePage().then(image => {
             const screenshotPath = '$(path)';
             require('fs').writeFileSync(screenshotPath, image.toPNG());
             console.log('Screenshot saved to', screenshotPath);
@@ -237,6 +196,17 @@ function create_test_figure()
     # Simulate 3 clicks
     return EScreenshot(edisplay, fig)
 end
+
+# Makie.inline!(Makie.automatic)
+# edisplay = Bonito.use_electron_display(; devtools=true)
+# ReferenceTests.RECORDING_DIR[] = pwd()
+# ReferenceTests.REGISTERED_TESTS |> empty!
+function close_devtools(w)
+    run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
+end
+
+# Devtools cut off the screenshot!
+close_devtools(edisplay.window.window)
 
 @reference_test "Widgets layout" begin
     WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
