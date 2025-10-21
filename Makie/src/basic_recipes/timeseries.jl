@@ -21,7 +21,7 @@ end
 
 ```
 """
-@recipe TimeSeries (signal,) begin
+@recipe TimeSeries (signal::Real,) begin
     "Number of tracked points."
     history = 100
     documented_attributes(Lines)...

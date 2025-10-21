@@ -9,7 +9,7 @@ Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
 """
-@recipe Voronoiplot begin
+@recipe Voronoiplot (input::Union{VecTypesVector{N, <:Real} where {N}, DelTri.VoronoiTessellation},) begin
     "Determines whether to plot the individual generators."
     show_generators = true
     "If true, then the Voronoi tessellation is smoothed into a centroidal tessellation."
@@ -127,12 +127,12 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
 
     if N == 3
         # from call pattern (::Vector, ::Vector, ::Matrix)
-        map!(ps -> (Point2.(ps), last.(ps)), p, :converted_1, [:positions, :extracted_colors])
+        map!(ps -> (Point2.(ps), last.(ps)), p, :input, [:positions, :extracted_colors])
         positions = :positions
         color = :extracted_colors
     else
         # from xs, ys or Points call pattern
-        positions = :converted_1
+        positions = :input
         color = :color
     end
 
@@ -178,7 +178,7 @@ end
 boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
-    ComputePipeline.alias!(p.attributes, :converted_1, :vorn)
+    ComputePipeline.alias!(p.attributes, :input, :vorn)
 
     map!(p, [:color, :vorn], :calculated_colors) do color, vorn
         if color === automatic

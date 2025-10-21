@@ -27,7 +27,7 @@ end
 
 Plot a step histogram of `values`.
 """
-@recipe StepHist (values,) begin
+@recipe StepHist (values::RealVector,) begin
     documented_attributes(Stairs)...
 
     """
@@ -83,7 +83,7 @@ end
 
 Plot a histogram of `values`.
 """
-@recipe Hist (values,) begin
+@recipe Hist (values::RealVector,) begin
     """
     Sets the number of bins if set to an integer or the edges of bins if set to
     an sorted collection of real numbers.

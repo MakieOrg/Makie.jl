@@ -82,6 +82,7 @@ See the function `Makie.streamplot_impl` for implementation details.
     mixin_generic_plot_attributes()...
 end
 
+argument_dims(::Type{<:StreamPlot}, f, rect) = nothing
 argument_dims(::Type{<:StreamPlot}, f, x, y) = (0, 1, 2)
 argument_dims(::Type{<:StreamPlot}, f, x, y, z) = (0, 1, 2, 3)
 

@@ -3,7 +3,12 @@
 
 Draws heatmap slices of the volume `v`.
 """
-@recipe VolumeSlices (x, y, z, volume) begin
+@recipe VolumeSlices (
+    x::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    y::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    z::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    volume::AbstractArray{<:Union{Real, Colorant}, 3},
+) begin
     documented_attributes(Heatmap)...
     "Controls whether the bounding box outline is visible"
     bbox_visible = true

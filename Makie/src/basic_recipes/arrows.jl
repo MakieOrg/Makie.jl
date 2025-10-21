@@ -4,6 +4,10 @@
 
 struct ArrowLike <: ConversionTrait end
 
+function types_for_plot_arguments(::ArrowLike)
+    return Tuple{VecTypesVector{N, <:Real}, VecTypesVector{N, <:Real}} where {N}
+end
+
 argument_dims(::ArrowLike, x, y, f) = (1, 2)
 argument_dims(::ArrowLike, x, y, z, f::Function) = (1, 2, 3)
 argument_dims(::ArrowLike, x, y, u, v) = (1, 2, 1, 2)
@@ -318,6 +322,7 @@ $_arrow_args_docs
 end
 
 conversion_trait(::Type{<:Arrows2D}) = ArrowLike()
+
 
 function _get_arrow_shape(f::Function, length, width, metrics)
     nt = NamedTuple{(:taillength, :tailwidth, :shaftlength, :shaftwidth, :tiplength, :tipwidth)}(metrics)

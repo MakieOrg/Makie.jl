@@ -8,7 +8,7 @@ The density pairs can be sourced from the same or from different data.
 - `x`: positions of the categories
 - `y`: variables whose density is computed
 """
-@recipe Violin (x, y) begin
+@recipe Violin (x::RealVector, y::RealVector) begin
     "Number of points used per density plot."
     npoints = 200
     "Boundary of the density estimation, determined automatically if `automatic`."

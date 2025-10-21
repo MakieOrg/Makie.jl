@@ -8,7 +8,7 @@ Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text la
 
 By default each label is rotated parallel to the line between the bracket points.
 """
-@recipe Bracket (positions,) begin
+@recipe Bracket (positions::Vector{<:Tuple{Point2{<:Real}, Point2{<:Real}}},) begin
     """
     The offset of the bracket perpendicular to the line from start to end point in screen units.
     The direction depends on the `orientation` attribute.

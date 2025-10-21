@@ -6,7 +6,7 @@ The lines will be placed at `ys` in data coordinates and `xmin` to `xmax`
 in scene coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-@recipe HLines begin
+@recipe HLines (ys::Union{Real, RealVector},) begin
     "The start of the lines in relative axis units (0 to 1) along the x dimension."
     xmin = 0
     "The end of the lines in relative axis units (0 to 1) along the x dimension."
@@ -22,7 +22,7 @@ The lines will be placed at `xs` in data coordinates and `ymin` to `ymax`
 in scene coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-@recipe VLines begin
+@recipe VLines (xs::Union{Real, RealVector},) begin
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
     ymin = 0
     "The start of the lines in relative axis units (0 to 1) along the y dimension."
@@ -48,8 +48,9 @@ argument_dims(::Type{<:VLines}, x) = (1,)
 function Makie.plot!(p::Union{HLines, VLines})
     mi = p isa HLines ? (:xmin) : (:ymin)
     ma = p isa HLines ? (:xmax) : (:ymax)
+    converted_name = p isa HLines ? (:ys) : (:xs)
     add_axis_limits!(p)
-    map!(p.attributes, [:axis_limits_transformed, :converted_1, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
+    map!(p.attributes, [:axis_limits_transformed, converted_name, mi, ma, :transform_func], :points) do lims, vals, mi, ma, transf
         points = Point2d[]
         min_x, min_y = minimum(lims)
         max_x, max_y = maximum(lims)

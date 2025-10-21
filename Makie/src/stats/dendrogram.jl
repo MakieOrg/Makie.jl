@@ -17,7 +17,7 @@ That node is then added to the list and can be merged with another.
 
 Note that this recipe is still experimental and subject to change in the future.
 """
-@recipe Dendrogram (nodes,) begin
+@recipe Dendrogram (nodes::Vector{DNode},) begin
     """
     Specifies how node connections are drawn. Can be `:tree` for direct lines or `:box` for
     rectangular lines. Other styles can be defined by overloading

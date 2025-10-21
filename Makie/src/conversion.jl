@@ -120,3 +120,17 @@ end
 function types_for_plot_arguments(::PointBased)
     return Tuple{AbstractVector{<:Union{Point2{<:Real}, Point3{<:Real}}}}
 end
+
+types_for_plot_arguments(::ImageLike) = Tuple{EndPoints{<:Real}, EndPoints{<:Real}, Matrix{<:Real}}
+
+function types_for_plot_arguments(::GridBased)
+    return Tuple{AbstractArray{<:Real}, AbstractArray{<:Real}, Matrix{<:Real}}
+end
+
+function types_for_plot_arguments(::VolumeLike)
+    # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
+    return Tuple{
+        EndPoints{<:Real}, EndPoints{<:Real}, EndPoints{<:Real},
+        AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
+    }
+end

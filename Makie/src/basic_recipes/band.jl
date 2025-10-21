@@ -7,7 +7,10 @@ Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` 
 between the points in `lower` and `upper`.
 Both bounds can be passed together as `lowerupper`, a vector of intervals.
 """
-@recipe Band (lowerpoints::VecTypesVector{N, <:Real} where {N}, upperpoints::VecTypesVector{N, <:Real} where {N}) begin
+@recipe Band (
+    lowerpoints::VecTypesVector{N, <:Real} where {N},
+    upperpoints::VecTypesVector{N, <:Real} where {N},
+) begin
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x

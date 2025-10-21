@@ -14,7 +14,7 @@ spy(x)
 spy(0..1, 0..1, x)
 ```
 """
-@recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
+@recipe Spy (x::EndPoints{<:Real}, y::EndPoints{<:Real}, z::RealMatrix) begin
     """
     Can be any of the markers supported by `scatter!`.
     Note, for huge sparse arrays, one should use `FastPixel`, which is a very fast, but can only render square markers.

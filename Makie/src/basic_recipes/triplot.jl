@@ -5,7 +5,7 @@
 
 Plots a triangulation based on the provided position or `Triangulation` from DelaunayTriangulation.jl.
 """
-@recipe Triplot (triangles,) begin
+@recipe Triplot (triangles::Union{DelTri.Triangulation, VecTypesVector{N, <:Real} where {N}},) begin
     # Toggles
     "Determines whether to plot the individual points. Note that this will only plot points included in the triangulation."
     show_points = false
