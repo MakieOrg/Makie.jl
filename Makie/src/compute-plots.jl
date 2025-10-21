@@ -459,7 +459,6 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
 
     if dim_tuple === nothing
         # args declared not dim-convertible by argument_dims().
-        # TODO: Should this be an error?
         map!(args -> Ref{Any}(args), attr, :args, :dim_converted)
         return
 

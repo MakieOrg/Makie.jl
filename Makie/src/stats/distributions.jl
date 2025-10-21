@@ -88,7 +88,6 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
-# TODO: May need typing here and on convert_arguments to work properly
 argument_dims(::Type{<:QQPlot}, x, y) = (1, 2)
 argument_dims(::Type{<:QQNorm}, y) = (2,)
 

@@ -1,5 +1,47 @@
 # loses dispatch to type calls, e.g.
 # argument_dims(::Type{<:Scatter}, args...; kwargs...)
+"""
+    argument_dims(P::Type{<:Plot}, args...; attributes...)
+    argument_dims(trait::ConversionTrait, args...; attributes...)
+
+Maps arguments to spatial dimensions for dim converts. This optionally includes
+the attributes defined via `argument_dim_kwargs(P)`.
+
+The return type of this function can be `nothing` to indicate that the plot/trait
+arguments are not compatible with dim converts or a `tuple` otherwise. The
+elements can be `1, 2, 3` to connect the argument to the respective dim convert,
+or `0` to mark it as non-dimensonal. Trailing `0`s can be omitted. Point-like
+arguments can be represented by an inner tuple, range or array of integers.
+
+For example:
+
+```
+Makie.argument_dims(::Type{<:MyPlot}, xs, ys) = (1, 2) # default
+Makie.argument_dims(::Type{<:MyPlot}, f::Function, xs) = (0, 1)
+Makie.argument_dims(::Type{<:MyPlot}, xs, f::Function) = (1,)
+
+# default
+function Makie.argument_dims(::Type{<:MyPlot}, ps::AbstractVector{<:Point{N}}) where {N}
+    return (1:N,)
+end
+
+# default
+Makie.argument_dim_kwargs(::Type{<:MyPlot2}) = (:direction,)
+function Makie.argument_dims(::Type{<:MyPlot2}, xs, ys; direction)
+    return direction == :y ? (1, 2) : (2, 1)
+end
+```
+
+The default implementation treats the common cases of `PointBased` data, i.e.
+`xs, ys` and `xs, ys, zs` vectors (or values) as well as vectors of `VecTypes`.
+The latter also allows multiple vectors with matching inner dimension `VecTypes{N}`.
+If included via `argument_dim_kwargs()`, `:direction` and `:orientation` are also
+handled by the default path in the 2D case. For this `direction == :y` and
+`orientation == :vertical` are considered neutral, not swapping dimensions.
+Examples marked `# default` above mirror the default path.
+
+Note that the `::Type{<:Plot}` methods take precedence over `::ConversionTrait`.
+"""
 function argument_dims(PT, args...; kwargs...)
     CT = conversion_trait(PT, args...)
     return argument_dims(CT, args...; kwargs...)
@@ -56,5 +98,14 @@ argument_dims(::Type{<:Mesh}, x, y, z, faces) = (1, 2, 3)
 argument_dims(::Type{<:Surface}, x, y, z) = (1, 2, 3) # not like contour
 
 # attributes that are needed to map args to dims, e.g. direction/orientation
-# TODO: This is completely unrelated to args, right?
+"""
+    argument_dim_kwargs(P::Type{<:Plot})
+
+Returns a tuple of symbols marking attributes that need to be passed to
+`argument_dims(P, args; attributes...)`.
+
+This is meant to be extended for recipes. For example:
+
+    Makie.argument_dim_kwargs(::Type{<:MyPlot}) = (:direction,)
+"""
 argument_dim_kwargs(::Type{<:Plot}) = tuple()
