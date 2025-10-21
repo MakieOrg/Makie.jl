@@ -225,6 +225,18 @@ struct DocumentedAttributes
     d::Dict{Symbol, AttributeMetadata}
 end
 
+Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
+Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
+
+function filter_attributes(attr::DocumentedAttributes; kwargs...)
+    return filter_attributes!(copy(attr); kwargs...)
+end
+function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
+    !isempty(allow) && filter!(p -> p[1] in allow, attr.d)
+    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr.d)
+    return attr
+end
+
 struct Inherit
     key::Symbol
     fallback::Any
@@ -404,6 +416,7 @@ end
 function types_for_plot_arguments end
 
 documented_attributes(_) = nothing
+filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
 
 function attribute_names(T::Type{<:Plot})
     attr = documented_attributes(T)
