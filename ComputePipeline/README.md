@@ -25,4 +25,10 @@ end
 # Observable like API:
 map!((a, b) -> a + b, graph, [:input1, :input2], :output)
 map!((a, b) -> ([a, b], [b, a]), graph, [:input1, :input2], [:ab, :ba])
+
+# Asynchronous computations with tasks:
+# Computations can return a Task for long-running operations
+map!(graph, [:input1, :input2], :output) do inputs, changed, last_output
+    return @spawn long_running_computation(inputs)
+end
 ```
