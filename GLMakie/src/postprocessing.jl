@@ -71,10 +71,13 @@ Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of steps
 which run in sequence when calling `render_frame!(screen, scene, pipeline)`.
 """
 struct GLRenderPipeline
-    parent::Makie.RenderPipeline
+    parent::Makie.LoweredRenderPipeline
     steps::Vector{AbstractRenderStep}
 end
-GLRenderPipeline() = GLRenderPipeline(Makie.RenderPipeline(), AbstractRenderStep[])
+
+function GLRenderPipeline()
+    return GLRenderPipeline(Makie.LoweredRenderPipeline(), AbstractRenderStep[])
+end
 
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline.steps
@@ -93,7 +96,7 @@ end
 
 struct SortPlots <: AbstractRenderStep end
 
-construct(::Val{:ZSort}, screen, framebuffer, inputs, parent) = SortPlots()
+construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
 function run_step(screen, glscene, ::SortPlots)
     function sortby(x)
@@ -465,15 +468,16 @@ struct BlitToScreen <: AbstractRenderStep
     screen_framebuffer_id::Int
 end
 
-function construct(::Val{:Display}, screen, ::Nothing, inputs, parent::Makie.Stage)
+function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     require_context(screen.glscreen)
-    framebuffer = screen.framebuffer_manager.fb
-    id = get(parent.attributes, :screen_framebuffer_id, 0)
+    framebuffer = generate_framebuffer(screen.framebuffer_manager, stage.inputs)
+    id = get(stage.attributes, :screen_framebuffer_id, 0)
     return BlitToScreen(framebuffer, id)
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
     # Set source
+    # glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
     glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
 

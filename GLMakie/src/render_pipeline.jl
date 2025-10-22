@@ -59,7 +59,7 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
 
     # Add buffers in the order of `formats`
     for format in formats
-        tex = get_buffer!(manager.fb.context, Makie.format_to_type(format), format)
+        tex = get_buffer!(manager.context, Makie.format_to_type(format), format)
         push!(manager.buffers, tex)
     end
 
@@ -75,39 +75,31 @@ and replaced. This will also reset the `FramebufferManager`.
 """
 function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     pipeline.stages[end].name === :Display || error("RenderPipeline must end with a Display stage")
-    previous_pipeline = screen.render_pipeline
 
     # Exit early if the pipeline is already up to date
-    previous_pipeline.parent == pipeline && return
+    lowered_pipeline = Makie.LoweredRenderPipeline(pipeline)
+    screen.render_pipeline == pipeline && return
 
+    return gl_render_pipeline!(screen, lowered_pipeline)
+end
+
+function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeline)
     # Reset GL renderpipeline
-    manager = screen.framebuffer_manager
     ShaderAbstractions.switch_context!(screen.glscreen)
+    manager = screen.framebuffer_manager
     screen.render_pipeline = GLRenderPipeline()
-
-    # Resolve pipeline into a set of buffers (merging and reusing buffers when possible)
-    buffers, remap = Makie.generate_buffers(pipeline)
+    previous_pipeline = screen.render_pipeline
 
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
     destroy!(manager)
-    reset_main_framebuffer!(manager)
-    initialize_attachments!(manager, buffers)
+    initialize_attachments!(manager, pipeline.formats)
 
-    # Add back output color and objectid attachments
-    # This assumes the last stage to be the Display stage with inputs (color, objectid)
-    @assert pipeline.stages[end].name === :Display "Last Stage must be Display"
-    @assert get(pipeline.stages[end].inputs, :depth, 0) == 1 "Display stage must have input :depth at index 1"
-    @assert get(pipeline.stages[end].inputs, :color, 0) == 2 "Display stage must have input :color at index 2"
-    @assert get(pipeline.stages[end].inputs, :objectid, 0) == 3 "Display stage must have input :objectid at index 3"
-
-    N = length(pipeline.stages)
-    buffer_idx = remap[pipeline.stageio2idx[(N, -1)]]
-    attach_depthstencilbuffer(manager.fb, :depth_stencil, get_buffer(manager, buffer_idx))
-    buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
-    attach_colorbuffer(manager.fb, :color, get_buffer(manager, buffer_idx))
-    buffer_idx = remap[pipeline.stageio2idx[(N, -3)]]
-    attach_colorbuffer(manager.fb, :objectid, get_buffer(manager, buffer_idx))
+    # verify that last step is display
+    final_stage = pipeline.stages[end]
+    if !(final_stage.name === :Display && last.(final_stage.inputs) == [:depth, :color, :objectid])
+        error("The final stage must be a Display stage with inputs (:depth, :color, :objectid). $final_stage")
+    end
 
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them
     # if possible. Steps that aren't reused and thus need to be deleted are
@@ -115,54 +107,17 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     needs_cleanup = collect(eachindex(previous_pipeline.steps))
     render_pipeline = AbstractRenderStep[]
 
-    for (stage_idx, stage) in enumerate(pipeline.stages)
-        # Get input buffers of the current stage
-        inputs = Dict{Symbol, Any}()
-        for (key, input_idx) in stage.inputs
-            idx = remap[pipeline.stageio2idx[(stage_idx, -input_idx)]]
-            inputs[Symbol(key, :_buffer)] = get_buffer(manager, idx)
-        end
-
-        # Get buffer indices for stage outputs.
-        # Note that outputs aren't always connected and thus do not always have
-        # associated buffers. Disconnected outputs must be trailing though, i.e.
-        # if output i is connected and i+1 is disconnected, outputs 1..i must
-        # be connected and i+1..end must be disconnected. This is verified by
-        # `generate_buffers`. Here we just need to filter the disconnected tail.
-        connection_indices = map(eachindex(stage.output_formats)) do output_idx
-            return get(pipeline.stageio2idx, (stage_idx, output_idx), -1)
-        end
-        N = length(connection_indices)
-        while (N > 0) && (connection_indices[N] == -1)
-            N = N - 1
-        end
-
-        if isempty(connection_indices)
-            framebuffer = nothing
-        else
-            try
-                idx2name = Dict([idx => k for (k, idx) in stage.outputs])
-                outputs = ntuple(N) do n
-                    remap[connection_indices[n]] => idx2name[n]
-                end
-                framebuffer = generate_framebuffer(manager, outputs...)
-            catch e
-                rethrow(e)
-            end
-        end
-
+    for stage in pipeline.stages
         # If the RenderStep already exists, update and reuse it, otherwise create it
         idx = findfirst(==(stage), previous_pipeline.parent.stages)
+
         if idx === nothing
-            pass = construct(Val(stage.name), screen, framebuffer, inputs, stage)
+            pass = construct(Val(stage.name), screen, stage)
         else
-            pass = reconstruct(previous_pipeline.steps[idx], screen, framebuffer, inputs, stage)
+            pass = reconstruct(previous_pipeline.steps[idx], screen, stage)
             filter!(!=(idx), needs_cleanup)
         end
 
-        # I guess stage should also have extra information for settings? Or should
-        # that be in scene.theme?
-        # Maybe just leave it there for now
         push!(render_pipeline, pass)
     end
 
@@ -173,4 +128,26 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
 
     return
+end
+
+function construct(name::Val, screen, stage)
+    manager = screen.framebuffer_manager
+    inputs = collect_buffers(manager, stage.inputs)
+    framebuffer = generate_framebuffer(manager, stage.outputs)
+    return construct(name, screen, framebuffer, inputs, stage)
+end
+
+function reconstruct(name::Val, screen, stage)
+    manager = screen.framebuffer_manager
+    inputs = collect_buffers(manager, stage.inputs)
+    framebuffer = generate_framebuffer(manager, stage.outputs)
+    return reconstruct(name, screen, framebuffer, inputs, stage)
+end
+
+function collect_buffers(manager::FramebufferManager, sources::Vector{Pair{Int64, Symbol}})
+    d = Dict{Symbol, Any}()
+    for (idx, name) in sources
+        d[Symbol(name, :_buffer)] = get_buffer(manager, idx)
+    end
+    return d
 end

@@ -169,7 +169,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
 
         framebuffer = screen.framebuffer_manager
-        framebuffer_depth = GLMakie.get_buffer(screen.framebuffer_manager.fb, :depth_stencil)
+        framebuffer_depth = GLMakie.get_buffer(GLMakie.display_framebuffer(screen), :depth_stencil)
         framebuffer_textures = copy(screen.framebuffer_manager.buffers)
         framebuffer_children = copy(screen.framebuffer_manager.children)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))

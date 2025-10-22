@@ -216,6 +216,7 @@ end
 
 # The exact size in pixel of the render targert (the actual matrix of pixels)
 framebuffer_size(screen::Screen) = size(screen.framebuffer_manager)
+display_framebuffer(screen::Screen) = display_framebuffer(screen.framebuffer_manager)
 
 # The size of the window in Makie's own units
 makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
@@ -866,7 +867,7 @@ function depthbuffer(screen::Screen)
     gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(screen.framebuffer_manager.fb, :depth_stencil)
+    source = get_buffer(display_framebuffer(screen), :depth_stencil)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -879,7 +880,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         error("Screen not open!")
     end
     gl_switch_context!(screen.glscreen)
-    ctex = get_buffer(screen.framebuffer_manager.fb, :color)
+    ctex = get_buffer(display_framebuffer(screen), :color)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)

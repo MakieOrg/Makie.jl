@@ -109,3 +109,33 @@ function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
 
     return
 end
+
+function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderPipeline)
+    println(io, "LoweredRenderPipeline():")
+    print(io, "Stages:")
+    pad = isempty(pipeline.formats) ? 0 : 1 + floor(Int, log10(length(pipeline.formats)))
+
+    for stage in pipeline.stages
+        print(io, "\n  Stage($(stage.name))")
+
+        if !isempty(stage.inputs)
+            print(io, "\n    inputs: ")
+            strs = map(idx_name -> "[$(idx_name[1])] $(idx_name[2])", stage.inputs)
+            join(io, strs, ", ")
+        end
+
+        if !isempty(stage.outputs)
+            print(io, "\n    outputs: ")
+            strs = map(idx_name -> "[$(idx_name[1])] $(idx_name[2])", stage.outputs)
+            join(io, strs, ", ")
+        end
+    end
+
+    println(io, "\nConnection Formats:")
+    for (i, c) in enumerate(pipeline.formats)
+        s = lpad("$i", pad)
+        println(io, "  [$s] ", c)
+    end
+
+    return
+end

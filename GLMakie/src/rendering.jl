@@ -46,15 +46,16 @@ function render_frame(screen::Screen; resize_buffers = true)
     GLAbstraction.require_context(nw)
 
     # Resize framebuffer to window size
-    # TODO: Hacky, assumes our first draw is a render (ZSort doesn't draw) and
-    #       no earlier stage uses color or objectid
-    #       Also assumes specific names
-    fb = screen.framebuffer_manager.children[1]
     if resize_buffers
         ppu = screen.px_per_unit[]
         resize!(screen.framebuffer_manager, round.(Int, ppu .* size(screen.scene))...)
     end
 
+    # TODO: Hacky, assumes our first draw is a `RenderPlots` (ZSort doesn't draw) and
+    #       no earlier stage uses color or objectid
+    #       Also assumes specific names
+    # TODO: Clearing should be a stage itself
+    fb = screen.framebuffer_manager.children[1]
     GLAbstraction.bind(fb)
     glViewport(0, 0, size(fb)...)
 

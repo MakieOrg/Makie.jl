@@ -24,8 +24,8 @@ are collected in a separate framebuffer in the manager to simplify access for
 picking and `colorbuffer()`.
 """
 mutable struct FramebufferManager
-    fb::GLFramebuffer # core framebuffer (more or less for #4150)
-    # holding depth, stencil, objectid[, output_color]
+    context::GLAbstraction.GLContext
+    size::NTuple{2, Int}
 
     buffers::Vector{Texture}
     # TODO: Consider removing this and handling resize and deletion in framebuffer.
@@ -33,47 +33,33 @@ mutable struct FramebufferManager
     children::Vector{GLFramebuffer}
 end
 
-Base.size(fb::FramebufferManager) = size(fb.fb)
-GLAbstraction.get_buffer(fb::FramebufferManager, idx::Int) = fb.buffers[idx]
-GLAbstraction.bind(fb::FramebufferManager) = GLAbstraction.bind(fb.fb)
-
 Makie.@noconstprop function FramebufferManager(context, fb_size::NTuple{2, Int})
-    return FramebufferManager(create_main_framebuffer(context, fb_size), Texture[], GLFramebuffer[])
+    return FramebufferManager(context, fb_size, Texture[], GLFramebuffer[])
 end
 
-function reset_main_framebuffer!(manager::FramebufferManager)
-    @assert manager.fb.id == 0 "Main framebuffer must be destroyed before being reset"
-    manager.fb = create_main_framebuffer(manager.fb.context, manager.fb.size)
-    return manager
-end
+Base.size(manager::FramebufferManager) = manager.size
+GLAbstraction.get_buffer(fb::FramebufferManager, idx::Int) = fb.buffers[idx]
+GLAbstraction.bind(fb::FramebufferManager) = GLAbstraction.bind(fb.children[end])
+display_framebuffer(fb::FramebufferManager) = last(fb.children)
 
-function create_main_framebuffer(context, fb_size)
-    gl_switch_context!(context)
-    require_context(context)
-    return GLFramebuffer(context, fb_size)
-end
-
-function Base.resize!(fb::FramebufferManager, w::Int, h::Int)
-    gl_switch_context!(first(values(fb.buffers)).context)
-    foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), fb.buffers)
-    resize!(fb.fb, w, h)
-    filter!(fb -> fb.id != 0, fb.children) # TODO: is this ok for cleanup?
-    foreach(fb -> resize!(fb, w, h), fb.children)
+function Base.resize!(manager::FramebufferManager, w::Int, h::Int)
+    gl_switch_context!(manager.context)
+    foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), manager.buffers)
+    filter!(fb -> fb.id != 0, manager.children) # TODO: is this ok for cleanup?
+    foreach(fb -> resize!(fb, w, h), manager.children)
+    manager.size = (w, h)
     return
 end
 
 # destroys everything
 function destroy!(manager::FramebufferManager)
-    ctx = manager.fb.context
+    ctx = manager.context
     ShaderAbstractions.switch_context!(ctx)
     # avoid try .. catch at call site, and allow cleanup to run
     GLAbstraction.require_context_no_error(ctx)
 
     GLAbstraction.free.(manager.buffers)
     GLAbstraction.free.(manager.children)
-    # make sure depth, stencil get cleared too (and maybe core color buffers in the future)
-    GLAbstraction.free.(manager.fb.buffers)
-    GLAbstraction.free(manager.fb)
     empty!(manager.buffers)
     empty!(manager.children)
     return
@@ -93,10 +79,10 @@ The attachments are referenced to by index and named with a Symbol via
 `index_to_name = integer => name`. The indices are directly used for
 `manager.buffers` which is filled via `push!(manager, texture)`.
 """
-Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, idx2name::Pair{Int, Symbol}...)
+Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, idx2name::Vector{Pair{Int, Symbol}})
     filter!(fb -> fb.id != 0, manager.children) # cleanup?
 
-    fb = GLFramebuffer(manager.fb.context, size(manager))
+    fb = GLFramebuffer(manager.context, size(manager))
 
     for (idx, name) in idx2name
         haskey(fb, name) && error("Can't add duplicate buffer $name")

@@ -2,6 +2,68 @@
 # reusing buffers. I.e. if a buffer is only used between stage 1 and 2, this
 # tries to reuse it after stage 2.
 
+# - same order of inputs & outputs
+# - same names
+# - unused outputs removed
+# - remapped indices (point to lowered pipeline formats)
+struct LoweredStage
+    name::Symbol
+    inputs::Vector{Pair{Int64, Symbol}}
+    outputs::Vector{Pair{Int64, Symbol}}
+    attributes::Dict{Symbol, Any}
+end
+
+# - same stages represented by different types
+# - optimized formats/buffers
+struct LoweredRenderPipeline
+    stages::Vector{LoweredStage}
+    formats::Vector{BufferFormat}
+end
+
+function LoweredRenderPipeline()
+    return LoweredRenderPipeline(LoweredStage[], BufferFormat[])
+end
+
+function LoweredRenderPipeline(pipeline::RenderPipeline)
+    buffers, mapping = generate_buffers(pipeline)
+
+    stages = map(enumerate(pipeline.stages)) do (stage_idx, stage)
+        return LoweredStage(
+            stage.name,
+            apply_remapping(pipeline, mapping, stage_idx, stage.inputs, -1),
+            apply_remapping(pipeline, mapping, stage_idx, stage.outputs, 1),
+            stage.attributes
+        )
+    end
+
+    return LoweredRenderPipeline(stages, buffers)
+end
+
+function apply_remapping(
+        pipeline::RenderPipeline, mapping::Vector{<:Integer},
+        stage_idx::Integer, name2idx::Dict{Symbol, <:Integer}, sign
+    )
+    # get input/output names in order
+    old_names = Vector{Symbol}(undef, length(name2idx))
+    for (name, idx) in name2idx
+        old_names[idx] = name
+    end
+
+    # get the index into the new `buffers` from the index into the old
+    # `pipeline.formats` and associate it with the respective stage input/output
+    # name. Any unused inputs/outputs are removed here
+    buffer_idx_name = Pair{Int64, Symbol}[]
+    for (io_idx, name) in enumerate(old_names)
+        if haskey(pipeline.stageio2idx, (stage_idx, sign * io_idx))
+            format_idx = pipeline.stageio2idx[(stage_idx, sign * io_idx)]
+            remapped_idx = mapping[format_idx]
+            push!(buffer_idx_name, remapped_idx => name)
+        end
+    end
+
+    return buffer_idx_name
+end
+
 format_complexity(f::BufferFormat) = format_complexity(f.dims, f.type)
 format_complexity(dims, type) = dims * BFT.bytesize(type)
 # complexity of merged, not max of either
