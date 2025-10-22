@@ -5,22 +5,58 @@ import FixedPointNumbers: N0f8
 module BFT # BufferFormatType
     import FixedPointNumbers: N0f8
 
+    # This does compatibility checks based on bits.
+    # The 2 least significant bits map to the byte size of type,
+    # i.e. (0, 1, 2, 3) -> (8, 16, 24, 32) bit
+    # The remaining bits are used for types, i.e. 4 * (0, 1, 2, ...) map to types
     @enum BufferFormatType::UInt8 begin
         float8 = 0; float16 = 1; float32 = 3
         int8 = 4; int16 = 5; int32 = 7
         uint8 = 8; uint16 = 9; uint32 = 11
+        stencil = 12
+        depth24_stencil = 18; depth32_stencil = 19
+        depth16 = 20; depth24 = 22; depth32 = 23
     end
 
+    is_depth_stencil(x::BufferFormatType) = x == depth24_stencil || x == depth32_stencil
+    is_depth(x::BufferFormatType) = x == stencil
+    is_stencil(x::BufferFormatType) = depth16 < x < depth32
+
     # lowest 2 bits do variation between 8, 16 and 32 bit types, others do variation of base type
-    is_compatible(a::BufferFormatType, b::BufferFormatType) = (UInt8(a) & 0b11111100) == (UInt8(b) & 0b11111100)
+    function is_compatible(a::BufferFormatType, b::BufferFormatType)
+        base_type_compatible = (UInt8(a) & 0b11111100) == (UInt8(b) & 0b11111100)
+        stencil_compatible =(stencil <= a <= depth32_stencil) && (stencil <= b <= depth32_stencil)
+        depth_compatible = (depth24_stencil <= a <= depth32) && (depth24_stencil <= b <= depth32)
+        return base_type_compatible || stencil_compatible || depth_compatible
+    end
 
     # assuming compatible types (max is a bitwise thing here btw)
-    _promote(a::BufferFormatType, b::BufferFormatType) = BufferFormatType(max(UInt8(a), UInt8(b)))
+    function _promote(a::BufferFormatType, b::BufferFormatType)
+        if is_depth_stencil(a) || is_depth_stencil(b)
+            byte = max(UInt8(a) & 0b00000011, UInt8(b) & 0b00000011)
+            base = UInt8(16) # depth_stencil bits with 00 for byte bits
+            return BufferFormatType(base + byte)
+        else
+            return BufferFormatType(max(UInt8(a), UInt8(b)))
+        end
+    end
+
 
     # we matched the lowest 2 bits to bytesize
     bytesize(x::BufferFormatType) = Int((UInt8(x) & 0b11) + 1)
 
-    const type_lookup = (N0f8, Float16, Nothing, Float32, Int8, Int16, Nothing, Int32, UInt8, UInt16, Nothing, UInt32)
+    struct Float24 end
+    struct Depth24Stencil8 end
+    struct Depth32Stencil8 end
+
+    const type_lookup = (
+        N0f8, Float16, Nothing, Float32,
+        Int8, Int16, Nothing, Int32,
+        UInt8, UInt16, Nothing, UInt32,
+        UInt8, Nothing, Nothing, Nothing,
+        Nothing, Nothing, Depth24Stencil8, Depth32Stencil8,
+        Nothing, Float16, Nothing, Float32,
+    )
     to_type(t::BufferFormatType) = type_lookup[Int(t) + 1]
 end
 
@@ -113,6 +149,10 @@ function format_to_type(format::BufferFormat)
     return format.dims == 1 ? eltype : Vec{format.dims, eltype}
 end
 
+is_depth_format(format::BufferFormat) = BFT.is_depth(format.type)
+is_stencil_format(format::BufferFormat) = BFT.is_stencil(format.type)
+is_depth_stencil_format(format::BufferFormat) = BFT.is_depth_stencil(format.type)
+
 
 struct Stage
     name::Symbol
@@ -140,6 +180,10 @@ represents an action taken during rendering, e.g. rendering (a subset of) render
 objects, running a post processor or sorting render objects.
 """
 function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[], kwargs...)
+    return Stage(name, inputs, outputs; kwargs...)
+end
+
+function Stage(name, inputs::Vector, outputs::Vector; kwargs...)
     return Stage(
         Symbol(name),
         Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(inputs)]),
@@ -149,6 +193,7 @@ function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbo
         kwargs...
     )
 end
+
 function Stage(name, inputs, input_formats, outputs, output_formats; kwargs...)
     return Stage(
         Symbol(name),
@@ -413,15 +458,7 @@ format_complexity(dims, type) = dims * BFT.bytesize(type)
 # complexity of merged, not max of either
 format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(BFT.bytesize(f1.type), BFT.bytesize(f2.type))
 
-"""
-    generate_buffers(pipeline)
-
-Maps the connections in the given pipeline to a vector of buffer formats and
-returns them together with a connection-to-index map. This will attempt to
-optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
-multiple connections and upgrade them if it is cheaper than creating a new one.
-"""
-function generate_buffers(pipeline::RenderPipeline)
+function validate(pipeline::RenderPipeline)
     # Verify that outputs are continuously connected, i.e. that if stage.outputs[N]
     # is connected all the outputs from 1:N-1 are too. (Otherwise there may be
     # mapping issues in the backend, because output[i] != shader output i)
@@ -434,6 +471,7 @@ function generate_buffers(pipeline::RenderPipeline)
         output_max[stage_idx] = max(output_max[stage_idx], io_idx)
         output_sum[stage_idx] = output_sum[stage_idx] + io_idx # or use max(0, io_idx) and skip continue?
     end
+
     # If all outputs are connected we get a sum: 1 + 2 + ... + n = n(n+1)/2
     # check that we calculated that sum with n = maximum output index
     for i in eachindex(output_sum)
@@ -443,6 +481,33 @@ function generate_buffers(pipeline::RenderPipeline)
             error("Stage $i has an incomplete set of output connections.")
         end
     end
+
+    # Make sure no more than 1 depth and stencil buffer is being written to
+    for stage in pipeline.stages
+        depth = 0
+        stencil = 0
+        for format in stage.output_formats
+            depth += is_depth_format(format) || is_depth_stencil_format(format)
+            stencil += is_stencil_format(format) || is_depth_stencil_format(format)
+        end
+        if depth > 1 || stencil > 1
+            error("Stage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
+        end
+    end
+
+    return
+end
+
+"""
+    generate_buffers(pipeline)
+
+Maps the connections in the given pipeline to a vector of buffer formats and
+returns them together with a connection-to-index map. This will attempt to
+optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
+multiple connections and upgrade them if it is cheaper than creating a new one.
+"""
+function generate_buffers(pipeline::RenderPipeline)
+    validate(pipeline)
 
     # Group connections that exist between stages
 
@@ -454,6 +519,8 @@ function generate_buffers(pipeline::RenderPipeline)
         stop = max(stop, (io_idx < 0) * stage_idx - 1) # pick stop if io_idx is output
         endpoints[format_idx] = (start, stop)
     end
+
+    # TODO: merge depth + stencil pairs with the same ... endpoint?
 
     # Collect the connection indices used between each pair of stages (transfer)
     usage_per_transfer = [Int[] for _ in 1:(length(pipeline.stages) - 1)]
@@ -678,25 +745,39 @@ end
 SortStage() = Stage(:ZSort)
 
 function RenderStage(; kwargs...)
-    outputs = Dict(:color => 1, :objectid => 2, :position => 3, :normal => 4)
-    output_formats = [BufferFormat(4, N0f8), BufferFormat(2, UInt32), BufferFormat(3, Float16), BufferFormat(3, Float16)]
-    return Stage(:Render, Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats; kwargs...)
+    outputs = [
+        :depth => BufferFormat(1, BFT.depth24),
+        :color => BufferFormat(4, N0f8),
+        :objectid => BufferFormat(2, UInt32),
+        :position => BufferFormat(3, Float16),
+        :normal => BufferFormat(3, Float16)
+    ]
+    return Stage(:Render; outputs, kwargs...)
 end
 
 function TransparentRenderStage()
-    outputs = Dict(:color_sum => 1, :objectid => 2, :transmittance => 3)
-    output_formats = [BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)]
-    return Stage(Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[], outputs, output_formats)
+    outputs = [
+        :depth => BufferFormat(1, BFT.depth24),
+        :color_sum => BufferFormat(4, Float16),
+        :objectid => BufferFormat(2, UInt32),
+        :transmittance => BufferFormat(1, N0f8)
+    ]
+    return Stage(Symbol("OIT Render"); outputs)
 end
 
 function SSAOStage(; kwargs...)
-    inputs = Dict(:position => 1, :normal => 2)
-    input_formats = [BufferFormat(3, Float32), BufferFormat(3, Float16)]
-    stage1 = Stage(:SSAO1, inputs, input_formats, Dict(:occlusion => 1), [BufferFormat(1, N0f8)]; kwargs...)
+    inputs = [
+        :position => BufferFormat(3, Float32),
+        :normal => BufferFormat(3, Float16)
+    ]
+    stage1 = Stage(:SSAO1, inputs, [:occlusion => BufferFormat(1, N0f8)]; kwargs...)
 
-    inputs = Dict(:occlusion => 1, :color => 2, :objectid => 3)
-    input_formats = [BufferFormat(1, N0f8), BufferFormat(4, N0f8), BufferFormat(2, UInt32)]
-    stage2 = Stage(:SSAO2, inputs, input_formats, Dict(:color => 1), [BufferFormat()]; kwargs...)
+    inputs = [
+        :occlusion => BufferFormat(1, N0f8),
+        :color => BufferFormat(4, N0f8),
+        :objectid => BufferFormat(2, UInt32)
+    ]
+    stage2 = Stage(:SSAO2, inputs, [:color => BufferFormat()]; kwargs...)
 
     pipeline = RenderPipeline(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
@@ -705,24 +786,24 @@ function SSAOStage(; kwargs...)
 end
 
 function OITStage(; kwargs...)
-    inputs = Dict(:color_sum => 1, :transmittance => 2)
-    input_formats = [BufferFormat(4, Float16), BufferFormat(1, N0f8)]
-    outputs = Dict(:color => 1)
-    output_formats = [BufferFormat(4, N0f8)]
-    return Stage(:OIT, inputs, input_formats, outputs, output_formats; kwargs...)
+    inputs = [:color_sum => BufferFormat(4, Float16), :transmittance => BufferFormat(1, N0f8)]
+    outputs = [:color => BufferFormat(4, N0f8)]
+    return Stage(:OIT, inputs, outputs; kwargs...)
 end
 
 function FXAAStage(; kwargs...)
     stage1 = Stage(
         :FXAA1,
-        Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
-        Dict(:color_luma => 1), [BufferFormat(4, N0f8)]; kwargs...
+        [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)],
+        [:color_luma => BufferFormat(4, N0f8)];
+        kwargs...
     )
 
     stage2 = Stage(
         :FXAA2,
-        Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
-        Dict(:color => 1), [BufferFormat(4, N0f8)]; kwargs...
+        [:color_luma => BufferFormat(4, N0f8, minfilter = :linear)],
+        [:color => BufferFormat(4, N0f8)];
+        kwargs...
     )
 
     pipeline = RenderPipeline(stage1, stage2)
@@ -734,8 +815,11 @@ end
 function DisplayStage()
     return Stage(
         :Display,
-        Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
-        Dict{Symbol, Int}(), BufferFormat[]
+        inputs = [
+            :depth => BufferFormat(1, BFT.depth24_stencil),
+            :color => BufferFormat(4, N0f8),
+            :objectid => BufferFormat(2, UInt32)
+        ],
     )
 end
 
@@ -780,6 +864,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
         connect!(pipeline, _fxaa, display, :color)
     end
     connect!(pipeline, :objectid)
+    connect!(pipeline, :depth)
 
     return pipeline
 end

@@ -10,6 +10,32 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
 
     # function barrier for types?
     function get_buffer!(context, T, format)
+        is_depth_buffer = Makie.is_depth_format(format)
+        is_stencil_buffer = Makie.is_stencil_format(format)
+        is_depth_stencil_buffer = Makie.is_depth_stencil_format(format)
+
+        if is_depth_buffer || is_stencil_buffer || is_depth_stencil_buffer
+            if is_depth_stencil_buffer
+                # TODO: allow 32-8 depth stencil
+                T === Makie.BFT.Depth24Stencil8 || error("$T not supported as a depth stencil buffer type.")
+                return Texture(
+                    context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(manager),
+                    minfilter = :nearest, x_repeat = :clamp_to_edge,
+                    internalformat = GL_DEPTH24_STENCIL8,
+                    format = GL_DEPTH_STENCIL
+                )
+            elseif is_depth_buffer
+                format = GL_DEPTH
+            else
+                format = GL_STENCIL
+            end
+            return Texture(
+                context, T, size(manager),
+                minfilter = :nearest, x_repeat = :clamp_to_edge,
+                format = format
+            )
+        end
+
         is_float_format = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
         default_filter = ifelse(is_float_format, :linear, :nearest)
         minfilter = ifelse(format.minfilter === :any, ifelse(format.mipmap, :linear_mipmap_linear, default_filter), format.minfilter)
@@ -28,6 +54,7 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
             context, T, size(manager), minfilter = minfilter, magfilter = magfilter,
             x_repeat = format.repeat[1], y_repeat = format.repeat[2]
         )
+        1
     end
 
     # Add buffers in the order of `formats`
@@ -70,13 +97,16 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.RenderPipeline)
     # Add back output color and objectid attachments
     # This assumes the last stage to be the Display stage with inputs (color, objectid)
     @assert pipeline.stages[end].name === :Display "Last Stage must be Display"
-    @assert get(pipeline.stages[end].inputs, :color, 0) == 1 "Display stage must have input :color at index 1"
-    @assert get(pipeline.stages[end].inputs, :objectid, 0) == 2 "Display stage must have input :objectid at index 2"
+    @assert get(pipeline.stages[end].inputs, :depth, 0) == 1 "Display stage must have input :depth at index 1"
+    @assert get(pipeline.stages[end].inputs, :color, 0) == 2 "Display stage must have input :color at index 2"
+    @assert get(pipeline.stages[end].inputs, :objectid, 0) == 3 "Display stage must have input :objectid at index 3"
 
     N = length(pipeline.stages)
     buffer_idx = remap[pipeline.stageio2idx[(N, -1)]]
-    attach_colorbuffer(manager.fb, :color, get_buffer(manager, buffer_idx))
+    attach_depthstencilbuffer(manager.fb, :depth_stencil, get_buffer(manager, buffer_idx))
     buffer_idx = remap[pipeline.stageio2idx[(N, -2)]]
+    attach_colorbuffer(manager.fb, :color, get_buffer(manager, buffer_idx))
+    buffer_idx = remap[pipeline.stageio2idx[(N, -3)]]
     attach_colorbuffer(manager.fb, :objectid, get_buffer(manager, buffer_idx))
 
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them

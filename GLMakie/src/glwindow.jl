@@ -50,18 +50,7 @@ end
 function create_main_framebuffer(context, fb_size)
     gl_switch_context!(context)
     require_context(context)
-
-    # holds depth and stencil values
-    depth_buffer = Texture(
-        context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
-        minfilter = :nearest, x_repeat = :clamp_to_edge,
-        internalformat = GL_DEPTH24_STENCIL8,
-        format = GL_DEPTH_STENCIL
-    )
-
-    fb = GLFramebuffer(context, fb_size)
-    attach_depthstencilbuffer(fb, :depth_stencil, depth_buffer)
-    return fb
+    return GLFramebuffer(context, fb_size)
 end
 
 function Base.resize!(fb::FramebufferManager, w::Int, h::Int)
@@ -110,11 +99,20 @@ Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, id
     fb = GLFramebuffer(manager.fb.context, size(manager))
 
     for (idx, name) in idx2name
-        haskey(fb, name) && error("Can't add duplicate buffer $lookup => $name")
-        attach_colorbuffer(fb, name, manager.buffers[idx])
-    end
+        haskey(fb, name) && error("Can't add duplicate buffer $name")
 
-    attach_depthstencilbuffer(fb, :depth_stencil, get_buffer(manager.fb, :depth_stencil))
+        buffer = manager.buffers[idx]
+
+        if buffer.format == GL_DEPTH_STENCIL
+            attach_depthstencilbuffer(fb, name, buffer)
+        elseif buffer.format == GL_DEPTH
+            attach_depthbuffer(fb, name, buffer)
+        elseif buffer.format == GL_STENCIL
+            attach_stencilbuffer(fb, name, buffer)
+        else
+            attach_colorbuffer(fb, name, buffer)
+        end
+    end
 
     push!(manager.children, fb)
 
