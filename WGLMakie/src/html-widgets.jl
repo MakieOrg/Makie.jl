@@ -408,6 +408,7 @@ function replace_widget!(textbox::Makie.Textbox)
     textbox_input = DOM.input(;
         input_attrs...,
         style = input_styles,
+        value = textbox.displayed_string,
         onchange = js"""
             function(event) {
                 let value = event.target.value;

@@ -31,7 +31,6 @@ function snapshot_figure(edisplay, fig, path)
             })();
         """
     )
-    @show win_size
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
     sleep(0.5) # do we need time for resize?
