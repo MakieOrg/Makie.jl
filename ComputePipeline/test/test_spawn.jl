@@ -1,6 +1,17 @@
 using ComputePipeline
 using Test
 
+function set_task_tid!(task::Task, tid::Integer)
+    task.sticky = true
+    return ccall(:jl_set_task_tid, Cint, (Any, Cint), task, tid - 1)
+end
+function spawnat(f, tid)
+    task = Task(f)
+    set_task_tid!(task, tid)
+    schedule(task)
+    return task
+end
+
 @testset "Task/@spawn support" begin
     @testset "Basic Task return" begin
         graph = ComputeGraph()
@@ -130,21 +141,23 @@ using Test
     end
     @testset "properly polling result" begin
         graph = ComputePipeline.ComputeGraph()
-        Makie.add_input!(graph, :a, rand(Point2f, 100))
+        ComputePipeline.add_input!(graph, :a, rand(100))
+
+
         map!(graph, :a, :b) do x
-            Makie.spawnat(2) do
+            spawnat(2) do
                 t = time()
                 while time() - t < 1
                 end
-                return x .+ Point2f(1, 1)
+                return x .+ 1
             end
         end
-        Makie.register_computation!(graph, [:b], [:c]) do input, changed, last
+        ComputePipeline.register_computation!(graph, [:b], [:c]) do input, changed, last
             return (input.b,)
         end
         result1 = copy(graph.c[]) # first resolve should be sync
 
-        graph.a = rand(Point2f, 100)
+        graph.a = rand(100)
         @test graph.c[] == result1
         @test !ComputePipeline.isdirty(graph.c)
         @test graph.b.parent.typed_edge[].async_pending[]
