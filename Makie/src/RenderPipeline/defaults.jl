@@ -5,7 +5,7 @@ SortStage() = Stage(:ZSort)
 
 function RenderStage(; kwargs...)
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24_stencil),
+        :depth => BufferFormat(1, BFT.depth24),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
     ]
@@ -14,7 +14,7 @@ end
 
 function SSAORenderStage(; kwargs...)
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24_stencil),
+        :depth => BufferFormat(1, BFT.depth24),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
         :position => BufferFormat(3, Float16),
@@ -25,7 +25,7 @@ end
 
 function TransparentRenderStage()
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24_stencil),
+        :depth => BufferFormat(1, BFT.depth24),
         :color_sum => BufferFormat(4, Float16),
         :objectid => BufferFormat(2, UInt32),
         :transmittance => BufferFormat(1, N0f8),
@@ -84,7 +84,7 @@ function DisplayStage()
     return Stage(
         :Display,
         inputs = [
-            :depth => BufferFormat(1, BFT.depth24_stencil),
+            :depth => BufferFormat(1, BFT.depth24),
             :color => BufferFormat(4, N0f8),
             :objectid => BufferFormat(2, UInt32),
         ],
