@@ -65,7 +65,7 @@ function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
 end
 
 function each_attachment(fb::GLFramebuffer)
-    return view(fb.attachments, 1 : fb.counter)
+    return view(fb.attachments, 1:fb.counter)
 end
 
 function unsafe_free(x::GLFramebuffer)

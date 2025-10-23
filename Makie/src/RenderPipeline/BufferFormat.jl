@@ -31,7 +31,7 @@ module BFT # BufferFormatType
     # lowest 2 bits do variation between 8, 16 and 32 bit types, others do variation of base type
     function is_compatible(a::BufferFormatType, b::BufferFormatType)
         base_type_compatible = (UInt8(a) & 0b11111100) == (UInt8(b) & 0b11111100)
-        stencil_compatible =(stencil <= a <= depth32_stencil) && (stencil <= b <= depth32_stencil)
+        stencil_compatible = (stencil <= a <= depth32_stencil) && (stencil <= b <= depth32_stencil)
         depth_compatible = (depth24_stencil <= a <= depth32) && (depth24_stencil <= b <= depth32)
         return base_type_compatible || stencil_compatible || depth_compatible
     end
@@ -61,7 +61,7 @@ module BFT # BufferFormatType
         UInt8, UInt16, Nothing, UInt32,
         UInt8, Nothing, Nothing, Nothing,
         Nothing, Nothing, Depth24Stencil8, Depth32Stencil8,
-        Nothing, Depth{16}, Depth{24}, Depth{32}
+        Nothing, Depth{16}, Depth{24}, Depth{32},
     )
     to_type(t::BufferFormatType) = type_lookup[Int(t) + 1]
 end

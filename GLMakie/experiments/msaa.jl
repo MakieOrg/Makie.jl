@@ -28,7 +28,7 @@ end
 
 begin
     GLMakie.closeall()
-    f,a,p = scatter(rand(Point2f, 10));
+    f, a, p = scatter(rand(Point2f, 10))
     mesh!(Circle(Point2f(0.5), 0.1))
     screen = Base.display(f, render_pipeline = msaa)
 end
