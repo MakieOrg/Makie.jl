@@ -139,12 +139,11 @@ function render_with_init(screen::Screen, session::Session, scene::Scene, figure
     screen.session = session
     Makie.push_screen!(scene, screen)
     try
-        canvas, on_init = three_display(screen, session, scene)
-        screen.canvas = canvas
+        wrapper, on_init = three_display(screen, session, scene)
+        screen.canvas = wrapper
         if !isnothing(figure) && screen.config.use_html_widgets
             widgets = WGLMakie.replace_widget!(figure)
-        else
-            widgets = nothing
+            push!(Bonito.children(wrapper), widgets)
         end
         on(session, on_init) do initialized
             if isready(screen.plot_initialized)
@@ -169,7 +168,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene, figure
             end
             return
         end
-        return DOM.div(canvas, widgets)
+        return wrapper
     catch e
         put!(screen.plot_initialized, e)
         rethrow(e)
