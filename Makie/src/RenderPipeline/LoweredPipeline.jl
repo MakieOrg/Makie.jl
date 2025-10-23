@@ -86,13 +86,6 @@ function validate_pipeline(pipeline::RenderPipeline)
         if depth > 1 || stencil > 1
             error("Stage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
         end
-
-        # Confirm that all inputs are connected
-        for (name, j) in stage.inputs
-            if !haskey(pipeline.stageio2idx, (i, -j))
-                error("Input $j :$name of stage $stage is not connected.")
-            end
-        end
     end
 
     # Confirm that all buffer types are valid
