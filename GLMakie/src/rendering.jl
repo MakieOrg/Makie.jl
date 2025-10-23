@@ -60,16 +60,18 @@ function render_frame(screen::Screen; resize_buffers = true)
     glViewport(0, 0, size(fb)...)
 
     # clear objectid, depth and stencil
-    glDrawBuffer(get_attachment(fb, :objectid))
     glClearColor(0, 0, 0, 0)
-    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    if haskey(fb, :objectid)
+        glDrawBuffer(get_attachment(fb, :objectid))
+        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    else
+        glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    end
 
     # TODO: figure out something better for setup!()
     setup!(screen, fb)
 
     render_frame(screen, nothing, screen.render_pipeline)
-
-    GLAbstraction.require_context(nw)
 
     GLAbstraction.require_context(nw)
 

@@ -145,6 +145,10 @@ function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
     return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
 end
 
+function construct(::Val{Symbol("SSAO Render")}, screen, framebuffer, inputs, parent)
+    return construct(Val{:Render}(), screen, framebuffer, inputs, parent)
+end
+
 function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, parent)
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
@@ -458,6 +462,38 @@ function run_step(screen, glscene, step::RenderPass{:FXAA2})
     set_draw_buffers(step.framebuffer)  # color buffer
     step.robj[:RCPFrame] = rcpframe(size(step.framebuffer))
     GLAbstraction.render(step.robj)
+    return
+end
+
+struct MSAAResolve <: AbstractRenderStep
+    input_framebuffer::GLFramebuffer
+    output_framebuffer::GLFramebuffer
+end
+
+function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
+    require_context(screen.glscreen)
+    manager = screen.framebuffer_manager
+    input_framebuffer = generate_framebuffer(manager, stage.inputs)
+    output_framebuffer = generate_framebuffer(manager, stage.outputs)
+    return MSAAResolve(input_framebuffer, output_framebuffer)
+end
+
+function run_step(screen, ::Nothing, step::MSAAResolve)
+    w, h = size(step.output_framebuffer)
+    flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
+
+    for attachment in GLAbstraction.each_attachment(step.input_framebuffer)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, step.input_framebuffer.id)
+        glReadBuffer(attachment)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.output_framebuffer.id)
+        glDrawBuffer(attachment)
+
+        glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, flag, GL_NEAREST)
+
+        # would we be copying the depth and stencil buffers again otherwise?
+        flag = GL_COLOR_BUFFER_BIT
+    end
+
     return
 end
 

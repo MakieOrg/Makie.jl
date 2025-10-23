@@ -12,6 +12,7 @@ function Base.show(io::IO, ::MIME"text/plain", format::BufferFormat)
     print(io, ", magfilter = :$(format.magfilter)")
     print(io, ", repeat = $(format.repeat)")
     print(io, ", mipmap = $(format.mipmap))")
+    print(io, ", samples = $(format.samples))")
     return io
 end
 

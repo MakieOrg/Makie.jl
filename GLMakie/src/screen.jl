@@ -863,11 +863,11 @@ depth_color = GLMakie.depthbuffer(screen)
 heatmap(depth_color, colormap=:grays)
 ```
 """
-function depthbuffer(screen::Screen)
+function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen), name = :depth_stencil)
     gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(display_framebuffer(screen), :depth_stencil)
+    source = get_buffer(framebuffer, name)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)

@@ -64,6 +64,10 @@ function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
     return
 end
 
+function each_attachment(fb::GLFramebuffer)
+    return view(fb.attachments, 1 : fb.counter)
+end
+
 function unsafe_free(x::GLFramebuffer)
     id = Ref(x.id)
     glDeleteFramebuffers(1, id)
@@ -123,17 +127,19 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
         error("Cannot attach " * string(key) * " as a " * type * " attachment as it is already attached.")
     end
 
+    status = GL_FRAMEBUFFER_UNDEFINED
     try
         bind(fb)
         gl_attach(buffer, attachment)
-        check_framebuffer()
+        status = framebuffer_status()
+        check_framebuffer(status)
     catch e
         if GL_COLOR_ATTACHMENT0 <= attachment <= GL_COLOR_ATTACHMENT15
             # If we failed to attach correctly we should probably overwrite
             # the attachment next time we try?
             fb.counter -= 1
         end
-        @info "$key -> $(GLENUM(attachment).name) failed with framebuffer id = $(fb.id)"
+        @info "Failed to attach $key -> $(GLENUM(attachment).name) to framebuffer with id = $(fb.id)"
         rethrow(e)
     end
     # (1) requires us to keep depth/stenctil/depth_stencil at end so that the first
@@ -148,7 +154,7 @@ function attach(fb::GLFramebuffer, key::Symbol, buffer, idx::Integer, attachment
 end
 
 function gl_attach(t::Texture{T, 2}, attachment::GLenum) where {T}
-    return glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
+    return glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, t.texturetype, t.id, 0)
 end
 function gl_attach(buffer::RenderBuffer, attachment::GLenum)
     return glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, buffer)
@@ -201,8 +207,11 @@ if the value of GL_TEXTURE_SAMPLES is not the same for all attached textures; or
     return error("Unknown framebuffer completion error code: $s")
 end
 
-function check_framebuffer()
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+function framebuffer_status()
+    return glCheckFramebufferStatus(GL_FRAMEBUFFER)
+end
+
+function check_framebuffer(status = framebuffer_status())
     return enum_to_error(status)
 end
 

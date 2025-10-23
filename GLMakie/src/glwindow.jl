@@ -91,7 +91,7 @@ Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, id
 
         if buffer.format == GL_DEPTH_STENCIL
             attach_depthstencilbuffer(fb, name, buffer)
-        elseif buffer.format == GL_DEPTH
+        elseif buffer.format == GL_DEPTH_COMPONENT
             attach_depthbuffer(fb, name, buffer)
         elseif buffer.format == GL_STENCIL
             attach_stencilbuffer(fb, name, buffer)

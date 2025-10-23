@@ -69,7 +69,50 @@ format_complexity(dims, type) = dims * BFT.bytesize(type)
 # complexity of merged, not max of either
 format_complexity(f1::BufferFormat, f2::BufferFormat) = max(f1.dims, f2.dims) * max(BFT.bytesize(f1.type), BFT.bytesize(f2.type))
 
-function validate(pipeline::RenderPipeline)
+function validate_pipeline(pipeline::RenderPipeline)
+    for (i, stage) in enumerate(pipeline.stages)
+        # Confirm that all outputs have the same number of samples
+        if !allequal(format -> format.samples, stage.output_formats)
+            error("Stage $stage does not have a consistent sample count for all outputs.")
+        end
+
+        # Confirm that there are at most 1 stencil and depth buffer
+        depth = 0
+        stencil = 0
+        for format in stage.output_formats
+            depth += is_depth_format(format) || is_depth_stencil_format(format)
+            stencil += is_stencil_format(format) || is_depth_stencil_format(format)
+        end
+        if depth > 1 || stencil > 1
+            error("Stage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
+        end
+
+        # Confirm that all inputs are connected
+        for (name, j) in stage.inputs
+            if !haskey(pipeline.stageio2idx, (i, -j))
+                error("Input $j :$name of stage $stage is not connected.")
+            end
+        end
+    end
+
+    # Confirm that all buffer types are valid
+    # if they are not try to bump the bytesize by one (which only actually affects depth24)
+    for i in eachindex(pipeline.formats)
+        format = pipeline.formats[i]
+        bft_type = format.type
+        if BFT.to_type(bft_type) === Nothing
+            while BFT.can_advance(bft_type) && BFT.to_type(bft_type) === Nothing
+                bft_type = BFT.unsafe_advance(bft_type)
+            end
+
+            if BFT.to_type(bft_type) === Nothing
+                error("Invalid format found: $format (invalid type)")
+            else
+                pipeline.formats[i] = BufferFormat(format, type = bft_type)
+            end
+        end
+    end
+
     # Verify that outputs are continuously connected, i.e. that if stage.outputs[N]
     # is connected all the outputs from 1:N-1 are too. (Otherwise there may be
     # mapping issues in the backend, because output[i] != shader output i)
@@ -93,19 +136,6 @@ function validate(pipeline::RenderPipeline)
         end
     end
 
-    # Make sure no more than 1 depth and stencil buffer is being written to
-    for stage in pipeline.stages
-        depth = 0
-        stencil = 0
-        for format in stage.output_formats
-            depth += is_depth_format(format) || is_depth_stencil_format(format)
-            stencil += is_stencil_format(format) || is_depth_stencil_format(format)
-        end
-        if depth > 1 || stencil > 1
-            error("Stage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
-        end
-    end
-
     return
 end
 
@@ -118,7 +148,7 @@ optimize buffers for the lowest memory overhead. I.e. it will reuse buffers for
 multiple connections and upgrade them if it is cheaper than creating a new one.
 """
 function generate_buffers(pipeline::RenderPipeline)
-    validate(pipeline)
+    validate_pipeline(pipeline)
 
     # Group connections that exist between stages
 

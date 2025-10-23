@@ -5,18 +5,27 @@ SortStage() = Stage(:ZSort)
 
 function RenderStage(; kwargs...)
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24),
+        :depth => BufferFormat(1, BFT.depth24_stencil),
+        :color => BufferFormat(4, N0f8),
+        :objectid => BufferFormat(2, UInt32),
+    ]
+    return Stage(:Render; outputs, kwargs...)
+end
+
+function SSAORenderStage(; kwargs...)
+    outputs = [
+        :depth => BufferFormat(1, BFT.depth24_stencil),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
         :position => BufferFormat(3, Float16),
         :normal => BufferFormat(3, Float16)
     ]
-    return Stage(:Render; outputs, kwargs...)
+    return Stage(Symbol("SSAO Render"); outputs, kwargs...)
 end
 
 function TransparentRenderStage()
     outputs = [
-        :depth => BufferFormat(1, BFT.depth24),
+        :depth => BufferFormat(1, BFT.depth24_stencil),
         :color_sum => BufferFormat(4, Float16),
         :objectid => BufferFormat(2, UInt32),
         :transmittance => BufferFormat(1, N0f8)
@@ -82,6 +91,19 @@ function DisplayStage()
     )
 end
 
+function MSAAResolveStage(source_stage::Stage)
+    # TODO: Should this generate multiple independent stages?
+    inputs = Vector{Pair{Symbol, BufferFormat}}(undef, length(source_stage.outputs))
+    outputs = Vector{Pair{Symbol, BufferFormat}}(undef, length(source_stage.outputs))
+    for (name, idx) in source_stage.outputs
+        format = source_stage.output_formats[idx]
+        inputs[idx] = name => format
+        outputs[idx] = name => BufferFormat(format, samples = 1)
+    end
+
+    return Stage(:MSAAResolve; inputs, outputs)
+end
+
 
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
     pipeline = RenderPipeline()
@@ -90,7 +112,7 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
     # Note - order important!
     # TODO: maybe add insert!()?
     if ssao
-        render1 = push!(pipeline, RenderStage(ssao = true, transparency = false))
+        render1 = push!(pipeline, SSAORenderStage(ssao = true, transparency = false))
         _ssao = push!(pipeline, SSAOStage())
         render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
     else

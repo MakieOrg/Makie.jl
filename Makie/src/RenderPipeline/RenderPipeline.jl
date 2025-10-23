@@ -23,17 +23,26 @@ struct Stage
 end
 
 """
-    Stage(name::Symbol[; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[])
+    Stage(name::Symbol[; inputs = [], outputs = []; kwargs...)
 
 Creates a new `Stage` from the given `name`, `inputs` and `outputs`. A `Stage`
 represents an action taken during rendering, e.g. rendering (a subset of) render
-objects, running a post processor or sorting render objects.
+objects, running a post processor or sorting render objects. Inputs and outputs
+are given as a `Vector{Pair{Symbol, BufferFormat}}` containing their name and
+data format. Keyword arguments are treated as attributes/settings for the stage
+with the exception of `samples` which acts as an overwrite for all output formats.
 """
 function Stage(name; inputs = Pair{Symbol, BufferFormat}[], outputs = Pair{Symbol, BufferFormat}[], kwargs...)
     return Stage(name, inputs, outputs; kwargs...)
 end
 
-function Stage(name, inputs::Vector, outputs::Vector; kwargs...)
+function Stage(name, inputs::Vector, outputs::Vector; samples = 0, kwargs...)
+    if samples > 0
+        for i in eachindex(outputs)
+            outputs[i] = outputs[i][1] => BufferFormat(outputs[i][2], samples = samples)
+        end
+    end
+
     return Stage(
         Symbol(name),
         Dict{Symbol, Int}([k => idx for (idx, (k, v)) in enumerate(inputs)]),
@@ -44,7 +53,13 @@ function Stage(name, inputs::Vector, outputs::Vector; kwargs...)
     )
 end
 
-function Stage(name, inputs, input_formats, outputs, output_formats; kwargs...)
+function Stage(name, inputs, input_formats, outputs, output_formats; samples = 0, kwargs...)
+    if samples > 0
+        for i in eachindex(output_formats)
+            output_formats[i] = BufferFormat(output_formats[i], samples = samples)
+        end
+    end
+
     return Stage(
         Symbol(name),
         inputs, outputs,

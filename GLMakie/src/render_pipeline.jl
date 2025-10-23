@@ -8,6 +8,10 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
     # Implies `empty!(manager)` has not been called
     @assert isempty(manager.buffers) "Cannot initialize FramebufferManager that has already been initialized."
 
+    to_internalformat(::Type{<:Makie.BFT.Depth{16}}) = GL_DEPTH_COMPONENT16
+    to_internalformat(::Type{<:Makie.BFT.Depth{24}}) = GL_DEPTH_COMPONENT24
+    to_internalformat(::Type{<:Makie.BFT.Depth{32}}) = GL_DEPTH_COMPONENT32F
+
     # function barrier for types?
     function get_buffer!(context, T, format)
         is_depth_buffer = Makie.is_depth_format(format)
@@ -22,18 +26,25 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
                     context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), size(manager),
                     minfilter = :nearest, x_repeat = :clamp_to_edge,
                     internalformat = GL_DEPTH24_STENCIL8,
-                    format = GL_DEPTH_STENCIL
+                    format = GL_DEPTH_STENCIL, samples = format.samples
                 )
             elseif is_depth_buffer
-                format = GL_DEPTH
+                T === Nothing && error("Buffer element type is invalid.")
+                return Texture(
+                    context, Ptr{Float32}(C_NULL), size(manager),
+                    minfilter = :nearest, x_repeat = :clamp_to_edge,
+                    format = GL_DEPTH_COMPONENT, internalformat = to_internalformat(T),
+                    samples = format.samples
+                )
             else
-                format = GL_STENCIL
+                # untested
+                T === Nothing && error("Buffer element type is invalid.")
+                return Texture(
+                    context, T, size(manager),
+                    minfilter = :nearest, x_repeat = :clamp_to_edge,
+                    format = GL_STENCIL, samples = format.samples
+                )
             end
-            return Texture(
-                context, T, size(manager),
-                minfilter = :nearest, x_repeat = :clamp_to_edge,
-                format = format
-            )
         end
 
         is_float_format = eltype(T) == N0f8 || eltype(T) <: AbstractFloat
@@ -52,7 +63,8 @@ function initialize_attachments!(manager::FramebufferManager, formats::Vector{Ma
 
         return Texture(
             context, T, size(manager), minfilter = minfilter, magfilter = magfilter,
-            x_repeat = format.repeat[1], y_repeat = format.repeat[2]
+            x_repeat = format.repeat[1], y_repeat = format.repeat[2],
+            samples = format.samples
         )
         1
     end

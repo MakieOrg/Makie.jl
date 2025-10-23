@@ -21,8 +21,12 @@ module BFT # BufferFormatType
     end
 
     is_depth_stencil(x::BufferFormatType) = x == depth24_stencil || x == depth32_stencil
-    is_depth(x::BufferFormatType) = x == stencil
-    is_stencil(x::BufferFormatType) = depth16 < x < depth32
+    is_stencil(x::BufferFormatType) = x == stencil
+    is_depth(x::BufferFormatType) = depth16 <= x <= depth32
+
+    can_advance(t::BufferFormatType) = (0b00000011 & UInt8(t)) < 0b00000011
+    # this is just used for 24 -> 32 bit, so erroring for 16 -> 24 isn't that bad?
+    unsafe_advance(t::BufferFormatType) = BufferFormatType(UInt8(t) + 1)
 
     # lowest 2 bits do variation between 8, 16 and 32 bit types, others do variation of base type
     function is_compatible(a::BufferFormatType, b::BufferFormatType)
@@ -47,9 +51,9 @@ module BFT # BufferFormatType
     # we matched the lowest 2 bits to bytesize
     bytesize(x::BufferFormatType) = Int((UInt8(x) & 0b11) + 1)
 
-    struct Float24 end
     struct Depth24Stencil8 end
     struct Depth32Stencil8 end
+    struct Depth{N} end
 
     const type_lookup = (
         N0f8, Float16, Nothing, Float32,
@@ -57,7 +61,7 @@ module BFT # BufferFormatType
         UInt8, UInt16, Nothing, UInt32,
         UInt8, Nothing, Nothing, Nothing,
         Nothing, Nothing, Depth24Stencil8, Depth32Stencil8,
-        Nothing, Float16, Nothing, Float32,
+        Nothing, Depth{16}, Depth{24}, Depth{32}
     )
     to_type(t::BufferFormatType) = type_lookup[Int(t) + 1]
 end
@@ -73,7 +77,7 @@ struct BufferFormat
     mipmap::Bool
     # anisotropy::Float32 # useless for this context?
     # local_read::Bool # flag so stage can mark that it only reads the pixel it will write to, i.e. allows using input as output
-    # multisample # for MSAA
+    samples::UInt8 # for MSAA
 end
 
 """
@@ -93,10 +97,10 @@ function BufferFormat(
         dims::Integer, type::BFT.BufferFormatType;
         minfilter = :any, magfilter = :any,
         repeat = (:clamp_to_edge, :clamp_to_edge),
-        mipmap = false
+        mipmap = false, samples = 1
     )
     _repeat = ifelse(repeat isa Symbol, (repeat, repeat), repeat)
-    return BufferFormat(dims, type, minfilter, magfilter, _repeat, mipmap)
+    return BufferFormat(dims, type, minfilter, magfilter, _repeat, mipmap, samples)
 end
 BufferFormat(dims = 4, type = N0f8; kwargs...) = BufferFormat(dims, type; kwargs...)
 @generated function BufferFormat(dims::Integer, ::Type{T}; kwargs...) where {T}
@@ -104,10 +108,20 @@ BufferFormat(dims = 4, type = N0f8; kwargs...) = BufferFormat(dims, type; kwargs
     return :(BufferFormat(dims, $type; kwargs...))
 end
 
+function BufferFormat(
+        old::BufferFormat;
+        dims = old.dims, type = old.type,
+        minfilter = old.minfilter, magfilter = old.magfilter,
+        repeat = old.repeat, mipmap = old.mipmap, samples = old.samples
+    )
+    return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples)
+end
+
 function Base.:(==)(f1::BufferFormat, f2::BufferFormat)
     return (f1.dims == f2.dims) && (f1.type == f2.type) &&
         (f1.minfilter == f2.minfilter) && (f1.magfilter == f2.magfilter) &&
-        (f1.repeat == f2.repeat) && (f1.mipmap == f2.mipmap)
+        (f1.repeat == f2.repeat) && (f1.mipmap == f2.mipmap) &&
+        (f1.samples == f2.samples)
 end
 
 """
@@ -123,6 +137,7 @@ Rules:
 - minfilter and magfilter must match (if one is :any, the other is used)
 - repeat must match
 - mipmap = true takes precedence
+- samples must match
 """
 function BufferFormat(f1::BufferFormat, f2::BufferFormat)
     if is_compatible(f1, f2)
@@ -133,7 +148,8 @@ function BufferFormat(f1::BufferFormat, f2::BufferFormat)
         magfilter = ifelse(f1.magfilter == :any, f2.magfilter, f1.magfilter)
         repeat = f1.repeat
         mipmap = f1.mipmap || f2.mipmap
-        return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap)
+        samples = f1.samples
+        return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples)
     else
         error("Failed to merge BufferFormat: $f1 and $f2 are not compatible.")
     end
@@ -143,7 +159,7 @@ function is_compatible(f1::BufferFormat, f2::BufferFormat)
     return BFT.is_compatible(f1.type, f2.type) &&
         (f1.minfilter == :any || f2.minfilter == :any || f1.minfilter == f2.minfilter) &&
         (f1.magfilter == :any || f2.magfilter == :any || f1.magfilter == f2.magfilter) &&
-        (f1.repeat == f2.repeat)
+        (f1.repeat == f2.repeat) && (f1.samples == f2.samples)
 end
 
 function format_to_type(format::BufferFormat)

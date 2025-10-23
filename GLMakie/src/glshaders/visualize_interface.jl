@@ -166,14 +166,17 @@ function target_stage(screen, data)
     # For now we can just check the number of outputs to figure out what branch
     # we need. If render stages get more complex this may need to be more generative.
     fb = screen.render_pipeline.steps[idx].framebuffer
-    if fb.counter == 2
-        return "#define DEFAULT_TARGET"
+    define = if fb.counter == 1
+        "#define MINIMAL_TARGET"
+    elseif fb.counter == 2
+        "#define DEFAULT_TARGET"
     elseif fb.counter == 3
         data[:oit_scale] = screen.config.transparency_weight_scale
-        return "#define OIT_TARGET"
+        "#define OIT_TARGET"
     elseif fb.counter == 4
-        return "#define SSAO_TARGET"
+        "#define SSAO_TARGET"
     else
         error("Number of colorbuffers in render framebuffer does not match any known configurations ($(fb.counter))")
     end
+    return define
 end
