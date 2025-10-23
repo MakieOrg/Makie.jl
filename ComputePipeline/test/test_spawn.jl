@@ -1,17 +1,6 @@
 using ComputePipeline
 using Test
 
-function set_task_tid!(task::Task, tid::Integer)
-    task.sticky = true
-    return ccall(:jl_set_task_tid, Cint, (Any, Cint), task, tid - 1)
-end
-function spawnat(f, tid)
-    task = Task(f)
-    set_task_tid!(task, tid)
-    schedule(task)
-    return task
-end
-
 @testset "Task/@spawn support" begin
     @testset "Basic Task return" begin
         graph = ComputeGraph()
@@ -145,7 +134,7 @@ end
 
 
         map!(graph, :a, :b) do x
-            spawnat(2) do
+            Threads.@spawn begin
                 t = time()
                 while time() - t < 1
                 end
