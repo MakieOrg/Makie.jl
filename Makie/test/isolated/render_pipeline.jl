@@ -138,7 +138,7 @@ using Makie: generate_buffers, default_pipeline
             depth_types = [
                 (BFT.depth16, BFT.depth24, BFT.depth24_stencil),
                 (BFT.depth16, BFT.depth24, BFT.depth32, BFT.depth32_stencil),
-                (BFT.depth24_stencil, BFT.depth32_stencil)
+                (BFT.depth24_stencil, BFT.depth32_stencil),
             ]
             depth_groups = [[BufferFormat(1, T) for T in group] for group in depth_types]
 
@@ -218,9 +218,13 @@ using Makie: generate_buffers, default_pipeline
             # Every input and output that is connected should continue to exist
             # in the lowered pipeline. It is connected if it has a format in
             # `pipeline.formats` associated to it via `pipeline.stageio2idx`
-            input_names = first.(sort!(filter!(collect(pairs(old_stage.inputs))) do (name, idx)
-                haskey(pipeline.stageio2idx, (stage_idx, -idx))
-            end, by = last))
+            input_names = first.(
+                sort!(
+                    filter!(collect(pairs(old_stage.inputs))) do (name, idx)
+                        haskey(pipeline.stageio2idx, (stage_idx, -idx))
+                    end, by = last
+                )
+            )
 
             @test length(input_names) == length(new_stage.inputs)
 
@@ -233,9 +237,13 @@ using Makie: generate_buffers, default_pipeline
                 @test name == input_names[j]
             end
 
-            output_names = first.(sort!(filter!(collect(pairs(old_stage.outputs))) do (name, idx)
-                haskey(pipeline.stageio2idx, (stage_idx, idx))
-            end, by = last))
+            output_names = first.(
+                sort!(
+                    filter!(collect(pairs(old_stage.outputs))) do (name, idx)
+                        haskey(pipeline.stageio2idx, (stage_idx, idx))
+                    end, by = last
+                )
+            )
 
             @test length(output_names) == length(new_stage.outputs)
 
