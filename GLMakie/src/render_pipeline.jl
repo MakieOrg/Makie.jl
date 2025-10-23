@@ -99,8 +99,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # Reset GL renderpipeline
     ShaderAbstractions.switch_context!(screen.glscreen)
     manager = screen.framebuffer_manager
-    screen.render_pipeline = GLRenderPipeline()
     previous_pipeline = screen.render_pipeline
+    screen.render_pipeline = GLRenderPipeline()
 
     # Generate all the necessary attachments in the order given above so the
     # correct GLFramebuffers can be generated
