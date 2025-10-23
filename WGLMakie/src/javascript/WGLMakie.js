@@ -179,7 +179,16 @@ function get_body_size() {
     return [width, height];
 }
 function get_parent_size(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
+    // The first parent is the wrapper div (width/height: 100%),
+    // the second is the actual parent
+    const real_parent = canvas.parentElement.parentElement;
+    if (!real_parent) {
+        // should only happen if the canvas is not in the DOM anymore or
+        // Someone messed with the DOM structure
+        console.error("Canvas has no parent wrapper - this should not happen!");
+        return [canvas.width, canvas.height];
+    }
+    const rect = real_parent.getBoundingClientRect();
     return [rect.width, rect.height];
 }
 
