@@ -286,12 +286,15 @@ end
 
         connect!(pipeline, render1, fxaa)
         connect!(pipeline, render1, display_stage, :objectid)
+        connect!(pipeline, render1, display_stage, :depth)
         connect!(pipeline, render2, oit)
         connect!(pipeline, render2, display_stage, :objectid)
+        connect!(pipeline, render2, display_stage, :depth)
         connect!(pipeline, oit, fxaa, :color)
         connect!(pipeline, fxaa, color_tint, :color)
         connect!(pipeline, render3, color_tint, :color)
         connect!(pipeline, render3, display_stage, :objectid)
+        connect!(pipeline, render3, display_stage, :depth)
         connect!(pipeline, color_tint, display_stage, :color)
     end
 
