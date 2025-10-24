@@ -121,13 +121,13 @@ function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderPipeline)
 
         if !isempty(stage.inputs)
             print(io, "\n    inputs: ")
-            strs = map(idx_name -> "[$(idx_name[1])] $(idx_name[2])", stage.inputs)
+            strs = map(idx_name -> "[$(idx_name[2])] $(idx_name[1])", stage.inputs)
             join(io, strs, ", ")
         end
 
         if !isempty(stage.outputs)
             print(io, "\n    outputs: ")
-            strs = map(idx_name -> "[$(idx_name[1])] $(idx_name[2])", stage.outputs)
+            strs = map(idx_name -> "[$(idx_name[2])] $(idx_name[1])", stage.outputs)
             join(io, strs, ", ")
         end
     end

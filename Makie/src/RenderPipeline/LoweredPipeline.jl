@@ -2,14 +2,20 @@
 # reusing buffers. I.e. if a buffer is only used between stage 1 and 2, this
 # tries to reuse it after stage 2.
 
-# - same order of inputs & outputs
-# - same names
-# - unused outputs removed
-# - remapped indices (point to lowered pipeline formats)
+"""
+    struct LoweredStage end
+
+This is the lowered version of a `Stage` as used in `LoweredRenderPipeline`.
+Contains the same `name` and `attributes` as the `Stage` it represents. The
+`inputs` and `outputs` hold `name => index` pairs where the names match the
+respective `Stage` inputs and outputs and `index` refers to the buffer/format
+in the parent `LoweredRenderPipeline`s `formats`. The order of inputs and
+outputs is preserved and unused ones are removed.
+"""
 struct LoweredStage
     name::Symbol
-    inputs::Vector{Pair{Int64, Symbol}}
-    outputs::Vector{Pair{Int64, Symbol}}
+    inputs::Vector{Pair{Symbol, Int64}}
+    outputs::Vector{Pair{Symbol, Int64}}
     attributes::Dict{Symbol, Any}
 end
 
@@ -24,6 +30,15 @@ function LoweredRenderPipeline()
     return LoweredRenderPipeline(LoweredStage[], BufferFormat[])
 end
 
+"""
+    LoweredRenderPipeline(pipeline::RenderPipeline)
+
+Creates a lower level representation of the given render pipeline for use in backends.
+
+The new representation optimizes the number of buffers used by reusing them when
+they are free to be reused. Stages directly refer to these buffers here, and
+they drop information about which buffer formats they originally wanted.
+"""
 function LoweredRenderPipeline(pipeline::RenderPipeline)
     buffers, mapping = generate_buffers(pipeline)
 
@@ -52,12 +67,12 @@ function apply_remapping(
     # get the index into the new `buffers` from the index into the old
     # `pipeline.formats` and associate it with the respective stage input/output
     # name. Any unused inputs/outputs are removed here
-    buffer_idx_name = Pair{Int64, Symbol}[]
+    buffer_idx_name = Pair{Symbol, Int64}[]
     for (io_idx, name) in enumerate(old_names)
         if haskey(pipeline.stageio2idx, (stage_idx, sign * io_idx))
             format_idx = pipeline.stageio2idx[(stage_idx, sign * io_idx)]
             remapped_idx = mapping[format_idx]
-            push!(buffer_idx_name, remapped_idx => name)
+            push!(buffer_idx_name, name => remapped_idx)
         end
     end
 

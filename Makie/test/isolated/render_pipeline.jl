@@ -228,7 +228,7 @@ using Makie: generate_buffers, default_pipeline
 
             @test length(input_names) == length(new_stage.inputs)
 
-            for (j, (new_idx, name)) in enumerate(new_stage.inputs)
+            for (j, (name, new_idx)) in enumerate(new_stage.inputs)
                 # `pipeline.stageio2idx[(stage_idx, -j)]` is the index into the
                 # unoptimized `pipeline.formats`. `mapping` converts that to an
                 # index into the optimized `buffers`, which mirrors the index
@@ -247,7 +247,7 @@ using Makie: generate_buffers, default_pipeline
 
             @test length(output_names) == length(new_stage.outputs)
 
-            for (j, (new_idx, name)) in enumerate(new_stage.outputs)
+            for (j, (name, new_idx)) in enumerate(new_stage.outputs)
                 @test new_idx == mapping[pipeline.stageio2idx[(stage_idx, j)]]
                 @test name == output_names[j]
             end

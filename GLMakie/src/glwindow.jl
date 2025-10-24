@@ -71,21 +71,21 @@ function Base.push!(manager::FramebufferManager, tex::Texture)
 end
 
 """
-    generate_framebuffer(manager, index_to_name)
+    generate_framebuffer(manager, name_to_index)
 
 Creates a `GLFramebuffer` using attachments present in the manager. The
 attachments are referenced to by index and named with a Symbol via
-`index_to_name = [index1 => name1, ...]`.
+`name_to_index = [name1 => index1, ...]`.
 
 This function is mainly meant to be used with the inputs or outputs of a
 `stage::LoweredStage`. For example: `generate_buffers(manager, stage.inputs)`.
 """
-Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, idx2name::Vector{Pair{Int, Symbol}})
+Makie.@noconstprop function generate_framebuffer(manager::FramebufferManager, name2idx::Vector{Pair{Symbol, Int64}})
     filter!(fb -> fb.id != 0, manager.children) # cleanup?
 
     fb = GLFramebuffer(manager.context, size(manager))
 
-    for (idx, name) in idx2name
+    for (name, idx) in name2idx
         haskey(fb, name) && error("Can't add duplicate buffer $name")
 
         buffer = manager.buffers[idx]

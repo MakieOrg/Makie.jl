@@ -109,7 +109,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
 
     # verify that last step is display
     final_stage = pipeline.stages[end]
-    if !(final_stage.name === :Display && last.(final_stage.inputs) == [:depth, :color, :objectid])
+    if !(final_stage.name === :Display && first.(final_stage.inputs) == [:depth, :color, :objectid])
         error("The final stage must be a Display stage with inputs (:depth, :color, :objectid). $final_stage")
     end
 
@@ -165,9 +165,9 @@ This function is used to collect all the buffers listed in the `stage.inputs` or
 
 To get an individual buffer `get_buffer(manager, stages.inputs[1][1])` can be used.
 """
-function collect_buffers(manager::FramebufferManager, sources::Vector{Pair{Int64, Symbol}})
+function collect_buffers(manager::FramebufferManager, sources::Vector{Pair{Symbol, Int64}})
     d = Dict{Symbol, Any}()
-    for (idx, name) in sources
+    for (name, idx) in sources
         d[Symbol(name, :_buffer)] = get_buffer(manager, idx)
     end
     return d
