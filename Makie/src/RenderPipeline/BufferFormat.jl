@@ -92,6 +92,7 @@ The `BufferFormat` may also specify texture parameters for the buffer:
 - `magfilter = :any`: How are pixels interpolated (:linear, :nearest)
 - `repeat = :clamp_to_edge`: How are pixels sampled beyond the boundary? (:clamp_to_edge, :mirrored_repeat, :repeat)
 - `mipmap = false`: Should mipmaps be used?
+- `samples = 1`: Number of samples used (MSAA)
 """
 function BufferFormat(
         dims::Integer, type::BFT.BufferFormatType;

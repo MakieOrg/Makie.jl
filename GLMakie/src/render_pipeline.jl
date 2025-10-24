@@ -156,6 +156,15 @@ function reconstruct(name::Val, screen, stage)
     return reconstruct(name, screen, framebuffer, inputs, stage)
 end
 
+"""
+    collect_buffer(manager::FramebufferManager, sources)
+
+This function is used to collect all the buffers listed in the `stage.inputs` or
+`stage.outputs` of a `stage::Makie.LoweredStage`. They are returned in a
+`Dict{Symbol, Any}` mapping the input/output name to the respective buffer.
+
+To get an individual buffer `get_buffer(manager, stages.inputs[1][1])` can be used.
+"""
 function collect_buffers(manager::FramebufferManager, sources::Vector{Pair{Int64, Symbol}})
     d = Dict{Symbol, Any}()
     for (idx, name) in sources
