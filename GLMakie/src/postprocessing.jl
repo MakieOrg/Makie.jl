@@ -482,7 +482,7 @@ function run_step(screen, ::Nothing, step::MSAAResolve)
     w, h = size(step.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
-    for attachment in GLAbstraction.each_attachment(step.input_framebuffer)
+    for attachment in each_attachment(step.input_framebuffer)
         glBindFramebuffer(GL_READ_FRAMEBUFFER, step.input_framebuffer.id)
         glReadBuffer(attachment)
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.output_framebuffer.id)

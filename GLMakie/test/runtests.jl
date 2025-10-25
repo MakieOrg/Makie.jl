@@ -169,7 +169,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
 
         framebuffer = screen.framebuffer_manager
-        framebuffer_depth = GLMakie.get_buffer(GLMakie.display_framebuffer(screen), :depth_stencil)
+        framebuffer_depth = GLMakie.get_depth_buffer(GLMakie.display_framebuffer(screen))
         framebuffer_textures = copy(screen.framebuffer_manager.buffers)
         framebuffer_children = copy(screen.framebuffer_manager.children)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))
@@ -188,10 +188,6 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         end
 
         @testset "Framebuffer" begin
-            # GLFramebuffer object
-            @test framebuffer.fb.id == 0
-            @test all(x -> x.id == 0, framebuffer.fb.buffers)
-
             # FramebufferManager object
             @test isempty(framebuffer.children)
             @test isempty(framebuffer.buffers)
@@ -204,9 +200,8 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
             @test !isempty(framebuffer_children)
             for fb in framebuffer_children
                 @test fb.id == 0
-                @test framebuffer.fb.id == 0
-                # should automatically be true if all framebuffer_textures == 0
-                @test all(x -> x.id == 0, framebuffer.fb.buffers)
+                # TODO: Should we bother clearing the attachment and buffer lists?
+                @test all(x -> x.id == 0, fb.buffers)
             end
         end
 

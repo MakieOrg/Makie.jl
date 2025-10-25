@@ -51,21 +51,19 @@ function set_draw_buffers(fb::GLFramebuffer, N::Integer = fb.counter)
     glDrawBuffers(N, fb.attachments)
     return
 end
+
 function set_draw_buffers(fb::GLFramebuffer, key::Symbol)
     gl_switch_context!(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment(fb, key))
     return
 end
+
 function set_draw_buffers(fb::GLFramebuffer, keys::Symbol...)
     gl_switch_context!(fb.context)
     bind(fb)
     glDrawBuffer(get_attachment.(Ref(fb), keys))
     return
-end
-
-function each_attachment(fb::GLFramebuffer)
-    return view(fb.attachments, 1:fb.counter)
 end
 
 function unsafe_free(x::GLFramebuffer)
@@ -179,8 +177,23 @@ function pop_colorbuffer!(fb::GLFramebuffer)
     return fb
 end
 
+function find_depth_index(fb::GLFramebuffer)
+    return findfirst(x -> x == GL_DEPTH_ATTACHMENT || x == GL_DEPTH_STENCIL_ATTACHMENT, fb.attachments)
+end
+
+function find_stencil_index(fb::GLFramebuffer)
+    return findfirst(x -> x == GL_STENCIL_ATTACHMENT || x == GL_DEPTH_STENCIL_ATTACHMENT, fb.attachments)
+end
+
+each_attachment(fb::GLFramebuffer) = view(fb.attachments, 1:fb.counter)
+
 get_attachment(fb::GLFramebuffer, key::Symbol) = fb.attachments[fb.name2idx[key]]
+get_depth_attachment(fb::GLFramebuffer) = fb.attachments[find_depth_index(fb)]
+get_stencil_attachment(fb::GLFramebuffer) = fb.attachments[find_stencil_index(fb)]
+
 get_buffer(fb::GLFramebuffer, key::Symbol) = fb.buffers[fb.name2idx[key]]
+get_depth_buffer(fb::GLFramebuffer) = fb.buffers[find_depth_index(fb)]
+get_stencil_buffer(fb::GLFramebuffer) = fb.buffers[find_stencil_index(fb)]
 
 function enum_to_error(s)
     s == GL_FRAMEBUFFER_COMPLETE && return

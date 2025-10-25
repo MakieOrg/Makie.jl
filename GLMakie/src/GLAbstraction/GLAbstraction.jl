@@ -153,7 +153,8 @@ include("GLFramebuffer.jl")
 export GLRenderbuffer
 export GLFramebuffer
 export attach_colorbuffer, attach_depthbuffer, attach_stencilbuffer, attach_depthstencilbuffer
-export get_attachment, get_buffer
+export get_attachment, get_depth_attachment, get_stencil_attachment, each_attachment
+export get_buffer, get_depth_buffer, get_stencil_buffer
 export set_draw_buffers
 export check_framebuffer
 

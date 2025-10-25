@@ -863,11 +863,11 @@ depth_color = GLMakie.depthbuffer(screen)
 heatmap(depth_color, colormap=:grays)
 ```
 """
-function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen), name = :depth)
+function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen))
     gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
-    source = get_buffer(framebuffer, name)
+    source = get_depth_buffer(framebuffer)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -875,12 +875,15 @@ function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen), 
     return depth
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
+function Makie.colorbuffer(
+        screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative;
+        figure = nothing, framebuffer = display_framebuffer(screen), buffername = :color
+    )
     if !isopen(screen)
         error("Screen not open!")
     end
     gl_switch_context!(screen.glscreen)
-    ctex = get_buffer(display_framebuffer(screen), :color)
+    ctex = get_buffer(framebuffer, buffername)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)
