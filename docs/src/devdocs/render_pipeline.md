@@ -231,7 +231,7 @@ GLMakie.activate!(render_pipeline = pipeline, px_per_unit = 1) # hide
 
 f,a,p = image(rotr90(Makie.loadasset("cow.png")))
 img = colorbuffer(f) # hide
-GLMakie.activate!(pipeline = Makie.default_pipeline()) # hide
+GLMakie.activate!(render_pipeline = Makie.default_pipeline()) # hide
 GLMakie.closeall() # hide
 scene = Scene() # hide
 image!(scene, -1..1, -1..1, rotr90(img)) # hide
