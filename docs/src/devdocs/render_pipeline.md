@@ -233,7 +233,7 @@ image(rotr90(Makie.loadasset("cow.png")))
 ```
 
 ```
-# julia:reset-render-pipeline # not working here
-GLMakie.activate!(pipelien = Makie.default_pipeline()) # hide
+# julia:reset-render-pipeline
+GLMakie.activate!(pipeline = Makie.default_pipeline()) # hide
 GLMakie.closeall() # hide
 ```
