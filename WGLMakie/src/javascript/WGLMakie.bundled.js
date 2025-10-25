@@ -24702,7 +24702,15 @@ function get_body_size() {
     ];
 }
 function get_parent_size(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
+    const real_parent = canvas.parentElement.parentElement;
+    if (!real_parent) {
+        console.error("Canvas has no parent wrapper - this should not happen!");
+        return [
+            canvas.width,
+            canvas.height
+        ];
+    }
+    const rect = real_parent.getBoundingClientRect();
     return [
         rect.width,
         rect.height

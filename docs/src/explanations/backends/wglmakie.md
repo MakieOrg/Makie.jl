@@ -56,6 +56,53 @@ Activate the backend by calling `WGLMakie.activate!()` with the following option
 WGLMakie.activate!
 ```
 
+### HTML Native Widgets
+
+WGLMakie supports rendering Makie's interactive widgets (Slider, Button, Menu, Textbox, Checkbox, Toggle) as native HTML elements instead of canvas-based graphics. This can be enabled with:
+
+```julia
+WGLMakie.activate!(; use_html_widgets = true)
+```
+
+#### Implementation
+
+- Replaces Makie Block widgets with native HTML `<input>`, `<button>`, `<select>`, etc. elements with Bonito
+- HTML widgets are positioned absolutely over the canvas to match the layout position of the Makie widget
+- Bidirectional synchronization between the Makie widget and HTML elements
+- We tried to match most styling attributes, but exact look is not guaranteed. For now, it also doesn't support updating styling attributes.
+- We still create the whole Makie widget, but just dont plot and update it but instead update it
+
+**Pros:**
+- Native browser controls provide better performance (e.g. For Makie native widgets, just a hover takes quite a bit of data round tripping between the browser and Julia) and are independent of the Julia event loop
+- Proper text input support (cursor positioning, text selection, copy/paste)
+
+**Cons:**
+- Screenshot/export functionality needs special handling to capture HTML elements
+- Some advanced Makie styling options may not translate to HTML
+- With the current implementation we still have the overhead of creating the plots for the native widgets (should be a minimal one time cost though)
+
+**Example:**
+```julia
+using WGLMakie
+WGLMakie.activate!(; use_html_widgets = true)
+
+fig = Figure()
+ax = Axis(fig[1, 1])
+sl = Makie.Slider(fig[2, 1], range = 0:0.1:10, startvalue = 5, tellwidth=false)
+btn = Makie.Button(fig[3, 1], label = "Click me", tellwidth=false)
+x = 0:10
+lines!(ax, x, map(y -> sin.(y .* x), sl.value))
+fig # Will get rendered with HTML widgets
+```
+
+You can also use this locally in a Bonito app:
+
+```julia
+App() do
+    DOM.div(WGLMakie.WithConfig(fig; use_html_widget=true))
+end
+```
+
 ## Output
 
 You can use Bonito and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.

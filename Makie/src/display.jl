@@ -185,7 +185,7 @@ function Base.display(
         end
         update && update_state_before_display!(figlike)
         screen = getscreen(backend, scene, config)
-        display(screen, scene)
+        display(screen, scene; figure = get_figure(figlike))
         return screen
     end
 end
@@ -244,7 +244,7 @@ const WEB_MIMES = (
 backend_showable(@nospecialize(screen), @nospecialize(mime)) = false
 
 # fallback show when no backend is selected
-function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
+function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene, figure = nothing)
     if backend isa Missing
         @warn """
         Printing Scene as text because no backend is available (GLMakie, CairoMakie, WGLMakie).
@@ -274,7 +274,7 @@ function Base.show(io::IO, m::MIME, figlike::FigureLike; backend = current_backe
     # get current screen the scene is already displayed on, or create a new screen
     update && update_state_before_display!(figlike)
     screen = getscreen(backend, scene, Dict(:visible => false), io, m)
-    backend_show(screen, io, m, scene)
+    backend_show(screen, io, m, scene, figlike)
     return screen
 end
 
@@ -371,7 +371,7 @@ function FileIO.save(
             get!(config, :visible, visible)
             screen = getscreen(backend, scene, config, io, mime)
             events(fig).tick[] = Tick(OneTimeRenderTick, 0, 0.0, 0.0)
-            backend_show(screen, io, mime, scene)
+            backend_show(screen, io, mime, scene, fig)
         end
     catch e
         # So, if open(io-> error(...), "w"), the file will get created, but not removed...
@@ -385,7 +385,7 @@ raw_io(io::IO) = io
 raw_io(io::IOContext) = raw_io(io.io)
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::MakieScreen)
+function colorbuffer(x::MakieScreen; kw...)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
@@ -408,7 +408,7 @@ function jl_to_gl_format(image)
 end
 
 # less specific for overloading by backends
-function colorbuffer(screen::MakieScreen, format::ImageStorageFormat)
+function colorbuffer(screen::MakieScreen, format::ImageStorageFormat; figure = nothing)
     image = colorbuffer(screen)
     if format == GLNative
         return jl_to_gl_format(image)
@@ -478,7 +478,7 @@ isvisible(::Nothing) = false
 const COLORBUFFER_LOCK = ReentrantLock()
 
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), screen_config...)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), figure=nothing, screen_config...)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB
@@ -490,8 +490,9 @@ or RGBA.
                         used in FFMPEG without conversion
 - `screen_config`: Backend dependent, look up via `?Backend.Screen`/`Base.doc(Backend.Screen)`
 - `update=true`: resets/updates limits. Set to false, if you want to preserver camera movements.
+- `figure=nothing`: Optional figure argument passed to backend-specific colorbuffer implementations.
 """
-function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), screen_config...)
+function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), figure = nothing, screen_config...)
     return lock(COLORBUFFER_LOCK) do
         scene = get_scene(fig)
         update && update_state_before_display!(fig)
@@ -501,7 +502,7 @@ function colorbuffer(fig::FigureLike, format::ImageStorageFormat = JuliaNative; 
         get!(config, :visible, visible)
         get!(config, :start_renderloop, false)
         screen = getscreen(backend, scene, config)
-        img = colorbuffer(screen, format)
+        img = colorbuffer(screen, format; figure = fig)
         if !isroot(scene)
             return get_sub_picture(img, format, viewport(scene)[])
         else
@@ -513,24 +514,24 @@ end
 px_per_unit(screen::MakieScreen)::Float64 = 1.0 # fallback for backends who don't have upscaling
 
 # Fallback for any backend that will just use colorbuffer to write out an image
-function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene)
-    img = colorbuffer(screen)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/png", scene::Scene, figure = nothing)
+    img = colorbuffer(screen; figure = figure)
     px_per_unit = Makie.px_per_unit(screen)::Float64
     dpi = px_per_unit * 96 # attach dpi metadata corresponding to 1 unit == 1 CSS pixel
     FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img; dpi)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene)
-    img = colorbuffer(screen)
+function backend_show(screen::MakieScreen, io::IO, ::MIME"image/jpeg", scene::Scene, figure = nothing)
+    img = colorbuffer(screen; figure = figure)
     FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(Makie.raw_io(io)), img)
     return
 end
 
-function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene)
+function backend_show(screen::MakieScreen, io::IO, ::Union{WEB_MIMES...}, scene::Scene, figure = nothing)
     w, h = size(scene)
     png_io = IOBuffer()
-    backend_show(screen, png_io, MIME"image/png"(), scene)
+    backend_show(screen, png_io, MIME"image/png"(), scene, figure)
     b64 = Base64.base64encode(String(take!(png_io)))
     style = "object-fit: contain; height: auto;"
     print(io, "<img width=$w height=$h style='$style' src=\"data:image/png;base64, $(b64)\"/>")
