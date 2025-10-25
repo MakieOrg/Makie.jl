@@ -863,7 +863,7 @@ depth_color = GLMakie.depthbuffer(screen)
 heatmap(depth_color, colormap=:grays)
 ```
 """
-function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen), name = :depth_stencil)
+function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen), name = :depth)
     gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
