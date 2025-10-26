@@ -1366,7 +1366,7 @@ end
 @reference_test "MultiHist" begin
     data1 = rand(100) .* 2.0 .- 1.0
     data2 = rand(100) .* 2.0
-    fig = Figure(size=(600,300))
+    fig = Figure(size = (600, 300))
     multihist!(
         Axis(fig[1, 1]),
         [data1, data2];
