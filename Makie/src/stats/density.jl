@@ -22,19 +22,23 @@ end
 Plot a kernel density estimate of `values`.
 """
 @recipe Density begin
+    mixin_colormap_attributes()...
+    mixin_generic_plot_attributes()...
     """
-    Usually set to a single color, but can also be set to `:x` or
-    `:y` to color with a gradient. If you use `:y` when `direction = :x` (or vice versa),
-    note that only 2-element colormaps can work correctly.
+    Sets the color of the density plot. This is usually a single color, but can
+    also be `:x` or `:y` to color with a gradient.
     """
     color = @inherit patchcolor
-    colormap = @inherit colormap
-    colorscale = identity
-    colorrange = Makie.automatic
+
+    "Sets the color of the density outline. This requires `strokewidth > 0`."
     strokecolor = @inherit patchstrokecolor
+    "Sets the linewidth of the density outline."
     strokewidth = @inherit patchstrokewidth
+    "Sets the line pattern of the density outline."
     linestyle = nothing
+    "Controls whether the outline only draws around the complete density (true) or just the maximum values (false)."
     strokearound = false
+
     "The resolution of the estimated curve along the dimension set in `direction`."
     npoints = 200
     "Shift the density baseline, for layering multiple densities on top of each other."
@@ -47,15 +51,15 @@ Plot a kernel density estimate of `values`.
     bandwidth = automatic
     "Assign a vector of statistical weights to `values`."
     weights = automatic
+    """
+    Sets which attributes to cycle when creating multiple plots. The values to
+    cycle through are defined by the parent Theme. Multiple cycled attributes can
+    be set by passing a vector. Elements can
+    - directly refer to a cycled attribute, e.g. `:color`
+    - map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+    - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+    """
     cycle = [:color => :patchcolor]
-    inspectable = @inherit inspectable
-    """
-    The alpha value of the colormap or color attribute. Multiple alphas like
-    in plot(alpha=0.2, color=(:red, 0.5), will get multiplied.
-    """
-    alpha = 1.0
-    visible = true
-    space = :data
 end
 
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})

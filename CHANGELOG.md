@@ -1,7 +1,5 @@
 # Changelog
 
-## Unreleased
-
 - Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
   - Fixed issues with tooltips reading `inspector_label` from the wrong plot
   - (Probably) fixed issues with tooltips reporting positions of the wrong space
@@ -12,7 +10,18 @@
     - `update_indicator_plot!()` for drawing indicator plots
   - Added functionality for persistent tooltips
 
+## Unreleased
+
+- Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
+- Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
+- Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
+- Added docstrings for undocumented plot attributes. Also fixed some missing attribute passthrough and expanded on the available attributes for recipes [#5294](https://github.com/MakieOrg/Makie.jl/pull/5294)
+- Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
+- Adjusted compute nodes to keep unspecialized types when transitioning from one graph to another [#5302](https://github.com/MakieOrg/Makie.jl/pull/5302)
+- Added a section to the `CONTRIBUTING.md` about code formatting [#5337](https://github.com/MakieOrg/Makie.jl/pull/5337)
+- Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)
+- Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 
 ## [0.24.6] - 2025-08-19
 
@@ -51,7 +60,6 @@
 - Added ability to modify ticks and tick format on a `DateTime` or `Time` conversion axis, for example `xticks = (datetimes, labels)` or `xtickformat = "d.m.yyyy"`. The default tick locator for datetimes is improved and the default formatting now reduces the amount of redundant information in neighboring ticks. It is exported as `DateTimeTicks` [#5159](https://github.com/MakieOrg/Makie.jl/pull/5159).
 - Fixed missing toggle animation [#5156](https://github.com/MakieOrg/Makie.jl/pull/#5156)
 - Fixed broadcast error in `position_on_plot` for mesh [#5196](https://github.com/MakieOrg/Makie.jl/pull/5196)
-- Added support for plotting units with DynamicQuantities.jl [#5137](https://github.com/MakieOrg/Makie.jl/pull/5137)
 
 ## [0.24.3] - 2025-07-04
 

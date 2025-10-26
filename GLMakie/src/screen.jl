@@ -884,7 +884,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
     if !isopen(screen)
         error("Screen not open!")
     end

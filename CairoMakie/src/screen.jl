@@ -362,7 +362,7 @@ end
 #    Fast colorbuffer for recording    #
 ########################################
 
-function Makie.colorbuffer(screen::Screen)
+function Makie.colorbuffer(screen::Screen; figure = nothing)
     # extract scene
     scene = screen.scene
     # get resolution
@@ -375,7 +375,7 @@ function Makie.colorbuffer(screen::Screen)
     return Makie.colorbuffer(s)
 end
 
-function Makie.colorbuffer(screen::Screen{IMAGE})
+function Makie.colorbuffer(screen::Screen{IMAGE}; figure = nothing)
     Makie.push_screen!(screen.scene, screen)
     empty!(screen)
     cairo_draw(screen, screen.scene)

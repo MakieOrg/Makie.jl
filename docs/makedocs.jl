@@ -181,6 +181,7 @@ pages = [
         ],
         "explanations/transparency.md",
         "explanations/compute-pipeline.md",
+        "explanations/transformations.md",
     ],
     "How-Tos" => [
         "how-to/match-figure-size-font-sizes-and-dpi.md",
