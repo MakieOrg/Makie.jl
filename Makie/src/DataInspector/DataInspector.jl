@@ -256,6 +256,7 @@ function update_tooltip!(di::DataInspector2)
     if !is_mouseinside(di.parent)
         hide_indicators!(di)
         update!(di.dynamic_tooltip, visible = false)
+        di.last_plot_element = PlotElement((di.dynamic_tooltip,), IndexedAccessor(0, 0))
         return
     end
 
@@ -275,6 +276,7 @@ function update_tooltip!(di::DataInspector2)
     # Did not find inspectable plot, hide tooltip & indicators
     hide_indicators!(di)
     update!(di.dynamic_tooltip, visible = false)
+    di.last_plot_element = PlotElement((di.dynamic_tooltip,), IndexedAccessor(0, 0))
 
     return
 end
