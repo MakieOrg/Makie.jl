@@ -458,11 +458,10 @@ end
 function surface2mesh(ps::AbstractVector{<:VecTypes{3}}, size)
     # untesselated Rect2 is defined in counter-clockwise fashion (for x and y)
     if size == (2, 2)
-        # input indices:    [(1, 1), (2, 1), (1, 2), (2, 2)]
-        # required indices: [(1, 1), (2, 1), (2, 2), (1, 2)]
-        xs = getindex(ps, 1)[1, 2, 4, 3]
-        ys = getindex(ps, 2)[1, 2, 4, 3]
-        ps = Point3.(xs, ys, last.(ps))
+        faces = [QuadFace{Int}(1,2,4,3)]
+        faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
+        uv = Vec2f[(0, 1), (1, 1), (0, 0), (1, 0)]
+        return GeometryBasics.Mesh(ps, faces, uv = uv, normal = nan_aware_normals(ps, faces))
     end
 
     # create valid tessellations (triangulations) for the mesh

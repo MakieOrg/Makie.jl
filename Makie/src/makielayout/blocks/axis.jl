@@ -83,6 +83,12 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     )
 
     Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
+
+    # CairoMakie relies on eyeposition for mesh, surface, ...
+    # Technically the camera should be infinitely far away from the 0 plane
+    # because there is no perspective projection
+    center = 0.5 * Point2f(left + right, bottom + top)
+    scene.camera.eyeposition[] = Point3f(center..., 1e12)
     return
 end
 
