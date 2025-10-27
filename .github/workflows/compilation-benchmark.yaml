@@ -65,7 +65,7 @@ jobs:
 
       - name: Download artifacts
         if: steps.check_token.outputs.has_token == 'true'
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: ./images
           merge-multiple: true
