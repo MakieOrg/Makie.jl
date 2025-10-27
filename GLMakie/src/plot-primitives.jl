@@ -967,7 +967,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Surface)
 
     generic_robj_setup(screen, scene, plot)
     Makie.add_computation!(attr, Val(:uniform_clip_planes))
-    Makie.add_computation!(attr, scene, Val(:surface_transform))
+    Makie.add_computation!(attr, Val(:surface_transform))
     Makie.register_world_normalmatrix!(attr)
     Makie.register_view_normalmatrix!(attr)
     Makie.add_computation!(attr, scene, Val(:pattern_uv_transform))

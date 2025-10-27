@@ -201,7 +201,14 @@ function DataInspector2(obj; blocking = false, no_tick_discard = false, kwargs..
         while isopen(ch)
             take!(ch) # wait for event
             if isopen(parent)
-                update_tooltip!(inspector)
+                try
+                    update_tooltip!(inspector)
+                catch e
+                    # Channel task may swallow errors, Julia#51597
+                    @info "Error occurred in tooltip update:"
+                    Base.showerror(Base.stderr, e)
+                    rethrow(e)
+                end
                 # @info inspector.update_counter
             end
         end

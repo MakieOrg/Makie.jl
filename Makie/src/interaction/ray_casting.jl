@@ -431,7 +431,7 @@ function find_picked_surface_cell(plot::Surface, idx, ray::Ray)
 end
 
 function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
-    add_computation!(plot.attributes, parent_scene(plot), Val(:surface_transform))
+    add_surface_vertex_positions!(plot.attributes)
     ray = transform(inv(plot.model_f32c[]), ray)
     _, pos = find_picked_surface_cell(plot, idx, ray)
     pos = inv_f32_convert(plot, pos)

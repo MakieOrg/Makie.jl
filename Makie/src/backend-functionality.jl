@@ -103,25 +103,56 @@ end
 #       Could consider updating shader to accept matrix x, y and not always draw
 #       rects but that might be a larger chunk of work...
 
-_surf_xyz_convert(x::AbstractArray, y::AbstractMatrix, z::AbstractMatrix) = Point3.(x, y, z)
-_surf_xyz_convert(x::AbstractArray, y::AbstractVector, z::AbstractMatrix) = Point3.(x, y', z)
-function add_computation!(attr, scene, ::Val{:surface_transform})
+function add_surface_vertex_positions!(attr)
+    map!(matrix_grid, attr, [:x, :y, :z], :positions)
+    register_position_transforms!(attr)
+    return
+end
+
+function add_computation!(attr, ::Val{:surface_transform})
     # TODO: This is dropping fast paths for Range/Vector x, y w/o transform_func & f32c
     # TODO: If we're always creating a Matrix of Points GLMakie should just
     #       use that directly instead of going back to a x and y matrix representation
-    map!(_surf_xyz_convert, attr, [:x, :y, :z], :positions)
-    map!(apply_transform, attr, [:transform_func, :positions], :positions_transformed)
+    add_surface_vertex_positions!(attr)
 
-    register_positions_transformed_f32c!(attr)
-
-    return map!(
+    map!(
         attr,
-        :positions_transformed_f32c,
+        [:positions_transformed_f32c, :z],
         [:x_transformed_f32c, :y_transformed_f32c, :z_transformed_f32c]
-    ) do xyz
-        return ntuple(i -> getindex.(xyz, i), Val(3))
+    ) do positions, z
+        grid = reshape(positions, size(z))
+        return ntuple(i -> getindex.(grid, i), Val(3))
     end
+
+    return
 end
+
+# TODO: maybe try optimizing this?
+# We only need to update faces (and texture coordinates?) when the xy grid resizes
+# We don't need the mesh either, if that's significant
+function add_computation!(attr, ::Val{:surface_as_mesh})
+    # get transformed vertex positions
+    add_surface_vertex_positions!(attr)
+
+    # Generate mesh from surface data and add its data to the compute graph.
+    # Use that to draw surface as a mesh
+    map!(
+        attr,
+        [:positions_transformed_f32c, :z, :invert_normals],
+        [:faces, :texturecoordinates, :normals]
+    ) do pos, z, invert_normals
+
+        # (x, y, z) are generated after convert_arguments and dim_converts,
+        # before apply_transform and f32c
+        m = surface2mesh(pos, size(z))
+        ns = normals(m)
+        return decompose(GLTriangleFace, m), texturecoordinates(m),
+            invert_normals && !isnothing(ns) ? -ns : ns
+    end
+
+    return
+end
+
 
 function add_computation!(attr, scene, ::Val{:voxel_model})
     return map!(attr, [:x, :y, :z, :chunk_u8, :model], :voxel_model) do xs, ys, zs, chunk, model
@@ -320,29 +351,6 @@ function add_computation!(attr, ::Val{:uniform_clip_planes}, target_space::Symbo
         end
     end
     return
-end
-
-# TODO: maybe try optimizing this?
-# We only need to update faces (and texture coordinates?) when the xy grid resizes
-# We don't need the mesh either, if that's significant
-function add_computation!(attr, ::Val{:surface_as_mesh})
-    # Generate mesh from surface data and add its data to the compute graph.
-    # Use that to draw surface as a mesh
-    map!(
-        attr,
-        [:x, :y, :z, :transform_func, :invert_normals], [:positions_transformed, :faces, :texturecoordinates, :normals]
-    ) do x, y, z, transform_func, invert_normals
-
-        # (x, y, z) are generated after convert_arguments and dim_converts,
-        # before apply_transform and f32c
-        m = surface2mesh(x, y, z, transform_func)
-        ns = normals(m)
-        return coordinates(m), decompose(GLTriangleFace, m), texturecoordinates(m),
-            invert_normals && !isnothing(ns) ? -ns : ns
-    end
-
-    # Get positions_transformed_f32c
-    return register_positions_transformed_f32c!(attr)
 end
 
 function compute_colors!(attributes, color_name = :scaled_color)

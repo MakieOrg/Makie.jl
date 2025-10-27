@@ -451,9 +451,23 @@ function surface2mesh(xs, ys, zs::AbstractMatrix, transform_func = identity)
     # create a `Matrix{Point3}`
     # ps = matrix_grid(identity, xs, ys, zs)
     ps = matrix_grid(p -> apply_transform(transform_func, p), xs, ys, zs)
+
+    return surface2mesh(ps, size(zs))
+end
+
+function surface2mesh(ps::AbstractVector{<:VecTypes{3}}, size)
+    # untesselated Rect2 is defined in counter-clockwise fashion (for x and y)
+    if size == (2, 2)
+        # input indices:    [(1, 1), (2, 1), (1, 2), (2, 2)]
+        # required indices: [(1, 1), (2, 1), (2, 2), (1, 2)]
+        xs = getindex(ps, 1)[1, 2, 4, 3]
+        ys = getindex(ps, 2)[1, 2, 4, 3]
+        ps = Point3.(xs, ys, last.(ps))
+    end
+
     # create valid tessellations (triangulations) for the mesh
     # knowing that it is a regular grid makes this simple
-    rect = Tessellation(Rect2f(0, 0, 1, 1), size(zs))
+    rect = Tessellation(Rect2f(0, 0, 1, 1), size)
     # we use quad faces so that nan handling is consistent
     faces = decompose(QuadFace{Int}, rect)
     # and remove quads that contain a NaN coordinate to avoid drawing triangles
@@ -476,24 +490,10 @@ end
 Creates points on the grid spanned by x, y, z.
 Allows to supply `f`, which gets applied to every point.
 """
-function matrix_grid(f, x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    return f(matrix_grid(x, y, z))
-end
+matrix_grid(f, x, y, z::AbstractMatrix) = f(matrix_grid(x, y, z))
 
-function matrix_grid(f, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    return matrix_grid(f, LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
-end
-
-function matrix_grid(x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-    return matrix_grid(LinRange(extrema(x)..., size(z, 1)), LinRange(extrema(y)..., size(z, 2)), z)
-end
-
-function matrix_grid(x::AbstractArray, y::AbstractArray, z::AbstractMatrix)
-    if size(z) == (2, 2) # untesselated Rect2 is defined in counter-clockwise fashion
-        ps = Point3.(x[[1, 2, 2, 1]], y[[1, 1, 2, 2]], z[:])
-    else
-        ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
-    end
+function matrix_grid(x, y, z::AbstractMatrix)
+    ps = [Point3(get_dim(x, i, 1, size(z)), get_dim(y, i, 2, size(z)), z[i]) for i in CartesianIndices(z)]
     return vec(ps)
 end
 

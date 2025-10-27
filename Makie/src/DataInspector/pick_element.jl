@@ -253,7 +253,7 @@ end
 
 
 function get_accessor(plot::Surface, idx, plot_stack)
-    add_computation!(plot.attributes, parent_scene(plot), Val(:surface_transform))
+    add_surface_vertex_positions!(plot.attributes)
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(parent_scene(plot)))
     # the face picked here is always (pos, change first matrix index, change second matrix index)
     # so calculated uv's match first and second matrix index too
