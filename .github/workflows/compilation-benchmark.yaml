@@ -29,7 +29,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '1'
+          version: '1.11'
           arch: x64
       - uses: julia-actions/cache@v2
       - name: Benchmark
@@ -39,7 +39,7 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=./metrics/ttfp/ ./metrics/ttfp/run-benchmark.jl ${{ matrix.package }} 20 ${{ github.event.pull_request.base.ref }}
       - name: Upload plots as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.package }}
           path: ./benchmark_results
@@ -50,13 +50,28 @@ jobs:
     permissions:
       statuses: write       # Permission to post workflow status
     steps:
+      - name: Check token validity
+        id: check_token
+        env:
+          BENCHMARK_KEY: ${{ secrets.BENCHMARK_KEY }}
+        run: |
+          if [ -z "$BENCHMARK_KEY" ]; then
+            echo "Benchmark key missing — skipping benchmark upload."
+            echo "NOTE: Benchmark key is not accessible for outside contributors"
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download artifacts
-        uses: actions/download-artifact@v5
+        if: steps.check_token.outputs.has_token == 'true'
+        uses: actions/download-artifact@v6
         with:
           path: ./images
           merge-multiple: true
 
       - name: Create Gist with images
+        if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.BENCHMARK_KEY }}
         run: |
@@ -69,6 +84,7 @@ jobs:
           echo "GIST_URL_USERCONTENT=$(echo $gist_url | sed 's|github|githubusercontent|')" >> $GITHUB_ENV
 
       - name: Post workflow status with gist link
+        if: steps.check_token.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -82,7 +98,9 @@ jobs:
             -f "context=Benchmark Results" \
             -f "description=Plots are available under Details" \
             -f "target_url=$gist_url"
+
       - name: Post comment
+        if: steps.check_token.outputs.has_token == 'true'
         uses: thollander/actions-comment-pull-request@v3
         with:
           github-token: ${{ secrets.BENCHMARK_KEY }}
@@ -98,3 +116,4 @@ jobs:
             ![GLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/GLMakie.svg)
             ![CairoMakie](${{ env.GIST_URL_USERCONTENT }}/raw/CairoMakie.svg)
             ![WGLMakie](${{ env.GIST_URL_USERCONTENT }}/raw/WGLMakie.svg)
+
