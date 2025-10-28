@@ -751,18 +751,22 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene, plot::Plot)
+function plot_cycle_index(scene::Scene, plot::Plot)
+    return _plot_cycle_index(scene, plot)
+end
+
+function _plot_cycle_index(parent, plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
-    return _plot_cycle_index(scene, plot, syms, 1)
+    return __plot_cycle_index(parent, plot, syms, 1)
 end
 
-function _plot_cycle_index(container, plot, syms, pos = 1)
-    for p in container.plots
+function __plot_cycle_index(parent, plot, syms, pos=1)
+    for p in parent.plots
         p === plot && return pos
         if p isa PlotList
-            pos = _plot_cycle_index(p, plot, syms, pos)
+            pos = __plot_cycle_index(p, plot, syms, pos)
             continue
         end
         if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)

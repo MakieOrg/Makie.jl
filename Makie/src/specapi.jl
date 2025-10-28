@@ -593,6 +593,10 @@ function push_without_add!(scene::Scene, plot)
     return
 end
 
+function plot_cycle_index(parent::PlotList, plot::Plot)
+    return _plot_cycle_index(parent, plot)
+end
+
 function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
