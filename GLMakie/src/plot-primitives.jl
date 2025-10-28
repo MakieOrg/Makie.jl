@@ -234,20 +234,21 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
-    # Both `uniforms` and `input2glname` should not change between calls.
-    # They are, however, always newly instanciated objects.
-    # Putting them into a closure would make closure objects unegal between calls.
-    if !haskey(attr, :uniforms_attr_names)
-        add_constant!(attr, :uniforms_attr_names, uniforms)
+    register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
+        if isnothing(last)
+            # Generate complex defaults
+            # TODO: Should we add an initializer in ComputePipeline to extract this?
+            # That would simplify this code and remove attr, uniforms from the enclosed variables here
+            _robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
+        else
+            _robj = last.gl_renderobject
+            update_robjs!(_robj, args, changed, input2glname)
+            # names = ([k for (k, v) in pairs(changed) if v])
+            # @info "updating robj $(robj.id) due to changes in: $names"
+        end
+        screen.requires_update = true
+        return (_robj,)
     end
-    if !haskey(attr, :input2glname_attr_dict)
-        add_constant!(attr, :input2glname_attr_dict, input2glname)
-    end
-
-    # Build a closure; doing this instead of an anonymous function makes equality/egality
-    # checks work in `register_computation!`
-    gl_cl = _gl_renderobject_Closure((; screen, scene, attr, constructor!))
-    register_computation!(gl_cl, attr, merged_inputs, [:gl_renderobject])
     robj = attr[:gl_renderobject][]
 
     flag_float64(robj)
@@ -260,32 +261,6 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     # missing_uniforms(robj, [inputs; uniforms;], input2glname)
 
     return robj
-end
-
-struct _gl_renderobject_Closure{refs_Type} <: Function
-    refs_ntuple::refs_Type
-end
-function (cl::_gl_renderobject_Closure)(args, changed, last)
-    nt = cl.refs_ntuple
-    screen = nt.screen
-    scene = nt.scene
-    attr = nt.attr
-    constructor! = nt.constructor!
-
-    input2glname = attr[:input2glname_attr_dict][]
-    if isnothing(last)
-        # Generate complex defaults
-        # TODO: Should we add an initializer in ComputePipeline to extract this?
-        uniforms = attr[:uniforms_attr_names][]
-        _robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
-    else
-        _robj = last.gl_renderobject
-        update_robjs!(_robj, args, changed, input2glname)
-        # names = ([k for (k, v) in pairs(changed) if v])
-        # @info "updating robj $(robj.id) due to changes in: $names"
-    end
-    screen.requires_update = true
-    return (_robj,)
 end
 
 ################################################################################
