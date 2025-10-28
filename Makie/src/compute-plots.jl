@@ -751,7 +751,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Union{Scene, PlotList}, plot::Plot)
+function plot_cycle_index(scene, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
