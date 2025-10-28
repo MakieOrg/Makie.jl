@@ -5,6 +5,10 @@
 Plots streamlines of the function `f` in the given bounding box. A streamline is
 defined by matching its tangent vector with `f(p)` at any point `p`.
 
+`f` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
+and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a
+`Vec2f` or `Point3d`.
+
 Example:
 ```julia
 v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
