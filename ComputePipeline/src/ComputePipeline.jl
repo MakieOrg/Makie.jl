@@ -610,7 +610,7 @@ function is_same(a::T, b::T) where {T}
         # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
         same_object = a === b
-        return same_object ? false : a == b
+        return same_object ? false : isequal(a, b)
     end
 end
 

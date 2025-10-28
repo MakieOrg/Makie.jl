@@ -843,3 +843,15 @@ end
         @test !ComputePipeline.isdirty(out)
     end
 end
+
+@testset "is_same NaN and missing" begin
+    # vectors
+    v = [NaN, missing, 1]
+    @test ComputePipeline.is_same(v, copy(v))
+    @test !ComputePipeline.is_same(v, v)
+
+    # Dicts with NaN
+    d = Dict(:a => NaN, :b => missing, :c => 1)
+    @test ComputePipeline.is_same(d, copy(d))
+    @test !ComputePipeline.is_same(d, d)
+end
