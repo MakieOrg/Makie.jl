@@ -575,6 +575,9 @@ plottype(::Type{<:Plot{F}}, ::Union{PlotSpec, AbstractVector{PlotSpec}}) where {
 plottype(::Type{<:Plot{F}}, ::Union{GridLayoutSpec, BlockSpec}) where {F} = Plot{plot}
 plottype(::Type{<:Plot}, ::Union{GridLayoutSpec, BlockSpec}) = Plot{plot}
 
+function plotfunc(ps::PlotSpec)
+    return plotfunc(plottype(ps))
+end
 
 function to_plot_object(ps::PlotSpec)
     P = plottype(ps)
@@ -595,11 +598,15 @@ function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
+    plotfunc_spec = plotfunc(spec)
     for p in specs
         p === spec && return pos
-        if haskey(p.kwargs, :cycle) && !isnothing(p.kwargs[:cycle]) && plotfunc(p) === plotfunc(spec)
+        plotfunc(p) !== plotfunc_spec && continue
+        _plot = to_plot_object(p)
+        if !isnothing(_plot.cycle[])
             is_cycling = any(syms) do x
-                return haskey(p.kwargs, x) && isnothing(p[x])
+                !haskey(p.kwargs, sym) && return true
+                return isnothing(p.kwargs[sym])
             end
             if is_cycling
                 pos += 1
@@ -622,6 +629,7 @@ function diff_plotlist!(
     scores = IdDict{Any, Float64}()
     reusable_plots_sorted = [Pair{PlotSpec, Plot}(k, v) for (k, v) in reusable_plots]
     sort!(reusable_plots_sorted, by = ((k, v),) -> v.cycle_index[], rev = true)
+
     for (i, plotspec) in enumerate(plotspecs)
         # we need to compare by types with compare_specs, since we can only update plots if the types of all attributes match
         reused_plot, old_spec, idx = find_reusable_plot(scene, plotspec, reusable_plots_sorted, scores)
@@ -639,10 +647,13 @@ function diff_plotlist!(
             # - so we dont push it to the scene if there's a plotlist.
             # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
             plot_obj = to_plot_object(plotspec)
-            connect_plot!(scene, plot_obj)
             if !isnothing(plotlist)
+                # `plotlist` is not yet in `scene.plots`, so we have to compute an offset
+                cycle_offset = max(0, plot_cycle_index(plotlist, plot_obj) - 1)
+                connect_plot!(scene, plot_obj; cycle_offset)
                 push!(plotlist.plots, plot_obj)
             else
+                connect_plot!(scene, plot_obj)
                 push!(scene.plots, plot_obj)
             end
             push_without_add!(scene, plot_obj)

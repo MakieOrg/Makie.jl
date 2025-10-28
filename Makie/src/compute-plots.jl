@@ -751,13 +751,20 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Scene, plot::Plot)
+function plot_cycle_index(scene::Union{Scene, PlotList}, plot::Plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
-    pos = 1
-    for p in scene.plots
+    return _plot_cycle_index(scene, plot, syms, 1)
+end
+
+function _plot_cycle_index(container, plot, syms, pos = 1)
+    for p in container.plots
         p === plot && return pos
+        if p isa PlotList
+            pos = _plot_cycle_index(p, plot, syms, pos)
+            continue
+        end
         if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
             is_cycling = any(syms) do x
                 return haskey(p.attributes.inputs, x) && isnothing(p.attributes.inputs[x].value)
@@ -777,7 +784,7 @@ function plot_cycle_index(parent::Plot, ::Plot)
 end
 
 # should this just be connect_plot?
-function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
+function connect_plot!(parent::SceneLike, plot::Plot{Func}; cycle_offset = 0) where {Func}
     scene = parent_scene(parent)
     attr = plot.attributes
     add_theme!(Plot{Func}, plot.kw, attr, scene)
@@ -795,7 +802,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
         end
     end
 
-    plot.cycle_index = plot_cycle_index(parent, plot)
+    plot.cycle_index = plot_cycle_index(parent, plot) + cycle_offset
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
 
