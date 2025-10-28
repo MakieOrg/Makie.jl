@@ -236,8 +236,7 @@ function DataInspector2(obj; blocking = false, no_tick_discard = false, kwargs..
     # TODO: remove priority, make compatible with 3D axis
     # persistent tooltip
     mouse_listener = on(e.mousebutton, priority = button_priority) do event
-        update_persistent_tooltips!(inspector)
-        return
+        return update_persistent_tooltips!(inspector)
     end
 
     push!(inspector.obsfuncs, tick_listener, mouse_listener)
@@ -723,7 +722,7 @@ function update_persistent_tooltips!(di::DataInspector2)
     e = events(di.parent)
 
     if !ispressed(e, di.inspector_attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
-        return
+        return Consume(false)
     end
 
     mp = e.mouseposition[]
@@ -819,7 +818,7 @@ function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotEle
 
     # If we don't find the tooltip plot then we don't own it and shouldn't touch it
     if key !== nothing
-        idx = tooltip_element.index.index[1]
+        idx = accessor(tooltip_element).index[1]
         elements = tt.arg1[]
         deleteat!(elements, idx)
 

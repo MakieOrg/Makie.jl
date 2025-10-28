@@ -642,6 +642,52 @@ end
     st
 end
 
+@reference_test "DataInspector persistent tooltips" begin
+    xy = [Point2f(x, y) for x in -2:2 for y in -2:2]
+    f = Figure(size = (400, 400))
+    a,p = scatter(f[1, 1], xy, markersize = 20)
+    Makie.DataInspector2(a)
+    st = Makie.Stepper(f)
+
+    e = events(f)
+
+    # Make 3 persistent tooltips
+    mps = [(135, 290), (213, 209), (291, 130)]
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    for mp in mps
+        e.mouseposition[] = mp
+        colorbuffer(f)
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that tooltips move with axis changes
+    Makie.xlims!(a, -4, 4)
+    Makie.ylims!(a, -3, 4)
+
+    Makie.step!(st)
+
+    # remove center tooltip
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    e.mouseposition[] = (210, 220)
+    colorbuffer(f)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that model is included
+    translate!(p, 0, 1, 0)
+
+    Makie.step!(st)
+
+    st
+end
+
 function create_test_plot()
     # Grid scatter
     x, y = repeat(1:10, 8), repeat(1:8, inner = 10)
