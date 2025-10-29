@@ -15,6 +15,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     elseif x isa Text
         draw_atomic(screen, scene, x)
         insert!(screen, scene, x.plots[1])
+    elseif x isa Makie.PlotList
+        # ignore unless not yet displayed
+        for plot in x.plots
+            if !haskey(screen.cache, objectid(plot))
+                insert!(screen, scene, plot)
+            end
+        end
     else
         foreach(x.plots) do x
             insert!(screen, scene, x)

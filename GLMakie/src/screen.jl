@@ -205,7 +205,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
+            cache2plot::Dict{UInt32, Plot},
             reuse::Bool
         ) where {GLWindow}
 
