@@ -45,5 +45,7 @@ function wait_for_data_inspector(action, fig, inspector)
         return inspector.last_plot_element != last_plot_element
     end
     @info "Time waited: $(time() - t0)"
+    # WGLMakie also needs time to render?
+    isdefined(Main, :WGLMakie) && sleep(2/30)
     return
 end
