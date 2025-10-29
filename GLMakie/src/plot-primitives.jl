@@ -17,7 +17,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
         insert!(screen, scene, x.plots[1])
     elseif x isa Makie.PlotList
         # ignore unless not yet displayed
-        for plot in x.plots
+        Makie.for_each_atomic_plot(x) do plot
             if !haskey(screen.cache, objectid(plot))
                 insert!(screen, scene, plot)
             end
