@@ -556,19 +556,16 @@ end
     st = Makie.Stepper(scene)
 
     # record
-    is_wglmakie = Symbol(Makie.current_backend()) === :WGLMakie
-
     for mp in mps
         # remove tooltip so we don't select it
-        e.mouseposition[] = (1.0, 1.0)
-        notify(e.tick) # trigger DataInspector update
-        colorbuffer(scene) # force update of picking buffer
-        is_wglmakie && sleep(0.15) # wait for WGLMakie
+        wait_for_data_inspector(scene, di) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
-        e.mouseposition[] = mp
-        notify(e.tick)
-        is_wglmakie && sleep(0.15) # wait for WGLMakie
+        wait_for_data_inspector(scene, di) do
+            e.mouseposition[] = mp
+        end
         Makie.step!(st)
     end
 
@@ -621,22 +618,21 @@ end
     st = Makie.Stepper(f)
 
     # record
-    is_wglmakie = Symbol(Makie.current_backend()) === :WGLMakie
-
     for mp in mps
+        idx = findfirst(block -> mp in block.scene.viewport[], f.content)
+
+        wait_for_data_inspector(f, dis[idx]) do
+            e.mouseposition[] = mp
+        end
+        Makie.step!(st)
+
         # remove tooltip so we don't select it
-        e.mouseposition[] = (1.0, 1.0)
-        notify(e.tick) # trigger DataInspector update
-        colorbuffer(f) # force update of picking buffer
-        is_wglmakie && sleep(0.15) # wait for WGLMakie
+        wait_for_data_inspector(f, dis[idx]) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
 
         # verify cleanup
         @test !any(di -> di.dynamic_tooltip.visible[], dis)
-
-        e.mouseposition[] = mp
-        notify(e.tick)
-        is_wglmakie && sleep(0.15) # wait for WGLMakie
-        Makie.step!(st)
     end
 
     st
@@ -646,7 +642,7 @@ end
     xy = [Point2f(x, y) for x in -2:2 for y in -2:2]
     f = Figure(size = (400, 400))
     a,p = scatter(f[1, 1], xy, markersize = 20)
-    Makie.DataInspector2(a)
+    di = Makie.DataInspector2(a)
     st = Makie.Stepper(f)
 
     e = events(f)
@@ -655,8 +651,9 @@ end
     mps = [(135, 290), (213, 209), (291, 130)]
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
     for mp in mps
-        e.mouseposition[] = mp
-        colorbuffer(f)
+        wait_for_data_inspector(f, di) do
+            e.mouseposition[] = mp
+        end
         e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
         e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     end
@@ -672,8 +669,9 @@ end
 
     # remove center tooltip
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
-    e.mouseposition[] = (210, 220)
-    colorbuffer(f)
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (210, 220)
+    end
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
     e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
     e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
