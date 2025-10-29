@@ -596,6 +596,7 @@ end
 function plot_cycle_index(parent::PlotList, plot::Plot)
     return _plot_cycle_index(parent, plot)
 end
+plot_cycle_can_recurse(::PlotList)=true
 
 function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
     cycle = plot.cycle[]
@@ -608,7 +609,7 @@ function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
         plotfunc(p) !== plotfunc_spec && continue
         _plot = to_plot_object(p)
         if !isnothing(_plot.cycle[])
-            is_cycling = any(syms) do x
+            is_cycling = any(syms) do sym
                 !haskey(p.kwargs, sym) && return true
                 return isnothing(p.kwargs[sym])
             end

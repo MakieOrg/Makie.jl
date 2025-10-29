@@ -752,20 +752,29 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 end
 
 function plot_cycle_index(scene::Scene, plot::Plot)
+    ## delegating to `_plot_cycle_index`; 
+    ## we want to specialize `plot_cycle_index` for other types (e.g., `PlotList`) that
+    ## are not defined yet
     return _plot_cycle_index(scene, plot)
 end
+
+# helper to indicate if we want to inspect subplots in a `.plots` field
+plot_cycle_can_recurse(plot) = false
 
 function _plot_cycle_index(parent, plot)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
+    ## again, going one level deeper to do the actual computation;
+    ## the `__plot_cycle_index` function can be used recursively without having to 
+    ## rebuild `syms` for `plot`
     return __plot_cycle_index(parent, plot, syms, 1)
 end
 
 function __plot_cycle_index(parent, plot, syms, pos=1)
     for p in parent.plots
         p === plot && return pos
-        if p isa PlotList
+        if plot_cycle_can_recurse(p)
             pos = __plot_cycle_index(p, plot, syms, pos)
             continue
         end
