@@ -538,7 +538,7 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
         @doc docstring_modified $funcname_sym
-        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information. You can use SpecApi.$($(string(Tsym)))(plot_args...; kw...) to create a spec plot, but note that " $Tsym
+        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
         export $PlotType, $funcname, $funcname!
     end

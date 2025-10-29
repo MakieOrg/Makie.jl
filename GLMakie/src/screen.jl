@@ -327,7 +327,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
+        Dict{UInt32, Plot}(),
         reuse,
     )
 
