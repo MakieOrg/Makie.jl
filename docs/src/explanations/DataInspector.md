@@ -9,8 +9,12 @@ To initialize DataInspector it needs to be constructed with an axis-like Block o
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin)
 Makie.DataInspector(a)
-events(f).mouseposition[] = (300, 300) # hide
 f
+events(f).mouseposition[] = (300, 300) # hide
+img = colorbuffer(f, update = false) # hide
+scene = Scene() # hide
+image!(scene, -1..1, -1..1, img) # hide
+scene # hide
 ```
 
 !!! note
@@ -33,6 +37,10 @@ f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
 Makie.DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
 f
+img = colorbuffer(f, update = false) # hide
+scene = Scene() # hide
+image!(scene, -1..1, -1..1, img) # hide
+scene # hide
 ```
 
 The second is an array (or other indexable collection) of strings.
@@ -44,6 +52,10 @@ f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
 Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
+img = colorbuffer(f, update = false) # hide
+scene = Scene() # hide
+image!(scene, -1..1, -1..1, img) # hide
+scene # hide
 ```
 
 The third option is to manually construct a label from plot data using a callback function.
@@ -67,6 +79,10 @@ f,a,p = scatter(1:10, color = range(0, 1, 10), inspector_label = mylabel)
 Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
+img = colorbuffer(f, update = false) # hide
+scene = Scene() # hide
+image!(scene, -1..1, -1..1, img) # hide
+scene # hide
 ```
 
 Note that `PlotElement` also contains the plot type as the first type parameter.
@@ -89,6 +105,10 @@ f, a, p = scatter(1:10, inspectable = false)
 Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
+img = colorbuffer(f, update = false) # hide
+scene = Scene() # hide
+image!(scene, -1..1, -1..1, img) # hide
+scene # hide
 ```
 
 ### Indicators
