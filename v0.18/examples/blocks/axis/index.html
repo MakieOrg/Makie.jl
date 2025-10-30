@@ -1,0 +1,2863 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Axis
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../documentation/">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            Axis
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#axis">
+                              Axis
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#creating_an_axis">
+                                  Creating an Axis
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#plotting_into_an_axis">
+                                  Plotting into an Axis
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#deleting_plots">
+                                  Deleting plots
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#setting_axis_limits_and_reversing_axes">
+                                  Setting Axis limits and reversing axes
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#setting_half-automatic_limits">
+                                      Setting half-automatic limits
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#auto-reset_behavior">
+                                      Auto-reset behavior
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <a href="#titles_and_subtitles">
+                                  Titles and subtitles
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#major_and_minor_ticks">
+                                  Major and minor ticks
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#predefined_tick_locators">
+                                      Predefined tick locators
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#wilkinsonticks">
+                                          WilkinsonTicks
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#multiplesticks">
+                                          MultiplesTicks
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#abstractvector_of_numbers">
+                                          AbstractVector of numbers
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#tuple_of_tick_values_and_tick_labels">
+                                          Tuple of tick values and tick labels
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#logticks">
+                                          LogTicks
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <a href="#predefined_tick_formatters">
+                                      Predefined tick formatters
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#functions">
+                                          Functions
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <a href="#mirrored_ticks">
+                                      Mirrored ticks
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#format_strings">
+                                          Format strings
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                  <li>
+                                    <a href="#custom_tick_locators_and_formatters">
+                                      Custom tick locators and formatters
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#example_time_ticks">
+                                          Example: Time ticks
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <a href="#minor_ticks_and_grids">
+                                  Minor ticks and grids
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#hiding_axis_spines_and_decorations">
+                                  Hiding Axis spines and decorations
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#trimmed_spines">
+                                  Trimmed spines
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#log_scales_and_other_axis_scales">
+                                  Log scales and other axis scales
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#pseudolog_and_symlog_scales">
+                                      Pseudolog and symlog scales
+                                    </a>
+                                  </li>
+                                </ul>
+                              </li>
+                              <li>
+                                <a href="#controlling_axis_aspect_ratios">
+                                  Controlling Axis aspect ratios
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#controlling_data_aspect_ratios">
+                                  Controlling data aspect ratios
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#linking_axes">
+                                  Linking axes
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#aligning_neighboring_axis_labels">
+                                  Aligning neighboring axis labels
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#changing_x_and_y_axis_position">
+                                  Changing x and y axis position
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#creating_a_twin_axis">
+                                  Creating a twin axis
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#axis_interaction">
+                                  Axis interaction
+                                </a>
+                              </li>
+                              <li>
+                                <ul>
+                                  <li>
+                                    <a href="#scroll_zoom">
+                                      Scroll zoom
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#drag_pan">
+                                      Drag pan
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#limit_reset">
+                                      Limit reset
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#rectangle_selection_zoom">
+                                      Rectangle selection zoom
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <a href="#custom_interactions">
+                                      Custom interactions
+                                    </a>
+                                  </li>
+                                  <li>
+                                    <ul>
+                                      <li>
+                                        <a href="#registering_and_deregistering_interactions">
+                                          Registering and deregistering interactions
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#activating_and_deactivating_interactions">
+                                          Activating and deactivating interactions
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#function_interaction">
+                                          <code>
+                                            Function
+                                          </code>
+                                          interaction
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#custom_object_interaction">
+                                          Custom object interaction
+                                        </a>
+                                      </li>
+                                      <li>
+                                        <a href="#setup_and_cleanup">
+                                          Setup and cleanup
+                                        </a>
+                                      </li>
+                                    </ul>
+                                  </li>
+                                </ul>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../documentation">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../documentation/theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../documentation/theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../documentation/transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="axis">
+            <a class="header-anchor" href="#axis">
+              Axis
+            </a>
+          </h1>
+          <h2 id="creating_an_axis">
+            <a class="header-anchor" href="#creating_an_axis">
+              Creating an Axis
+            </a>
+          </h2>
+          <p>
+            The
+            <code>
+              Axis
+            </code>
+            is a 2D axis that works well with automatic layouts. Here's how you create one
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
+    title = "Title")
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12339660189730120451">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_12339660189730120451.svg"/>
+            </a>
+          </p>
+          <h2 id="plotting_into_an_axis">
+            <a class="header-anchor" href="#plotting_into_an_axis">
+              Plotting into an Axis
+            </a>
+          </h2>
+          <p>
+            You can use all the normal mutating 2D plotting functions with an
+            <code>
+              Axis
+            </code>
+            . These functions return the created plot object. Omitting the
+            <code>
+              ax
+            </code>
+            argument plots into the
+            <code>
+              current_axis()
+            </code>
+            , which is usually the axis that was last created.
+          </p>
+          <pre><code class="language-julia">lineobject = lines!(ax, 0..10, sin, color = :red)
+scatobject = scatter!(0:0.5:10, cos, color = :orange)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2295400384729396002">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_2295400384729396002.svg"/>
+            </a>
+          </p>
+          <h2 id="deleting_plots">
+            <a class="header-anchor" href="#deleting_plots">
+              Deleting plots
+            </a>
+          </h2>
+          <p>
+            You can delete a plot object directly via
+            <code>
+              delete!(ax, plotobj)
+            </code>
+            . You can also remove all plots with
+            <code>
+              empty!(ax)
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+axs = [Axis(f[1, i]) for i in 1:3]
+
+scatters = map(axs) do ax
+    [scatter!(ax, 0:0.1:10, x -&gt; sin(x) + i) for i in 1:3]
+end
+
+delete!(axs[2], scatters[2][2])
+empty!(axs[3])
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_6014838608786939744">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_6014838608786939744.svg"/>
+            </a>
+          </p>
+          <h2 id="setting_axis_limits_and_reversing_axes">
+            <a class="header-anchor" href="#setting_axis_limits_and_reversing_axes">
+              Setting Axis limits and reversing axes
+            </a>
+          </h2>
+          <p>
+            You can set axis limits with the functions
+            <code>
+              xlims!
+            </code>
+            ,
+            <code>
+              ylims!
+            </code>
+            or
+            <code>
+              limits!
+            </code>
+            . The numbers are meant in the order left right for
+            <code>
+              xlims!
+            </code>
+            , and bottom top for
+            <code>
+              ylims!
+            </code>
+            . Therefore, if the second number is smaller than the first, the respective axis will reverse. You can manually reverse an axis by setting
+            <code>
+              ax.xreversed = true
+            </code>
+            or
+            <code>
+              ax.yreversed = true
+            </code>
+            .
+          </p>
+          <p>
+            Note that if you enforce an aspect ratio between x-axis and y-axis using
+            <code>
+              autolimitaspect
+            </code>
+            , the values you set with these functions will probably not be exactly what you get, but they will be changed to fit the chosen ratio.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
+
+for (i, ax) in enumerate(axes)
+    ax.title = "Axis $i"
+    poly!(ax, Point2f[(9, 9), (3, 1), (1, 3)],
+        color = cgrad(:inferno, 6, categorical = true)[i])
+end
+
+xlims!(axes[1], [0, 10]) # as vector
+xlims!(axes[2], 10, 0) # separate, reversed
+ylims!(axes[3], 0, 10) # separate
+ylims!(axes[4], (10, 0)) # as tuple, reversed
+limits!(axes[5], 0, 10, 0, 10) # x1, x2, y1, y2
+limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12598120879718251117">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_12598120879718251117.svg"/>
+            </a>
+          </p>
+          <h3 id="setting_half-automatic_limits">
+            <a class="header-anchor" href="#setting_half-automatic_limits">
+              Setting half-automatic limits
+            </a>
+          </h3>
+          <p>
+            You can set half limits by either giving one argument as
+            <code>
+              nothing
+            </code>
+            or by using the keyword syntax where only
+            <code>
+              low
+            </code>
+            or
+            <code>
+              high
+            </code>
+            is given.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+data = rand(100, 2) .* 0.7 .+ 0.15
+
+Axis(f[1, 1], title = "xlims!(nothing, 1)")
+scatter!(data)
+xlims!(nothing, 1)
+
+Axis(f[1, 2], title = "xlims!(low = 0)")
+scatter!(data)
+xlims!(low = 0)
+
+Axis(f[2, 1], title = "ylims!(0, nothing)")
+scatter!(data)
+ylims!(0, nothing)
+
+Axis(f[2, 2], title = "ylims!(high = 1)")
+scatter!(data)
+ylims!(high = 1)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_7123440504111960212">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_7123440504111960212.svg"/>
+            </a>
+          </p>
+          <p>
+            This also works when specifying limits directly, such as
+            <code>
+              Axis(..., limits = (nothing, 1, 2, nothing))
+            </code>
+            .
+          </p>
+          <h3 id="auto-reset_behavior">
+            <a class="header-anchor" href="#auto-reset_behavior">
+              Auto-reset behavior
+            </a>
+          </h3>
+          <p>
+            When you create a new plot in an axis,
+            <code>
+              reset_limits!(ax)
+            </code>
+            is called, which adjusts the limits to the new bounds. If you have previously set limits with
+            <code>
+              limits!
+            </code>
+            ,
+            <code>
+              xlims!
+            </code>
+            or
+            <code>
+              ylims!
+            </code>
+            , these limits are not overridden by the new plot. If you want to override the manually set limits, call
+            <code>
+              autolimits!(ax)
+            </code>
+            to compute completely new limits from the axis content.
+          </p>
+          <p>
+            The user-defined limits are stored in
+            <code>
+              ax.limits
+            </code>
+            . This can either be a tuple with two entries, where each entry can be either
+            <code>
+              nothing
+            </code>
+            or a tuple with numbers
+            <code>
+              (low, high)
+            </code>
+            .It can also be a tuple with four numbers
+            <code>
+              (xlow, xhigh, ylow, yhigh)
+            </code>
+            . You can pass this directly when creating a new axis. The same observable
+            <code>
+              limits
+            </code>
+            is also set using
+            <code>
+              limits!
+            </code>
+            ,
+            <code>
+              xlims!
+            </code>
+            and
+            <code>
+              ylims!
+            </code>
+            , or reset to
+            <code>
+              (nothing, nothing)
+            </code>
+            using
+            <code>
+              autolimits!
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+lines(f[1, 1], 0..10, sin)
+lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2013545726043190535">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_2013545726043190535.svg"/>
+            </a>
+          </p>
+          <h2 id="titles_and_subtitles">
+            <a class="header-anchor" href="#titles_and_subtitles">
+              Titles and subtitles
+            </a>
+          </h2>
+          <p>
+            You can change titles and subtitles with the
+            <code>
+              title
+            </code>
+            and
+            <code>
+              subtitle
+            </code>
+            attributes. You can set
+            <code>
+              subtitlefont
+            </code>
+            ,
+            <code>
+              subtitlefontsize
+            </code>
+            and
+            <code>
+              subtitlecolor
+            </code>
+            separately. The alignment of the subtitle follows that of the title.
+          </p>
+          <p>
+            The gap between title and subtitle is set with
+            <code>
+              subtitlegap
+            </code>
+            and the gap between
+            <code>
+              Axis
+            </code>
+            and title or subtitle with
+            <code>
+              titlegap
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+Axis(
+    f[1, 1],
+    title = "First Title",
+    subtitle = "This is a longer subtitle"
+)
+Axis(
+    f[1, 2],
+    title = "Second Title",
+    subtitle = "This is a longer subtitle",
+    titlealign = :left,
+    subtitlecolor = :gray50,
+    titlegap = 10,
+    titlesize = 20,
+    subtitlesize = 15,
+)
+Axis(
+    f[2, 1],
+    title = "Third Title",
+    titlecolor = :gray50,
+    titlefont = "TeX Gyre Heros Bold Italic Makie",
+    titlealign = :right,
+    titlesize = 25,
+)
+Axis(
+    f[2, 2],
+    title = "Fourth Title\nWith Line Break",
+    subtitle = "This is an even longer subtitle,\nthat also has a line break.",
+    titlealign = :left,
+    subtitlegap = 2,
+    titlegap = 5,
+    subtitlefont = "TeX Gyre Heros Italic Makie",
+    subtitlelineheight = 0.9,
+    titlelineheight = 0.9,
+)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12362740426454575370">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_12362740426454575370.svg"/>
+            </a>
+          </p>
+          <h2 id="major_and_minor_ticks">
+            <a class="header-anchor" href="#major_and_minor_ticks">
+              Major and minor ticks
+            </a>
+          </h2>
+          <p>
+            To control major ticks, you can set the axis attributes
+            <code>
+              xticks
+            </code>
+            and
+            <code>
+              yticks
+            </code>
+            as well as
+            <code>
+              xtickformat
+            </code>
+            and
+            <code>
+              ytickformat
+            </code>
+            . By default, tick locator and tick format are set to
+            <code>
+              automatic
+            </code>
+            and depend on the axis scale. For a normal linear scale,
+            <code>
+              WilkinsonTicks
+            </code>
+            are used and for log scales a variant that additionally formats the labels with exponents.
+          </p>
+          <h3 id="predefined_tick_locators">
+            <a class="header-anchor" href="#predefined_tick_locators">
+              Predefined tick locators
+            </a>
+          </h3>
+          <h4 id="wilkinsonticks">
+            <a class="header-anchor" href="#wilkinsonticks">
+              WilkinsonTicks
+            </a>
+          </h4>
+          <p>
+            Here is an example how different numbers affect the ticks chosen by the default tick locator,
+            <code>
+              WilkinsonTicks
+            </code>
+            . Note that the number is only a target, the actual number of ticks can be higher or lower depending on how the algorithm evaluates the options.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+fig = Figure()
+for (i, n) in enumerate([2, 4, 6])
+    Axis(fig[i, 1],
+        xticks = WilkinsonTicks(n),
+        title = "WilkinsonTicks($n)",
+        yticksvisible = false,
+        yticklabelsvisible = false,
+    )
+end
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_8395802252100102359">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_8395802252100102359.svg"/>
+            </a>
+          </p>
+          <h4 id="multiplesticks">
+            <a class="header-anchor" href="#multiplesticks">
+              MultiplesTicks
+            </a>
+          </h4>
+          <p>
+            <code>
+              MultiplesTicks
+            </code>
+            can be used when an axis should be marked at multiples of a certain number. A common scenario is plotting a trigonometric function which should be marked at pi intervals.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13843765433549591684">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_13843765433549591684.svg"/>
+            </a>
+          </p>
+          <h4 id="abstractvector_of_numbers">
+            <a class="header-anchor" href="#abstractvector_of_numbers">
+              AbstractVector of numbers
+            </a>
+          </h4>
+          <pre><code class="language-julia">using CairoMakie
+
+
+lines(0..20, sin, axis = (xticks = 0:3:18,))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_3090126714141291851">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_3090126714141291851.svg"/>
+            </a>
+          </p>
+          <h4 id="tuple_of_tick_values_and_tick_labels">
+            <a class="header-anchor" href="#tuple_of_tick_values_and_tick_labels">
+              Tuple of tick values and tick labels
+            </a>
+          </h4>
+          <pre><code class="language-julia">using CairoMakie
+
+
+values = [0, 5, 10, 15, 20]
+labels = ["zero", "five", "ten", "fifteen", "twenty"]
+
+lines(0..20, sin, axis = (xticks = (values, labels),))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_9706516610152394160">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_9706516610152394160.svg"/>
+            </a>
+          </p>
+          <h4 id="logticks">
+            <a class="header-anchor" href="#logticks">
+              LogTicks
+            </a>
+          </h4>
+          <div class="docstring">
+            <div class="doc-header" id="LogTicks">
+              <a href="#LogTicks">
+                LogTicks
+              </a>
+            </div>
+            <div class="doc-content">
+              <pre><code>LogTicks{T}(linear_ticks::T)</code>              </pre>
+              <p>
+                Wraps any other tick object. Used to apply a linear tick searching algorithm on a log-transformed interval.
+              </p>
+            </div>
+          </div>
+          <p>
+            For example, you could combine
+            <code>
+              LogTicks
+            </code>
+            with a custom tick locator that just returns all integers between the limits. This can be useful for log plots where all powers of 10 should be shown.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+struct IntegerTicks end
+
+Makie.get_tickvalues(::IntegerTicks, vmin, vmax) = ceil(Int, vmin) : floor(Int, vmax)
+
+lines(10 .^ (0:0.01:10), axis = (yscale = log10, yticks = LogTicks(IntegerTicks())))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_4217306045660209310">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_4217306045660209310.svg"/>
+            </a>
+          </p>
+          <h3 id="predefined_tick_formatters">
+            <a class="header-anchor" href="#predefined_tick_formatters">
+              Predefined tick formatters
+            </a>
+          </h3>
+          <p>
+            By default, Makie uses
+            <code>
+              Showoff.showoff
+            </code>
+            to display the vector of tick values. There are other options you can use to define the format of your ticks.
+          </p>
+          <h4 id="functions">
+            <a class="header-anchor" href="#functions">
+              Functions
+            </a>
+          </h4>
+          <p>
+            You can use any function as tick formatter that receives a vector of ticks and returns a vector of labels.
+          </p>
+          <p>
+            For example, you could append "k" for numbers larger than one thousand:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+function k_suffix(values)
+    map(values) do v
+        if v &gt;= 1000
+            "$(v/1000)k"
+        else
+            "$v"
+        end
+    end
+end
+
+f = Figure()
+Axis(f[1, 1], xtickformat = k_suffix, limits = ((450, 1550), nothing))
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_7277830161543522965">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_7277830161543522965.svg"/>
+            </a>
+          </p>
+          <h3 id="mirrored_ticks">
+            <a class="header-anchor" href="#mirrored_ticks">
+              Mirrored ticks
+            </a>
+          </h3>
+          <p>
+            To display minor and major ticks on both sides of the axis, set
+            <code>
+              xticksmirrored
+            </code>
+            or
+            <code>
+              yticksmirrored
+            </code>
+            to
+            <code>
+              true
+            </code>
+            . Color, size and alignment of the mirrored ticks are the same as for the normal ticks.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+Axis(f[1, 1],
+    xticks = 0:10,
+    yticks = 0:10,
+    xticksmirrored = true,
+    yticksmirrored = true,
+    xminorticksvisible = true,
+    yminorticksvisible = true,
+    xminortickalign = 1,
+    yminortickalign = 1,
+    xtickalign = 1,
+    ytickalign = 1,
+)
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12727625888056088294">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_12727625888056088294.svg"/>
+            </a>
+          </p>
+          <h4 id="format_strings">
+            <a class="header-anchor" href="#format_strings">
+              Format strings
+            </a>
+          </h4>
+          <p>
+            You can use a format string which is passed to
+            <code>
+              Formatting.format
+            </code>
+            from
+            <a href="https://github.com/JuliaIO/Formatting.jl">
+              Formatting.jl
+            </a>
+            , where you can mix the formatted numbers with other text like in
+            <code>
+              "{:.2f}ms"
+            </code>
+            .
+          </p>
+          <p>
+            Here are the same ticks with different format strings:
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+for (i, str) in enumerate(["{:.1f}", "{:.2f}", "t = {:.4f}ms"])
+    Axis(f[i, 1],
+        xticks = 2:2:8,
+        xtickformat = str,
+        title = str,
+        yticklabelsvisible = false,
+        yticksvisible = false
+    )
+end
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_13012564152497214622">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_13012564152497214622.svg"/>
+            </a>
+          </p>
+          <h3 id="custom_tick_locators_and_formatters">
+            <a class="header-anchor" href="#custom_tick_locators_and_formatters">
+              Custom tick locators and formatters
+            </a>
+          </h3>
+          <p>
+            The general logic to find ticks and tick labels is this: First, it's checked if
+            <code>
+              tickvalues, ticklabels = Makie.get_ticks(ticklocator, scale, formatter, vmin, vmax)
+            </code>
+            has a specific method for the current tick locator, axis scale, tick formatter, and axis limits vmin and vmax. If so, use the resulting tick values and tick labels directly. If not, run
+            <code>
+              tickvalues = Makie.get_tickvalues(ticklocator, scale, vmin, vmax)
+            </code>
+            and then
+            <code>
+              ticklabels = Makie.get_ticklabels(formatter, tickvalues)
+            </code>
+            .
+          </p>
+          <p>
+            Therefore, you can overload one or more of these functions to implement custom tick locators and / or formatters.
+          </p>
+          <h4 id="example_time_ticks">
+            <a class="header-anchor" href="#example_time_ticks">
+              Example: Time ticks
+            </a>
+          </h4>
+          <p>
+            In this example we define a very simple tick locator for time values that has its own formatting logic. Therefore, we define only
+            <code>
+              Makie.get_ticks
+            </code>
+            for the case where the formatter is set to
+            <code>
+              automatic
+            </code>
+            .
+          </p>
+          <p>
+            Let's say that we're plotting data in a resolution of seconds, and want to switch between seconds, minutes and hours. The idea is to not actually implement new tick finding, just to rescale the values to use with the default tick locator and append the appropriate unit suffix.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+struct TimeTicks end
+
+function Makie.get_ticks(::TimeTicks, any_scale, ::Makie.Automatic, vmin, vmax)
+    if vmax &gt;= 3600
+        # divide limits by 3600 before finding standard ticks
+        vals_h = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin/3600, vmax/3600)
+        labels = string.(vals_h, "h")
+        # rescale tick values to seconds
+        vals_s = vals_h .* 3600
+    elseif vmax &gt;= 60
+        vals_min = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin/60, vmax/60)
+        labels = string.(vals_min, "min")
+        vals_s = vals_min .* 60
+    else
+        vals_s = Makie.get_tickvalues(
+            Makie.automatic, any_scale, vmin, vmax)
+        labels = string.(vals_s, "s")
+    end
+    vals_s, labels
+end
+
+f = Figure()
+for (i, limits) in enumerate([(1, 55), (1, 350), (1, 8000)])
+    Axis(f[i, 1],
+        xticks = TimeTicks(),
+        title = "$limits",
+        yticklabelsvisible = false,
+        yticksvisible = false,
+        limits = (limits, nothing)
+    )
+end
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_6778965160289622409">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_6778965160289622409.svg"/>
+            </a>
+          </p>
+          <h2 id="minor_ticks_and_grids">
+            <a class="header-anchor" href="#minor_ticks_and_grids">
+              Minor ticks and grids
+            </a>
+          </h2>
+          <p>
+            You can show minor ticks and grids by setting
+            <code>
+              x/yminorticksvisible = true
+            </code>
+            and
+            <code>
+              x/yminorgridvisible = true
+            </code>
+            which are off by default. You can set size, color, width, align etc. like for the normal ticks, but there are no labels. The
+            <code>
+              x/yminorticks
+            </code>
+            attributes control how minor ticks are computed given major ticks and axis limits. For that purpose you can create your own minortick type and overload
+            <code>
+              Makie.get_minor_tickvalues(minorticks, tickvalues, vmin, vmax)
+            </code>
+            .
+          </p>
+          <p>
+            The default minor tick type is
+            <code>
+              IntervalsBetween(n, mirror = true)
+            </code>
+            where
+            <code>
+              n
+            </code>
+            gives the number of intervals each gap between major ticks is divided into with minor ticks, and
+            <code>
+              mirror
+            </code>
+            decides if outside of the major ticks there are more minor ticks with the same intervals as the adjacent gaps.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+theme = Attributes(
+    Axis = (
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+        xminorgridvisible = true,
+        yminorgridvisible = true,
+    )
+)
+
+fig = with_theme(theme) do
+    fig = Figure()
+    axs = [Axis(fig[fldmod1(n, 2)...],
+        title = "IntervalsBetween($(n+1))",
+        xminorticks = IntervalsBetween(n+1),
+        yminorticks = IntervalsBetween(n+1)) for n in 1:4]
+    fig
+end
+
+fig</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_5203849705567238814">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_5203849705567238814.svg"/>
+            </a>
+          </p>
+          <p>
+            Minor ticks can also be given as an
+            <code>
+              AbstractVector
+            </code>
+            of real numbers.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+lines(1..10, sin, axis = (
+    yminorgridvisible = true,
+    yminorticksvisible = true,
+    yminorticks = -0.9:0.1:0.9,
+    yticks = [-1, 1],
+))</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15950473980186052733">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_15950473980186052733.svg"/>
+            </a>
+          </p>
+          <h2 id="hiding_axis_spines_and_decorations">
+            <a class="header-anchor" href="#hiding_axis_spines_and_decorations">
+              Hiding Axis spines and decorations
+            </a>
+          </h2>
+          <p>
+            You can hide all axis elements manually, by setting their specific visibility attributes to
+            <code>
+              false
+            </code>
+            , like
+            <code>
+              xticklabelsvisible
+            </code>
+            , but that can be tedious. There are a couple of convenience functions for this.
+          </p>
+          <p>
+            To hide spines, you can use
+            <code>
+              hidespines!
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
+
+hidespines!(ax1)
+hidespines!(ax2, :t, :r) # only top and right
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15149457713994868428">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_15149457713994868428.svg"/>
+            </a>
+          </p>
+          <p>
+            To hide decorations, you can use
+            <code>
+              hidedecorations!
+            </code>
+            , or the specific
+            <code>
+              hidexdecorations!
+            </code>
+            and
+            <code>
+              hideydecorations!
+            </code>
+            . When hiding, you can set
+            <code>
+              label = false
+            </code>
+            ,
+            <code>
+              ticklabels = false
+            </code>
+            ,
+            <code>
+              ticks = false
+            </code>
+            ,
+            <code>
+              grid = false
+            </code>
+            ,
+            <code>
+              minorgrid = false
+            </code>
+            or
+            <code>
+              minorticks = false
+            </code>
+            as keyword arguments if you want to keep those elements. It's common, e.g., to hide everything but the grid lines in facet plots.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
+ax3 = Axis(f[1, 3], title = "Axis 3")
+
+hidedecorations!(ax1)
+hidexdecorations!(ax2, grid = false)
+hideydecorations!(ax3, ticks = false)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_4053789819352817287">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_4053789819352817287.svg"/>
+            </a>
+          </p>
+          <h2 id="trimmed_spines">
+            <a class="header-anchor" href="#trimmed_spines">
+              Trimmed spines
+            </a>
+          </h2>
+          <p>
+            The attributes
+            <code>
+              xtrimspine
+            </code>
+            and
+            <code>
+              ytrimspine
+            </code>
+            can be used to limit the respective spines to the range of the outermost major ticks. A tuple of Boolean values can be given to trim only one end of the spine.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+hist(randn(100) ./ 4 .+ 5,
+    strokewidth = 1,
+    strokecolor = :black,
+    axis = (
+        xtrimspine = true,
+        ytrimspine = (false, true),
+        topspinevisible = false,
+        rightspinevisible = false,
+        title = "Trimmed spines",
+        xgridvisible = false,
+        ygridvisible = false,
+    )
+)</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2520734540492204740">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_2520734540492204740.svg"/>
+            </a>
+          </p>
+          <h2 id="log_scales_and_other_axis_scales">
+            <a class="header-anchor" href="#log_scales_and_other_axis_scales">
+              Log scales and other axis scales
+            </a>
+          </h2>
+          <p>
+            The two attributes
+            <code>
+              xscale
+            </code>
+            and
+            <code>
+              yscale
+            </code>
+            , which by default are set to
+            <code>
+              identity
+            </code>
+            , can be used to project the data in a nonlinear way, in addition to the linear zoom that the limits provide.
+          </p>
+          <p>
+            Take care that the axis limits always stay inside the limits appropriate for the chosen scaling function, for example,
+            <code>
+              log
+            </code>
+            functions fail for values
+            <code>
+              x &lt;= 0
+            </code>
+            ,
+            <code>
+              sqrt
+            </code>
+            for
+            <code>
+              x &lt; 0
+            </code>
+            , etc.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+data = LinRange(0.01, 0.99, 200)
+
+f = Figure(resolution = (800, 800))
+
+for (i, scale) in enumerate([identity, log10, log2, log, sqrt, Makie.logit])
+
+    row, col = fldmod1(i, 2)
+    Axis(f[row, col], yscale = scale, title = string(scale),
+        yminorticksvisible = true, yminorgridvisible = true,
+        yminorticks = IntervalsBetween(8))
+
+    lines!(data, color = :blue)
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_14617666749858721612">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_14617666749858721612.svg"/>
+            </a>
+          </p>
+          <h3 id="pseudolog_and_symlog_scales">
+            <a class="header-anchor" href="#pseudolog_and_symlog_scales">
+              Pseudolog and symlog scales
+            </a>
+          </h3>
+          <p>
+            Some plotting functions, like barplots or density plots, have offset parameters which are usually zero, which you have to set to some non-zero value explicitly so they work in
+            <code>
+              log
+            </code>
+            axes.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+processors = ["VAX-11/780", "Sun-4/260", "PowerPC 604",
+    "Alpha 21164", "Intel Pentium III", "Intel Xeon"]
+relative_speeds = [1, 9, 117, 280, 1779, 6505]
+
+barplot(relative_speeds, fillto = 0.5,
+    axis = (yscale = log10, ylabel ="relative speed",
+        xticks = (1:6, processors), xticklabelrotation = pi/8))
+
+ylims!(0.5, 10000)
+current_figure()</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_15457220437554807776">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_15457220437554807776.svg"/>
+            </a>
+          </p>
+          <p>
+            Another option are pseudolog and symlog scales. Pseudolog is similar to log, but modified in order to work for zero and for negative values. The
+            <code>
+              pseudolog10
+            </code>
+            function is defined as
+            <code>
+              sign(x) * log10(abs(x) + 1)
+            </code>
+            .
+          </p>
+          <p>
+            Another option for symmetric log scales including zero is the symmetric log scale
+            <code>
+              Symlog10
+            </code>
+            , which combines a normal log scale with a linear scale between two boundary values around zero.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure(resolution = (800, 700))
+
+lines(f[1, 1], -100:0.1:100, axis = (
+    yscale = Makie.pseudolog10,
+    title = "Pseudolog scale",
+    yticks = [-100, -10, -1, 0, 1, 10, 100]))
+
+lines(f[2, 1], -100:0.1:100, axis = (
+    yscale = Makie.Symlog10(10.0),
+    title = "Symlog10 with linear scaling between -10 and 10",
+    yticks = [-100, -10, 0, 10, 100]))
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_12484511118425274988">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_12484511118425274988.svg"/>
+            </a>
+          </p>
+          <h2 id="controlling_axis_aspect_ratios">
+            <a class="header-anchor" href="#controlling_axis_aspect_ratios">
+              Controlling Axis aspect ratios
+            </a>
+          </h2>
+          <p>
+            If you're plotting images, you might want to force a specific aspect ratio of an axis, so that the images are not stretched. The default is that an axis uses all of the available space in the layout. You can use
+            <code>
+              AxisAspect
+            </code>
+            and
+            <code>
+              DataAspect
+            </code>
+            to control the aspect ratio. For example,
+            <code>
+              AxisAspect(1)
+            </code>
+            forces a square axis and
+            <code>
+              AxisAspect(2)
+            </code>
+            results in a rectangle with a width of two times the height.
+            <code>
+              DataAspect
+            </code>
+            uses the currently chosen axis limits and brings the axes into the same aspect ratio. This is the easiest to use with images. A different aspect ratio can only reduce the axis space that is being used, also it necessarily has to break the layout a little bit.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+using FileIO
+
+
+f = Figure()
+
+axes = [Axis(f[i, j]) for i in 1:2, j in 1:3]
+tightlimits!.(axes)
+
+img = rotr90(load(assetpath("cow.png")))
+
+for ax in axes
+    image!(ax, img)
+end
+
+axes[1, 1].title = "Default"
+
+axes[1, 2].title = "DataAspect"
+axes[1, 2].aspect = DataAspect()
+
+axes[1, 3].title = "AxisAspect(418/348)"
+axes[1, 3].aspect = AxisAspect(418/348)
+
+axes[2, 1].title = "AxisAspect(1)"
+axes[2, 1].aspect = AxisAspect(1)
+
+axes[2, 2].title = "AxisAspect(2)"
+axes[2, 2].aspect = AxisAspect(2)
+
+axes[2, 3].title = "AxisAspect(2/3)"
+axes[2, 3].aspect = AxisAspect(2/3)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_7706812331582972593">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_7706812331582972593.svg"/>
+            </a>
+          </p>
+          <h2 id="controlling_data_aspect_ratios">
+            <a class="header-anchor" href="#controlling_data_aspect_ratios">
+              Controlling data aspect ratios
+            </a>
+          </h2>
+          <p>
+            If you want the content of an axis to adhere to a certain data aspect ratio, there is another way than forcing the aspect ratio of the whole axis to be the same, and possibly breaking the layout. This works via the axis attribute
+            <code>
+              autolimitaspect
+            </code>
+            . It can either be set to
+            <code>
+              nothing
+            </code>
+            which means the data limits can have any arbitrary aspect ratio. Or it can be set to a number, in which case the targeted limits of the axis (that are computed by
+            <code>
+              autolimits!
+            </code>
+            ) are enlarged to have the correct aspect ratio.
+          </p>
+          <p>
+            You can see the different ways to get a plot with an unstretched circle, using different ways of setting aspect ratios, in the following example.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+using Animations
+
+
+
+# scene setup for animation
+###########################################################
+
+container_scene = Scene(camera = campixel!, resolution = (1200, 1200))
+
+t = Observable(0.0)
+
+a_width = Animation([1, 7], [1200.0, 800], sineio(n=2, yoyo=true, postwait=0.5))
+a_height = Animation([2.5, 8.5], [1200.0, 800], sineio(n=2, yoyo=true, postwait=0.5))
+
+scene_area = lift(t) do t
+    Recti(0, 0, round(Int, a_width(t)), round(Int, a_height(t)))
+end
+
+scene = Scene(container_scene, scene_area, camera = campixel!)
+
+rect = poly!(scene, scene_area, color=RGBf(0.97, 0.97, 0.97), strokecolor=:transparent, strokewidth=0)
+
+outer_layout = GridLayout(scene, alignmode = Outside(30))
+
+
+# example begins here
+###########################################################
+
+layout = outer_layout[1, 1] = GridLayout()
+
+titles = ["aspect enforced\nvia layout", "axis aspect\nset directly", "no aspect enforced", "data aspect conforms\nto axis size"]
+axs = layout[1:2, 1:2] = [Axis(scene, title = t) for t in titles]
+
+for a in axs
+    lines!(a, Circle(Point2f(0, 0), 100f0))
+end
+
+rowsize!(layout, 1, Fixed(400))
+# force the layout cell [1, 1] to be square
+colsize!(layout, 1, Aspect(1, 1))
+
+axs[2].aspect = 1
+axs[4].autolimitaspect = 1
+
+rects = layout[1:2, 1:2] = [Box(scene, color = (:black, 0.05),
+    strokecolor = :transparent) for _ in 1:4]
+
+record(container_scene, "example_circle_aspect_ratios.mp4", 0:1/30:9; framerate=30) do ti
+    t[] = ti
+end</code>          </pre>
+          <video controls="" loop="" src="../../../assets/examples/blocks/axis/code/output/example_circle_aspect_ratios.mp4"></video>
+          <h2 id="linking_axes">
+            <a class="header-anchor" href="#linking_axes">
+              Linking axes
+            </a>
+          </h2>
+          <p>
+            You can link axes to each other. Every axis simply keeps track of a list of other axes which it updates when it is changed itself. You can link x and y dimensions separately.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+ax1 = Axis(f[1, 1])
+ax2 = Axis(f[1, 2])
+ax3 = Axis(f[2, 2])
+
+linkyaxes!(ax1, ax2)
+linkxaxes!(ax2, ax3)
+
+ax1.title = "y linked"
+ax2.title = "x &amp; y linked"
+ax3.title = "x linked"
+
+for (i, ax) in enumerate([ax1, ax2, ax3])
+    lines!(ax, 1:10, 1:10, color = "green")
+    if i != 1
+        lines!(ax, 11:20, 1:10, color = "red")
+    end
+    if i != 3
+        lines!(ax, 1:10, 11:20, color = "blue")
+    end
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10202874853460750830">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_10202874853460750830.svg"/>
+            </a>
+          </p>
+          <h2 id="aligning_neighboring_axis_labels">
+            <a class="header-anchor" href="#aligning_neighboring_axis_labels">
+              Aligning neighboring axis labels
+            </a>
+          </h2>
+          <p>
+            When placing axes with different ticks next to each other it can be desirable to visually align the labels of these axes. By default, the space allocated for the ticklabels is minimized. This value can be fixed by using the functions
+            <a href="../../../api/#tight_xticklabel_spacing!">
+              <code>
+                tight_xticklabel_spacing!
+              </code>
+            </a>
+            ,
+            <a href="../../../api/#tight_yticklabel_spacing!">
+              <code>
+                tight_yticklabel_spacing!
+              </code>
+            </a>
+            or
+            <a href="../../../api/#tight_ticklabel_spacing!">
+              <code>
+                tight_ticklabel_spacing!
+              </code>
+            </a>
+            for both.
+          </p>
+          <p>
+            Note how x and y labels are misaligned in this figure due to different tick label lengths.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], title = "Axis 1", ylabel = "y label", ytickformat = "{:.3f}")
+ax2 = Axis(f[2, 1], title = "Axis 2", ylabel = "y label", xlabel = "x label")
+ax3 = Axis(f[2, 2], title = "Axis 3", xlabel = "x label", xtickformat = "{:.3f}", xticklabelrotation = pi/4)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10846063408921297226">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_10846063408921297226.svg"/>
+            </a>
+          </p>
+          <p>
+            To align the labels, we can set the
+            <code>
+              xticklabelspace
+            </code>
+            or
+            <code>
+              yticklabelspace
+            </code>
+            attributes of the linked axes to the maximum space.
+          </p>
+          <pre><code class="language-julia">yspace = maximum(tight_yticklabel_spacing!, [ax1, ax2])
+xspace = maximum(tight_xticklabel_spacing!, [ax2, ax3])
+
+ax1.yticklabelspace = yspace
+ax2.yticklabelspace = yspace
+
+ax2.xticklabelspace = xspace
+ax3.xticklabelspace = xspace
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_6716908856707165720">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_6716908856707165720.svg"/>
+            </a>
+          </p>
+          <h2 id="changing_x_and_y_axis_position">
+            <a class="header-anchor" href="#changing_x_and_y_axis_position">
+              Changing x and y axis position
+            </a>
+          </h2>
+          <p>
+            By default, the x axis is at the bottom, and the y axis at the left side. You can change this with the attributes
+            <code>
+              xaxisposition = :top
+            </code>
+            and
+            <code>
+              yaxisposition = :right
+            </code>
+            .
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+for i in 1:2, j in 1:2
+    Axis(
+        f[i, j],
+        limits = (0, 5, 0, 5),
+        xaxisposition = (i == 1 ? :top : :bottom),
+        yaxisposition = (j == 1 ? :left : :right))
+end
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_10289922321771100928">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_10289922321771100928.svg"/>
+            </a>
+          </p>
+          <h2 id="creating_a_twin_axis">
+            <a class="header-anchor" href="#creating_a_twin_axis">
+              Creating a twin axis
+            </a>
+          </h2>
+          <p>
+            There is currently no dedicated function to do this, but you can simply add an Axis on top of another, then hide everything but the second axis.
+          </p>
+          <p>
+            Here's an example how to do this with a second y axis on the right.
+          </p>
+          <pre><code class="language-julia">using CairoMakie
+
+f = Figure()
+
+ax1 = Axis(f[1, 1], yticklabelcolor = :blue)
+ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right)
+hidespines!(ax2)
+hidexdecorations!(ax2)
+
+lines!(ax1, 0..10, sin, color = :blue)
+lines!(ax2, 0..10, x -&gt; 100 * cos(x), color = :red)
+
+f</code>          </pre>
+          <p></p>
+          <p>
+            <a id="example_2115761524578697646">
+              <img alt="" src="../../../assets/examples/blocks/axis/code/output/example_2115761524578697646.svg"/>
+            </a>
+          </p>
+          <h2 id="axis_interaction">
+            <a class="header-anchor" href="#axis_interaction">
+              Axis interaction
+            </a>
+          </h2>
+          <p>
+            An Axis has a couple of predefined interactions enabled.
+          </p>
+          <h3 id="scroll_zoom">
+            <a class="header-anchor" href="#scroll_zoom">
+              Scroll zoom
+            </a>
+          </h3>
+          <p>
+            You can zoom in an axis by scrolling in and out. If you press x or y while scrolling, the zoom movement is restricted to that dimension. These keys can be changed with the attributes
+            <code>
+              xzoomkey
+            </code>
+            and
+            <code>
+              yzoomkey
+            </code>
+            . You can also restrict the zoom dimensions all the time by setting the axis attributes
+            <code>
+              xzoomlock
+            </code>
+            or
+            <code>
+              yzoomlock
+            </code>
+            to
+            <code>
+              true
+            </code>
+            .
+          </p>
+          <h3 id="drag_pan">
+            <a class="header-anchor" href="#drag_pan">
+              Drag pan
+            </a>
+          </h3>
+          <p>
+            You can pan around the axis by right-clicking and dragging. If you press x or y while panning, the pan movement is restricted to that dimension. These keys can be changed with the attributes
+            <code>
+              xpankey
+            </code>
+            and
+            <code>
+              ypankey
+            </code>
+            . You can also restrict the pan dimensions all the time by setting the axis attributes
+            <code>
+              xpanlock
+            </code>
+            or
+            <code>
+              ypanlock
+            </code>
+            to
+            <code>
+              true
+            </code>
+            .
+          </p>
+          <h3 id="limit_reset">
+            <a class="header-anchor" href="#limit_reset">
+              Limit reset
+            </a>
+          </h3>
+          <p>
+            You can reset the limits with
+            <code>
+              ctrl + leftclick
+            </code>
+            . This is the same as doing
+            <code>
+              reset_limits!(ax)
+            </code>
+            . This sets the limits back to the values stored in
+            <code>
+              ax.limits
+            </code>
+            , and if they are
+            <code>
+              nothing
+            </code>
+            , computes them automatically. If you have previously called
+            <code>
+              limits!
+            </code>
+            ,
+            <code>
+              xlims!
+            </code>
+            or
+            <code>
+              ylims!
+            </code>
+            , these settings therefore stay intact when doing a limit reset.
+          </p>
+          <p>
+            You can alternatively press
+            <code>
+              ctrl + shift + leftclick
+            </code>
+            , which is the same as calling
+            <code>
+              autolimits!(ax)
+            </code>
+            . This function ignores previously set limits and computes them all anew given the axis content.
+          </p>
+          <h3 id="rectangle_selection_zoom">
+            <a class="header-anchor" href="#rectangle_selection_zoom">
+              Rectangle selection zoom
+            </a>
+          </h3>
+          <p>
+            Left-click and drag zooms into the selected rectangular area. If you press x or y while panning, only the respective dimension is affected. You can also restrict the selection zoom dimensions all the time by setting the axis attributes
+            <code>
+              xrectzoom
+            </code>
+            or
+            <code>
+              yrectzoom
+            </code>
+            to
+            <code>
+              true
+            </code>
+            .
+          </p>
+          <h3 id="custom_interactions">
+            <a class="header-anchor" href="#custom_interactions">
+              Custom interactions
+            </a>
+          </h3>
+          <p>
+            The interaction system is an additional abstraction upon Makie's low-level event system to make it easier to quickly create your own interaction patterns.
+          </p>
+          <h4 id="registering_and_deregistering_interactions">
+            <a class="header-anchor" href="#registering_and_deregistering_interactions">
+              Registering and deregistering interactions
+            </a>
+          </h4>
+          <p>
+            To register a new interaction, call
+            <code>
+              register_interaction!(ax, name::Symbol, interaction)
+            </code>
+            . The
+            <code>
+              interaction
+            </code>
+            argument can be of any type.
+          </p>
+          <p>
+            To remove an existing interaction completely, call
+            <code>
+              deregister_interaction!(ax, name::Symbol)
+            </code>
+            . You can check which interactions are currently active by calling
+            <code>
+              interactions(ax)
+            </code>
+            .
+          </p>
+          <h4 id="activating_and_deactivating_interactions">
+            <a class="header-anchor" href="#activating_and_deactivating_interactions">
+              Activating and deactivating interactions
+            </a>
+          </h4>
+          <p>
+            Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again. You can use the functions
+            <code>
+              activate_interaction!(ax, name::Symbol)
+            </code>
+            and
+            <code>
+              deactivate_interaction!(ax, name::Symbol)
+            </code>
+            for that.
+          </p>
+          <h4 id="function_interaction">
+            <a class="header-anchor" href="#function_interaction">
+              <code>
+                Function
+              </code>
+              interaction
+            </a>
+          </h4>
+          <p>
+            If
+            <code>
+              interaction
+            </code>
+            is a
+            <code>
+              Function
+            </code>
+            , it should accept two arguments, which correspond to an event and the axis. This function will then be called whenever the axis generates an event.
+          </p>
+          <p>
+            Here's an example of such a function. Note that we use the special dispatch signature for Functions that allows to use the
+            <code>
+              do
+            </code>
+            -syntax:
+          </p>
+          <pre><code class="language-julia">register_interaction!(ax, :my_interaction) do event::MouseEvent, axis
+    if event.type === MouseEventTypes.leftclick
+        println("You clicked on the axis!")
+    end
+end</code>          </pre>
+          <p>
+            As you can see, it's possible to restrict the type parameter of the event argument. Choices are one of
+            <code>
+              MouseEvent
+            </code>
+            ,
+            <code>
+              KeysEvent
+            </code>
+            or
+            <code>
+              ScrollEvent
+            </code>
+            if you only want to handle a specific class. Your function can also have multiple methods dealing with each type.
+          </p>
+          <h4 id="custom_object_interaction">
+            <a class="header-anchor" href="#custom_object_interaction">
+              Custom object interaction
+            </a>
+          </h4>
+          <p>
+            The function option is most suitable for interactions that don't involve much state. A more verbose but flexible option is available. For this, you define a new type which typically holds all the state variables you're interested in.
+          </p>
+          <p>
+            Whenever the axis generates an event, it calls
+            <code>
+              process_interaction(interaction, event, axis)
+            </code>
+            on all stored interactions. By defining
+            <code>
+              process_interaction
+            </code>
+            for specific types of interaction and event, you can create more complex interaction patterns.
+          </p>
+          <p>
+            Here's an example with simple state handling where we allow left clicks while l is pressed, and right clicks while r is pressed:
+          </p>
+          <pre><code class="language-julia">mutable struct MyInteraction
+    allow_left_click::Bool
+    allow_right_click::Bool
+end
+
+function Makie.process_interaction(interaction::MyInteraction, event::MouseEvent, axis)
+    if interaction.use_left_click &amp;&amp; event.type === MouseEventTypes.leftclick
+        println("Left click in correct mode")
+    end
+    if interaction.allow_right_click &amp;&amp; event.type === MouseEventTypes.rightclick
+        println("Right click in correct mode")
+    end
+end
+
+function Makie.process_interaction(interaction::MyInteraction, event::KeysEvent, axis)
+    interaction.allow_left_click = Keyboard.l in event.keys
+    interaction.allow_right_click = Keyboard.r in event.keys
+end
+
+register_interaction!(ax, :left_and_right, MyInteraction(false, false))</code>          </pre>
+          <h4 id="setup_and_cleanup">
+            <a class="header-anchor" href="#setup_and_cleanup">
+              Setup and cleanup
+            </a>
+          </h4>
+          <p>
+            Some interactions might have more complex state involving plot objects that need to be setup or removed. For those purposes, you can overload the methods
+            <code>
+              registration_setup!(parent, interaction)
+            </code>
+            and
+            <code>
+              deregistration_cleanup!(parent, interaction)
+            </code>
+            which are called during registration and deregistration, respectively.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
