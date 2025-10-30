@@ -67,12 +67,17 @@ struct ResolveException{E <: Exception} <: Exception
     error::E
 end
 
-struct TypedEdge{InputTuple, OutputTuple, F}
+struct TypedEdge{InputTuple, OutputTuple, F, E}
     callback::F
     inputs::InputTuple
     inputs_dirty::Vector{Bool}
     outputs::OutputTuple
     output_nodes::Vector{Computed}
+    compute_edge::E  # Reference back to parent ComputeEdge for propagation
+    # Track if an async task is currently being fetched
+    async_pending::Threads.Atomic{Bool}
+    # Track if edge became dirty while async task was being fetched
+    became_dirty_during_fetch::Threads.Atomic{Bool}
 end
 
 """
@@ -123,10 +128,9 @@ end
 function TypedEdge(edge::ComputeEdge, f, inputs)
     dirty = _get_named_change(inputs, edge.inputs_dirty)
 
-    result = f(map(getindex, inputs), dirty, nothing)
+    result = fetch(f(map(getindex, inputs), dirty, nothing))
 
     if result isa Tuple
-
         if !all(is_node_value_valid, result)
             invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
             strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
@@ -155,11 +159,13 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
             return v
         end
         foreach(node -> node.dirty = false, edge.outputs)
-
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output, Task, or nothing. Value: $result")
     end
-    return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
+    return TypedEdge(
+        f, inputs, edge.inputs_dirty, outputs, edge.outputs,
+        edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false)
+    )
 end
 
 
@@ -567,6 +573,13 @@ function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
+    # If the edge being marked dirty has an async task pending, record that it became dirty
+    if isassigned(edge.typed_edge)
+        typed_edge = edge.typed_edge[]
+        if typed_edge.async_pending[]
+            typed_edge.became_dirty_during_fetch[] = true
+        end
+    end
     return
 end
 
@@ -576,27 +589,6 @@ function mark_input_dirty!(parent::Input, edge::ComputeEdge)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
     return
-end
-
-function set_result!(edge::TypedEdge, result, i, value)
-    if isnothing(value) || is_same(edge.outputs[i][], value)
-        edge.output_nodes[i].dirty = false
-    else
-        edge.output_nodes[i].dirty = true
-        edge.outputs[i][] = deref(value)
-    end
-    if !isempty(result)
-        next_val = first(result)
-        rem = Base.tail(result)
-        set_result!(edge, rem, i + 1, next_val)
-    end
-    return
-end
-
-function set_result!(edge::TypedEdge, result)
-    next_val = first(result)
-    rem = Base.tail(result)
-    return set_result!(edge, rem, 1, next_val)
 end
 
 is_same(@nospecialize(a), @nospecialize(b)) = false
@@ -614,28 +606,101 @@ function is_same(a::T, b::T) where {T}
     end
 end
 
+function set_result!(edge::TypedEdge, result, i, value)
+    if isnothing(value) || is_same(edge.outputs[i][], value)
+        edge.output_nodes[i].dirty = false
+    else
+        edge.output_nodes[i].dirty = true
+        edge.outputs[i][] = deref(value)
+    end
+    if !isempty(result)
+        next_val = first(result)
+        rem = Base.tail(result)
+        set_result!(edge, rem, i + 1, next_val)
+    end
+    return nothing
+end
+
+function set_result!(edge::TypedEdge, result)
+    next_val = first(result)
+    rem = Base.tail(result)
+    return set_result!(edge, rem, 1, next_val)
+end
+
+function resolve_result!(edge::TypedEdge, result)
+    if result isa Task
+        # Implements
+        # map!(graph, inputs, outputs) do inputs, changed, cached
+        #    return @spawn longrunning(inputs)
+        #end
+        # Mark that an async task is pending
+        edge.async_pending[] = true
+        edge.became_dirty_during_fetch[] = false
+
+        # Spawn async task to fetch and apply result
+        @async try
+            task_result = fetch(result)
+            # Check if edge became dirty during fetch
+            became_dirty = edge.became_dirty_during_fetch[]
+            # Apply the result
+            # Perform the propagation steps (same as in resolve!)
+            cedge = edge.compute_edge
+            lock(cedge.graph.lock) do
+                apply_result!(edge, task_result)
+                # Async completed successfully, mark as resolved and propagate
+                cedge.got_resolved[] = true
+                fill!(cedge.inputs_dirty, false)
+                for dep in cedge.dependents
+                    mark_input_dirty!(cedge, dep)
+                    # We also need to mark as dirty, just like with
+                    # setindex!
+                    mark_dirty!(dep)
+                end
+                foreach(comp -> comp.dirty = false, cedge.outputs)
+                cedge.got_resolved[] = !became_dirty
+            end
+        catch e
+            @error "Failed to resolve task result" exception = (e, catch_backtrace())
+        finally
+            # Always clear async_pending when done
+            edge.async_pending[] = false
+        end
+    else
+        # Synchronous result - apply immediately (we're already holding the lock)
+        apply_result!(edge, result)
+    end
+    return nothing
+end
+
+function apply_result!(edge::TypedEdge, result)
+    if result isa Tuple
+        if length(result) != length(edge.outputs)
+            error("Did not return correct length: $(result)")
+        end
+        set_result!(edge, result)
+    elseif isnothing(result)
+        foreach(x -> x.dirty = false, edge.output_nodes)
+    else
+        error("Needs to return a Tuple with one element per output, or nothing")
+    end
+    return nothing
+end
+
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
+# NOTE: This should be called WITHOUT holding the graph lock, so callbacks can run in parallel
 function resolve!(edge::TypedEdge)
-    if any(edge.inputs_dirty) # only call if inputs changed
-        dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
-        vals = map(getindex, edge.outputs)
-        names = ntuple(length(vals)) do i
-            edge.output_nodes[i].name
-        end
-        last = NamedTuple{names}(vals)
-        result = edge.callback(map(getindex, edge.inputs), dirty, last)
-        if result isa Tuple
-            if length(result) != length(edge.outputs)
-                error("Did not return correct length: $(result), $(edge.callback)")
-            end
-            set_result!(edge, result)
-        elseif isnothing(result)
-            foreach(x -> x.dirty = false, edge.output_nodes)
-        else
-            error("Needs to return a Tuple with one element per output, or nothing")
-        end
+    !any(edge.inputs_dirty) && return
+    edge.async_pending[] && return
+    dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
+    vals = map(getindex, edge.outputs)
+    names = ntuple(length(vals)) do i
+        edge.output_nodes[i].name
     end
+    last = NamedTuple{names}(vals)
+    # Execute callback without holding the lock - this allows parallel execution
+    result = edge.callback(map(getindex, edge.inputs), dirty, last)
+    resolve_result!(edge, result)
     return
 end
 
@@ -657,15 +722,34 @@ end
 function resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
     return lock(edge.graph.lock) do
+        # Check if there's an async task currently pending
+        if isassigned(edge.typed_edge) && edge.typed_edge[].async_pending[]
+            # Async task is still running, nothing to do
+            return false
+        end
+
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
         if !isassigned(edge.typed_edge)
             # constructor does first resolve to determine fully typed outputs
             edge.typed_edge[] = TypedEdge(edge)
         else
+            # Run the typed edge resolution (may start async task or apply sync result)
             resolve!(edge.typed_edge[])
         end
         edge.got_resolved[] = true
+
+        # Check if we just started an async task
+        typed_edge = edge.typed_edge[]
+        if typed_edge.async_pending[]
+            # Async task started, clear input dirty flags but leave got_resolved = false
+            # The async task will handle setting got_resolved and propagation when it completes
+            fill!(edge.inputs_dirty, false)
+            return true
+        end
+
+        # Synchronous resolution completed
+        # Mark as resolved and propagate
         fill!(edge.inputs_dirty, false)
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)
@@ -747,7 +831,10 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
         edge.outputs[i].dirty = true
     end
 
-    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+    return TypedEdge(
+        f, inputs, edge.inputs_dirty, inputs, edge.outputs,
+        edge, Threads.Atomic{Bool}(false), Threads.Atomic{Bool}(false)
+    )
 end
 
 function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
@@ -1006,7 +1093,7 @@ end
 
 function (x::MapFunctionWrapper{true})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
-    return (result,)
+    return result isa Task ? @async((fetch(result),)) : (result,)
 end
 function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospecialize(cached))
     result = x.user_func(values(inputs)...)
