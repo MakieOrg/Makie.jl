@@ -8,38 +8,70 @@ import Electron, Bonito
 
 struct EScreenshot
     display
-    fig
+    app::Bonito.App
+    capture_full_page::Bool
 end
 
-function snapshot_figure(edisplay, fig, path)
+EScreenshot(display, fig::Makie.FigureLike; capture_full_page=false) = EScreenshot(display, App(fig), capture_full_page)
+EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Default to full page for App tests
+
+function snapshot_figure(edisplay, app, path; capture_full_page=false)
     rm(path; force = true)
-    display(edisplay, Bonito.App(fig))
+    display(edisplay, app)
     win = edisplay.window.window
+    Bonito.wait_for_ready(app)
+    sleep(1)
     win_size = run(
         win, """(()=>{
             document.body.style.margin = '0';
             document.body.style.padding = '0';
             document.documentElement.style.margin = '0';
             document.documentElement.style.padding = '0';
-            // Find the canvas element (Makie renders to canvas)
-            const canvas = document.querySelector('canvas');
-            const rect = canvas.getBoundingClientRect();
-            return [
+            document.body.style.overflow = 'hidden'; // Prevent scrollbars
+
+            if ($capture_full_page) {
+                // Capture the full body content for testing HTML layouts
+                // Measure actual content, not viewport dimensions
+                const body = document.body;
+
+                // Get bounding box of all body children to find actual content size
+                let maxRight = 0;
+                let maxBottom = 0;
+
+                for (const child of body.children) {
+                    const rect = child.getBoundingClientRect();
+                    maxRight = Math.max(maxRight, rect.right);
+                    maxBottom = Math.max(maxBottom, rect.bottom);
+                }
+
+                // If no children, fall back to scrollWidth/Height
+                const width = maxRight > 0 ? maxRight : body.scrollWidth;
+                const height = maxBottom > 0 ? maxBottom : body.scrollHeight;
+
+                return [Math.ceil(width), Math.ceil(height)];
+            } else {
+                // Find the canvas element (Makie renders to canvas)
+                const canvas = document.querySelector('canvas');
+                const rect = canvas.getBoundingClientRect();
+                return [
                     Math.ceil(rect.width),
                     Math.ceil(rect.height)
                 ];
-            })();
+            }
+        })();
         """
     )
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
     sleep(0.5) # do we need time for resize?
+    # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
+    js_path = replace(path, '\\' => '/')
     run(
         edisplay.window.app,
         """
         const win = BrowserWindow.fromId($winid)
         win.webContents.capturePage().then(image => {
-            const screenshotPath = '$(path)';
+            const screenshotPath = '$(js_path)';
             require('fs').writeFileSync(screenshotPath, image.toPNG());
             console.log('Screenshot saved to', screenshotPath);
         }).catch(err => {
@@ -54,8 +86,25 @@ end
 # YAY we can just overload save_results for our own EScreenshot type :)
 function ReferenceTests.save_result(path::String, es::EScreenshot)
     isfile(path * ".png") && rm(path * ".png"; force = true)
-    snapshot_figure(es.display, es.fig, path * ".png")
+    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page=es.capture_full_page)
     return true
+end
+
+# Simple ResizableCard replacement for testing (mimics Splots.ResizableCard behavior)
+function TestResizableCard(content; style=Bonito.Styles())
+    card_style = Bonito.Styles(
+        style,
+        Bonito.CSS(
+            "position" => "relative",
+            "overflow" => "hidden",
+            "background-color" => "rgba(1, 1, 1, 0.2)",
+            "box-shadow" => "0 4px 8px rgba(0, 0, 0, 0.2)",
+            "padding" => "7px",
+            "margin" => "2px",
+            "border-radius" => "10px"
+        )
+    )
+    return DOM.div(content; style=card_style)
 end
 
 function create_test_figure()
@@ -195,12 +244,12 @@ function create_test_figure()
     checkbox_grid.checked[] = false
     toggle_dark.active[] = true
     # Simulate 3 clicks
-    return EScreenshot(edisplay, fig)
+    return fig
 end
 
 # Makie.inline!(Makie.automatic)
-# edisplay = Bonito.use_electron_display(; devtools=true)
-# ReferenceTests.RECORDING_DIR[] = pwd()
+edisplay = Bonito.use_electron_display(; devtools=true)
+# ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
 function close_devtools(w)
     return run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
@@ -211,21 +260,111 @@ close_devtools(edisplay.window.window)
 
 @reference_test "Widgets layout" begin
     WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
-    create_test_figure()
+    fig = create_test_figure()
+    EScreenshot(edisplay, fig)
 end
 
 @reference_test "HTML Widgets layout" begin
     WGLMakie.activate!(; use_html_widgets = true, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
-    create_test_figure()
+    fig = create_test_figure()
+    EScreenshot(edisplay, fig)
 end
+
 @reference_test "HTML Widgets layout px_per_unit=1" begin
     WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 1, scalefactor = 1)
-    create_test_figure()
+    fig = create_test_figure()
+    EScreenshot(edisplay, fig)
 end
 
 @reference_test "HTML Widgets layout px_per_unit=2" begin
     WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
-    create_test_figure()
+    fig = create_test_figure()
+    EScreenshot(edisplay, fig)
 end
+
+@reference_test "resize_to parent with fixed size div" begin
+    app = App() do
+        fig = create_test_figure()
+        DOM.div(
+            DOM.h2("resize_to=:parent Test"; style="text-align: center; color: #666;"),
+            DOM.div(
+                WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent);
+                style="width: 1000px; height: 800px; border: 2px solid blue; margin: 10px;",
+            ),
+        )
+    end
+    EScreenshot(edisplay, app)
+end
+
+@reference_test "resize_to parent with ResizableCard" begin
+    app = App() do
+        fig = create_test_figure()
+        card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent))
+        DOM.div(
+            DOM.h2("ResizableCard Test"; style="text-align: center; color: #666;"),
+            DOM.div(card; style="width: 900px; height: 700px; margin: 10px;"),
+        )
+    end
+    EScreenshot(edisplay, app)
+end
+
+@reference_test "resize_to parent nested in styled container" begin
+    app = App() do
+        fig = create_test_figure()
+        DOM.div(
+            DOM.h2("Nested Container Test"; style="text-align: center; color: #666;"),
+            DOM.div(
+                DOM.div(
+                    WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent);
+                    style="width: 100%; height: 100%;",
+                );
+                style="width: 1100px; height: 850px; padding: 20px; background-color: #f0f0f0; border-radius: 8px; margin: 10px;",
+            ),
+        )
+    end
+    EScreenshot(edisplay, app)
+end
+
+@reference_test "resize_to parent with multiple figures side by side" begin
+    app = App() do
+        fig1 = Figure(; size=(600, 400))
+        ax1 = Axis(fig1[1, 1]; title="Left Plot")
+        sl1 = Makie.Slider(fig1[2, 1]; range=0:0.1:10, startvalue=5)
+        lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
+
+        fig2 = Figure(; size=(600, 400))
+        ax2 = Axis(fig2[1, 1]; title="Right Plot")
+        sl2 = Makie.Slider(fig2[2, 1]; range=0:0.1:10, startvalue=3)
+        lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
+
+        DOM.div(
+            DOM.h2("Side by Side Test"; style="text-align: center; color: #666;"),
+            DOM.div(
+                DOM.div(
+                    WGLMakie.WithConfig(fig1; use_html_widgets=true, resize_to=:parent);
+                    style="width: 100%; height: 100%;",
+                ),
+                DOM.div(
+                    WGLMakie.WithConfig(fig2; use_html_widgets=true, resize_to=:parent);
+                    style="width: 100%; height: 100%;",
+                );
+                style="display: flex; gap: 20px; padding: 10px; flex-wrap: wrap;",
+            ),
+        )
+    end
+    EScreenshot(edisplay, app)
+end
+
+@reference_test "resize_to body baseline" begin
+    app = App() do
+        fig = create_test_figure()
+        DOM.div(
+            WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:body);
+            style="margin: 0; padding: 0;",
+        )
+    end
+    EScreenshot(edisplay, app)
+end
+
 # Reset to default
 WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
