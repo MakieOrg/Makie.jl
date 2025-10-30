@@ -512,8 +512,12 @@ function apply_tooltip_format(fmt, c::Gray)
     return "Gray(" * apply_tooltip_format(fmt, gray(c)) * ')'
 end
 
+apply_tooltip_format(fmt, x::Symbol) = apply_tooltip_format(fmt, ":$x")
+
 apply_tooltip_format(fmt::String, x::Number) = Format.format(fmt, x)
 apply_tooltip_format(fmt::Function, x::Number) = fmt(x)
+apply_tooltip_format(fmt::String, x::String) = Format.format(fmt, x)
+apply_tooltip_format(fmt::Function, x::String) = fmt(x)
 
 function default_tooltip_formatter(x::Real)
     if 1.0e-3 <= abs(x) < 1.0e-1
@@ -528,6 +532,8 @@ function default_tooltip_formatter(x::Real)
         return @sprintf("%0.3e", x)
     end
 end
+
+default_tooltip_formatter(x::String) = x
 
 apply_tooltip_overwrites!(::PlotElement, tt) = nothing
 
