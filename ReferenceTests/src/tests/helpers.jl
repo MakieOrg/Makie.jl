@@ -32,7 +32,7 @@ else
     end
 end
 
-function wait_for_data_inspector(action, fig, inspector)
+function wait_for_data_inspector(action, fig, inspector, visible = nothing)
     # WGLMakie: check for change in the picked plot element
     # GLMakie: force re-render via colorbuffer()
     last_plot_element = inspector.last_plot_element
@@ -42,7 +42,9 @@ function wait_for_data_inspector(action, fig, inspector)
     t0 = time()
     wait_for() do
         # notify(events(fig).tick)
-        return inspector.last_plot_element != last_plot_element
+        has_switched = inspector.last_plot_element != last_plot_element
+        check_visible = visible === nothing ? true : (inspector.dynamic_tooltip.visible[] == visible)
+        return has_switched && check_visible
     end
     @info "Time waited: $(time() - t0)"
     # WGLMakie also needs time to render?

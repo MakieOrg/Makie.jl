@@ -558,14 +558,15 @@ end
     # record
     for mp in mps
         # remove tooltip so we don't select it
-        wait_for_data_inspector(scene, di) do
+        wait_for_data_inspector(scene, di, false) do
             e.mouseposition[] = (1.0, 1.0)
         end
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
-        wait_for_data_inspector(scene, di) do
+        wait_for_data_inspector(scene, di, true) do
             e.mouseposition[] = mp
         end
+        @test !di.dynamic_tooltip.visible[] # verify show
         Makie.step!(st)
     end
 
@@ -621,13 +622,13 @@ end
     for mp in mps
         idx = findfirst(block -> mp in block.scene.viewport[], f.content)
 
-        wait_for_data_inspector(f, dis[idx]) do
+        wait_for_data_inspector(f, dis[idx], true) do
             e.mouseposition[] = mp
         end
         Makie.step!(st)
 
         # remove tooltip so we don't select it
-        wait_for_data_inspector(f, dis[idx]) do
+        wait_for_data_inspector(f, dis[idx], false) do
             e.mouseposition[] = (1.0, 1.0)
         end
 
