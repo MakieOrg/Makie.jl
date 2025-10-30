@@ -12,10 +12,10 @@ struct EScreenshot
     capture_full_page::Bool
 end
 
-EScreenshot(display, fig::Makie.FigureLike; capture_full_page=false) = EScreenshot(display, App(fig), capture_full_page)
+EScreenshot(display, fig::Makie.FigureLike; capture_full_page = false) = EScreenshot(display, App(fig), capture_full_page)
 EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Default to full page for App tests
 
-function snapshot_figure(edisplay, app, path; capture_full_page=false)
+function snapshot_figure(edisplay, app, path; capture_full_page = false)
     rm(path; force = true)
     display(edisplay, app)
     win = edisplay.window.window
@@ -86,12 +86,12 @@ end
 # YAY we can just overload save_results for our own EScreenshot type :)
 function ReferenceTests.save_result(path::String, es::EScreenshot)
     isfile(path * ".png") && rm(path * ".png"; force = true)
-    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page=es.capture_full_page)
+    snapshot_figure(es.display, es.app, path * ".png"; capture_full_page = es.capture_full_page)
     return true
 end
 
 # Simple ResizableCard replacement for testing (mimics Splots.ResizableCard behavior)
-function TestResizableCard(content; style=Bonito.Styles())
+function TestResizableCard(content; style = Bonito.Styles())
     card_style = Bonito.Styles(
         style,
         Bonito.CSS(
@@ -104,7 +104,7 @@ function TestResizableCard(content; style=Bonito.Styles())
             "border-radius" => "10px"
         )
     )
-    return DOM.div(content; style=card_style)
+    return DOM.div(content; style = card_style)
 end
 
 function create_test_figure()
@@ -248,7 +248,7 @@ function create_test_figure()
 end
 
 # Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(; devtools=true)
+edisplay = Bonito.use_electron_display(; devtools = true)
 # ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
 function close_devtools(w)
@@ -286,10 +286,10 @@ end
     app = App() do
         fig = create_test_figure()
         DOM.div(
-            DOM.h2("resize_to=:parent Test"; style="text-align: center; color: #666;"),
+            DOM.h2("resize_to=:parent Test"; style = "text-align: center; color: #666;"),
             DOM.div(
-                WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent);
-                style="width: 1000px; height: 800px; border: 2px solid blue; margin: 10px;",
+                WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent);
+                style = "width: 1000px; height: 800px; border: 2px solid blue; margin: 10px;",
             ),
         )
     end
@@ -299,10 +299,10 @@ end
 @reference_test "resize_to parent with ResizableCard" begin
     app = App() do
         fig = create_test_figure()
-        card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent))
+        card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent))
         DOM.div(
-            DOM.h2("ResizableCard Test"; style="text-align: center; color: #666;"),
-            DOM.div(card; style="width: 900px; height: 700px; margin: 10px;"),
+            DOM.h2("ResizableCard Test"; style = "text-align: center; color: #666;"),
+            DOM.div(card; style = "width: 900px; height: 700px; margin: 10px;"),
         )
     end
     EScreenshot(edisplay, app)
@@ -312,13 +312,13 @@ end
     app = App() do
         fig = create_test_figure()
         DOM.div(
-            DOM.h2("Nested Container Test"; style="text-align: center; color: #666;"),
+            DOM.h2("Nested Container Test"; style = "text-align: center; color: #666;"),
             DOM.div(
                 DOM.div(
-                    WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:parent);
-                    style="width: 100%; height: 100%;",
+                    WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent);
+                    style = "width: 100%; height: 100%;",
                 );
-                style="width: 1100px; height: 850px; padding: 20px; background-color: #f0f0f0; border-radius: 8px; margin: 10px;",
+                style = "width: 1100px; height: 850px; padding: 20px; background-color: #f0f0f0; border-radius: 8px; margin: 10px;",
             ),
         )
     end
@@ -327,28 +327,28 @@ end
 
 @reference_test "resize_to parent with multiple figures side by side" begin
     app = App() do
-        fig1 = Figure(; size=(600, 400))
-        ax1 = Axis(fig1[1, 1]; title="Left Plot")
-        sl1 = Makie.Slider(fig1[2, 1]; range=0:0.1:10, startvalue=5)
+        fig1 = Figure(; size = (600, 400))
+        ax1 = Axis(fig1[1, 1]; title = "Left Plot")
+        sl1 = Makie.Slider(fig1[2, 1]; range = 0:0.1:10, startvalue = 5)
         lines!(ax1, 0:0.1:10, lift(v -> sin.((0:0.1:10) .+ v), sl1.value))
 
-        fig2 = Figure(; size=(600, 400))
-        ax2 = Axis(fig2[1, 1]; title="Right Plot")
-        sl2 = Makie.Slider(fig2[2, 1]; range=0:0.1:10, startvalue=3)
+        fig2 = Figure(; size = (600, 400))
+        ax2 = Axis(fig2[1, 1]; title = "Right Plot")
+        sl2 = Makie.Slider(fig2[2, 1]; range = 0:0.1:10, startvalue = 3)
         lines!(ax2, 0:0.1:10, lift(v -> cos.((0:0.1:10) .+ v), sl2.value))
 
         DOM.div(
-            DOM.h2("Side by Side Test"; style="text-align: center; color: #666;"),
+            DOM.h2("Side by Side Test"; style = "text-align: center; color: #666;"),
             DOM.div(
                 DOM.div(
-                    WGLMakie.WithConfig(fig1; use_html_widgets=true, resize_to=:parent);
-                    style="width: 100%; height: 100%;",
+                    WGLMakie.WithConfig(fig1; use_html_widgets = true, resize_to = :parent);
+                    style = "width: 100%; height: 100%;",
                 ),
                 DOM.div(
-                    WGLMakie.WithConfig(fig2; use_html_widgets=true, resize_to=:parent);
-                    style="width: 100%; height: 100%;",
+                    WGLMakie.WithConfig(fig2; use_html_widgets = true, resize_to = :parent);
+                    style = "width: 100%; height: 100%;",
                 );
-                style="display: flex; gap: 20px; padding: 10px; flex-wrap: wrap;",
+                style = "display: flex; gap: 20px; padding: 10px; flex-wrap: wrap;",
             ),
         )
     end
@@ -359,8 +359,8 @@ end
     app = App() do
         fig = create_test_figure()
         DOM.div(
-            WGLMakie.WithConfig(fig; use_html_widgets=true, resize_to=:body);
-            style="margin: 0; padding: 0;",
+            WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :body);
+            style = "margin: 0; padding: 0;",
         )
     end
     EScreenshot(edisplay, app)

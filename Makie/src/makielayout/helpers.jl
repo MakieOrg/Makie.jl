@@ -12,7 +12,7 @@ end
 
 function sceneareanode!(finalbbox, limits, aspect)
     area_obs = Observable(Rect2i(); ignore_equal_values = true)
-    onany(finalbbox, limits, aspect; update=true) do bbox, limits, aspect
+    onany(finalbbox, limits, aspect; update = true) do bbox, limits, aspect
         w = width(bbox)
         h = height(bbox)
         # as = mw / mh
