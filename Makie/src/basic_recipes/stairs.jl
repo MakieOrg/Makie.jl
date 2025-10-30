@@ -5,7 +5,7 @@ Plot a stair function.
 
 The conversion trait of `stairs` is `PointBased`.
 """
-@recipe Stairs begin
+@recipe Stairs (positions,) begin
     """
     The `step` parameter can take the following values:
     - `:pre`: horizontal part of step extends to the left of each value in `xs`.
@@ -19,7 +19,7 @@ end
 conversion_trait(::Type{<:Stairs}) = PointBased()
 
 function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where {T <: Point2}
-    map!(p, [:converted_1, :step], :steppoints) do points, step
+    map!(p, [:positions, :step], :steppoints) do points, step
         if step === :pre
             s_points = Vector{T}(undef, length(points) * 2 - 1)
             s_points[1] = point = points[1]

@@ -8,7 +8,7 @@ in scene coordinates (0 to 1). All four of these can have single or multiple val
 they are broadcast to calculate the final spans.
 Both bounds can be passed together as an interval `ys_lowhigh`.
 """
-@recipe HSpan (low, high) begin
+@recipe HSpan (low::Union{Real, RealVector}, high::Union{Real, RealVector}) begin
     "The start of the bands in relative axis units (0 to 1) along the x dimension."
     xmin = 0
     "The end of the bands in relative axis units (0 to 1) along the x dimension."
@@ -26,13 +26,16 @@ in scene coordinates (0 to 1). All four of these can have single or multiple val
 they are broadcast to calculate the final spans.
 Both bounds can be passed together as an interval `xs_lowhigh`.
 """
-@recipe VSpan (low, high) begin
+@recipe VSpan (low::Union{Real, RealVector}, high::Union{Real, RealVector}) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."
     ymin = 0
     "The end of the bands in relative axis units (0 to 1) along the y dimension."
     ymax = 1
     documented_attributes(Poly)...
 end
+
+argument_dims(::Type{<:HSpan}, ylow, yhigh) = (2, 2)
+argument_dims(::Type{<:VSpan}, xlow, yhigh) = (1, 1)
 
 function Makie.plot!(p::Union{HSpan, VSpan})
     mi = p isa HSpan ? :xmin : :ymin

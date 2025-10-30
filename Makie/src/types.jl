@@ -499,6 +499,16 @@ function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
         a.strokewidths == b.strokewidths
 end
 
+struct RichText
+    type::Symbol
+    children::Vector{Union{RichText, String}}
+    attributes::Dict{Symbol, Any}
+    function RichText(type::Symbol, children...; kwargs...)
+        cs = Union{RichText, String}[children...]
+        return new(type, cs, Dict(kwargs))
+    end
+end
+
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

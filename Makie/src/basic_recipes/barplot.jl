@@ -129,6 +129,7 @@ Plots bars of the given `heights` at the given (scalar) `positions`.
 end
 
 conversion_trait(::Type{<:BarPlot}) = PointBased()
+argument_dim_kwargs(::Type{<:BarPlot}) = (:direction,)
 
 function bar_rectangle(x, y, width, fillto, in_y_direction)
     # y could be smaller than fillto...

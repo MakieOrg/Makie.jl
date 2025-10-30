@@ -101,6 +101,7 @@ function convert_arguments end
 convert_arguments(::NoConversion, args...; kw...) = args
 
 get_element_type(::T) where {T} = T
+get_element_type(t::Tuple) = get_element_type(first(t))
 function get_element_type(arr::AbstractArray{T}) where {T}
     if T == Any
         return mapreduce(typeof, promote_type, arr)
@@ -117,35 +118,19 @@ function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
 end
 
 function types_for_plot_arguments(::PointBased)
-    return Tuple{AbstractVector{<:Union{Point2, Point3}}}
+    return Tuple{AbstractVector{<:Union{Point2{<:Real}, Point3{<:Real}}}}
 end
 
-should_dim_convert(::Type) = false
+types_for_plot_arguments(::ImageLike) = Tuple{EndPoints{<:Real}, EndPoints{<:Real}, Matrix{<:Real}}
 
-"""
-    should_dim_convert(::Type{<: Plot}, args)::Bool
-    should_dim_convert(eltype::DataType)::Bool
+function types_for_plot_arguments(::GridBased)
+    return Tuple{AbstractArray{<:Real}, AbstractArray{<:Real}, Matrix{<:Real}}
+end
 
-Returns `true` if the plot type should convert its arguments via DimConversions.
-Needs to be overloaded for recipes that want to use DimConversions. Also needs
-to be overloaded for DimConversions, e.g. for CategoricalConversion:
-
-```julia
-    should_dim_convert(::Type{Categorical}) = true
-```
-
-`should_dim_convert(::Type{<: Plot}, args)` falls back on checking if
-`has_typed_convert(plot_or_trait)` and `should_dim_convert(get_element_type(args))`
- are true. The former is defined as true by `@convert_target`, i.e. when
-`convert_arguments_typed` is defined for the given plot type or conversion trait.
-The latter marks specific types as convertible.
-
-If a recipe wants to use dim conversions, it should overload this function:
-```julia
-    should_dim_convert(::Type{<:MyPlotType}, args) = should_dim_convert(get_element_type(args))
-``
-"""
-function should_dim_convert(P, arg)
-    isnothing(types_for_plot_arguments(P)) && return false
-    return should_dim_convert(get_element_type(arg))
+function types_for_plot_arguments(::VolumeLike)
+    # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
+    return Tuple{
+        EndPoints{<:Real}, EndPoints{<:Real}, EndPoints{<:Real},
+        AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
+    }
 end

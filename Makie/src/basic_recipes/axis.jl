@@ -100,6 +100,9 @@ $(ATTRIBUTES)
     )
 end
 
+argument_dim_kwargs(::Type{<:Axis3D}) = tuple()
+argument_dims(::Type{<:Axis3D}, args...) = nothing
+
 isaxis(x) = false
 isaxis(x::Axis3D) = true
 

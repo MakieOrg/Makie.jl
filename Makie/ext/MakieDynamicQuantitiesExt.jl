@@ -5,7 +5,6 @@ import DynamicQuantities as DQ
 
 M.expand_dimensions(::M.PointBased, y::AbstractVector{<:DQ.UnionAbstractQuantity}) = (keys(y), y)
 M.create_dim_conversion(::Type{<:DQ.UnionAbstractQuantity}) = M.DQConversion()
-M.should_dim_convert(::Type{<:DQ.UnionAbstractQuantity}) = true
 
 unit_string(quantity::DQ.UnionAbstractQuantity) = string(DQ.dimension(quantity))
 
@@ -24,17 +23,21 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
 end
 
 needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
+show_dim_convert_in_ticklabel(::M.DQConversion) = false
+show_dim_convert_in_axis_label(::M.DQConversion) = true
 
-function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax)
+function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     quantity = conversion.quantity[]
     quantity isa M.Automatic && return [], []
     unit_str = unit_string(quantity)
     tick_vals, labels = M.get_ticks(ticks, scale, formatter, vmin, vmax)
-    if conversion.units_in_label[]
+    if show_in_label
         labels = labels .* unit_str
     end
     return tick_vals, labels
 end
+
+M.get_label_suffix(conversion::M.DQConversion) = unit_string(conversion.quantity[])
 
 function M.convert_dim_value(conversion::M.DQConversion, attr, values, last_values)
     if conversion.quantity[] isa M.Automatic
