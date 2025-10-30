@@ -1,4 +1,3 @@
-
 function click(events::Events, pos::VecTypes{2}, button::Mouse.Button = Mouse.left)
     events.mouseposition[] = pos
     events.mousebutton[] = Makie.MouseButtonEvent(button, Mouse.press)
@@ -48,6 +47,6 @@ function wait_for_data_inspector(action, fig, inspector, visible = nothing)
     end
     @info "Time waited: $(time() - t0)"
     # WGLMakie also needs time to render?
-    isdefined(Main, :WGLMakie) && sleep(2/30)
+    isdefined(Main, :WGLMakie) && sleep(2 / 30)
     return
 end

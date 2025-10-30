@@ -30,7 +30,7 @@ function get_default_tooltip_label(element::PlotElement{<:Hist}, pos)
     return Point(bin_pos, abs(bin_height))
 end
 
-function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:BarPlot}, pos)
     poly_element = child(element)
     rect = poly_element.arg1
     ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
@@ -79,7 +79,7 @@ function get_default_tooltip_label(element::PlotElement{<:Union{Contour, Contour
     return get_plot(element).zlevels[][idx]
 end
 
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Contourf}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:Contourf}, pos)
     poly_element = child(element)
     polygon = poly_element.arg1
     # Careful, convert_arguments() may return just return exterior (===)
@@ -220,7 +220,7 @@ function get_default_tooltip_label(element::PlotElement{<:Density}, pos)
     end
 end
 
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Band}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:Band}, pos)
     p1 = to_ndim(Point3d, element.lowerpoints, 0)
     p2 = to_ndim(Point3d, element.upperpoints, 0)
 

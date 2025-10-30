@@ -1,4 +1,4 @@
-mutable struct DataInspector2
+mutable struct DataInspector
     parent::Scene
 
     persistent_tooltips::Dict{UInt64, Tooltip}
@@ -17,7 +17,7 @@ mutable struct DataInspector2
     obsfuncs::Vector{Any}
     update_channel::Channel{Nothing}
 
-    function DataInspector2(
+    function DataInspector(
             parent, persistent, dynamic, plot_cache,
             inspector_attr, tooltip_attr, indicator_attr,
             obsfuncs, channel
@@ -38,7 +38,7 @@ mutable struct DataInspector2
     end
 end
 
-function destroy!(inspector::DataInspector2)
+function destroy!(inspector::DataInspector)
     foreach(off, inspector.obsfuncs)
     empty!(inspector.obsfuncs)
 
@@ -59,8 +59,8 @@ Base.delete!(inspector::DataInspector) = destroy!(inspector)
 
 
 """
-    DataInspector2(axis; kwargs...)
-    DataInspector2(scenelike; kwargs...)
+    DataInspector(axis; kwargs...)
+    DataInspector(scenelike; kwargs...)
 
 Create a DataInspector for the given `axis` or `scene`-like object. This will
 enable tooltips for plots within the axis/parent scene.
@@ -139,7 +139,7 @@ an indicator
 
 See the relevant functions for more detail.
 """
-function DataInspector2(obj; blocking = false, no_tick_discard = false, kwargs...)
+function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...)
     parent = get_scene(obj)
     if !isnothing(parent.data_inspector)
         return parent.data_inspector
@@ -182,7 +182,7 @@ function DataInspector2(obj; blocking = false, no_tick_discard = false, kwargs..
     )
     register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
 
-    inspector = DataInspector2(
+    inspector = DataInspector(
         parent, Dict{UInt64, Tooltip}(), tt, Dict{Type, Plot}(),
         inspector_attr, Attributes(kwarg_dict), indicator_attr,
         Any[], Channel{Nothing}(Inf)
@@ -248,7 +248,7 @@ end
 ### Dynamic Tooltips
 ################################################################################
 
-function update_tooltip!(di::DataInspector2)
+function update_tooltip!(di::DataInspector)
     e = events(di.parent)
     mp = e.mouseposition[]
     di.last_mouseposition = mp
@@ -287,8 +287,8 @@ function update_tooltip!(di::DataInspector2)
     return
 end
 
-function update_tooltip!(di::DataInspector2, source_plot::Plot, source_index::Integer)
-    function border_dodging_placement(di::DataInspector2, proj_pos)
+function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Integer)
+    function border_dodging_placement(di::DataInspector, proj_pos)
         wx, wy = widths(viewport(di.parent)[])
         px, py = proj_pos
         l, r, b, t = di.inspector_attributes[:dodge_margins][]
@@ -535,7 +535,7 @@ apply_tooltip_overwrites!(::PlotElement, tt) = nothing
 ### Indicator infrastructure
 ################################################################################
 
-function update_indicator_internal!(di::DataInspector2, element::PlotElement, pos)
+function update_indicator_internal!(di::DataInspector, element::PlotElement, pos)
     hide_indicators!(di)
     maybe_indicator = update_indicator!(di, element, pos)
     # TODO: Are these really things that should always happen?
@@ -546,9 +546,9 @@ function update_indicator_internal!(di::DataInspector2, element::PlotElement, po
     return
 end
 
-update_indicator!(di::DataInspector2, element::PlotElement, pos) = nothing
+update_indicator!(di::DataInspector, element::PlotElement, pos) = nothing
 
-function hide_indicators!(di::DataInspector2)
+function hide_indicators!(di::DataInspector)
     foreach(values(di.indicator_cache)) do plot
         update!(plot, visible = false)
     end
@@ -562,7 +562,7 @@ Returns a cached indicator plot of the given `PlotType`. If the plot has not yet
 been initialized `construct_indicator_plot(inspector, PlotType)` will be called
 to do so.
 """
-function get_indicator_plot(di::DataInspector2, PlotType)
+function get_indicator_plot(di::DataInspector, PlotType)
     return get!(di.indicator_cache, PlotType) do
         # Band-aid for LScene where a new plot triggers re-centering of the scene
         cc = cameracontrols(di.parent)
@@ -597,12 +597,12 @@ method should only handle one plot. Attributes may be sourced from the
 DataInspector.
 
 ```julia
-function construct_indicator_plot(di::DataInspector2, ::Type{<:PlotType})
+function construct_indicator_plot(di::DataInspector, ::Type{<:PlotType})
     return plot!(di.parent, Point3d[], visible = false, inspectable = false, ...)
 end
 ```
 """
-function construct_indicator_plot(di::DataInspector2, ::Type{<:LineSegments})
+function construct_indicator_plot(di::DataInspector, ::Type{<:LineSegments})
     a = di.indicator_attributes
     return linesegments!(
         di.parent, Point3d[], color = a.color,
@@ -611,7 +611,7 @@ function construct_indicator_plot(di::DataInspector2, ::Type{<:LineSegments})
     )
 end
 
-function construct_indicator_plot(di::DataInspector2, ::Type{<:Lines})
+function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
     a = di.indicator_attributes
     return lines!(
         di.parent, Point3d[], color = a.color,
@@ -620,7 +620,7 @@ function construct_indicator_plot(di::DataInspector2, ::Type{<:Lines})
     )
 end
 
-function construct_indicator_plot(di::DataInspector2, ::Type{<:Scatter})
+function construct_indicator_plot(di::DataInspector, ::Type{<:Scatter})
     a = di.indicator_attributes
     range = di.inspector_attributes.range
     return scatter!(
@@ -659,7 +659,7 @@ function update_indicator!(inspector, element::PlotElement{<:InspectedPlotType},
 end
 ```
 """
-function update_indicator!(di::DataInspector2, element::PlotElement{<:MeshScatter}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:MeshScatter}, pos)
     # Attribute based transformations of scattered mesh
     translation = to_ndim(Point3d, pos, 0)
     rotation = to_rotation(element.rotation)
@@ -680,7 +680,7 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:MeshScatte
     return indicator
 end
 
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Mesh}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:Mesh}, pos)
     # get and update indicator
     bbox = data_limits(get_plot(element))
     indicator = get_indicator_plot(di, LineSegments)
@@ -689,10 +689,10 @@ function update_indicator!(di::DataInspector2, element::PlotElement{<:Mesh}, pos
     return indicator
 end
 
-function update_indicator!(di::DataInspector2, element::PlotElement{<:HeatmapShader}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:HeatmapShader}, pos)
     return update_indicator!(di, child(element), pos)
 end
-function update_indicator!(di::DataInspector2, element::PlotElement{<:Union{Image, Heatmap}}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image, Heatmap}}, pos)
     if element.interpolate[]
         indicator = get_indicator_plot(di, Scatter)
         p3d = to_ndim(Point3d, pos, 0)
@@ -718,7 +718,7 @@ end
 ### persistent tooltips
 ################################################################################
 
-function update_persistent_tooltips!(di::DataInspector2)
+function update_persistent_tooltips!(di::DataInspector)
     e = events(di.parent)
 
     if !ispressed(e, di.inspector_attributes.persistent_tooltip_key[]) || !is_mouseinside(di.parent)
@@ -793,7 +793,7 @@ function get_accessor(plot::TextLabel, idx, plot_stack::Tuple{<:Poly, Vararg{Plo
     return IndexedAccessor(idx, N)
 end
 
-function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) where {PT}
+function add_persistent_tooltip!(di::DataInspector, element::PlotElement{PT}) where {PT}
     id = objectid(get_plot(element))
     if haskey(di.persistent_tooltips, id)
         tt = di.persistent_tooltips[id]
@@ -812,7 +812,7 @@ function add_persistent_tooltip!(di::DataInspector2, element::PlotElement{PT}) w
     return true
 end
 
-function remove_persistent_tooltip!(di::DataInspector2, tooltip_element::PlotElement{<:Tooltip})
+function remove_persistent_tooltip!(di::DataInspector, tooltip_element::PlotElement{<:Tooltip})
     tt = get_plot(tooltip_element)
     key = findfirst(==(tt), di.persistent_tooltips)
 

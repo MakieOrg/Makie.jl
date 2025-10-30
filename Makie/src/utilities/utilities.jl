@@ -458,7 +458,7 @@ end
 function surface2mesh(ps::AbstractVector{<:VecTypes{3}}, size)
     # untesselated Rect2 is defined in counter-clockwise fashion (for x and y)
     if size == (2, 2)
-        faces = [QuadFace{Int}(1,2,4,3)]
+        faces = [QuadFace{Int}(1, 2, 4, 3)]
         faces = filter(f -> !any(i -> isnan(ps[i]), f), faces)
         uv = Vec2f[(0, 1), (1, 1), (0, 0), (1, 0)]
         return GeometryBasics.Mesh(ps, faces, uv = uv, normal = nan_aware_normals(ps, faces))

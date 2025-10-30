@@ -542,7 +542,7 @@ end
     # Prevent the hover event Channel getting closed
     e.window_open[] = true
     # blocking = true forces immediately resolution of DataInspector updates
-    di = Makie.DataInspector2(
+    di = Makie.DataInspector(
         scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
         textpadding = (2, 2, 2, 2),
         blocking = true, no_tick_discard = true
@@ -600,7 +600,7 @@ end
 
     dis = []
     for a in f.content
-        di = Makie.DataInspector2(a, blocking = true, no_tick_discard = true)
+        di = Makie.DataInspector(a, blocking = true, no_tick_discard = true)
         # force indicator plots to be created for WGLMakie
         Makie.get_indicator_plot(di, LineSegments)
         Makie.get_indicator_plot(di, Lines)
@@ -642,8 +642,8 @@ end
 @reference_test "DataInspector persistent tooltips" begin
     xy = [Point2f(x, y) for x in -2:2 for y in -2:2]
     f = Figure(size = (400, 400))
-    a,p = scatter(f[1, 1], xy, markersize = 20)
-    di = Makie.DataInspector2(a)
+    a, p = scatter(f[1, 1], xy, markersize = 20)
+    di = Makie.DataInspector(a)
     st = Makie.Stepper(f)
 
     e = events(f)

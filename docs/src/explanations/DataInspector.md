@@ -8,7 +8,7 @@ To initialize DataInspector it needs to be constructed with an axis-like Block o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin)
-Makie.DataInspector2(a)
+Makie.DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
 f
 ```
@@ -30,7 +30,7 @@ The first is a plain String, which will be displayed when hovering any element o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
-Makie.DataInspector2(a)
+Makie.DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
 f
 ```
@@ -41,7 +41,7 @@ For this the plot needs to be discrete like `scatter` rather than continuous lik
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
-Makie.DataInspector2(a)
+Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
 ```
@@ -64,7 +64,7 @@ function mylabel(element, pos)
 end
 
 f,a,p = scatter(1:10, color = range(0, 1, 10), inspector_label = mylabel)
-Makie.DataInspector2(a)
+Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
 ```
@@ -86,7 +86,7 @@ If there are other plots nearby, tooltips will be generated for the next closest
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspectable = false)
-Makie.DataInspector2(a)
+Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
 f
 ```
@@ -257,7 +257,7 @@ This requires `construct_indicator_plot(inspector, PlotType)` to exist.
 For `Lines` this function already exists and looks like this:
 
 ```julia
-function construct_indicator_plot(di::DataInspector2, ::Type{<:Lines})
+function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
     a = di.inspector_attributes
     return lines!(
         di.parent, Point3d[], color = a.indicator_color,
@@ -273,7 +273,7 @@ We can convert our rectangle to that with `convert_arguments(...)` and `to_ndim(
 The whole `update_indicator!(...)` then becomes:
 
 ```julia
-function update_indicator!(di::DataInspector2, element::PlotElement{<:BarPlot}, pos)
+function update_indicator!(di::DataInspector, element::PlotElement{<:BarPlot}, pos)
     poly_element = child(element)
     rect = poly_element.arg1
     ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
