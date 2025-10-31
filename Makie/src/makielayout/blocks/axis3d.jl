@@ -800,7 +800,7 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0),
+        transformation = (plane, 0), clip_planes = Plane3f[]
     )
 
     on(plane_offset) do offset
