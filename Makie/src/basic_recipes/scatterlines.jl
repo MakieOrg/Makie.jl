@@ -53,6 +53,7 @@ function plot!(p::ScatterLines)
         colorrange = p.colorrange,
         inspectable = p.inspectable,
         clip_planes = p.clip_planes,
+        visible = p.visible,
     )
     scatter!(
         p, p.positions;
@@ -67,6 +68,7 @@ function plot!(p::ScatterLines)
         colorrange = p.real_markercolorrange,
         inspectable = p.inspectable,
         clip_planes = p.clip_planes,
+        visible = p.visible,
     )
     return p
 end
