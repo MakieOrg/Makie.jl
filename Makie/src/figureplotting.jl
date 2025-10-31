@@ -142,7 +142,7 @@ args_preferred_axis(::AbstractVector{<:Point2}) = Axis
 # axis attributes
 
 """
-    preferred_axis_attributes(plot::Plot, ::Type{<:Block}[, args...])
+    preferred_axis_attributes(plot::Plot, ::Type{<:Block})
 
 Sets the default axis attributes when a plot creates an axis. The axis may be
 created based on `args_preferred_axis()` or by the user setting
@@ -150,20 +150,9 @@ created based on `args_preferred_axis()` or by the user setting
 attributes returned by this function.
 
 The return type is expected to be a Dict-like collection (e.g. Attributes, Dict,
-NamedTuple) or `nothing`.
+NamedTuple).
 """
-function preferred_axis_attributes(p::Plot, ::Type{AxisType}) where {AxisType <: Block}
-    input_args = p.args[]
-    result = preferred_axis_attributes(p, AxisType, input_args...)
-    isnothing(result) || return result
-
-    conv_args = p.converted[]
-    result = preferred_axis_attributes(p, AxisType, conv_args...)
-    # Fallback to Axis if nothing found
-    return isnothing(result) ? NamedTuple() : result
-end
-
-preferred_axis_attributes(::Plot, ::Type{<:Block}, args...) = nothing
+preferred_axis_attributes(p::Plot, ::Type{<:Block}) = NamedTuple()
 
 to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
