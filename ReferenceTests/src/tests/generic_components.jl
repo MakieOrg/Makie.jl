@@ -463,94 +463,226 @@ end
 end
 
 @reference_test "DataInspector" begin
-    scene = Scene(camera = campixel!, size = (290, 140))
+    scene = Scene(camera = campixel!, size = (290, 230))
 
-    p1 = scatter!(scene, Point2f(20), markersize = 30)
-    p2 = meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
-    p3 = lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
-    p4 = linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
-    p5 = mesh!(scene, Rect2f(10, 80, 40, 40))
-    p6 = surface!(scene, 60 .. 100, 80 .. 120, [1 2; 3 4])
-    p7 = heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
-    p8 = image!(scene, 120 .. 160, 60 .. 100, [1 2; 3 4])
+    # bottom rect (roughly 0..290 x 0..140)
 
-    # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
-    p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
-    p10 = arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
-    p11 = arrows3d!(
+    # primitives
+    scatter!(scene, Point2f(20), markersize = 30)
+    meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
+    lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
+    linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
+    mesh!(scene, Rect2f(10, 80, 40, 40))
+    surface!(scene, 60 .. 100, 80 .. 120, [1 2; 3 4])
+    heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
+    image!(scene, 120 .. 160, 60 .. 100, [1 2; 3 4])
+
+    # barplot, arrows, contourf, volumeslices, band, spy,
+    barplot!(scene, [180, 200, 220], [40, 20, 60])
+    arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
+    arrows3d!(
         scene, Point3f[(220, 80, 0)], Vec3f[(-48, -16, 0)],
         shaftradius = 2.5, tiplength = 15, tipradius = 7, markerscale = 1.0
     )
-    p12 = contourf!(scene, 240 .. 280, 10 .. 50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
-    p13 = spy!(scene, 240 .. 280, 60 .. 100, [1 2 1; 2 0 2; 1 2 1])
-    p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+    contourf!(scene, 240 .. 280, 10 .. 50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
+    spy!(scene, 240 .. 280, 60 .. 100, [1 2 1; 2 0 2; 1 2 1])
+    band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+
+    # lines!(scene, [0, 285, 285], [135, 135, 0])
+
+    # below top row
+    arc!(scene, Point2f(25, 140), 15, pi / 3, pi, linewidth = 10)
+    contour!(scene, 40:5:80, 140:5:180, [sqrt(x^2 + y^2) for x in -4:4, y in -4:4], levels = 3, linewidth = 5)
+    crossbar!(scene, [90, 105], [160, 160], [140, 145], [170, 165], width = 15)
+    p = density!(scene, 10 .* sin.(1:100))
+    translate!(p, 135, 140, 0)
+    scale!(p, 1, 700, 1)
+    errorbars!(scene, [160], [155], [10], linewidth = 5, whiskerwidth = 10)
+    rangebars!(scene, [175], [140], [170], linewidth = 5, whiskerwidth = 10)
+    hexbin!(scene, 200 .+ 10 .* sin.(1:100), 160 .+ 10 .* cos.(1:100), bins = 4)
+    p = hist!(scene, 230 .+ 10 .* sin.(1:100), bins = 4)
+    translate!(p, 0, 140, 0)
+    pie!(scene, 260, 160, [3, 5, 7, 11, 13], radius = 15, color = 1:5)
+
+    poly!(scene, [10, 30, 20], [170, 165, 180])
+
+    # top row
+    p = rainclouds!(scene, ones(100), 200 .+ 10 .* sin.(1:100))
+    translate!(p, -40, 0, 0)
+    scale!(p, 70, 1, 1)
+    scatterlines!(scene, [60, 50, 60], [190, 200, 210], linewidth = 3, markersize = 10)
+    series!(scene, [Point2f.([80, 70, 80], [190, 200, 210])], linewidth = 4)
+    stairs!(scene, [90, 100, 110], [190, 210, 200], linewidth = 4)
+    stem!(scene, [120, 130], [200, 210], offset = 190, stemwidth = 3, trunkwidth = 3, markersize = 10)
+    p = stephist!(scene, 150 .+ 10 .* sin.(1:70), bins = 4, linewidth = 4)
+    translate!(p, 0, 190, 0)
+    tricontourf!(scene, 180 .+ 15 .* sin.(1:100), 200 .+ 15 .* cos.(1:100), 1:100, levels = 3)
+    p = violin!(scene, ones(100), 200 .+ 10 .* sin.(range(0, 10, length = 100) .^ 2), side = ifelse.(1:100 .> 50, :left, :right))
+    translate!(p, 190, 0, 0)
+    scale!(p, 20, 1, 1)
+    v = p
+    p = waterfall!(scene, [230, 240], [25, -15])
+    translate!(p, 0, 190, 0)
+
+    # mouse positions for targetting each plot
+    mps = [
+        # 0..285 x 0..135 block
+        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
+        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35),
+        (217, 79), (200, 45), (181, 67), (260, 30), (260, 90), (205, 110),
+        # top-1 row
+        (17, 153), (67, 163), (90, 152), (139, 153), (160, 163), (175, 150), (210, 156),
+        (235, 145), (265, 154), (20, 175),
+        # top row
+        (17, 209), (32, 194), (39, 193), (61, 211), (56, 195), (76, 207), (101, 199),
+        (130, 195), (155, 214), (185, 193), (205, 193), (214, 208), (242, 208),
+    ]
 
     e = events(scene)
     # Prevent the hover event Channel getting closed
     e.window_open[] = true
     # blocking = true forces immediately resolution of DataInspector updates
-    di = DataInspector(
+    di = Makie.DataInspector(
         scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
-        textpadding = (2, 2, 2, 2), blocking = true
+        textpadding = (2, 2, 2, 2),
+        blocking = true, no_tick_discard = true
     )
     # force indicator plots to be created for WGLMakie
-    Makie.get_indicator_plot(di, scene, Lines)
-    Makie.get_indicator_plot(di, scene, LineSegments)
-    Makie.get_indicator_plot(di, scene, Scatter)
+    Makie.get_indicator_plot(di, Lines)
+    Makie.get_indicator_plot(di, LineSegments)
+    Makie.get_indicator_plot(di, Scatter)
     scene
 
     st = Makie.Stepper(scene)
 
-    mps = [
-        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
-        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35), (200, 45),
-        (217, 79), (181, 67), (260, 30), (260, 90), (205, 110),
-    ]
-
     # record
     for mp in mps
         # remove tooltip so we don't select it
-        e.mouseposition[] = (289, 139)
-        colorbuffer(scene) # force update of picking buffer
-        sleep(0.15) # wait for WGLMakie
-        @test isempty(di.temp_plots) # verify cleanup
-        e.mouseposition[] = mp
-        sleep(0.15) # wait for WGLMakie
+        wait_for_data_inspector(scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
+
+        wait_for_data_inspector(scene, di, true) do
+            e.mouseposition[] = mp
+        end
+        @test !di.dynamic_tooltip.visible[] # verify show
         Makie.step!(st)
     end
 
     st
 end
 
-@reference_test "DataInspector 2" begin
-    f = Figure(size = (500, 500))
-    a, p = volumeslices(f[1, 1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
+@reference_test "DataInspector continued" begin
+    f = Figure(size = (450, 750))
+    col3d = f[1, 1]
+    data3d = reshape(sin.(1:1000), (10, 10, 10))
+    volumeslices(col3d[1, 1], 1:10, 1:10, 1:10, data3d)
+    voxels(col3d[2, 1], data3d)
+    contour3d(col3d[3, 1], 1:10, 1:10, reshape(10 .* sin.(1:100), (10, 10)), linewidth = 3)
+    wireframe(col3d[4, 1], Rect3d(0, 0, 0, 1, 1, 1))
+
+    col2d = f[1, 2]
     x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
     y = sin.(2:2:20000) .* sin.(5:5:50000)
-    a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
-    a, p3 = heatmap(f[2, 2], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
-    Colorbar(f[1, 3], p2)
+    datashader(col2d[1, 1], Point2f.(x, y), async = false)
+    heatmap(col2d[2, 1], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
+    ablines(col2d[3, 1], 0, 1.0)
+    hlines!(1)
+    vlines!(1)
+    hspan!(9, 10)
+    vspan!(9, 10)
+
+    colsize!(f.layout, 1, 125)
+
     e = events(f)
     e.window_open[] = true # Prevent the hover event Channel from getting closed
-    di = DataInspector(f, blocking = true)
-    # force indicator plots to be created for WGLMakie
-    Makie.get_indicator_plot(di, a.scene, LineSegments)
-    Makie.get_indicator_plot(di, a.scene, Lines)
-    Makie.get_indicator_plot(di, a.scene, Scatter)
-    f
+
+    dis = []
+    for a in f.content
+        di = Makie.DataInspector(a, blocking = true, no_tick_discard = true)
+        # force indicator plots to be created for WGLMakie
+        Makie.get_indicator_plot(di, LineSegments)
+        Makie.get_indicator_plot(di, Lines)
+        Makie.get_indicator_plot(di, Scatter)
+        push!(dis, di)
+    end
+
+    mps = [
+        # 3D
+        (97.0, 658.0), (65.0, 634.0), (98.0, 471.0), (75.0, 314.0), (102.0, 140.0),
+        # 2D
+        (315.0, 632.0), (312.0, 387.0), (362.0, 226.0), (410.0, 146.0), (311.0, 134.0),
+        (210.0, 151.0), (305.0, 41.0),
+    ]
 
     st = Makie.Stepper(f)
 
-    mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
-    for (i, mp) in enumerate(mps)
-        e.mouseposition[] = (1, 1)
-        colorbuffer(f) # force update of picking buffer
-        sleep(0.15) # wait for WGLMakie
-        @test isempty(di.temp_plots) # verify cleanup
-        e.mouseposition[] = mp
-        sleep(0.2 + (i == 2)) # wait for WGLMakie, datashader extra slow
+    # record
+    for mp in mps
+        idx = findfirst(block -> mp in block.scene.viewport[], f.content)
+
+        wait_for_data_inspector(f, dis[idx], true) do
+            e.mouseposition[] = mp
+        end
         Makie.step!(st)
+
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(f, dis[idx], false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+
+        # verify cleanup
+        @test !any(di -> di.dynamic_tooltip.visible[], dis)
     end
+
+    st
+end
+
+@reference_test "DataInspector persistent tooltips" begin
+    xy = [Point2f(x, y) for x in -2:2 for y in -2:2]
+    f = Figure(size = (400, 400))
+    a, p = scatter(f[1, 1], xy, markersize = 20)
+    di = Makie.DataInspector(a)
+    st = Makie.Stepper(f)
+
+    e = events(f)
+
+    # Make 3 persistent tooltips
+    mps = [(135, 290), (213, 209), (291, 130)]
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    for mp in mps
+        wait_for_data_inspector(f, di) do
+            e.mouseposition[] = mp
+        end
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that tooltips move with axis changes
+    Makie.xlims!(a, -4, 4)
+    Makie.ylims!(a, -3, 4)
+
+    Makie.step!(st)
+
+    # remove center tooltip
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (210, 220)
+    end
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that model is included
+    translate!(p, 0, 1, 0)
+
+    Makie.step!(st)
 
     st
 end
