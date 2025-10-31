@@ -326,7 +326,7 @@ function Makie.preferred_axis_attributes(::HintLines, ::Type{<:Axis})
     return (
         xlabel = "x", ylabel = "y label", title = "Title",
         xticklabelsize = 10, xticklabelrotation = 0.3,
-        xgridvisible = false
+        xgridvisible = false,
     )
 end
 function Makie.preferred_axis_attributes(::HintLines, ::Type{<:Axis3})
