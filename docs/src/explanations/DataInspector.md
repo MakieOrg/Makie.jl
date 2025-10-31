@@ -8,13 +8,13 @@ To initialize DataInspector it needs to be constructed with an axis-like Block o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin)
-Makie.DataInspector(a)
-f
+inspector = Makie.DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
-img = colorbuffer(f, update = false) # hide
-scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
-scene # hide
+colorbuffer(f) # hide
+while !inspector.dynamic_tooltip.visible[] # hide
+	yield() # hide
+end # hide
+f
 ```
 
 !!! note
@@ -34,13 +34,13 @@ The first is a plain String, which will be displayed when hovering any element o
 
 ```@figure backend=GLMakie
 f, a, p = lines(0..2pi, sin, inspector_label = "constant label")
-Makie.DataInspector(a)
+inspector = Makie.DataInspector(a)
 events(f).mouseposition[] = (300, 300) # hide
+colorbuffer(f) # hide
+while !inspector.dynamic_tooltip.visible[] # hide
+	yield() # hide
+end # hide
 f
-img = colorbuffer(f, update = false) # hide
-scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
-scene # hide
 ```
 
 The second is an array (or other indexable collection) of strings.
@@ -49,13 +49,13 @@ For this the plot needs to be discrete like `scatter` rather than continuous lik
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspector_label = ["Label $i" for i in 1:10])
-Makie.DataInspector(a)
+inspector = Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
+colorbuffer(f) # hide
+while !inspector.dynamic_tooltip.visible[] # hide
+	yield() # hide
+end # hide
 f
-img = colorbuffer(f, update = false) # hide
-scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
-scene # hide
 ```
 
 The third option is to manually construct a label from plot data using a callback function.
@@ -76,13 +76,13 @@ function mylabel(element, pos)
 end
 
 f,a,p = scatter(1:10, color = range(0, 1, 10), inspector_label = mylabel)
-Makie.DataInspector(a)
+inspector = Makie.DataInspector(a)
 events(f).mouseposition[] = (340, 255) # hide
+colorbuffer(f) # hide
+while !inspector.dynamic_tooltip.visible[] # hide
+	yield() # hide
+end # hide
 f
-img = colorbuffer(f, update = false) # hide
-scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
-scene # hide
 ```
 
 Note that `PlotElement` also contains the plot type as the first type parameter.
@@ -102,13 +102,8 @@ If there are other plots nearby, tooltips will be generated for the next closest
 
 ```@figure backend=GLMakie
 f, a, p = scatter(1:10, inspectable = false)
-Makie.DataInspector(a)
-events(f).mouseposition[] = (340, 255) # hide
+inspector = Makie.DataInspector(a)
 f
-img = colorbuffer(f, update = false) # hide
-scene = Scene() # hide
-image!(scene, -1..1, -1..1, img) # hide
-scene # hide
 ```
 
 ### Indicators
@@ -117,8 +112,6 @@ For some plots DataInspector generates additional "indicators" to highlight the 
 These can be turned off by setting `enable_indicators = false` either in DataInspector or in individual plots.
 
 ### DataInspector Attributes
-
-TODO add docstring, switch to new
 
 ```@docs
 DataInspector
