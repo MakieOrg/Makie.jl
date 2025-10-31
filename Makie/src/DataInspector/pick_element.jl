@@ -79,6 +79,7 @@ end
 
 # Utilities
 function pick_line_element(scene::Scene, plot, idx)
+    # Note: This isn't aspect aware so it behaves weird in Axis
     # should be cheaper to inv transform one ray than N positions
     pos = plot.positions_transformed_f32c[]
     ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))

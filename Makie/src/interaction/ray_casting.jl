@@ -129,6 +129,11 @@ end
 ### Ray - object intersections
 ################################################################################
 
+function ray_point_distance(P::Point3, ray::Ray)
+    OP = P - ray.origin
+    ray_dist = dot(ray.direction, OP)
+    return norm(OP - ray_dist * ray.direction)
+end
 
 # These work in 2D and 3D
 function closest_point_on_line(A::VecTypes, B::VecTypes, ray::Ray)
