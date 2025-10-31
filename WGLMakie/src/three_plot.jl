@@ -76,7 +76,8 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # https://jupyterlab.readthedocs.io/en/4.2.x/extension/extension_points.html#context-menu
         dataLmSuppressShortcuts = true, dataJpSuppressContextMenu = nothing,
     )
-    wrapper = DOM.div(canvas; style = "width: 100%; height: 100%")
+    # position: relative is needed to make sure that absolute children (e.g., widgets) are positioned correctly
+    wrapper = DOM.div(canvas; style = "width: 100%; height: 100%; position: relative")
     comm = Observable(Dict{String, Any}())
     done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
