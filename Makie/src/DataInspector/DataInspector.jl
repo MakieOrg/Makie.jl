@@ -190,8 +190,6 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
 
     parent.data_inspector = inspector
 
-    e = events(parent)
-
     # dynamic tooltip
 
     # We delegate the hover processing to another channel,
@@ -203,18 +201,18 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
             if isopen(parent)
                 try
                     update_tooltip!(inspector)
-                catch e
+                catch err
                     # Channel task may swallow errors, Julia#51597
                     @info "Error occurred in tooltip update:"
-                    Base.showerror(Base.stderr, e)
-                    rethrow(e)
+                    Base.showerror(Base.stderr, err)
+                    rethrow(err)
                 end
                 # @info inspector.update_counter
             end
         end
     end
     inspector.update_channel = channel
-
+    e = events(parent)
     tick_listener = on(e.tick, priority = tick_priority) do tick
         inspector.update_counter[1] += 1 # TODO: for performance checks, remove later
 
