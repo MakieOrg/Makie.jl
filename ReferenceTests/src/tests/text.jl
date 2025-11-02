@@ -7,8 +7,8 @@
 
     text!(
         ax,
-        string.(round.(vec(values'), digits = 2)),
-        position = [Point2f(x, y) for x in 1:10 for y in 1:10],
+        [Point2f(x, y) for x in 1:10 for y in 1:10];
+        text = string.(round.(vec(values'), digits = 2)),
         align = (:center, :center),
         color = ifelse.(vec(values') .< 0.3, :white, :black),
         fontsize = 12
@@ -21,8 +21,8 @@ end
     pos = [Point2f(0, 0), Point2f(10, 10)]
     text(
         f[1, 1],
-        ["0 is the ORIGIN of this", "10 says hi"],
-        position = pos,
+        pos;
+        text = ["0 is the ORIGIN of this", "10 says hi"],
         axis = (aspect = DataAspect(),),
         markerspace = :data,
         align = (:center, :center),
@@ -32,8 +32,8 @@ end
 
     text(
         f[2, 1],
-        ". This is an annotation!",
-        position = (300, 200),
+        (300, 200);
+        text = ". This is an annotation!",
         align = (:center, :center),
         fontsize = 60,
         font = "Blackchancery"
@@ -51,8 +51,8 @@ end
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
         text!(
-            ax, "test",
-            position = p,
+            ax, p;
+            text = "test",
             fontsize = 50,
             rotation = 1.5pi - r,
             align = (:center, :center)
@@ -73,10 +73,10 @@ end
 
         for rotation in (-pi / 6, 0.0, pi / 6)
             text!(
-                scene, string(halign) * "/" * string(valign) *
+                scene, points[i];
+                text = string(halign) * "/" * string(valign) *
                     " " * string(round(rad2deg(rotation), digits = 0)) * "°",
                 color = (:black, 0.5),
-                position = points[i],
                 align = (halign, valign),
                 rotation = rotation
             )
@@ -130,9 +130,9 @@ end
     for ((justification, halign), point) in zip(Iterators.product(symbols, symbols), points)
 
         t = text!(
-            scene, "a\nshort\nparagraph",
+            scene, point;
+            text = "a\nshort\nparagraph",
             color = (:black, 0.5),
-            position = point,
             align = (halign, :center),
             justification = justification
         )
@@ -163,8 +163,8 @@ end
 
     t1 = text!(
         scene,
-        fill("makie", 4),
-        position = [(150, 150) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)],
+        [(150, 150) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)];
+        text = fill("makie", 4),
         rotation = (pi / 4):(pi / 2):(7pi / 4),
         align = (:left, :center),
         fontsize = 30,
@@ -175,8 +175,8 @@ end
 
     t2 = text!(
         scene,
-        fill("makie", 4),
-        position = [(150, 450) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)],
+        [(150, 450) .+ 60 * Point2f(cos(a), sin(a)) for a in (pi / 4):(pi / 2):(7pi / 4)];
+        text = fill("makie", 4),
         rotation = (pi / 4):(pi / 2):(7pi / 4),
         align = (:left, :center),
         fontsize = 30,
@@ -189,8 +189,8 @@ end
 
         t = text!(
             scene,
-            "makie",
-            position = (450, 150) .+ 60 * Point2f(cos(a), sin(a)),
+            (450, 150) .+ 60 * Point2f(cos(a), sin(a));
+            text = "makie",
             rotation = a,
             align = (:left, :center),
             fontsize = 30,
@@ -201,8 +201,8 @@ end
 
         t2 = text!(
             scene,
-            "makie",
-            position = (450, 450) .+ 60 * Point2f(cos(a), sin(a)),
+            (450, 450) .+ 60 * Point2f(cos(a), sin(a));
+            text = "makie",
             rotation = a,
             align = (:left, :center),
             fontsize = 30,
@@ -221,9 +221,9 @@ end
     f = Figure(size = (600, 600))
     text(
         f[1, 1],
-        fill("Makie", 7),
+        [Point3f(0, 0, i / 2) for i in 1:7];
+        text = fill("Makie", 7),
         rotation = [i / 7 * 1.5pi for i in 1:7],
-        position = [Point3f(0, 0, i / 2) for i in 1:7],
         color = [cgrad(:viridis)[x] for x in LinRange(0, 1, 7)],
         align = (:left, :baseline),
         fontsize = 1,
@@ -234,8 +234,8 @@ end
     positions = RNG.rand(Point3f, 10)
     meshscatter(f[1, 2], positions, color = :white)
     text!(
-        fill("Annotation", 10),
-        position = positions,
+        positions;
+        text = fill("Annotation", 10),
         align = (:center, :center),
         fontsize = 16,
         markerspace = :pixel,
@@ -255,15 +255,17 @@ end
     scene = Scene(camera = campixel!, size = (200, 200))
 
     t1 = text!(
-        scene, "Line1\nLine 2\n\nLine4",
-        position = (50, 100), align = (:center, :center), markerspace = :data
+        scene, (50, 100);
+        text = "Line1\nLine 2\n\nLine4",
+        align = (:center, :center), markerspace = :data
     )
 
     wireframe!(scene, boundingbox(t1, :data), color = (:red, 0.3))
 
     t2 = text!(
-        scene, "\nLine 2\nLine 3\n\n\nLine6\n\n",
-        position = (150, 100), align = (:center, :center), markerspace = :data
+        scene, (150, 100);
+        text = "\nLine 2\nLine 3\n\n\nLine6\n\n",
+        align = (:center, :center), markerspace = :data
     )
 
     wireframe!(scene, boundingbox(t2, :data), color = (:blue, 0.3))
@@ -342,12 +344,12 @@ end
 
     s = LScene(f[1, 2], scenekw = (camera = campixel!,), show_axis = false)
     text!(
-        s, L"\sqrt{2}", position = (100, 50), rotation = pi / 2, fontsize = 20,
+        s, (100, 50); text = L"\sqrt{2}", rotation = pi / 2, fontsize = 20,
         markerspace = :data
     )
 
     t = text!(
-        s, L"\int_0^5x^2+2ab", position = Point2f(50, 150), rotation = 0.0,
+        s, Point2f(50, 150); text = L"\int_0^5x^2+2ab", rotation = 0.0,
         fontsize = 20, markerspace = :data
     )
     wireframe!(s, boundingbox(t, :data), color = :black)
@@ -363,8 +365,8 @@ end
 
     t = text!(
         s,
-        textnode,
-        position = posnode,
+        posnode;
+        text = textnode,
         rotation = 0.0,
         markerspace = :data
     )
@@ -372,8 +374,8 @@ end
     Makie.step!(st)
     ## change lengths
     Makie.update!(
-        t, push!(textnode, L"\int_0^5x^2+2ab");
-        position = push!(posnode, Point2f(150, 150))
+        t, push!(posnode, Point2f(150, 150));
+        text = push!(textnode, L"\int_0^5x^2+2ab");
     )
     Makie.step!(st)
     st
@@ -389,6 +391,7 @@ end
         ]
     )
 
+    # TODO: Is this a thing that is supported?
     t = text!(
         s,
         textposnode,
