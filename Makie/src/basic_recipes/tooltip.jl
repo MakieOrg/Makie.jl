@@ -164,7 +164,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     p = textlabel!(
-        p, p[1], p.text, shape = p.shape,
+        p, p[1]; text = p.text, shape = p.shape,
 
         padding = p.text_padding, justification = p.justification, text_align = p.text_align,
         offset = p.text_offset, fontsize = p.fontsize, font = p.font,

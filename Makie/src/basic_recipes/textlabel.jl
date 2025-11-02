@@ -147,7 +147,7 @@ end
 
 function deprecated_attributes(::Type{<:TextLabel})
     return (
-        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true)
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true),
     )
 end
 
