@@ -316,10 +316,10 @@ cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
 
 to_cairo_image(img::AbstractMatrix{<:Colorant}) = to_cairo_image(to_uint32_color.(img))
 
-function to_cairo_image(img::Matrix{UInt32})
+function to_cairo_image(img::AbstractMatrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y
-    return Cairo.CairoARGBSurface(permutedims(img))
+    return Cairo.CairoARGBSurface(convert(Matrix, permutedims(img)))
 end
 
 
