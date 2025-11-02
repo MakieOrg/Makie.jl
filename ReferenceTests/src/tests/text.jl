@@ -375,7 +375,7 @@ end
     ## change lengths
     Makie.update!(
         t, push!(posnode, Point2f(150, 150));
-        text = push!(textnode, L"\int_0^5x^2+2ab");
+        text = push!(textnode, L"\int_0^5x^2+2ab")
     )
     Makie.step!(st)
     st
