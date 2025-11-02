@@ -668,8 +668,6 @@ Plots one or multiple texts passed via the `text` keyword.
     rotation = 0.0
     "The fontsize in units depending on `markerspace`."
     fontsize = @inherit fontsize
-    "Deprecated: Specifies the position of the text. Use the positional argument to `text` instead."
-    position = (0.0, 0.0)
     "Sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
     justification = automatic
     "The lineheight multiplier."
@@ -694,6 +692,7 @@ end
 function deprecated_attributes(::Type{<:Text})
     return (
         (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true),
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true)
     )
 end
 

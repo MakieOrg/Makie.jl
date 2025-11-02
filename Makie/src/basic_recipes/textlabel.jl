@@ -9,9 +9,7 @@ Plots the given text(s) with a background(s) at the given position(s).
     # text-like args interface
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
-    "Deprecated: Specifies the position of the text. Use the positional argument to `text` instead."
-    position = (0, 0)
-
+    
     # TODO: does not include color mapping for text, backgrounds and background strokes
 
     # Poly background
@@ -145,6 +143,12 @@ Plots the given text(s) with a background(s) at the given position(s).
     draw_on_top = true
     "Adjusts the depth value of the textlabel after all other transformations, i.e. in clip space where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw)."
     depth_shift = 0.0
+end
+
+function deprecated_attributes(::Type{<:TextLabel})
+    return (
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true)
+    )
 end
 
 convert_arguments(::Type{<:TextLabel}, args...) = convert_arguments(Text, args...)

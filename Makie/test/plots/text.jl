@@ -108,14 +108,9 @@ end
 end
 
 @testset "old text syntax" begin
-    text("text", position = Point2f(0, 0))
-    text(["text"], position = [Point2f(0, 0)])
-    text(["text", "text"], position = [Point2f(0, 0), Point2f(1, 1)])
-    text(collect(zip(["text", "text"], [Point2f(0, 0), Point2f(1, 1)])))
-    text(L"text", position = Point2f(0, 0))
-    text([L"text"], position = [Point2f(0, 0)])
-    text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
-    text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
+    err = ["Keyword `position` is deprecated for plot type Makie.Text", "`position` has been deprecated in Makie v0.21."]
+    @test_throws err text("text", position = Point2f(0, 0))
+    @test_throws err text(["text"], position = [Point2f(0, 0)])
 
     err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
