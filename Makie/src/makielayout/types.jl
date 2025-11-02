@@ -53,7 +53,7 @@ struct Cycled
 end
 
 """
-    LinearTicks(n_idea::Int)
+    LinearTicks(n_ideal::Int)
 
 LinearTicks with ideally a number of `n_ideal` tick marks.
 """
