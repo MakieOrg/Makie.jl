@@ -74,9 +74,9 @@ The tooltip string can also be adjusted on a per plot basis using the
 `inspector_label` attribute. It can be set to:
 - a string which is used for every tooltip of the plot
 - a vector of strings where each string maps to an element of the plot. For this
-the plot needs to be treated as a discrete visualization (E.g. scatter, but not lines)
+    the plot needs to be treated as a discrete visualization (E.g. scatter, but not lines)
 - a callback function `(element::PlotElement, position) -> string` which builds a
-string from the selected `PlotElement` and position
+    string from the selected `PlotElement` and position
 
 ## Keyword Arguments
 
@@ -86,22 +86,22 @@ the tooltip styling and indicator styling/defaults.
 ### DataInspector Settings
 
 - `range = 10` sets the (maximum) range of plot picking. This sets the maximum
-distance between the cursor and a plot element for which a tooltip shows up.
+    distance between the cursor and a plot element for which a tooltip shows up.
 - `tick_priority = 1000` sets the priority of the `events.tick` listener used
-for dynamic/hover tooltips
+    for dynamic/hover tooltips
 - `button_priority = 1000` sets the priority of the `events.mousebutton` listener
-used for persistent tooltips
+    used for persistent tooltips
 - `persistent_tooltip_key = Keyboard.left_shift & Mouse.left` sets the key/button
-combination for creating and deleting persistent tooltips
+    combination for creating and deleting persistent tooltips
 - `dodge_margins = (30, 30, 30, 30)` sets the pixel distance to the
-left/right/bottom/top side of the axis/scene below which the tooltip will change
-its placement to avoid the edge
+    left/right/bottom/top side of the axis/scene below which the tooltip will change
+    its placement to avoid the edge
 - `show_indicators = true` allows disabling all indicators for this DataInspector.
-Note that plots can disable indicators individually by setting `show_indicator = false`.
+    Note that plots can disable indicators individually by setting `show_indicator = false`.
 - `blocking = false` when set to true tooltip updates block further event processing
-and rendering.
+    and rendering.
 - `no_tick_discard = false` when set to true any tick update triggers a tooltip
-update.
+    update.
 
 ### Indicator Attributes
 
@@ -127,15 +127,15 @@ that is not enough or produces undesirable results, the various steps in creatin
 a tooltip can be extended. These include:
 
 - `get_accessor(plot, idx, plot_stack)` constructs a accessor which abstracts
-the picked element of a higher level plot. This is used to build the `PlotElement`.
+    the picked element of a higher level plot. This is used to build the `PlotElement`.
 - `get_tooltip_position(element)` returns the position of a `PlotElement`.
 - `get_tooltip_label([formatter,] element, position)` constructs the displayed
-string of the tooltip. Can also return data which will be converted to a string
-by the formatter.
+    string of the tooltip. Can also return data which will be converted to a string
+    by the formatter.
 - `update_indicator!(inspector, element)` updates an indicator to match the
-currently selected plot element.
+    currently selected plot element.
 - `construct_indicator_plot(inspector, PlotType)` creates a plot to be used as
-an indicator
+    an indicator
 
 See the relevant functions for more detail.
 """
