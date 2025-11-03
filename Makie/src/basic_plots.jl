@@ -658,6 +658,8 @@ Plots one or multiple texts passed via the `text` keyword.
     font = @inherit font
     "Used as a dictionary to look up fonts specified by `Symbol`, for example `:regular`, `:bold` or `:italic`."
     fonts = @inherit fonts
+    "Specifies the algorithm of a vector of algorithms that will be used to calculate the layout of the text(s) given in `text`"
+    string_layouter = @inherit string_layouter
     "Sets the color of the outline around a marker."
     strokecolor = (:black, 0.0)
     "Sets the width of the outline around a marker."

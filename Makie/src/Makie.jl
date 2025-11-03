@@ -185,6 +185,8 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
+include("basic_recipes/text/string_layouting.jl")
+
 include("basic_recipes/makiecore_examples/scatter.jl")
 include("basic_recipes/makiecore_examples/lines.jl")
 
@@ -412,7 +414,7 @@ export resize_to_layout!
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
-include("basic_recipes/text.jl")
+include("basic_recipes/text/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
