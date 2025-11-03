@@ -1,3 +1,7 @@
+function plot!(text::Text)
+    @info "text"
+end
+
 struct RichText
     type::Symbol
     children::Vector{Union{RichText, String}}
@@ -421,15 +425,15 @@ end
 get_text_type(x::AbstractVector) = eltype(x)
 get_text_type(::T) where {T} = T
 
-function calculated_attributes!(::Type{Text}, plot::Plot)
-    attr = plot.attributes
+# function calculated_attributes!(::Type{Text}, plot::Plot)
+#     attr = plot.attributes
 
-    add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
+#     add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
 
-    register_colormapping!(attr)
-    register_text_computations!(attr)
-    return tex_linesegments!(plot)
-end
+#     register_colormapping!(attr)
+#     register_text_computations!(attr)
+#     return tex_linesegments!(plot)
+# end
 
 function tex_linesegments!(plot)
     register_model_clip_planes!(plot.attributes)

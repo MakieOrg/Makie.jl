@@ -414,6 +414,7 @@ export resize_to_layout!
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
+include("basic_recipes/text/glyphs.jl")
 include("basic_recipes/text/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")

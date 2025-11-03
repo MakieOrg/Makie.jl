@@ -641,6 +641,23 @@ function deprecated_attributes(::Type{<:MeshScatter})
     )
 end
 
+@recipe Glyphs (position,) begin
+    # raw data that is necessary to render a bunch of glyphs
+    glyphindices = nothing
+    glyph_origins = nothing
+    glyph_extents = nothing
+    # should this be renamed font per glyph?
+    font_per_char = nothing
+    text_color = nothing
+    text_strokewidth = nothing
+    text_rotation = nothing
+    text_scales = nothing
+
+    mixin_generic_plot_attributes()...
+    mixin_colormap_attributes()...
+    fxaa = false
+end
+
 """
     text(positions; text, kwargs...)
     text(x, y; text, kwargs...)
