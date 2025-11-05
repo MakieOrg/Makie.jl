@@ -631,11 +631,20 @@ function LegendEntry(label, content, legend; kwargs...)
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    get_plots(plots::AbstractArray{<:Plot}) = Plot[plots...]
-    get_plots(plot::Plot) = Plot[plot]
-    get_plots(::LegendElement) = Plot[]
-    get_plots(t::Tuple) = get_plots(t[1])
+    function get_plots(x::AbstractArray)
+        plots = filter(!isnothing, get_plot.(x))
+        return AbstractPlot[plots...]
+    end
+    function get_plots(x::Any)
+        plt = get_plot(x)
+        return plt === nothing ? AbstractPlot[] : AbstractPlot[plt]
+    end
     get_plots(p::Pair) = get_plots(p[1])
+
+    get_plot(plot::AbstractPlot) = plot
+    get_plot(::LegendElement) = nothing
+    get_plot(t::Tuple{<:AbstractPlot, Vararg}) = get_plot(t[1])
+    get_plot(p::Pair{<:AbstractPlot, <:Any}) = get_plot(p[1])
 
     plots = get_plots(content)
 
