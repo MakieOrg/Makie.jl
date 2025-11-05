@@ -641,7 +641,7 @@ function LegendEntry(label, content, legend; kwargs...)
     get_plots!(plots, t::Tuple) = get_plots!(plots, t[1])
     get_plots!(plots, p::Pair) = get_plots!(plots, p[1])
 
-    get_plots!(plots, p::Plot) = push!(plots, p)
+    get_plots!(plots, p::AbstractPlot) = push!(plots, p)
     get_plots!(plots, elem::LegendElement) = get_plots!(plots, elem.attributes)
     function get_plots!(plots, attr::Union{Dict, Attributes})
        if haskey(attr, :plots)
