@@ -631,26 +631,41 @@ function LegendEntry(label, content, legend; kwargs...)
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    function get_plots(x::AbstractArray)
-        plots = filter(!isnothing, get_plot.(x))
-        return AbstractPlot[plots...]
+    function get_plots(x)
+        plots = AbstractPlot[]
+        get_plots!(plots, x)
+        return plots
     end
-    function get_plots(x::Any)
-        plt = get_plot(x)
-        return plt === nothing ? AbstractPlot[] : AbstractPlot[plt]
-    end
-    get_plots(p::Pair) = get_plots(p[1])
 
-    get_plot(plot::AbstractPlot) = plot
-    get_plot(::LegendElement) = nothing
-    get_plot(t::Tuple{<:AbstractPlot, Vararg}) = get_plot(t[1])
-    get_plot(p::Pair{<:AbstractPlot, <:Any}) = get_plot(p[1])
+    get_plots!(plots, a::AbstractArray) = get_plots!.(Ref(plots), a)
+    get_plots!(plots, t::Tuple) = get_plots!(plots, t[1])
+    get_plots!(plots, p::Pair) = get_plots!(plots, p[1])
+
+    get_plots!(plots, p::Plot) = push!(plots, p)
+    get_plots!(plots, elem::LegendElement) = get_plots!(plots, elem.attributes)
+    function get_plots!(plots, attr::Union{Dict, Attributes})
+       if haskey(attr, :plots)
+            get_plots!(plots, to_value(pop!(attr, :plots)))
+        end
+        return
+    end
+    function get_plots!(plots, attr::NamedTuple)
+        if haskey(attr, :plots)
+            get_plots!(plots, to_value(attr[:plots]))
+        end
+        return
+    end
 
     plots = get_plots(content)
 
-    # LegendElement(plots = ..., ...) constructor generates (plots, element)
-    # The code below needs only the element
-    if content isa Tuple
+    PlotTypes = Union{AbstractPlot, AbstractArray{<:AbstractPlot}}
+    LegendElementTypes = Union{LegendElement, AbstractArray{<:LegendElement}}
+
+    # Allow `plots => LegendElement(...)` and `(plots, LegendElement(...))`
+    if content isa Union{
+            Tuple{<:PlotTypes, <:LegendElementTypes},
+            Pair{<:PlotTypes, <:LegendElementTypes}
+        }
         content = content[2]
     end
 
@@ -666,6 +681,14 @@ function LegendEntry(label, content, legend; kwargs...)
         elems = legendelements(content, legend)
     end
 
+    for elem in elems
+        if haskey(elem.attributes, :plots)
+            @warn "`legendelements()` should no longer construct a LegendElement \
+            with `plots = ...`. This is now handled earlier, using either the \
+            root plot creating the label, or user given plots."
+        end
+    end
+
     return LegendEntry(plots, elems, attrs)
 end
 
@@ -677,19 +700,8 @@ MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(
 MeshElement(; kwargs...) = _legendelement(MeshElement, Attributes(kwargs))
 
 function _legendelement(T::Type{<:LegendElement}, attr::Attributes)
-    plot = to_value(pop!(attr, :plots, nothing))
     _rename_attributes!(T, attr)
-    element = T(attr)
-
-    if plot !== nothing
-        if !(plot isa AbstractVector{Plot} || plot isa Plot)
-            error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well. Found: $(typeof(plot))")
-        end
-        plots = plot isa AbstractVector ? plot : [plot]
-        return plots, element
-    else
-        return element
-    end
+    return T(attr)
 end
 
 _renaming_mapping(::Type{LineElement}) = Dict(
