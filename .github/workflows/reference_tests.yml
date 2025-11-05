@@ -52,7 +52,7 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ReferenceImages_CairoMakie_${{ matrix.version }}
           path: ./CairoMakie/test/reference_images/
@@ -105,7 +105,7 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ReferenceImages_GLMakie_${{ matrix.version }}
           path: |
@@ -153,15 +153,15 @@ jobs:
       - name: Run the tests
         continue-on-error: true
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
+          DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ReferenceImages_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/reference_images/
       - name: Upload test Electron logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: Electron_Logs_WGLMakie_${{ matrix.version }}
           path: ./WGLMakie/test/electron.log
@@ -181,15 +181,15 @@ jobs:
     if: ${{ always() }} # run even if any of the three backend test jobs failed
     needs: [cairomakie, glmakie, wglmakie]
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: ReferenceImages_WGLMakie_1
           path: ./ReferenceImages/WGLMakie
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: ReferenceImages_CairoMakie_1
           path: ./ReferenceImages/CairoMakie
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
@@ -220,7 +220,7 @@ jobs:
           done
 
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: ReferenceImages
           path: ./ReferenceImagesCombined/
@@ -233,7 +233,7 @@ jobs:
           echo $N_MISSING > ./n_missing/n_missing_refimages
           echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
       - name: Upload artifact with number of missing refimages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: n_missing_refimages
           path: n_missing/
