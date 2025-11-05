@@ -13,6 +13,7 @@
 - Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)
 - Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
+- Updated `scatterlines` to include all remaining `scatter` attributes and pass all applicable attributes to its subplots [#5388](https://github.com/MakieOrg/Makie.jl/pull/5388)
 
 ## [0.24.6] - 2025-08-19
 
