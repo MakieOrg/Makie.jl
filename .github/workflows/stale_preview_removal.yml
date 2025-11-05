@@ -1,4 +1,4 @@
-name: Doc Preview Cleanup
+name: Doc and Reference Images Preview Cleanup
 
 on:
   schedule:
@@ -15,7 +15,7 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
-      - name: Check for stale PR previews
+      - name: Check for stale PR previews and reference images
         shell: julia {0}
         run: |
           using Pkg
@@ -29,9 +29,25 @@ jobs:
           repo = ENV["GITHUB_REPOSITORY"]
           retention_days = 14
 
-          pr_previews = map(filter(startswith("PR"), readdir("previews"))) do dir
-              parse(Int, match(r"PR(\d*)", dir)[1])
+          # Collect PR previews from both docs and reference_images directories
+          pr_previews_docs = if isdir("previews")
+              map(filter(startswith("PR"), readdir("previews"))) do dir
+                  parse(Int, match(r"PR(\d*)", dir)[1])
+              end
+          else
+              Int[]
           end
+
+          pr_previews_refimgs = if isdir("reference_images")
+              map(filter(startswith("PR"), readdir("reference_images"))) do dir
+                  parse(Int, match(r"PR(\d*)", dir)[1])
+              end
+          else
+              Int[]
+          end
+
+          all_pr_numbers = unique(vcat(pr_previews_docs, pr_previews_refimgs))
+          @info "Found $(length(pr_previews_docs)) doc previews and $(length(pr_previews_refimgs)) reference image previews"
 
           function all_prs()
               query_prs(page) = JSON3.read(HTTP.get("https://api.github.com/repos/$repo/pulls?per_page=100;page=$(page)").body)
@@ -51,18 +67,28 @@ jobs:
               return pr.state == "open" && Dates.days(now() - time) <= retention_days
           end)
 
-          stale_previews = setdiff(pr_previews, open_within_threshold)
-          @info "Found $(length(stale_previews)) stale previews"
+          stale_pr_numbers = setdiff(all_pr_numbers, open_within_threshold)
+          @info "Found $(length(stale_pr_numbers)) stale PR previews to remove"
 
-          if isempty(stale_previews)
-              @info "No stale previews"
+          if isempty(stale_pr_numbers)
+              @info "No stale previews to remove"
               exit(1)
           end
 
-          for pr in stale_previews
-              path = joinpath("previews", "PR$pr")
-              @info "Removing $path"
-              run(`git rm -rf $path`)
+          # Remove stale previews from both directories
+          for pr in stale_pr_numbers
+              # Remove doc preview if it exists
+              if pr in pr_previews_docs
+                  path = joinpath("previews", "PR$pr")
+                  @info "Removing doc preview: $path"
+                  run(`git rm -rf $path`)
+              end
+              # Remove reference images preview if it exists
+              if pr in pr_previews_refimgs
+                  path = joinpath("reference_images", "PR$pr")
+                  @info "Removing reference images preview: $path"
+                  run(`git rm -rf $path`)
+              end
           end
       - name: Push changes
         run: |
