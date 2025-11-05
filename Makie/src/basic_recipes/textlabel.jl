@@ -1,10 +1,5 @@
 """
-    textlabel(position; text, attributes...)
-    textlabel(x, y, [z]; text, attributes...)
-
 Plots the given text(s) with a background(s) at the given position(s).
-
-$(argument_docs(:PointBased))
 """
 @recipe TextLabel (positions,) begin
     # text-like args interface

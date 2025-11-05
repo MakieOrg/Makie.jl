@@ -1,11 +1,5 @@
 """
-    scatterlines(position; attributes...)
-    scatterlines([xs], ys; attributes...)
-    scatterlines(xs, ys, zs; attributes...)
-
 Plots `scatter` markers with `lines` between them.
-
-$(argument_docs(:PointBased))
 """
 @recipe ScatterLines (positions,) begin
     documented_attributes(Lines)...

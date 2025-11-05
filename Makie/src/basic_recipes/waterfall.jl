@@ -1,12 +1,7 @@
 """
-    waterfall(xs, ys; attributes...)
-    waterfall(positions; attributes...)
-
 Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visualize individual
 positive and negative components that add up to a net result as a barplot with stacked bars next
 to each other.
-
-$(argument_docs(:PointBased2D))
 """
 @recipe Waterfall begin
     filtered_attributes(BarPlot, exclude = (:fillto, :direction))...
@@ -33,7 +28,7 @@ $(argument_docs(:PointBased2D))
     final_dodge_gap = 0
 end
 
-conversion_trait(::Type{<:Waterfall}) = PointBased()
+conversion_trait(::Type{<:Waterfall}) = PointBased2D()
 
 function Makie.plot!(p::Waterfall)
     function stack_bars(xy, dodge, stack)

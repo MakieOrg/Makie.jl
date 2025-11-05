@@ -1,11 +1,5 @@
 """
-    triplot(x, y; attributes...)
-    triplot(positions; attributes...)
-    triplot(triangles::Triangulation; attributes...)
-
 Plots a triangulation based on the provided positions or `Triangulation` from DelaunayTriangulation.jl.
-
-$(argument_docs(:PointBased2D))
 """
 @recipe Triplot (triangles,) begin
     # Toggles
@@ -189,6 +183,8 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
     end
     return constrained_edges
 end
+
+conversion_trait(::Type{<:Triplot}) = PointBased2D()
 
 # TODO: restrict to Point2?
 convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)

@@ -1,10 +1,5 @@
 """
-    stairs(xs, ys; attributes...)
-    stairs(positions; attributes...)
-
 Plots a line that connects coordinates with only axis-aligned segments.
-
-$(argument_docs(:PointBased2D))
 """
 @recipe Stairs begin
     """
@@ -17,7 +12,7 @@ $(argument_docs(:PointBased2D))
     documented_attributes(Lines)...
 end
 
-conversion_trait(::Type{<:Stairs}) = PointBased()
+conversion_trait(::Type{<:Stairs}) = PointBased2D()
 
 function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where {T <: Point2}
     map!(p, [:converted_1, :step], :steppoints) do points, step

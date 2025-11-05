@@ -1,11 +1,6 @@
 """
-    stem(xs, ys, [zs]; attributes...)
-    stem(positions; attributes...)
-
 Plots markers at the given positions with stem lines extending from `offset`.
 All stems are connected to a trunk line.
-
-$(argument_docs(:PointBased))
 """
 @recipe Stem begin
     "Sets the color of stem lines. Can be a Symbol, Colorant, Real or Vector thereof."

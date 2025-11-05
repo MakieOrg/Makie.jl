@@ -38,6 +38,14 @@ struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<:XYBased}) = PointBased()
 
 """
+    PointBased2D() <: ConversionTrait
+
+Similar to `PointBased`, but specifically for 2D plots. Converts input data to a
+`Vector{Point{2, Float32}}`. Uses the same conversion methods as `PointBased`.
+"""
+struct PointBased2D <: ConversionTrait end
+
+"""
     GridBased <: ConversionTrait
 
 GridBased is an abstract conversion trait for data that exists on a grid.

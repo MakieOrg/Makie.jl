@@ -471,6 +471,8 @@ function extract_docstring(str)
     end
 end
 
+function argument_docs end
+
 function create_recipe_expr(Tsym, args, attrblock)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
@@ -536,10 +538,19 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
-        @doc docstring_modified $funcname_sym
-        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
-        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
+        # Override Docs.getdoc to generate comprehensive documentation
+        function Base.Docs.getdoc(::Type{T}) where {T <: $(PlotType)}
+            return $(Makie).document_recipe(T, user_docstring)
+        end
+
+        # For the function symbol, forward to the plot type
+        function Base.Docs.getdoc(::typeof($funcname))
+            return Base.Docs.getdoc($(PlotType))
+        end
+
+        # Simple docstrings for mutating function and type
+        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $Tsym
+        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $funcname!_sym
         export $PlotType, $funcname, $funcname!
     end
 
@@ -554,32 +565,6 @@ function create_recipe_expr(Tsym, args, attrblock)
     end
 
     return q
-end
-
-
-function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
-    io = IOBuffer()
-
-    attr_docstrings = _attribute_docs(P)
-
-    print(io, docstring)
-
-    println(io, "## Plot type")
-    println(io, "The plot type alias for the `$funcname_sym` function is `$Tsym`.")
-
-    println(io, "## Attributes")
-    println(io)
-
-    names = sort(collect(attribute_names(P)))
-    exprdict = attribute_default_expressions(P)
-    for name in names
-        default = exprdict[name]
-        print(io, "**`", name, "`** = ", " `", default, "`  — ")
-        println(io, something(attr_docstrings[name], "*No docs available.*"))
-        println(io)
-    end
-
-    return String(take!(io))
 end
 
 # from MacroTools

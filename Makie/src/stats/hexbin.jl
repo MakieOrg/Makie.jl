@@ -1,9 +1,5 @@
 """
-    hexbin(xs, ys; attributes...)
-
 Plots a heatmap with hexagonal bins for the observations `xs` and `ys`.
-
-$(argument_docs(:PointBased2D))
 """
 @recipe Hexbin begin
     """
@@ -63,7 +59,7 @@ function _spacings_offsets_nbins(bins, cellsizes::Tuple{<:Real, <:Real}, lims::R
     return spacing, offset, @. Int(nbins) + (rest > 0)
 end
 
-conversion_trait(::Type{<:Hexbin}) = PointBased()
+conversion_trait(::Type{<:Hexbin}) = PointBased2D()
 
 data_limits(hb::Hexbin) = Rect3d(hb[1][])
 function boundingbox(hb::Hexbin, space::Symbol = :data)
