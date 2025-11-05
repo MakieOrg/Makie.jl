@@ -273,7 +273,7 @@ end
     l2 = Legend(
         f[2, 2],
         [
-            PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            [lb, sb, slb, bb] => PolyElement(color = :blue),
             PolyElement(plots = [lo, so, slo, bo], color = :orange),
         ],
         ["blue", "orange"], "Colors"
