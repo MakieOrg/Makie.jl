@@ -368,6 +368,36 @@ function media_element(img_name, local_path, additional_classes=""; kw...)
 end
 
 
+"""
+    build_card_grid(img_names, backends, should_include, card_builder)
+
+Unified function to build a grid of cards for multiple images and backends.
+
+# Arguments
+- `img_names`: Iterator of image names
+- `backends`: Vector of backend names (e.g., ["GLMakie", "CairoMakie", "WGLMakie"])
+- `should_include`: Function `(current_file) -> Bool` to determine if a card should be created
+- `card_builder`: Function `(img_name, backend, current_file) -> Card` to create the card
+
+# Returns
+Vector of cards (with empty DOM.div() for missing entries)
+"""
+function build_card_grid(img_names, backends, should_include, card_builder)
+    cards = Any[]
+    for img_name in img_names
+        for backend in backends
+            current_file = backend * "/" * img_name
+            if should_include(current_file)
+                card = card_builder(img_name, backend, current_file)
+                push!(cards, card)
+            else
+                push!(cards, DOM.div())
+            end
+        end
+    end
+    return cards
+end
+
 function create_simple_grid_content(root_path, filename, image_folder, backends)
     files = readlines(joinpath(root_path, filename))
     refimages = unique(
@@ -376,33 +406,30 @@ function create_simple_grid_content(root_path, filename, image_folder, backends)
         end
     )
 
-    cards = Any[]
-    for img_name in refimages
-        for backend in backends
-            current_file = backend * "/" * img_name
-            if current_file in files
-                # Plain HTML checkbox (no observables)
-                cb = DOM.div(
-                    DOM.input(type = "checkbox", class = "checkbox-input"),
-                    " $current_file",
-                    class = "checkbox-label"
-                )
-                local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
-                media = media_element(img_name, local_path)
-                card = Card(
-                    DOM.div(cb, media),
-                    class = "ref-card card-base score-minimal",
-                    dataFilepath = current_file,
-                    dataHidden = "false"
-                )
-                push!(cards, card)
-            else
-                push!(cards, DOM.div())
-            end
-        end
+    # Card builder for simple cards
+    function simple_card_builder(img_name, backend, current_file)
+        # Plain HTML checkbox (no observables)
+        cb = DOM.div(
+            DOM.input(type = "checkbox", class = "checkbox-input"),
+            " $current_file",
+            class = "checkbox-label"
+        )
+        local_path = Bonito.Asset(normpath(joinpath(root_path, image_folder, backend, img_name)))
+        media = media_element(img_name, local_path)
+        return Card(
+            DOM.div(cb, media),
+            class = "ref-card card-base score-minimal",
+            dataFilepath = current_file,
+            dataHidden = "false"
+        )
     end
 
-    return cards
+    return build_card_grid(
+        refimages,
+        backends,
+        file -> file in files,
+        simple_card_builder
+    )
 end
 
 """
@@ -597,8 +624,6 @@ Creates the main ReferenceUpdater app content.
 function create_app_content(session::Session, root_path::String)
     # Constants
     backends = ["GLMakie", "CairoMakie", "WGLMakie"]
-    selected_folder = ["recorded", "reference"]
-    selection_string = ["Showing new recorded", "Showing old reference"]
     score_thresholds = [0.05, 0.03, 0.01]
 
     # Newly added Images
@@ -630,26 +655,24 @@ function create_app_content(session::Session, root_path::String)
         class = "filter-label"
     )
 
-    # Build updated cards with data attributes
-    updated_cards = Any[]
-    for img_name in imgs_with_score
-        for backend in backends
-            current_file = backend * "/" * img_name
-            if haskey(lookup, current_file)
-                score = round(lookup[current_file]; digits = 3)
-                card = BackendCard(
-                    img_name,
-                    backend,
-                    score,
-                    root_path,
-                    score_thresholds
-                )
-                push!(updated_cards, card)
-            else
-                push!(updated_cards, DOM.div())
-            end
-        end
+    # Build updated cards with data attributes using unified builder
+    function backend_card_builder(img_name, backend, current_file)
+        score = round(lookup[current_file]; digits = 3)
+        return BackendCard(
+            img_name,
+            backend,
+            score,
+            root_path,
+            score_thresholds
+        )
     end
+
+    updated_cards = build_card_grid(
+        imgs_with_score,
+        backends,
+        file -> haskey(lookup, file),
+        backend_card_builder
+    )
 
     # Upload section
     tag_textfield = Bonito.TextField("$(last_major_version())", class = "textfield-tag")
@@ -751,8 +774,7 @@ function create_app_content(session::Session, root_path::String)
     onjs(session, compare_backend, js"""
     function(backend) {
         const grid = $(main_grid);
-        const rootPath = $(root_path);
-        $(JSHelper).then(mod => mod.compareToGLMakie(grid, backend, rootPath));
+        $(JSHelper).then(mod => mod.compareToGLMakie(grid, backend));
     }""")
 
     sort_button_html = map(x -> DOM.div(x; class="sort-cell"), sort_buttons[1:3])

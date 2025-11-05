@@ -20,8 +20,6 @@ end
 
 # Create the ReferenceUpdater app
 @info "Creating ReferenceUpdater app..."
-app = ReferenceUpdater.serve_update_page(pr=5285)
-display(app)
 app = ReferenceUpdater.serve_update_page_from_dir(root_path)
 
 # Set up output directory
@@ -36,11 +34,9 @@ routes = Routes("/" => app)
 Bonito.export_static(build_dir, routes)
 
 BonitoSites.deploy(
-    "github.com/MakieOrg/Makie.jl.git";
-    root=build_dir,
+    ENV["GITHUB_REPOSITORY"];
+    target=build_dir,
     subfolder="reference_images/PR$pr_number",
     push_preview=true,
     devbranch="master",
-    repo=ENV["GITHUB_REPOSITORY"],
-    github_token=ENV["GITHUB_TOKEN"],
 )

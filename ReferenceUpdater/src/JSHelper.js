@@ -96,12 +96,11 @@ export function sortByBackend(grid, backend) {
  * Compare selected backend to GLMakie by filtering cards to single column
  * @param {HTMLElement} grid - The grid container
  * @param {string} selectedBackend - Backend to compare ("CairoMakie" or "WGLMakie")
- * @param {string} rootPath - Root path for images
  */
-export function compareToGLMakie(grid, selectedBackend, rootPath) {
+export function compareToGLMakie(grid, selectedBackend) {
     const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
 
-    if (selectedBackend === "" || selectedBackend === "GLMakie") {
+    if (selectedBackend === "") {
         // Reset: restore original order and show all cards in 3-column layout
 
         // Group by image name
@@ -121,7 +120,7 @@ export function compareToGLMakie(grid, selectedBackend, rootPath) {
 
         // Clear and re-add all cards in original order (grouped by image, all backends per image)
         grid.innerHTML = '';
-        sortedGroups.forEach(([imgName, group]) => {
+        sortedGroups.forEach(([_, group]) => {
             // Sort cards within group by backend order: GLMakie, CairoMakie, WGLMakie
             const backendOrder = { 'GLMakie': 0, 'CairoMakie': 1, 'WGLMakie': 2 };
             group.sort((a, b) => {
@@ -162,7 +161,7 @@ export function compareToGLMakie(grid, selectedBackend, rootPath) {
 
     // Clear grid and re-add cards in comparison order
     grid.innerHTML = '';
-    sortedGroups.forEach(([imgName, group]) => {
+    sortedGroups.forEach(([_, group]) => {
         // Add all cards from this group (hidden except selected)
         group.forEach(card => {
             if (card.dataset.backend === selectedBackend) {
