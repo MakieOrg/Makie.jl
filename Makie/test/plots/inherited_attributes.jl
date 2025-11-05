@@ -15,10 +15,12 @@ end
 # ComputeGraph. This implies that they affect one of the recipes child plots.
 # (This is only valid for recipes that don't use Observables)
 function all_attributes_connect_to_children(
-        plot::Plot, exclude = Set{Symbol}([
-            :palettes, :dim_conversions, :cycle_index, :transform_func, :cycle,
-            :model, :palette_lookup, :f32c
-        ])
+        plot::Plot, exclude = Set{Symbol}(
+            [
+                :palettes, :dim_conversions, :cycle_index, :transform_func, :cycle,
+                :model, :palette_lookup, :f32c,
+            ]
+        )
     )
     return all_attributes_connect_to_children(plot.attributes, exclude)
 end
@@ -69,7 +71,7 @@ end
     @testset "ScatterLines" begin
         @test contains_all_attributes_of(ScatterLines, Scatter)
         @test contains_all_attributes_of(ScatterLines, Lines)
-        f,a,p = scatterlines(rand(10))
+        f, a, p = scatterlines(rand(10))
         @test all_attributes_connect_to_children(p)
     end
 

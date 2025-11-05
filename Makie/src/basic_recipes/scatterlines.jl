@@ -5,13 +5,15 @@ Plots `scatter` markers and `lines` between them.
 """
 @recipe ScatterLines (positions,) begin
     documented_attributes(Lines)...
-    filtered_attributes(Scatter, exclude = (
-        :color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :alpha,
-        :nan_color,
-        :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
-        :cycle, :transformation, :model, :depth_shift,
-        :inspector_clear, :inspector_hover, :inspector_label, :inspectable
-    ))...
+    filtered_attributes(
+        Scatter, exclude = (
+            :color, :colormap, :colorrange, :colorscale, :lowclip, :highclip, :alpha,
+            :nan_color,
+            :fxaa, :visible, :transparency, :space, :clip_planes, :ssao, :overdraw,
+            :cycle, :transformation, :model, :depth_shift,
+            :inspector_clear, :inspector_hover, :inspector_label, :inspectable,
+        )
+    )...
     "The color of the line, and by default also of the scatter markers."
     color = @inherit linecolor
     "Sets the color of scatter markers. These default to `color`"
