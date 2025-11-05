@@ -24,7 +24,8 @@ const REFIMG_STYLES = Styles(
         CSS("to", "transform" => "rotate(360deg)"),
     ),
     # Loading overlay
-    CSS(".loading-overlay",
+    CSS(
+        ".loading-overlay",
         "position" => "fixed",
         "top" => "0",
         "left" => "0",
@@ -36,10 +37,12 @@ const REFIMG_STYLES = Styles(
         "align-items" => "center",
         "z-index" => "9999"
     ),
-    CSS(".loading-overlay.active",
+    CSS(
+        ".loading-overlay.active",
         "display" => "flex"
     ),
-    CSS(".loading-content",
+    CSS(
+        ".loading-content",
         "text-align" => "center",
         "background-color" => "white",
         "padding" => "32px 48px",
@@ -47,7 +50,8 @@ const REFIMG_STYLES = Styles(
         "box-shadow" => "0 8px 32px rgba(0,0,0,0.3)",
         "min-width" => "300px"
     ),
-    CSS(".loading-text",
+    CSS(
+        ".loading-text",
         "color" => TEXT_DARK,
         "font-size" => "18px",
         "font-weight" => "600",
@@ -55,7 +59,8 @@ const REFIMG_STYLES = Styles(
         "margin-top" => "0"
     ),
     # Spinner
-    CSS(".spinner",
+    CSS(
+        ".spinner",
         "border" => "8px solid #f3f3f3",
         "border-top" => "8px solid $PRIMARY_COLOR",
         "border-radius" => "50%",
@@ -65,11 +70,13 @@ const REFIMG_STYLES = Styles(
         "margin" => "0 auto"
     ),
     # Reference image card
-    CSS(".ref-card[data-hidden='true']",
+    CSS(
+        ".ref-card[data-hidden='true']",
         "display" => "none"
     ),
     # Page header
-    CSS(".page-header",
+    CSS(
+        ".page-header",
         "padding" => "32px 24px",
         "background" => "linear-gradient(135deg, $PRIMARY_COLOR 0%, #357ABD 100%)",
         "color" => "white",
@@ -77,26 +84,30 @@ const REFIMG_STYLES = Styles(
         "margin-bottom" => "24px",
         "box-shadow" => "0 4px 16px rgba(0,0,0,0.12)"
     ),
-    CSS(".page-title",
+    CSS(
+        ".page-title",
         "color" => TEXT_DARK,
         "font-size" => "32px",
         "font-weight" => "800",
         "margin" => "0 0 8px 0"
     ),
-    CSS(".page-subtitle",
+    CSS(
+        ".page-subtitle",
         "color" => "#546E7A",
         "font-size" => "16px",
         "margin" => "0 0 24px 0"
     ),
     # Section styles
-    CSS(".section",
+    CSS(
+        ".section",
         "padding" => "24px",
         "margin" => "16px 0",
         "background-color" => "white",
         "border-radius" => "12px",
         "box-shadow" => "0 2px 12px rgba(0,0,0,0.06)"
     ),
-    CSS(".section-header",
+    CSS(
+        ".section-header",
         "color" => TEXT_DARK,
         "font-size" => "24px",
         "font-weight" => "700",
@@ -104,14 +115,16 @@ const REFIMG_STYLES = Styles(
         "padding-bottom" => "8px",
         "border-bottom" => "3px solid $PRIMARY_COLOR"
     ),
-    CSS(".section-description",
+    CSS(
+        ".section-description",
         "color" => "#546E7A",
         "font-size" => "14px",
         "line-height" => "1.6",
         "margin" => "0 0 16px 0"
     ),
     # Filter and controls
-    CSS(".filter-label",
+    CSS(
+        ".filter-label",
         "font-size" => "15px",
         "color" => TEXT_DARK,
         "font-weight" => "600",
@@ -122,20 +135,24 @@ const REFIMG_STYLES = Styles(
         "border-radius" => "8px",
         "margin-bottom" => "16px"
     ),
-    CSS(".filter-label-text",
+    CSS(
+        ".filter-label-text",
         "margin-right" => "8px",
         "font-weight" => "600"
     ),
-    CSS(".filter-help-text",
+    CSS(
+        ".filter-help-text",
         "margin-left" => "8px",
         "color" => "#546E7A",
         "font-size" => "13px"
     ),
-    CSS(".sort-controls",
+    CSS(
+        ".sort-controls",
         "margin-top" => "12px",
         "margin-bottom" => "12px"
     ),
-    CSS(".sort-info-row",
+    CSS(
+        ".sort-info-row",
         "font-size" => "15px",
         "color" => TEXT_DARK,
         "font-weight" => "600",
@@ -143,38 +160,47 @@ const REFIMG_STYLES = Styles(
         "display" => "flex",
         "align-items" => "center"
     ),
-    CSS(".sort-button-row",
+    CSS(
+        ".sort-button-row",
         "display" => "grid",
         "grid-template-columns" => "1fr 1fr 1fr",
         "gap" => "8px"
     ),
-    CSS(".sort-cell",
+    CSS(
+        ".sort-cell",
         "display" => "flex",
         "justify-content" => "center",
         "align-items" => "center"
     ),
     # Upload section
-    CSS(".upload-controls",
+    CSS(
+        ".upload-controls",
         "margin" => "16px 0"
     ),
-    CSS(".upload-list-header",
+    CSS(
+        ".upload-list-header",
         "font-size" => "18px",
         "margin" => "16px 0 8px 0"
     ),
-    CSS(".upload-list-header.success",
+    CSS(
+        ".upload-list-header.success",
         "color" => SUCCESS_COLOR
     ),
-    CSS(".upload-list-header.danger",
+    CSS(
+        ".upload-list-header.danger",
         "color" => DANGER_COLOR
     ),
-    CSS(".upload-list",
+    CSS(
+        ".upload-list",
         "padding-left" => "24px"
     ),
-    CSS(".upload-list-item",
+    CSS(
+        ".upload-list-item",
         "margin" => "4px 0"
     ),
     # Score badge
-    CSS(".score-badge",
+    CSS(
+        ".score-badge",
         "font-size" => "13px",
         "font-weight" => "600",
         "padding" => "6px 12px",
@@ -186,23 +212,27 @@ const REFIMG_STYLES = Styles(
         "float" => "right"
     ),
     # Media elements
-    CSS(".media-img",
+    CSS(
+        ".media-img",
         "max-width" => "100%",
         "border-radius" => "8px",
         "box-shadow" => "0 2px 6px rgba(0,0,0,0.1)"
     ),
-    CSS(".media-video",
+    CSS(
+        ".media-video",
         "max-width" => "100%",
         "border-radius" => "8px",
         "box-shadow" => "0 2px 6px rgba(0,0,0,0.1)"
     ),
     # Checkbox styles
-    CSS(".checkbox-input",
+    CSS(
+        ".checkbox-input",
         "transform" => "scale(1.2)",
         "margin" => "4px 8px 4px 0",
         "cursor" => "pointer"
     ),
-    CSS(".checkbox-label",
+    CSS(
+        ".checkbox-label",
         "font-size" => "13px",
         "color" => TEXT_DARK,
         "font-weight" => "500",
@@ -210,10 +240,12 @@ const REFIMG_STYLES = Styles(
         "align-items" => "center",
         "margin-bottom" => "8px"
     ),
-    CSS(".checkbox-label-text",
+    CSS(
+        ".checkbox-label-text",
         "margin-left" => "4px"
     ),
-    CSS(".toggle-all-checkbox",
+    CSS(
+        ".toggle-all-checkbox",
         "font-size" => "15px",
         "color" => TEXT_DARK,
         "font-weight" => "600",
@@ -225,7 +257,8 @@ const REFIMG_STYLES = Styles(
         "margin-bottom" => "16px"
     ),
     # Text field styles
-    CSS(".textfield",
+    CSS(
+        ".textfield",
         "width" => "5rem",
         "font-size" => "14px",
         "padding" => "6px 10px",
@@ -234,7 +267,8 @@ const REFIMG_STYLES = Styles(
         "margin" => "4px",
         "transition" => "border-color 0.2s ease"
     ),
-    CSS(".textfield-tag",
+    CSS(
+        ".textfield-tag",
         "width" => "10rem",
         "font-size" => "14px",
         "padding" => "8px 12px",
@@ -243,7 +277,8 @@ const REFIMG_STYLES = Styles(
         "margin" => "8px 4px"
     ),
     # Card styles
-    CSS(".card-base",
+    CSS(
+        ".card-base",
         "margin" => "8px",
         "padding" => "12px",
         "border" => "1px solid $BORDER_COLOR",
@@ -255,36 +290,43 @@ const REFIMG_STYLES = Styles(
         "background-color" => "white"
     ),
     # Score threshold styles (0.05, 0.03, 0.01)
-    CSS(".ref-card.score-high",
+    CSS(
+        ".ref-card.score-high",
         "background-color" => "#FFE5E5",
         "border-left" => "4px solid $DANGER_COLOR"
     ),
-    CSS(".ref-card.score-medium",
+    CSS(
+        ".ref-card.score-medium",
         "background-color" => "#FFF3E0",
         "border-left" => "4px solid $WARNING_COLOR"
     ),
-    CSS(".ref-card.score-low",
+    CSS(
+        ".ref-card.score-low",
         "background-color" => "#FFFDE7",
         "border-left" => "4px solid #FDD835"
     ),
-    CSS(".ref-card.score-minimal",
+    CSS(
+        ".ref-card.score-minimal",
         "background-color" => "#F5F5F5",
         "border-left" => "4px solid #9E9E9E"
     ),
     # Media container - stack images on top of each other
-    CSS(".media-container",
+    CSS(
+        ".media-container",
         "position" => "relative",
         "width" => "100%",
         "min-height" => "200px",
         "display" => "grid"
     ),
-    CSS(".media-img, .media-video",
+    CSS(
+        ".media-img, .media-video",
         "width" => "100%",
         "height" => "auto",
         "grid-area" => "1 / 1"
     ),
     # Main container
-    CSS(".main-container",
+    CSS(
+        ".main-container",
         "font-family" => "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
         "max-width" => "1400px",
         "margin" => "0 auto",
@@ -310,11 +352,13 @@ const BUTTON_STYLE = Styles(
         "width" => "220px",
         "text-align" => "center"
     ),
-    CSS(":hover",
+    CSS(
+        ":hover",
         "background-color" => "#357ABD",
         "box-shadow" => "0 4px 8px rgba(0,0,0,0.2)"
     ),
-    CSS(":active",
+    CSS(
+        ":active",
         "transform" => "translateY(1px)"
     )
 )
@@ -334,14 +378,17 @@ const UPLOAD_BUTTON_STYLE = Styles(
         "margin" => "8px 4px",
         "width" => "auto"
     ),
-    CSS(":hover",
+    CSS(
+        ":hover",
         "background-color" => "#229954",
         "box-shadow" => "0 5px 12px rgba(0,0,0,0.25)"
     ),
-    CSS(":active",
+    CSS(
+        ":active",
         "transform" => "translateY(1px)"
     ),
-    CSS(":disabled",
+    CSS(
+        ":disabled",
         "background-color" => "#95A5A6",
         "cursor" => "not-allowed",
         "opacity" => "0.6"
@@ -352,13 +399,13 @@ const UPLOAD_BUTTON_STYLE = Styles(
 # Helper Functions
 # ============================================================================
 
-function media_element(img_name, local_path, additional_classes=""; kw...)
+function media_element(img_name, local_path, additional_classes = ""; kw...)
     filetype = split(img_name, ".")[end]
     css_class = additional_classes == "" ? "" : " $additional_classes"
     dom = if filetype == "png"
         DOM.img(; src = local_path, class = "media-img $css_class", kw...)
     else
-        src = DOM.source(;src = local_path, type = "video/mp4")
+        src = DOM.source(; src = local_path, type = "video/mp4")
         DOM.video(
             src;
             autoplay = false, controls = true, class = "media-video $css_class", kw...
@@ -472,12 +519,12 @@ end
 Create a reference image card for a specific backend.
 """
 function BackendCard(
-    img_name::String,
-    backend::String,
-    score::Float64,
-    root_path::String,
-    score_thresholds::Vector{Float64}
-)
+        img_name::String,
+        backend::String,
+        score::Float64,
+        root_path::String,
+        score_thresholds::Vector{Float64}
+    )
     current_file = backend * "/" * img_name
 
     # Checkbox (plain HTML, selection handled in JS)
@@ -492,9 +539,9 @@ function BackendCard(
     glmakie_ref_path = Bonito.Asset(normpath(joinpath(root_path, "reference", "GLMakie", img_name)))
 
     # Create three media elements (identical CSS and positioning)
-    media_recorded = media_element(img_name, recorded_path; style="z-index: 3")
-    media_reference = media_element(img_name, reference_path; style="z-index: 2")
-    media_glmakie = media_element(img_name, glmakie_ref_path; style="z-index: 1")
+    media_recorded = media_element(img_name, recorded_path; style = "z-index: 3")
+    media_reference = media_element(img_name, reference_path; style = "z-index: 2")
+    media_glmakie = media_element(img_name, glmakie_ref_path; style = "z-index: 1")
 
     # Button container (for JS to find and update)
     path_button = Bonito.Button("Showing: recorded", style = BUTTON_STYLE)
@@ -552,11 +599,11 @@ end
 Upload selected reference images.
 """
 function upload_selection(
-    tag::String,
-    marked_for_upload::Set{String},
-    marked_for_deletion::Set{String},
-    root_path::String
-)
+        tag::String,
+        marked_for_upload::Set{String},
+        marked_for_deletion::Set{String},
+        root_path::String
+    )
     recorded_path = joinpath(root_path, "recorded")
 
     @info "Downloading latest reference image folder for $tag"
@@ -705,12 +752,12 @@ function create_app_content(session::Session, root_path::String)
                     marked_for_deletion_set = Set{String}(selections["delete_files"])
                     @time upload_selection(tag_textfield.value[], upload_for_upload_set, marked_for_deletion_set, root_path)
                 catch e
-                    @error "Upload process failed." exception=e
+                    @error "Upload process failed." exception = e
                 finally
                     try
                         Bonito.evaljs(session, js"const overlay = $(loading_overlay); overlay.classList.remove('active')")
                     catch e
-                        @warn "Could not hide loading overlay" exception=e
+                        @warn "Could not hide loading overlay" exception = e
                     end
                 end
             end
@@ -719,27 +766,27 @@ function create_app_content(session::Session, root_path::String)
 
     # JS handler for upload button - collects all checked items via JSHelper
     upload_handler = is_static ? DOM.div() : js"""
-    $(upload_button.value).on(clicked => {
-        $(JSHelper).then(mod => {
-            const { uploadFiles, deleteFiles } = mod.collectCheckedFiles();
-            $(upload_trigger).notify({upload_files: uploadFiles, delete_files: deleteFiles});
+        $(upload_button.value).on(clicked => {
+            $(JSHelper).then(mod => {
+                const { uploadFiles, deleteFiles } = mod.collectCheckedFiles();
+                $(upload_trigger).notify({upload_files: uploadFiles, delete_files: deleteFiles});
+            });
         });
-    });
-    """
+        """
 
     # JS to update selection counts on checkbox changes via JSHelper
     update_counts_js = is_static ? DOM.div() : js"""
-    $(JSHelper).then(mod => {
-        mod.setupSelectionCountUpdates();
-    });
-    """
+        $(JSHelper).then(mod => {
+            mod.setupSelectionCountUpdates();
+        });
+        """
 
     # Compare to GLMakie - JS-based view mode
     compare_backend = Observable("")  # Empty = show all, otherwise compare selected backend to GLMakie
     compare_buttons = map(["GLMakie", "CairoMakie", "WGLMakie", "Reset"]) do backend
         to_update = backend == "Reset" ? "" : backend
         name = backend == "Reset" ? backend : "Only $(backend)"
-        button = Bonito.Button(name; style=BUTTON_STYLE)
+        button = Bonito.Button(name; style = BUTTON_STYLE)
         onjs(session, button.value, js"""(x)=> $(compare_backend).notify($(to_update))""")
         return button
     end
@@ -748,11 +795,13 @@ function create_app_content(session::Session, root_path::String)
     main_grid = Grid(updated_cards, columns = "1fr 1fr 1fr")
 
     # Setup JS filtering
-    onjs(session, filter_textfield.value, js"""
-    function(threshold) {
-        $(JSHelper).then(mod => mod.filterByScore(threshold));
-    }
-    """)
+    onjs(
+        session, filter_textfield.value, js"""
+        function(threshold) {
+            $(JSHelper).then(mod => mod.filterByScore(threshold));
+        }
+        """
+    )
 
     # Sort controls with unified observable
     sort_backend = Observable("")  # Empty string = reset, otherwise backend name
@@ -763,21 +812,25 @@ function create_app_content(session::Session, root_path::String)
         return button
     end
     # Single unified sorting JS function
-    onjs(session, sort_backend, js"""
-    function(backend) {
-        const grid = $(main_grid);
-        $(JSHelper).then(mod => mod.sortByBackend(grid, backend));
-    }
-    """)
+    onjs(
+        session, sort_backend, js"""
+        function(backend) {
+            const grid = $(main_grid);
+            $(JSHelper).then(mod => mod.sortByBackend(grid, backend));
+        }
+        """
+    )
 
     # Comparison mode JS handler
-    onjs(session, compare_backend, js"""
-    function(backend) {
-        const grid = $(main_grid);
-        $(JSHelper).then(mod => mod.compareToGLMakie(grid, backend));
-    }""")
+    onjs(
+        session, compare_backend, js"""
+        function(backend) {
+            const grid = $(main_grid);
+            $(JSHelper).then(mod => mod.compareToGLMakie(grid, backend));
+        }"""
+    )
 
-    sort_button_html = map(x -> DOM.div(x; class="sort-cell"), sort_buttons[1:3])
+    sort_button_html = map(x -> DOM.div(x; class = "sort-cell"), sort_buttons[1:3])
     sort_controls = DOM.div(
         DOM.div(
             DOM.span("Sort by backend | "),

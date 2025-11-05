@@ -16,8 +16,6 @@ if !isdir(root_path)
     @error "Reference images directory not found at $root_path"
     exit(1)
 end
-
-
 # Create the ReferenceUpdater app
 @info "Creating ReferenceUpdater app..."
 app = ReferenceUpdater.serve_update_page_from_dir(root_path)
@@ -28,15 +26,14 @@ mkpath(build_dir)
 
 # Create routes for the app
 routes = Routes("/" => app)
-
 # Export the static site
 @info "Exporting static site..."
 Bonito.export_static(build_dir, routes)
 
 BonitoSites.deploy(
     ENV["GITHUB_REPOSITORY"];
-    target=build_dir,
-    subfolder="reference_images/PR$pr_number",
-    push_preview=true,
-    devbranch="master",
+    target = build_dir,
+    subfolder = "reference_images/PR$pr_number",
+    push_preview = true,
+    devbranch = "master",
 )

@@ -52,23 +52,9 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Install Julia dependencies
-        shell: julia --project=monorepo {0}
-        run: |
-          using Pkg
-          pkg"registry up"
-          Pkg.update()
-          pkg"dev ./ReferenceUpdater"
-          pkg"add Bonito BonitoSites"
-
+        shell: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
       - name: Build static site
         if: steps.pr_number.outputs.pr != ''
         env:
           PR_NUMBER: ${{ steps.pr_number.outputs.pr }}
-        run: julia --project=monorepo reference_images_site/build_site.jl
-
-      - name: Deploy to GitHub Pages
-        if: steps.pr_number.outputs.pr != ''
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ steps.pr_number.outputs.pr }}
-        run: julia --project=monorepo reference_images_site/deploy_site.jl
+        run: julia --project=reference_images_site reference_images_site/build_site.jl
