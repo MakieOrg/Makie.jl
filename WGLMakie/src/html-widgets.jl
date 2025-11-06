@@ -32,14 +32,25 @@ function resize_parent(parent, block)
         $(scene).then(scene => {
             const div = $(parent);
             const {canvas, winscale} = scene.screen;
+
+            // The wrapper (canvas.parentElement) has position: relative, so widgets
+            // positioned absolute will be relative to the wrapper, not the document
+            const wrapper = canvas.parentElement;
+
             // Update position when either bbox or viewport changes
             function update_position(height_box) {
                 const [fig_height, xmin, ymin, xmax, ymax] = height_box;
                 const web_top = fig_height - ymax;
-                // Get canvas offset to account for container positioning
+
+                // Since the wrapper has position: relative and widgets are position: absolute,
+                // widgets are positioned relative to the wrapper.
+                // Canvas and widgets are both children of wrapper, so we just need the canvas offset
+                // within the wrapper (which should be 0,0 since canvas is the first child)
                 const canvasRect = canvas.getBoundingClientRect();
-                const offsetX = canvasRect.left;
-                const offsetY = canvasRect.top;
+                const wrapperRect = wrapper.getBoundingClientRect();
+
+                const offsetX = canvasRect.left - wrapperRect.left;
+                const offsetY = canvasRect.top - wrapperRect.top;
 
                 // Scale coordinates by winscale to match canvas CSS scaling
                 // Canvas CSS size = logical_size * winscale (where winscale = scalefactor / devicePixelRatio)

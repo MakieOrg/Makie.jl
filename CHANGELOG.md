@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
