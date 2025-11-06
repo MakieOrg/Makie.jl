@@ -53,8 +53,14 @@ function backend_colors!(attr, color_name = :scaled_color)
     end
 
     register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
-        color isa Real && return (color,)
-        return color isa AbstractVector ? (color,) : (false,)
+        if color isa Real || color isa AbstractVector{<:Real}
+            color_clamped = clamp.(color, -floatmax(Float32), floatmax(Float32))
+            return (color_clamped,)
+        elseif color isa AbstractVector
+            return (color,)
+        else
+            return (false,)
+        end
     end
 
     return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
