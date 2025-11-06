@@ -49,10 +49,10 @@ function add_computation!(attr, scene, ::Val{:heatmap_transform})
     ) do x, y, img, func
 
         x1d = _xy_convert(x, size(img, 1))
-        xps = apply_transform(func, Point2.(x1d, 0))
+        xps = apply_transform(func, Point2.(x1d, 1))
 
         y1d = _xy_convert(y, size(img, 2))
-        yps = apply_transform(func, Point2.(0, y1d))
+        yps = apply_transform(func, Point2.(1, y1d))
 
         return (xps, yps)
     end
