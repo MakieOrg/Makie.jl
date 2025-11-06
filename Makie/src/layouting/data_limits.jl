@@ -106,7 +106,8 @@ end
 
 # used in colorsampler.jl, datashader.jl
 function distinct_extrema_nan(x)
-    lo, hi = extrema_nan(x)
+    clamp_filter = v -> !(abs(v) >= floatmax(Float32))
+    lo, hi = extrema_nan(filter(clamp_filter, x))
     return lo == hi ? (lo - 0.5f0, hi + 0.5f0) : (lo, hi)
 end
 
