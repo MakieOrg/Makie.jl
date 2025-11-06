@@ -14,6 +14,7 @@
 - Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
 - Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
+- Fixed `heatmap`, `surface`, `image` not ignoring `-Inf`/`Inf` values when computing their automatic colorrange [#5384](https://github.com/MakieOrg/Makie.jl/issues/5384)
 
 ## [0.24.6] - 2025-08-19
 
