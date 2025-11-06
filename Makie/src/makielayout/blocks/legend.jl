@@ -644,7 +644,7 @@ function LegendEntry(label, content, legend; kwargs...)
     get_plots!(plots, p::AbstractPlot) = push!(plots, p)
     get_plots!(plots, elem::LegendElement) = get_plots!(plots, elem.attributes)
     function get_plots!(plots, attr::Union{Dict, Attributes})
-       if haskey(attr, :plots)
+        if haskey(attr, :plots)
             get_plots!(plots, to_value(pop!(attr, :plots)))
         end
         return
@@ -664,7 +664,7 @@ function LegendEntry(label, content, legend; kwargs...)
     # Allow `plots => LegendElement(...)` and `(plots, LegendElement(...))`
     if content isa Union{
             Tuple{<:PlotTypes, <:LegendElementTypes},
-            Pair{<:PlotTypes, <:LegendElementTypes}
+            Pair{<:PlotTypes, <:LegendElementTypes},
         }
         content = content[2]
     end
@@ -692,9 +692,9 @@ function LegendEntry(label, content, legend; kwargs...)
     return LegendEntry(plots, elems, attrs)
 end
 
-LineElement(; kwargs...) =_legendelement(LineElement, Attributes(kwargs))
-MarkerElement(; kwargs...) =_legendelement(MarkerElement, Attributes(kwargs))
-PolyElement(; kwargs...) =_legendelement(PolyElement, Attributes(kwargs))
+LineElement(; kwargs...) = _legendelement(LineElement, Attributes(kwargs))
+MarkerElement(; kwargs...) = _legendelement(MarkerElement, Attributes(kwargs))
+PolyElement(; kwargs...) = _legendelement(PolyElement, Attributes(kwargs))
 ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
 MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(kwargs))
 MeshElement(; kwargs...) = _legendelement(MeshElement, Attributes(kwargs))
