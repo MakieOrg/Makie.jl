@@ -219,7 +219,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         [:raw_color, :scaled_color, :fetch_pixel]
     ) do color, colorscale, alpha
         val = if color isa Union{AbstractArray{<:Real}, Real}
-            clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+            el32convert(apply_scale(colorscale, color))
         elseif color isa AbstractPattern
             ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
