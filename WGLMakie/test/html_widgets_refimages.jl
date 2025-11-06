@@ -63,7 +63,7 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
     )
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
-    sleep(0.5) # do we need time for resize?
+    sleep(1) # do we need time for resize and relayouting? And is there an event we could wait for?
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
     js_path = replace(path, '\\' => '/')
     run(
