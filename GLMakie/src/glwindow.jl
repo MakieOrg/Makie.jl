@@ -38,6 +38,7 @@ Makie.@noconstprop function FramebufferManager(context, fb_size::NTuple{2, Int})
 end
 
 Base.size(manager::FramebufferManager) = manager.size
+Base.isempty(manager::FramebufferManager) = isempty(manager.children)
 GLAbstraction.get_buffer(fb::FramebufferManager, idx::Int) = fb.buffers[idx]
 GLAbstraction.bind(fb::FramebufferManager) = GLAbstraction.bind(fb.children[end])
 display_framebuffer(fb::FramebufferManager) = last(fb.children)

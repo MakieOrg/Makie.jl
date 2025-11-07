@@ -1,6 +1,5 @@
-# TODO: needs to run before first draw to color buffers.
-# With SSAO that ends up being at first render and in SSAO, as SSAO2 draws
-# color to a buffer previously used for normals
+# Needs to run before first draw to opaque color buffers.
+# SSAO needs to run this between steps as it switches to a different color buffer
 function setup!(screen::Screen, fb)
     GLAbstraction.bind(fb)
 
@@ -11,18 +10,16 @@ function setup!(screen::Screen, fb)
 
     # draw scene backgrounds
     glEnable(GL_SCISSOR_TEST)
-    if isopen(screen) && !isnothing(screen.scene)
-        ppu = screen.px_per_unit[]
-        for (id, scene) in screen.screens
-            if scene.visible[] && scene.clear[]
-                a = viewport(scene)[]
-                rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
-                glViewport(rt...)
-                glScissor(rt...)
-                c = scene.backgroundcolor[]
-                glClearColor(red(c), green(c), blue(c), alpha(c))
-                glClear(GL_COLOR_BUFFER_BIT)
-            end
+    ppu = screen.px_per_unit[]
+    for (id, scene) in screen.screens
+        if scene.visible[] && scene.clear[]
+            a = viewport(scene)[]
+            rt = (round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            glViewport(rt...)
+            glScissor(rt...)
+            c = scene.backgroundcolor[]
+            glClearColor(red(c), green(c), blue(c), alpha(c))
+            glClear(GL_COLOR_BUFFER_BIT)
         end
     end
     glDisable(GL_SCISSOR_TEST)
@@ -68,15 +65,18 @@ end
 Renders a single frame of a `screen`
 """
 function render_frame(screen::Screen; resize_buffers = true)
-    if isempty(screen.framebuffer_manager.children) || isnothing(screen.scene)
+    if isempty(screen.framebuffer_manager) || isnothing(screen.scene) || !isopen(screen)
         return
     end
 
     prepare_frame(screen, resize_buffers)
 
-    # TODO: figure out something better for setup!()
-    fb = screen.framebuffer_manager.children[1]
-    setup!(screen, fb)
+    # TODO: Is this a reasonable solution?
+    # Maybe we should have a setup stage instead? (Kinda annoying for SSAO though)
+    idx = findfirst(stage -> stage isa RenderPlots, screen.render_pipeline.steps)
+    if !isnothing(idx)
+        setup!(screen, screen.render_pipeline.steps[idx].framebuffer)
+    end
 
     render_frame(screen, nothing, screen.render_pipeline)
 
