@@ -264,6 +264,7 @@ end
     end
 
     function GLMakie.run_step(screen, glscene, step::GLMakie.RenderPass{:Tint})
+        resize!(step.framebuffer, screen.framebuffer_manager.size)
         # Blend transparent onto opaque
         wh = size(step.framebuffer)
         GLMakie.set_draw_buffers(step.framebuffer)

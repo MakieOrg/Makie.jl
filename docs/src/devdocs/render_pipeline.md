@@ -195,6 +195,8 @@ end
 
 # This runs as a step in the render loop for each frame
 function GLMakie.run_step(screen, _, step::GLMakie.RenderPass{:Tint})
+    # resize framebuffer to target size
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # bind all color buffers in the framebuffer (here one color output)
     GLMakie.set_draw_buffers(step.framebuffer)
     # Set the draw region to the full size of the framebuffer

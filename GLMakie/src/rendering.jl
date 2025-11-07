@@ -117,7 +117,7 @@ function stage_output(
     fast_color_data!(screen.framecache, ctex)
 
     # Render remainign stages
-    for idx in stage_index+1 : length(screen.render_pipeline.steps)
+    for idx in (stage_index + 1):length(screen.render_pipeline.steps)
         step = screen.render_pipeline.steps[idx]
         require_context(screen.glscreen)
         run_step(screen, nothing, step)
