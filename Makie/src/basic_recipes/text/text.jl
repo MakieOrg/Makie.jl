@@ -1,5 +1,16 @@
 function plot!(text::Text)
-    @info "text"
+    # text.attributes now contains the attributes from the recipe, including generic and colormap
+    # as well as arg1,arg2... and position, which is a legacy attribute that we should probably get rid of
+    # :converted contains the converted args normalised to the points, as specified in the recipe
+    attr = text.attributes
+    @assert length(attr.converted[][1]) == length(attr.text[]) "there should be given as many positions as texts."
+    for (i,(position, string)) in enumerate(zip(text.attributes.converted[][1], text.attributes.text[]))
+        given_layouter = sv_getindex(attr.string_layouter[], i)
+        applicable_layouter = resolve_string_layouter(string, given_layouter)
+
+        draw_string_with_layouter!(text, applicable_layouter, string, position, i)
+        scatter!(text, 100*rand(100), 100*rand(100))
+    end
 end
 
 struct RichText
@@ -39,6 +50,7 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     # Set up Inputs
     inputs = _register_input_arguments!(Text, attr, input_args)
 
+    
     # User arguments can be PointBased(), String-like or mixed, with the
     # position and text attributes supplementing data not in arguments.
     # For conversion we want to move position data into the argument pipeline
@@ -853,44 +865,6 @@ struct GlyphState
     color::RGBAf
 end
 
-struct GlyphInfo
-    glyph::Int
-    font::FreeTypeAbstraction.FTFont
-    origin::Point2f
-    extent::GlyphExtent
-    size::Vec2f
-    rotation::Quaternion
-    color::RGBAf
-    strokecolor::RGBAf
-    strokewidth::Float32
-end
-
-# Copy constructor, to overwrite a field
-function GlyphInfo(
-        gi::GlyphInfo;
-        glyph = gi.glyph,
-        font = gi.font,
-        origin = gi.origin,
-        extent = gi.extent,
-        size = gi.size,
-        rotation = gi.rotation,
-        color = gi.color,
-        strokecolor = gi.strokecolor,
-        strokewidth = gi.strokewidth
-    )
-
-    return GlyphInfo(
-        glyph,
-        font,
-        origin,
-        extent,
-        size,
-        rotation,
-        color,
-        strokecolor,
-        strokewidth
-    )
-end
 
 
 function GlyphCollection(v::Vector{GlyphInfo})
@@ -1041,6 +1015,16 @@ function process_rt_node!(lines, gs::GlyphState, rt::RichText, fonts)
 
     return GlyphState(x, gs.baseline, gs.size, gs.font, gs.color)
 end
+
+# function calculated_attributes!(::Type{Text}, plot::Plot)
+#     attr = plot.attributes
+
+#     add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
+
+#     register_colormapping!(attr)
+#     register_text_computations!(attr)
+#     return tex_linesegments!(plot)
+# end
 
 function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
