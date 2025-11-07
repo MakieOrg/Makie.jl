@@ -30,6 +30,7 @@ Each task may implement:
 - `prepare_step(screen, glscene, step)`: Initialize the task.
 - `run_step(screen, glscene, step)`: Run the task.
 - `destroy!(step)`: Cleanup of the object. This defaults to calling `destroy!(step.robj)`.
+- `on_resize(step, width, height)`: Called when buffer should resize.
 
 Initialization is grouped together and runs before all run steps. If you need
 to initialize just before your run, bundle it with the run.
@@ -59,6 +60,8 @@ function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) w
     destroy!(old)
     return construct(Val(parent.name), screen, framebuffer, inputs, parent)
 end
+
+on_resize(::AbstractRenderStep, w, h) = nothing
 
 # convenience
 Broadcast.broadcastable(x::AbstractRenderStep) = Ref(x)
@@ -92,6 +95,15 @@ function render_frame(screen, glscene, pipeline::GLRenderPipeline)
     for step in pipeline
         require_context(screen.glscreen)
         run_step(screen, glscene, step)
+    end
+    return
+end
+
+# map framebuffer resize to each step
+# bundled with framebuffer_manager resizes
+function Base.resize!(pipeline::GLRenderPipeline, w, h)
+    for step in pipeline
+        on_resize(step, w, h)
     end
     return
 end
@@ -181,12 +193,13 @@ function renders_in_stage(robj, step::RenderPlots)
         compare(to_value(get(robj, :fxaa, false)), step.fxaa)
 end
 
+on_resize(step::RenderPlots, w, h) = resize!(step.framebuffer, w, h)
+
 function run_step(screen, glscene, step::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
         require_context(screen.glscreen)
         GLAbstraction.bind(step.framebuffer)
-        resize!(step.framebuffer, screen.framebuffer_manager.size)
 
         for (idx, color) in step.clear
             idx <= step.framebuffer.counter || continue
@@ -251,6 +264,8 @@ struct RenderPass{Name} <: AbstractRenderStep
     robj::RenderObject
 end
 
+on_resize(step::RenderPass, w, h) = resize!(step.framebuffer, w, h)
+
 function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.Stage) where {RP <: RenderPass}
     for (k, v) in inputs
         if haskey(pass.robj.uniforms, k)
@@ -297,7 +312,6 @@ end
 
 function run_step(screen, glscene, step::RenderPass{:OIT})
     # Blend transparent onto opaque
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     wh = size(step.framebuffer)
     set_draw_buffers(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
@@ -358,7 +372,6 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
 end
 
 function run_step(screen, glscene, step::RenderPass{:SSAO1})
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     set_draw_buffers(step.framebuffer)  # occlusion buffer
 
     wh = size(step.framebuffer)
@@ -394,7 +407,6 @@ end
 function run_step(screen, glscene, step::RenderPass{:SSAO2})
     # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
     #       previously used for normals. Figure out a better solution than this:
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     setup!(screen, step.framebuffer)
 
     # SSAO - blur occlusion and apply to color
@@ -457,7 +469,6 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
 end
 
 function run_step(screen, glscene, step::RenderPass{:FXAA1})
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # FXAA - calculate LUMA
     set_draw_buffers(step.framebuffer)
     # TODO: make scissor explicit?
@@ -472,7 +483,6 @@ function run_step(screen, glscene, step::RenderPass{:FXAA1})
 end
 
 function run_step(screen, glscene, step::RenderPass{:FXAA2})
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # FXAA - perform anti-aliasing
     set_draw_buffers(step.framebuffer)  # color buffer
     step.robj[:RCPFrame] = rcpframe(size(step.framebuffer))
@@ -485,6 +495,12 @@ struct MSAAResolve <: AbstractRenderStep
     output_framebuffer::GLFramebuffer
 end
 
+function on_resize(step::MSAAResolve, w, h)
+    resize!(step.input_framebuffer, w, h)
+    resize!(step.output_framebuffer, w, h)
+    return
+end
+
 function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
     require_context(screen.glscreen)
     manager = screen.framebuffer_manager
@@ -494,7 +510,6 @@ function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
 end
 
 function run_step(screen, ::Nothing, step::MSAAResolve)
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     w, h = size(step.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
@@ -520,6 +535,8 @@ struct BlitToScreen <: AbstractRenderStep
     screen_framebuffer_id::Int
 end
 
+on_resize(step::BlitToScreen, w, h) = resize!(step.framebuffer, w, h)
+
 function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     require_context(screen.glscreen)
     framebuffer = generate_framebuffer(screen.framebuffer_manager, stage.inputs)
@@ -528,7 +545,6 @@ function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # Set source
     # glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)

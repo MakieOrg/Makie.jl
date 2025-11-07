@@ -811,6 +811,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     ppu = screen.px_per_unit[]
     fbw, fbh = round.(Int, ppu .* (w, h))
     resize!(screen.framebuffer_manager, fbw, fbh)
+    resize!(screen.render_pipeline, fbw, fbh)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).

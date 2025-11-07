@@ -36,7 +36,9 @@ function prepare_frame(screen, resize_buffers)
     # Resize framebuffer to window size
     if resize_buffers
         ppu = screen.px_per_unit[]
-        resize!(screen.framebuffer_manager, round.(Int, ppu .* size(screen.scene))...)
+        new_size = round.(Int, ppu .* size(screen.scene))
+        resize!(screen.framebuffer_manager, new_size...)
+        resize!(screen.render_pipeline, new_size...)
     end
 
     # TODO: Hacky, assumes our first draw is a `RenderPlots` (ZSort doesn't draw) and
