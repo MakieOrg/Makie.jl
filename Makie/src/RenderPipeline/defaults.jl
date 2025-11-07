@@ -215,3 +215,16 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
 
     return pipeline
 end
+
+"""
+    minimal_render_pipeline()
+
+Constructs the minimal pipeline needed for rendering.
+"""
+function minimal_render_pipeline()
+    pipeline = Makie.RenderPipeline()
+    render = push!(pipeline, Makie.RenderStage())
+    display = push!(pipeline, Makie.DisplayStage())
+    connect!(pipeline, render, display)
+    return pipeline
+end
