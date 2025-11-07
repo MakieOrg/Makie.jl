@@ -42,9 +42,9 @@ function plot!(text::Text)
         end
         return (specs,)
     end
-    # plotlist!(text, attr.plotspecs; visible=attr.visible[])
+    plotlist!(text, attr.plotspecs; visible=attr.visible[]) # TODO: do we need the visible attribute?
 
-    scatter!(text, 100rand(100), 100rand(100))
+    # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
 end
 

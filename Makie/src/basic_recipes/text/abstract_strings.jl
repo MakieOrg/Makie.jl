@@ -3,68 +3,30 @@ is_layouter_compatible(string::AbstractString, ::DefaultStringLayouter) = true
 
 default_layouter(::AbstractString) = DefaultStringLayouter()
 
-function draw_string_with_layouter!(plot, ::DefaultStringLayouter, id)
+function layouted_string_plotspecs(inputs, ::DefaultStringLayouter, id)
     @info "Default drawing!"
-    inputs = [
-        :unwrapped_text,
-        :font,
-        :fonts,
-        :fontsize,
-        :align,
-        :lineheight,
-        :justification,
-        :word_wrap_width,
-        :rotation,
-        :strokecolor,
-        :strokewidth,
-        :offset,
-        # :computed_color,
-    ]
-    attr = ComputeGraph()
-    for i in inputs
-        add_input!(attr, i, plot.attributes[i]) do name, val
-            sv_getindex(val, id)
-        end
-    end
-
-    # # calculate a vector of glyphinfos
-    register_computation!(
-        attr, inputs, [:glyphinfos]
-    ) do (
-        text,
-        font,
-        fonts,
-        fontsize,
-        align,
-        lineheight,
-        justification,
-        word_wrap_width,
-        rotation,
-        strokecolor,
-        strokewidth,
-        _,
-    ),
-    changed,
-    cached
-        font = to_font(fonts, font)
-
+    glyph_inputs = (;
         (
-            to_glyphinfos(
-                text,
-                font,
-                fontsize,
-                align,
-                lineheight,
-                justification,
-                word_wrap_width,
-                rotation,
-                strokecolor,
-                strokewidth,
-            ),
-        )
-    end
-    @show attr.glyphinfos[]
-    return glyphs!(plot, attr.glyphinfos; offset=attr.offset)
+            i => sv_getindex(inputs[i], id) for i in [
+                :unwrapped_text,
+                :selected_font,
+                :fontsize,
+                :align,
+                :lineheight,
+                :justification,
+                :word_wrap_width,
+                :rotation,
+                :computed_color,
+                :strokecolor,
+                :strokewidth,
+            ]
+        )...
+    )
+
+    offset = sv_getindex(inputs.offset, id)
+
+    glyphinfos = to_glyphinfos(glyph_inputs...)
+    return [PlotSpec(:Glyphs, glyphinfos; offset=offset)]
 end
 
 function to_glyphinfos(
@@ -76,6 +38,7 @@ function to_glyphinfos(
     justification,
     word_wrap_width,
     rotation,
+    color,
     strokecolor,
     strokewidth,
 )
@@ -166,8 +129,8 @@ function to_glyphinfos(
 
     scales = per_character(to_2d_scale(fontsize), charinfos) # TODO: convert_attribute?
     rotations = per_character(rotation, charinfos)
-    # TODO: figure out the color
-    colors = per_character(to_color(:black), charinfos)
+
+    colors = per_character(color, charinfos)
     strokecolors = per_character(strokecolor, charinfos)
     strokewidths = per_character(strokewidth, charinfos)
 
