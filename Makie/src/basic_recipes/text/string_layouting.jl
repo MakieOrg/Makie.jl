@@ -7,6 +7,9 @@ struct LayoutedString
     layouter
 end
 
+unwrap_string(s::LayoutedString) = s.string
+unwrap_string(s) = s
+
 """
     default_layouter(string)
 
@@ -41,12 +44,8 @@ function resolve_string_layouter(string, given_layouter)
 end
 
 """
-    draw_string_with_layouter!(plot, layouter, string, position, id)
+    draw_string_with_layouter!(plot, layouter, id)
 
-draws the string into the plot using the layouting algorithm specified by layouter.
-Receives the `id`, which is the index into the positions/text array of the current iteration.
+draws the string at index `id` into the plot using the layouting algorithm specified by layouter.
 """
 function draw_string_with_layouter! end
-
-# draw_string_with_layouter!(plot, layouter, string::LayoutedString, position, id) =
-#     draw_string_with_layouter!(plot, layouter, string.string, position, id)

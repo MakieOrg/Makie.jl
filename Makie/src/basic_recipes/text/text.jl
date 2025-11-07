@@ -4,24 +4,35 @@ function plot!(text::Text)
     # :converted contains the converted args normalised to the points, as specified in the recipe
     attr = text.attributes
     @assert length(attr.converted[][1]) == length(attr.text[]) "there should be given as many positions as texts."
-    for (i,(position, string)) in enumerate(zip(text.attributes.converted[][1], text.attributes.text[]))
-        given_layouter = sv_getindex(attr.string_layouter[], i)
-        applicable_layouter = resolve_string_layouter(string, given_layouter)
 
-        draw_string_with_layouter!(text, applicable_layouter, string, position, i)
+    # TODO: for the sake of reactivity, this function should do something like:
+    # to do so, we need to figure out what exactly `inputs` is, and if this will
+    # trigger full recalculations of everything, even when it does not need to...
+    # register_computation!(attr, inputs, [:plotspecs]) do inputs, changed, cached
+    #     specs = PlotSpec[]
+    #     for string in input_strings
+    #         append!(specs, string_layout_plotspecs(something))
+    #     return specs
+    # end
+    # plotlist!(text, attr.plotspecs)
+    # return text
+
+    map!(attr, [:text, :string_layouter], [:unwrapped_texts, :resolved_layouters]) do strings, layouters
+        unwrapped_strings = unwrap_string.(strings)
+        resolved_layouters = map(enumerate(strings)) do (i, s)
+            given_layouter = sv_getindex(layouters,i)
+            resolve_string_layouter(s, given_layouter)
+        end
+        (unwrapped_strings, resolved_layouters)
+    end
+
+    # for now, do not care about reactivity:
+    for (i, layouter) in enumerate(attr.resolved_layouters[])
+        draw_string_with_layouter!(text, layouter, i)
         scatter!(text, 100*rand(100), 100*rand(100))
     end
 end
 
-struct RichText
-    type::Symbol
-    children::Vector{Union{RichText, String}}
-    attributes::Dict{Symbol, Any}
-    function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText, String}[children...]
-        return new(type, cs, Dict(kwargs))
-    end
-end
 
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
@@ -104,6 +115,7 @@ function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi:
     end
 end
 
+# TODO: this is only used in per_text_block?
 function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
     if isscalar(x)
         return x
@@ -121,6 +133,7 @@ function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
     end
 end
 
+# TODO: this seems unused?
 function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
     _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
     for block_idx in eachindex(text_blocks)
@@ -141,6 +154,7 @@ function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tupl
     return
 end
 
+# This is only used once, in WGLMakie
 function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
     isscalar(arg) && return fill(arg, last(last(glyphs)))
     result = Typ[]
@@ -150,7 +164,7 @@ function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
     return result
 end
 
-
+# TODO: this is unused?
 function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
     result = Typ[]
     for g in glyphcollection
@@ -169,6 +183,7 @@ function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
     return result
 end
 
+# TODO: this is unused?
 function get_text_blocks(gcs)
     text_blocks = UnitRange{Int}[]
     curr = 1
@@ -193,6 +208,7 @@ function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
     end
 end
 
+# MARK: Abstract String
 function convert_text_string!(
         outputs::NamedTuple,
         input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
@@ -238,6 +254,7 @@ function convert_text_string!(
     return
 end
 
+# MARK: Rich Text
 function convert_text_string!(
         outputs::NamedTuple,
         input_text::RichText, i, N, fontsize, font, align, rotation, justification,
@@ -265,6 +282,7 @@ function convert_text_string!(
     return
 end
 
+# MARK: LaTeX String
 function convert_text_string!(
         outputs::NamedTuple,
         input_text::LaTeXString, i, N, fontsize, font, align, rotation, justification,
@@ -320,6 +338,8 @@ function append_tex_linesegment_data!(
     return nothing
 end
 
+
+# MARK: Glyph collections
 function compute_glyph_collections!(attr::ComputeGraph)
     inputs = [
         :input_text,
@@ -375,6 +395,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
 
 end
 
+
+# MARK: Register text comp
 function register_text_computations!(attr::ComputeGraph)
     add_constant!(attr, :atlas, get_texture_atlas())
 
@@ -428,7 +450,7 @@ function register_text_computations!(attr::ComputeGraph)
     return
 end
 
-
+# TODO: this seems unused
 function get_text_type(x::AbstractVector{Any})
     isempty(x) && error("Cannot determine text type from empty vector")
     return mapreduce(typeof, (a, b) -> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
@@ -472,7 +494,7 @@ function tex_linesegments!(plot)
 end
 
 ################################################################################
-### Bounding Boxes
+### MARK: Bounding Boxes
 ################################################################################
 
 # Notes:
@@ -722,7 +744,7 @@ data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limi
 
 ######################
 
-
+# MARK: Latex glyphcollection
 function texelems_and_glyph_collection(
         str::LaTeXString, fontscale_px, align,
         rotation, color, strokecolor, strokewidth, word_wrap_width
@@ -809,7 +831,7 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
-
+# MARK: Rich Text implementation
 function Base.String(r::RichText)
     fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
     fn(io, s::String) = print(io, s)
