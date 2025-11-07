@@ -79,8 +79,17 @@ function GLRenderPipeline()
     return GLRenderPipeline(Makie.LoweredRenderPipeline(), AbstractRenderStep[])
 end
 
+# Allow iteration
+function Base.iterate(pipeline::GLRenderPipeline, idx = 1)
+    idx > length(pipeline) && return nothing
+    return (pipeline.steps[idx], idx + 1)
+end
+Base.length(pipeline::GLRenderPipeline) = length(pipeline.steps)
+Base.eltype(::Type{GLRenderPipeline}) = AbstractRenderStep
+
+# render each step
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
-    for step in pipeline.steps
+    for step in pipeline
         require_context(screen.glscreen)
         run_step(screen, glscene, step)
     end
