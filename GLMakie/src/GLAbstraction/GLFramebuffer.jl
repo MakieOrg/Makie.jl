@@ -251,11 +251,11 @@ function Base.show(io::IO, ::MIME"text/plain", fb::GLFramebuffer)
     ks = collect(keys(fb.name2idx))
     sort!(ks, by = k -> fb.name2idx[k])
     key_strings = [":$k" for k in ks]
-    key_pad = mapreduce(length, max, key_strings)
+    key_pad = mapreduce(length, max, key_strings, init = 0)
     key_strings = rpad.(key_strings, key_pad)
 
     attachments = attachment_enum_to_string.(fb.attachments)
-    attachment_pad = mapreduce(length, max, attachments)
+    attachment_pad = mapreduce(length, max, attachments, init = 0)
     attachments = rpad.(attachments, attachment_pad)
 
     for (key, attachment, buffer) in zip(key_strings, attachments, fb.buffers)
