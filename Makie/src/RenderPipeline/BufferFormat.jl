@@ -78,14 +78,17 @@ struct BufferFormat
     # anisotropy::Float32 # useless for this context?
     # local_read::Bool # flag so stage can mark that it only reads the pixel it will write to, i.e. allows using input as output
     samples::UInt8 # for MSAA
+    reusable::Bool
 end
 
 """
-    BufferFormat([dims = 4, type = N0f8]; [texture_parameters...])
+    BufferFormat([dims = 4, type = N0f8]; [texture_parameters..., reusable = true])
 
 Creates a `BufferFormat` which encodes requirements for an input or output of a
 `Stage`. For example, a color output may require 3 (RGB) N0f8's (8 bit "float"
 normalized to a 0..1 range).
+
+If `reusable = false` the buffer will not be reused when the pipeline is optimized.
 
 The `BufferFormat` may also specify texture parameters for the buffer:
 - `minfilter = :any`: How are pixels combined (:linear, :nearest, :nearest_mipmap_nearest, :linear_mipmap_nearest, :nearest_mipmap_linear, :linear_mipmap_linear)
@@ -98,10 +101,10 @@ function BufferFormat(
         dims::Integer, type::BFT.BufferFormatType;
         minfilter = :any, magfilter = :any,
         repeat = (:clamp_to_edge, :clamp_to_edge),
-        mipmap = false, samples = 1
+        mipmap = false, samples = 1, reusable = true
     )
     _repeat = ifelse(repeat isa Symbol, (repeat, repeat), repeat)
-    return BufferFormat(dims, type, minfilter, magfilter, _repeat, mipmap, samples)
+    return BufferFormat(dims, type, minfilter, magfilter, _repeat, mipmap, samples, reusable)
 end
 BufferFormat(dims = 4, type = N0f8; kwargs...) = BufferFormat(dims, type; kwargs...)
 @generated function BufferFormat(dims::Integer, ::Type{T}; kwargs...) where {T}
@@ -113,9 +116,10 @@ function BufferFormat(
         old::BufferFormat;
         dims = old.dims, type = old.type,
         minfilter = old.minfilter, magfilter = old.magfilter,
-        repeat = old.repeat, mipmap = old.mipmap, samples = old.samples
+        repeat = old.repeat, mipmap = old.mipmap, samples = old.samples,
+        reusable = old.reusable
     )
-    return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples)
+    return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples, reusable)
 end
 
 function Base.:(==)(f1::BufferFormat, f2::BufferFormat)
@@ -150,7 +154,8 @@ function BufferFormat(f1::BufferFormat, f2::BufferFormat)
         repeat = f1.repeat
         mipmap = f1.mipmap || f2.mipmap
         samples = f1.samples
-        return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples)
+        reusable = f1.reusable && f2.reusable
+        return BufferFormat(dims, type, minfilter, magfilter, repeat, mipmap, samples, reusable)
     else
         error("Failed to merge BufferFormat: $f1 and $f2 are not compatible.")
     end

@@ -209,6 +209,8 @@ function generate_buffers(pipeline::RenderPipeline)
             end
         end
 
+        filter!(idx -> buffers[idx].reusable, available)
+
         # Handle most expensive connections first
         sort!(needs_buffer, by = i -> format_complexity(pipeline.formats[i]), rev = true)
 
