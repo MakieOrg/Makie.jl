@@ -643,6 +643,9 @@ end
 
 @recipe Glyphs (glyphinfos,) begin
     position = Point2f(0,0)
+    offset = Point2f(0,0)
+    markerspace = :pixel
+    transform_marker = false
     mixin_generic_plot_attributes()...
     fxaa = false
 end
