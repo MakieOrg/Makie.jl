@@ -63,12 +63,15 @@ function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
     println(io, "RenderPipeline():")
     print(io, "Stages:")
     pad = isempty(buffers) ? 0 : 1 + floor(Int, log10(length(buffers)))
+    stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))
+    stage_pad = " "^stage_idx_pad
 
     for (stage_idx, stage) in enumerate(pipeline.stages)
-        print(io, "\n  Stage($(stage.name))")
+        prefix = lpad(string(stage_idx), stage_idx_pad)
+        print(io, "\n  $prefix. Stage($(stage.name))")
 
         if !isempty(stage.input_formats)
-            print(io, "\n    inputs: ")
+            print(io, "\n$stage_pad    inputs: ")
             strs = map(eachindex(stage.input_formats)) do i
                 k = findfirst(==(i), stage.inputs)
                 if haskey(pipeline.stageio2idx, (stage_idx, -i))
@@ -85,7 +88,7 @@ function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
         end
 
         if !isempty(stage.output_formats)
-            print(io, "\n    outputs: ")
+            print(io, "\n$stage_pad    outputs: ")
             strs = map(eachindex(stage.output_formats)) do i
                 k = findfirst(==(i), stage.outputs)
                 if haskey(pipeline.stageio2idx, (stage_idx, i))
@@ -115,18 +118,21 @@ function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderPipeline)
     println(io, "LoweredRenderPipeline():")
     print(io, "Stages:")
     pad = isempty(pipeline.formats) ? 0 : 1 + floor(Int, log10(length(pipeline.formats)))
+    stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))
+    stage_pad = " "^stage_idx_pad
 
-    for stage in pipeline.stages
-        print(io, "\n  Stage($(stage.name))")
+    for (stage_idx, stage) in enumerate(pipeline.stages)
+        prefix = lpad(string(stage_idx), stage_idx_pad)
+        print(io, "\n$prefix. Stage($(stage.name))")
 
         if !isempty(stage.inputs)
-            print(io, "\n    inputs: ")
+            print(io, "\n$stage_pad    inputs: ")
             strs = map(idx_name -> "[$(idx_name[2])] $(idx_name[1])", stage.inputs)
             join(io, strs, ", ")
         end
 
         if !isempty(stage.outputs)
-            print(io, "\n    outputs: ")
+            print(io, "\n$stage_pad    outputs: ")
             strs = map(idx_name -> "[$(idx_name[2])] $(idx_name[1])", stage.outputs)
             join(io, strs, ", ")
         end
