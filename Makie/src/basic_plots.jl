@@ -644,7 +644,6 @@ end
 @recipe Glyphs (glyph_infos,) begin
     offset = Point2f(0,0)
     mixin_generic_plot_attributes()...
-    mixin_colormap_attributes()...
     fxaa = false
 end
 
