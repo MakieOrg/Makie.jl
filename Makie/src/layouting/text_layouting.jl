@@ -39,6 +39,7 @@ end
 
 Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, model, justification, and lineheight.
 """
+# TODO: this seems unused?
 function layout_text(
         string::AbstractString, fontsize::Union{AbstractVector, Number}, fonts, align, justification, lineheightword_wrap_width
     )
@@ -130,6 +131,8 @@ function create_lineinfos(charinfos, word_wrap_width)
     return lineinfos, xs
 end
 
+
+# TODO: this function gets replaced with to_glyphinfos in abstract_strings.jl (ish...)
 """
     glyph_collection(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification, rotation, color, word_wrap_width)
 

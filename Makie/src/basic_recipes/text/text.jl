@@ -17,7 +17,7 @@ function plot!(text::Text)
     # plotlist!(text, attr.plotspecs)
     # return text
 
-    map!(attr, [:text, :string_layouter], [:unwrapped_texts, :resolved_layouters]) do strings, layouters
+    map!(attr, [:text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
         unwrapped_strings = unwrap_string.(strings)
         resolved_layouters = map(enumerate(strings)) do (i, s)
             given_layouter = sv_getindex(layouters,i)
@@ -417,6 +417,7 @@ function register_text_computations!(attr::ComputeGraph)
         return [p for (b, p) in zip(blocks, pos) for i in b]
     end
 
+    # TODO: this should happen on the glyph side. I think
     map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
         return glyph_uv_width!.((atlas,), gi, fonts)
     end
