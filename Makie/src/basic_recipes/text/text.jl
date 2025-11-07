@@ -2,21 +2,28 @@ function plot!(text::Text)
     # text.attributes now contains the attributes from the recipe, including generic and colormap
     # as well as arg1,arg2... and position, which is a legacy attribute that we should probably get rid of
     # :converted contains the converted args normalised to the points, as specified in the recipe
+
     attr = text.attributes
+
+    # TODO: figure out per character colormapping when there are multiple strings?
+    register_colormapping!(attr)
+    # TODO: figure out per character font when there are multiple strings?
+    map!(attr, [:fonts, :font], :selected_font) do fonts, font
+        if isscalar(font)
+            to_font(fonts, font)
+        else
+            [to_font(fonts, i) for i in font]
+        end
+    end
+
+    # TODO: again, what happens with per char stuff?
+    # Resolve colormapping to colors early. This allows rich text which returns
+    # its own colors to be mixed with other text types which dont.
+    add_computation!(attr, Val(:computed_color))
+
     @assert length(attr.converted[][1]) == length(attr.text[]) "there should be given as many positions as texts."
 
-    # TODO: for the sake of reactivity, this function should do something like:
-    # to do so, we need to figure out what exactly `inputs` is, and if this will
-    # trigger full recalculations of everything, even when it does not need to...
-    # register_computation!(attr, inputs, [:plotspecs]) do inputs, changed, cached
-    #     specs = PlotSpec[]
-    #     for string in input_strings
-    #         append!(specs, string_layout_plotspecs(something))
-    #     return specs
-    # end
-    # plotlist!(text, attr.plotspecs)
-    # return text
-
+    # unwrap text and resolve layouters
     map!(attr, [:text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
         unwrapped_strings = unwrap_string.(strings)
         resolved_layouters = map(enumerate(strings)) do (i, s)
@@ -26,11 +33,19 @@ function plot!(text::Text)
         (unwrapped_strings, resolved_layouters)
     end
 
-    # for now, do not care about reactivity:
-    for (i, layouter) in enumerate(attr.resolved_layouters[])
-        draw_string_with_layouter!(text, layouter, i)
-        scatter!(text, 100*rand(100), 100*rand(100))
+    # TODO: this is probably massively inefficient...
+    register_computation!(attr, collect(keys(attr.outputs)), [:plotspecs]) do inputs, changed, cached
+        specs = PlotSpec[]
+        for (i,layouter) in enumerate(inputs.resolved_layouters)
+            append!(specs, layouted_string_plotspecs(inputs, layouter, i))
+            push!(specs, PlotSpec(:Scatter, 100*((i-1).+rand(100)), 100*((i-1).+rand(100))))
+        end
+        return (specs,)
     end
+    # plotlist!(text, attr.plotspecs; visible=attr.visible[])
+
+    scatter!(text, 100rand(100), 100rand(100))
+    return text
 end
 
 

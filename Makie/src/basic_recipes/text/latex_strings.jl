@@ -4,6 +4,7 @@ is_layouter_compatible(::LaTeXString, ::LaTeXStringLayouter) = true
 
 default_layouter(string::LaTeXString) = LaTeXStringLayouter()
 
-function draw_string_with_layouter!(plot, ::LaTeXStringLayouter, id)
+function layouted_string_plotspecs(inputs, ::LaTeXStringLayouter, id)
     @info "LaTeX drawing!"
+    []
 end

@@ -44,8 +44,10 @@ function resolve_string_layouter(string, given_layouter)
 end
 
 """
-    draw_string_with_layouter!(plot, layouter, id)
+    layouted_string_plotspecs(inputs, layouter, id)
 
-draws the string at index `id` into the plot using the layouting algorithm specified by layouter.
+computes all plotspecs that are needed to draw the string at index `id` into
+a text plot using the layouting algorithm specified by layouter. The inputs
+are every output of the text attributes, and are thus not 
 """
-function draw_string_with_layouter! end
+function layouted_string_plotspecs end

@@ -17,6 +17,7 @@ default_layouter(::RichText) = RichTextStringLayouter()
 
 
 
-function draw_string_with_layouter!(plot, ::RichTextStringLayouter, id)
+function layouted_string_plotspecs(inputs, ::RichTextStringLayouter, id)
     @info "RichText drawing!"
+    []
 end
