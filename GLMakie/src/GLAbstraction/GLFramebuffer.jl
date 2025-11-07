@@ -76,6 +76,7 @@ end
 Base.size(fb::GLFramebuffer) = fb.size
 Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.name2idx, key)
 
+Base.resize!(fb::GLFramebuffer, wh::Tuple{<:Integer, <:Integer}) = resize!(fb, wh...)
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
     for buffer in fb.buffers

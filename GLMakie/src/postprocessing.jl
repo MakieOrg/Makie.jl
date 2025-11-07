@@ -177,6 +177,7 @@ function run_step(screen, glscene, step::RenderPlots)
     try
         require_context(screen.glscreen)
         GLAbstraction.bind(step.framebuffer)
+        resize!(step.framebuffer, screen.framebuffer_manager.size)
 
         for (idx, color) in step.clear
             idx <= step.framebuffer.counter || continue
@@ -287,6 +288,7 @@ end
 
 function run_step(screen, glscene, step::RenderPass{:OIT})
     # Blend transparent onto opaque
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     wh = size(step.framebuffer)
     set_draw_buffers(step.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
@@ -347,6 +349,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
 end
 
 function run_step(screen, glscene, step::RenderPass{:SSAO1})
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     set_draw_buffers(step.framebuffer)  # occlusion buffer
 
     wh = size(step.framebuffer)
@@ -382,6 +385,7 @@ end
 function run_step(screen, glscene, step::RenderPass{:SSAO2})
     # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
     #       previously used for normals. Figure out a better solution than this:
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     setup!(screen, step.framebuffer)
 
     # SSAO - blur occlusion and apply to color
@@ -444,6 +448,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
 end
 
 function run_step(screen, glscene, step::RenderPass{:FXAA1})
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # FXAA - calculate LUMA
     set_draw_buffers(step.framebuffer)
     # TODO: make scissor explicit?
@@ -458,6 +463,7 @@ function run_step(screen, glscene, step::RenderPass{:FXAA1})
 end
 
 function run_step(screen, glscene, step::RenderPass{:FXAA2})
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # FXAA - perform anti-aliasing
     set_draw_buffers(step.framebuffer)  # color buffer
     step.robj[:RCPFrame] = rcpframe(size(step.framebuffer))
@@ -479,6 +485,7 @@ function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
 end
 
 function run_step(screen, ::Nothing, step::MSAAResolve)
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     w, h = size(step.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
@@ -512,6 +519,7 @@ function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
 end
 
 function run_step(screen, ::Nothing, step::BlitToScreen)
+    resize!(step.framebuffer, screen.framebuffer_manager.size)
     # Set source
     # glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
     glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)

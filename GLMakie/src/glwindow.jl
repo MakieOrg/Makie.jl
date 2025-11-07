@@ -45,9 +45,6 @@ display_framebuffer(fb::FramebufferManager) = last(fb.children)
 
 function Base.resize!(manager::FramebufferManager, w::Int, h::Int)
     gl_switch_context!(manager.context)
-    foreach(tex -> GLAbstraction.resize_nocopy!(tex, (w, h)), manager.buffers)
-    filter!(fb -> fb.id != 0, manager.children) # TODO: is this ok for cleanup?
-    foreach(fb -> resize!(fb, w, h), manager.children)
     manager.size = (w, h)
     return
 end
