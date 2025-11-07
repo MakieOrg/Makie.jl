@@ -1,8 +1,22 @@
 # This defines the Stages available in base GLMakie as well as the default
 # render pipeline
 
+"""
+    SortStage()
+
+Sorts plots based on the z translation of their model matrix.
+"""
 SortStage() = Stage(:ZSort)
 
+"""
+    RenderStage([; fxaa, ssao, oit])
+
+Renders plots with depth, color and objectid outputs.
+
+Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
+with the respective `fxaa`, `ssao` and `transparency` attribute values. By
+default any value passes.
+"""
 function RenderStage(; kwargs...)
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
@@ -12,6 +26,15 @@ function RenderStage(; kwargs...)
     return Stage(:Render; outputs, kwargs...)
 end
 
+"""
+    SSAORenderStage([; fxaa, ssao, oit])
+
+Renders plots with depth, color, objectid, position and normal outputs.
+
+Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
+with the respective `fxaa`, `ssao` and `transparency` attribute values. By
+default any value passes.
+"""
 function SSAORenderStage(; kwargs...)
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
@@ -23,6 +46,15 @@ function SSAORenderStage(; kwargs...)
     return Stage(Symbol("SSAO Render"); outputs, kwargs...)
 end
 
+"""
+    TransparentRenderStage([; fxaa, ssao, oit])
+
+Renders plots with depth, color_sum, objectid, transmittance outputs.
+
+Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
+with the respective `fxaa`, `ssao` and `transparency` attribute values. By
+default any value passes.
+"""
 function TransparentRenderStage()
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
@@ -33,6 +65,12 @@ function TransparentRenderStage()
     return Stage(Symbol("OIT Render"); outputs)
 end
 
+"""
+    SSAOStage()
+
+Applies Screen Space Ambient Occlusion to the color buffer using a position and
+normal inputs.
+"""
 function SSAOStage(; kwargs...)
     inputs = [
         :position => BufferFormat(3, Float32),
@@ -53,12 +91,23 @@ function SSAOStage(; kwargs...)
     return pipeline
 end
 
+"""
+    OITStage()
+
+Resolves Order Independent Transparency by blending the color_sum and
+transmittance inputs of OIT into the color buffer.
+"""
 function OITStage(; kwargs...)
     inputs = [:color_sum => BufferFormat(4, Float16), :transmittance => BufferFormat(1, N0f8)]
     outputs = [:color => BufferFormat(4, N0f8)]
     return Stage(:OIT, inputs, outputs; kwargs...)
 end
 
+"""
+    FXAAStage()
+
+Applies Fast approximate Anti Aliasing to the color buffer.
+"""
 function FXAAStage(; kwargs...)
     stage1 = Stage(
         :FXAA1,
@@ -80,6 +129,12 @@ function FXAAStage(; kwargs...)
     return pipeline
 end
 
+"""
+    DisplayStage()
+
+Displays the color buffer by blitting it to the screen. Also includes the depth
+and objectid buffers as inputs for `depthbuffer()` and picking functions.
+"""
 function DisplayStage()
     return Stage(
         :Display,
@@ -91,6 +146,12 @@ function DisplayStage()
     )
 end
 
+"""
+    MSAAResolveStage(source_stage)
+
+Resolves multi sampling of all buffers in `source_stage` by blitting them into
+single sample buffers. This is required for Multi Sample Anti Aliasing.
+"""
 function MSAAResolveStage(source_stage::Stage)
     # TODO: Should this generate multiple independent stages?
     inputs = Vector{Pair{Symbol, BufferFormat}}(undef, length(source_stage.outputs))
@@ -104,7 +165,12 @@ function MSAAResolveStage(source_stage::Stage)
     return Stage(:MSAAResolve; inputs, outputs)
 end
 
+"""
+    default_pipeline([ssao = false, fxaa = true, oit = true])
 
+Sets up the default render pipeline. Keyword arguments can be used to turn
+on different postprocessing effects.
+"""
 function default_pipeline(; ssao = false, fxaa = true, oit = true)
     pipeline = RenderPipeline()
     push!(pipeline, SortStage())
