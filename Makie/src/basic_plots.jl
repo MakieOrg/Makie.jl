@@ -641,8 +641,8 @@ function deprecated_attributes(::Type{<:MeshScatter})
     )
 end
 
-@recipe Glyphs (glyph_infos,) begin
-    offset = Point2f(0,0)
+@recipe Glyphs (glyphinfos,) begin
+    position = Point2f(0,0)
     mixin_generic_plot_attributes()...
     fxaa = false
 end

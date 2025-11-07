@@ -42,7 +42,7 @@ function plot!(text::Text)
         end
         return (specs,)
     end
-    plotlist!(text, attr.plotspecs; visible=attr.visible[]) # TODO: do we need the visible attribute?
+    plotlist!(text, attr, attr.plotspecs)
 
     # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
@@ -103,10 +103,10 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
             return (args, Ref{Any}(to_string_arr(a_text)))
         end
     end
-
+    
     # Continue with _register_expand_arguments with adjusted input names
     _register_expand_arguments!(Text, attr, [:_positions], true)
-
+    
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
 
@@ -425,6 +425,8 @@ function register_text_computations!(attr::ComputeGraph)
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
+    # text_blocks: vector with spans, one for each input string
+    # make it so that each character has the right position (we don't need that as we only have one position...)
     map!(attr, [:text_blocks, :positions], :text_positions) do blocks, pos
         if length(blocks) != length(pos)
             error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")

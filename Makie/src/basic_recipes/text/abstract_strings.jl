@@ -22,11 +22,10 @@ function layouted_string_plotspecs(inputs, ::DefaultStringLayouter, id)
             ]
         )...
     )
-
-    offset = sv_getindex(inputs.offset, id)
+    position = to_3d_offset(sv_getindex(inputs.positions, id)) + sv_getindex(inputs.offset, id)
 
     glyphinfos = to_glyphinfos(glyph_inputs...)
-    return [PlotSpec(:Glyphs, glyphinfos; offset=offset)]
+    return [PlotSpec(:Glyphs, glyphinfos; position=position)]
 end
 
 function to_glyphinfos(
@@ -126,6 +125,7 @@ function to_glyphinfos(
     # use 3D coordinates already because later they will be required in that format anyway
     charorigins = [Ref(rotation) .* Point3f.(xsgroup, y, 0) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
     charorigins = reduce(vcat, charorigins)
+    @show charorigins
 
     scales = per_character(to_2d_scale(fontsize), charinfos) # TODO: convert_attribute?
     rotations = per_character(rotation, charinfos)
