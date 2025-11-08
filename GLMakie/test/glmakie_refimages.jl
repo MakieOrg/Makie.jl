@@ -284,7 +284,7 @@ end
         fxaa = push!(pipeline, Makie.FXAAStage(filter_in_shader = false))
         render3 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = false))
         color_tint = push!(
-            pipeline, Makie.PlotRenderStage(
+            pipeline, Makie.RenderStage(
                 :Tint,
                 inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
                 outputs = [:color => Makie.BufferFormat()],
