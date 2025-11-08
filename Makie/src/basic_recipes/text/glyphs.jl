@@ -44,7 +44,7 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     add_constant!(attr, :atlas, get_texture_atlas())
 
     map!(attr, [:position, :glyphinfos], :text_positions) do pos, gi
-        fill(position, length(gi))
+        fill(pos, length(gi))
     end
 
     map!(attr, [:atlas, :glyphinfos], :sdf_uv) do atlas, gi
