@@ -538,7 +538,8 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    # TODO: is Text still primitive? Keeping it primitive helps with color conversion...
+    Text, Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
@@ -798,6 +799,10 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot.cycle_index = plot_cycle_index(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
+    if plot isa Glyphs
+        @warn "is glyphs"
+        @show plot isa PrimitivePlotTypes
+    end
 
     if plot isa PrimitivePlotTypes
         register_camera!(scene, plot)
