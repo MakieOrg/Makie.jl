@@ -799,10 +799,6 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot.cycle_index = plot_cycle_index(parent, plot)
     plot.palettes = get_scene(parent).theme.palette
     handle_transformation!(plot, parent)
-    if plot isa Glyphs
-        @warn "is glyphs"
-        @show plot isa PrimitivePlotTypes
-    end
 
     if plot isa PrimitivePlotTypes
         register_camera!(scene, plot)
