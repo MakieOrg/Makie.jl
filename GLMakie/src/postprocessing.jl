@@ -21,7 +21,7 @@ rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 
 # or maybe Task? Stage?
 """
-    AbstractRenderStep
+    GLRenderStage
 
 Represents a task or step that needs to run when rendering a frame. These
 tasks are collected in the RenderPipeline.
@@ -46,40 +46,40 @@ Optionally, `reconstruct(old_step, screen, framebuffer, inputs, parent)` can be
 used to construct a step from a previous version. This can be used to avoid a
 full destruction and re-creation of a step when the pipeline gets replaced.
 """
-abstract type AbstractRenderStep end
-run_step(screen, glscene, ::AbstractRenderStep) = nothing
+abstract type GLRenderStage end
+run_step(screen, glscene, ::GLRenderStage) = nothing
 
-function destroy!(step::T) where {T <: AbstractRenderStep}
+function destroy!(step::T) where {T <: GLRenderStage}
     @debug "Default destructor of $T"
     hasfield(T, :robj) && destroy!(step.robj)
     return
 end
 
-function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.RenderStage) where {T <: AbstractRenderStep}
+function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.RenderStage) where {T <: GLRenderStage}
     # @debug "reconstruct() not defined for $T, calling construct()"
     destroy!(old)
     return construct(Val(parent.name), screen, framebuffer, inputs, parent)
 end
 
-on_resize(::AbstractRenderStep, w, h) = nothing
+on_resize(::GLRenderStage, w, h) = nothing
 
 # convenience
-Broadcast.broadcastable(x::AbstractRenderStep) = Ref(x)
+Broadcast.broadcastable(x::GLRenderStage) = Ref(x)
 
 
 """
-    GLRenderPipeline(pipeline::Makie.RenderPipeline, steps::Vector{AbstractRenderStep})
+    GLRenderPipeline(pipeline::Makie.RenderPipeline, steps::Vector{GLRenderStage})
 
 Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of steps
 which run in sequence when calling `render_frame!(screen, scene, pipeline)`.
 """
 struct GLRenderPipeline
     parent::Makie.LoweredRenderPipeline
-    steps::Vector{AbstractRenderStep}
+    steps::Vector{GLRenderStage}
 end
 
 function GLRenderPipeline()
-    return GLRenderPipeline(Makie.LoweredRenderPipeline(), AbstractRenderStep[])
+    return GLRenderPipeline(Makie.LoweredRenderPipeline(), GLRenderStage[])
 end
 
 # Allow iteration
@@ -88,7 +88,7 @@ function Base.iterate(pipeline::GLRenderPipeline, idx = 1)
     return (pipeline.steps[idx], idx + 1)
 end
 Base.length(pipeline::GLRenderPipeline) = length(pipeline.steps)
-Base.eltype(::Type{GLRenderPipeline}) = AbstractRenderStep
+Base.eltype(::Type{GLRenderPipeline}) = GLRenderStage
 
 # render each step
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
@@ -115,7 +115,7 @@ function destroy!(pipeline::GLRenderPipeline)
 end
 
 
-struct SortPlots <: AbstractRenderStep end
+struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
@@ -143,12 +143,12 @@ compare(val::Bool, filter::FilterOptions) = (filter == FilterAny) || (val == Int
 compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == Int(filter))
 
 """
-    struct RenderPlots <: AbstractRenderStep
+    struct RenderPlots <: GLRenderStage
 
 A render pipeline step which renders plots. This includes filtering options to
 distribute plots into, e.g. a pass for OIT.
 """
-struct RenderPlots <: AbstractRenderStep
+struct RenderPlots <: GLRenderStage
     framebuffer::GLFramebuffer
     clear::Vector{Pair{Int, Vec4f}} # target index -> color
 
@@ -185,7 +185,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-renders_in_stage(robj, ::AbstractRenderStep) = false
+renders_in_stage(robj, ::GLRenderStage) = false
 renders_in_stage(robj::RenderObject, step::RenderPlots) = renders_in_stage(robj.uniforms, step)
 function renders_in_stage(robj, step::RenderPlots)
     return compare(to_value(get(robj, :ssao, false)), step.ssao) &&
@@ -259,7 +259,7 @@ end
 
 # TODO: maybe call this a PostProcessor?
 # Vaguely leaning on Vulkan Terminology
-struct RenderPass{Name} <: AbstractRenderStep
+struct RenderPass{Name} <: GLRenderStage
     framebuffer::GLFramebuffer
     robj::RenderObject
 end
@@ -490,7 +490,7 @@ function run_step(screen, glscene, step::RenderPass{:FXAA2})
     return
 end
 
-struct MSAAResolve <: AbstractRenderStep
+struct MSAAResolve <: GLRenderStage
     input_framebuffer::GLFramebuffer
     output_framebuffer::GLFramebuffer
 end
@@ -530,7 +530,7 @@ end
 
 
 # TODO: Could also handle integration with Gtk, CImGui, etc with a dedicated struct
-struct BlitToScreen <: AbstractRenderStep
+struct BlitToScreen <: GLRenderStage
     framebuffer::GLFramebuffer
     screen_framebuffer_id::Int
 end

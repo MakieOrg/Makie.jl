@@ -113,7 +113,7 @@ f
 
 For GLMakie to be able to use a `RenderStage` it needs to have a backend implementation.
 This implementation includes:
-- A struct inheriting from `GLMakie.AbstractRenderStep` representing the stage. For post processors this can usually be a `GLMakie.RenderPass` which contains a framebuffer and render object.
+- A struct inheriting from `GLMakie.GLRenderStage` representing the stage. For post processors this can usually be a `GLMakie.RenderPass` which contains a framebuffer and render object.
 - A `GLMakie.construct` method which sets up the render step. This can be either:
   - `GLMakie.construct(::Val{name}, screen, stage)` where `name` is the name of the respective stage.
   - `GLMakie.construct(::Val{name}, screen, framebuffer, inputs, stage)` where the `framebuffer` includes all the outputs of the stage and `inputs` all the stage inputs.

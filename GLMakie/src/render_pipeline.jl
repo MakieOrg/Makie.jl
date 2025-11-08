@@ -117,7 +117,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # if possible. Steps that aren't reused and thus need to be deleted are
     # tracked here:
     needs_cleanup = collect(eachindex(previous_pipeline.steps))
-    render_pipeline = AbstractRenderStep[]
+    render_pipeline = GLRenderStage[]
 
     for stage in pipeline.stages
         # If the RenderStep already exists, update and reuse it, otherwise create it
