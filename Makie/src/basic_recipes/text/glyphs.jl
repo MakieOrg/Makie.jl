@@ -43,11 +43,15 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     add_constant!(attr, :sdf_marker_shape, Cint(DISTANCEFIELD))
     add_constant!(attr, :atlas, get_texture_atlas())
 
+    map!(attr, [:position, :glyphinfos], :text_positions) do pos, gi
+        fill(position, length(gi))
+    end
+
     map!(attr, [:atlas, :glyphinfos], :sdf_uv) do atlas, gi
         [glyph_uv_width!(atlas, i.glyph, i.font) for i in gi]
     end
 
-    map!(attr, [:glyphinfos, :position], :marker_offset) do gi, position
+    map!(attr, [:glyphinfos, :offset], :marker_offset) do gi, position
         return Point3f[i.origin + position for i in gi]
     end
 
@@ -74,5 +78,5 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, input_name = :position, transformed_name = :position_transformed)
+    register_position_transforms!(attr, input_name = :text_positions, transformed_name = :positions_transformed)
 end

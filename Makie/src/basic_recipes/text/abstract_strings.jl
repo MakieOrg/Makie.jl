@@ -22,10 +22,11 @@ function layouted_string_plotspecs(inputs, ::DefaultStringLayouter, id)
             ]
         )...
     )
-    position = to_3d_offset(sv_getindex(inputs.positions, id)) + sv_getindex(inputs.offset, id)
+    position = to_3d_offset(sv_getindex(inputs.positions, id))
+    offset = sv_getindex(inputs.offset, id)
 
     glyphinfos = to_glyphinfos(glyph_inputs...)
-    return [PlotSpec(:Glyphs, glyphinfos; position=position)]
+    return [PlotSpec(:Glyphs, glyphinfos; position=position, offset=offset)]
 end
 
 function to_glyphinfos(
