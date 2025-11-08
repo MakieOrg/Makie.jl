@@ -683,7 +683,8 @@ using Makie: generate_buffers, default_pipeline
         @test pipeline.stages[3] == RenderStage(
             Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[],
             Dict(:depth => 1, :color_sum => 2, :objectid => 3, :transmittance => 4),
-            [BufferFormat(1, BFT.depth24), BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)]
+            [BufferFormat(1, BFT.depth24), BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)],
+            oit = true
         )
         @test pipeline.stages[4] == RenderStage(
             :OIT,
