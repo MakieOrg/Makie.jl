@@ -6,21 +6,21 @@ In this section we will explain how the `RenderPipeline` works and can be modifi
 Note that this is both an advanced topic and an early implementation.
 The pipeline and especially the default steps/stages may change in the future as we figure out how to best organize them.
 
-## Stages
+## Render Stages
 
-A `Stage` is a step in the render pipeline which represents some action performed during rendering.
+A `RenderStage` is a step in the render pipeline which represents some action performed during rendering.
 Typically this is the execution of a post processing shader which takes some inputs and produces some outputs.
 It can also be rendering of plots to some outputs, or something completely CPU side like sorting plots.
 
 As an example, let's say we want to add a color filter like Sepia to the rendering pipeline.
 This filter should run at the end of rendering, taking the rendered image as an input and applying a color transformation to each pixel to produce a new output image.
-A `Stage` representing this would look like this:
+A `RenderStage` representing this would look like this:
 
 ```@example
 using Makie
 using Makie: N0f8
 
-Makie.Stage(
+Makie.RenderStage(
     :Tint,
     inputs = [:color => Makie.BufferFormat(4, N0f8)],
     outputs = [:color => Makie.BufferFormat(4, N0f8)],
@@ -33,13 +33,13 @@ Makie.Stage(
 )
 ```
 
-This creates a `Stage` with the name `:Tint`, one input and output buffer each named `:color` and an attribute called `color_transform`.
+This creates a `RenderStage` with the name `:Tint`, one input and output buffer each named `:color` and an attribute called `color_transform`.
 Any keyword argument other than `inputs`, `outputs` and `samples` will be interpreted as an attribute.
 Inputs and outputs can also be passed as arguments, input first, output second.
 
 ### BufferFormat
 
-The `BufferFormat` is a type that defines the format of a buffer needed to hold the input or output data of a `Stage`.
+The `BufferFormat` is a type that defines the format of a buffer needed to hold the input or output data of a `RenderStage`.
 In the example above the color input and output both use `BufferFormat(4, N0f8)`.
 In OpenGL terms this corresponds to `GL_RGBA8` texture, i.e. a texture with 4 channels carrying 8 bit normalized floats.
 In Julia terms this could be understood as representing a `Matrix{RGBA{N0f8}}` or more generally a `Matrix{NTuple{N, N0f8}}`.
@@ -62,7 +62,7 @@ These stages can be created using some default constructors from Makie:
 
 ```@example base_pipeline
 using Makie
-render_stage = Makie.RenderStage()
+render_stage = Makie.PlotRenderStage()
 ```
 
 ```@example base_pipeline
@@ -111,7 +111,7 @@ f
 
 ## Backend Implementation of Stages
 
-For GLMakie to be able to use a `Stage` it needs to have a backend implementation.
+For GLMakie to be able to use a `RenderStage` it needs to have a backend implementation.
 This implementation includes:
 - A struct inheriting from `GLMakie.AbstractRenderStep` representing the stage. For post processors this can usually be a `GLMakie.RenderPass` which contains a framebuffer and render object.
 - A `GLMakie.construct` method which sets up the render step. This can be either:
@@ -141,7 +141,7 @@ function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, stage)
     out vec4 fragment_color;
 
     uniform sampler2D color_buffer; // \$(name of input)_buffer
-    uniform mat3 color_transform;   // from Stage attributes
+    uniform mat3 color_transform;   // from RenderStage attributes
 
     void main(void) {
         vec4 c = texture(color_buffer, frag_uv).rgba;
@@ -207,7 +207,7 @@ function GLMakie.run_step(screen, _, step::GLMakie.RenderPass{:Tint})
     return
 end
 
-tint_stage = Makie.Stage(
+tint_stage = Makie.RenderStage(
     :Tint,
     inputs = [:color => Makie.BufferFormat(4, N0f8)],
     outputs = [:color => Makie.BufferFormat(4, N0f8)],
@@ -220,7 +220,7 @@ tint_stage = Makie.Stage(
 )
 
 pipeline = Makie.RenderPipeline()
-render_stage = push!(pipeline, Makie.RenderStage())
+render_stage = push!(pipeline, Makie.PlotRenderStage())
 push!(pipeline, tint_stage)
 display_stage = push!(pipeline, Makie.DisplayStage())
 Makie.connect!(pipeline, render_stage, tint_stage)

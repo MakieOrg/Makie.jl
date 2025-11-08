@@ -1,6 +1,6 @@
 using Makie
 using Makie: BufferFormat, N0f8, is_compatible, BFT
-using Makie: Stage, get_input_format, get_output_format
+using Makie: RenderStage, get_input_format, get_output_format
 using Makie: RenderPipeline, connect!
 using Makie: generate_buffers, default_pipeline
 
@@ -177,10 +177,10 @@ using Makie: generate_buffers, default_pipeline
     end
 
 
-    @testset "Stage" begin
-        @test_throws MethodError Stage()
-        @test Stage(:name) == Stage("name")
-        stage = Stage(:test)
+    @testset "RenderStage" begin
+        @test_throws MethodError RenderStage()
+        @test RenderStage(:name) == RenderStage("name")
+        stage = RenderStage(:test)
         @test stage.name == :test
         @test stage.inputs == Dict{Symbol, Int}()
         @test stage.outputs == Dict{Symbol, Int}()
@@ -188,7 +188,7 @@ using Makie: generate_buffers, default_pipeline
         @test stage.output_formats == BufferFormat[]
         @test stage.attributes == Dict{Symbol, Any}()
 
-        stage = Stage(
+        stage = RenderStage(
             :test,
             inputs = [:a => BufferFormat(), :b => BufferFormat(2)],
             outputs = [:c => BufferFormat(1, Int8)],
@@ -262,16 +262,16 @@ using Makie: generate_buffers, default_pipeline
         @test isempty(pipeline.stageio2idx)
         @test isempty(pipeline.formats)
 
-        stage1 = Stage(:stage1, outputs = [:a => BufferFormat(), :b => BufferFormat(2)])
-        stage2 = Stage(
+        stage1 = RenderStage(:stage1, outputs = [:a => BufferFormat(), :b => BufferFormat(2)])
+        stage2 = RenderStage(
             :stage2,
             inputs = [:b => BufferFormat(2)],
             outputs = [:c => BufferFormat(1, Int16)],
             attr = 17.0f0
         )
-        stage3 = Stage(:stage3, inputs = [:b => BufferFormat(4, Float16), :c => BufferFormat(2, Int8)])
-        stage4 = Stage(:stage4, inputs = [:x => BufferFormat()], outputs = [:y => BufferFormat()])
-        stage5 = Stage(:stage5, inputs = [:z => BufferFormat()])
+        stage3 = RenderStage(:stage3, inputs = [:b => BufferFormat(4, Float16), :c => BufferFormat(2, Int8)])
+        stage4 = RenderStage(:stage4, inputs = [:x => BufferFormat()], outputs = [:y => BufferFormat()])
+        stage5 = RenderStage(:stage5, inputs = [:z => BufferFormat()])
 
         push!(pipeline, stage1)
         push!(pipeline, stage2)
@@ -310,7 +310,7 @@ using Makie: generate_buffers, default_pipeline
         @test pipeline.stageio2idx[(2, -1)] == 1
         @test pipeline.stageio2idx[(3, -1)] == 1
 
-        # Stage 1 incomplete - if output 2 is connected all previous outputs must be connected too
+        # RenderStage 1 incomplete - if output 2 is connected all previous outputs must be connected too
         @test_throws Exception generate_buffers(pipeline)
 
         connect!(pipeline, stage1, :a, stage4, :x)
@@ -376,7 +376,7 @@ using Makie: generate_buffers, default_pipeline
             @test isempty(mapping)
 
             # no connections means no buffer usage
-            push!(pipeline, Makie.RenderStage())
+            push!(pipeline, Makie.PlotRenderStage())
             push!(pipeline, Makie.DisplayStage())
             buffers, mapping = generate_buffers(pipeline)
             @test isempty(buffers)
@@ -384,7 +384,7 @@ using Makie: generate_buffers, default_pipeline
 
             # direct connection between two stages without any type changes or reuse
             pipeline = RenderPipeline()
-            render = push!(pipeline, Makie.RenderStage())
+            render = push!(pipeline, Makie.PlotRenderStage())
             display = push!(pipeline, Makie.DisplayStage())
             connect!(pipeline, render, display)
             buffers, mapping = generate_buffers(pipeline)
@@ -402,11 +402,11 @@ using Makie: generate_buffers, default_pipeline
 
         @testset "Verify complete-output-usage check" begin
             pipeline = RenderPipeline()
-            stage1 = Makie.Stage(
+            stage1 = Makie.RenderStage(
                 :first,
                 outputs = [:dropped => BufferFormat(3, N0f8), :color => BufferFormat(3, N0f8)]
             )
-            stage2 = Makie.Stage(
+            stage2 = Makie.RenderStage(
                 :second,
                 inputs = [:color => BufferFormat(3, N0f8)]
             )
@@ -419,15 +419,15 @@ using Makie: generate_buffers, default_pipeline
         function build_pipeline(connections...)
             pipeline = RenderPipeline()
 
-            stages = [Makie.Stage(:stage1, outputs = first(connections))]
+            stages = [Makie.RenderStage(:stage1, outputs = first(connections))]
             for i in 2:length(connections)
-                stage = Makie.Stage(
+                stage = Makie.RenderStage(
                     Symbol(:stage, i),
                     inputs = connections[i - 1], outputs = connections[i]
                 )
                 push!(stages, stage)
             end
-            push!(stages, Makie.Stage(Symbol(:stage, length(connections) + 1), inputs = last(connections)))
+            push!(stages, Makie.RenderStage(Symbol(:stage, length(connections) + 1), inputs = last(connections)))
 
             push!(pipeline, stages...)
             for i in eachindex(connections)
@@ -643,7 +643,7 @@ using Makie: generate_buffers, default_pipeline
             for picked_idx in (3, 1)
                 pipeline = build_pipeline(conn1, conn2, conn3)
                 stage1 = first(pipeline.stages)
-                stage5 = push!(pipeline, Stage(:stage5, inputs = conn1))
+                stage5 = push!(pipeline, RenderStage(:stage5, inputs = conn1))
                 connect!(pipeline, stage1, stage5)
                 # stage5 doesn't add anything new because it connects with stage1
                 @test length(pipeline.formats) == 4
@@ -673,34 +673,34 @@ using Makie: generate_buffers, default_pipeline
         # These directly check what the call should construct. (This indirectly
         # also checks that connect!() works for pipelines)
         @test length(pipeline.stages) == 7
-        @test pipeline.stages[1] == Stage(:ZSort)
-        @test pipeline.stages[2] == Stage(
+        @test pipeline.stages[1] == RenderStage(:ZSort)
+        @test pipeline.stages[2] == RenderStage(
             :Render, Dict{Symbol, Int}(), BufferFormat[],
             Dict(:depth => 1, :color => 2, :objectid => 3),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
             transparency = false
         )
-        @test pipeline.stages[3] == Stage(
+        @test pipeline.stages[3] == RenderStage(
             Symbol("OIT Render"), Dict{Symbol, Int}(), BufferFormat[],
             Dict(:depth => 1, :color_sum => 2, :objectid => 3, :transmittance => 4),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, Float16), BufferFormat(2, UInt32), BufferFormat(1, N0f8)]
         )
-        @test pipeline.stages[4] == Stage(
+        @test pipeline.stages[4] == RenderStage(
             :OIT,
             Dict(:color_sum => 1, :transmittance => 2), [BufferFormat(4, Float16), BufferFormat(1, N0f8)],
             Dict(:color => 1), [BufferFormat(4, N0f8)]
         )
-        @test pipeline.stages[5] == Stage(
+        @test pipeline.stages[5] == RenderStage(
             :FXAA1,
             Dict(:color => 1, :objectid => 2), [BufferFormat(4, N0f8), BufferFormat(2, UInt32)],
             Dict(:color_luma => 1), [BufferFormat(4, N0f8)], filter_in_shader = true
         )
-        @test pipeline.stages[6] == Stage(
+        @test pipeline.stages[6] == RenderStage(
             :FXAA2,
             Dict(:color_luma => 1), [BufferFormat(4, N0f8, minfilter = :linear)],
             Dict(:color => 1), [BufferFormat(4, N0f8)], filter_in_shader = true
         )
-        @test pipeline.stages[7] == Stage(
+        @test pipeline.stages[7] == RenderStage(
             :Display,
             Dict(:depth => 1, :color => 2, :objectid => 3),
             [BufferFormat(1, BFT.depth24), BufferFormat(4, N0f8), BufferFormat(2, UInt32)],

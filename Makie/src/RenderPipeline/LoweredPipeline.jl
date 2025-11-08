@@ -5,10 +5,10 @@
 """
     struct LoweredStage end
 
-This is the lowered version of a `Stage` as used in `LoweredRenderPipeline`.
-Contains the same `name` and `attributes` as the `Stage` it represents. The
+This is the lowered version of a `RenderStage` as used in `LoweredRenderPipeline`.
+Contains the same `name` and `attributes` as the `RenderStage` it represents. The
 `inputs` and `outputs` hold `name => index` pairs where the names match the
-respective `Stage` inputs and outputs and `index` refers to the buffer/format
+respective `RenderStage` inputs and outputs and `index` refers to the buffer/format
 in the parent `LoweredRenderPipeline`s `formats`. The order of inputs and
 outputs is preserved and unused ones are removed.
 """
@@ -36,7 +36,7 @@ end
 Creates a lower level representation of the given render pipeline for use in backends.
 
 The new representation optimizes the number of buffers used by reusing them when
-they are free to be reused. Stages directly refer to these buffers here, and
+they are free to be reused. RenderStages directly refer to these buffers here, and
 they drop information about which buffer formats they originally wanted.
 """
 function LoweredRenderPipeline(pipeline::RenderPipeline)
@@ -88,7 +88,7 @@ function validate_pipeline(pipeline::RenderPipeline)
     for (i, stage) in enumerate(pipeline.stages)
         # Confirm that all outputs have the same number of samples
         if !allequal(format -> format.samples, stage.output_formats)
-            error("Stage $stage does not have a consistent sample count for all outputs.")
+            error("RenderStage $stage does not have a consistent sample count for all outputs.")
         end
 
         # Confirm that there are at most 1 stencil and depth buffer
@@ -99,7 +99,7 @@ function validate_pipeline(pipeline::RenderPipeline)
             stencil += is_stencil_format(format) || is_depth_stencil_format(format)
         end
         if depth > 1 || stencil > 1
-            error("Stage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
+            error("RenderStage $stage has more than one depth or stencil buffer. ($depth depth, $stencil stencil)")
         end
     end
 
@@ -140,7 +140,7 @@ function validate_pipeline(pipeline::RenderPipeline)
         s = output_sum[i]
         m = output_max[i]
         if s != div(m * (m + 1), 2)
-            error("Stage $i has an incomplete set of output connections.")
+            error("RenderStage $i has an incomplete set of output connections.")
         end
     end
 

@@ -185,7 +185,7 @@ function pipeline_gui!(ax, pipeline)
 
     new_conn_plot = lines!(ax, Point2f[], color = :black, visible = false)
 
-    # Drag Stages around & connect inputs/outputs
+    # Drag RenderStages around & connect inputs/outputs
     selected_idx = Ref(-1)
     connecting = Ref(false) # true = drawing line - false = moving stage
     drag_offset = Ref(Point2f(0))

@@ -85,7 +85,7 @@ end
     BufferFormat([dims = 4, type = N0f8]; [texture_parameters..., reusable = true])
 
 Creates a `BufferFormat` which encodes requirements for an input or output of a
-`Stage`. For example, a color output may require 3 (RGB) N0f8's (8 bit "float"
+`RenderStage`. For example, a color output may require 3 (RGB) N0f8's (8 bit "float"
 normalized to a 0..1 range).
 
 If `reusable = false` the buffer will not be reused when the pipeline is optimized.

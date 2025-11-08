@@ -16,9 +16,9 @@ function Base.show(io::IO, ::MIME"text/plain", format::BufferFormat)
     return io
 end
 
-Base.show(io::IO, stage::Stage) = print(io, "Stage($(stage.name))")
-function Base.show(io::IO, ::MIME"text/plain", stage::Stage)
-    print(io, "Stage($(stage.name))")
+Base.show(io::IO, stage::RenderStage) = print(io, "RenderStage($(stage.name))")
+function Base.show(io::IO, ::MIME"text/plain", stage::RenderStage)
+    print(io, "RenderStage($(stage.name))")
 
     if !isempty(stage.inputs)
         print(io, "\ninputs:")
@@ -61,14 +61,14 @@ end
 
 function show_resolved(io::IO, pipeline::RenderPipeline, buffers, remap)
     println(io, "RenderPipeline():")
-    print(io, "Stages:")
+    print(io, "RenderStages:")
     pad = isempty(buffers) ? 0 : 1 + floor(Int, log10(length(buffers)))
     stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))
     stage_pad = " "^stage_idx_pad
 
     for (stage_idx, stage) in enumerate(pipeline.stages)
         prefix = lpad(string(stage_idx), stage_idx_pad)
-        print(io, "\n  $prefix. Stage($(stage.name))")
+        print(io, "\n  $prefix. RenderStage($(stage.name))")
 
         if !isempty(stage.input_formats)
             print(io, "\n$stage_pad    inputs: ")
@@ -116,14 +116,14 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", pipeline::LoweredRenderPipeline)
     println(io, "LoweredRenderPipeline():")
-    print(io, "Stages:")
+    print(io, "RenderStages:")
     pad = isempty(pipeline.formats) ? 0 : 1 + floor(Int, log10(length(pipeline.formats)))
     stage_idx_pad = isempty(pipeline.stages) ? 0 : 1 + floor(Int, log10(length(pipeline.stages)))
     stage_pad = " "^stage_idx_pad
 
     for (stage_idx, stage) in enumerate(pipeline.stages)
         prefix = lpad(string(stage_idx), stage_idx_pad)
-        print(io, "\n$prefix. Stage($(stage.name))")
+        print(io, "\n$prefix. RenderStage($(stage.name))")
 
         if !isempty(stage.inputs)
             print(io, "\n$stage_pad    inputs: ")

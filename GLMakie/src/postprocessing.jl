@@ -35,10 +35,10 @@ Each task may implement:
 Initialization is grouped together and runs before all run steps. If you need
 to initialize just before your run, bundle it with the run.
 
-A render step is constructed from a `Makie.Stage` using
+A render step is constructed from a `Makie.RenderStage` using
 `construct(::Val{stage.name}, screen, framebuffer, inputs, parent)`. The `inputs`
 are the buffers/textures that feed into this step according to the render pipeline.
-The `parent` is the `Makie.Stage` which may contain additional settings/uniforms.
+The `parent` is the `Makie.RenderStage` which may contain additional settings/uniforms.
 The framebuffer is specifically created for this step, containing the outputs
 specified in the render pipeline in the same order and with the same names.
 
@@ -55,7 +55,7 @@ function destroy!(step::T) where {T <: AbstractRenderStep}
     return
 end
 
-function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.Stage) where {T <: AbstractRenderStep}
+function reconstruct(old::T, screen, framebuffer, inputs, parent::Makie.RenderStage) where {T <: AbstractRenderStep}
     # @debug "reconstruct() not defined for $T, calling construct()"
     destroy!(old)
     return construct(Val(parent.name), screen, framebuffer, inputs, parent)
@@ -266,7 +266,7 @@ end
 
 on_resize(step::RenderPass, w, h) = resize!(step.framebuffer, w, h)
 
-function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.Stage) where {RP <: RenderPass}
+function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.RenderStage) where {RP <: RenderPass}
     for (k, v) in inputs
         if haskey(pass.robj.uniforms, k)
             pass.robj.uniforms[k] = v

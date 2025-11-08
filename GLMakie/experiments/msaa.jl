@@ -1,14 +1,14 @@
 msaa_pipeline = let
-    function MinimalRenderStage(; kwargs...)
+    function MinimalPlotRenderStage(; kwargs...)
         outputs = [
             :depth => Makie.BufferFormat(1, Makie.BFT.depth24),
             :color => Makie.BufferFormat(4, Makie.N0f8),
         ]
-        return Makie.Stage(:Render; outputs, kwargs...)
+        return Makie.RenderStage(:Render; outputs, kwargs...)
     end
 
     function MinimalDisplayStage()
-        return Makie.Stage(
+        return Makie.RenderStage(
             :Display,
             inputs = [
                 :depth => Makie.BufferFormat(1, Makie.BFT.depth24),
@@ -18,7 +18,7 @@ msaa_pipeline = let
     end
 
     pipeline = Makie.RenderPipeline()
-    render = push!(pipeline, MinimalRenderStage(samples = 4)) # 4x MSAA
+    render = push!(pipeline, MinimalPlotRenderStage(samples = 4)) # 4x MSAA
     resolve = push!(pipeline, Makie.MSAAResolveStage(render))
     display = push!(pipeline, MinimalDisplayStage())
     connect!(pipeline, render, resolve)

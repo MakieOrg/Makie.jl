@@ -1,4 +1,4 @@
-# This defines the Stages available in base GLMakie as well as the default
+# This defines the RenderStages available in base GLMakie as well as the default
 # render pipeline
 
 """
@@ -6,10 +6,10 @@
 
 Sorts plots based on the z translation of their model matrix.
 """
-SortStage() = Stage(:ZSort)
+SortStage() = RenderStage(:ZSort)
 
 """
-    RenderStage([; fxaa, ssao, oit])
+    PlotRenderStage([; fxaa, ssao, oit])
 
 Renders plots with depth, color and objectid outputs.
 
@@ -17,17 +17,17 @@ Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
 with the respective `fxaa`, `ssao` and `transparency` attribute values. By
 default any value passes.
 """
-function RenderStage(; kwargs...)
+function PlotRenderStage(; kwargs...)
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
     ]
-    return Stage(:Render; outputs, kwargs...)
+    return RenderStage(:Render; outputs, kwargs...)
 end
 
 """
-    SSAORenderStage([; fxaa, ssao, oit])
+    SSAOPlotRenderStage([; fxaa, ssao, oit])
 
 Renders plots with depth, color, objectid, position and normal outputs.
 
@@ -35,7 +35,7 @@ Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
 with the respective `fxaa`, `ssao` and `transparency` attribute values. By
 default any value passes.
 """
-function SSAORenderStage(; kwargs...)
+function SSAOPlotRenderStage(; ssao = true, kwargs...)
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
         :color => BufferFormat(4, N0f8),
@@ -43,11 +43,11 @@ function SSAORenderStage(; kwargs...)
         :position => BufferFormat(3, Float16),
         :normal => BufferFormat(3, Float16),
     ]
-    return Stage(Symbol("SSAO Render"); outputs, kwargs...)
+    return RenderStage(Symbol("SSAO Render"); outputs, ssao, kwargs...)
 end
 
 """
-    TransparentRenderStage([; fxaa, ssao, oit])
+    TransparentPlotRenderStage([; fxaa, ssao, oit])
 
 Renders plots with depth, color_sum, objectid, transmittance outputs.
 
@@ -55,14 +55,14 @@ Optionally `fxaa`, `ssao` and `oit` can be set to true or false to filter plots
 with the respective `fxaa`, `ssao` and `transparency` attribute values. By
 default any value passes.
 """
-function TransparentRenderStage()
+function TransparentPlotRenderStage(; oit = true)
     outputs = [
         :depth => BufferFormat(1, BFT.depth24),
         :color_sum => BufferFormat(4, Float16),
         :objectid => BufferFormat(2, UInt32),
         :transmittance => BufferFormat(1, N0f8),
     ]
-    return Stage(Symbol("OIT Render"); outputs)
+    return RenderStage(Symbol("OIT Render"); oit, outputs)
 end
 
 """
@@ -76,14 +76,14 @@ function SSAOStage(; kwargs...)
         :position => BufferFormat(3, Float32),
         :normal => BufferFormat(3, Float16),
     ]
-    stage1 = Stage(:SSAO1, inputs, [:occlusion => BufferFormat(1, N0f8)]; kwargs...)
+    stage1 = RenderStage(:SSAO1, inputs, [:occlusion => BufferFormat(1, N0f8)]; kwargs...)
 
     inputs = [
         :occlusion => BufferFormat(1, N0f8),
         :color => BufferFormat(4, N0f8),
         :objectid => BufferFormat(2, UInt32),
     ]
-    stage2 = Stage(:SSAO2, inputs, [:color => BufferFormat()]; kwargs...)
+    stage2 = RenderStage(:SSAO2, inputs, [:color => BufferFormat()]; kwargs...)
 
     pipeline = RenderPipeline(stage1, stage2)
     connect!(pipeline, stage1, 1, stage2, 1)
@@ -100,7 +100,7 @@ transmittance inputs of OIT into the color buffer.
 function OITStage(; kwargs...)
     inputs = [:color_sum => BufferFormat(4, Float16), :transmittance => BufferFormat(1, N0f8)]
     outputs = [:color => BufferFormat(4, N0f8)]
-    return Stage(:OIT, inputs, outputs; kwargs...)
+    return RenderStage(:OIT, inputs, outputs; kwargs...)
 end
 
 """
@@ -109,14 +109,14 @@ end
 Applies Fast approximate Anti Aliasing to the color buffer.
 """
 function FXAAStage(; kwargs...)
-    stage1 = Stage(
+    stage1 = RenderStage(
         :FXAA1,
         [:color => BufferFormat(4, N0f8), :objectid => BufferFormat(2, UInt32)],
         [:color_luma => BufferFormat(4, N0f8)];
         kwargs...
     )
 
-    stage2 = Stage(
+    stage2 = RenderStage(
         :FXAA2,
         [:color_luma => BufferFormat(4, N0f8, minfilter = :linear)],
         [:color => BufferFormat(4, N0f8)];
@@ -136,7 +136,7 @@ Displays the color buffer by blitting it to the screen. Also includes the depth
 and objectid buffers as inputs for `depthbuffer()` and picking functions.
 """
 function DisplayStage()
-    return Stage(
+    return RenderStage(
         :Display,
         inputs = [
             :depth => BufferFormat(1, BFT.depth24),
@@ -152,7 +152,7 @@ end
 Resolves multi sampling of all buffers in `source_stage` by blitting them into
 single sample buffers. This is required for Multi Sample Anti Aliasing.
 """
-function MSAAResolveStage(source_stage::Stage)
+function MSAAResolveStage(source_stage::RenderStage)
     # TODO: Should this generate multiple independent stages?
     inputs = Vector{Pair{Symbol, BufferFormat}}(undef, length(source_stage.outputs))
     outputs = Vector{Pair{Symbol, BufferFormat}}(undef, length(source_stage.outputs))
@@ -162,7 +162,7 @@ function MSAAResolveStage(source_stage::Stage)
         outputs[idx] = name => BufferFormat(format, samples = 1)
     end
 
-    return Stage(:MSAAResolve; inputs, outputs)
+    return RenderStage(:MSAAResolve; inputs, outputs)
 end
 
 """
@@ -178,17 +178,17 @@ function default_pipeline(; ssao = false, fxaa = true, oit = true)
     # Note - order important!
     # TODO: maybe add insert!()?
     if ssao
-        render1 = push!(pipeline, SSAORenderStage(ssao = true, transparency = false))
+        render1 = push!(pipeline, SSAOPlotRenderStage(ssao = true, transparency = false))
         _ssao = push!(pipeline, SSAOStage())
-        render2 = push!(pipeline, RenderStage(ssao = false, transparency = false))
+        render2 = push!(pipeline, PlotRenderStage(ssao = false, transparency = false))
     else
-        render2 = push!(pipeline, RenderStage(transparency = false))
+        render2 = push!(pipeline, PlotRenderStage(transparency = false))
     end
     if oit
-        render3 = push!(pipeline, TransparentRenderStage())
+        render3 = push!(pipeline, TransparentPlotRenderStage())
         _oit = push!(pipeline, OITStage())
     else
-        render3 = push!(pipeline, RenderStage(transparency = true))
+        render3 = push!(pipeline, PlotRenderStage(transparency = true))
     end
     if fxaa
         _fxaa = push!(pipeline, FXAAStage(filter_in_shader = true))
@@ -222,9 +222,9 @@ end
 Constructs the minimal pipeline needed for rendering.
 """
 function minimal_render_pipeline()
-    pipeline = Makie.RenderPipeline()
-    render = push!(pipeline, Makie.RenderStage())
-    display = push!(pipeline, Makie.DisplayStage())
+    pipeline = RenderPipeline()
+    render = push!(pipeline, PlotRenderStage())
+    display = push!(pipeline, DisplayStage())
     connect!(pipeline, render, display)
     return pipeline
 end

@@ -278,13 +278,13 @@ end
         # Pipeline matches test_pipeline_2D up to color_tint
         pipeline = Makie.RenderPipeline()
 
-        render1 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = true))
-        render2 = push!(pipeline, Makie.TransparentRenderStage())
+        render1 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = true))
+        render2 = push!(pipeline, Makie.TransparentPlotRenderStage())
         oit = push!(pipeline, Makie.OITStage())
         fxaa = push!(pipeline, Makie.FXAAStage(filter_in_shader = false))
-        render3 = push!(pipeline, Makie.RenderStage(transparency = false, fxaa = false))
+        render3 = push!(pipeline, Makie.PlotRenderStage(transparency = false, fxaa = false))
         color_tint = push!(
-            pipeline, Makie.Stage(
+            pipeline, Makie.PlotRenderStage(
                 :Tint,
                 inputs = [:color => Makie.BufferFormat()], # defaults to 4x N0f8, i.e. 32Bit color
                 outputs = [:color => Makie.BufferFormat()],
