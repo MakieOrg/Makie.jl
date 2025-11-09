@@ -175,7 +175,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
-        pipeline = copy(screen.render_pipeline.steps)
+        pipeline = copy(screen.render_pipeline.stages)
         robjs = last.(screen.renderlist)
 
         GLMakie.destroy!(screen)
@@ -237,9 +237,9 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
 
         @testset "PostProcessors" begin
             @test length(pipeline) == 10
-            for step in pipeline
-                if hasfield(typeof(step), :robj)
-                    validate_robj(getfield(step, :robj))
+            for stage in pipeline
+                if hasfield(typeof(stage), :robj)
+                    validate_robj(getfield(stage, :robj))
                 end
             end
         end

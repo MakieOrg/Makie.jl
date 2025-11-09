@@ -107,7 +107,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     destroy!(manager)
     initialize_attachments!(manager, pipeline.formats)
 
-    # verify that last step is display
+    # verify that last stage is display
     final_stage = pipeline.stages[end]
     if !(final_stage.name === :Display && first.(final_stage.inputs) == [:depth, :color, :objectid])
         error("The final stage must be a Display stage with inputs (:depth, :color, :objectid). $final_stage")
@@ -116,7 +116,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
     # Constructing a RenderStep can be somewhat costly, so we want to reuse them
     # if possible. Steps that aren't reused and thus need to be deleted are
     # tracked here:
-    needs_cleanup = collect(eachindex(previous_pipeline.steps))
+    needs_cleanup = collect(eachindex(previous_pipeline.stages))
     render_pipeline = GLRenderStage[]
 
     for stage in pipeline.stages
@@ -126,7 +126,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
         if idx === nothing
             pass = construct(Val(stage.name), screen, stage)
         else
-            pass = reconstruct(previous_pipeline.steps[idx], screen, stage)
+            pass = reconstruct(previous_pipeline.stages[idx], screen, stage)
             filter!(!=(idx), needs_cleanup)
         end
 
@@ -135,7 +135,7 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
 
     # Cleanup any old RenderStep that has not been reused, passing along which
     # buffers must be preserved.
-    foreach(i -> destroy!(previous_pipeline.steps[i]), needs_cleanup)
+    foreach(i -> destroy!(previous_pipeline.stages[i]), needs_cleanup)
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
 

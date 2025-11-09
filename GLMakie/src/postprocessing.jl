@@ -23,35 +23,35 @@ rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 """
     GLRenderStage
 
-Represents a task or step that needs to run when rendering a frame. These
+Represents a task or stage that needs to run when rendering a frame. These
 tasks are collected in the RenderPipeline.
 
 Each task may implement:
-- `prepare_step(screen, glscene, step)`: Initialize the task.
-- `run_step(screen, glscene, step)`: Run the task.
-- `destroy!(step)`: Cleanup of the object. This defaults to calling `destroy!(step.robj)`.
-- `on_resize(step, width, height)`: Called when buffer should resize.
+- `prepare_stage(screen, glscene, stage)`: Initialize the task.
+- `run_stage(screen, glscene, stage)`: Run the task.
+- `destroy!(stage)`: Cleanup of the object. This defaults to calling `destroy!(stage.robj)`.
+- `on_resize(stage, width, height)`: Called when buffer should resize.
 
-Initialization is grouped together and runs before all run steps. If you need
+Initialization is grouped together and runs before all run stages. If you need
 to initialize just before your run, bundle it with the run.
 
-A render step is constructed from a `Makie.RenderStage` using
+A render stage is constructed from a `Makie.RenderStage` using
 `construct(::Val{stage.name}, screen, framebuffer, inputs, parent)`. The `inputs`
-are the buffers/textures that feed into this step according to the render pipeline.
+are the buffers/textures that feed into this stage according to the render pipeline.
 The `parent` is the `Makie.RenderStage` which may contain additional settings/uniforms.
-The framebuffer is specifically created for this step, containing the outputs
+The framebuffer is specifically created for this stage, containing the outputs
 specified in the render pipeline in the same order and with the same names.
 
-Optionally, `reconstruct(old_step, screen, framebuffer, inputs, parent)` can be
-used to construct a step from a previous version. This can be used to avoid a
-full destruction and re-creation of a step when the pipeline gets replaced.
+Optionally, `reconstruct(old_stage, screen, framebuffer, inputs, parent)` can be
+used to construct a stage from a previous version. This can be used to avoid a
+full destruction and re-creation of a stage when the pipeline gets replaced.
 """
 abstract type GLRenderStage end
-run_step(screen, glscene, ::GLRenderStage) = nothing
+run_stage(screen, glscene, ::GLRenderStage) = nothing
 
-function destroy!(step::T) where {T <: GLRenderStage}
+function destroy!(stage::T) where {T <: GLRenderStage}
     @debug "Default destructor of $T"
-    hasfield(T, :robj) && destroy!(step.robj)
+    hasfield(T, :robj) && destroy!(stage.robj)
     return
 end
 
@@ -68,14 +68,14 @@ Broadcast.broadcastable(x::GLRenderStage) = Ref(x)
 
 
 """
-    GLRenderPipeline(pipeline::Makie.RenderPipeline, steps::Vector{GLRenderStage})
+    GLRenderPipeline(pipeline::Makie.RenderPipeline, stages::Vector{GLRenderStage})
 
-Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of steps
+Creates a `GLRenderPipeline`. The pipeline mostly acts as a collection of stages
 which run in sequence when calling `render_frame!(screen, scene, pipeline)`.
 """
 struct GLRenderPipeline
     parent::Makie.LoweredRenderPipeline
-    steps::Vector{GLRenderStage}
+    stages::Vector{GLRenderStage}
 end
 
 function GLRenderPipeline()
@@ -85,32 +85,32 @@ end
 # Allow iteration
 function Base.iterate(pipeline::GLRenderPipeline, idx = 1)
     idx > length(pipeline) && return nothing
-    return (pipeline.steps[idx], idx + 1)
+    return (pipeline.stages[idx], idx + 1)
 end
-Base.length(pipeline::GLRenderPipeline) = length(pipeline.steps)
+Base.length(pipeline::GLRenderPipeline) = length(pipeline.stages)
 Base.eltype(::Type{GLRenderPipeline}) = GLRenderStage
 
-# render each step
+# render each stage
 function render_frame(screen, glscene, pipeline::GLRenderPipeline)
-    for step in pipeline
+    for stage in pipeline
         require_context(screen.glscreen)
-        run_step(screen, glscene, step)
+        run_stage(screen, glscene, stage)
     end
     return
 end
 
-# map framebuffer resize to each step
+# map framebuffer resize to each stage
 # bundled with framebuffer_manager resizes
 function Base.resize!(pipeline::GLRenderPipeline, w, h)
-    for step in pipeline
-        on_resize(step, w, h)
+    for stage in pipeline
+        on_resize(stage, w, h)
     end
     return
 end
 
 function destroy!(pipeline::GLRenderPipeline)
-    destroy!.(pipeline.steps)
-    empty!(pipeline.steps)
+    destroy!.(pipeline.stages)
+    empty!(pipeline.stages)
     return
 end
 
@@ -119,7 +119,7 @@ struct SortPlots <: GLRenderStage end
 
 construct(::Val{:ZSort}, screen, parent) = SortPlots()
 
-function run_step(screen, glscene, ::SortPlots)
+function run_stage(screen, glscene, ::SortPlots)
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
@@ -145,7 +145,7 @@ compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == 
 """
     struct RenderPlots <: GLRenderStage
 
-A render pipeline step which renders plots. This includes filtering options to
+A render pipeline stage which renders plots. This includes filtering options to
 distribute plots into, e.g. a pass for OIT.
 """
 struct RenderPlots <: GLRenderStage
@@ -186,32 +186,32 @@ function id2scene(screen, id1)
 end
 
 renders_in_stage(robj, ::GLRenderStage) = false
-renders_in_stage(robj::RenderObject, step::RenderPlots) = renders_in_stage(robj.uniforms, step)
-function renders_in_stage(robj, step::RenderPlots)
-    return compare(to_value(get(robj, :ssao, false)), step.ssao) &&
-        compare(to_value(get(robj, :transparency, false)), step.transparency) &&
-        compare(to_value(get(robj, :fxaa, false)), step.fxaa)
+renders_in_stage(robj::RenderObject, stage::RenderPlots) = renders_in_stage(robj.uniforms, stage)
+function renders_in_stage(robj, stage::RenderPlots)
+    return compare(to_value(get(robj, :ssao, false)), stage.ssao) &&
+        compare(to_value(get(robj, :transparency, false)), stage.transparency) &&
+        compare(to_value(get(robj, :fxaa, false)), stage.fxaa)
 end
 
-on_resize(step::RenderPlots, w, h) = resize!(step.framebuffer, w, h)
+on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
 
-function run_step(screen, glscene, step::RenderPlots)
+function run_stage(screen, glscene, stage::RenderPlots)
     # Somehow errors in here get ignored silently!?
     try
         require_context(screen.glscreen)
-        GLAbstraction.bind(step.framebuffer)
+        GLAbstraction.bind(stage.framebuffer)
 
-        for (idx, color) in step.clear
-            idx <= step.framebuffer.counter || continue
-            glDrawBuffer(step.framebuffer.attachments[idx])
+        for (idx, color) in stage.clear
+            idx <= stage.framebuffer.counter || continue
+            glDrawBuffer(stage.framebuffer.attachments[idx])
             glClearColor(color...)
             glClear(GL_COLOR_BUFFER_BIT)
         end
 
-        set_draw_buffers(step.framebuffer)
+        set_draw_buffers(stage.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
-            elem.visible && renders_in_stage(elem, step) || continue
+            elem.visible && renders_in_stage(elem, stage) || continue
 
             found, scene = id2scene(screen, screenid)
             (found && scene.visible[]) || continue
@@ -223,7 +223,7 @@ function run_step(screen, glscene, step::RenderPlots)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             elem[:px_per_unit] = ppu
 
-            if step.for_oit
+            if stage.for_oit
                 # disable depth buffer writing
                 glDepthMask(GL_FALSE)
 
@@ -264,7 +264,7 @@ struct RenderPass{Name} <: GLRenderStage
     robj::RenderObject
 end
 
-on_resize(step::RenderPass, w, h) = resize!(step.framebuffer, w, h)
+on_resize(stage::RenderPass, w, h) = resize!(stage.framebuffer, w, h)
 
 function reconstruct(pass::RP, screen, framebuffer, inputs, ::Makie.RenderStage) where {RP <: RenderPass}
     for (k, v) in inputs
@@ -310,12 +310,12 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
     return RenderPass{:OIT}(framebuffer, robj)
 end
 
-function run_step(screen, glscene, step::RenderPass{:OIT})
+function run_stage(screen, glscene, stage::RenderPass{:OIT})
     # Blend transparent onto opaque
-    wh = size(step.framebuffer)
-    set_draw_buffers(step.framebuffer)
+    wh = size(stage.framebuffer)
+    set_draw_buffers(stage.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
-    GLAbstraction.render(step.robj)
+    GLAbstraction.render(stage.robj)
     return
 end
 
@@ -371,15 +371,15 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
 
-function run_step(screen, glscene, step::RenderPass{:SSAO1})
-    set_draw_buffers(step.framebuffer)  # occlusion buffer
+function run_stage(screen, glscene, stage::RenderPass{:SSAO1})
+    set_draw_buffers(stage.framebuffer)  # occlusion buffer
 
-    wh = size(step.framebuffer)
+    wh = size(stage.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
 
-    data = step.robj.uniforms
+    data = stage.robj.uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
         # This should be per scene because projection may vary between
@@ -395,8 +395,8 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
         data[:projection] = Mat4f(scene.camera.projection[])
         data[:bias] = scene.ssao.bias[]
         data[:radius] = scene.ssao.radius[]
-        data[:noise_scale] = Vec2f(0.25f0 .* size(step.framebuffer))
-        GLAbstraction.render(step.robj)
+        data[:noise_scale] = Vec2f(0.25f0 .* size(stage.framebuffer))
+        GLAbstraction.render(stage.robj)
     end
 
     glDisable(GL_SCISSOR_TEST)
@@ -404,19 +404,19 @@ function run_step(screen, glscene, step::RenderPass{:SSAO1})
     return
 end
 
-function run_step(screen, glscene, step::RenderPass{:SSAO2})
+function run_stage(screen, glscene, stage::RenderPass{:SSAO2})
     # TODO: SSAO doesn't copy the full color buffer and writes to a buffer
     #       previously used for normals. Figure out a better solution than this:
-    setup!(screen, step.framebuffer)
+    setup!(screen, stage.framebuffer)
 
     # SSAO - blur occlusion and apply to color
-    set_draw_buffers(step.framebuffer)  # color buffer
-    wh = size(step.framebuffer)
+    set_draw_buffers(stage.framebuffer)  # color buffer
+    wh = size(stage.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
 
     glEnable(GL_SCISSOR_TEST)
     ppu = (x) -> round.(Int, screen.px_per_unit[] .* x)
-    data = step.robj.uniforms
+    data = stage.robj.uniforms
     for (screenid, scene) in screen.screens
         # Select the area of one leaf scene
         isempty(scene.children) || continue
@@ -424,8 +424,8 @@ function run_step(screen, glscene, step::RenderPass{:SSAO2})
         glScissor(ppu(minimum(a))..., ppu(widths(a))...)
         # update uniforms
         data[:blur_range] = scene.ssao.blur
-        data[:inv_texel_size] = rcpframe(size(step.framebuffer))
-        GLAbstraction.render(step.robj)
+        data[:inv_texel_size] = rcpframe(size(stage.framebuffer))
+        GLAbstraction.render(stage.robj)
     end
     glDisable(GL_SCISSOR_TEST)
 
@@ -468,25 +468,25 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
     return RenderPass{:FXAA2}(framebuffer, robj)
 end
 
-function run_step(screen, glscene, step::RenderPass{:FXAA1})
+function run_stage(screen, glscene, stage::RenderPass{:FXAA1})
     # FXAA - calculate LUMA
-    set_draw_buffers(step.framebuffer)
+    set_draw_buffers(stage.framebuffer)
     # TODO: make scissor explicit?
-    wh = size(step.framebuffer)
+    wh = size(stage.framebuffer)
     glViewport(0, 0, wh[1], wh[2])
     # TODO: is this still true?
     # necessary with negative SSAO bias...
     # glClearColor(1, 1, 1, 1)
     # glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(step.robj)
+    GLAbstraction.render(stage.robj)
     return
 end
 
-function run_step(screen, glscene, step::RenderPass{:FXAA2})
+function run_stage(screen, glscene, stage::RenderPass{:FXAA2})
     # FXAA - perform anti-aliasing
-    set_draw_buffers(step.framebuffer)  # color buffer
-    step.robj[:RCPFrame] = rcpframe(size(step.framebuffer))
-    GLAbstraction.render(step.robj)
+    set_draw_buffers(stage.framebuffer)  # color buffer
+    stage.robj[:RCPFrame] = rcpframe(size(stage.framebuffer))
+    GLAbstraction.render(stage.robj)
     return
 end
 
@@ -495,9 +495,9 @@ struct MSAAResolve <: GLRenderStage
     output_framebuffer::GLFramebuffer
 end
 
-function on_resize(step::MSAAResolve, w, h)
-    resize!(step.input_framebuffer, w, h)
-    resize!(step.output_framebuffer, w, h)
+function on_resize(stage::MSAAResolve, w, h)
+    resize!(stage.input_framebuffer, w, h)
+    resize!(stage.output_framebuffer, w, h)
     return
 end
 
@@ -509,14 +509,14 @@ function construct(::Val{:MSAAResolve}, screen, stage::Makie.LoweredStage)
     return MSAAResolve(input_framebuffer, output_framebuffer)
 end
 
-function run_step(screen, ::Nothing, step::MSAAResolve)
-    w, h = size(step.output_framebuffer)
+function run_stage(screen, ::Nothing, stage::MSAAResolve)
+    w, h = size(stage.output_framebuffer)
     flag = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT
 
-    for attachment in each_attachment(step.input_framebuffer)
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, step.input_framebuffer.id)
+    for attachment in each_attachment(stage.input_framebuffer)
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.input_framebuffer.id)
         glReadBuffer(attachment)
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.output_framebuffer.id)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stage.output_framebuffer.id)
         glDrawBuffer(attachment)
 
         glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, flag, GL_NEAREST)
@@ -535,7 +535,7 @@ struct BlitToScreen <: GLRenderStage
     screen_framebuffer_id::Int
 end
 
-on_resize(step::BlitToScreen, w, h) = resize!(step.framebuffer, w, h)
+on_resize(stage::BlitToScreen, w, h) = resize!(stage.framebuffer, w, h)
 
 function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     require_context(screen.glscreen)
@@ -544,14 +544,14 @@ function construct(::Val{:Display}, screen, stage::Makie.LoweredStage)
     return BlitToScreen(framebuffer, id)
 end
 
-function run_step(screen, ::Nothing, step::BlitToScreen)
+function run_stage(screen, ::Nothing, stage::BlitToScreen)
     # Set source
-    # glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, step.framebuffer.id)
-    glReadBuffer(get_attachment(step.framebuffer, :color)) # for safety
+    # glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.framebuffer.id)
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, stage.framebuffer.id)
+    glReadBuffer(get_attachment(stage.framebuffer, :color)) # for safety
 
     # GLFW uses 0, Gtk uses a value that we have to probe at the beginning of rendering
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, step.screen_framebuffer_id)
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, stage.screen_framebuffer_id)
 
     src_w, src_h = framebuffer_size(screen)
     trg_w, trg_h = makie_window_size(screen)

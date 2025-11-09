@@ -1,14 +1,14 @@
 # Render Pipeline
 
-The `RenderPipeline` abstracts the steps GLMakie goes through when rendering.
+The `RenderPipeline` abstracts the stages GLMakie goes through when rendering.
 It controls the order in which plots are rendered, which post processors are used and how they connect.
 In this section we will explain how the `RenderPipeline` works and can be modified.
 Note that this is both an advanced topic and an early implementation.
-The pipeline and especially the default steps/stages may change in the future as we figure out how to best organize them.
+The pipeline and especially the default stages may change in the future as we figure out how to best organize them.
 
 ## Render Stages
 
-A `RenderStage` is a step in the render pipeline which represents some action performed during rendering.
+A `RenderStage` is a stage in the render pipeline which represents some action performed during rendering.
 Typically this is the execution of a post processing shader which takes some inputs and produces some outputs.
 It can also be rendering of plots to some outputs, or something completely CPU side like sorting plots.
 
@@ -114,10 +114,10 @@ f
 For GLMakie to be able to use a `RenderStage` it needs to have a backend implementation.
 This implementation includes:
 - A struct inheriting from `GLMakie.GLRenderStage` representing the stage. For post processors this can usually be a `GLMakie.RenderPass` which contains a framebuffer and render object.
-- A `GLMakie.construct` method which sets up the render step. This can be either:
+- A `GLMakie.construct` method which sets up the render stage. This can be either:
   - `GLMakie.construct(::Val{name}, screen, stage)` where `name` is the name of the respective stage.
   - `GLMakie.construct(::Val{name}, screen, framebuffer, inputs, stage)` where the `framebuffer` includes all the outputs of the stage and `inputs` all the stage inputs.
-- A `GLMakie.run_step!(screen, _, step)` method which executes the step. (`_` is currently unused.)
+- A `GLMakie.run_stage!(screen, _, stage)` method which executes the stage. (`_` is currently unused.)
 
 Explaining everything that goes into these methods in detail is beyond the scope of section.
 Instead we return to the color tinting example and briefly explain what that implementation would look like.
@@ -177,7 +177,7 @@ function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, stage)
         screen.glscreen # OpenGL context of the RenderObject
     )
 
-    # Rendering of a RenderObject happens in 3 steps:
+    # Rendering of a RenderObject happens in 3 stages:
     # 1. the prerender function runs
     # 2. uniforms, buffers and the shader program are bound and get updated
     # 3. the postrender function runs
@@ -193,17 +193,17 @@ function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, stage)
     return GLMakie.RenderPass{:Tint}(framebuffer, robj)
 end
 
-# This runs as a step in the render loop for each frame
-function GLMakie.run_step(screen, _, step::GLMakie.RenderPass{:Tint})
+# This runs as a stage in the render loop for each frame
+function GLMakie.run_stage(screen, _, stage::GLMakie.RenderPass{:Tint})
     # resize framebuffer to target size
-    resize!(step.framebuffer, screen.framebuffer_manager.size)
+    resize!(stage.framebuffer, screen.framebuffer_manager.size)
     # bind all color buffers in the framebuffer (here one color output)
-    GLMakie.set_draw_buffers(step.framebuffer)
+    GLMakie.set_draw_buffers(stage.framebuffer)
     # Set the draw region to the full size of the framebuffer
-    wh = size(step.framebuffer)
+    wh = size(stage.framebuffer)
     GLMakie.glViewport(0, 0, wh[1], wh[2])
     # render the render object
-    GLMakie.GLAbstraction.render(step.robj)
+    GLMakie.GLAbstraction.render(stage.robj)
     return
 end
 

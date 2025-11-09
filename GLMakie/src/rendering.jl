@@ -1,5 +1,5 @@
 # Needs to run before first draw to opaque color buffers.
-# SSAO needs to run this between steps as it switches to a different color buffer
+# SSAO needs to run this between stages as it switches to a different color buffer
 function setup!(screen::Screen, fb)
     GLAbstraction.bind(fb)
 
@@ -75,9 +75,9 @@ function render_frame(screen::Screen; resize_buffers = true)
 
     # TODO: Is this a reasonable solution?
     # Maybe we should have a setup stage instead? (Kinda annoying for SSAO though)
-    idx = findfirst(stage -> stage isa RenderPlots, screen.render_pipeline.steps)
+    idx = findfirst(stage -> stage isa RenderPlots, screen.render_pipeline.stages)
     if !isnothing(idx)
-        setup!(screen, screen.render_pipeline.steps[idx].framebuffer)
+        setup!(screen, screen.render_pipeline.stages[idx].framebuffer)
     end
 
     render_frame(screen, nothing, screen.render_pipeline)
@@ -97,7 +97,7 @@ function stage_output(
         error("Screen not open!")
     end
     gl_switch_context!(screen.glscreen)
-    framebuffer = screen.render_pipeline.steps[stage_index].framebuffer
+    framebuffer = screen.render_pipeline.stages[stage_index].framebuffer
     ctex = get_buffer(framebuffer, buffername)
     pollevents(screen, Makie.BackendTick)
     poll_updates(screen)
@@ -106,9 +106,9 @@ function stage_output(
 
     # Render up to target stage
     for idx in 1:stage_index
-        step = screen.render_pipeline.steps[idx]
+        stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_step(screen, nothing, step)
+        run_stage(screen, nothing, stage)
     end
 
     glFinish()
@@ -119,10 +119,10 @@ function stage_output(
     fast_color_data!(screen.framecache, ctex)
 
     # Render remainign stages
-    for idx in (stage_index + 1):length(screen.render_pipeline.steps)
-        step = screen.render_pipeline.steps[idx]
+    for idx in (stage_index + 1):length(screen.render_pipeline.stages)
+        stage = screen.render_pipeline.stages[idx]
         require_context(screen.glscreen)
-        run_step(screen, nothing, step)
+        run_stage(screen, nothing, stage)
     end
 
     if screen.config.visible

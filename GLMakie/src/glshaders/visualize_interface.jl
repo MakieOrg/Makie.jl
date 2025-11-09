@@ -159,13 +159,13 @@ to_index_buffer(ctx, x) = error(
 )
 
 function target_stage(screen, data)
-    idx = findfirst(step -> renders_in_stage(data, step), screen.render_pipeline.steps)
+    idx = findfirst(stage -> renders_in_stage(data, stage), screen.render_pipeline.stages)
     @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
 
     # Activate the required outputs + code via `#define` and `#ifdef` blocks.
     # For now we can just check the number of outputs to figure out what branch
     # we need. If render stages get more complex this may need to be more generative.
-    fb = screen.render_pipeline.steps[idx].framebuffer
+    fb = screen.render_pipeline.stages[idx].framebuffer
     define = if fb.counter == 1
         "#define MINIMAL_TARGET"
     elseif fb.counter == 2

@@ -263,13 +263,13 @@ end
         return GLMakie.RenderPass{:Tint}(framebuffer, robj)
     end
 
-    function GLMakie.run_step(screen, glscene, step::GLMakie.RenderPass{:Tint})
-        resize!(step.framebuffer, screen.framebuffer_manager.size)
+    function GLMakie.run_stage(screen, glscene, stage::GLMakie.RenderPass{:Tint})
+        resize!(stage.framebuffer, screen.framebuffer_manager.size)
         # Blend transparent onto opaque
-        wh = size(step.framebuffer)
-        GLMakie.set_draw_buffers(step.framebuffer)
+        wh = size(stage.framebuffer)
+        GLMakie.set_draw_buffers(stage.framebuffer)
         GLMakie.glViewport(0, 0, wh[1], wh[2])
-        GLMakie.GLAbstraction.render(step.robj)
+        GLMakie.GLAbstraction.render(stage.robj)
         return
     end
 
