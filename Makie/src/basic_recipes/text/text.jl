@@ -24,7 +24,7 @@ function plot!(text::Text)
     @assert length(attr.converted[][1]) == length(attr.input_text[]) "there should be given as many positions as texts."
 
     # unwrap text and resolve layouters
-    map!(attr, [:text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
+    map!(attr, [:input_text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
         unwrapped_strings = unwrap_string.(strings)
         resolved_layouters = map(enumerate(strings)) do (i, s)
             given_layouter = sv_getindex(layouters,i)
@@ -540,12 +540,12 @@ end
 
 # TODO: anything per-string should include lines?
 
-function register_raw_glyph_boundingboxes!(plot)
-    if !haskey(plot.attributes, :raw_glyph_boundingboxes)
-        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
-    end
-    return plot.raw_glyph_boundingboxes
-end
+# function register_raw_glyph_boundingboxes!(plot)
+#     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
+#         map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+#     end
+#     return plot.raw_glyph_boundingboxes
+# end
 
 """
     raw_glyph_boundingboxes(plot::Text)

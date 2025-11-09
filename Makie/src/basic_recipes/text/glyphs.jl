@@ -79,7 +79,6 @@ function boundingbox(plot::Glyphs, target_space::Symbol)
     bbox = if target_space == plot.markerspace[]
         glyphs_boundingbox(plot, target_space)
     elseif Makie.is_data_space(target_space)
-        # @show plot.positions_transformed[]
         _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
     else
         error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
