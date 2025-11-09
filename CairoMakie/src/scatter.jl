@@ -80,8 +80,6 @@ function draw_glyphs(ctx, attr::NamedTuple)
         eye_to_clip=attr.eye_to_clip,
         view=attr.cam_view,
     )
-    @warn "drawing glyphs"
-    @show valid_indices
 
     Cairo.save(ctx)
 

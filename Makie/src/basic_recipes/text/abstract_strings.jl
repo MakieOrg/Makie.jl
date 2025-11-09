@@ -4,7 +4,6 @@ is_layouter_compatible(string::AbstractString, ::DefaultStringLayouter) = true
 default_layouter(::AbstractString) = DefaultStringLayouter()
 
 function layouted_string_plotspecs(inputs, ::DefaultStringLayouter, id)
-    @info "Default drawing!"
     glyph_inputs = (;
         (
             i => sv_getindex(inputs[i], id) for i in [
