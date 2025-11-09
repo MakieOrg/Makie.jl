@@ -124,7 +124,6 @@ function register_text_boundingboxes!(plot, space=:pixel)
             end
         end
     end
-    @show plot.attributes.text_boundingboxes[]
     return plot.attributes.text_boundingboxes
 end
 
