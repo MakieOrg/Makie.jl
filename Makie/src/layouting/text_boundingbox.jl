@@ -1,22 +1,22 @@
-function boundingbox(plot::Text, target_space::Symbol)
-    # TODO:
-    # This is temporary prep work for the future. We should actually consider
-    # plot.space, markerspace, textsize, etc when computing the boundingbox in
-    # the target_space given to the function.
-    # We may also want a cheap version that only considers forward
-    # transformations (i.e. drops textsize etc when markerspace is not part of
-    # the plot.space -> target_space conversion chain)
-    if target_space == plot.markerspace[]
-        return full_boundingbox(plot, target_space)
-    elseif Makie.is_data_space(target_space)
-        return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
-    else
-        error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
-    end
-end
+# function boundingbox(plot::Text, target_space::Symbol)
+#     # TODO:
+#     # This is temporary prep work for the future. We should actually consider
+#     # plot.space, markerspace, textsize, etc when computing the boundingbox in
+#     # the target_space given to the function.
+#     # We may also want a cheap version that only considers forward
+#     # transformations (i.e. drops textsize etc when markerspace is not part of
+#     # the plot.space -> target_space conversion chain)
+#     if false && target_space == plot.markerspace[]
+#         return full_boundingbox(plot, target_space)
+#     elseif Makie.is_data_space(target_space)
+#         return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
+#     else
+#         error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
+#     end
+# end
 
-@deprecate string_boundingbox(plot::Text) full_boundingbox(plot::Text)
-# @deprecate unchecked_boundingbox string_boundingboxes
+# @deprecate string_boundingbox(plot::Text) full_boundingbox(plot::Text)
+# # @deprecate unchecked_boundingbox string_boundingboxes
 
 # Utility
 function text_bb(str, font, size)

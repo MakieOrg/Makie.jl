@@ -21,7 +21,7 @@ function plot!(text::Text)
     # its own colors to be mixed with other text types which dont.
     add_computation!(attr, Val(:computed_color))
 
-    @assert length(attr.converted[][1]) == length(attr.text[]) "there should be given as many positions as texts."
+    @assert length(attr.converted[][1]) == length(attr.input_text[]) "there should be given as many positions as texts."
 
     # unwrap text and resolve layouters
     map!(attr, [:text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
@@ -38,11 +38,12 @@ function plot!(text::Text)
         specs = PlotSpec[]
         for (i,layouter) in enumerate(inputs.resolved_layouters)
             append!(specs, layouted_string_plotspecs(inputs, layouter, i))
-            push!(specs, PlotSpec(:Scatter, 100*((i-1).+rand(100)), 100*((i-1).+rand(100))))
         end
         return (specs,)
     end
-    plotlist!(text, attr, attr.plotspecs)
+
+    # TODO: somehow, markerspace is not inherited here?
+    plotlist!(text, attr, attr.plotspecs; markerspace=attr.markerspace)
 
     # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
@@ -113,6 +114,8 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     return
 end
 
+# MARK: old stuff?
+
 function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
     if isscalar(x)
         return x
@@ -131,31 +134,31 @@ function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi:
 end
 
 # TODO: this is only used in per_text_block?
-function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks))) # data is per glyph
-            return view(x, text_blocks[bi]) # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
-end
+# function per_text_getindex(x, text_blocks::Vector{UnitRange{Int}}, bi::Int)
+#     if isscalar(x)
+#         return x
+#     elseif isa(x, AbstractVector)
+#         N_strings = length(text_blocks)
+#         if (N_strings > 0) && (length(x) == last(last(text_blocks))) # data is per glyph
+#             return view(x, text_blocks[bi]) # use per glyph index
+#         elseif length(x) == N_strings
+#             return x[bi] # use per text block index
+#         else
+#             error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
+#         end
+#     else
+#         return x
+#     end
+# end
 
 # TODO: this seems unused?
-function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
-    for block_idx in eachindex(text_blocks)
-        f(_getindex.(args, block_idx)...)
-    end
-    return
-end
+# function per_text_block(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+#     _getindex(x, bi) = per_text_getindex(x, text_blocks, bi)
+#     for block_idx in eachindex(text_blocks)
+#         f(_getindex.(args, block_idx)...)
+#     end
+#     return
+# end
 
 function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
     _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
@@ -180,94 +183,94 @@ function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
 end
 
 # TODO: this is unused?
-function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
-    result = Typ[]
-    for g in glyphcollection
-        arr = getfield(g, name)
-        if arr isa Vector
-            append!(result, arr)
-        else
-            _arr = arr.sv
-            if _arr isa Vector
-                append!(result, _arr)
-            else
-                append!(result, (_arr for i in 1:length(g.glyphs)))
-            end
-        end
-    end
-    return result
-end
+# function get_from_collection(glyphcollection::AbstractArray, name::Symbol, Typ)
+#     result = Typ[]
+#     for g in glyphcollection
+#         arr = getfield(g, name)
+#         if arr isa Vector
+#             append!(result, arr)
+#         else
+#             _arr = arr.sv
+#             if _arr isa Vector
+#                 append!(result, _arr)
+#             else
+#                 append!(result, (_arr for i in 1:length(g.glyphs)))
+#             end
+#         end
+#     end
+#     return result
+# end
 
 # TODO: this is unused?
-function get_text_blocks(gcs)
-    text_blocks = UnitRange{Int}[]
-    curr = 1
-    for g in gcs
-        push!(text_blocks, curr:(curr + length(g.glyphs)))
-        curr += length(g.glyphs)
-    end
-    return text_blocks
-end
+# function get_text_blocks(gcs)
+#     text_blocks = UnitRange{Int}[]
+#     curr = 1
+#     for g in gcs
+#         push!(text_blocks, curr:(curr + length(g.glyphs)))
+#         curr += length(g.glyphs)
+#     end
+#     return text_blocks
+# end
 
 #####################################
 # New stuff
 
-function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
-    block_length = length(block)
-    if isscalar(data)
-        return fill(data, block_length)
-    elseif length(data) == N_blocks
-        return fill(data[block_idx], block_length)
-    else
-        return view(data, block)
-    end
-end
+# function per_glyph_block(data, block_idx, N_blocks, block::UnitRange)
+#     block_length = length(block)
+#     if isscalar(data)
+#         return fill(data, block_length)
+#     elseif length(data) == N_blocks
+#         return fill(data[block_idx], block_length)
+#     else
+#         return view(data, block)
+#     end
+# end
 
 # MARK: Abstract String
-function convert_text_string!(
-        outputs::NamedTuple,
-        input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
-        lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
-    )
+# function convert_text_string!(
+#         outputs::NamedTuple,
+#         input_text::AbstractString, i, N, fontsize, font, align, rotation, justification,
+#         lineheight, word_wrap_width, offset, fonts, color, strokecolor, strokewidth
+#     )
 
-    args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
-    nt = glyph_collection(input_text, args...)
-    curr = length(outputs.glyphindices)
-    block = (curr + 1):(curr + length(nt.glyphindices))
+#     args = sv_getindex.((font, fontsize, align, lineheight, justification, word_wrap_width, rotation), i)
+#     nt = glyph_collection(input_text, args...)
+#     curr = length(outputs.glyphindices)
+#     block = (curr + 1):(curr + length(nt.glyphindices))
 
-    push!(outputs.text_blocks, block)
-    append!(outputs.glyphindices, nt.glyphindices)
-    append!(outputs.font_per_char, nt.font_per_char)
-    append!(outputs.glyph_origins, nt.char_origins)
-    append!(outputs.glyph_extents, nt.glyph_extents)
+#     push!(outputs.text_blocks, block)
+#     append!(outputs.glyphindices, nt.glyphindices)
+#     append!(outputs.font_per_char, nt.font_per_char)
+#     append!(outputs.glyph_origins, nt.char_origins)
+#     append!(outputs.glyph_extents, nt.glyph_extents)
 
-    scales = per_glyph_block(to_2d_scale(fontsize), i, N, block) # TODO: convert_attribute?
-    rotations = per_glyph_block(rotation, i, N, block)
-    colors = per_glyph_block(color, i, N, block)
+#     scales = per_glyph_block(to_2d_scale(fontsize), i, N, block) # TODO: convert_attribute?
+#     rotations = per_glyph_block(rotation, i, N, block)
+#     colors = per_glyph_block(color, i, N, block)
 
-    # TODO: Should we get rid of this in general?
-    gc = GlyphCollection(
-        nt.glyphindices,
-        nt.font_per_char,
-        nt.char_origins,
-        nt.glyph_extents,
-        scales,
-        rotations,
-        colors,
-        RGBAf[],
-        Float32[]
-    )
+#     # TODO: Should we get rid of this in general?
+#     gc = GlyphCollection(
+#         nt.glyphindices,
+#         nt.font_per_char,
+#         nt.char_origins,
+#         nt.glyph_extents,
+#         scales,
+#         rotations,
+#         colors,
+#         RGBAf[],
+#         Float32[]
+#     )
 
-    push!(outputs.glyphcollections, gc)
-    append!(outputs.text_color, colors)
-    append!(outputs.text_rotation, rotations)
-    append!(outputs.text_scales, scales)
+#     push!(outputs.glyphcollections, gc)
+#     append!(outputs.text_color, colors)
+#     append!(outputs.text_rotation, rotations)
+#     append!(outputs.text_scales, scales)
 
-    append!(outputs.text_strokecolor, per_glyph_block(strokecolor, i, N, block))
-    append!(outputs.text_strokewidth, per_glyph_block(strokewidth, i, N, block))
+#     append!(outputs.text_strokecolor, per_glyph_block(strokecolor, i, N, block))
+#     append!(outputs.text_strokewidth, per_glyph_block(strokewidth, i, N, block))
 
-    return
-end
+#     return
+# end
 
 # MARK: Rich Text
 function convert_text_string!(
@@ -469,13 +472,13 @@ function register_text_computations!(attr::ComputeGraph)
 end
 
 # TODO: this seems unused
-function get_text_type(x::AbstractVector{Any})
-    isempty(x) && error("Cannot determine text type from empty vector")
-    return mapreduce(typeof, (a, b) -> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
-end
+# function get_text_type(x::AbstractVector{Any})
+#     isempty(x) && error("Cannot determine text type from empty vector")
+#     return mapreduce(typeof, (a, b) -> a === b ? a : error("All text elements need same eltype. Found: $(a), $(b)"), x)
+# end
 
-get_text_type(x::AbstractVector) = eltype(x)
-get_text_type(::T) where {T} = T
+# get_text_type(x::AbstractVector) = eltype(x)
+# get_text_type(::T) where {T} = T
 
 # function calculated_attributes!(::Type{Text}, plot::Plot)
 #     attr = plot.attributes
@@ -524,16 +527,16 @@ end
 # - offset always applies in markerspace w/o rotation. Excluding it when positions
 #   are included makes little sense
 
-function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwargs...) where {OT}
-    # Careful, text uses :text_positions as the input to the transformation pipeline
-    # We can also skip that part:
-    return register_positions_projected!(
-        plot, OT; kwargs...,
-        input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
-        input_space = :space, output_space = :markerspace,
-        apply_model = true, apply_clip_planes = true
-    )
-end
+# function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwargs...) where {OT}
+#     # Careful, text uses :text_positions as the input to the transformation pipeline
+#     # We can also skip that part:
+#     return register_positions_projected!(
+#         plot, OT; kwargs...,
+#         input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
+#         input_space = :space, output_space = :markerspace,
+#         apply_model = true, apply_clip_planes = true
+#     )
+# end
 
 # TODO: anything per-string should include lines?
 
@@ -700,42 +703,44 @@ string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_string
 
 # This can not be used as `boundingbox()` for Axis/camera limits due to it
 # changing with camera updates
-function register_full_boundingbox!(plot, target_space::Symbol)
-    bbox_name = Symbol(target_space, :_boundingbox)
-    if !haskey(plot.attributes, bbox_name)
-        register_string_boundingboxes!(plot)
-        scene_graph = parent_scene(plot).compute
-        map!(plot.attributes, [:markerspace, :string_boundingboxes], bbox_name) do markerspace, bbs
-            if markerspace === target_space
-                return reduce(update_boundingbox, bbs, init = Rect3d())
-            else
-                proj = get_space_to_space_matrix(scene_graph, markerspace, target_space)
-                bb = mapreduce(update_boundingbox, bbs, init = Rect3d()) do bb
-                    return Rect3d(_project(proj, coordinates(bb)))
-                end
-                return bb
-            end
-        end
-    end
-    return getproperty(plot, bbox_name)
-end
+# function register_full_boundingbox!(plot, target_space::Symbol)
+#     bbox_name = Symbol(target_space, :_boundingbox)
+#     if !haskey(plot.attributes, bbox_name)
+#         register_string_boundingboxes!(plot)
+#         scene_graph = parent_scene(plot).compute
+#         map!(plot.attributes, [:markerspace, :string_boundingboxes], bbox_name) do markerspace, bbs
+#             if markerspace === target_space
+#                 return reduce(update_boundingbox, bbs, init = Rect3d())
+#             else
+#                 proj = get_space_to_space_matrix(scene_graph, markerspace, target_space)
+#                 bb = mapreduce(update_boundingbox, bbs, init = Rect3d()) do bb
+#                     return Rect3d(_project(proj, coordinates(bb)))
+#                 end
+#                 return bb
+#             end
+#         end
+#     end
+#     return getproperty(plot, bbox_name)
+# end
 
-"""
-    full_boundingbox(plot, target_space = plot.space[])
+# """
+#     full_boundingbox(plot, target_space = plot.space[])
 
-Returns the boundingbox of the full plot including all relevant text attributes
-transformed to `target_space`. This include fontsize, string layouting, rotation,
-offsets and positions. Lines from LaTeXStrings are included.
+# Returns the boundingbox of the full plot including all relevant text attributes
+# transformed to `target_space`. This include fontsize, string layouting, rotation,
+# offsets and positions. Lines from LaTeXStrings are included.
 
-Note that this bounding box is is reliant on the camera due to including positions
-which need to be transformed to `markerspace`.
-"""
-function full_boundingbox(plot::Text, target_space::Symbol = plot.space[])
-    return register_full_boundingbox!(plot, target_space)[]::Rect3d
-end
-function full_boundingbox_obs(plot::Text, target_space::Symbol = plot.space[])
-    return ComputePipeline.get_observable!(register_full_boundingbox!(plot, target_space))
-end
+# Note that this bounding box is is reliant on the camera due to including positions
+# which need to be transformed to `markerspace`.
+# """
+# function full_boundingbox(plot::Text, target_space::Symbol = plot.space[])
+#     return register_full_boundingbox!(plot, target_space)[]::Rect3d
+# end
+
+# # TODO: this is unused?
+# function full_boundingbox_obs(plot::Text, target_space::Symbol = plot.space[])
+#     return ComputePipeline.get_observable!(register_full_boundingbox!(plot, target_space))
+# end
 
 # target: data_limits()
 function register_data_limits!(plot)
