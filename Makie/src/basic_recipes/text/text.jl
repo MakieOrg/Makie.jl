@@ -34,12 +34,15 @@ function plot!(text::Text)
     end
 
     # TODO: this is probably massively inefficient...
-    register_computation!(attr, collect(keys(attr.outputs)), [:plotspecs]) do inputs, changed, cached
+    register_computation!(attr, collect(keys(attr.outputs)), [:plotspecs, :blocks]) do inputs, changed, cached
         specs = PlotSpec[]
+        blocks = UnitRange{Int}[]
         for (i,layouter) in enumerate(inputs.resolved_layouters)
-            append!(specs, layouted_string_plotspecs(inputs, layouter, i))
+            layouted_specs = layouted_string_plotspecs(inputs, layouter, i)
+            push!(blocks, eachindex(layouted_specs).+ length(specs))
+            append!(specs, layouted_specs)
         end
-        return (specs,)
+        return (specs,blocks)
     end
 
     # TODO: somehow, markerspace is not inherited here?
@@ -48,7 +51,6 @@ function plot!(text::Text)
     # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
 end
-
 
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
@@ -112,6 +114,18 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     _register_argument_conversions!(Text, attr, user_kw)
 
     return
+end
+
+function register_text_boundingboxes!(plot, space=:pixel)
+    if !haskey(plot.attributes, :text_boundingboxes)
+        map!(plot.attributes, [:plotspecs, :blocks], :text_boundingboxes) do specs, blocks
+            map(blocks) do block
+                mapreduce(p->boundingbox(p, space), update_boundingbox, plot.plots[1].plots[block], init = Rect3d())
+            end
+        end
+    end
+    @show plot.attributes.text_boundingboxes[]
+    return plot.attributes.text_boundingboxes
 end
 
 # MARK: old stuff?

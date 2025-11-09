@@ -323,14 +323,14 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         transform_marker = false
     )
 
-    register_string_boundingboxes!(texts)
-    add_input!(plot.attributes, :string_boundingboxes, texts.string_boundingboxes)
+    register_text_boundingboxes!(texts, :pixel)
+    add_input!(plot.attributes, :text_boundingboxes, texts.text_boundingboxes)
 
     P = T <: Contour ? Point2f : Point3f
 
     pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-    map!(plot, [:labels, :string_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
+    map!(plot, [:labels, :text_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
         use_labels || return segments
 
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
