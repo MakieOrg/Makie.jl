@@ -105,3 +105,14 @@ end
 @testset "Pass dict to recipe" begin
     @test_nowarn maybedict(rand(3); arg = Dict(1 => "a", 2 => "b")) # conversion error
 end
+
+@testset "heatmap transformation" begin
+    # See #5385
+    f,a,p = heatmap(
+        1e6 .. 1e6+1, 1e6 .. 1e6+1, rand(10, 10),
+        axis = (xscale = log10, yscale = log10)
+    )
+    Makie.add_computation!(p.attributes, a.scene, Val(:heatmap_transform))
+    @test !any(isnan, p.x_transformed_f32c[])
+    @test !any(isnan, p.y_transformed_f32c[])
+end
