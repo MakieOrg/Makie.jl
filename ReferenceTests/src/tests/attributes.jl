@@ -83,12 +83,12 @@ end
     heatmap(f[1, 1], data)
     image(f[1, 2], data)
     surface(f[2, 1], zeros(10, 10), color = data)
-    mesh(f[2, 2], Rect2f(0,0,1,1), color = data)
+    mesh(f[2, 2], Rect2f(0, 0, 1, 1), color = data)
     Makie.volume(f[3, 1], data3)
-    lines(f[3, 2], Rect2f(0,0,1,1), color = cs5, linewidth = 5)
-    scatter!(Rect2f(0,0,1,1), color = cs4, markersize = 20)
-    linesegments!(coordinates(Rect2f(0,0,1,1))[[1,3,2,4]], color = cs4, linewidth = 5)
-    meshscatter!(Rect2f(-0.2,-0.2,1.4,1.4), color = cs4)
+    lines(f[3, 2], Rect2f(0, 0, 1, 1), color = cs5, linewidth = 5)
+    scatter!(Rect2f(0, 0, 1, 1), color = cs4, markersize = 20)
+    linesegments!(coordinates(Rect2f(0, 0, 1, 1))[[1, 3, 2, 4]], color = cs4, linewidth = 5)
+    meshscatter!(Rect2f(-0.2, -0.2, 1.4, 1.4), color = cs4)
     text!(
         [-0.2, 0.5, 0.5, 1.2], [0.5, -0.2, 1.2, 0.5], color = cs4, text = string.(1:4),
         fontsize = 20, strokewidth = 1, strokecolor = :black, align = (:center, :center)
