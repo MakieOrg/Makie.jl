@@ -40,11 +40,9 @@ function draw_poly_as_mesh(scene, screen, poly)
     return
 end
 
-# As a general fallback, draw all polys as meshes.
-# This also applies for e.g. per-vertex color.
-function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
-    return draw_poly_as_mesh(scene, screen, poly)
-end
+########################################
+### outline methods (::Vector{<:VecTypes{2}})
+########################################
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
@@ -55,6 +53,23 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
 end
+
+function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
+    color = to_cairo_color(poly.color[], poly)
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+
+    broadcast_foreach(
+        points_list, color,
+        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
+    ) do points, color, strokecolor, strokestyle, strokewidth, model
+        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+    end
+    return if color isa Cairo.CairoPattern
+        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    end
+end
+
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(
@@ -79,20 +94,14 @@ function draw_poly(
     return Cairo.stroke(screen.context)
 end
 
-function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
-    color = to_cairo_color(poly.color[], poly)
-    strokecolor = to_cairo_color(poly.strokecolor[], poly)
-    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+########################################
+### GeometryPrimtive and BezierPath methods
+########################################
 
-    broadcast_foreach(
-        points_list, color,
-        strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
-    ) do points, color, strokecolor, strokestyle, strokewidth, model
-        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
-    end
-    return if color isa Cairo.CairoPattern
-        pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
-    end
+# As a general fallback, draw all polys as meshes.
+# This also applies for e.g. per-vertex color.
+function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+    return draw_poly_as_mesh(scene, screen, poly)
 end
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
