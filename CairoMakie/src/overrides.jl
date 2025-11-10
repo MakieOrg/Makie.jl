@@ -72,6 +72,7 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     return
 end
 
+draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(
@@ -99,15 +100,15 @@ function draw_poly(
     return
 end
 
-########################################
-### GeometryPrimtive and BezierPath methods
-########################################
-
 # As a general fallback, draw all polys as meshes.
 # This also applies for e.g. per-vertex color.
 function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     return draw_poly_as_mesh(scene, screen, poly)
 end
+
+########################################
+### GeometryPrimtive and BezierPath methods
+########################################
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_poly(scene, screen, poly, [bezierpath])
@@ -199,7 +200,6 @@ end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
 draw_poly(scene::Scene, screen::Screen, poly, multipolygon::MultiPolygon) = draw_poly(scene, screen, poly, multipolygon.polygons)
-draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
