@@ -79,8 +79,10 @@ function draw_poly(
         model, strokecolor, strokestyle, strokewidth
     )
     space = poly.space[]
+    points = apply_transform(transform_func(poly), points)
     points = clip_poly(poly.clip_planes[], points, space, model)
     points = _project_position(scene, space, points, model, true)
+
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
