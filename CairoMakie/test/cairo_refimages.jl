@@ -42,7 +42,7 @@ function build_poly_refimg(yscale)
     p = poly!(ax, [MultiPolygon(polys), MultiPolygon([Polygon(ps)])])
     translate!(p, 0, 4, 0)
 
-    f
+    return f
 end
 
 @reference_test "poly fast paths" begin
