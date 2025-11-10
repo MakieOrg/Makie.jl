@@ -41,7 +41,7 @@ Makie.conversion_docs(Scatter)  # Show all ways to create scatter plots
 
 Get attribute examples:
 ```julia
-Makie.attribute_examples(Scatter, Val(:color))  # Examples for color attribute
+Makie.attribute_examples(Scatter, :color)  # Examples for color attribute
 ```
 
 For more information, visit: https://docs.makie.org
@@ -465,9 +465,6 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
-
-# plot examples extracted from documentation - must be after all recipes
-include("documentation/plot_examples_generated.jl")
 
 include("deprecated.jl")
 

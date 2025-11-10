@@ -128,6 +128,11 @@ function types_for_plot_arguments(::PointBased)
     return Tuple{AbstractVector{<:Union{Point2, Point3}}}
 end
 
+function types_for_plot_arguments(::PointBased2D)
+    return Tuple{AbstractVector{<:Point2}}
+end
+
+
 should_dim_convert(::Type) = false
 
 """

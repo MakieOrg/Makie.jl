@@ -1,9 +1,11 @@
 # tricontourf
 
-```@shortdocs; canonical=false
-tricontourf
 ```
-
+f, ax, pl = tricontourf(args...; kw...) # return a new figure, axis, and plot
+   ax, pl = tricontourf(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
+       pl = tricontourf!(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
+SpecApi.Tricontourf(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+```
 
 ## Examples
 
@@ -64,9 +66,7 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
 
-By default, `tricontourf` performs unconstrained triangulations.
-Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`.
-For example, the above annulus can also be plotted as follows:
+By default, `tricontourf` performs unconstrained triangulations. Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`. For example, the above annulus can also be plotted as follows:
 
 ```@figure
 using DelaunayTriangulation
@@ -93,88 +93,154 @@ f
 
 Boundary nodes make it possible to support more complicated regions, possibly with holes, than is possible by only providing points themselves.
 
-```@figure
-using DelaunayTriangulation
+```@figure using DelaunayTriangulation
 
-## Start by defining the boundaries, and then convert to the appropriate interface 
-curve_1 = [
-    [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
-    [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
-    [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
-    [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
-] # outer-most boundary: counter-clockwise  
-curve_2 = [
-    [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
-    [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
-    [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
-] # inner boundary: clockwise 
-curve_3 = [
-    [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
-    (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
-] # this is inside curve_2, so it's counter-clockwise 
-curves = [curve_1, curve_2, curve_3]
-points = [
-    (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
-    (23.0, 23.0), (22.6, 19.0), (23.8, 17.8), (22.0, 14.0), (22.0, 11.0),
-    (24.0, 6.0), (23.0, 2.0), (19.0, 1.0), (16.0, 3.0), (10.0, 1.0), (11.0, 3.0),
-    (6.0, 2.0), (6.2, 3.0), (2.0, 3.0), (2.6, 6.2), (2.0, 8.0), (2.0, 11.0),
-    (5.0, 12.0), (2.0, 17.0), (3.0, 19.0), (6.0, 18.0), (6.5, 14.5),
-    (13.0, 19.0), (13.0, 12.0), (16.0, 8.0), (9.8, 8.0), (7.5, 6.0),
-    (12.0, 13.0), (19.0, 15.0)
-]
-boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
-edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
-
-## Extract the x, y 
-tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges)
-z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
-f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
-f
-```
-
-```@figure
-using DelaunayTriangulation
-
-using Random
-Random.seed!(1234)
-
-θ = [LinRange(0, 2π * (1 - 1/19), 20); 0]
-xy = Vector{Vector{Vector{NTuple{2,Float64}}}}()
-cx = [0.0, 3.0]
-for i in 1:2
-    push!(xy, [[(cx[i] + cos(θ), sin(θ)) for θ in θ]])
-    push!(xy, [[(cx[i] + 0.5cos(θ), 0.5sin(θ)) for θ in reverse(θ)]])
-end
-boundary_nodes, points = convert_boundary_points_to_indices(xy)
-tri = triangulate(points; boundary_nodes=boundary_nodes)
-z = [(x - 3/2)^2 + y^2 for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
-
-f, ax, tr = tricontourf(tri, z, colormap = :matter)
-f
-```
-
-#### Relative mode
-
-Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
-Rather than specifying the levels to include manually, you can set the `mode` attribute
-to `:relative` and specify the levels from 0 to 1, relative to the current minimum and maximum value.
-
-```@figure
-using Random
-Random.seed!(1234)
-
-x = randn(50)
-y = randn(50)
-z = -sqrt.(x .^ 2 .+ y .^ 2) .+ 0.1 .* randn.()
-
-f, ax, tr = tricontourf(x, y, z, mode = :relative, levels = 0.2:0.1:1)
-scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
-Colorbar(f[1, 2], tr)
-f
-```
+See the [online documentation](https://docs.makie.org/stable/reference/plots/tricontourf) for rendered examples.
 
 ## Attributes
 
-```@attrdocs
-Tricontourf
-```
+### `transparency`
+
+**Default:** `false`
+
+Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+
+### `alpha`
+
+**Default:** `1.0`
+
+The alpha value of the colormap or color attribute.
+
+### `colormap`
+
+**Default:** `@inherit colormap`
+
+Sets the colormap from which the band colors are sampled.
+
+### `visible`
+
+**Default:** `true`
+
+Controls whether the plot gets rendered or not.
+
+### `space`
+
+**Default:** `:data`
+
+Sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs.
+
+### `colorscale`
+
+**Default:** `identity`
+
+Color transform function
+
+### `extendlow`
+
+**Default:** `nothing`
+
+This sets the color of an optional additional band from `minimum(zs)` to the lowest value in `levels`. If it's `:auto`, the lower end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's `nothing`, no band is added.
+
+### `inspector_hover`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods.
+
+### `clip_planes`
+
+**Default:** `@inherit clip_planes automatic`
+
+Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here, behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+
+### `ssao`
+
+**Default:** `false`
+
+Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
+
+### `extendhigh`
+
+**Default:** `nothing`
+
+This sets the color of an optional additional band from the highest value of `levels` to `maximum(zs)`. If it's `:auto`, the high end of the colormap is picked and the remaining colors are shifted accordingly. If it's any color representation, this color is used. If it's `nothing`, no band is added.
+
+### `inspector_label`
+
+**Default:** `automatic`
+
+Sets a callback function `(plot, index, position) -> string` which replaces the default label generated by DataInspector.
+
+### `nan_color`
+
+**Default:** `:transparent`
+
+Sets the color used for nan values in the generated contour.
+
+### `mode`
+
+**Default:** `:normal`
+
+Sets the way in which a vector of levels is interpreted, if it's set to `:relative`, each number is interpreted as a fraction between the minimum and maximum values of `zs`. For example, `levels = 0.1:0.1:1.0` would exclude the lower 10% of data.
+
+### `overdraw`
+
+**Default:** `false`
+
+Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends
+
+### `transformation`
+
+**Default:** `:automatic`
+
+Controls the inheritance or directly sets the transformations of a plot. Transformations include the transform function and model matrix as generated by `translate!(...)`, `scale!(...)` and `rotate!(...)`. They can be set directly by passing a `Transformation()` object or inherited from the parent plot or scene. Inheritance options include:
+
+  * `:automatic`: Inherit transformations if the parent and child `space` is compatible
+  * `:inherit`: Inherit transformations
+  * `:inherit_model`: Inherit only model transformations
+  * `:inherit_transform_func`: Inherit only the transform function
+  * `:nothing`: Inherit neither, fully disconnecting the child's transformations from the parent
+
+Another option is to pass arguments to the `transform!()` function which then get applied to the plot. For example `transformation = (:xz, 1.0)` which rotates the `xy` plane to the `xz` plane and translates by `1.0`. For this inheritance defaults to `:automatic` but can also be set through e.g. `(:nothing, (:xz, 1.0))`.
+
+### `model`
+
+**Default:** `automatic`
+
+Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`.
+
+### `depth_shift`
+
+**Default:** `0.0`
+
+Adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+
+### `triangulation`
+
+**Default:** `DelaunayTriangulation()`
+
+The mode with which the points in `xs` and `ys` are triangulated. Passing `DelaunayTriangulation()` performs a Delaunay triangulation. You can also pass a preexisting triangulation as an `AbstractMatrix{<:Int}` with size (3, n), where each column specifies the vertex indices of one triangle, or as a `Triangulation` from DelaunayTriangulation.jl.
+
+### `inspectable`
+
+**Default:** `@inherit inspectable`
+
+Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene.
+
+### `fxaa`
+
+**Default:** `true`
+
+Adjusts whether the plot is rendered with fxaa (fast approximate anti-aliasing, GLMakie only). Note that some plots implement a better native anti-aliasing solution (scatter, text, lines). For them `fxaa = true` generally lowers quality. Plots that show smoothly interpolated data (e.g. image, surface) may also degrade in quality as `fxaa = true` can cause blurring.
+
+### `levels`
+
+**Default:** `10`
+
+Can be either an `Int` which results in n bands delimited by n+1 equally spaced levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 bands.
+
+### `inspector_clear`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot) -> ...` for cleaning up custom indicators in DataInspector.

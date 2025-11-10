@@ -1,3 +1,12 @@
+function Makie.argument_docs_items(::Type{<:Mesh})
+    return [
+        "`mesh`: A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.",
+        "`vertices, indices`: Vertex positions and face indices defining the mesh geometry.",
+        "`x, y, z`: Coordinates defining a surface (converted to mesh internally).",
+        "`geom`: Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh."
+    ]
+end
+
 function plot!(p::Mesh{<:Tuple{<:GeometryBasics.MetaMesh}})
     metamesh = p[1][]
     meshes = GeometryBasics.split_mesh(metamesh.mesh)

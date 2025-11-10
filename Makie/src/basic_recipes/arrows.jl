@@ -729,3 +729,11 @@ end
 # compat
 const Arrows{T} = Union{Arrows2D{T}, Arrows3D{T}}
 export Arrows
+
+function Makie.argument_docs_items(::Type{<:Arrows})
+    return [
+        "`positions, directions`: Two `AbstractVector` arguments where positions define arrow start points and directions define arrow vectors.",
+        "`xs, ys[, zs], us, vs[, ws]`: Separate x, y, z coordinates for positions and u, v, w components for directions.",
+        "`x, y, f`: A function `f` sampled at grid points defined by `x` and `y`, producing 2D vector field arrows."
+    ]
+end

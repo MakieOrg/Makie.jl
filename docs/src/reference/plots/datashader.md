@@ -1,9 +1,11 @@
 # datashader
 
-```@shortdocs; canonical=false
-datashader
 ```
-
+f, ax, pl = datashader(args...; kw...) # return a new figure, axis, and plot
+   ax, pl = datashader(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
+       pl = datashader!(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
+SpecApi.Datashader(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+```
 
 ## Examples
 
@@ -99,9 +101,7 @@ fig
 
 ### Bigger examples
 
-Timings in the comments are from running this on a 32gb Ryzen 5800H laptop.
-Both examples aren't fully optimized yet, and just use raw, unsorted, memory mapped Point2f arrays.
-In the future, we'll want to add acceleration structures to optimize access to sub-regions.
+Timings in the comments are from running this on a 32gb Ryzen 5800H laptop. Both examples aren't fully optimized yet, and just use raw, unsorted, memory mapped Point2f arrays. In the future, we'll want to add acceleration structures to optimize access to sub-regions.
 
 #### 14 million point NYC taxi dataset
 
@@ -148,8 +148,7 @@ end
 
 #### 2.7 billion OSM GPS points
 
-Download the data from [OSM GPS points](https://planet.osm.org/gps/simple-gps-points-120604.csv.xz)
-and use the [updated script](https://gist.github.com/SimonDanisch/69788fce47c13020d9ae9dbe08546f89#file-datashader-2-7-billion-points-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
+Download the data from [OSM GPS points](https://planet.osm.org/gps/simple-gps-points-120604.csv.xz) and use the [updated script](https://gist.github.com/SimonDanisch/69788fce47c13020d9ae9dbe08546f89#file-datashader-2-7-billion-points-jl) from [drawing-2-7-billion-points-in-10s](https://medium.com/hackernoon/drawing-2-7-billion-points-in-10s-ecc8c85ca8fa) to convert the CSV to a binary blob that we can memory map.
 
 ```julia
 using GLMakie, Mmap
@@ -178,6 +177,7 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
     display(f)
 end
 ```
+
 ```
 aggregation took 1.395s
 aggregation took 1.176s
@@ -197,13 +197,13 @@ aggregation took 0.724s
 ### Categorical Data
 
 There are two ways to plot categorical data right now:
+
 ```julia
 datashader(one_category_per_point, points)
 datashader(Dict(:category_a => all_points_a, :category_b => all_points_b))
 ```
 
-The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend.
-Categories are currently aggregated in one Canvas per category, and then overlaid with alpha blending.
+The type of the category doesn't matter, but will get converted to strings internally, to be displayed nicely in the legend. Categories are currently aggregated in one Canvas per category, and then overlaid with alpha blending.
 
 ```@figure backend=GLMakie
 normaldist = randn(Point2f, 1_000_000)
@@ -215,6 +215,7 @@ fig
 ```
 
 We can also reuse the previous NYC example for a categorical plot:
+
 ```julia
 @time begin
     f = Figure(figure_padding=0, size=(1200, 600))
@@ -232,16 +233,210 @@ We can also reuse the previous NYC example for a categorical plot:
     display(f)
 end
 ```
+
 ![](../../assets/nyc-per-vendor.png)
 
 ### Advanced API
 
-The `datashader` recipe makes it very simple to get started, and is also efficiently implemented so that most changes like `f, ax, pl = datashader(...); pl.colorrange=new_range; pl.operation=log10` won't redo the aggregation.
-But if you still need more manual control, one can also use the underlying `Canvas` API directly for more manual control:
+The `datashader` recipe makes it very simple to get started, and is also efficiently implemented so that most changes like `f, ax, pl = datashader(...); pl.colorrange=new_range; pl.operation=log10` won't redo the aggregation. But if you still need more manual control, one can also use the underlying `Canvas` API directly for more manual control:
 
+See the [online documentation](https://docs.makie.org/stable/reference/plots/datashader) for rendered examples.
 
 ## Attributes
 
-```@attrdocs
-DataShader
+### `transparency`
+
+**Default:** `false`
+
+Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+
+### `alpha`
+
+**Default:** `1.0`
+
+The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied.
+
+### `colormap`
+
+**Default:** `@inherit colormap :viridis`
+
+Sets the colormap that is sampled for numeric `color`s. `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call `Makie.available_gradients()`.
+
+### `visible`
+
+**Default:** `true`
+
+Controls whether the plot gets rendered or not.
+
+### `point_transform`
+
+**Default:** `identity`
+
+Function which gets applied to every point before aggregating it.
+
+### `local_operation`
+
+**Default:** `identity`
+
+Function which gets called on each element after the aggregation (`map!(x-> local_operation(x), final_aggregation_result)`).
+
+### `space`
+
+**Default:** `:data`
+
+Sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs.
+
+### `inspector_hover`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods.
+
+### `clip_planes`
+
+**Default:** `@inherit clip_planes automatic`
+
+Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here, behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+
+### `colorscale`
+
+**Default:** `identity`
+
+The color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
+
+### `async`
+
+**Default:** `true`
+
+Will calculate `get_aggregation` in a task, and skip any zoom/pan updates while busy. Great for interaction, but must be disabled for saving to e.g. png or when inlining in Documenter.
+
+### `ssao`
+
+**Default:** `false`
+
+Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
+
+### `highclip`
+
+**Default:** `automatic`
+
+The color for any value above the colorrange.
+
+### `method`
+
+**Default:** `AggThreads()`
+
+Can be `AggThreads()` or `AggSerial()` for threaded vs. serial aggregation.
+
+### `inspector_label`
+
+**Default:** `automatic`
+
+Sets a callback function `(plot, index, position) -> string` which replaces the default label generated by DataInspector.
+
+### `nan_color`
+
+**Default:** `:transparent`
+
+The color for NaN values.
+
+### `agg`
+
+**Default:** `AggCount{Float32}()`
+
+Can be `AggCount()`, `AggAny()` or `AggMean()`. Be sure, to use the correct element type e.g. `AggCount{Float32}()`, which needs to accommodate the output of `local_operation`. User-extensible by overloading:
+
+```julia
+struct MyAgg{T} <: Makie.AggOp end
+MyAgg() = MyAgg{Float64}()
+Makie.Aggregation.null(::MyAgg{T}) where {T} = zero(T)
+Makie.Aggregation.embed(::MyAgg{T}, x) where {T} = convert(T, x)
+Makie.Aggregation.merge(::MyAgg{T}, x::T, y::T) where {T} = x + y
+Makie.Aggregation.value(::MyAgg{T}, x::T) where {T} = x
 ```
+
+### `interpolate`
+
+**Default:** `false`
+
+If the resulting image should be displayed interpolated. Note that interpolation can make NaN-adjacent bins also NaN in some backends, for example due to interpolation schemes used in GPU hardware. This can make it look like there are more NaN bins than there actually are.
+
+### `overdraw`
+
+**Default:** `false`
+
+Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends
+
+### `transformation`
+
+**Default:** `:automatic`
+
+Controls the inheritance or directly sets the transformations of a plot. Transformations include the transform function and model matrix as generated by `translate!(...)`, `scale!(...)` and `rotate!(...)`. They can be set directly by passing a `Transformation()` object or inherited from the parent plot or scene. Inheritance options include:
+
+  * `:automatic`: Inherit transformations if the parent and child `space` is compatible
+  * `:inherit`: Inherit transformations
+  * `:inherit_model`: Inherit only model transformations
+  * `:inherit_transform_func`: Inherit only the transform function
+  * `:nothing`: Inherit neither, fully disconnecting the child's transformations from the parent
+
+Another option is to pass arguments to the `transform!()` function which then get applied to the plot. For example `transformation = (:xz, 1.0)` which rotates the `xy` plane to the `xz` plane and translates by `1.0`. For this inheritance defaults to `:automatic` but can also be set through e.g. `(:nothing, (:xz, 1.0))`.
+
+### `operation`
+
+**Default:** `automatic`
+
+Defaults to `Makie.equalize_histogram` function which gets called on the whole get*aggregation array before display (`operation(final*aggregation_result)`).
+
+### `model`
+
+**Default:** `automatic`
+
+Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`.
+
+### `depth_shift`
+
+**Default:** `0.0`
+
+Adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+
+### `colorrange`
+
+**Default:** `automatic`
+
+The values representing the start and end points of `colormap`.
+
+### `binsize`
+
+**Default:** `1`
+
+Factor defining how many bins one wants per screen pixel. Set to n > 1 if you want a coarser image.
+
+### `show_timings`
+
+**Default:** `false`
+
+Set to `true` to show how long it takes to aggregate each frame.
+
+### `inspectable`
+
+**Default:** `@inherit inspectable`
+
+Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene.
+
+### `fxaa`
+
+**Default:** `true`
+
+Adjusts whether the plot is rendered with fxaa (fast approximate anti-aliasing, GLMakie only). Note that some plots implement a better native anti-aliasing solution (scatter, text, lines). For them `fxaa = true` generally lowers quality. Plots that show smoothly interpolated data (e.g. image, surface) may also degrade in quality as `fxaa = true` can cause blurring.
+
+### `inspector_clear`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot) -> ...` for cleaning up custom indicators in DataInspector.
+
+### `lowclip`
+
+**Default:** `automatic`
+
+The color for any value below the colorrange.

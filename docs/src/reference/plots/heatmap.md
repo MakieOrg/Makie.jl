@@ -1,8 +1,20 @@
 # heatmap
 
-```@shortdocs; canonical=false
-heatmap
 ```
+f, ax, pl = heatmap(args...; kw...) # return a new figure, axis, and plot
+   ax, pl = heatmap(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
+       pl = heatmap!(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
+SpecApi.Heatmap(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+```
+
+## Arguments
+
+**Target signature:** `x::Union{AbstractVector{T} where T<:Real, Makie.EndPoints, AbstractMatrix{T} where T<:Real}, y::Union{AbstractVector{T} where T<:Real, Makie.EndPoints, AbstractMatrix{T} where T<:Real}, image::AbstractMatrix{<:Union{Float32, Float64, ColorTypes.Colorant}}`
+
+  * `data`: Defines data values for cells of a grid using an `AbstractMatrix{<:Real}`.
+  * `xs, ys`: Defines the positions of grid cells. A `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` is interpreted as the outer edges of the grid, between which cells are spaced regularly. An `AbstractVector{<:Real}` defines cell positions directly for the respective dimension. This define either `size(data, dim)` cell centers or `size(data, dim) + 1` cell edges. These are allowed to be spaced irregularly. If `xs` and `ys` are omitted they default to `axes(data, dim)`.
+
+For detailed conversion information, see `Makie.conversion_docs(Heatmap)`.
 
 ## Examples
 
@@ -25,8 +37,7 @@ scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strok
 f
 ```
 
-The same approach works for irregularly spaced cells.
-Note how the rectangles are not centered around the points, because the boundaries are between adjacent points like voronoi cells.
+The same approach works for irregularly spaced cells. Note how the rectangles are not centered around the points, because the boundaries are between adjacent points like voronoi cells.
 
 ```@figure
 f = Figure()
@@ -42,8 +53,7 @@ scatter!(ax, [(x, y) for x in centers_x for y in centers_y], color=:white, strok
 f
 ```
 
-If we add one more element to `x` and `y`, they now specify the edges of the rectangular cells.
-Here's a regular grid:
+If we add one more element to `x` and `y`, they now specify the edges of the rectangular cells. Here's a regular grid:
 
 ```@figure
 f = Figure()
@@ -102,9 +112,7 @@ heatmap(xs, ys, zs)
 
 ### Colorbar for single heatmap
 
-To get a scale for what the colors represent, add a colorbar. The colorbar is
-placed within the figure in the first argument, and the scale and colormap can be
-conveniently set by passing the relevant heatmap to it.
+To get a scale for what the colors represent, add a colorbar. The colorbar is placed within the figure in the first argument, and the scale and colormap can be conveniently set by passing the relevant heatmap to it.
 
 ```@figure
 xs = range(0, 2π, length=100)
@@ -119,15 +127,9 @@ fig
 
 ### Colorbar for multiple heatmaps
 
-When there are several heatmaps in a single figure, it can be useful
-to have a single colorbar represent all of them. It is important to then
-have synchronized scales and colormaps for the heatmaps and colorbar. This is done by
-setting the colorrange explicitly, so that it is independent of the data shown by
-that particular heatmap.
+When there are several heatmaps in a single figure, it can be useful to have a single colorbar represent all of them. It is important to then have synchronized scales and colormaps for the heatmaps and colorbar. This is done by setting the colorrange explicitly, so that it is independent of the data shown by that particular heatmap.
 
-Since the heatmaps in the example below have the same colorrange and colormap, any of them
-can be passed to `Colorbar` to give the colorbar the same attributes. Alternatively,
-the colorbar attributes can be set explicitly.
+Since the heatmaps in the example below have the same colorrange and colormap, any of them can be passed to `Colorbar` to give the colorbar the same attributes. Alternatively, the colorbar attributes can be set explicitly.
 
 ```@figure
 xs = range(0, 2π, length=100)
@@ -147,7 +149,6 @@ Colorbar(fig[:, end+1], colorrange = joint_limits)  # equivalent
 fig
 ```
 
-
 ### Using a custom colorscale
 
 One can define a custom (color)scale using the `ReversibleScale` type. When the transformation is simple enough (`log`, `sqrt`, ...), the inverse transform is automatically deduced.
@@ -164,56 +165,146 @@ Colorbar(fig[1, 2], hm)
 fig
 ```
 
-## Plotting large Heatmaps
-
-You can wrap your data into `Makie.Resampler`, to automatically resample large heatmaps only for the viewing area.
-When zooming in, it will update the resampled version, to show it at best fidelity.
-It blocks updates while any mouse or keyboard button is pressed, to not spam e.g. WGLMakie with data updates.
-This goes well with `Axis(figure; zoombutton=Keyboard.left_control)`.
-You can disable this behavior with:
-
-`Resampler(data; update_while_button_pressed=true)`.
-
-
-Example:
-
-```julia
-using Downloads, FileIO, GLMakie
-# 30000×22943 image
-path = Downloads.download("https://upload.wikimedia.org/wikipedia/commons/7/7e/In_the_Conservatory.jpg")
-img = rotr90(load(path))
-f, ax, pl = heatmap(Resampler(img); axis=(; aspect=DataAspect()), figure=(;size=size(img)./20))
-hidedecorations!(ax)
-f
-```
-```@raw html
-<video mute autoplay loop playsinline controls src="/assets/heatmap-resampler.mp4" />
-```
-
-For better down sampling quality we recommend using `Makie.Pyramid` (might be moved to another package), which creates a simple gaussian pyramid for efficient and artifact free down sampling:
-
-```julia
-pyramid = Makie.Pyramid(img)
-fsize = (size(img) ./ 30) .* (1, 2)
-fig, ax, pl = heatmap(Resampler(pyramid);
-    axis=(; aspect=DataAspect(), title="Pyramid"), figure=(; size=fsize))
-hidedecorations!(ax)
-ax, pl = heatmap(fig[2, 1], Resampler(img1);
-    axis=(; aspect=DataAspect(), title="No Pyramid"))
-hidedecorations!(ax)
-save("heatmap-pyramid.png", fig)
-```
-![Submarine cables](../../assets/heatmap-pyramid.png)
-
-Any other Array type is allowed in `Resampler`, and it may also implement it's own interpolation strategy by overloading:
-```julia
-function (array::ArrayType)(xrange::LinRange, yrange::LinRange)
-    ...
-end
-```
+See the [online documentation](https://docs.makie.org/stable/reference/plots/heatmap) for rendered examples.
 
 ## Attributes
 
-```@attrdocs
-Heatmap
-```
+### `transparency`
+
+**Default:** `false`
+
+Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+
+### `alpha`
+
+**Default:** `1.0`
+
+The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied.
+
+### `colormap`
+
+**Default:** `@inherit colormap :viridis`
+
+Sets the colormap that is sampled for numeric `color`s. `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call `Makie.available_gradients()`.
+
+### `visible`
+
+**Default:** `true`
+
+Controls whether the plot gets rendered or not.
+
+### `space`
+
+**Default:** `:data`
+
+Sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs.
+
+### `colorscale`
+
+**Default:** `identity`
+
+The color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
+
+### `inspector_hover`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods.
+
+### `clip_planes`
+
+**Default:** `@inherit clip_planes automatic`
+
+Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here, behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+
+### `ssao`
+
+**Default:** `false`
+
+Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
+
+### `highclip`
+
+**Default:** `automatic`
+
+The color for any value above the colorrange.
+
+### `inspector_label`
+
+**Default:** `automatic`
+
+Sets a callback function `(plot, index, position) -> string` which replaces the default label generated by DataInspector.
+
+### `nan_color`
+
+**Default:** `:transparent`
+
+The color for NaN values.
+
+### `interpolate`
+
+**Default:** `false`
+
+Sets whether colors should be interpolated
+
+### `overdraw`
+
+**Default:** `false`
+
+Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends
+
+### `transformation`
+
+**Default:** `:automatic`
+
+Controls the inheritance or directly sets the transformations of a plot. Transformations include the transform function and model matrix as generated by `translate!(...)`, `scale!(...)` and `rotate!(...)`. They can be set directly by passing a `Transformation()` object or inherited from the parent plot or scene. Inheritance options include:
+
+  * `:automatic`: Inherit transformations if the parent and child `space` is compatible
+  * `:inherit`: Inherit transformations
+  * `:inherit_model`: Inherit only model transformations
+  * `:inherit_transform_func`: Inherit only the transform function
+  * `:nothing`: Inherit neither, fully disconnecting the child's transformations from the parent
+
+Another option is to pass arguments to the `transform!()` function which then get applied to the plot. For example `transformation = (:xz, 1.0)` which rotates the `xy` plane to the `xz` plane and translates by `1.0`. For this inheritance defaults to `:automatic` but can also be set through e.g. `(:nothing, (:xz, 1.0))`.
+
+### `model`
+
+**Default:** `automatic`
+
+Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`.
+
+### `depth_shift`
+
+**Default:** `0.0`
+
+Adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+
+### `colorrange`
+
+**Default:** `automatic`
+
+The values representing the start and end points of `colormap`.
+
+### `inspectable`
+
+**Default:** `@inherit inspectable`
+
+Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene.
+
+### `fxaa`
+
+**Default:** `true`
+
+Adjusts whether the plot is rendered with fxaa (fast approximate anti-aliasing, GLMakie only). Note that some plots implement a better native anti-aliasing solution (scatter, text, lines). For them `fxaa = true` generally lowers quality. Plots that show smoothly interpolated data (e.g. image, surface) may also degrade in quality as `fxaa = true` can cause blurring.
+
+### `inspector_clear`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot) -> ...` for cleaning up custom indicators in DataInspector.
+
+### `lowclip`
+
+**Default:** `automatic`
+
+The color for any value below the colorrange.

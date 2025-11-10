@@ -40,35 +40,6 @@ end
 ### Attribute Examples
 ################################################################################
 
-"""
-    attribute_examples(::Type{<:Plot}, ::Val{attribute})
-
-Returns an example string demonstrating the use of a specific attribute.
-Override this method for specific plot types and attributes:
-
-```julia
-attribute_examples(::Type{<:Scatter}, ::Val{:color}) = "scatter(1:10, color=:red)"
-```
-
-Returns an empty string by default.
-"""
-attribute_examples(::Type{<:Plot}, ::Val) = ""
-
-"""
-    attribute_examples(::Type{<:Plot})
-
-Returns a dictionary mapping attribute names to example strings for all attributes.
-"""
-function attribute_examples(::Type{T}) where {T<:Plot}
-    attrs = attribute_names(T)
-    isnothing(attrs) && return Dict{Symbol, String}()
-
-    return Dict{Symbol, String}(
-        attr => attribute_examples(T, Val(attr))
-        for attr in attrs
-    )
-end
-
 ################################################################################
 ### Plot Examples
 ################################################################################
@@ -76,22 +47,25 @@ end
 """
     plot_examples(::Type{<:Plot})
 
-Returns example code demonstrating the use of a plot type.
-Override this method for specific plot types:
+Returns example documentation by reading the markdown file from `documentation/plots/{plotname}.md`.
+Shows only the first example from the documentation.
 
-```julia
-plot_examples(::Type{<:Scatter}) = \"\"\"
-## Examples
-```julia
-scatter(1:10, rand(10))
-scatter(rand(100), rand(100), color=rand(100))
-```
-\"\"\"
-```
-
-Returns an empty string by default.
+Returns an empty string if the markdown file doesn't exist.
 """
-plot_examples(::Type{<:Plot}) = ""
+function plot_examples(::Type{PT}) where {PT<:Plot}
+    plfunc = plotfunc(PT)
+    plfunc_str = string(plfunc)
+
+    # Path to markdown file
+    md_path = joinpath(@__DIR__, "plots", "$plfunc_str.md")
+
+    if !isfile(md_path)
+        return ""
+    end
+
+    # Read the markdown file
+    return read(md_path, String)
+end
 
 ################################################################################
 ### Argument Documentation (Type-based)
@@ -152,10 +126,55 @@ function argument_docs_items(::VolumeLike)
     ]
 end
 
+# Generic fallback for NoConversion plots
 function argument_docs_items(::NoConversion)
-    return [
-        "`args...`: Plot-specific arguments. Refer to the plot type's documentation for details."
-    ]
+    return String[]  # Return empty array so no generic message shows
+end
+
+"""
+    format_argument_signature(::Type{PT}) where {PT<:Plot}
+
+Returns a formatted string showing the argument signature with types for a plot type.
+For example: "positions::AbstractVector{<:Union{Point2, Point3}}"
+Returns nothing if type information is not available.
+"""
+function format_argument_signature(::Type{PT}) where {PT<:Plot}
+    # Get argument names
+    arg_names = argument_names(PT, 10)
+    isempty(arg_names) && return nothing
+
+    # Get target types - try plot-specific first, then trait-based
+    arg_types = types_for_plot_arguments(PT)
+    if isnothing(arg_types)
+        CT = conversion_trait(PT)
+        arg_types = types_for_plot_arguments(CT)
+    end
+    isnothing(arg_types) && return nothing
+
+    # arg_types is a Tuple type, extract the parameter types
+    type_params = arg_types.parameters
+
+    # Match names with types
+    if length(arg_names) != length(type_params)
+        # Mismatch - just return nothing for now
+        return nothing
+    end
+
+    # Format as "name::Type"
+    parts = String[]
+    for (name, typ) in zip(arg_names, type_params)
+        # Simplify type representation
+        type_str = string(typ)
+        # Skip overly complex type signatures (more than 200 characters per argument)
+        if length(type_str) > 200
+            return nothing
+        end
+        # Clean up Union{A, B} to be more readable
+        type_str = replace(type_str, r"Union\{([^}]+)\}" => s"Union{\1}")
+        push!(parts, "$name::$type_str")
+    end
+
+    return join(parts, ", ")
 end
 
 """
@@ -170,14 +189,22 @@ function argument_docs(::Type{PT}) where {PT<:Plot}
     end
 
     PlotType_str = uppercasefirst(string(plotfunc(PT)))
-    arg_items = join(["- " * item for item in items], "\n")
+    arg_items = join(["  * " * item for item in items], "\n")
+
+    # Try to get formatted signature
+    sig = format_argument_signature(PT)
+    sig_section = if !isnothing(sig)
+        "**Target signature:** `$sig`\n\n"
+    else
+        ""
+    end
 
     return Markdown.parse("""
     ## Arguments
 
-    $arg_items
+    $(sig_section)$arg_items
 
-    For more detailed conversion information, see `Makie.conversion_docs($PlotType_str)`.
+    For detailed conversion information, see `Makie.conversion_docs($PlotType_str)`.
     """)
 end
 
@@ -255,7 +282,7 @@ end
 ################################################################################
 
 """
-    full_docs(::Type{<:Plot})
+    full_docs(::Type{<:Plot}; replace_figure=true, use_figure_for_attributes=false)
 
 Generates comprehensive documentation for a plot type including:
 - Function signatures
@@ -264,15 +291,22 @@ Generates comprehensive documentation for a plot type including:
 - **ALL** examples from the documentation
 - **Detailed** attribute documentation for each attribute
 
+If `replace_figure=true` (default), replaces `@figure` code blocks with `julia` for REPL display.
+If `replace_figure=false`, preserves `@figure` blocks for Documenter processing in plot examples.
+
+If `use_figure_for_attributes=true`, attribute examples use `@figure` blocks (for Documenter).
+If `use_figure_for_attributes=false` (default), attribute examples use plain `julia` blocks (for REPL).
+
 Use this for comprehensive reference. For a quick overview, use `?PlotType` instead.
 
 # Example
 ```julia
 full_docs(Scatter)
 full_docs(Lines)
+full_docs(Lines; replace_figure=false, use_figure_for_attributes=true)  # For makedocs
 ```
 """
-function full_docs(::Type{PT}) where {PT<:Plot}
+function full_docs(::Type{PT}; replace_figure=true, use_figure_for_attributes=false) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     plfunc!_str = plfunc_str * "!"
@@ -286,23 +320,31 @@ function full_docs(::Type{PT}) where {PT<:Plot}
         SpecApi.$(PlotType_str)(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
     """)
 
-    # Build short arguments section with hint for full docs
+    # Build arguments section with target signature
     items = argument_docs_items(PT)
     arguments_section = if isempty(items)
         Markdown.MD()
     else
-        arg_items = join(["- " * item for item in items], "\n")
+        # Try to get formatted signature
+        sig = format_argument_signature(PT)
+        sig_section = if !isnothing(sig)
+            "**Target signature:** `$sig`\n\n"
+        else
+            ""
+        end
+
+        arg_items = join(["  * " * item for item in items], "\n")
         Markdown.parse("""
         ## Arguments
 
-        $arg_items
+        $(sig_section)$arg_items
 
         For detailed conversion information, see `Makie.conversion_docs($PlotType_str)`.
         """)
     end
 
     # Build ALL examples section
-    examples_section = all_examples_docs(PT)
+    examples_section = all_examples_docs(PT; replace_figure=replace_figure)
 
     # Build detailed attributes section
     attrs = documented_attributes(PT)
@@ -325,12 +367,35 @@ function full_docs(::Type{PT}) where {PT<:Plot}
                 end
 
                 # Add example if available
-                example = attribute_examples(PT, Val(attr))
-                if !isempty(example)
-                    println(io, "**Example:**")
-                    println(io, "```julia")
-                    println(io, example)
-                    println(io, "```\n")
+                examples_dict = try
+                    attribute_examples(PT)
+                catch
+                    nothing
+                end
+
+                if examples_dict isa Dict && haskey(examples_dict, attr)
+                    examples = examples_dict[attr]
+                    if examples isa Vector && !isempty(examples)
+                        println(io, "**Example:**\n")
+                        for (i, ex) in enumerate(examples)
+                            if ex isa Example
+                                if !isnothing(ex.caption) && !isempty(ex.caption)
+                                    println(io, "**$(ex.caption)**\n")
+                                end
+                                if use_figure_for_attributes
+                                    println(io, "```@figure")
+                                else
+                                    println(io, "```julia")
+                                end
+                                println(io, ex.code)
+                                println(io, "```")
+                                if i < length(examples)
+                                    println(io)
+                                end
+                            end
+                        end
+                        println(io)
+                    end
                 end
             else
                 println(io, "### `$attr`\n")
@@ -351,48 +416,121 @@ function full_docs(::Type{PT}) where {PT<:Plot}
 end
 
 """
-    all_examples_docs(::Type{<:Plot})
+    all_examples_docs(::Type{<:Plot}; replace_figure=true)
 
-Returns Markdown documentation for ALL examples of a plot type.
+Returns Markdown documentation for ALL examples of a plot type by reading from documentation/plots/{plotname}.md.
+
+If `replace_figure=true` (default), replaces `@figure` code blocks with `julia` for REPL display.
+If `replace_figure=false`, preserves `@figure` blocks for Documenter processing.
 """
-function all_examples_docs(::Type{PT}) where {PT<:Plot}
+function all_examples_docs(::Type{PT}; replace_figure=true) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
 
-    # Filter examples for this plot function
-    examples = filter(ALL_EXAMPLES) do ex
-        plfunc in ex.plotfuncs
-    end
+    # Path to markdown file
+    md_path = joinpath(@__DIR__, "plots", "$plfunc_str.md")
 
-    if isempty(examples)
+    if !isfile(md_path)
         return Markdown.MD()
     end
 
-    io = IOBuffer()
-    println(io, "## Examples\n")
+    # Read and extract everything after ## Examples header
+    content = read(md_path, String)
 
-    for (i, ex) in enumerate(examples)
-        # Add title if it's meaningful
-        if !isempty(ex.title) && ex.title != "Example"
-            println(io, "### $(ex.title)\n")
-        end
+    # Find the Examples section and extract everything until the next ## header or end of file
+    examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
+    m = match(examples_pattern, content)
 
-        # Add description
-        if !isempty(ex.description)
-            println(io, ex.description)
-            println(io)
-        end
-
-        # Add code
-        println(io, "```julia")
-        println(io, ex.body_src)
-        println(io, "```\n")
+    if isnothing(m)
+        # No examples section found
+        io = IOBuffer()
+        println(io, "## Examples\n")
+        println(io, "See the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for rendered examples.")
+        return Markdown.parse(String(take!(io)))
     end
 
-    # Add link to online documentation
+    # Get the examples content
+    examples_content = m.captures[1]
+
+    # Replace @figure with julia in code blocks for REPL display
+    if replace_figure
+        examples_content = replace(examples_content, r"```@figure([^\n]*)" => s"```julia\1")
+    end
+
+    # Build the final markdown
+    io = IOBuffer()
+    println(io, "## Examples")
+    print(io, examples_content)
+    println(io)
     println(io, "See the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for rendered examples.")
 
     return Markdown.parse(String(take!(io)))
+end
+
+################################################################################
+### Documentation Generation for makedocs
+################################################################################
+
+"""
+    generate_plot_docs(output_dir::String; plot_types=nothing)
+
+Generate markdown documentation files for all plot types using `full_docs()`.
+These files are meant to be used by Documenter.jl in the docs build process.
+
+# Arguments
+- `output_dir`: Directory where markdown files should be written (e.g., "docs/src/reference/plots")
+- `plot_types`: Optional vector of plot types to generate docs for. If `nothing`, generates for all known plot types.
+
+# Example
+```julia
+# In docs/make.jl before makedocs():
+Makie.generate_plot_docs("docs/src/reference/plots")
+```
+"""
+function generate_plot_docs(output_dir::String; plot_types=nothing)
+    mkpath(output_dir)
+
+    # If plot_types is not specified, discover from markdown files
+    if isnothing(plot_types)
+        # Get all markdown files in the plots directory
+        plots_dir = joinpath(@__DIR__, "plots")
+        md_files = filter(f -> endswith(f, ".md") && f != "overview.md", readdir(plots_dir))
+        plot_names = [splitext(f)[1] for f in md_files]
+    else
+        # Use provided plot types
+        plot_names = [string(plotfunc(PT)) for PT in plot_types]
+    end
+
+    for plfunc_str in plot_names
+        output_file = joinpath(output_dir, "$plfunc_str.md")
+        println("Generating documentation for $plfunc_str...")
+
+        # Look up the plot type from the function name
+        plfunc_sym = Symbol(plfunc_str)
+
+        # Check if the function exists in Makie
+        if !isdefined(Makie, plfunc_sym)
+            @warn "Skipping $plfunc_str: function not found in Makie"
+            continue
+        end
+
+        plfunc = getproperty(Makie, plfunc_sym)
+        PT = Makie.Plot{plfunc}
+
+        # Generate full documentation (preserve @figure blocks for Documenter)
+        docs = full_docs(PT; replace_figure=false, use_figure_for_attributes=true)
+
+        # Convert to string and write to file
+        open(output_file, "w") do io
+            # Write a title
+            println(io, "# $plfunc_str")
+            println(io)
+            # Write the full docs content as markdown
+            # Use Markdown.plain to convert to string
+            print(io, Markdown.plain(docs))
+        end
+    end
+    return plot_names
 end
 
 ################################################################################
@@ -426,13 +564,30 @@ function REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
     end
 
     # Example
-    example = attribute_examples(T, Val(attr))
-    if !isempty(example)
-        println(io, "### Example")
-        println(io)
-        println(io, "```julia")
-        println(io, example)
-        println(io, "```")
+    examples_dict = try
+        attribute_examples(T)
+    catch
+        nothing
+    end
+
+    if examples_dict isa Dict && haskey(examples_dict, attr)
+        examples = examples_dict[attr]
+        if examples isa Vector && !isempty(examples)
+            println(io, "### Example\n")
+            for (i, ex) in enumerate(examples)
+                if ex isa Example
+                    if !isnothing(ex.caption) && !isempty(ex.caption)
+                        println(io, "**$(ex.caption)**\n")
+                    end
+                    println(io, "```julia")
+                    println(io, ex.code)
+                    println(io, "```")
+                    if i < length(examples)
+                        println(io)
+                    end
+                end
+            end
+        end
     end
 
     return Markdown.parse(String(take!(io)))

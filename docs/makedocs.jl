@@ -41,6 +41,14 @@ unnest(vec::Vector) = collect(Iterators.flatten([unnest(el) for el in vec]))
 unnest(p::Pair) = p[2] isa String ? [p[2]] : unnest(p[2])
 unnest(s::String) = [s]
 
+
+plots_dir = joinpath(@__DIR__, "src/reference/plots")
+isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
+mkpath(plots_dir)
+plots = Makie.generate_plot_docs(joinpath(@__DIR__, "src/reference/plots"))
+plots = map(x-> "reference/plots/$(x).md", plots)
+##
+
 pages = [
     "Home" => "index.md",
     "Reference" => [
@@ -64,65 +72,7 @@ pages = [
             "reference/blocks/textbox.md",
             "reference/blocks/toggle.md",
         ],
-        "Plots" => [
-            "reference/plots/overview.md",
-            "reference/plots/ablines.md",
-            "reference/plots/annotation.md",
-            "reference/plots/arc.md",
-            "reference/plots/arrows.md",
-            "reference/plots/band.md",
-            "reference/plots/barplot.md",
-            "reference/plots/boxplot.md",
-            "reference/plots/bracket.md",
-            "reference/plots/contour.md",
-            "reference/plots/contour3d.md",
-            "reference/plots/contourf.md",
-            "reference/plots/crossbar.md",
-            "reference/plots/datashader.md",
-            "reference/plots/dendrogram.md",
-            "reference/plots/density.md",
-            "reference/plots/ecdf.md",
-            "reference/plots/errorbars.md",
-            "reference/plots/heatmap.md",
-            "reference/plots/hexbin.md",
-            "reference/plots/hist.md",
-            "reference/plots/hlines.md",
-            "reference/plots/hspan.md",
-            "reference/plots/image.md",
-            "reference/plots/lines.md",
-            "reference/plots/linesegments.md",
-            "reference/plots/mesh.md",
-            "reference/plots/meshscatter.md",
-            "reference/plots/pie.md",
-            "reference/plots/poly.md",
-            "reference/plots/qqnorm.md",
-            "reference/plots/qqplot.md",
-            "reference/plots/rainclouds.md",
-            "reference/plots/rangebars.md",
-            "reference/plots/scatter.md",
-            "reference/plots/scatterlines.md",
-            "reference/plots/series.md",
-            "reference/plots/spy.md",
-            "reference/plots/stairs.md",
-            "reference/plots/stem.md",
-            "reference/plots/stephist.md",
-            "reference/plots/streamplot.md",
-            "reference/plots/surface.md",
-            "reference/plots/text.md",
-            "reference/plots/textlabel.md",
-            "reference/plots/tooltip.md",
-            "reference/plots/tricontourf.md",
-            "reference/plots/triplot.md",
-            "reference/plots/violin.md",
-            "reference/plots/vlines.md",
-            "reference/plots/volume.md",
-            "reference/plots/volumeslices.md",
-            "reference/plots/voronoiplot.md",
-            "reference/plots/voxels.md",
-            "reference/plots/vspan.md",
-            "reference/plots/waterfall.md",
-            "reference/plots/wireframe.md",
-        ],
+        "Plots" => plots,
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",
             "reference/generic/transformations.md",
@@ -190,6 +140,10 @@ pages = [
         "Ecosystem" => "ecosystem.md",
     ],
 ]
+
+##
+# Generate plot documentation from full_docs()
+
 
 function make_docs(; pages)
     empty!(MakieDocsHelpers.FIGURES)

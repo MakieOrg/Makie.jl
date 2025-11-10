@@ -1,9 +1,22 @@
 # mesh
 
-```@shortdocs; canonical=false
-mesh
+```
+f, ax, pl = mesh(args...; kw...) # return a new figure, axis, and plot
+   ax, pl = mesh(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
+       pl = mesh!(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
+SpecApi.Mesh(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
 ```
 
+## Arguments
+
+**Target signature:** `mesh::Union{GeometryBasics.Mesh, GeometryBasics.MetaMesh, AbstractVector{<:GeometryBasics.Mesh}}`
+
+  * `mesh`: A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.
+  * `vertices, indices`: Vertex positions and face indices defining the mesh geometry.
+  * `x, y, z`: Coordinates defining a surface (converted to mesh internally).
+  * `geom`: Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh.
+
+For detailed conversion information, see `Makie.conversion_docs(Mesh)`.
 
 ## Examples
 
@@ -29,8 +42,7 @@ colors = [:red, :green, :blue, :orange]
 mesh(vertices, faces, color = colors, shading = NoShading)
 ```
 
-Note that the order of vertices within a face matters for normal generation in 3D and thus affects shading.
-The normals follows the right hand rule, meaning the normals will face outwards if the vertices of a face are in a counter clockwise order.
+Note that the order of vertices within a face matters for normal generation in 3D and thus affects shading. The normals follows the right hand rule, meaning the normals will face outwards if the vertices of a face are in a counter clockwise order.
 
 ```@figure backend=GLMakie
 vertices = Point3f[(1,0,0), (1,1,0), (0,1,0)]
@@ -144,8 +156,7 @@ nothing # hide
 <video autoplay loop muted playsinline controls src="./uv_mesh.mp4" />
 ```
 
-The uv coordinates that go out of bounds will get repeated per default.
-One can use a `Sampler` object to change that behaviour:
+The uv coordinates that go out of bounds will get repeated per default. One can use a `Sampler` object to change that behaviour:
 
 ```@example sampler
 #=
@@ -171,8 +182,7 @@ nothing # hide
 
 ### Volume Texture
 
-One can pass a 3d array to `mesh(args...; color=volume), and index the volume via uvw coordinates.
-Here is an example of an interactive volume slice viewer:
+One can pass a 3d array to `mesh(args...; color=volume), and index the volume via uvw coordinates. Here is an example of an interactive volume slice viewer:
 
 ```@example volume_mesh
 
@@ -271,8 +281,210 @@ cameracontrols(a).settings.fixed_axis[] = false # rotate freely
 f
 ```
 
+See the [online documentation](https://docs.makie.org/stable/reference/plots/mesh) for rendered examples.
+
 ## Attributes
 
-```@attrdocs
-Mesh
-```
+### `transparency`
+
+**Default:** `false`
+
+Adjusts how the plot deals with transparency. In GLMakie `transparency = true` results in using Order Independent Transparency.
+
+### `alpha`
+
+**Default:** `1.0`
+
+The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied.
+
+### `specular`
+
+**Default:** `0.2`
+
+Sets how strongly the object reflects light in the red, green and blue channels.
+
+### `colormap`
+
+**Default:** `@inherit colormap :viridis`
+
+Sets the colormap that is sampled for numeric `color`s. `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils. To see all available color gradients, you can call `Makie.available_gradients()`.
+
+### `visible`
+
+**Default:** `true`
+
+Controls whether the plot gets rendered or not.
+
+### `space`
+
+**Default:** `:data`
+
+Sets the transformation space for box encompassing the plot. See `Makie.spaces()` for possible inputs.
+
+### `colorscale`
+
+**Default:** `identity`
+
+The color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
+
+### `matcap`
+
+**Default:** `nothing`
+
+Applies a "material capture" texture to the generated mesh. A matcap encodes lighting and color data of a material on a circular texture which is sampled based on normal vectors.
+
+### `inspector_hover`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot, index) -> ...` which replaces the default `show_data` methods.
+
+### `clip_planes`
+
+**Default:** `@inherit clip_planes automatic`
+
+Clip planes offer a way to do clipping in 3D space. You can set a Vector of up to 8 `Plane3f` planes here, behind which plots will be clipped (i.e. become invisible). By default clip planes are inherited from the parent plot or scene. You can remove parent `clip_planes` by passing `Plane3f[]`.
+
+### `ssao`
+
+**Default:** `false`
+
+Adjusts whether the plot is rendered with ssao (screen space ambient occlusion). Note that this only makes sense in 3D plots and is only applicable with `fxaa = true`.
+
+### `highclip`
+
+**Default:** `automatic`
+
+The color for any value above the colorrange.
+
+### `backlight`
+
+**Default:** `0.0`
+
+Sets a weight for secondary light calculation with inverted normals.
+
+### `inspector_label`
+
+**Default:** `automatic`
+
+Sets a callback function `(plot, index, position) -> string` which replaces the default label generated by DataInspector.
+
+### `uv_transform`
+
+**Default:** `automatic`
+
+Sets a transform for uv coordinates, which controls how a texture is mapped to a mesh. The attribute can be `I`, `scale::VecTypes{2}`, `(translation::VecTypes{2}, scale::VecTypes{2})`, any of `:rotr90`, `:rotl90`, `:rot180`, `:swap_xy`/`:transpose`, `:flip_x`, `:flip_y`, `:flip_xy`, or most generally a `Makie.Mat{2, 3, Float32}` or `Makie.Mat3f` as returned by `Makie.uv_transform()`. They can also be changed by passing a tuple `(op3, op2, op1)`.
+
+### `nan_color`
+
+**Default:** `:transparent`
+
+The color for NaN values.
+
+### `shininess`
+
+**Default:** `32.0`
+
+Sets how sharp the reflection is.
+
+### `interpolate`
+
+**Default:** `true`
+
+sets whether colors should be interpolated
+
+### `overdraw`
+
+**Default:** `false`
+
+Controls if the plot will draw over other plots. This specifically means ignoring depth checks in GL backends
+
+### `cycle`
+
+**Default:** `[:color => :patchcolor]`
+
+Sets which attributes to cycle when creating multiple plots. The values to cycle through are defined by the parent Theme. Multiple cycled attributes can be set by passing a vector. Elements can
+
+  * directly refer to a cycled attribute, e.g. `:color`
+  * map a cycled attribute to a palette attribute, e.g. `:linecolor => :color`
+  * map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
+
+### `transformation`
+
+**Default:** `:automatic`
+
+Controls the inheritance or directly sets the transformations of a plot. Transformations include the transform function and model matrix as generated by `translate!(...)`, `scale!(...)` and `rotate!(...)`. They can be set directly by passing a `Transformation()` object or inherited from the parent plot or scene. Inheritance options include:
+
+  * `:automatic`: Inherit transformations if the parent and child `space` is compatible
+  * `:inherit`: Inherit transformations
+  * `:inherit_model`: Inherit only model transformations
+  * `:inherit_transform_func`: Inherit only the transform function
+  * `:nothing`: Inherit neither, fully disconnecting the child's transformations from the parent
+
+Another option is to pass arguments to the `transform!()` function which then get applied to the plot. For example `transformation = (:xz, 1.0)` which rotates the `xy` plane to the `xz` plane and translates by `1.0`. For this inheritance defaults to `:automatic` but can also be set through e.g. `(:nothing, (:xz, 1.0))`.
+
+### `model`
+
+**Default:** `automatic`
+
+Sets a model matrix for the plot. This overrides adjustments made with `translate!`, `rotate!` and `scale!`.
+
+### `depth_shift`
+
+**Default:** `0.0`
+
+Adjusts the depth value of a plot after all other transformations, i.e. in clip space, where `-1 <= depth <= 1`. This only applies to GLMakie and WGLMakie and can be used to adjust render order (like a tunable overdraw).
+
+### `colorrange`
+
+**Default:** `automatic`
+
+The values representing the start and end points of `colormap`.
+
+### `color`
+
+**Default:** `@inherit patchcolor`
+
+Sets the color of the mesh. Can be a `Vector{<:Colorant}` for per vertex colors or a single `Colorant`. A `Matrix{<:Colorant}` can be used to color the mesh with a texture, which requires the mesh to contain texture coordinates. A `<: AbstractPattern` can be used to apply a repeated, pixel sampled pattern to the mesh, e.g. for hatching.
+
+### `material`
+
+**Default:** `nothing`
+
+RPRMakie only attribute to set complex RadeonProRender materials.         *Warning*, how to set an RPR material may change and other backends will ignore this attribute
+
+### `shading`
+
+**Default:** `true`
+
+Controls if the plot object is shaded by the parent scenes lights or not. The lighting algorithm used is controlled by the scenes `shading` attribute.
+
+### `inspectable`
+
+**Default:** `@inherit inspectable`
+
+Sets whether this plot should be seen by `DataInspector`. The default depends on the theme of the parent scene.
+
+### `fxaa`
+
+**Default:** `true`
+
+Adjusts whether the plot is rendered with fxaa (fast approximate anti-aliasing, GLMakie only). Note that some plots implement a better native anti-aliasing solution (scatter, text, lines). For them `fxaa = true` generally lowers quality. Plots that show smoothly interpolated data (e.g. image, surface) may also degrade in quality as `fxaa = true` can cause blurring.
+
+### `diffuse`
+
+**Default:** `1.0`
+
+Sets how strongly the red, green and blue channel react to diffuse (scattered) light.
+
+### `inspector_clear`
+
+**Default:** `automatic`
+
+Sets a callback function `(inspector, plot) -> ...` for cleaning up custom indicators in DataInspector.
+
+### `lowclip`
+
+**Default:** `automatic`
+
+The color for any value below the colorrange.

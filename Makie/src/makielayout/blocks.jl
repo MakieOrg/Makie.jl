@@ -646,6 +646,8 @@ function attribute_examples(b::Union{Type{<:Block}, Type{<:Plot}})
     return Dict{Symbol, Vector{Example}}()
 end
 
+attribute_examples(::Type{T}, attr::Symbol) where {T <: Union{Block, Plot}} = get(attribute_examples(T), attr, Example[])
+
 # overrides `?Axis.xticks` and similar lookups in the REPL
 function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
     if !is_attribute(t, s)
