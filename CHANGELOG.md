@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
+- Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
@@ -14,6 +16,7 @@
 - Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
 - Fixed `band` not working with StructArrays in CairoMakie [#5381](https://github.com/MakieOrg/Makie.jl/pull/5381)
+- Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
 
 ## [0.24.6] - 2025-08-19
 
