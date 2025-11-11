@@ -1,0 +1,60 @@
+name: Reference Images Site
+
+on:
+  workflow_run:
+    workflows: ["Backends"]
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to build site for'
+        required: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    # Only run if the workflow run was successful or if manually triggered
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+
+      - uses: julia-actions/cache@v2
+
+      - name: Get PR number
+        id: pr_number
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "pr=${{ github.event.inputs.pr_number }}" >> $GITHUB_OUTPUT
+          else
+            echo "pr=${{ github.event.workflow_run.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download ReferenceImages artifact
+        if: steps.pr_number.outputs.pr != ''
+        uses: actions/download-artifact@v6
+        with:
+          name: ReferenceImages
+          path: ./reference_images_data
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Install Julia dependencies
+        shell: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
+      - name: Build static site
+        if: steps.pr_number.outputs.pr != ''
+        env:
+          PR_NUMBER: ${{ steps.pr_number.outputs.pr }}
+        run: julia --project=reference_images_site reference_images_site/build_site.jl
