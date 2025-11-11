@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
 - Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
