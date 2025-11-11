@@ -17,6 +17,7 @@
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
 - Fixed `band` not working with StructArrays in CairoMakie [#5381](https://github.com/MakieOrg/Makie.jl/pull/5381)
 - Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
+- Fixed outline based `poly` fats paths no considering transform functions in CairoMakie [#5397](https://github.com/MakieOrg/Makie.jl/pull/5397)
 
 ## [0.24.6] - 2025-08-19
 

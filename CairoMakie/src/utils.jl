@@ -33,7 +33,7 @@ function build_combined_transformation_matrix(
         scene::Scene, space::Symbol, model::Mat4, yflip = true
     )
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    M = Makie.get_space_to_space_matrix(scene, space, :clip) * f32convert * model
     return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
 end
 
