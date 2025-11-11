@@ -21,6 +21,9 @@ rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ m
 Plot a violin (/histogram), boxplot and individual data points with appropriate spacing
 between each.
 
+"Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
+three together can make an appealing and informative visual, particularly for large N datasets.
+
 # Arguments
 - `ax`: Axis used to place all these plots onto.
 - `category_labels`: Typically `Vector{String}` with a label for each element in

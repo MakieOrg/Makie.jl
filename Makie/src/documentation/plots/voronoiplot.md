@@ -1,12 +1,8 @@
 # voronoiplot
 
-
-
 ## Examples
 
-A `voronoiplot` generates a cell for each passed position similar to `heatmap`,
-however the cells are not restricted to a rectangular shape. It can be called with
-point based (like `scatter` or `lines`) or `heatmap`-like inputs.
+### Basic voronoiplot with point and matrix inputs
 
 ```@figure
 using Random
@@ -21,6 +17,8 @@ ax = Axis(f[1, 2])
 voronoiplot!(ax, rand(10, 10), rand(10, 10), rand(10, 10))
 f
 ```
+
+### Plotting a VoronoiTessellation object
 
 `voronoiplot` uses the Voronoi tessellation from
 [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl)
@@ -40,6 +38,7 @@ f, ax, tr = voronoiplot(vorn)
 f
 ```
 
+### Voronoiplot with custom unbounded edge extension
 
 When considering standard tessellations the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided clipping shape (a rectangle or circle).
 The automatic bounding box is determined by the bounding box of generators of the tessellation, meaning the provided points, extended out by some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides.
@@ -55,6 +54,8 @@ f, ax, tr = voronoiplot(real(z), imag(z), unbounded_edge_extension_factor = 0.4,
 f
 ```
 
+### Voronoiplot with custom bounding box
+
 ```@figure
 using DelaunayTriangulation
 
@@ -68,6 +69,8 @@ f, ax, tr = voronoiplot(x, y, show_generators=false,
     clip=bb, color=:white, strokewidth=2)
 f
 ```
+
+### Clipped voronoiplot
 
 For clipped and centroidal tessellations, there are no unbounded polygons.
 
@@ -84,6 +87,8 @@ vorn = voronoi(tri, clip = true)
 f, ax, tr = voronoiplot(vorn, show_generators = true, markersize = 13, marker = 'x')
 f
 ```
+
+### Centroidal smoothed voronoiplot
 
 ```@figure
 using DelaunayTriangulation

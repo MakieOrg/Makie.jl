@@ -1,8 +1,8 @@
 # ecdfplot
 
-
-
 ## Examples
+
+### Basic ECDF plot
 
 ```@figure
 f = Figure()
@@ -12,6 +12,8 @@ ecdfplot!(randn(200))
 
 f
 ```
+
+### ECDF with different point counts
 
 ```@figure
 f = Figure()
@@ -23,6 +25,8 @@ ecdfplot!(x, color = :red, npoints=10)
 
 f
 ```
+
+### ECDF with weights
 
 ```@figure
 f = Figure()

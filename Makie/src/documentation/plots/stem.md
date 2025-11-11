@@ -1,8 +1,8 @@
 # stem
 
-
-
 ## Examples
+
+### Basic Stem Plot
 
 ```@figure
 f = Figure()
@@ -14,6 +14,8 @@ stem!(xs, sin.(xs))
 
 f
 ```
+
+### Stem Plot with Custom Colors and Markers
 
 ```@figure
 f = Figure()
@@ -30,6 +32,8 @@ stem!(xs, sin,
 f
 ```
 
+### Stem Plot with Varying Offset and Colors
+
 ```@figure
 f = Figure()
 Axis(f[1, 1])
@@ -44,6 +48,8 @@ stem!(xs, sin.(xs),
 f
 ```
 
+### 3D Stem Plot
+
 ```@figure backend=GLMakie
 f = Figure()
 
@@ -55,4 +61,3 @@ stem(f[1, 1], 0.5xs, 2 .* sin.(xs), 2 .* cos.(xs),
 
 f
 ```
-

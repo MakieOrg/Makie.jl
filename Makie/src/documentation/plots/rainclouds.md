@@ -2,10 +2,7 @@
 
 ## Examples
 
-
-"Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
-three together can make an appealing and informative visual, particularly for large N datasets.
-
+### Raincloud plot with histogram clouds
 
 ```@figure rainclouds
 using Random
@@ -70,6 +67,7 @@ rainclouds(category_labels, data_array;
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
 
+### Horizontal raincloud plot
 
 ```@figure rainclouds
 rainclouds(category_labels, data_array;
@@ -79,6 +77,8 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, clouds=hist,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
+
+### Raincloud plot with boxplots
 
 ```@figure rainclouds
 rainclouds(category_labels, data_array;
@@ -91,6 +91,7 @@ rainclouds(category_labels, data_array;
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
 
+### Raincloud plot on right side with violin limits
 
 ```@figure rainclouds
 rainclouds(category_labels, data_array;
@@ -103,6 +104,8 @@ rainclouds(category_labels, data_array;
     violin_limits = extrema, color = colors[indexin(category_labels, unique(category_labels))])
 ```
 
+### Raincloud plot on right side
+
 ```@figure rainclouds
 rainclouds(category_labels, data_array;
     axis = (;
@@ -113,6 +116,8 @@ rainclouds(category_labels, data_array;
     plot_boxplots = true, cloud_width=0.5, side = :right,
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
+
+### Raincloud plot with more categories
 
 ```@figure rainclouds
 more_category_labels, more_data_array = mockup_categories_and_data_array(6)
@@ -127,6 +132,8 @@ rainclouds(more_category_labels, more_data_array;
     color = colors[indexin(more_category_labels, unique(more_category_labels))])
 ```
 
+### Another raincloud plot with 6 categories
+
 ```@figure rainclouds
 category_labels, data_array = mockup_categories_and_data_array(6)
 rainclouds(category_labels, data_array;
@@ -139,9 +146,9 @@ rainclouds(category_labels, data_array;
     color = colors[indexin(category_labels, unique(category_labels))])
 ```
 
-4 of these, between 3 distributions
-Left and Right example
-With and Without Box Plot
+### Comprehensive raincloud plot variations
+
+Demonstrating different combinations: left and right sides, with and without box plots, different category counts and spacing options.
 
 ```@figure rainclouds
 fig = Figure(size = (800*2, 600*5))

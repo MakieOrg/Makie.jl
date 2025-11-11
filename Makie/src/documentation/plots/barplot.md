@@ -1,7 +1,8 @@
 # barplot
 
-
 ## Examples
+
+### Basic barplot
 
 ```@figure
 f = Figure()
@@ -16,12 +17,16 @@ barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth
 f
 ```
 
+### Barplot with gap control
+
 ```@figure
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
 barplot(xs, ys, gap = 0, color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
+
+### Stacked bars
 
 ```@figure barplot
 tbl = (cat = [1, 1, 1, 2, 2, 2, 3, 3, 3],
@@ -39,6 +44,8 @@ barplot(tbl.cat, tbl.height,
         )
 ```
 
+### Dodged bars
+
 ```@figure barplot
 barplot(tbl.cat, tbl.height,
         dodge = tbl.grp,
@@ -47,6 +54,8 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged bars"),
         )
 ```
+
+### Dodged and stacked bars
 
 ```@figure barplot
 barplot(tbl.cat, tbl.height,
@@ -57,6 +66,8 @@ barplot(tbl.cat, tbl.height,
                 title = "Dodged and stacked bars"),
         )
 ```
+
+### Dodged bars with legend
 
 ```@figure barplot
 colors = Makie.wong_colors()
@@ -81,6 +92,8 @@ Legend(fig[1,2], elements, labels, title)
 fig
 ```
 
+### Horizontal barplot with labels
+
 ```@figure barplot
 barplot(
     tbl.cat, tbl.height,
@@ -97,6 +110,8 @@ barplot(
 )
 ```
 
+### Bar labels with custom formatting
+
 ```@figure
 barplot([-1, -0.5, 0.5, 1],
     bar_labels = :y,
@@ -108,6 +123,8 @@ barplot([-1, -0.5, 0.5, 1],
     label_offset = 10
 )
 ```
+
+### Gantt chart style
 
 ```@figure
 gantt = (
@@ -148,4 +165,3 @@ Legend(fig[1,1], ax, "Jobs", orientation=:horizontal, tellwidth = false, tellhei
 
 fig
 ```
-

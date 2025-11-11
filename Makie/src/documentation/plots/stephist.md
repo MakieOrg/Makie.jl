@@ -1,8 +1,8 @@
 # stephist
 
-
-
 ## Examples
+
+### Step Histogram with Various Bin Configurations
 
 ```@figure backend=GLMakie
 data = randn(1000)
@@ -16,4 +16,3 @@ f
 ```
 
 For more examples, see `hist`.
-

@@ -1,15 +1,8 @@
 # voronoiplot
 
-```
-f, ax, pl = voronoiplot(args...; kw...) # return a new figure, axis, and plot
-   ax, pl = voronoiplot(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
-       pl = voronoiplot!(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
-SpecApi.Voronoiplot(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
-```
-
 ## Examples
 
-A `voronoiplot` generates a cell for each passed position similar to `heatmap`, however the cells are not restricted to a rectangular shape. It can be called with point based (like `scatter` or `lines`) or `heatmap`-like inputs.
+### Basic Voronoi plots
 
 ```@figure
 using Random
@@ -25,7 +18,7 @@ voronoiplot!(ax, rand(10, 10), rand(10, 10), rand(10, 10))
 f
 ```
 
-`voronoiplot` uses the Voronoi tessellation from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) to generate the cells. You can also do this yourself and directly plot the `VoronoiTessellation` object returned.
+### Voronoi tessellation from DelaunayTriangulation
 
 ```@figure
 using DelaunayTriangulation
@@ -40,7 +33,7 @@ f, ax, tr = voronoiplot(vorn)
 f
 ```
 
-When considering standard tessellations the unbounded polygons are clipped at a bounding box determined automatically by default, or from a user-provided clipping shape (a rectangle or circle). The automatic bounding box is determined by the bounding box of generators of the tessellation, meaning the provided points, extended out by some factor `unbounded_edge_extension_factor` (default `0.1`) proportional to the lengths of the bounding box's sides.
+### Voronoi plot with custom extension factor
 
 ```@figure
 using DelaunayTriangulation

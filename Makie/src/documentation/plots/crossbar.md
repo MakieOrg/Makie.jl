@@ -1,8 +1,8 @@
 # crossbar
 
-
-
 ## Examples
+
+### Example 1
 
 ```@figure
 xs = [1, 1, 2, 2, 3, 3]
@@ -13,4 +13,3 @@ dodge = [1, 2, 1, 2, 1, 2]
 
 crossbar(xs, ys, ymins, ymaxs, dodge = dodge, show_notch = true)
 ```
-

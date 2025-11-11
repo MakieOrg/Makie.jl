@@ -1,8 +1,8 @@
 # meshscatter
 
-
-
 ## Examples
+
+### 3D Mesh Scatter Plot with Color Gradient
 
 ```@figure backend=GLMakie
 xs = cos.(1:0.5:20)
@@ -11,6 +11,8 @@ zs = LinRange(0, 3, length(xs))
 
 meshscatter(xs, ys, zs, markersize = 0.1, color = zs)
 ```
+
+### Mesh Scatter with Texture Mapping
 
 ```@figure backend=GLMakie
 using FileIO, GeometryBasics
@@ -38,5 +40,3 @@ xlims!(a, 0.4, M+0.6)
 ylims!(a, 0.4, N+0.6)
 f
 ```
-
-

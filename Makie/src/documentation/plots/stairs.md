@@ -1,8 +1,8 @@
 # stairs
 
-
-
 ## Examples
+
+### Stairs Plot with Different Step Positions
 
 ```@figure
 f = Figure()
@@ -16,4 +16,3 @@ stairs(f[3, 1], xs, ys; step=:center, color=:red, linestyle=:dot)
 
 f
 ```
-

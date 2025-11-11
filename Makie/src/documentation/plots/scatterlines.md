@@ -1,8 +1,8 @@
 # scatterlines
 
-
-
 ## Examples
+
+### Scatter Lines with Various Styling Options
 
 ```@figure
 f = Figure()
@@ -19,4 +19,3 @@ scatterlines!(xs, ys .- 3, marker = :cross, strokewidth = 1,
 
 f
 ```
-

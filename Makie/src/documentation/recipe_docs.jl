@@ -45,14 +45,33 @@ end
 ################################################################################
 
 """
-    plot_examples(::Type{<:Plot})
+    plot_examples(::Type{<:Plot}, max_examples::Int=1)
 
 Returns example documentation by reading the markdown file from `documentation/plots/{plotname}.md`.
-Shows only the first example from the documentation.
+Parses the markdown structure and returns up to `max_examples` examples.
 
-Returns an empty string if the markdown file doesn't exist.
+The markdown files follow this structure:
+```
+# plotname
+
+## Examples
+
+### Example Title 1
+...
+```@figure
+code
+```
+
+### Example Title 2
+...
+```
+
+Returns an empty string if the markdown file doesn't exist or has no examples.
+
+# Arguments
+- `max_examples`: Maximum number of examples to include (default: 1). Use `0` or negative number for all examples.
 """
-function plot_examples(::Type{PT}) where {PT<:Plot}
+function plot_examples(::Type{PT}, max_examples::Int=1) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
 
@@ -64,7 +83,52 @@ function plot_examples(::Type{PT}) where {PT<:Plot}
     end
 
     # Read the markdown file
-    return read(md_path, String)
+    content = read(md_path, String)
+
+    # If max_examples <= 0, return everything after ## Examples
+    if max_examples <= 0
+        examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
+        m = match(examples_pattern, content)
+        if isnothing(m)
+            return ""
+        end
+        return "## Examples\n" * m.captures[1]
+    end
+
+    # Parse the markdown to extract examples
+    # Find the Examples section
+    examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
+    m = match(examples_pattern, content)
+
+    if isnothing(m)
+        return ""
+    end
+
+    examples_content = m.captures[1]
+
+    # Split by ### headers to get individual examples
+    # Match ### titles and their content until the next ### or end
+    example_pattern = r"^### (.+?$)(.*?)(?=^### |\z)"ms
+    examples = eachmatch(example_pattern, examples_content)
+
+    # Collect up to max_examples
+    collected = String[]
+    count = 0
+    for ex in examples
+        if count >= max_examples
+            break
+        end
+        title = strip(ex.captures[1])
+        body = ex.captures[2]
+        push!(collected, "### $title\n$body")
+        count += 1
+    end
+
+    if isempty(collected)
+        return ""
+    end
+
+    return "## Examples\n\n" * join(collected, "\n")
 end
 
 ################################################################################
@@ -213,7 +277,7 @@ end
 ################################################################################
 
 """
-    document_recipe(::Type{PT}, user_docstring) where {PT<:Plot}
+    document_recipe(::Type{PT}, user_docstring; max_examples=1, full_attributes=false) where {PT<:Plot}
 
 Generates comprehensive documentation for a plot type by combining:
 - Standardized function signatures
@@ -223,8 +287,12 @@ Generates comprehensive documentation for a plot type by combining:
 - Examples
 
 This function is called automatically by the `@recipe` macro via `Docs.getdoc`.
+
+# Arguments
+- `max_examples`: Maximum number of examples to show (default: 1). Use `0` or negative for all examples.
+- `full_attributes`: If `true`, shows detailed documentation for each attribute. If `false` (default), shows a summary.
 """
-function document_recipe(::Type{PT}, user_docstring::Markdown.MD) where {PT<:Plot}
+function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples::Int=1, full_attributes::Bool=false) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     plfunc!_str = plfunc_str * "!"
@@ -249,21 +317,78 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD) where {PT<:Plo
     # Build attributes section
     attrs = documented_attributes(PT)
     attr_names = attribute_names(PT)
-    attr_list = if isnothing(attr_names) || isempty(attr_names)
-        "No attributes available."
+
+    attributes_section = if full_attributes
+        # Show detailed attribute documentation
+        if isnothing(attr_names) || isempty(attr_names)
+            Markdown.parse("## Attributes\n\nNo attributes available.")
+        else
+            io = IOBuffer()
+            println(io, "## Attributes\n")
+
+            for attr in attr_names
+                attr_meta = get(attrs.d, attr, nothing)
+                if !isnothing(attr_meta)
+                    println(io, "### `$attr`\n")
+                    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
+                    if !isnothing(attr_meta.docstring)
+                        println(io, attr_meta.docstring)
+                        println(io)
+                    end
+
+                    # Add example if available
+                    examples_dict = try
+                        attribute_examples(PT)
+                    catch
+                        nothing
+                    end
+
+                    if examples_dict isa Dict && haskey(examples_dict, attr)
+                        examples = examples_dict[attr]
+                        if examples isa Vector && !isempty(examples)
+                            println(io, "**Example:**\n")
+                            for (i, ex) in enumerate(examples)
+                                if ex isa Example
+                                    if !isnothing(ex.caption) && !isempty(ex.caption)
+                                        println(io, "**$(ex.caption)**\n")
+                                    end
+                                    println(io, "```julia")
+                                    println(io, ex.code)
+                                    println(io, "```")
+                                    if i < length(examples)
+                                        println(io)
+                                    end
+                                end
+                            end
+                            println(io)
+                        end
+                    end
+                else
+                    println(io, "### `$attr`\n")
+                    println(io, "*No documentation available.*\n")
+                end
+            end
+
+            Markdown.parse(String(take!(io)))
+        end
     else
-        join(["`$attr`" for attr in attr_names], ", ")
+        # Show summary attribute list
+        attr_list = if isnothing(attr_names) || isempty(attr_names)
+            "No attributes available."
+        else
+            join(["`$attr`" for attr in attr_names], ", ")
+        end
+        Markdown.parse("""
+        ## Attributes
+
+        **Available attributes:** $attr_list
+
+        Use `?$PlotType_str.attribute` to see the documentation for a specific attribute, e.g., `?$PlotType_str.color`.
+        """)
     end
-    attr_section = Markdown.parse("""
-    ## Attributes
-
-    **Available attributes:** $attr_list
-
-    Use `?$PlotType_str.attribute` to see the documentation for a specific attribute, e.g., `?$PlotType_str.color`.
-    """)
 
     # Build examples section
-    examples = plot_examples(PT)
+    examples = plot_examples(PT, max_examples)
     # Add link to online documentation
     if !isempty(examples)
         online_docs_link = "\n\nSee the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for more examples."
@@ -276,7 +401,7 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD) where {PT<:Plo
     push!(combined.content, signatures.content...)
     push!(combined.content, user_docstring.content...)
     push!(combined.content, arguments_section.content...)
-    push!(combined.content, attr_section.content...)
+    push!(combined.content, attributes_section.content...)
     push!(combined.content, examples_section.content...)
     return combined
 end
@@ -286,20 +411,19 @@ end
 ################################################################################
 
 """
-    full_docs(::Type{<:Plot}; replace_figure=true, use_figure_for_attributes=false)
+    full_docs(::Type{<:Plot}; replace_figure=true)
 
 Generates comprehensive documentation for a plot type including:
 - Function signatures
 - User-provided documentation
-- Short argument documentation with hint for full docs
+- Argument documentation
 - **ALL** examples from the documentation
 - **Detailed** attribute documentation for each attribute
 
-If `replace_figure=true` (default), replaces `@figure` code blocks with `julia` for REPL display.
-If `replace_figure=false`, preserves `@figure` blocks for Documenter processing in plot examples.
+This is a convenience function that calls `document_recipe` with appropriate settings for full documentation.
 
-If `use_figure_for_attributes=true`, attribute examples use `@figure` blocks (for Documenter).
-If `use_figure_for_attributes=false` (default), attribute examples use plain `julia` blocks (for REPL).
+If `replace_figure=true` (default), replaces `@figure` code blocks with `julia` for REPL display.
+If `replace_figure=false`, preserves `@figure` blocks for Documenter processing.
 
 Use this for comprehensive reference. For a quick overview, use `?PlotType` instead.
 
@@ -307,169 +431,37 @@ Use this for comprehensive reference. For a quick overview, use `?PlotType` inst
 ```julia
 full_docs(Scatter)
 full_docs(Lines)
-full_docs(Lines; replace_figure=false, use_figure_for_attributes=true)  # For makedocs
+full_docs(Lines; replace_figure=false)  # For makedocs
 ```
 """
-function full_docs(::Type{PT}; replace_figure=true, use_figure_for_attributes=false) where {PT<:Plot}
-    plfunc = plotfunc(PT)
-    plfunc_str = string(plfunc)
-    plfunc!_str = plfunc_str * "!"
-    PlotType_str = uppercasefirst(plfunc_str)
-
-    # Build function signatures section
-    signatures = Markdown.parse("""
-        f, ax, pl = $plfunc_str(args...; kw...) # return a new figure, axis, and plot
-           ax, pl = $plfunc_str(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
-               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
-        SpecApi.$(PlotType_str)(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
-    """)
-
-    # Build arguments section with target signature
-    items = argument_docs_items(PT)
-    arguments_section = if isempty(items)
-        Markdown.MD()
-    else
-        # Try to get formatted signature
-        sig = format_argument_signature(PT)
-        sig_section = if !isnothing(sig)
-            "**Target signature:** `$sig`\n\n"
+function full_docs(::Type{PT}; replace_figure=true) where {PT<:Plot}
+    # Get the user docstring for this plot type
+    user_docstring = try
+        # Try to get the docstring from Docs
+        binding = Docs.Binding(Makie, Symbol(uppercasefirst(string(plotfunc(PT)))))
+        docs = Docs.meta(Makie)[binding]
+        if haskey(docs.docs, Union{})
+            docs.docs[Union{}].text[1]
         else
-            ""
+            Markdown.MD()
         end
-
-        arg_items = join(["  * " * item for item in items], "\n")
-        Markdown.parse("""
-        ## Arguments
-
-        $(sig_section)$arg_items
-
-        For detailed conversion information, see `Makie.conversion_docs($PlotType_str)`.
-        """)
+    catch
+        Markdown.MD()
     end
 
-    # Build ALL examples section
-    examples_section = all_examples_docs(PT; replace_figure=replace_figure)
+    # Call document_recipe with full documentation settings
+    docs = document_recipe(PT, user_docstring; max_examples=0, full_attributes=true)
 
-    # Build detailed attributes section
-    attrs = documented_attributes(PT)
-    attr_names = attribute_names(PT)
-
-    attributes_section = if isnothing(attr_names) || isempty(attr_names)
-        Markdown.parse("## Attributes\n\nNo attributes available.")
-    else
-        io = IOBuffer()
-        println(io, "## Attributes\n")
-
-        for attr in attr_names
-            attr_meta = get(attrs.d, attr, nothing)
-            if !isnothing(attr_meta)
-                println(io, "### `$attr`\n")
-                println(io, "**Default:** `$(attr_meta.default_expr)`\n")
-                if !isnothing(attr_meta.docstring)
-                    println(io, attr_meta.docstring)
-                    println(io)
-                end
-
-                # Add example if available
-                examples_dict = try
-                    attribute_examples(PT)
-                catch
-                    nothing
-                end
-
-                if examples_dict isa Dict && haskey(examples_dict, attr)
-                    examples = examples_dict[attr]
-                    if examples isa Vector && !isempty(examples)
-                        println(io, "**Example:**\n")
-                        for (i, ex) in enumerate(examples)
-                            if ex isa Example
-                                if !isnothing(ex.caption) && !isempty(ex.caption)
-                                    println(io, "**$(ex.caption)**\n")
-                                end
-                                if use_figure_for_attributes
-                                    println(io, "```@figure")
-                                else
-                                    println(io, "```julia")
-                                end
-                                println(io, ex.code)
-                                println(io, "```")
-                                if i < length(examples)
-                                    println(io)
-                                end
-                            end
-                        end
-                        println(io)
-                    end
-                end
-            else
-                println(io, "### `$attr`\n")
-                println(io, "*No documentation available.*\n")
-            end
-        end
-
-        Markdown.parse(String(take!(io)))
-    end
-
-    # Combine all sections
-    combined = Markdown.MD()
-    push!(combined.content, signatures.content...)
-    push!(combined.content, arguments_section.content...)
-    push!(combined.content, examples_section.content...)
-    push!(combined.content, attributes_section.content...)
-    return combined
-end
-
-"""
-    all_examples_docs(::Type{<:Plot}; replace_figure=true)
-
-Returns Markdown documentation for ALL examples of a plot type by reading from documentation/plots/{plotname}.md.
-
-If `replace_figure=true` (default), replaces `@figure` code blocks with `julia` for REPL display.
-If `replace_figure=false`, preserves `@figure` blocks for Documenter processing.
-"""
-function all_examples_docs(::Type{PT}; replace_figure=true) where {PT<:Plot}
-    plfunc = plotfunc(PT)
-    plfunc_str = string(plfunc)
-
-    # Path to markdown file
-    md_path = joinpath(@__DIR__, "plots", "$plfunc_str.md")
-
-    if !isfile(md_path)
-        return Markdown.MD()
-    end
-
-    # Read and extract everything after ## Examples header
-    content = read(md_path, String)
-
-    # Find the Examples section and extract everything until the next ## header or end of file
-    examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
-    m = match(examples_pattern, content)
-
-    if isnothing(m)
-        # No examples section found
-        io = IOBuffer()
-        println(io, "## Examples\n")
-        println(io, "See the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for rendered examples.")
-        return Markdown.parse(String(take!(io)))
-    end
-
-    # Get the examples content
-    examples_content = m.captures[1]
-
-    # Replace @figure with julia in code blocks for REPL display
+    # Replace @figure with julia if requested for REPL display
     if replace_figure
-        examples_content = replace(examples_content, r"```@figure([^\n]*)" => s"```julia\1")
+        docs_str = sprint(io -> Markdown.plain(io, docs))
+        docs_str = replace(docs_str, r"```@figure([^\n]*)" => s"```julia\1")
+        return Markdown.parse(docs_str)
     end
 
-    # Build the final markdown
-    io = IOBuffer()
-    println(io, "## Examples")
-    print(io, examples_content)
-    println(io)
-    println(io, "See the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for rendered examples.")
-
-    return Markdown.parse(String(take!(io)))
+    return docs
 end
+
 
 ################################################################################
 ### Documentation Generation for makedocs

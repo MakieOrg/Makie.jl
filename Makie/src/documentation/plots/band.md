@@ -1,7 +1,8 @@
 # band
 
-
 ## Examples
+
+### Basic band plot
 
 ```@figure
 f = Figure()
@@ -16,6 +17,8 @@ band!(xs, ys_low .- 1, ys_high .-1, color = :red)
 
 f
 ```
+
+### Band showing standard deviation
 
 ```@figure
 using Statistics
@@ -34,10 +37,11 @@ band!(t, μ + σ, μ - σ)   # plot stddev band
 f
 ```
 
+### 3D band plot
+
 ```@figure backend=GLMakie
 lower = fill(Point3f(0,0,0), 100)
 upper = [Point3f(sin(x), cos(x), 1.0) for x in range(0,2pi, length=100)]
 col = repeat([1:50;50:-1:1],outer=2)
 band(lower, upper, color=col, axis=(type=Axis3,))
 ```
-

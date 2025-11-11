@@ -1,8 +1,8 @@
 # image
 
-
-
 ## Examples
+
+### Image Display with Different Transformations
 
 ```@figure
 using FileIO
@@ -26,4 +26,3 @@ image(f[2, 2], img',
 
 f
 ```
-

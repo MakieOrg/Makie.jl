@@ -1,12 +1,8 @@
 # contour3d
 
-
-
 ## Examples
 
-3D contour plots exist in two variants.
-[contour](@ref) implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
-`contour3d` computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
+### 3D contour vs contour3d comparison
 
 ```@figure backend=GLMakie
 r = range(-pi, pi, length = 21)
@@ -22,6 +18,8 @@ contour3d!(a2, r, r, data2d, linewidth = 3, levels = 10)
 f
 ```
 
+### Double cone with contour3d
+
 ```@figure backend=GLMakie
 f = Figure()
 Axis3(f[1, 1], aspect=(0.5,0.5,1), perspectiveness=0.75)
@@ -35,7 +33,9 @@ contour3d!(xs, ys, +zs, linewidth=2, color=:red2)
 f
 ```
 
-Omitting the `xs` and `ys` results in the indices of `zs` being used. We can also set arbitrary contour-levels using `levels`:
+### Contour3d with custom levels
+
+Omitting the `xs` and `ys` results in the indices of `zs` being used. We can also set arbitrary contour-levels using `levels`.
 
 ```@figure
 f = Figure()
@@ -49,4 +49,3 @@ contour3d!(+zs, levels=  .025:0.05:.475,  linewidth=2, color=:red2)
 
 f
 ```
-

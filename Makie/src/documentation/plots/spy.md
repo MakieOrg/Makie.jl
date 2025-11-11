@@ -1,8 +1,8 @@
 # spy
 
-
-
 ## Examples
+
+### Sparse Matrix Visualization
 
 ```@figure
 using SparseArrays
@@ -20,4 +20,3 @@ hidedecorations!(ax) # remove axis labeling
 
 f
 ```
-

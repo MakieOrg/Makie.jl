@@ -1,8 +1,8 @@
 # poly
 
-
-
 ## Examples
+
+### Basic Polygon with Outline
 
 ```@figure
 using Makie.GeometryBasics
@@ -15,6 +15,8 @@ poly!(Point2f[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :blac
 
 f
 ```
+
+### Polygon with Hole
 
 ```@figure
 using Makie.GeometryBasics
@@ -34,6 +36,8 @@ poly!(p, color = :blue)
 f
 ```
 
+### Multiple Rectangles with Heat Colormap
+
 ```@figure
 using Makie.GeometryBasics
 
@@ -51,6 +55,8 @@ poly!(
 f
 ```
 
+### Circle Shape with DataAspect
+
 ```@figure
 using Makie.GeometryBasics
 
@@ -63,6 +69,8 @@ poly!(Circle(Point2f(0, 0), 15f0), color = :pink)
 
 f
 ```
+
+### Multiple Random Polygons with Random Colors
 
 ```@figure
 using Makie.GeometryBasics
@@ -79,6 +87,8 @@ poly!(ps, color = rand(RGBf, length(ps)))
 
 f
 ```
+
+### Rectangles with Colored Strokes
 
 ```@figure
 using Makie.GeometryBasics
@@ -98,4 +108,3 @@ poly!(
 
 f
 ```
-

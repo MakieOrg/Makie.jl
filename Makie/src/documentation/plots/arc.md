@@ -1,14 +1,17 @@
 # arc
 
-
 ## Examples
+
+### Simple arc
 
 ```@figure
 arc(Point2f(0), 1, -π, π)
 ```
 
+### Multiple concentric arcs
+
 ```@figure
-f = Figure() 
+f = Figure()
 Axis(f[1, 1])
 
 for i in 1:10
@@ -17,6 +20,8 @@ end
 
 f
 ```
+
+### Arc pattern
 
 ```@figure
 f = Figure()
@@ -39,4 +44,3 @@ end
 
 f
 ```
-

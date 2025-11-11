@@ -1,7 +1,8 @@
 # dendrogram
 
-
 ## Examples
+
+### Basic dendrogram
 
 ```@figure
 using CairoMakie
@@ -27,15 +28,16 @@ merges = [
 dendrogram(leaves, merges)
 ```
 
+### Dendrogram with groups
+
+Adding groups for each leaf node will result in branches of a common group to be colored the same (based on colormap). Branches with miss-matched groups use ungrouped_color.
+
 ```@figure
 using CairoMakie
 
 leaves = Point2f[(1,0), (2,0.5), (3,1), (4,2), (5,0)]
 merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
 
-# Adding groups for each leaf node will result in branches of a common group
-# to be colored the same (based on colormap). Branches with miss-matched groups
-# use ungrouped_color
 f, a, p = dendrogram(leaves, merges,
     groups = [1, 1, 2, 3, 3],
     colormap = [:red, :green, :blue],
@@ -48,6 +50,7 @@ textlabel!(a, map(ps -> ps[1:5], Makie.dendrogram_node_positions(p)), text = ["A
 f
 ```
 
+### Dendrogram rotation and branch shapes
 
 ```@figure
 using CairoMakie
@@ -60,6 +63,8 @@ dendrogram!(a, leaves, merges, origin = (4, 4), rotation = :left, color = :orang
 f
 ```
 
+### Dendrogram on polar axis
+
 ```@figure
 using CairoMakie
 
@@ -71,4 +76,3 @@ a = PolarAxis(f[1, 1])
 dendrogram!(a, leaves, merges, linewidth = 3, color = :black, linestyle = :dash, origin = Point2f(0, 1))
 f
 ```
-

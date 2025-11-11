@@ -67,6 +67,10 @@ end
 """
 Draws 3D lines on the grid defined by `xs` and `ys` where the `z` value matches
 a level value. The line will be drawn with a matching z value.
+
+3D contour plots exist in two variants.
+`contour` implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
+`contour3d` computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
 """
 @recipe Contour3d begin
     documented_attributes(Contour)...

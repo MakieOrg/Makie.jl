@@ -54,7 +54,8 @@ end
     qqnorm(y; attributes...)
 
 Shorthand for `qqplot(Normal(0,1), y)`, i.e., draw a Q-Q plot of `y` against the
-standard normal distribution. See `qqplot` for more details.
+standard normal distribution. This is useful to test if `y` is normally distributed.
+See `qqplot` for more details.
 """
 @recipe QQNorm begin
     documented_attributes(QQPlot)...

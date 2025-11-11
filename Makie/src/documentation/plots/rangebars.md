@@ -1,8 +1,8 @@
 # rangebars
 
-
-
 ## Examples
+
+### Range Bars with Vertical Direction
 
 ```@figure
 f = Figure()
@@ -17,6 +17,8 @@ rangebars!(vals, lows, highs, color = :red)
 f
 ```
 
+### Range Bars with Horizontal Direction and Gradient Colors
+
 ```@figure
 f = Figure()
 Axis(f[1, 1])
@@ -30,4 +32,3 @@ rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
 
 f
 ```
-

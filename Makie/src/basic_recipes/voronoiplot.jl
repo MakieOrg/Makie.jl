@@ -8,6 +8,10 @@ Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
 The tessellation can also be passed directly as a `VoronoiTessellation` from
 DelaunayTriangulation.jl.
 
+A `voronoiplot` generates a cell for each passed position similar to `heatmap`,
+however the cells are not restricted to a rectangular shape. It can be called with
+point based (like `scatter` or `lines`) or `heatmap`-like inputs.
+
 ## Arguments
 - `positions`: An `AbstractVector{<:VecTypes{D, <:Real}}` (`Point`, `Vec` or `Tuple`)
   defining positions around which voronoi cells are formed. If third dimension

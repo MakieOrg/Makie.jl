@@ -1,8 +1,8 @@
 # errorbars
 
-
-
 ## Examples
+
+### Errorbars with legend
 
 ```@figure
 f = Figure()
@@ -26,6 +26,8 @@ axislegend(merge=true)
 f
 ```
 
+### Errorbars with asymmetric errors
+
 ```@figure
 f = Figure()
 Axis(f[1, 1])
@@ -46,6 +48,8 @@ scatter!(xs, ys, markersize = 3, color = :black)
 f
 ```
 
+### Horizontal errorbars
+
 ```@figure
 f = Figure()
 Axis(f[1, 1])
@@ -63,4 +67,3 @@ scatter!(xs, ys, markersize = 3, color = :black)
 
 f
 ```
-

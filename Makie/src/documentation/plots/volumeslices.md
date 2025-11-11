@@ -1,8 +1,8 @@
 # volumeslices
 
-
-
 ## Examples
+
+### 3D Volume Slices with Interactive Sliders and Toggles
 
 ```@figure backend=GLMakie
 fig = Figure()
@@ -50,4 +50,3 @@ end
 
 fig
 ```
-
