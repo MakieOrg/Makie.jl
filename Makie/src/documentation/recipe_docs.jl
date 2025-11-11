@@ -233,10 +233,14 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD) where {PT<:Plo
 
     # Build function signatures section
     signatures = Markdown.parse("""
-        f, ax, pl = $plfunc_str(args...; kw...) # return a new figure, axis, and plot
-           ax, pl = $plfunc_str(f[row, col], args...; kw...) # creates an axis in a subfigure grid position
-               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...) # Creates a plot in the given axis or scene.
-        SpecApi.$(PlotType_str)(args...; kw...) # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+        # return a new figure, axis, and plot
+        f, ax, pl = $plfunc_str(args...; kw...)
+        # creates an axis in a subfigure grid position
+           ax, pl = $plfunc_str(f[row, col], args...; kw...)
+        # Creates a plot in the given axis or scene.
+               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
+        # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+        SpecApi.$(PlotType_str)(args...; kw...)
     """)
 
     # Build arguments section (argument_docs now returns Markdown directly)
@@ -537,13 +541,8 @@ end
 ### REPL.fielddoc overload
 ################################################################################
 
-"""
-    REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
 
-Provides attribute documentation in the REPL when using `?PlotType.attribute`.
-Shows both the attribute documentation and examples if available.
-"""
-function REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
+function field_docs(::Type{T}, attr::Symbol) where {T<:Plot}
     attr_meta = attribute_docs(T, attr)
 
     if isnothing(attr_meta)
@@ -591,4 +590,14 @@ function REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
     end
 
     return Markdown.parse(String(take!(io)))
+end
+
+"""
+    REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
+
+Provides attribute documentation in the REPL when using `?PlotType.attribute`.
+Shows both the attribute documentation and examples if available.
+"""
+function REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
+    return field_docs(T, attr)
 end

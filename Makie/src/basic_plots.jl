@@ -356,9 +356,6 @@ Plots a surface defined by a grid of vertices.
 end
 
 
-
-
-
 """
 Plots a line connecting consecutive positions. `NaN` values are displayed as
 gaps in the line.
