@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
@@ -13,6 +14,7 @@
 - Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)
 - Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
+- Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
 
 ## [0.24.6] - 2025-08-19
 
