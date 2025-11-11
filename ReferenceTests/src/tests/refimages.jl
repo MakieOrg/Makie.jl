@@ -12,6 +12,7 @@ using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
 using ReferenceTests.SparseArrays
+using ReferenceTests.StaticArrays
 using Makie: Record, volume
 
 function click(events::Events, pos::VecTypes{2}, button::Mouse.Button = Mouse.left)
