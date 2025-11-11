@@ -108,8 +108,8 @@ end
 
 @testset "heatmap transformation" begin
     # See #5385
-    f,a,p = heatmap(
-        1e6 .. 1e6+1, 1e6 .. 1e6+1, rand(10, 10),
+    f, a, p = heatmap(
+        1.0e6 .. 1.0e6 + 1, 1.0e6 .. 1.0e6 + 1, rand(10, 10),
         axis = (xscale = log10, yscale = log10)
     )
     Makie.add_computation!(p.attributes, a.scene, Val(:heatmap_transform))
