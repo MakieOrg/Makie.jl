@@ -161,7 +161,7 @@ function generate_segments(data, in_y::Bool)
     # using list comprehension leads to `push!()` with this
     output = Vector{Point2d}(undef, 2 * length(data))
     for (i, item) in enumerate(data)
-        output[2i-1], output[2i] = inner_segment(item, in_y)
+        output[2i - 1], output[2i] = inner_segment(item, in_y)
     end
     return output
 end
