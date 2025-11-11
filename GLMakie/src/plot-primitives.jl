@@ -15,6 +15,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     elseif x isa Text
         draw_atomic(screen, scene, x)
         insert!(screen, scene, x.plots[1])
+    elseif x isa Makie.PlotList
+        # ignore unless not yet displayed
+        Makie.for_each_atomic_plot(x) do plot
+            if !haskey(screen.cache, objectid(plot))
+                insert!(screen, scene, plot)
+            end
+        end
     else
         foreach(x.plots) do x
             insert!(screen, scene, x)
@@ -320,10 +327,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :model_f32c],
+            [:positions_transformed_f32c, :projectionview, :preprojection, :model_f32c],
             [:gl_depth_cache, :gl_indices]
-        ) do (pos, projectionview, model), changed, last
-            pvm = projectionview * model
+        ) do (pos, projectionview, preprojection, model), changed, last
+            pvm = projectionview * preprojection * model
             depth_vals = isnothing(last) ? Float32[] : last.gl_depth_cache
             indices = isnothing(last) ? Cuint[] : last.gl_indices
             return depthsort!(pos, depth_vals, indices, pvm)
