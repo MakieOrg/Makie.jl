@@ -24,7 +24,7 @@ function build_poly_refimg(yscale)
 
     Label(f[1, 2], "Rect/BezierPath", tellwidth = false)
     ax = Axis(f[2, 2], yscale = yscale)
-    poly!(ax, Rect2f(0, 0, 1, 1))
+    poly!(ax, Rect2f(0, 0.5, 1, 1))
     poly!(ax, [Rect2f(0, 2, 1, 1), Rect2f(0, 3, 1, 1)], strokewidth = 1)
     p = poly!(ax, to_bezier(ps))
     translate!(p, 2, 0, 0)
