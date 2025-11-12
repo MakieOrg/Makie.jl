@@ -15,6 +15,7 @@
 - Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)
 - Added option to replace Makie native widgets with HTML based widget for WGLMakie [#5285](https://github.com/MakieOrg/Makie.jl/pull/5285)
 - Fixed empty `Label` not updating [#5362](https://github.com/MakieOrg/Makie.jl/pull/5362).
+- Fixed `band` not working with StructArrays in CairoMakie [#5381](https://github.com/MakieOrg/Makie.jl/pull/5381)
 - Updated `scatterlines` to include all remaining `scatter` attributes and pass all applicable attributes to its subplots [#5388](https://github.com/MakieOrg/Makie.jl/pull/5388)
 - Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
 - Fixed cases of `heatmap` not displaying with `log10` scale and narrow `xlims`/`ylims` [#5390](https://github.com/MakieOrg/Makie.jl/pull/5390)
