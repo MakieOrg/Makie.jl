@@ -730,6 +730,12 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
         # Blacklist these because they are controlled by Transformations()
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
 
+        # FIXME: plotlists overwrite all explicity set attributes on the children
+        # HACK: exclude :space from propagating
+        if P == PlotList
+            filter!(kv -> !in(kv[1], [:space]), attr)
+        end
+
         # remove attributes that the parent graph has but don't apply to this plot
         valid_keys = keys(plot_attributes(nothing, P))
         filter!(kv -> in(kv[1], valid_keys), attr)
