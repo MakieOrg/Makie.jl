@@ -7,14 +7,6 @@ function plot!(text::Text)
 
     # TODO: figure out per character colormapping when there are multiple strings?
     register_colormapping!(attr)
-    # TODO: figure out per character font when there are multiple strings?
-    map!(attr, [:fonts, :font], :selected_font) do fonts, font
-        if isscalar(font)
-            to_font(fonts, font)
-        else
-            [to_font(fonts, i) for i in font]
-        end
-    end
 
     # TODO: again, what happens with per char stuff?
     # Resolve colormapping to colors early. This allows rich text which returns
@@ -27,30 +19,47 @@ function plot!(text::Text)
     map!(attr, [:input_text, :string_layouter], [:unwrapped_text, :resolved_layouters]) do strings, layouters
         unwrapped_strings = unwrap_string.(strings)
         resolved_layouters = map(enumerate(strings)) do (i, s)
-            given_layouter = sv_getindex(layouters,i)
+            given_layouter = sv_getindex(layouters, i)
             resolve_string_layouter(s, given_layouter)
         end
         (unwrapped_strings, resolved_layouters)
     end
 
+    # TODO: figure out per character font when there are multiple strings?
+    map!(attr, [:unwrapped_text, :fonts, :font], :selected_font) do strings, fonts, font
+        map(enumerate(strings)) do (i,string)
+            scalar_font = sv_getindex(font, i)
+            to_font(string, fonts, scalar_font)
+        end
+    end
+
+    # need to have transformed positions for every plot that does not do this by itself?
+    register_position_transforms!(attr; input_name=:positions, transformed_name=:positions_transformed)
+    register_model_clip_planes!(attr)
+    register_markerspace_positions!(text)
+
     # TODO: this is probably massively inefficient...
     register_computation!(attr, collect(keys(attr.outputs)), [:plotspecs, :blocks]) do inputs, changed, cached
         specs = PlotSpec[]
         blocks = UnitRange{Int}[]
-        for (i,layouter) in enumerate(inputs.resolved_layouters)
+        for (i, layouter) in enumerate(inputs.resolved_layouters)
             layouted_specs = layouted_string_plotspecs(inputs, layouter, i)
-            push!(blocks, eachindex(layouted_specs).+ length(specs))
+            push!(blocks, eachindex(layouted_specs) .+ length(specs))
             append!(specs, layouted_specs)
         end
-        return (specs,blocks)
+        return (specs, blocks)
     end
 
     # TODO: somehow, markerspace is not inherited here?
-    plotlist!(text, attr, attr.plotspecs; markerspace=attr.markerspace)
+    # TODO: the main attrs that are inherited seem to overwrite all the attrs that the subspecs have...
+    # plotlist!(text, attr, attr.plotspecs; markerspace=attr.markerspace)
+    plotlist!(text, attr, attr.plotspecs;)
 
     # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
 end
+
+to_font(_, fonts, font) = to_font(fonts, font)
 
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
