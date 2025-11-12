@@ -77,15 +77,40 @@ function get_accessor(plot, index, child_stack)
     return get_accessor(first(child_stack), index, Base.tail(child_stack))
 end
 
+################################################################################
 # Utilities
+################################################################################
+
 function pick_line_element(scene::Scene, plot, idx)
-    # Note: This isn't aspect aware so it behaves weird in Axis
-    # should be cheaper to inv transform one ray than N positions
-    pos = plot.positions_transformed_f32c[]
-    ray = transform(inv(plot.model_f32c[]), ray_at_cursor(scene))
     idx = max(2, idx)
-    interpolation = closest_point_on_line_interpolation(pos[idx - 1], pos[idx], ray)
-    return InterpolatedAccessor(idx - 1, idx, interpolation, length(pos))
+    register_projected_positions!(scene, plot)
+    ps = plot.pixel_positions[]
+    interpolation = closest_point_on_line_interpolation_2D(
+        ps[idx - 1], ps[idx], mouseposition_px(scene)
+    )
+    return InterpolatedAccessor(idx - 1, idx, interpolation, length(ps))
+end
+
+function closest_point_on_line_interpolation_2D(A, B, P)
+    return closest_point_on_line_interpolation_2D(
+        to_ndim(Point2f, A, NaN), to_ndim(Point2f, B, NaN), to_ndim(Point2f, P, NaN)
+    )
+end
+
+function closest_point_on_line_interpolation_2D(A::Point2f, B::Point2f, P::Point2f)
+    # The closest point to P is perpendicular to AB.
+    # Disassemble AP into one part along AB and one perpendicular part. The
+    # closest point is then A + part along AB.
+    # Note that this may put the point outside the A .. B segment.
+    AB = B - A
+    v = normalize(AB)
+    perp = Vec2f(v[2], -v[1])
+    AP = P - A
+    x = dot(AP, perp)
+    closest_point = P - x * perp #  A + (AP - x * perp)
+    # find the interpolation factor and restrict to A .. B segment
+    f = norm(closest_point - A) ./ norm(AB)
+    return clamp(f, 0f0, 1f0)
 end
 
 get_picked_model_space_rect(plot::Image, idx) = Rect2d(model_space_boundingbox(plot))
