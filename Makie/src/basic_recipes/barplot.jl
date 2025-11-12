@@ -70,7 +70,11 @@ Plots bars of the given `heights` at the given (scalar) `positions`.
     of undodged bars, making this control the gap between groups.
     """
     gap = 0.2
-    "Sets the gap between dodged bars relative to the size of the dodged bars."
+    """
+    Sets the gap between dodged bars relative to their size. Can be a single
+    number or `n_dodge - 1` numbers to indicate a different gap between
+    each dodged element.
+    """
     dodge_gap = 0.03
     """
     Similar to `dodge`, this allows bars at the same `positions` to be stacked
@@ -84,8 +88,11 @@ Plots bars of the given `heights` at the given (scalar) `positions`.
     "Sets the outline color of bars."
     strokecolor = @inherit patchstrokecolor
     """
-    The gapless width of the bars. If `automatic`, the width `w` is calculated as `minimum(diff(sort(unique(positions)))`.
-    The actual width of the bars is calculated as `w * (1 - gap)`.
+    The gapless width of the bars. If `automatic`, the width `w` is calculated as
+    `minimum(diff(sort(unique(positions)))`. The actual width of the bars is calculated as
+    `w * (1 - gap)`. When `dodge` is specified, width can be a vector of values, specifying
+    the relative width times the total width of each bar in the dodge group: i.e. the total
+    width of a dodged group of bars will be `mean(width)`.
     """
     width = automatic
     """
@@ -141,31 +148,61 @@ end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
 
-function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
-    # @show (x, width, gap, dodge, n_dodge, dodge_gap)
-    # invariants and definitions enforced by `resolve_` functions:
-    # dodge group: the set of dodged elements (spread out so they don't overlap) placed
-    # at a single x-position
-    #
-    # n_dodge: the number of dodge positions in each dodge group
-    # dodge: dodge position we are computing for a given dodge group
-    #
-    # width:
-    #  - the relative summed width of all bars within a dodge group (0 to 1)
-    #  - the relative width of each individual bar in a dodge group (0 to 1)
-    #
-    # dodge_gap: either
-    #  - the relative gap size between all dodged bars
-    #  - the relative gap size between each individual bar in a dodge group
-    #
-    # there are n-1 gaps between n elements, and therefore:
-    # length(width) == length(dodge_gap) + 1
-    i_dodge = resolve_dodge(dodge)
-    resolved_dodge_gap = resolve_dodge_gap(width, dodge_gap)
-    width = resolve_width(width, gap, dodge_gap)
-    n_dodge = resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
+"""
+    compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
 
-    return compute_x_and_width_helper(x, width, i_dodge, n_dodge, resolved_dodge_gap)
+Compute the x positions and widths of a set of elements when using dodge groups. A dodge
+group is used to visualize separate elements in the "same" x position. Each dodge group is
+offset by a different value from this central, shared x position.
+
+This function is called internally by `boxplot`, `violin`, `barplot` and others. It is not
+intended to be used directly by users of Makie but rather for those implementing plot
+recipes with a "categorical" x-axis type which aims to support a `dodge` keyword.
+
+## Arguments
+
+- `x` a vector of all x positions of the elements
+- `width` the width of elements (in the same units as `x`). Can be `automatic`, one number,
+  a vector of length `n_dodge` to indicate the width of each dodge element separately or a
+  vector of length `length(x)`. When `length(width) == length(x)` it is expected that dodge
+  elements will all be left unspecified. The intended use case is for
+  internal calls to a lower level plot function *after* calling `compute_x_and_width` for
+  the high-level plot; in this case the low-level plot will be calling `compute_x_and_width`
+  on the precomputed x and width values returned by the first call to `compute_x_and_width`.
+- `gap`: a number indicating the relative gap size to place between elements (1: entire
+  width of elements, 0: no gap) or `automatic`
+- `dodge`: the index of the dodge group for each element or `automatic` (implies 1 dodge
+  group)
+- `n_dodge`: the number of dodge groups; `automatic` defaults to `maximum(dodge)`
+- `dodge_gap`: the relative gap between dodge groups; this can `automatic`, one number or
+  `n_dodge - 1` numbers to indicate the gap between *each* dodge group. Defaults a gap of
+  0.03
+
+## Result
+
+A tuple with the `x` position and `width` of each element in `x`.
+"""
+function compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+    width === automatic && (width = 1)
+    i_dodge = resolve_dodge(dodge)
+    n_dodge = resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
+    if length(width) == length(x)
+        if n_dodge > 1
+            throw(ArgumentError(
+                "Cannot specify dodge groups when `width` has the same length as `x`"
+            ))
+        end
+        result = compute_x_and_width_helper.(x, width, i_dodge, n_dodge, dodge_gap)
+        return first.(result), last.(result)
+    elseif length(width) == n_dodge || length(width) == 1
+        dodge_gap = resolve_dodge_gap(width, dodge_gap)
+        width = resolve_width(width, gap, dodge_gap)
+        return compute_x_and_width_helper(x, width, i_dodge, n_dodge, dodge_gap)
+    else
+        throw(ArgumentError(
+            "`length(width)` must be equal to 1, `n_dodge` or `length(x)`"
+        ))
+    end
 end
 
 function resolve_dodge(dodge)
@@ -182,48 +219,6 @@ function resolve_dodge(dodge)
         ))
     end
     return dodge
-end
-
-function resolve_dodge_gap(width, dodge_gap)
-    if dodge_gap === automatic
-        return 0.0
-    end
-
-    if width === automatic
-        return dodge_gap
-    end
-
-    if !(width isa Number) && !(dodge_gap isa Number)
-        if length(width) - 1 != length(dodge_gap)
-            throw(
-                ArgumentError(
-                    "The `width` keyword argument must be a single number or " *
-                    "`length(width) == length(dodge_gap) + 1`. There is one " *
-                    "less gap between elements as there are elements.",
-                ),
-            )
-        end
-        return dodge_gap
-    end
-
-    if !(width isa Number)
-        return fill(dodge_gap, length(width) - 1)
-    end
-
-    return dodge_gap
-end
-
-function resolve_width(width, gap, dodge_gap)
-    width === automatic && (width = 1)
-    width = width .* (1 - gap)
-
-    if dodge_gap isa Number
-        return width
-    elseif width isa Number
-        return fill(width, length(dodge_gap) + 1)
-    else
-        return width
-    end
 end
 
 function resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
@@ -254,11 +249,52 @@ function resolve_n_dodge(n_dodge, i_dodge, dodge_gap)
     return n_dodge
 end
 
+function resolve_dodge_gap(width, dodge_gap)
+    if dodge_gap === automatic
+        return 0.03
+    end
+
+    if width === automatic
+        return dodge_gap
+    end
+
+    if !(width isa Number) && !(dodge_gap isa Number)
+        if length(width) - 1 != length(dodge_gap)
+            throw(
+                ArgumentError(
+                    "When there are multiple values for `dodge_gap`, the `width` " *
+                    "argument must be a single number or `length(width) == " *
+                    "length(dodge_gap) + 1`. There is one less gap between elements as " *
+                    "there are elements.",
+                ),
+            )
+        end
+        return dodge_gap
+    end
+
+    if !(width isa Number)
+        return fill(dodge_gap, length(width) - 1)
+    end
+
+    return dodge_gap
+end
+
+function resolve_width(width, gap, dodge_gap)
+    width = width .* (1 - gap)
+
+    if dodge_gap isa Number
+        return width
+    elseif width isa Number
+        return fill(width, length(dodge_gap) + 1)
+    else
+        return width
+    end
+end
+
 # dodge_gap and width as scalars
 function compute_x_and_width_helper(x, width::Number, i_dodge, n_dodge, dodge_gap::Number)
     dodge_width = scale_width(dodge_gap, n_dodge)
     shifts = shift_dodge.(i_dodge, dodge_width, dodge_gap)
-    width .* shifts
     return x .+ width .* shifts, width * dodge_width
 end
 
@@ -270,7 +306,6 @@ end
 
 # dodge_gap and width as vectors (1 element per dodge index)
 function compute_x_and_width_helper(x, width, i_dodge, n_dodge, dodge_gap)
-    # @show x, width, i_dodge, n_dodge, dodge_gap
     # invariant enforced above: length(width) !== length(dodge_gap) - 1
 
     # `space_for_element` determines how much room there is for the plot element once after
@@ -292,35 +327,20 @@ function compute_x_and_width_helper(x, width, i_dodge, n_dodge, dodge_gap)
         width[i - 1] * 0.5space_for_element +
             dodge_gap[i - 1] * gap_scale +
             width[i] * 0.5space_for_element
-        for i in 2:n_dodge
-    )
+         for i in 2:n_dodge)
 
     # `half_width` plays the same role that `width * (dodge_width - 1) / 2` plays for the
-    # the scalar case. It is used to center the dodged elements. Like the `width_shifts`
-    # above, we need to be more granular because of the heterogenous widths involved
-    if @show(n_dodge) > 2
-        half_index = n_dodge >> 1
-        half_width = width_shifts[half_index-1]
-        # `half_width` is now in the center of the central bar (for odd n_dodge), or it is at
-        # the center of the bar just to the right of the center gap (for event n_dodge)
-        if iseven(n_dodge)
-            # we move from the center of the bar to the center of the next gap
-            half_width += width[half_index] * 0.5space_for_element +
-                dodge_gap[half_index] * 0.5gap_scale
-        end
-        @show half_width
-    else
-        half_width = 0
-    end
+    # the scalar case. It is used to center the dodged elements.
+    half_width = width_shifts[end]/2
 
     el_width = getindex.(Ref(width), i_dodge) .* space_for_element
-    @show el_width_shift = map(i_dodge) do i
+    el_width_shift = map(i_dodge) do i
         # compare to `shift_dodge` implementation above
         get(width_shifts, i - 1, 0.0) - half_width
     end
 
-    @show x.+el_width_shift
-    @show el_width
+    x.+el_width_shift
+    el_width
     return x .+ el_width_shift, el_width
 end
 
