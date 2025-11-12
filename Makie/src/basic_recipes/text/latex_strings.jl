@@ -37,6 +37,8 @@ function layouted_string_plotspecs(inputs, ::LaTeXStringLayouter, id)
 
     return [
         PlotSpec(:Glyphs, glyphinfos; position=position, offset=offset, markerspace=inputs.markerspace),
+        # TODO: this should be in :pixel space, however, when getting the boundingbox, the values can be (when plotting text!)
+        # treated as if in data space, causing very large plotareas.
         PlotSpec(
             :LineSegments,
             linesegments_shifted;
