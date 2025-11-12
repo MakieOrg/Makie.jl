@@ -1,7 +1,5 @@
 # datashader
 
-
-
 ## Examples
 
 ### Airports
@@ -235,5 +233,3 @@ end
 
 The `datashader` recipe makes it very simple to get started, and is also efficiently implemented so that most changes like `f, ax, pl = datashader(...); pl.colorrange=new_range; pl.operation=log10` won't redo the aggregation.
 But if you still need more manual control, one can also use the underlying `Canvas` API directly for more manual control:
-
-

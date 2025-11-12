@@ -1,10 +1,3 @@
-function Makie.argument_docs_items(::Type{<:Wireframe})
-    return [
-        "`mesh`: A `GeometryBasics.Mesh` object to render as a wireframe.",
-        "`positions`: An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh)."
-    ]
-end
-
 function convert_arguments(::Type{<:Wireframe}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     return (ngrid(x, y)..., z)
 end

@@ -4,16 +4,6 @@
 
 struct ArrowLike <: ConversionTrait end
 
-function Makie.argument_docs(::ArrowLike)
-    return [
-        "`points`: A `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the default `align = :tail` these are the positions arrows start from.",
-        "`directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point in. These maybe reinterpreted as positions arrows point towards if `argmode = :endpoint`.",
-        "`xs, ys, [zs]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `points` as an argument and is affected by `align` in the same way.",
-        "`us, vs, [ws]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `directions` as an argument and is affected by `argmode` in the same way.",
-        "`f`: A callback function `point -> direction` which returns a direction for each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]` or `points`.",
-    ]
-end
-
 # vec(::Point) and vec(::Vec) works (returns input), but vec(::Tuple) errors
 convert_arguments(::ArrowLike, pos::VecTypes{N}, dir::VecTypes{N}) where {N} = ([pos], [dir])
 
@@ -232,6 +222,14 @@ end
 
 """
 Plots arrows as 2D shapes.
+
+## Arguments
+
+- `points`: A `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the default `align = :tail` these are the positions arrows start from.
+- `directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point in. These maybe reinterpreted as positions arrows point towards if `argmode = :endpoint`.
+- `xs, ys, [zs]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `points` as an argument and is affected by `align` in the same way.
+- `us, vs, [ws]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `directions` as an argument and is affected by `argmode` in the same way.
+- `f`: A callback function `point -> direction` which returns a direction for each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]` or `points`.
 """
 @recipe Arrows2D (points, directions) begin
     """
@@ -504,6 +502,14 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 """
 Plots arrows as 3D shapes.
+
+## Arguments
+
+- `points`: A `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` defining the anchor positions of arrows. With the default `align = :tail` these are the positions arrows start from.
+- `directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point in. These maybe reinterpreted as positions arrows point towards if `argmode = :endpoint`.
+- `xs, ys, [zs]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `points` as an argument and is affected by `align` in the same way.
+- `us, vs, [ws]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `directions` as an argument and is affected by `argmode` in the same way.
+- `f`: A callback function `point -> direction` which returns a direction for each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]` or `points`.
 """
 @recipe Arrows3D (points, directions) begin
     """
@@ -729,11 +735,3 @@ end
 # compat
 const Arrows{T} = Union{Arrows2D{T}, Arrows3D{T}}
 export Arrows
-
-function Makie.argument_docs_items(::Type{<:Arrows})
-    return [
-        "`positions, directions`: Two `AbstractVector` arguments where positions define arrow start points and directions define arrow vectors.",
-        "`xs, ys[, zs], us, vs[, ws]`: Separate x, y, z coordinates for positions and u, v, w components for directions.",
-        "`x, y, f`: A function `f` sampled at grid points defined by `x` and `y`, producing 2D vector field arrows."
-    ]
-end

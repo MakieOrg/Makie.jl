@@ -45,3 +45,19 @@ upper = [Point3f(sin(x), cos(x), 1.0) for x in range(0,2pi, length=100)]
 col = repeat([1:50;50:-1:1],outer=2)
 band(lower, upper, color=col, axis=(type=Axis3,))
 ```
+
+## Attributes
+
+### `direction`
+
+```@figure
+fig = Figure()
+location = range(0, 4pi, length = 200)
+lower =   cos.(location) .- location
+upper = .-cos.(location) .+ location .+ 5
+band(fig[1, 1], location, lower, upper,
+    axis = (; title = "direction = :x"))
+band(fig[1, 2], location, lower, upper, direction = :y,
+    axis = (; title = "direction = :y"))
+fig
+```

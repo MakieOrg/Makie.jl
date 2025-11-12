@@ -471,6 +471,27 @@ function extract_docstring(str)
     end
 end
 
+"""
+    extract_arguments_section(doc::Markdown.MD)
+
+Helper function that extracts the "## Arguments" section from a markdown docstring.
+Returns the content after the "## Arguments" header until the next H2 header or end of document.
+Returns an empty Markdown.MD if no "## Arguments" section is found.
+"""
+function extract_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+
+    if isnothing(idx)
+        return Markdown.MD()
+    end
+    return Markdown.MD(doc_flat.content[idx+1:end])
+end
+
 function argument_docs end
 
 function create_recipe_expr(Tsym, args, attrblock)
@@ -538,9 +559,21 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         $(arg_type_func)
 
+        # Check if user_docstring contains an "## Arguments" section
+        # If so, generate an argument_docs override for this plot type
+        _args_section = $(Makie).extract_arguments_section(user_docstring)
+        if !isempty(_args_section.content)
+            # Define argument_docs override for this specific plot type
+            function $(Makie).argument_docs(::Type{<:$(PlotType)})
+                return _args_section
+            end
+        end
+
         # Override Docs.getdoc to generate comprehensive documentation
         function Base.Docs.getdoc(::Type{T}; max_examples=1, full_attributes=false) where {T <: $(PlotType)}
-            return $(Makie).document_recipe(T, user_docstring; max_examples=1, full_attributes=false)
+            return $(Makie).document_recipe(
+                T, user_docstring; max_examples=max_examples, full_attributes=full_attributes
+            )
         end
 
         # For the function symbol, forward to the plot type

@@ -439,6 +439,13 @@ end
 Plots a 2D or 3D mesh.
 
 Note that `meshscatter` is much better for plotting a single mesh at multiple positions.
+
+## Arguments
+
+- `mesh`: A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.
+- `vertices, indices`: Vertex positions and face indices defining the mesh geometry.
+- `x, y, z`: Coordinates defining a surface (converted to mesh internally).
+- `geom`: Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh.
 """
 @recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh, GeometryBasics.MetaMesh},) begin
     """
@@ -699,6 +706,12 @@ will plot `decompose(shape)`.
 
 Polygons can also be defined by `coordinates` (the coordinates of the vertices)
 and `connectivity` (the edges between the vertices).
+
+## Arguments
+
+- `polygon`: A `Polygon`, `MultiPolygon`, `Circle`, `Rect`, `AbstractMesh`, `VecTypes`, or `AbstractVector{<:VecTypes}` defining the polygon(s) to draw. Can also be an `AbstractVector` of any of these types to draw multiple polygons.
+- `xs, ys`: Two `AbstractVector{<:Real}` defining the x and y coordinates of polygon vertices.
+- `vertices, indices`: Vertex and index arrays defining a mesh (same as `Mesh` plot).
 """
 @recipe Poly (polygon,) begin
     """
@@ -760,6 +773,11 @@ end
 
 """
 Draws a wireframe of surface or mesh data.
+
+## Arguments
+
+- `mesh`: A `GeometryBasics.Mesh` object to render as a wireframe.
+- `positions`: An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh).
 """
 @recipe Wireframe begin
     documented_attributes(LineSegments)...

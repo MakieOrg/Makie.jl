@@ -605,6 +605,16 @@ Base.@kwdef struct Example
     caption::Union{Nothing, String} = nothing
 end
 
+function Base.show(io::IO, example::Example)
+    if !isnothing(example.caption) && !isempty(example.caption)
+        println(io, "**$(ex.caption)**\n")
+    end
+    println(io, "```julia")
+    println(io, example.code)
+    println(io, "```")
+    return nothing
+end
+
 function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}, examples::Vector{Example}, default_str)
     io = IOBuffer()
 
@@ -632,7 +642,30 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}
     return Markdown.parse(String(take!(io)))
 end
 
-function attribute_examples(b::Union{Type{<:Block}, Type{<:Plot}})
+"""
+    attribute_examples(::Union{Type{<:Block}, Type{<:Plot}})
+
+Returns a dictionary mapping attribute names to vectors of example code.
+For Plot types, this loads examples from the markdown documentation file at
+`documentation/plots/{plotname}.md` under the "## Attributes" section.
+For Block types, returns an empty dictionary (Block examples are not yet moved to markdown).
+"""
+function attribute_examples(::Type{PT}) where {PT<:Plot}
+    plfunc = plotfunc(PT)
+    plfunc_str = string(plfunc)
+    # Path to markdown file
+    md_path = joinpath(@__DIR__, "..", "documentation", "plots", "$plfunc_str.md")
+
+    if !isfile(md_path)
+        return Dict{Symbol, Vector{Example}}()
+    end
+
+    # Load attributes from markdown
+    return extract_attributes(md_path)
+end
+
+# Fallback for Block types (not yet moved to markdown)
+function attribute_examples(::Type{BT}) where {BT<:Block}
     return Dict{Symbol, Vector{Example}}()
 end
 

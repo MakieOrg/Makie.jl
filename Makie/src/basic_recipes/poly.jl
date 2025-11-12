@@ -3,19 +3,6 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 convert_arguments(::Type{<:Poly}, v::AbstractVector{<:PolyElements}) = (v,)
 convert_arguments(::Type{<:Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
-function Makie.types_for_plot_arguments(::Type{<:Poly})
-    return Tuple{Union{PolyElements, AbstractVector{<:PolyElements}}}
-end
-
-function Makie.argument_docs_items(::Type{<:Poly})
-    return [
-        "`polygon`: A `Polygon`, `MultiPolygon`, `Circle`, `Rect`, `AbstractMesh`, `VecTypes`, or `AbstractVector{<:VecTypes}` defining the polygon(s) to draw. Can also be an `AbstractVector` of any of these types to draw multiple polygons.",
-        "`xs, ys`: Two `AbstractVector{<:Real}` defining the x and y coordinates of polygon vertices.",
-        "`vertices, indices`: Vertex and index arrays defining a mesh (same as `Mesh` plot)."
-    ]
-end
-
-
 function convert_pointlike(args...)
     return convert_arguments(PointBased(), args...)
 end

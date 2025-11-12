@@ -1,17 +1,3 @@
-"""
-Core documentation system for Makie plot recipes.
-
-This module provides the infrastructure for automatically generating comprehensive
-documentation for plot types, including:
-- Standardized function signatures
-- User-provided documentation
-- Argument documentation based on conversion traits
-- Attribute documentation with defaults
-- Examples for plots and attributes
-
-See the Makie module docstring for usage examples.
-"""
-
 ################################################################################
 ### Attribute Documentation
 ################################################################################
@@ -39,6 +25,79 @@ end
 ################################################################################
 ### Attribute Examples
 ################################################################################
+
+"""
+    extract_attributes(markdown_file_path::String)
+
+Parse a markdown file and extract all attribute examples that come after the "## Attributes" header.
+Each attribute starts with a "### `attribute_name`" header and includes all code blocks until the next header.
+Returns a dictionary mapping attribute names (as Symbols) to vectors of `Example` objects.
+"""
+function extract_attributes(markdown_file_path::String)
+    # Parse the markdown file
+    md = Markdown.parse(read(markdown_file_path, String))
+
+    # Find the "## Attributes" header
+    attr_h2_idx = findfirst(md.content) do item
+        item isa Markdown.Header{2} &&
+        !isempty(item.text) &&
+        item.text[1] == "Attributes"
+    end
+
+    # If no attributes section exists, return empty dict
+    if isnothing(attr_h2_idx)
+        return Dict{Symbol, Vector{Example}}()
+    end
+
+    # Find all H3 headers after the Attributes section
+    h3_indices = findall(md.content) do item
+        item isa Markdown.Header{3}
+    end
+
+    # Filter to only H3 headers that come after the Attributes H2
+    h3_indices = filter(idx -> idx > attr_h2_idx, h3_indices)
+
+    if isempty(h3_indices)
+        return Dict{Symbol, Vector{Example}}()
+    end
+
+    # Extract each attribute and its examples
+    attributes = Dict{Symbol, Vector{Example}}()
+    for i in eachindex(h3_indices)
+        idx = h3_indices[i]
+        next_idx = i < length(h3_indices) ? h3_indices[i + 1] : length(md.content) + 1
+
+        # Get attribute name from H3 header
+        h3 = md.content[idx]
+        # Attribute names are wrapped in backticks: ### `attribute_name`
+        attr_text = string(h3.text[1].code)
+        # Remove backticks if present
+        attr_name = strip(attr_text, '`')
+        attr_sym = Symbol(attr_name)
+
+        # Extract all code blocks between this H3 and the next header
+        examples = Example[]
+        for j in (idx+1):(next_idx-1)
+            item = md.content[j]
+            if item isa Markdown.Code && item.language == "@figure"
+                # Extract backend if specified
+                backend = :CairoMakie
+                if occursin("backend=GLMakie", item.language) || occursin("backend = GLMakie", item.language)
+                    backend = :GLMakie
+                elseif occursin("backend=WGLMakie", item.language) || occursin("backend = WGLMakie", item.language)
+                    backend = :WGLMakie
+                end
+                push!(examples, Example(code = item.code, backend = backend))
+            end
+        end
+
+        if !isempty(examples)
+            attributes[attr_sym] = examples
+        end
+    end
+
+    return attributes
+end
 
 ################################################################################
 ### Plot Examples
@@ -69,9 +128,13 @@ function extract_examples(markdown_file_path::String)
     )
         error("Expected second element to be H2 'Examples' header")
     end
-
+    content = md.content[3:end]
+    stopidx = findfirst(content) do item
+        item isa Markdown.Header{2}
+    end
+    examples = content[1:(stopidx - 1)]
     # Find all H3 headers
-    h3_indices = findall(md.content) do item
+    h3_indices = findall(examples) do item
         item isa Markdown.Header{3}
     end
 
@@ -80,18 +143,18 @@ function extract_examples(markdown_file_path::String)
     end
 
     # Extract each example
-    examples = Markdown.MD[]
+    result = Markdown.MD[]
     for i in eachindex(h3_indices)
         idx = h3_indices[i]
-        next_idx = i < length(h3_indices) ? h3_indices[i + 1] : length(md.content) + 1
-        content = Markdown.MD(md.content[idx:(next_idx - 1)])
-        push!(examples, content)
+        next_idx = i < length(h3_indices) ? h3_indices[i + 1] : length(examples) + 1
+        content = Markdown.MD(examples[idx:(next_idx - 1)])
+        push!(result, content)
     end
-    return examples
+    return result
 end
 
 """
-    plot_examples(::Type{<:Plot}, max_examples::Int=1)
+    plot_examples(::Type{<:Plot}, max_examples::Number=1)
 
 Returns example documentation by reading the markdown file from `documentation/plots/{plotname}.md`.
 Parses the markdown structure and returns up to `max_examples` examples.
@@ -99,9 +162,9 @@ Parses the markdown structure and returns up to `max_examples` examples.
 Returns an empty string if the markdown file doesn't exist or has no examples.
 
 # Arguments
-- `max_examples`: Maximum number of examples to include (default: 1). Use `0` or negative number for all examples.
+- `max_examples`: Maximum number of examples to include (default: 1). Use `Inf` for all examples.
 """
-function plot_examples(::Type{PT}, max_examples::Int=1) where {PT<:Plot}
+function plot_examples(::Type{PT}, max_examples::Number=1) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     # Path to markdown file
@@ -111,9 +174,8 @@ function plot_examples(::Type{PT}, max_examples::Int=1) where {PT<:Plot}
         return ""
     end
 
-    # Read the markdown file
     examples = extract_examples(md_path)
-    n_examples = examples[1:min(length(examples), max_examples)]
+    n_examples = examples[1:round(Int, min(length(examples), max_examples))]
 
     return join(map(string, n_examples), "\n")
 end
@@ -122,142 +184,37 @@ end
 ### Argument Documentation (Type-based)
 ################################################################################
 
-"""
-    argument_docs_items(::Type{<:Plot})
 
-Returns an array of argument documentation strings for a plot type based on its conversion trait.
-Dispatches on the conversion trait type directly.
-"""
-function argument_docs_items(::Type{PT}) where {PT<:Plot}
-    CT = conversion_trait(PT)
-    return argument_docs_items(CT)
-end
-
-# Trait-based argument documentation (returns arrays)
-function argument_docs_items(::PointBased)
-    return [
-        "`positions`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` corresponding to `(x, y)` or `(x, y, z)` positions.",
-        "`xs, ys[, zs]`: Positions given per dimension. Can be `Real` to define a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to define multiple. Using `ClosedInterval` requires at least one dimension to be given as an array. `zs` can also be given as a `AbstractMatrix` which will cause `xs` and `ys` to be interpreted per matrix axis.",
-        "`ys`: Defaults `xs` positions to `eachindex(ys)`.",
-    ]
-end
-
-function argument_docs_items(::PointBased2D)
-    return [
-        "`positions`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` corresponding to `(x, y)` positions.",
-        "`xs, ys`: Positions given per dimension. Can be `Real` to define a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to define multiple. Using `ClosedInterval` requires at least one dimension to be given as an array. If omitted, `xs` defaults to `eachindex(ys)`.",
-    ]
-end
-
-function argument_docs_items(::VertexGrid)
-    return [
-        "`zs`: Defines z values for vertices of a grid using an `AbstractMatrix{<:Real}`.",
-        "`xs, ys`: Defines the (x, y) positions of grid vertices. A `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` is interpreted as the outer limits of the grid, between which vertices are spaced regularly. An `AbstractVector{<:Real}` defines vertex positions directly for the respective dimension. An `AbstractMatrix{<:Real}` allows grid positions to be defined per vertex, i.e. in a non-repeating fashion. If `xs` and `ys` are omitted they default to `axes(data, dim)`.",
-    ]
-end
-
-function argument_docs_items(::CellGrid)
-    return [
-        "`data`: Defines data values for cells of a grid using an `AbstractMatrix{<:Real}`.",
-        "`xs, ys`: Defines the positions of grid cells. A `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` is interpreted as the outer edges of the grid, between which cells are spaced regularly. An `AbstractVector{<:Real}` defines cell positions directly for the respective dimension. This define either `size(data, dim)` cell centers or `size(data, dim) + 1` cell edges. These are allowed to be spaced irregularly. If `xs` and `ys` are omitted they default to `axes(data, dim)`.",
-    ]
-end
-
-function argument_docs_items(::ImageLike)
-    return [
-        "`image`: An `AbstractMatrix{<:Colorant}` defining the colors of an image, or an `AbstractMatrix{<:Real}` defining colors through colormapping.",
-        "`x, y`: Defines the boundary of the image rectangle. Can be a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. Defaults to `0 .. size(image, 1)` and `0 .. size(image, 2)` respectively.",
-    ]
-end
-
-function argument_docs_items(::VolumeLike)
-    return [
-        "`volume_data`: An `AbstractArray{<:Real, 3}` defining volume data.",
-        "`x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(volume)`.",
-    ]
-end
-
-# Generic fallback for NoConversion plots
-function argument_docs_items(::NoConversion)
-    return String[]  # Return empty array so no generic message shows
-end
-
-"""
-    format_argument_signature(::Type{PT}) where {PT<:Plot}
-
-Returns a formatted string showing the argument signature with types for a plot type.
-For example: "positions::AbstractVector{<:Union{Point2, Point3}}"
-Returns nothing if type information is not available.
-"""
-function format_argument_signature(::Type{PT}) where {PT<:Plot}
-    # Get argument names
-    arg_names = argument_names(PT, 10)
-    isempty(arg_names) && return nothing
-
-    # Get target types - try plot-specific first, then trait-based
-    arg_types = types_for_plot_arguments(PT)
-    if isnothing(arg_types)
-        CT = conversion_trait(PT)
-        arg_types = types_for_plot_arguments(CT)
-    end
-    isnothing(arg_types) && return nothing
-
-    # arg_types is a Tuple type, extract the parameter types
-    type_params = arg_types.parameters
-
-    # Match names with types
-    if length(arg_names) != length(type_params)
-        # Mismatch - just return nothing for now
-        return nothing
-    end
-
-    # Format as "name::Type"
-    parts = String[]
-    for (name, typ) in zip(arg_names, type_params)
-        # Simplify type representation
-        type_str = string(typ)
-        # Skip overly complex type signatures (more than 200 characters per argument)
-        if length(type_str) > 200
-            return nothing
-        end
-        # Clean up Union{A, B} to be more readable
-        type_str = replace(type_str, r"Union\{([^}]+)\}" => s"Union{\1}")
-        push!(parts, "$name::$type_str")
-    end
-
-    return join(parts, ", ")
-end
 
 """
     argument_docs(::Type{<:Plot})
 
-Returns formatted argument documentation as Markdown for a plot type based on its conversion trait.
+Returns the argument documentation for a plot type.
+This is a fallback that dispatches to the conversion trait.
+Plot-specific overrides are generated by the @recipe macro when the recipe
+docstring contains an "## Arguments" section.
 """
 function argument_docs(::Type{PT}) where {PT<:Plot}
+    # This fallback is used when there's no plot-specific override
+    # The @recipe macro generates overrides when "## Arguments" exists in the docstring
+    CT = conversion_trait(PT)
+    return argument_docs(CT)
+end
 
-    items = argument_docs_items(PT)
-    if isempty(items)
-        return Markdown.MD()
-    end
+"""
+    argument_docs(::ConversionTrait)
 
-    PlotType_str = uppercasefirst(string(plotfunc(PT)))
-    arg_items = join(["  * " * item for item in items], "\n")
+Generic fallback that extracts argument documentation from the ConversionTrait's docstring.
+Looks for an "## Arguments" section and returns that content as Markdown.
+"""
+function argument_docs(::T) where {T<:ConversionTrait}
+    # Get the docstring for the trait
+    return extract_arguments_section(Base.Docs.doc(T))
+end
 
-    # Try to get formatted signature
-    sig = format_argument_signature(PT)
-    sig_section = if !isnothing(sig)
-        "**Target signature:** `$sig`\n\n"
-    else
-        ""
-    end
-
-    return Markdown.parse("""
-    ## Arguments
-
-    $(sig_section)$arg_items
-
-    For detailed conversion information, see `Makie.conversion_docs($PlotType_str)`.
-    """)
+# Generic fallback for NoConversion plots
+function argument_docs(::NoConversion)
+    return Markdown.MD()  # Return empty markdown
 end
 
 
@@ -268,37 +225,32 @@ function Base.show(io::IO, attr_meta::AttributeMetadata)
     end
 end
 
-function Base.show(io::IO, example::Example)
-    if !isnothing(example.caption) && !isempty(example.caption)
-        println(io, "**$(ex.caption)**\n")
-    end
-    println(io, "```julia")
-    println(io, example.code)
-    println(io, "```")
-    return
-end
-
 ################################################################################
 ### Main Documentation Function
 ################################################################################
-function get_attribute_docs(io::IO, attrs, examples, attribute; full=false) where {PT<:Plot}
+function get_attribute_docs(io::IO, attrs, examples, attribute; full=false)
     attr_meta = get(attrs.d, attribute, nothing)
-    println(io, "### `$attribute`\n")
-    if !isnothing(attr_meta)
-        println(io, attr_meta)
-        # Add example if available
-        if !isempty(examples)
-            println(io, "**Example:**\n")
-            for (i, ex) in enumerate(examples)
-                show(io, ex)
-                if i < length(examples)
-                    println(io)
+    if full
+        println(io, "### `$attribute`\n")
+        if !isnothing(attr_meta)
+            println(io, attr_meta)
+            # Add example if available
+            if !isempty(examples)
+                println(io, "**Example:**\n")
+                for (i, ex) in enumerate(examples)
+                    show(io, ex)
+                    if i < length(examples)
+                        println(io)
+                    end
                 end
+                println(io)
             end
-            println(io)
+        else
+            println(io, "*No documentation available.*\n")
         end
     else
-        println(io, "*No documentation available.*\n")
+        # Summary line
+        println(io, "- **`$attribute`**", isnothing(attr_meta) ? "" : " = `$(attr_meta.default_expr)`")
     end
 end
 
@@ -344,7 +296,7 @@ This function is called automatically by the `@recipe` macro via `Docs.getdoc`.
 - `max_examples`: Maximum number of examples to show (default: 1). Use `0` or negative for all examples.
 - `full_attributes`: If `true`, shows detailed documentation for each attribute. If `false` (default), shows a summary.
 """
-function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples::Int=1, full_attributes::Bool=false) where {PT<:Plot}
+function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples=1, full_attributes::Bool=false) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     plfunc!_str = plfunc_str * "!"
@@ -353,108 +305,38 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples::
 
     # Build function signatures section
     signatures = Markdown.parse("""
-        # return a new figure, axis, and plot
-        f, ax, pl = $plfunc_str(args...; kw...)
-        # creates an axis in a subfigure grid position
-           ax, pl = $plfunc_str(f[row, col], args...; kw...)
-        # Creates a plot in the given axis or scene.
-               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
-        # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
-        SpecApi.$(PlotType_str)(args...; kw...)
+    ```julia
+    # return a new figure, axis, and plot
+    f, ax, pl = $plfunc_str(args...; kw...)
+    # creates an axis in a subfigure grid position
+        ax, pl = $plfunc_str(f[row, col], args...; kw...)
+    # Creates a plot in the given axis or scene.
+            pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
+    # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+    SpecApi.$(PlotType_str)(args...; kw...)
+    ```
     """)
 
     # Build arguments section (argument_docs now returns Markdown directly)
-    arguments_section = argument_docs(PT)
+    arguments_section = argument_docs_md(PT)
 
-    # Build attributes section
-    attrs = documented_attributes(PT)
-    attr_names = attribute_names(PT)
-
-    attributes_section = if full_attributes
-        # Show detailed attribute documentation
-        if isnothing(attr_names) || isempty(attr_names)
-            Markdown.parse("## Attributes\n\nNo attributes available.")
-        else
-            io = IOBuffer()
-            println(io, "## Attributes\n")
-
-            for attr in attr_names
-                attr_meta = get(attrs.d, attr, nothing)
-                if !isnothing(attr_meta)
-                    println(io, "### `$attr`\n")
-                    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
-                    if !isnothing(attr_meta.docstring)
-                        println(io, attr_meta.docstring)
-                        println(io)
-                    end
-
-                    # Add example if available
-                    examples_dict = try
-                        attribute_examples(PT)
-                    catch
-                        nothing
-                    end
-
-                    if examples_dict isa Dict && haskey(examples_dict, attr)
-                        examples = examples_dict[attr]
-                        if examples isa Vector && !isempty(examples)
-                            println(io, "**Example:**\n")
-                            for (i, ex) in enumerate(examples)
-                                if ex isa Example
-                                    if !isnothing(ex.caption) && !isempty(ex.caption)
-                                        println(io, "**$(ex.caption)**\n")
-                                    end
-                                    println(io, "```julia")
-                                    println(io, ex.code)
-                                    println(io, "```")
-                                    if i < length(examples)
-                                        println(io)
-                                    end
-                                end
-                            end
-                            println(io)
-                        end
-                    end
-                else
-                    println(io, "### `$attr`\n")
-                    println(io, "*No documentation available.*\n")
-                end
-            end
-
-            Markdown.parse(String(take!(io)))
-        end
-    else
-        # Show summary attribute list
-        attr_list = if isnothing(attr_names) || isempty(attr_names)
-            "No attributes available."
-        else
-            join(["`$attr`" for attr in attr_names], ", ")
-        end
-        Markdown.parse("""
-        ## Attributes
-
-        **Available attributes:** $attr_list
-
-        Use `?$PlotType_str.attribute` to see the documentation for a specific attribute, e.g., `?$PlotType_str.color`.
-        """)
-    end
+    attributes_section = get_attribute_docs(PT; full=full_attributes)
 
     # Build examples section
     examples = plot_examples(PT, max_examples)
     # Add link to online documentation
-    if !isempty(examples)
+    if max_examples == 1
         online_docs_link = "\n\nSee the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for more examples."
         examples = examples * online_docs_link
     end
     examples_section = Markdown.parse(examples)
-
     # Combine all sections into a single Markdown document
     combined = Markdown.MD()
-    push!(combined.content, signatures.content...)
-    push!(combined.content, user_docstring.content...)
-    push!(combined.content, arguments_section.content...)
-    push!(combined.content, attributes_section.content...)
-    push!(combined.content, examples_section.content...)
+    append!(combined.content, signatures.content)
+    append!(combined.content, user_docstring.content)
+    append!(combined.content, arguments_section.content)
+    append!(combined.content, attributes_section.content)
+    append!(combined.content, examples_section.content)
     return combined
 end
 

@@ -33,6 +33,12 @@ conversion_trait(T::Type, args...) = conversion_trait(T)
 
 Plots with the `PointBased` trait convert their input data to a
 `Vector{Point{D, Float32}}`.
+
+## Arguments
+
+* `positions`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` corresponding to `(x, y)` or `(x, y, z)` positions.
+* `xs, ys[, zs]`: Positions given per dimension. Can be `Real` to define a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to define multiple. Using `ClosedInterval` requires at least one dimension to be given as an array. `zs` can also be given as a `AbstractMatrix` which will cause `xs` and `ys` to be interpreted per matrix axis.
+* `ys`: Defaults `xs` positions to `eachindex(ys)`.
 """
 struct PointBased <: ConversionTrait end
 conversion_trait(::Type{<:XYBased}) = PointBased()
@@ -42,6 +48,11 @@ conversion_trait(::Type{<:XYBased}) = PointBased()
 
 Similar to `PointBased`, but specifically for 2D plots. Converts input data to a
 `Vector{Point{2, Float32}}`. Uses the same conversion methods as `PointBased`.
+
+## Arguments
+
+* `positions`: A `VecTypes` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` corresponding to `(x, y)` positions.
+* `xs, ys`: Positions given per dimension. Can be `Real` to define a single position, or an `AbstractVector{<:Real}` or `ClosedInterval{<:Real}` to define multiple. Using `ClosedInterval` requires at least one dimension to be given as an array. If omitted, `xs` defaults to `eachindex(ys)`.
 """
 struct PointBased2D <: ConversionTrait end
 
@@ -68,6 +79,11 @@ Plots with the `VertexGrid` trait convert their input data to
 
 Used for: Surface \\
 See also: [`CellGrid`](@ref), [`ImageLike`](@ref)
+
+## Arguments
+
+* `zs`: Defines z values for vertices of a grid using an `AbstractMatrix{<:Real}`.
+* `xs, ys`: Defines the (x, y) positions of grid vertices. A `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` is interpreted as the outer limits of the grid, between which vertices are spaced regularly. An `AbstractVector{<:Real}` defines vertex positions directly for the respective dimension. An `AbstractMatrix{<:Real}` allows grid positions to be defined per vertex, i.e. in a non-repeating fashion. If `xs` and `ys` are omitted they default to `axes(data, dim)`.
 """
 struct VertexGrid <: GridBased end
 conversion_trait(::Type{<:Surface}) = VertexGrid()
@@ -82,6 +98,11 @@ values represent the edges of cells corresponding to z values.
 
 Used for: Heatmap \\
 See also: [`VertexGrid`](@ref), [`ImageLike`](@ref)
+
+## Arguments
+
+* `data`: Defines data values for cells of a grid using an `AbstractMatrix{<:Real}`.
+* `xs, ys`: Defines the positions of grid cells. A `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` is interpreted as the outer edges of the grid, between which cells are spaced regularly. An `AbstractVector{<:Real}` defines cell positions directly for the respective dimension. This define either `size(data, dim)` cell centers or `size(data, dim) + 1` cell edges. These are allowed to be spaced irregularly. If `xs` and `ys` are omitted they default to `axes(data, dim)`.
 """
 struct CellGrid <: GridBased end
 conversion_trait(::Type{<:Heatmap}) = CellGrid()
@@ -95,12 +116,27 @@ limits of a quad containing zs.
 
 Used for: Image \\
 See also: [`CellGrid`](@ref), [`VertexGrid`](@ref)
+
+## Arguments
+
+* `image`: An `AbstractMatrix{<:Colorant}` defining the colors of an image, or an `AbstractMatrix{<:Real}` defining colors through colormapping.
+* `x, y`: Defines the boundary of the image rectangle. Can be a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. Defaults to `0 .. size(image, 1)` and `0 .. size(image, 2)` respectively.
 """
 struct ImageLike <: ConversionTrait end
 conversion_trait(::Type{<:Image}) = ImageLike()
 # Rect2f(xmin, ymin, xmax, ymax)
 
 
+"""
+    VolumeLike() <: ConversionTrait
+
+Plots with the `VolumeLike` trait convert their input data for volume rendering.
+
+## Arguments
+
+* `volume_data`: An `AbstractArray{<:Real, 3}` defining volume data.
+* `x, y, z`: Defines the boundary of a 3D rectangle with a `Tuple{<:Real, <:Real}` or `ClosedInterval{<:Real}`. If omitted `x`, `y` and `z` default to `0 .. size(volume)`.
+"""
 struct VolumeLike <: ConversionTrait end
 conversion_trait(::Type{<:Volume}) = VolumeLike()
 
