@@ -539,8 +539,8 @@ function create_recipe_expr(Tsym, args, attrblock)
         $(arg_type_func)
 
         # Override Docs.getdoc to generate comprehensive documentation
-        function Base.Docs.getdoc(::Type{T}) where {T <: $(PlotType)}
-            return $(Makie).document_recipe(T, user_docstring)
+        function Base.Docs.getdoc(::Type{T}; max_examples=1, full_attributes=false) where {T <: $(PlotType)}
+            return $(Makie).document_recipe(T, user_docstring; max_examples=1, full_attributes=false)
         end
 
         # For the function symbol, forward to the plot type

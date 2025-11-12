@@ -184,7 +184,6 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     end
 end
 
-
 function extract_attributes!(body)
     i = findfirst(
         (
@@ -632,15 +631,6 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}
 
     return Markdown.parse(String(take!(io)))
 end
-
-# function example(type::Type{<:Block}, attr::Symbol, i::Int)
-#     examples = get(attribute_examples(type), attr, Example[])
-#     if !(1 <= i <= length(examples))
-#         error("Invalid example number for attribute $attr of type $type.")
-#     end
-#     display(eval(Meta.parseall(examples[i].code)))
-#     return
-# end
 
 function attribute_examples(b::Union{Type{<:Block}, Type{<:Plot}})
     return Dict{Symbol, Vector{Example}}()

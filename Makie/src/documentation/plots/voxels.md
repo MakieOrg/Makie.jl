@@ -1,10 +1,6 @@
 # voxels
 
-
-
 ## Examples
-
-
 
 #### Basic Example
 
@@ -18,7 +14,6 @@ cube_with_holes = cube .* (cube .> 1.4)
 # values outside the range (1.65..1.75) to invisible air blocks with is_air
 f, a, p = voxels(-1..1, -1..1, -1..1, cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
 ```
-
 
 #### Gap Attribute
 
@@ -196,4 +191,3 @@ The `pick` function is able to pick individual voxels in a voxel plot.
 The returned index is a flat index into the array passed to `voxels`, i.e. `plt.arg1[][idx]` (or the alias `p.chunk[][idx]` and the lowered `p.chunk_u8[][idx]`) will return the relevant data.
 One important thing to note here is that the returned index is a `UInt32` internally and thus has limited range.
 Very large voxel plots (~4.3 billion voxels or 2048 x 2048 x 1024) can reach this limit and trigger an integer overflow.
-

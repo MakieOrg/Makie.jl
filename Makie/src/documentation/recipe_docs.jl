@@ -43,28 +43,58 @@ end
 ################################################################################
 ### Plot Examples
 ################################################################################
+"""
+    extract_examples(markdown_file_path::String)
+
+Parse a markdown file and extract all examples that come after the "## Examples" header.
+Each example starts with a "### Example Title" header and includes all content until the next header.
+Returns a vector of `Markdown.MD` objects, each representing an example.
+"""
+function extract_examples(markdown_file_path::String)
+    # Parse the markdown file
+    md = Markdown.parse(read(markdown_file_path, String))
+    # Verify expected structure
+    if length(md.content) < 2
+        error(
+            "Expected markdown file to have at least 2 elements (H1 and H2 headers), got $(length(md.content))",
+        )
+    end
+    if !(md.content[1] isa Markdown.Header{1})
+        error("Expected first element to be H1 header, got $(typeof(md.content[1]))")
+    end
+    if !(
+        md.content[2] isa Markdown.Header{2} &&
+        !isempty(md.content[2].text) &&
+        md.content[2].text[1] == "Examples"
+    )
+        error("Expected second element to be H2 'Examples' header")
+    end
+
+    # Find all H3 headers
+    h3_indices = findall(md.content) do item
+        item isa Markdown.Header{3}
+    end
+
+    if isempty(h3_indices)
+        error("No H3 example headers found in file")
+    end
+
+    # Extract each example
+    examples = Markdown.MD[]
+    for i in eachindex(h3_indices)
+        idx = h3_indices[i]
+        next_idx = i < length(h3_indices) ? h3_indices[i + 1] : length(md.content) + 1
+        content = Markdown.MD(md.content[idx:(next_idx - 1)])
+        push!(examples, content)
+    end
+    return examples
+end
 
 """
     plot_examples(::Type{<:Plot}, max_examples::Int=1)
 
 Returns example documentation by reading the markdown file from `documentation/plots/{plotname}.md`.
 Parses the markdown structure and returns up to `max_examples` examples.
-
-The markdown files follow this structure:
-```
-# plotname
-
-## Examples
-
-### Example Title 1
-...
-```@figure
-code
-```
-
-### Example Title 2
-...
-```
 
 Returns an empty string if the markdown file doesn't exist or has no examples.
 
@@ -74,7 +104,6 @@ Returns an empty string if the markdown file doesn't exist or has no examples.
 function plot_examples(::Type{PT}, max_examples::Int=1) where {PT<:Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
-
     # Path to markdown file
     md_path = joinpath(@__DIR__, "plots", "$plfunc_str.md")
 
@@ -83,52 +112,10 @@ function plot_examples(::Type{PT}, max_examples::Int=1) where {PT<:Plot}
     end
 
     # Read the markdown file
-    content = read(md_path, String)
+    examples = extract_examples(md_path)
+    n_examples = examples[1:min(length(examples), max_examples)]
 
-    # If max_examples <= 0, return everything after ## Examples
-    if max_examples <= 0
-        examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
-        m = match(examples_pattern, content)
-        if isnothing(m)
-            return ""
-        end
-        return "## Examples\n" * m.captures[1]
-    end
-
-    # Parse the markdown to extract examples
-    # Find the Examples section
-    examples_pattern = r"^## Examples\s*$(.*?)(?=^## |\z)"ms
-    m = match(examples_pattern, content)
-
-    if isnothing(m)
-        return ""
-    end
-
-    examples_content = m.captures[1]
-
-    # Split by ### headers to get individual examples
-    # Match ### titles and their content until the next ### or end
-    example_pattern = r"^### (.+?$)(.*?)(?=^### |\z)"ms
-    examples = eachmatch(example_pattern, examples_content)
-
-    # Collect up to max_examples
-    collected = String[]
-    count = 0
-    for ex in examples
-        if count >= max_examples
-            break
-        end
-        title = strip(ex.captures[1])
-        body = ex.captures[2]
-        push!(collected, "### $title\n$body")
-        count += 1
-    end
-
-    if isempty(collected)
-        return ""
-    end
-
-    return "## Examples\n\n" * join(collected, "\n")
+    return join(map(string, n_examples), "\n")
 end
 
 ################################################################################
@@ -247,6 +234,7 @@ end
 Returns formatted argument documentation as Markdown for a plot type based on its conversion trait.
 """
 function argument_docs(::Type{PT}) where {PT<:Plot}
+
     items = argument_docs_items(PT)
     if isempty(items)
         return Markdown.MD()
@@ -272,9 +260,73 @@ function argument_docs(::Type{PT}) where {PT<:Plot}
     """)
 end
 
+
+function Base.show(io::IO, attr_meta::AttributeMetadata)
+    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
+    if !isnothing(attr_meta.docstring)
+        println(io, attr_meta.docstring)
+    end
+end
+
+function Base.show(io::IO, example::Example)
+    if !isnothing(example.caption) && !isempty(example.caption)
+        println(io, "**$(ex.caption)**\n")
+    end
+    println(io, "```julia")
+    println(io, example.code)
+    println(io, "```")
+    return
+end
+
 ################################################################################
 ### Main Documentation Function
 ################################################################################
+function get_attribute_docs(io::IO, attrs, examples, attribute; full=false) where {PT<:Plot}
+    attr_meta = get(attrs.d, attribute, nothing)
+    println(io, "### `$attribute`\n")
+    if !isnothing(attr_meta)
+        println(io, attr_meta)
+        # Add example if available
+        if !isempty(examples)
+            println(io, "**Example:**\n")
+            for (i, ex) in enumerate(examples)
+                show(io, ex)
+                if i < length(examples)
+                    println(io)
+                end
+            end
+            println(io)
+        end
+    else
+        println(io, "*No documentation available.*\n")
+    end
+end
+
+function get_attribute_docs(io::IO, ::Type{PT}, attribute; full=false) where {PT<:Plot}
+    attrs = documented_attributes(PT)
+    examples = attribute_examples(PT, attribute)
+    get_attribute_docs(io, attrs, examples, attribute; full=full)
+    return
+end
+
+function get_attribute_docs(::Type{PT}; full=false) where {PT<:Plot}
+    # Build attributes section
+    attrs = documented_attributes(PT)
+    attr_names = attribute_names(PT)
+    # Show detailed attribute documentation
+    if isnothing(attr_names) || isempty(attr_names)
+        Markdown.parse("## Attributes\n\nNo attributes available.")
+    else
+        io = IOBuffer()
+        println(io, "## Attributes\n")
+        for attr in attr_names
+            examples = attribute_examples(PT, attr)
+            get_attribute_docs(io, attrs, examples, attr; full=full)
+        end
+        Markdown.parse(String(take!(io)))
+    end
+end
+
 
 """
     document_recipe(::Type{PT}, user_docstring; max_examples=1, full_attributes=false) where {PT<:Plot}
@@ -436,29 +488,14 @@ full_docs(Lines; replace_figure=false)  # For makedocs
 """
 function full_docs(::Type{PT}; replace_figure=true) where {PT<:Plot}
     # Get the user docstring for this plot type
-    user_docstring = try
-        # Try to get the docstring from Docs
-        binding = Docs.Binding(Makie, Symbol(uppercasefirst(string(plotfunc(PT)))))
-        docs = Docs.meta(Makie)[binding]
-        if haskey(docs.docs, Union{})
-            docs.docs[Union{}].text[1]
-        else
-            Markdown.MD()
-        end
-    catch
-        Markdown.MD()
-    end
-
     # Call document_recipe with full documentation settings
-    docs = document_recipe(PT, user_docstring; max_examples=0, full_attributes=true)
-
+    docs = Docs.getdoc(PT; max_examples=Inf, full_attributes=true)
     # Replace @figure with julia if requested for REPL display
     if replace_figure
-        docs_str = sprint(io -> Markdown.plain(io, docs))
+        docs_str = string(docs)
         docs_str = replace(docs_str, r"```@figure([^\n]*)" => s"```julia\1")
         return Markdown.parse(docs_str)
     end
-
     return docs
 end
 
