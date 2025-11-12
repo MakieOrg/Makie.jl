@@ -56,7 +56,6 @@ function to_glyphinfos(
             extent=GlyphExtent(font, char),
         )
     end
-
     # split the character info vector into lines after every \n
     lineinfos, xs = create_lineinfos(charinfos, word_wrap_width)
 
@@ -150,6 +149,68 @@ function to_glyphinfos(
     end
 end
 
+function create_lineinfos(charinfos, word_wrap_width)
+    last_line_start = 1
+    ViewType = typeof(view(charinfos, 1:1))
+    lineinfos = ViewType[]
+    last_space_local_idx = 0
+    last_space_global_idx = 0
+    newline_offset = 0.0f0
+    x = 0.0f0
+    xs = [Float32[]]
+
+    # If word_wrap_width > 0:
+    # Whenever a space is hit, record its index in last_space_local_idx and
+    # last_space_global_index. If there is already a space on record and the
+    # current word overflows word_wrap_width, replace the last space with
+    # a newline. newline character unset the last space index
+    # word{space}word{space}word{space}
+    #        ↑      ↑   ↑
+    #        |     i-1  i
+    # last_space_idx
+
+    for (i, ci) in enumerate(charinfos)
+        push!(xs[end], x)
+        x += ci.extent.hadvance * first(ci.scale)
+        if 0 < word_wrap_width < x && last_space_local_idx != 0 &&
+                ((ci.char in (' ', '\n')) || i == length(charinfos))
+
+            newline_offset = xs[end][last_space_local_idx + 1]
+            push!(xs, xs[end][(last_space_local_idx + 1):end] .- newline_offset)
+            xs[end - 1] = xs[end - 1][1:last_space_local_idx]
+            push!(lineinfos, view(charinfos, last_line_start:last_space_global_idx))
+            last_line_start = last_space_global_idx + 1
+            x = xs[end][end] + ci.extent.hadvance * first(ci.scale)
+
+            # TODO Do we need to redo the metrics for newlines?
+            charinfos[last_space_global_idx] = let
+                _, font, scale, lineheight, extent = charinfos[last_space_global_idx]
+                (
+                    char = '\n', font = font, scale = scale,
+                    lineheight = lineheight, extent = extent,
+                )
+            end
+        end
+
+        if ci.char == '\n'
+            push!(xs, Float32[])
+            push!(lineinfos, view(charinfos, last_line_start:i))
+            last_space_local_idx = 0
+            last_line_start = i + 1
+            x = 0.0f0
+        elseif i == length(charinfos)
+            push!(lineinfos, view(charinfos, last_line_start:i))
+        end
+
+        if 0 < word_wrap_width && ci.char == ' '
+            last_space_local_idx = length(last(xs))
+            last_space_global_idx = i
+        end
+    end
+
+    return lineinfos, xs
+end
+
 function per_character(data, characters)
     block_length = length(characters)
     if isscalar(data)
@@ -158,3 +219,4 @@ function per_character(data, characters)
         return data
     end
 end
+
