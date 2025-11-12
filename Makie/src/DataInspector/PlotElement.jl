@@ -5,7 +5,7 @@
 abstract type AbstractElementAccessor end
 
 """
-    abstract type PlotElement{PlotType}
+    abstract type PlotElement{PlotType, AccessorType}
 
 A PlotElement represents an element of a plot selected through picking. Unlike
 with `pick()` and related functions, the plot is not restricted to a primitive
@@ -28,7 +28,7 @@ the picked element.
 - `dimensional_element_getindex(data, element, dim)` will apply a specific
 dimension of the accessor to the data
 """
-abstract type PlotElement{PlotType} end
+abstract type PlotElement{PlotType, AccessorType} end
 
 PlotElement(@nospecialize(::Any), ::Nothing) = nothing
 
@@ -104,9 +104,9 @@ Basic implementation of a `PlotElement` containing just a `plot_stack` and
 """
 struct SimplePlotElement{
         PlotType,
-        AccessorType <: AbstractElementAccessor,
+        AccessorType,
         PlotStack <: Tuple{PlotType, Vararg{Plot}},
-    } <: PlotElement{PlotType}
+    } <: PlotElement{PlotType, AccessorType}
 
     plot_stack::PlotStack
     accessor::AccessorType
@@ -128,9 +128,9 @@ safe to call from any `PlotElement`.
 """
 struct TrackedPlotElement{
         PlotType,
-        AccessorType <: AbstractElementAccessor,
+        AccessorType,
         PlotStack <: Tuple{PlotType, Vararg{Plot}},
-    } <: PlotElement{PlotType}
+    } <: PlotElement{PlotType, AccessorType}
     plot_stack::PlotStack
     accessor::AccessorType
     accessed::Vector{Computed}
@@ -480,4 +480,68 @@ function element_getindex(x, element::ViolinAccessor)
     else
         return x
     end
+end
+
+################################################################################
+### Utilities
+################################################################################
+
+"""
+    get_post_transform(element, names...)
+
+Returns the value of `element.name` after applying the elements `transform_func`.
+
+In practice, this returns `getproperty(element, Symbol(name, :_transformed))`.
+If this node does not exist yet, it will be created. The result will then be
+interpolated (or indexed) after the transform function is applied, matching the
+way interpolation parameters are calculated for plot elements. The result can
+then be back-transformed to get the correct pre-transform values.
+
+This is needed for `get_tooltip_position()` as PlotElements calculate their
+interpolation parameters after applying transform functions
+"""
+function get_post_transform(element::PlotElement, name1::Symbol, names::Symbol...)
+    return get_post_transform(element, name1), get_post_transform.(Ref(element), names)...
+end
+
+function get_post_transform(element::PlotElement, name::Symbol)
+    plt = get_plot(element)
+    transformed_name = Symbol(name, :_transformed)
+    if !haskey(plt, transformed_name)
+        map!(plt, [:transform_func, name], transformed_name) do tf, data
+            return apply_transform(tf, data)
+        end
+    end
+    return getproperty(element, transformed_name)
+end
+
+function get_post_transform(element::PlotElement{<:AbstractPlot, <:IndexedAccessor}, name::Symbol)
+    pos = getproperty(element, name)
+    return apply_transform(element.transform_func, pos)
+end
+
+"""
+    get_pre_transform(element, names...)
+
+Returns the value of `element.name` with the interpolation (or index) of the
+plot `element` being calculated to transformed data.
+
+In practice, this returns `getproperty(element, Symbol(name, :_transformed))`.
+If this node does not exist yet, it will be created. The result will then be
+interpolated (or indexed) after the transform function is applied, matching the
+way interpolation parameters are calculated for plot elements. The result can
+then be back-transformed to get the correct pre-transform values.
+
+This is needed for `get_tooltip_position()` as PlotElements calculate their
+interpolation parameters after applying transform functions
+"""
+function get_pre_transform(element::PlotElement, name1::Symbol, names::Symbol...)
+    return get_pre_transform(element, name1), get_pre_transform.(Ref(element), names)...
+end
+
+function get_pre_transform(element::PlotElement, name::Symbol)
+    plt = get_plot(element)
+    data = get_post_transform(element, name)
+    itf = inverse_transform(transform_func(parent_scene(plt)))
+    return Makie.apply_transform(itf, data)
 end

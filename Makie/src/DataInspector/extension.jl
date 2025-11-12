@@ -16,9 +16,11 @@ end
 # Once barplot is refactored to use the compute graph, grab positions after
 # stack & dodge here and add a label_data method using these positions instead
 function get_tooltip_position(element::PlotElement{<:BarPlot})
+    # indexed elements can apply transform_func later
     x, y = element.positions
     y += element.offset
-    return ifelse(element.direction == :x, Point(y, x), Point(x, y))
+    p = ifelse(element.direction == :x, Point(y, x), Point(x, y))
+    return apply_transform(element.transform_func, p)
 end
 
 get_default_tooltip_label(element::PlotElement{<:BarPlot}, pos) = element.positions
@@ -54,7 +56,8 @@ function get_accessor(plot::Arrows2D, idx, plot_stack)
 end
 
 function get_tooltip_position(element::PlotElement{<:Union{Arrows2D, Arrows3D}})
-    return 0.5 * (element.startpoints + element.endpoints)
+    p0, p1 = get_post_transform(element, :startpoints, :endpoints)
+    return 0.5 * (p0 .+ p1)
 end
 
 function get_default_tooltip_label(element::PlotElement{<:Union{Arrows2D, Arrows3D}}, pos)
@@ -106,16 +109,18 @@ function get_accessor(plot::Union{Errorbars, Rangebars}, idx, plot_stack)
 end
 
 function get_tooltip_position(element::PlotElement{<:Errorbars})
+    # indexed elements can apply transform_func later
     x, y, low, high = element.val_low_high
-    return Point(x, y)
+    return apply_transform(element.transform_func, Point(x, y))
 end
 
 function get_tooltip_position(element::PlotElement{<:Rangebars})
+    # indexed elements can apply transform_func later
     plot = get_plot(element)
     i = 2 * accessor(element).index[1]
     linepoints = plot.linesegpairs[]
     center = 0.5 * (linepoints[i - 1] .+ linepoints[i])
-    return center
+    return apply_transform(element.transform_func, center)
 end
 
 function get_default_tooltip_label(formatter, element::PlotElement{<:Errorbars}, pos)
@@ -201,11 +206,12 @@ function get_accessor(plot::Density, idx, plot_stack::Tuple{<:Lines, Vararg{Plot
 end
 
 function get_tooltip_position(element::PlotElement{<:Band})
-    return 0.5(element.lowerpoints + element.upperpoints)
+    lower, higher = get_post_transform(element, :lowerpoints, :upperpoints)
+    return 0.5 * (lower .+ higher)
 end
 
 function get_tooltip_position(element::PlotElement{<:Density})
-    return element.upper
+    return get_post_transform(element, :upper)
 end
 
 function get_default_tooltip_label(element::PlotElement{<:Band}, pos)
@@ -221,8 +227,8 @@ function get_default_tooltip_label(element::PlotElement{<:Density}, pos)
 end
 
 function update_indicator!(di::DataInspector, element::PlotElement{<:Band}, pos)
-    p1 = to_ndim(Point3d, element.lowerpoints, 0)
-    p2 = to_ndim(Point3d, element.upperpoints, 0)
+    p1 = to_ndim(Point3d, get_post_transform(element, :lowerpoints), 0)
+    p2 = to_ndim(Point3d, get_post_transform(element, :upperpoints), 0)
 
     indicator = get_indicator_plot(di, LineSegments)
     update!(indicator, arg1 = [p1, p2], visible = true)
@@ -277,7 +283,7 @@ function get_accessor(plot::Violin, idx, plot_stack::Tuple{<:Poly, Vararg{Plot}}
 end
 
 function get_tooltip_position(element::PlotElement{<:Violin})
-    return element.vertices
+    return get_post_transform(element, :vertices)
 end
 
 function get_default_tooltip_label(element::PlotElement{<:Violin}, pos)

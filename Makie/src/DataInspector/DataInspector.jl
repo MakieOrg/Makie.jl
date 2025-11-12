@@ -315,10 +315,12 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     pos = get_tooltip_position(position_element)
 
     plot = get_plot(position_element)
-    copy_local_model_transformations!(di.dynamic_tooltip, plot)
+    _copy_local_model_transformations!(di.dynamic_tooltip, plot)
 
+    itf = inverse_transform(transform_func(di.parent))
+    input_pos = apply_transform(itf, pos)
     formatter = di.inspector_attributes[:formatter][]
-    label = get_tooltip_label(formatter, element, pos)
+    label = get_tooltip_label(formatter, element, input_pos)
 
     # maybe also allow kwargs changes from plots?
     # kwargs = get_tooltip_attributes(element)
@@ -345,13 +347,12 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     return true
 end
 
-function copy_local_model_transformations!(target::Transformable, source::Transformable)
+function _copy_local_model_transformations!(target, source)
     src_t = transformation(source)
     trg_t = transformation(target)
 
     trg_t.parent[] = src_t
     trg_t.parent_model[] = src_t.model[]
-    trg_t.transform_func[] = src_t.transform_func[]
 
     return
 end
@@ -376,8 +377,9 @@ end
 """
     get_tooltip_position(element::PlotElement{PlotType})
 
-Returns the position corresponding to a `PlotElement`. The result will be used
-as an anchor point for the tooltip and be passed to `get_tooltip_label()` and
+Returns the transformed position (after `transform_func` is applied) corresponding
+to a `PlotElement`. The result will be used as an anchor point for the tooltip.
+Its back-transformed value will also be passed to `get_tooltip_label()` and
 `update_indicator!()`.
 
 This function typically needs to be implemented when the position returned by
@@ -409,20 +411,35 @@ end
 function get_tooltip_position(element::PlotElement{<:HeatmapShader})
     return get_tooltip_position(child(element))
 end
-function get_tooltip_position(element::PlotElement{<:Union{Image, Heatmap}})
+
+function get_tooltip_position(element::PlotElement{<:Heatmap})
+    # This is a getindex, not an interpolation, so we can transform after
     plot = get_plot(element)
     x = dimensional_element_getindex(plot.x[], element, 1)
     y = dimensional_element_getindex(plot.y[], element, 2)
+    tf = element.transform_func
+    return apply_transform(tf, Point2f(x, y))
+end
+
+# Interpolations are calculated after transform func is applied, so they are
+# appropriate for transformed data. We need to back transform here to get pre-
+# transform data
+function get_tooltip_position(element::PlotElement{<:Image})
+    plot = get_plot(element)
+    p00, _, p11, _ = plot.positions_transformed[]
+    x = dimensional_element_getindex((p00[1], p11[1]), element, 1)
+    y = dimensional_element_getindex((p00[2], p11[2]), element, 2)
     return Point2f(x, y)
 end
 
 function get_tooltip_position(
         element::PlotElement{<:Union{Scatter, MeshScatter, Lines, LineSegments, Text, Mesh, Surface}}
     )
-    return element.positions
+    return get_post_transform(element, :positions)
 end
 
 function get_tooltip_position(element::PlotElement{<:Voxels})
+    # assuming no transform_func (would that even work with voxels?)
     i, j, k = Tuple(accessor(element).index)
     return voxel_position(get_plot(element), i, j, k)
 end
@@ -544,7 +561,7 @@ function update_indicator_internal!(di::DataInspector, element::PlotElement, pos
     maybe_indicator = update_indicator!(di, element, pos)
     # TODO: Are these really things that should always happen?
     if maybe_indicator isa Plot
-        copy_local_model_transformations!(maybe_indicator, get_plot(element))
+        _copy_local_model_transformations!(maybe_indicator, get_plot(element))
         update!(maybe_indicator, space = element.space)
     end
     return
@@ -611,7 +628,8 @@ function construct_indicator_plot(di::DataInspector, ::Type{<:LineSegments})
     return linesegments!(
         di.parent, Point3d[], color = a.color,
         linewidth = a.linewidth, linestyle = a.linestyle,
-        visible = false, inspectable = false, depth_shift = -1.0f-6
+        visible = false, inspectable = false, depth_shift = -1.0f-6,
+        transformation = :nothing
     )
 end
 
@@ -620,7 +638,8 @@ function construct_indicator_plot(di::DataInspector, ::Type{<:Lines})
     return lines!(
         di.parent, Point3d[], color = a.color,
         linewidth = a.linewidth, linestyle = a.linestyle,
-        visible = false, inspectable = false, depth_shift = -1.0f-6
+        visible = false, inspectable = false, depth_shift = -1.0f-6,
+        transformation = :nothing
     )
 end
 
@@ -636,7 +655,8 @@ function construct_indicator_plot(di::DataInspector, ::Type{<:Scatter})
         strokecolor = a.color,
         strokewidth = a.linewidth,
         inspectable = false, visible = false,
-        depth_shift = -1.0f-6
+        depth_shift = -1.0f-6,
+        transformation = :nothing
     )
 end
 

@@ -109,7 +109,8 @@ function closest_point_on_line_interpolation_2D(A::Point2f, B::Point2f, P::Point
     x = dot(AP, perp)
     closest_point = P - x * perp #  A + (AP - x * perp)
     # find the interpolation factor and restrict to A .. B segment
-    f = norm(closest_point - A) ./ norm(AB)
+    maxdim = ifelse(abs(AB[1]) > abs(AB[2]), 1, 2)
+    f = (closest_point - A)[maxdim] / AB[maxdim]
     return clamp(f, 0f0, 1f0)
 end
 
