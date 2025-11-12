@@ -19,10 +19,25 @@
 # # @deprecate unchecked_boundingbox string_boundingboxes
 
 # Utility
+# TODO: only used in axis3d for the width of some labels?
 function text_bb(str, font, size)
     rot = Quaternionf(0, 0, 0, 1)
-    layout = glyph_collection(str, font, size, 0.0f0, 0.0f0, 0.0f0, 0.0f0, -1, rot)
-    return unchecked_boundingbox(layout.glyphindices, layout.char_origins, size, layout.glyph_extents, rot)
+    glyphinfos = to_glyphinfos(
+        str,
+        font,
+        size,
+        (0.0f0, 0.0f0),
+        0.0f0,
+        0.0f0,
+        -1,
+        rot,
+        RGBAf(0.0, 0.0, 0.0, 1.0),
+        RGBAf(0.0, 0.0, 0.0, 1.0),
+        0.0,
+    )
+    return unchecked_boundingbox(
+        [i.glyph for i in glyphinfos], [i.origin for i in glyphinfos], size, [i.size for i in glyphinfos], rot
+    )
 end
 
 function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
@@ -66,7 +81,7 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     return Rect2d((l, b), (r - l, h - b))
 end
 
-function rotate_bbox(bb::Rect3{T}, rot) where {T <: Real}
+function rotate_bbox(bb::Rect3{T}, rot) where {T<:Real}
     points = decompose(Point3{T}, bb)
     return Rect3{T}(Ref(rot) .* points)
 end
