@@ -218,7 +218,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         [colorname, :colorscale, :alpha],
         [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        auto_colorrange = Vec2f(NaN)
+        auto_colorrange = nothing
         if color isa Union{AbstractArray{<:Real}, Real}
             scaled = el32convert(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
@@ -239,7 +239,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
         attr,
         [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
     ) do colorrange, colorscale, autorange
-        if isnan(autorange) # colors are actual colors, so no colormapping
+        if isnothing(autorange) # colors are actual colors, so no colormapping
             return nothing
         elseif colorrange === automatic
             return autorange
