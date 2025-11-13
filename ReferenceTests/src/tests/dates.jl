@@ -53,3 +53,46 @@ end
     autolimits!(ax)
     f
 end
+
+@reference_test "Manual Date and DateTime StepRange ticks" begin
+    f = Figure(size = (600, 600))
+    scatter(
+        f[1, 1], time_range, 1:10, axis = (;
+            xticks = Time(11, 12):Second(20):Time(11, 12, 40),
+        )
+    )
+    scatter(
+        f[1, 2], time_range, 1:10, axis = (;
+            xticks = Time(11, 12):Second(20):Time(11, 12, 40), xtickformat = "HH:MM-SS",
+        )
+    )
+    scatter(
+        f[2, 1], date_range, 1:10, axis = (
+            xticklabelrotation = pi / 6,
+            xticks = Date(2021, 11, 1):Day(7):Date(2021, 12, 11),
+        )
+    )
+    scatter(
+        f[2, 2], date_time_range, 1:10, axis = (;
+            xticks = DateTime(2021, 10, 27, 11, 12):Second(20):DateTime(2021, 10, 27, 11, 12, 40),
+        )
+    )
+    scatter(
+        f[3, 1], date_time_range, 1:10, axis = (;
+            xticks = DateTime(2021, 10, 27, 11, 12):Second(20):DateTime(2021, 10, 27, 11, 12, 40),
+            xtickformat = "yyyy-mm-dd\nHH:MM:SS",
+        )
+    )
+    scatter(
+        f[3, 2], date_time_range, 1:10, axis = (;
+            xticks = [DateTime(2021, 10, 27, 11, 12, 5), DateTime(2021, 10, 27, 11, 12, 35)],
+        )
+    )
+    scatter(
+        f[4, 1], date_time_range, 1:10, axis = (;
+            xticks = [DateTime(2021, 10, 27, 11, 12, 5), DateTime(2021, 10, 27, 11, 12, 35)],
+            xtickformat = "yy-mm-dd HH:MM:SS",
+        )
+    )
+    f
+end
