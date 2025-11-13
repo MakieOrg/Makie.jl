@@ -135,17 +135,17 @@ function register_glyphs_boundingbox!(plot, target_space::Symbol)
 end
 
 function register_raw_glyph_boundingboxes!(attr)
-    # if !haskey(attr, :raw_glyph_boundingboxes)
-    map!(attr, :glyphinfos, :raw_glyph_boundingboxes) do glyphinfos
-        map(glyphinfos) do glyphinfo
-            hi_bb = height_insensitive_boundingbox_with_advance(glyphinfo.extent)
-            # TODO c != 0 filters out all non renderables, which is not always desired
-            return Rect2d(
-                origin(hi_bb) * glyphinfo.size, (glyphinfo.glyph != 0) * widths(hi_bb) * glyphinfo.size
-            )
+    if !haskey(attr, :raw_glyph_boundingboxes)
+        map!(attr, :glyphinfos, :raw_glyph_boundingboxes) do glyphinfos
+            map(glyphinfos) do glyphinfo
+                hi_bb = height_insensitive_boundingbox_with_advance(glyphinfo.extent)
+                # TODO c != 0 filters out all non renderables, which is not always desired
+                return Rect2d(
+                    origin(hi_bb) * glyphinfo.size, (glyphinfo.glyph != 0) * widths(hi_bb) * glyphinfo.size
+                )
+            end
         end
     end
-    # end
     return attr.raw_glyph_boundingboxes
 end
 
