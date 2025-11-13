@@ -6,6 +6,7 @@ date_time = DateTime("2021-10-27T11:11:55.914")
 time_range = some_time .+ range(Second(0); step = Second(5), length = 10)
 date_range = range(date, step = Day(5), length = 10)
 date_time_range = range(date_time, step = Week(5), length = 10)
+date_time_range_secs = range(date_time, step = Second(5), length = 10)
 
 @reference_test "Time & Date ranges" begin
     f = Figure()
@@ -19,8 +20,7 @@ date_time_range = range(date_time, step = Week(5), length = 10)
 end
 
 @reference_test "Don'some_time allow mixing units incorrectly" begin
-    date_time_range = range(date_time, step = Second(5), length = 10)
-    f, ax, pl = scatter(date_time_range, 1:10)
+    f, ax, pl = scatter(date_time_range_secs, 1:10)
     @test_throws Makie.ComputePipeline.ResolveException{ErrorException} scatter!(time_range, 1:10)
     f
 end
@@ -73,23 +73,23 @@ end
         )
     )
     scatter(
-        f[2, 2], date_time_range, 1:10, axis = (;
+        f[2, 2], date_time_range_secs, 1:10, axis = (;
             xticks = DateTime(2021, 10, 27, 11, 12):Second(20):DateTime(2021, 10, 27, 11, 12, 40),
         )
     )
     scatter(
-        f[3, 1], date_time_range, 1:10, axis = (;
+        f[3, 1], date_time_range_secs, 1:10, axis = (;
             xticks = DateTime(2021, 10, 27, 11, 12):Second(20):DateTime(2021, 10, 27, 11, 12, 40),
             xtickformat = "yyyy-mm-dd\nHH:MM:SS",
         )
     )
     scatter(
-        f[3, 2], date_time_range, 1:10, axis = (;
+        f[3, 2], date_time_range_secs, 1:10, axis = (;
             xticks = [DateTime(2021, 10, 27, 11, 12, 5), DateTime(2021, 10, 27, 11, 12, 35)],
         )
     )
     scatter(
-        f[4, 1], date_time_range, 1:10, axis = (;
+        f[4, 1], date_time_range_secs, 1:10, axis = (;
             xticks = [DateTime(2021, 10, 27, 11, 12, 5), DateTime(2021, 10, 27, 11, 12, 35)],
             xtickformat = "yy-mm-dd HH:MM:SS",
         )
