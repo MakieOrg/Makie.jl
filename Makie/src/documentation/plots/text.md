@@ -2,9 +2,7 @@
 
 ## Examples
 
-
-
-## Marker space pixel
+### Marker space pixel
 
 By default, text is drawn with `markerspace = :pixel`, which means that the text size is interpreted in pixel space.
 (The space of the text position is determined by the `space` attribute instead.)
@@ -35,7 +33,7 @@ text!(
 f
 ```
 
-## Marker space data
+### Marker space data
 
 For text whose dimensions are meaningful in data space, set `markerspace = :data`.
 This means that the boundingbox of the text in data coordinates will include every glyph.
@@ -57,7 +55,7 @@ text!(
 f
 ```
 
-## Alignment
+### Alignment
 
 Text can be aligned with the horizontal alignments `:left`, `:center`, `:right` and the vertical alignments `:bottom`, `:baseline`, `:center`, `:top`.
 
@@ -71,7 +69,7 @@ text!(x, y, text = string.(aligns), align = aligns)
 current_figure()
 ```
 
-## Justification
+### Justification
 
 By default, justification of multiline text follows alignment.
 Text that is left aligned is also left justified.
@@ -111,7 +109,7 @@ end
 scene
 ```
 
-## Offset
+### Offset
 
 The offset attribute can be used to shift text away from its position.
 This is especially useful with `space = :pixel`, for example to place text together with barplots.
@@ -134,7 +132,7 @@ text!(Point.(horsepower, 1:5), text = cars, align = (:right, :center),
 f
 ```
 
-## Relative space
+### Relative space
 
 The default setting of `text` is `space = :data`, which means the final position depends on the axis limits and scaling.
 However, it can be useful to place text relative to the axis itself, independent of scaling.
@@ -164,7 +162,7 @@ end
 f
 ```
 
-## MathTeX
+### MathTeX
 
 Makie can render LaTeX strings from the LaTeXStrings.jl package using [MathTeXEngine.jl](https://github.com/Kolaru/MathTeXEngine.jl/).
 
@@ -191,7 +189,7 @@ Legend(f[1, 2], ax)
 f
 ```
 
-## Rich text
+### Rich text
 
 With rich text, you can conveniently plot text whose parts have different colors or fonts, and you can position sections as subscripts and superscripts.
 You can create such rich text objects using the functions `rich`, `superscript`, `subscript`, `subsup` and `left_subsup`, all of which create `RichText` objects.
@@ -253,4 +251,3 @@ Label(
 
 f
 ```
-

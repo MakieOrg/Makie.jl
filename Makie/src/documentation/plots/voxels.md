@@ -2,7 +2,7 @@
 
 ## Examples
 
-#### Basic Example
+### Basic Example
 
 ```@figure backend=GLMakie
 # Same as volume example
@@ -15,7 +15,7 @@ cube_with_holes = cube .* (cube .> 1.4)
 f, a, p = voxels(-1..1, -1..1, -1..1, cube_with_holes, is_air = x -> !(1.65 <= x <= 1.75))
 ```
 
-#### Gap Attribute
+### Gap Attribute
 
 The `gap` attribute allows you to specify a gap size between adjacent voxels.
 It is given in units of the voxel size (at `gap = 0`) so that `gap = 0` creates no gaps and `gap = 1` reduces the voxel size to 0.
@@ -27,7 +27,7 @@ voxels(chunk, gap = 0.33)
 ```
 
 
-#### Color and the internal representation
+### Color and the internal representation
 
 Voxels are represented as an `Array{UInt8, 3}` of voxel ids internally.
 In this representation the voxel id `0x00` is defined as an invisible air block.
@@ -44,7 +44,7 @@ f, a, p = voxels(chunk, color = [:white, :red, :green, :blue, :black, :orange, :
 ```
 
 
-#### Colormaps
+### Colormaps
 
 With non `UInt8` inputs, colormap attributes (colormap, colorrange, highclip, lowclip and colorscale) work as usual, with the exception of `nan_color` which is not applicable:
 
@@ -63,7 +63,7 @@ This means id 1 maps to lowclip, 2..254 to colors of the colormap and 255 to hig
 `colorrange` and `colorscale` are ignored in this case.
 
 
-#### Texture maps
+### Texture maps
 
 For texture mapping we need an image containing multiple textures which are to be mapped to voxels.
 As an example, we will use [Kenney's Voxel Pack](https://www.kenney.nl/assets/voxel-pack).
@@ -150,7 +150,7 @@ In the most general case a uv transform is a `Makie.Mat{2, 3, Float32}` which is
 The `(translation, scale)` syntax we used above can be written as `Makie.Mat{2, 3, Float32}(1/10, 0, 0, 1/9, x, y)`.
 
 
-#### Updating Voxels
+### Updating Voxels
 
 The voxel plot is a bit different from other plot types which affects how you can and should update its data.
 
@@ -183,9 +183,7 @@ Makie.local_update!(p, NaN, 26:38, :, :)
 f
 ```
 
-
-
-#### Picking Voxels
+### Picking Voxels
 
 The `pick` function is able to pick individual voxels in a voxel plot.
 The returned index is a flat index into the array passed to `voxels`, i.e. `plt.arg1[][idx]` (or the alias `p.chunk[][idx]` and the lowered `p.chunk_u8[][idx]`) will return the relevant data.

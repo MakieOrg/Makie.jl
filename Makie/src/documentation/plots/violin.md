@@ -4,12 +4,16 @@
 
 ## Examples
 
+### Basic violin plot
+
 ```@figure
 categories = rand(1:3, 1000)
 values = randn(1000)
 
 violin(categories, values)
 ```
+
+### Different scaling modes
 
 ```@figure
 fig = Figure()
@@ -24,6 +28,8 @@ end
 fig
 ```
 
+### Custom data limits
+
 ```@figure
 categories = rand(1:3, 1000)
 values = map(categories) do x
@@ -32,6 +38,8 @@ end
 
 violin(categories, values, datalimits = extrema)
 ```
+
+### Split violins with dodging
 
 ```@figure
 N = 1000
@@ -45,6 +53,8 @@ end
 
 violin(categories, values, dodge = dodge, side = side, color = color)
 ```
+
+### Split violins with custom colors
 
 ```@figure
 N = 1000
@@ -61,7 +71,7 @@ end
 violin(categories, values, side = side, color = color)
 ```
 
-#### Using statistical weights
+### Using statistical weights
 
 ```@figure
 using Distributions
@@ -80,7 +90,7 @@ violin(fig[1,2], categories, values, weights = w)
 fig
 ```
 
-#### Horizontal axis
+### Horizontal axis
 
 ```@figure
 fig = Figure()
@@ -105,4 +115,3 @@ violin!(ax_horiz, categories, values; orientation=:horizontal)
 
 fig
 ```
-

@@ -1,8 +1,8 @@
 # density
 
-
-
 ## Examples
+
+### Basic density plot
 
 ```@figure
 f = Figure()
@@ -14,6 +14,8 @@ density!(randn(200) .+ 2, alpha = 0.8)
 f
 ```
 
+### Vertical orientation with reduced detail
+
 ```@figure
 f = Figure()
 Axis(f[1, 1])
@@ -22,6 +24,8 @@ density!(randn(200), direction = :y, npoints = 10)
 
 f
 ```
+
+### Custom colors and stroke styling
 
 ```@figure
 f = Figure()
@@ -32,6 +36,8 @@ density!(randn(200), color = (:red, 0.3),
 
 f
 ```
+
+### Ridgeline plot with offsets
 
 ```@figure
 f = Figure()
@@ -47,7 +53,7 @@ end
 f
 ```
 
-#### Gradients
+### Gradients
 
 You can color density plots with gradients by choosing `color = :x` or `:y`, depending on the `direction` attribute.
 
@@ -82,7 +88,7 @@ end
 f
 ```
 
-#### Using statistical weights
+### Using statistical weights
 
 ```@figure
 using Distributions
@@ -99,4 +105,3 @@ density(fig[1,2], x, weights = w)
 
 fig
 ```
-

@@ -1,8 +1,8 @@
 # hist
 
-
-
 ## Examples
+
+### Basic histogram variations
 
 ```@figure backend=GLMakie
 data = randn(1000)
@@ -15,7 +15,7 @@ hist(f[2, 2], data, normalization = :pdf)
 f
 ```
 
-#### Histogram with labels
+### Histogram with labels
 
 You can use all the same arguments as [`barplot`](@ref):
 ```@figure
@@ -26,7 +26,7 @@ hist(data, normalization = :pdf, bar_labels = :values,
      strokewidth = 0.5, strokecolor = (:black, 0.5), color = :values)
 ```
 
-#### Moving histograms
+### Moving histograms
 
 With `scale_to`, and `offset`, one can put multiple histograms into the same plot.
 Note, that offset automatically sets fillto, to move the whole barplot.
@@ -42,7 +42,7 @@ end
 fig
 ```
 
-#### Using statistical weights
+### Using statistical weights
 
 ```@figure
 using Distributions
@@ -59,4 +59,3 @@ hist(fig[1,2], x, weights = w)
 
 fig
 ```
-

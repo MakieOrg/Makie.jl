@@ -111,35 +111,37 @@ Returns a vector of `Markdown.MD` objects, each representing an example.
 """
 function extract_examples(markdown_file_path::String)
     # Parse the markdown file
+    markdown_file_path = normpath(markdown_file_path)
     md = Markdown.parse(read(markdown_file_path, String))
     # Verify expected structure
     if length(md.content) < 2
         error(
-            "Expected markdown file to have at least 2 elements (H1 and H2 headers), got $(length(md.content))",
+            "Expected markdown file to have at least 2 elements (H1 and H2 headers), got $(length(md.content)) in file: $markdown_file_path",
         )
     end
     if !(md.content[1] isa Markdown.Header{1})
-        error("Expected first element to be H1 header, got $(typeof(md.content[1]))")
+        error("Expected first element to be H1 header, got $(typeof(md.content[1])) in file: $markdown_file_path")
     end
     if !(
         md.content[2] isa Markdown.Header{2} &&
         !isempty(md.content[2].text) &&
         md.content[2].text[1] == "Examples"
     )
-        error("Expected second element to be H2 'Examples' header")
+        error("Expected second element to be H2 'Examples' header in file: $markdown_file_path")
     end
     content = md.content[3:end]
     stopidx = findfirst(content) do item
         item isa Markdown.Header{2}
     end
-    examples = content[1:(stopidx - 1)]
+
+    examples = content[1:(isnothing(stopidx) ? end : (stopidx - 1))]
     # Find all H3 headers
     h3_indices = findall(examples) do item
         item isa Markdown.Header{3}
     end
 
     if isempty(h3_indices)
-        error("No H3 example headers found in file")
+        error("No H3 example headers found in file: $markdown_file_path")
     end
 
     # Extract each example
@@ -433,8 +435,7 @@ function generate_plot_docs(output_dir::String; plot_types=nothing)
         PT = Makie.Plot{plfunc}
 
         # Generate full documentation (preserve @figure blocks for Documenter)
-        docs = full_docs(PT; replace_figure=false, use_figure_for_attributes=true)
-
+        docs = full_docs(PT; replace_figure=false)
         # Convert to string and write to file
         open(output_file, "w") do io
             # Write a title

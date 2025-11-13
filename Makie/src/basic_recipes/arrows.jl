@@ -134,6 +134,11 @@ end
 arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
 arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
 
+function full_docs(::Type{<:Plot{arrows}}; replace_figure=true)
+    str = read(joinpath(@__DIR__, "..", "documentation", "plots", "arrows.md"), String)
+    return Markdown.parse(str)
+end
+
 # For the matlab/matplotlib users
 const quiver = arrows
 const quiver! = arrows!

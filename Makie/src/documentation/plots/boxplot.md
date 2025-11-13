@@ -2,12 +2,15 @@
 
 ## Examples
 
+### Basic Example
+
 ```@figure
 categories = rand(1:3, 1000)
 values = randn(1000)
-
 boxplot(categories, values)
 ```
+
+### Dodge
 
 ```@figure
 categories = rand(1:3, 1000)
@@ -34,7 +37,7 @@ dodge = rand(1:2, 1000)
 boxplot(categories, values, dodge = dodge, show_notch = true, color = map(d->d==1 ? :blue : :red, dodge) , outliercolor = rand([:red, :green, :blue, :black, :yellow], 1000))
 ```
 
-#### Using statistical weights
+### Using statistical weights
 
 ```@figure
 using Distributions
@@ -53,7 +56,7 @@ boxplot(fig[1,2], x, y, weights = w)
 fig
 ```
 
-#### Horizontal axis
+### Horizontal axis
 
 ```@figure
 fig = Figure()

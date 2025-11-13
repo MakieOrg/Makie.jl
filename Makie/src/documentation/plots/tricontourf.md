@@ -1,8 +1,9 @@
 # tricontourf
 
 
-
 ## Examples
+
+### Basic filled contours on random points
 
 ```@figure
 using Random
@@ -18,6 +19,8 @@ Colorbar(f[1, 2], tr)
 f
 ```
 
+### Custom colormap
+
 ```@figure
 using Random
 Random.seed!(1234)
@@ -32,7 +35,7 @@ Colorbar(f[1, 2], tr)
 f
 ```
 
-#### Triangulation modes
+### Triangulation modes
 
 Manual triangulations can be passed as a 3xN matrix of integers, where each column of three integers specifies the indices of the corners of one triangle in the vector of points.
 
@@ -61,6 +64,8 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
 
+### Using Triangulation
+
 By default, `tricontourf` performs unconstrained triangulations.
 Greater control over the triangulation, such as allowing for enforced boundaries, can be achieved by using [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangulation.jl) and passing the resulting triangulation as the first argument of `tricontourf`.
 For example, the above annulus can also be plotted as follows:
@@ -77,7 +82,7 @@ x = [cos.(angles); 2 .* cos.(angles .+ pi/n)]
 y = [sin.(angles); 2 .* sin.(angles .+ pi/n)]
 z = (x .- 0.5).^2 + (y .- 0.5).^2 .+ 0.5.*randn.()
 
-inner = [n:-1:1; n] # clockwise inner 
+inner = [n:-1:1; n] # clockwise inner
 outer = [(n+1):(2n); n+1] # counter-clockwise outer
 boundary_nodes = [[outer], [inner]]
 points = [x'; y']
@@ -87,28 +92,29 @@ f, ax, _ = tricontourf(tri, z;
 scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 f
 ```
+### Boundary nodes
 
 Boundary nodes make it possible to support more complicated regions, possibly with holes, than is possible by only providing points themselves.
 
 ```@figure
 using DelaunayTriangulation
 
-## Start by defining the boundaries, and then convert to the appropriate interface 
+## Start by defining the boundaries, and then convert to the appropriate interface
 curve_1 = [
     [(0.0, 0.0), (5.0, 0.0), (10.0, 0.0), (15.0, 0.0), (20.0, 0.0), (25.0, 0.0)],
     [(25.0, 0.0), (25.0, 5.0), (25.0, 10.0), (25.0, 15.0), (25.0, 20.0), (25.0, 25.0)],
     [(25.0, 25.0), (20.0, 25.0), (15.0, 25.0), (10.0, 25.0), (5.0, 25.0), (0.0, 25.0)],
     [(0.0, 25.0), (0.0, 20.0), (0.0, 15.0), (0.0, 10.0), (0.0, 5.0), (0.0, 0.0)]
-] # outer-most boundary: counter-clockwise  
+] # outer-most boundary: counter-clockwise
 curve_2 = [
     [(4.0, 6.0), (4.0, 14.0), (4.0, 20.0), (18.0, 20.0), (20.0, 20.0)],
     [(20.0, 20.0), (20.0, 16.0), (20.0, 12.0), (20.0, 8.0), (20.0, 4.0)],
     [(20.0, 4.0), (16.0, 4.0), (12.0, 4.0), (8.0, 4.0), (4.0, 4.0), (4.0, 6.0)]
-] # inner boundary: clockwise 
+] # inner boundary: clockwise
 curve_3 = [
     [(12.906, 10.912), (16.0, 12.0), (16.16, 14.46), (16.29, 17.06),
     (13.13, 16.86), (8.92, 16.4), (8.8, 10.9), (12.906, 10.912)]
-] # this is inside curve_2, so it's counter-clockwise 
+] # this is inside curve_2, so it's counter-clockwise
 curves = [curve_1, curve_2, curve_3]
 points = [
     (3.0, 23.0), (9.0, 24.0), (9.2, 22.0), (14.8, 22.8), (16.0, 22.0),
@@ -122,7 +128,7 @@ points = [
 boundary_nodes, points = convert_boundary_points_to_indices(curves; existing_points=points)
 edges = Set(((1, 19), (19, 12), (46, 4), (45, 12)))
 
-## Extract the x, y 
+## Extract the x, y
 tri = triangulate(points; boundary_nodes = boundary_nodes, segments = edges)
 z = [(x - 1) * (y + 1) for (x, y) in DelaunayTriangulation.each_point(tri)] # note that each_point preserves the index order
 f, ax, _ = tricontourf(tri, z, levels = 30; axis = (; aspect = 1))
@@ -150,7 +156,7 @@ f, ax, tr = tricontourf(tri, z, colormap = :matter)
 f
 ```
 
-#### Relative mode
+### Relative mode
 
 Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
 Rather than specifying the levels to include manually, you can set the `mode` attribute
@@ -169,4 +175,3 @@ scatter!(x, y, color = z, strokewidth = 1, strokecolor = :black)
 Colorbar(f[1, 2], tr)
 f
 ```
-
