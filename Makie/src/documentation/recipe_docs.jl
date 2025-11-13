@@ -333,9 +333,10 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples=1
     end
     examples_section = Markdown.parse(examples)
     # Combine all sections into a single Markdown document
+    user_docs = extract_before_arguments_section(user_docstring)
     combined = Markdown.MD()
     append!(combined.content, signatures.content)
-    append!(combined.content, user_docstring.content)
+    append!(combined.content, user_docs.content)
     append!(combined.content, arguments_section.content)
     append!(combined.content, attributes_section.content)
     append!(combined.content, examples_section.content)

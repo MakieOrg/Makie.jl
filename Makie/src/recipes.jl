@@ -471,13 +471,6 @@ function extract_docstring(str)
     end
 end
 
-"""
-    extract_arguments_section(doc::Markdown.MD)
-
-Helper function that extracts the "## Arguments" section from a markdown docstring.
-Returns the content after the "## Arguments" header until the next H2 header or end of document.
-Returns an empty Markdown.MD if no "## Arguments" section is found.
-"""
 function extract_arguments_section(doc::Markdown.MD)
     # Somehow the doc markdown is super nested, so we need to flatten it:
     doc_flat = Markdown.parse(string(doc))
@@ -490,6 +483,20 @@ function extract_arguments_section(doc::Markdown.MD)
         return Markdown.MD()
     end
     return Markdown.MD(doc_flat.content[idx+1:end])
+end
+
+function extract_before_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+    @show idx
+    if isnothing(idx)
+        return doc_flat
+    end
+    return Markdown.MD(doc_flat.content[1:idx-1])
 end
 
 function argument_docs end

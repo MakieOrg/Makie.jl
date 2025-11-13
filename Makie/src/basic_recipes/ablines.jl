@@ -1,12 +1,12 @@
 """
-    ablines(intercepts, slopes; attributes...)
-
 Creates a line defined by `f(x) = slope * x + intercept` crossing a whole `Axis`
 at its current limits.
 
 ## Arguments
+
 - `intercepts`: A `Real` or `AbstractVector{<:Real}` containing y intercepts.
 - `slopes`: A `Real` or `AbstractVector{<:Real}` containing slops.
+
 """
 @recipe ABLines (intercept, slope) begin
     documented_attributes(LineSegments)...
