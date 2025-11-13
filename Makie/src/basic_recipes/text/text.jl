@@ -211,6 +211,25 @@ end
 #     return plot.raw_glyph_boundingboxes
 # end
 
+function boundingbox(plot::Text, target_space::Symbol)
+    # TODO: figure out a native way to get text boundingboxes
+    # This is temporary prep work for the future. We should actually consider
+    # plot.space, markerspace, textsize, etc when computing the boundingbox in
+    # the target_space given to the function.
+    # We may also want a cheap version that only considers forward
+    # transformations (i.e. drops textsize etc when markerspace is not part of
+    # the plot.space -> target_space conversion chain)
+    if target_space == plot.markerspace[]
+        # text only contains a plotlist
+        return boundingbox(plot.plots[1], target_space)
+        # return full_boundingbox(plot, target_space)
+    elseif Makie.is_data_space(target_space)
+        return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
+    else
+        error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
+    end
+end
+
 """
     raw_glyph_boundingboxes(plot::Text)
 
