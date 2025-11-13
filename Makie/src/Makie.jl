@@ -71,7 +71,6 @@ using GeometryBasics: width, widths, height, positive_widths, VecTypes, Abstract
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
-import FreeTypeAbstraction: height_insensitive_boundingbox
 using Printf: @sprintf
 using StatsFuns: logit, logistic
 # Imports from Base which we don't want to have to qualify
@@ -206,7 +205,6 @@ include("themes/theme_latexfonts.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
 include("layouting/text_boundingbox.jl")
 

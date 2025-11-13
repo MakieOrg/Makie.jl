@@ -23,6 +23,7 @@ function text_bb(str, font, size)
     )
 end
 
+# TODO: deprecated and only used in text_bb
 function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
     isempty(glyphs) && return Rect3d(Point3d(0), Vec3d(0))
     glyphbbs = gl_bboxes(glyphs, scales, extents)
@@ -47,7 +48,7 @@ function gl_bboxes(glyphs, scales, extents)
     end
 end
 
-# tested but not used?
+# TODO: tested but not used?
 function height_insensitive_boundingbox(ext::GlyphExtent)
     l = ext.ink_bounding_box.origin[1]
     w = ext.ink_bounding_box.widths[1]

@@ -136,49 +136,6 @@ function register_text_boundingboxes!(plot, space = :pixel)
     return plot.attributes.text_boundingboxes
 end
 
-# TODO: this can probably be removed once WGL Makie has been looked at
-function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
-    if isscalar(x)
-        return x
-    elseif isa(x, AbstractVector)
-        N_strings = length(text_blocks)
-        if (N_strings > 0) && (length(x) == last(last(text_blocks)))
-            return x[gi] # use per glyph index
-        elseif length(x) == N_strings
-            return x[bi] # use per text block index
-        else
-            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
-        end
-    else
-        return x
-    end
-end
-
-# TODO: this can probably be removed once WGL Makie has been looked at
-function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
-    _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
-    glyph_idx = 1
-    for block_idx in eachindex(text_blocks)
-        for _ in text_blocks[block_idx]
-            f(_getindex.(args, glyph_idx, block_idx)...)
-            glyph_idx += 1
-        end
-    end
-    return
-end
-
-# TODO: this can probably be removed once WGL Makie has been looked at
-function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
-    isscalar(arg) && return fill(arg, last(last(glyphs)))
-    result = Typ[]
-    per_glyph_attributes(text_blocks, (arg,)) do a
-        push!(result, a)
-    end
-    return result
-end
-
-#####################################
-# New stuff
 
 function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwargs...) where {OT}
     # Careful, text uses :text_positions as the input to the transformation pipeline
@@ -190,26 +147,6 @@ function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwarg
         apply_model = true, apply_clip_planes = true
     )
 end
-
-################################################################################
-### MARK: Bounding Boxes
-################################################################################
-
-# Notes:
-# - metrics_bb(): bounding box tightly around glyphs, not used outside of gl backends
-# - height_insensitive_boundingbox_with_advance(): bounding box of glyphs as part
-#   of a string layout at unit scale
-# - rotation is already applied to glyph_origins, so applying origins without
-#   rotation doesn't make sense / is wrong
-# - offset always applies in markerspace w/o rotation. Excluding it when positions
-#   are included makes little sense
-
-# function register_raw_glyph_boundingboxes!(plot)
-#     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
-#         map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
-#     end
-#     return plot.raw_glyph_boundingboxes
-# end
 
 function boundingbox(plot::Text, target_space::Symbol)
     # TODO: figure out a native way to get text boundingboxes
@@ -230,6 +167,26 @@ function boundingbox(plot::Text, target_space::Symbol)
     end
 end
 
+################################################################################
+### MARK: Old Bounding Boxes
+################################################################################
+
+# Notes:
+# - metrics_bb(): bounding box tightly around glyphs, not used outside of gl backends
+# - height_insensitive_boundingbox_with_advance(): bounding box of glyphs as part
+#   of a string layout at unit scale
+# - rotation is already applied to glyph_origins, so applying origins without
+#   rotation doesn't make sense / is wrong
+# - offset always applies in markerspace w/o rotation. Excluding it when positions
+#   are included makes little sense
+
+function register_raw_glyph_boundingboxes_old!(plot)
+    if !haskey(plot.attributes, :raw_glyph_boundingboxes)
+        map!(gl_bboxes, plot.attributes, [:glyphindices, :text_scales, :glyph_extents], :raw_glyph_boundingboxes)
+    end
+    return plot.raw_glyph_boundingboxes
+end
+
 """
     raw_glyph_boundingboxes(plot::Text)
 
@@ -237,13 +194,13 @@ Returns the raw glyph bounding boxes of the text plot. These only include scalin
 from fontsize. String layouting and application of rotation, offset and position
 attributes is not included. Lines from LaTeXStrings are not included.
 """
-raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes!(plot)[]::Vector{Rect2d}
-raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_glyph_boundingboxes!(plot))
+raw_glyph_boundingboxes(plot) = register_raw_glyph_boundingboxes_old!(plot)[]::Vector{Rect2d}
+raw_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_glyph_boundingboxes_old!(plot))
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :fast_glyph_boundingboxes)
-        register_raw_glyph_boundingboxes!(plot)
+        register_raw_glyph_boundingboxes_old!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
@@ -273,7 +230,7 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 # target: Menu? charbbs() replacement with more safety
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
-        register_raw_glyph_boundingboxes!(plot)
+        register_raw_glyph_boundingboxes_old!(plot)
         register_markerspace_positions!(plot)
         map!(
             plot.attributes,
@@ -306,7 +263,7 @@ glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_b
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :fast_string_boundingboxes)
-        register_raw_glyph_boundingboxes!(plot)
+        register_raw_glyph_boundingboxes_old!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
@@ -385,6 +342,7 @@ string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_string
 
 # target: data_limits()
 function register_data_limits!(plot)
+    b
     if !haskey(plot.attributes, :data_limits)
         register_string_boundingboxes!(plot)
         map!(
@@ -424,4 +382,46 @@ function get_yshift(lb, ub, align; default = 0.5f0)
             align === :top ? 1.0f0 : default
     end
     return lb * (1 - align) + ub * align |> Float32
+end
+
+# MARK: WGL Makie dependencies?
+# TODO: this can probably be removed once WGL Makie has been looked at
+function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
+    if isscalar(x)
+        return x
+    elseif isa(x, AbstractVector)
+        N_strings = length(text_blocks)
+        if (N_strings > 0) && (length(x) == last(last(text_blocks)))
+            return x[gi] # use per glyph index
+        elseif length(x) == N_strings
+            return x[bi] # use per text block index
+        else
+            error("Invalid length of attribute $(typeof(x)). Length ($(length(x))) != $(length(glyphs)) or $(length(text_blocks))")
+        end
+    else
+        return x
+    end
+end
+
+# TODO: this can probably be removed once WGL Makie has been looked at
+function per_glyph_attributes(f, text_blocks::Vector{UnitRange{Int}}, args::Tuple)
+    _getindex(x, gi, bi) = per_glyph_getindex(x, text_blocks, gi, bi)
+    glyph_idx = 1
+    for block_idx in eachindex(text_blocks)
+        for _ in text_blocks[block_idx]
+            f(_getindex.(args, glyph_idx, block_idx)...)
+            glyph_idx += 1
+        end
+    end
+    return
+end
+
+# TODO: this can probably be removed once WGL Makie has been looked at
+function map_per_glyph(text_blocks::Vector{UnitRange{Int}}, Typ, arg)
+    isscalar(arg) && return fill(arg, last(last(glyphs)))
+    result = Typ[]
+    per_glyph_attributes(text_blocks, (arg,)) do a
+        push!(result, a)
+    end
+    return result
 end
