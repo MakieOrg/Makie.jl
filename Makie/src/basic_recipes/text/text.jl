@@ -22,15 +22,18 @@ function plot!(text::Text)
             given_layouter = sv_getindex(layouters, i)
             resolve_string_layouter(s, given_layouter)
         end
-        (unwrapped_strings, resolved_layouters)
+        # type inference can lead to this being Vector{String} or similar. Changing string type will then break.
+        (Ref{Any}(unwrapped_strings), Ref{Any}(resolved_layouters))
     end
 
     # TODO: figure out per character font when there are multiple strings?
     map!(attr, [:unwrapped_text, :fonts, :font], :selected_font) do strings, fonts, font
-        map(enumerate(strings)) do (i, string)
-            scalar_font = sv_getindex(font, i)
-            to_font(string, fonts, scalar_font)
-        end
+        Ref{Any}(
+            map(enumerate(strings)) do (i, string)
+                scalar_font = sv_getindex(font, i)
+                to_font(string, fonts, scalar_font)
+            end
+        )
     end
 
     # need to have transformed positions for every plot that does not do this by itself?
