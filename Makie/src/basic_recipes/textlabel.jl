@@ -9,7 +9,7 @@ Plots the given text(s) with a background(s) at the given position(s).
     # text-like args interface
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
-    
+
     # TODO: does not include color mapping for text, backgrounds and background strokes
 
     # Poly background
@@ -147,7 +147,7 @@ end
 
 function deprecated_attributes(::Type{<:TextLabel})
     return (
-        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true),
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error = true),
     )
 end
 
@@ -230,6 +230,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
     # stroke to hide the pixelated border.
 
     tp = text!(
+        # TODO: check if we need to not set the pixel_positions here?
         plot, plot.pixel_positions, text = plot.text,
         color = plot.text_color,
         strokecolor = plot.text_strokecolor,
@@ -263,12 +264,12 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         transformation = :nothing, # already processed in pos calculation
     )
 
-    register_fast_string_boundingboxes!(tp)
-    add_input!(plot.attributes, :fast_string_boundingboxes, tp.fast_string_boundingboxes)
+    register_text_boundingboxes!(tp)
+    add_input!(plot.attributes, :text_boundingboxes, tp.text_boundingboxes)
 
     map!(
         plot,
-        [:shape_limits, :padding, :keep_aspect, :pixel_positions, :fast_string_boundingboxes, :text_strokewidth, :text_glowwidth],
+        [:shape_limits, :padding, :keep_aspect, :pixel_positions, :text_boundingboxes, :text_strokewidth, :text_glowwidth],
         :translation_scale_z
     ) do limits, padding, keep_aspect, positions, bbs, sw, gw
         # stroke & glowwidth are difficult because they are not in markerspace but always pixel space...
