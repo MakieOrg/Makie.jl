@@ -15,18 +15,23 @@ This object is typically constructed by `pick_element(...)`
 
 ## Related functions:
 - `getproperty(element, name)` or `element.name` will return an attribute value
-of the encapsulated plot relevant to the picked element
+    of the encapsulated plot relevant to the picked element
 - `get_plot(element)` will return the encapsulated plot
 - `child(element)` will construct a new `PlotElement` using the child plot from
-which the pick originated. Note that the accessor is not recomputed and may not
-be compatible with the child plot.
+    which the pick originated. Note that the accessor is not recomputed and may
+    not be compatible with the child plot.
 - `accessor(element)` returns the `<:AbstractElementAccessor` of the element,
-which represents the indexing or interpolation information necessary to identify
-the picked element.
+    which represents the indexing or interpolation information necessary to
+    identify the picked element.
 - `element_getindex(data, element)` will apply the accessor to the given
-(plot external) data
+    (plot external) data
 - `dimensional_element_getindex(data, element, dim)` will apply a specific
-dimension of the accessor to the data
+    dimension of the accessor to the data
+- `get_post_transform(element, names...)` applies the transform function to the
+    named elements before fetching them.
+- `get_pre_transform(element, names...)` transforms the output from
+    `get_post_transform(element, names...)` back. This is needed to get the
+    correct interpolation when a non-linear transform function is used.
 """
 abstract type PlotElement{PlotType, AccessorType} end
 

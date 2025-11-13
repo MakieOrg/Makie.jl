@@ -183,16 +183,23 @@ end
 
 ### `get_tooltip_position(...)`
 
-After generating a `PlotElement` the tooltip construction continues by getting the position where the tooltip should be anchored.
+After generating a `PlotElement` the tooltip construction continues by getting the transformed position where the tooltip should be anchored.
 This position is produced by `get_tooltip_position(element::PlotElement)`.
 Like with the `PlotElement` construction this method falls back onto child plots.
-For this the `PlotElement` and its accessor are not regenerated, so a new method will be necessary if the accessor is incompatible with child plots.
+`get_accessor()` does not run again in this case.
+So if the original accessor is incompatible with the child plot, a dedicated method needs to be implemented.
+
+To get the transformed position `Makie.get_post_transform(element, names...)` can be used.
+It will add a computation to the plot which applies the transform function to each node referred to by name and then use the accessor to get the relevant value.
+The order of operations here is important for interpolation accessors.
+The interpolation must apply after the transform function to get the correct value.
 
 Let's consider `errorbars` again.
 An `IndexedAccessor` works with both child plots, but the fetched positions are incorrect due to the doubling of points.
 Thus we need to implement a new method to grab the correct ones.
 For `errorbars` specifically, `val_low_high` contains four values, the x and y position, an error downwards and an error upwards.
 If we want to anchor tooltips at the origin of the errorbar, we can just use the (x, y) position from there.
+And since the order of indexing and `transform_func` doesn't matter, we can apply it afterwards.
 
 ```julia
 function get_tooltip_position(element::PlotElement{<:Errorbars})
@@ -200,9 +207,9 @@ function get_tooltip_position(element::PlotElement{<:Errorbars})
 	# apply the accessor to the respective attribute of the parent plot.
 	# So `element.attribute` is equivalent to:
 	#	get_plot(element).attribute[][element.index]
-	# (if the element is iterable)
 	x, y, low, high = element.val_low_high
-	return Point(x, y)
+	# element.transform_func is not iterable so no index applies
+	return apply_transform(element.transform_func, Point(x, y))
 end
 ```
 

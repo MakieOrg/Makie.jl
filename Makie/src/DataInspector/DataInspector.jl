@@ -128,7 +128,8 @@ a tooltip can be extended. These include:
 
 - `get_accessor(plot, idx, plot_stack)` constructs a accessor which abstracts
     the picked element of a higher level plot. This is used to build the `PlotElement`.
-- `get_tooltip_position(element)` returns the position of a `PlotElement`.
+- `get_tooltip_position(element)` returns the transformed position of a `PlotElement`.
+    (After applying the plots transform function.)
 - `get_tooltip_label([formatter,] element, position)` constructs the displayed
     string of the tooltip. Can also return data which will be converted to a string
     by the formatter.
