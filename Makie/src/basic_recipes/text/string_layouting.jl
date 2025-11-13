@@ -2,9 +2,9 @@ struct DefaultStringLayouter end
 struct RichTextStringLayouter end
 struct LaTeXStringLayouter end
 
-struct LayoutedString
-    string
-    layouter
+struct LayoutedString{S, L}
+    string::S
+    layouter::L
 end
 
 unwrap_string(s::LayoutedString) = s.string
