@@ -132,6 +132,7 @@ function register_text_boundingboxes!(plot, space = :pixel)
     if !haskey(plot.attributes, :text_boundingboxes)
         map!(plot.attributes, [:plotspecs, :blocks], :text_boundingboxes) do specs, blocks
             map(blocks) do block
+                # TODO: This depends on some other state that I do not know how to wait on...
                 mapreduce(p -> boundingbox(p, space), update_boundingbox, plot.plots[1].plots[block], init = Rect3d())
             end
         end
@@ -160,8 +161,12 @@ function boundingbox(plot::Text, target_space::Symbol)
     # transformations (i.e. drops textsize etc when markerspace is not part of
     # the plot.space -> target_space conversion chain)
     if target_space == plot.markerspace[]
-        # text only contains a plotlist
-        return boundingbox(plot.plots[1], target_space)
+        # text only contains a plotlist, need to check if it is empty
+        if length(plot.plots[1].plots) == 0
+            return Rect3d()
+        else
+            return boundingbox(plot.plots[1], target_space)
+        end
         # return full_boundingbox(plot, target_space)
     elseif Makie.is_data_space(target_space)
         return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
