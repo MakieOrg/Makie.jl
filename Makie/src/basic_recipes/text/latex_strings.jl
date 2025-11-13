@@ -8,17 +8,17 @@ function layouted_string_plotspecs(inputs, ::LaTeXStringLayouter, id)
     glyph_inputs = (;
         (
             i => sv_getindex(inputs[i], id) for i in [
-                :unwrapped_text,
-                :selected_font,
-                :fontsize,
-                :align,
-                :rotation,
-                :color,
-                :strokecolor,
-                :strokewidth,
-                :word_wrap_width,
-            ]
-        )...
+                    :unwrapped_text,
+                    :selected_font,
+                    :fontsize,
+                    :align,
+                    :rotation,
+                    :color,
+                    :strokecolor,
+                    :strokewidth,
+                    :word_wrap_width,
+                ]
+        )...,
     )
 
     glyphinfos, line_data = glyphinfos_and_lines(glyph_inputs...)
@@ -35,22 +35,22 @@ function layouted_string_plotspecs(inputs, ::LaTeXStringLayouter, id)
     end
 
     return [
-        PlotSpec(:Glyphs, glyphinfos; position=position, offset=offset, markerspace=inputs.markerspace),
+        PlotSpec(:Glyphs, glyphinfos; position = position, offset = offset, markerspace = inputs.markerspace),
         # TODO: this should be in :pixel space, however, when getting the boundingbox, the values can be (when plotting text!)
         # treated as if in data space, causing very large plotareas.
         PlotSpec(
             :LineSegments,
             linesegments_shifted;
-            linewidth=line_data.linewidths,
-            color=line_data.linecolors,
-            space=inputs.markerspace
+            linewidth = line_data.linewidths,
+            color = line_data.linecolors,
+            space = inputs.markerspace
         ),
     ]
 end
 
 function glyphinfos_and_lines(
-    string, font, fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width
-)
+        string, font, fontsize, align, rotation, color, strokecolor, strokewidth, word_wrap_width
+    )
     old_texfont = get_texfont_family()
     set_texfont_family!(font)
 
@@ -107,13 +107,13 @@ function glyphinfos_and_lines(
     end
 
     bb = isempty(bboxes) ? BBox(0, 0, 0, 0) : begin
-        mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
-            Rect2f(Rect3f(b) + pos)
+            mapreduce(union, zip(bboxes, basepositions)) do (b, pos)
+                Rect2f(Rect3f(b) + pos)
         end
-    end
+        end
 
     xshift = get_xshift(minimum(bb)[1], maximum(bb)[1], halign)
-    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default=0.0f0)
+    yshift = get_yshift(minimum(bb)[2], maximum(bb)[2], valign; default = 0.0f0)
 
     shift = Vec3f(xshift, yshift, 0)
     positions = basepositions .- Ref(shift)
@@ -121,8 +121,8 @@ function glyphinfos_and_lines(
 
     glyph_infos =
         map(glyphindices, fonts, positions, extents, scales_2d) do glyphindex, font, position, extent, scale
-            GlyphInfo(glyphindex, font, position, extent, scale, rotation, color, strokecolor, strokewidth)
-        end
+        GlyphInfo(glyphindex, font, position, extent, scale, rotation, color, strokecolor, strokewidth)
+    end
     set_texfont_family!(old_texfont)
 
     tex_offset = Point2f(xshift, yshift)
@@ -148,7 +148,7 @@ end
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 function to_font(string::LaTeXString, _, font)
-    try
+    return try
         FontFamily(font)
     catch
         get_texfont_family()

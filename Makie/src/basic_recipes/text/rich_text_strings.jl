@@ -1,9 +1,9 @@
 struct RichText
     type::Symbol
-    children::Vector{Union{RichText,String}}
-    attributes::Dict{Symbol,Any}
+    children::Vector{Union{RichText, String}}
+    attributes::Dict{Symbol, Any}
     function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText,String}[children...]
+        cs = Union{RichText, String}[children...]
         return new(type, cs, Dict(kwargs))
     end
 end
@@ -67,17 +67,17 @@ function layouted_string_plotspecs(inputs, ::RichTextStringLayouter, id)
     glyph_inputs = (;
         (
             i => sv_getindex(inputs[i], id) for i in [
-                :unwrapped_text,
-                :selected_font,
-                :fonts,
-                :fontsize,
-                :align,
-                :rotation,
-                :justification,
-                :lineheight,
-                :color,
-            ]
-        )...
+                    :unwrapped_text,
+                    :selected_font,
+                    :fonts,
+                    :fontsize,
+                    :align,
+                    :rotation,
+                    :justification,
+                    :lineheight,
+                    :color,
+                ]
+        )...,
     )
 
     glyphinfos = layout_rich_text(glyph_inputs...)
@@ -85,7 +85,7 @@ function layouted_string_plotspecs(inputs, ::RichTextStringLayouter, id)
     position = to_3d_offset(sv_getindex(inputs.positions, id))
     offset = sv_getindex(inputs.offset, id)
 
-    return [PlotSpec(:Glyphs, glyphinfos; position=position, offset=offset, markerspace=inputs.markerspace)]
+    return [PlotSpec(:Glyphs, glyphinfos; position = position, offset = offset, markerspace = inputs.markerspace)]
 end
 
 struct GlyphState
@@ -107,7 +107,7 @@ function layout_rich_text(rich_text, font, fonts, fontsize, align, rotation, jus
     apply_alignment_and_justification!(lines, justification, align)
 
     return map(reduce(vcat, lines)) do glyphinfo
-        GlyphInfo(glyphinfo; origin=rotation * glyphinfo.origin, rotation=rotation * glyphinfo.rotation)
+        GlyphInfo(glyphinfo; origin = rotation * glyphinfo.origin, rotation = rotation * glyphinfo.rotation)
     end
 end
 
@@ -256,19 +256,19 @@ end
 function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return nothing
     xmax1, xmax2 = map((line1, line2)) do line
-        maximum(line; init=0.0f0) do ginfo
+        maximum(line; init = 0.0f0) do ginfo
             # TODO: typo?
             GlyphInfo
             ginfo.origin[1] +
-            ginfo.size[1] *
-            (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
+                ginfo.size[1] *
+                (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
         end
     end
     line_to_shift = xmax1 > xmax2 ? line2 : line1
     for j in eachindex(line_to_shift)
         l = line_to_shift[j]
         o = l.origin
-        l = GlyphInfo(l; origin=o .+ Point3f(abs(xmax2 - xmax1), 0, 0))
+        l = GlyphInfo(l; origin = o .+ Point3f(abs(xmax2 - xmax1), 0, 0))
         line_to_shift[j] = l
     end
     return nothing
@@ -288,7 +288,7 @@ function apply_lineheight!(lines, lineheight)
             glyph = line[j]
             ox, oy, oz = glyph.origin
             # TODO: use lineheight value
-            glyph = GlyphInfo(glyph; origin=Point3f(ox, oy - (i - 1) * 20, oz))
+            glyph = GlyphInfo(glyph; origin = Point3f(ox, oy - (i - 1) * 20, oz))
             line[j] = glyph
         end
     end
@@ -304,8 +304,8 @@ function apply_alignment_and_justification!(lines, justification, align)
     top_y = max_y_ascender(lines[1])
     bottom_y = min_y_descender(lines[end])
 
-    align_offset_x = get_xshift(0.0f0, max_x, align[1]; default=0.0f0)
-    align_offset_y = get_yshift(bottom_y, top_y, align[2]; default=0.0f0)
+    align_offset_x = get_xshift(0.0f0, max_x, align[1]; default = 0.0f0)
+    align_offset_y = get_yshift(bottom_y, top_y, align[2]; default = 0.0f0)
 
     float_justification = to_float_justification(justification, align)
 
@@ -315,7 +315,7 @@ function apply_alignment_and_justification!(lines, justification, align)
             glyph = line[j]
             o = glyph.origin
             glyph = GlyphInfo(
-                glyph; origin=o .- Point3f(align_offset_x - justification_offset, align_offset_y, 0.0)
+                glyph; origin = o .- Point3f(align_offset_x - justification_offset, align_offset_y, 0.0)
             )
             line[j] = glyph
         end
@@ -324,7 +324,7 @@ function apply_alignment_and_justification!(lines, justification, align)
 end
 
 function max_x_advance(glyph_infos::Vector{GlyphInfo})::Float32
-    return maximum(glyph_infos; init=0.0f0) do ginfo
+    return maximum(glyph_infos; init = 0.0f0) do ginfo
         ginfo.origin[1] + ginfo.extent.hadvance * ginfo.size[1]
     end
 end
@@ -357,6 +357,6 @@ function to_float_justification(ju, al)::Float32
     return if ju === automatic
         get_xshift(0.0f0, 1.0f0, halign)
     else
-        get_xshift(0.0f0, 1.0f0, ju; default=ju) # errors if wrong symbol is used
+        get_xshift(0.0f0, 1.0f0, ju; default = ju) # errors if wrong symbol is used
     end
 end

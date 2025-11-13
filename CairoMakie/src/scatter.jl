@@ -37,11 +37,11 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Glyphs)
         scene.compute,
         attr,
         Point3d;
-        input_name=:positions_transformed_f32c,
-        output_name=:positions_in_markerspace,
-        input_space=:space,
-        output_space=:markerspace,
-        apply_clip_planes=false,
+        input_name = :positions_transformed_f32c,
+        output_name = :positions_in_markerspace,
+        input_space = :space,
+        output_space = :markerspace,
+        apply_clip_planes = false,
     )
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     size_model!(attr)
@@ -75,10 +75,10 @@ function draw_glyphs(ctx, attr::NamedTuple)
     size_model = attr.size_model
     valid_indices = attr.unclipped_indices
     cam = (
-        resolution=attr.resolution,
-        projectionview=attr.projectionview,
-        eye_to_clip=attr.eye_to_clip,
-        view=attr.cam_view,
+        resolution = attr.resolution,
+        projectionview = attr.projectionview,
+        eye_to_clip = attr.eye_to_clip,
+        view = attr.cam_view,
     )
 
     Cairo.save(ctx)

@@ -7,40 +7,40 @@ function layouted_string_plotspecs(inputs, ::DefaultStringLayouter, id)
     glyph_inputs = (;
         (
             i => sv_getindex(inputs[i], id) for i in [
-                :unwrapped_text,
-                :selected_font,
-                :fontsize,
-                :align,
-                :lineheight,
-                :justification,
-                :word_wrap_width,
-                :rotation,
-                :computed_color,
-                :strokecolor,
-                :strokewidth,
-            ]
-        )...
+                    :unwrapped_text,
+                    :selected_font,
+                    :fontsize,
+                    :align,
+                    :lineheight,
+                    :justification,
+                    :word_wrap_width,
+                    :rotation,
+                    :computed_color,
+                    :strokecolor,
+                    :strokewidth,
+                ]
+        )...,
     )
     position = to_3d_offset(sv_getindex(inputs.positions, id))
     offset = sv_getindex(inputs.offset, id)
 
     glyphinfos = to_glyphinfos(glyph_inputs...)
-    return [PlotSpec(:Glyphs, glyphinfos; position=position, offset=offset, markerspace=inputs.markerspace)]
+    return [PlotSpec(:Glyphs, glyphinfos; position = position, offset = offset, markerspace = inputs.markerspace)]
 end
 
 function to_glyphinfos(
-    string,
-    font,
-    fontsize,
-    align,
-    lineheight,
-    justification,
-    word_wrap_width,
-    rotation,
-    color,
-    strokecolor,
-    strokewidth,
-)
+        string,
+        font,
+        fontsize,
+        align,
+        lineheight,
+        justification,
+        word_wrap_width,
+        rotation,
+        color,
+        strokecolor,
+        strokewidth,
+    )
     isempty(string) && return []
 
     halign, valign = align
@@ -49,11 +49,11 @@ function to_glyphinfos(
     charinfos = broadcast((c for c in string), font, fontsize) do char, _font, scale
         font = find_font_for_char(char, _font)
         (
-            char=char,
-            font=font,
-            scale=scale,
-            lineheight=Float32(font.height / font.units_per_EM * lineheight * last(scale)),
-            extent=GlyphExtent(font, char),
+            char = char,
+            font = font,
+            scale = scale,
+            lineheight = Float32(font.height / font.units_per_EM * lineheight * last(scale)),
+            extent = GlyphExtent(font, char),
         )
     end
     # split the character info vector into lines after every \n
@@ -219,4 +219,3 @@ function per_character(data, characters)
         return data
     end
 end
-

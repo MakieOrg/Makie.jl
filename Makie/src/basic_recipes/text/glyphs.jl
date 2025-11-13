@@ -12,17 +12,17 @@ end
 
 # Copy constructor, to overwrite a field
 function GlyphInfo(
-    gi::GlyphInfo;
-    glyph=gi.glyph,
-    font=gi.font,
-    origin=gi.origin,
-    extent=gi.extent,
-    size=gi.size,
-    rotation=gi.rotation,
-    color=gi.color,
-    strokecolor=gi.strokecolor,
-    strokewidth=gi.strokewidth,
-)
+        gi::GlyphInfo;
+        glyph = gi.glyph,
+        font = gi.font,
+        origin = gi.origin,
+        extent = gi.extent,
+        size = gi.size,
+        rotation = gi.rotation,
+        color = gi.color,
+        strokecolor = gi.strokecolor,
+        strokewidth = gi.strokewidth,
+    )
     return GlyphInfo(glyph, font, origin, extent, size, rotation, color, strokecolor, strokewidth)
 end
 
@@ -64,7 +64,7 @@ function calculated_attributes!(::Type{Glyphs}, plot::Plot)
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
     return register_position_transforms!(
-        attr; input_name=:text_positions, transformed_name=:positions_transformed
+        attr; input_name = :text_positions, transformed_name = :positions_transformed
     )
 end
 
@@ -86,7 +86,7 @@ function boundingbox(plot::Glyphs, target_space::Symbol)
     return bbox
 end
 
-function glyphs_boundingbox(plot, target_space=plot.attrubutes.space[])
+function glyphs_boundingbox(plot, target_space = plot.attrubutes.space[])
     return register_glyphs_boundingbox!(plot, target_space)[]::Rect3d
 end
 
@@ -149,18 +149,18 @@ function register_raw_glyph_boundingboxes!(attr)
     return attr.raw_glyph_boundingboxes
 end
 
-function register_markerspace_positions!(plot::Glyphs, ::Type{OT}=Point3f; kwargs...) where {OT}
+function register_markerspace_positions!(plot::Glyphs, ::Type{OT} = Point3f; kwargs...) where {OT}
     # Careful, text uses :text_positions as the input to the transformation pipeline
     # We can also skip that part:
     return register_positions_projected!(
         plot,
         OT;
         kwargs...,
-        input_name=:positions_transformed_f32c,
-        output_name=:markerspace_positions,
-        input_space=:space,
-        output_space=:markerspace,
-        apply_model=true,
-        apply_clip_planes=true,
+        input_name = :positions_transformed_f32c,
+        output_name = :markerspace_positions,
+        input_space = :space,
+        output_space = :markerspace,
+        apply_model = true,
+        apply_clip_planes = true,
     )
 end

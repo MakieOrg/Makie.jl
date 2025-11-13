@@ -27,14 +27,14 @@ function plot!(text::Text)
 
     # TODO: figure out per character font when there are multiple strings?
     map!(attr, [:unwrapped_text, :fonts, :font], :selected_font) do strings, fonts, font
-        map(enumerate(strings)) do (i,string)
+        map(enumerate(strings)) do (i, string)
             scalar_font = sv_getindex(font, i)
             to_font(string, fonts, scalar_font)
         end
     end
 
     # need to have transformed positions for every plot that does not do this by itself?
-    register_position_transforms!(attr; input_name=:positions, transformed_name=:positions_transformed)
+    register_position_transforms!(attr; input_name = :positions, transformed_name = :positions_transformed)
     register_model_clip_planes!(attr)
     register_markerspace_positions!(text)
 
@@ -53,7 +53,7 @@ function plot!(text::Text)
     # TODO: somehow, markerspace is not inherited here?
     # TODO: the main attrs that are inherited seem to overwrite all the attrs that the subspecs have...
     # plotlist!(text, attr, attr.plotspecs; markerspace=attr.markerspace)
-    plotlist!(text, attr, attr.plotspecs;)
+    plotlist!(text, attr, attr.plotspecs)
 
     # TODO: register some bounding box shenanigans that labels and stuff care about?
     return text
@@ -88,7 +88,7 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     # Set up Inputs
     inputs = _register_input_arguments!(Text, attr, input_args)
 
-    
+
     # User arguments can be PointBased(), String-like or mixed, with the
     # position and text attributes supplementing data not in arguments.
     # For conversion we want to move position data into the argument pipeline
@@ -115,21 +115,21 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
             return (args, Ref{Any}(to_string_arr(a_text)))
         end
     end
-    
+
     # Continue with _register_expand_arguments with adjusted input names
     _register_expand_arguments!(Text, attr, [:_positions], true)
-    
+
     # And the rest of it
     _register_argument_conversions!(Text, attr, user_kw)
 
     return
 end
 
-function register_text_boundingboxes!(plot, space=:pixel)
+function register_text_boundingboxes!(plot, space = :pixel)
     if !haskey(plot.attributes, :text_boundingboxes)
         map!(plot.attributes, [:plotspecs, :blocks], :text_boundingboxes) do specs, blocks
             map(blocks) do block
-                mapreduce(p->boundingbox(p, space), update_boundingbox, plot.plots[1].plots[block], init = Rect3d())
+                mapreduce(p -> boundingbox(p, space), update_boundingbox, plot.plots[1].plots[block], init = Rect3d())
             end
         end
     end

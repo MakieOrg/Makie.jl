@@ -81,7 +81,7 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     return Rect2d((l, b), (r - l, h - b))
 end
 
-function rotate_bbox(bb::Rect3{T}, rot) where {T<:Real}
+function rotate_bbox(bb::Rect3{T}, rot) where {T <: Real}
     points = decompose(Point3{T}, bb)
     return Rect3{T}(Ref(rot) .* points)
 end

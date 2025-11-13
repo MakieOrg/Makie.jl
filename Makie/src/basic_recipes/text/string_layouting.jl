@@ -36,7 +36,7 @@ and returns a layouter that is appropriate for the given string.
 return the default layouter for that type.)
 """
 function resolve_string_layouter(string, given_layouter)
-    if is_layouter_compatible(string, given_layouter)
+    return if is_layouter_compatible(string, given_layouter)
         given_layouter
     else
         default_layouter(string)
