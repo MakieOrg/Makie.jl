@@ -361,6 +361,7 @@ function register_data_limits!(plot)
     return plot.data_limits
 end
 
+# TODO: is this ever called?
 data_limits(plot::Text) = register_data_limits!(plot)[]::Rect3d
 data_limits_obs(plot::Text) = ComputePipeline.get_observable!(register_data_limits!(plot))
 
