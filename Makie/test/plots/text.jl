@@ -122,7 +122,8 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = changed
-                p.glyphindices[]
+                gp = first(filter(i -> i isa Glyphs, p.plots[1].plots))
+                gp.glyphinfos[]
             end
             true
         end
@@ -131,7 +132,8 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = [changed]
-                p.glyphindices[]
+                gp = first(filter(i -> i isa Glyphs, p.plots[1].plots))
+                gp.glyphinfos[]
             end
             true
         end
