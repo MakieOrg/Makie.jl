@@ -475,9 +475,18 @@ function element_getindex(x, element::ViolinAccessor)
             high = sv_getindex(x, element.index1)
             return lerp(low, high, element.interpolation)
         elseif length(x) == element.N_vertices - 2
-            # e.g. kde.density whose edge values are duplicated in vertices
+            # e.g. kde.density whose edge values are not duplicated in vertices
             low = sv_getindex(x, clamp(element.index0 - 1, 1, length(x)))
             high = sv_getindex(x, clamp(element.index1 - 1, 1, length(x)))
+            return lerp(low, high, element.interpolation)
+        elseif 2 * length(x) == element.N_vertices - 2
+            # e.g. kde.density whose edge values are duplicated in vertices
+            function restrict(index, N)
+                Nhalf = div(N, 2)
+                return clamp(ifelse(index > Nhalf, N + 1 - index, index) - 1, 1, Nhalf - 1)
+            end
+            low = sv_getindex(x, restrict(element.index0, element.N_vertices))
+            high = sv_getindex(x, restrict(element.index1, element.N_vertices))
             return lerp(low, high, element.interpolation)
         else
             return x
