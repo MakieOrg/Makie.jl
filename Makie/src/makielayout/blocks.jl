@@ -55,13 +55,13 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     push!(fields_vector, constructor)
 
-    docs_placeholder = gensym()
+    docs_placeholder = Symbol("#__", name, "_docs_placeholder")
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
         # recipe, so that we can offer the convenience of automatic augmented docstrings
         # but combine them with the simplicity of using a normal docstring.
-        # The trick is to mark some variable (in this case a gensymmed placeholder) with the
+        # The trick is to mark some variable with the
         # Core.@__doc__ macro, which causes this variable to get assigned the docstring on top
         # of the @recipe invocation. From there, it can then be retrieved, modified, and later
         # attached to plotting function by using @doc again. We also delete the binding to the
