@@ -642,9 +642,13 @@ function deprecated_attributes(::Type{<:MeshScatter})
 end
 
 @recipe Glyphs (glyphinfos,) begin
-    position = Point2f(0,0)
-    offset = Point2f(0,0)
+    "The position of the group of glyphs in `space` units."
+    position = Point2f(0, 0)
+    "The offset of the group of glyphs from the given position in `markerspace` units."
+    offset = Point2f(0, 0)
+    "Sets the space in which the properties of the `glyphinfos` act. See `Makie.spaces()` for possible inputs."
     markerspace = :pixel
+    "Controls whether the model matrix (without translation) applies to the glyphs itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
     transform_marker = false
     mixin_generic_plot_attributes()...
     fxaa = false
@@ -703,7 +707,7 @@ end
 function deprecated_attributes(::Type{<:Text})
     return (
         (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true),
-        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error=true)
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error = true),
     )
 end
 
