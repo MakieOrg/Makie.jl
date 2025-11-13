@@ -1,10 +1,10 @@
 struct GlyphInfo
-    glyph::Int
+    glyph::UInt64
     font::FreeTypeAbstraction.FTFont
     origin::Point3f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32
