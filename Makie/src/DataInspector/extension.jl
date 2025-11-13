@@ -36,6 +36,7 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:BarPlot}, p
     poly_element = child(element)
     rect = poly_element.arg1
     ps = to_ndim.(Point3d, convert_arguments(Lines, rect)[1], 0)
+    ps = apply_transform(element.transform_func, ps)
 
     indicator = get_indicator_plot(di, Lines)
     update!(indicator, arg1 = ps, visible = true)

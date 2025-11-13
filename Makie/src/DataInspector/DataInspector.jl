@@ -709,7 +709,9 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Mesh}, pos)
     # get and update indicator
     bbox = data_limits(get_plot(element))
     indicator = get_indicator_plot(di, LineSegments)
-    update!(indicator, arg1 = convert_arguments(LineSegments, bbox)[1], visible = true)
+    ps = convert_arguments(LineSegments, bbox)[1]
+    ps = apply_transform(element.transform_func, ps)
+    update!(indicator, arg1 = ps, visible = true)
 
     return indicator
 end
@@ -729,7 +731,12 @@ function update_indicator!(di::DataInspector, element::PlotElement{<:Union{Image
         i, j = Tuple(accessor(element).index)
 
         plot = get_plot(element)
-        bbox = _pixelated_image_bbox(plot.x[], plot.y[], plot.image[], i, j, plot isa Heatmap)
+        if !haskey(plot, :x_transformed)
+            add_computation!(plot.attributes, parent_scene(plot), Val(:heatmap_transform))
+        end
+        bbox = _pixelated_image_bbox(
+            plot.x_transformed[], plot.y_transformed[], plot.image[], i, j, plot isa Heatmap
+        )
         ps = to_ndim.(Point3d, convert_arguments(Lines, bbox)[1], 0)
         indicator = get_indicator_plot(di, Lines)
         update!(indicator, arg1 = ps, visible = true)
