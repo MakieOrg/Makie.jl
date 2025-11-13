@@ -60,7 +60,7 @@ function (@main)(args::Vector{String})
     display(app)
     Bonito.wait_for_ready(app)
     println("Bonito app started successfully. Close the browser tab to quit.")
-    Bonito.wait_for(()-> Bonito.isclosed(app.session[]); timeout=10000)
+    Bonito.wait_for(() -> Bonito.isclosed(app.session[]); timeout = 10000)
     println("Bonito app was closed.")
 
     return 0
