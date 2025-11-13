@@ -24921,6 +24921,36 @@ function set_render_size(screen, width, height) {
     add_picking_target(screen);
     return;
 }
+function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor) {
+    if (!scalefactor) {
+        scalefactor = window.devicePixelRatio || 1.0;
+    }
+    if (!px_per_unit) {
+        px_per_unit = scalefactor;
+    }
+    let initial_width = width;
+    let initial_height = height;
+    if (resize_to == "body") {
+        [initial_width, initial_height] = get_body_size();
+    } else if (resize_to == "parent") {
+        [initial_width, initial_height] = get_parent_size(canvas);
+    } else if (resize_to && resize_to.length == 2) {
+        const [width_mode, height_mode] = resize_to;
+        const [parent_width, parent_height] = get_parent_size(canvas);
+        initial_width = width_mode == "parent" ? parent_width : width;
+        initial_height = height_mode == "parent" ? parent_height : height;
+    }
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+    const swidth = winscale * initial_width;
+    const sheight = winscale * initial_height;
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+    return [
+        initial_width,
+        initial_height
+    ];
+}
 function add_picking_target(screen) {
     const { picking_target , canvas  } = screen;
     const [w, h] = [
@@ -25279,13 +25309,17 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    get_texture_atlas
+    get_texture_atlas,
+    get_body_size,
+    get_parent_size,
+    initialize_canvas_size
 };
-export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
+export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas, get_body_size as get_body_size, get_parent_size as get_parent_size };
 export { execute_in_order as execute_in_order };
 export { dispose_screen as dispose_screen };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
+export { initialize_canvas_size as initialize_canvas_size };
 export { pick_native as pick_native };
 export { get_picking_buffer as get_picking_buffer };
 export { pick_closest as pick_closest };

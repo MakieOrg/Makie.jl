@@ -3,6 +3,7 @@
 * `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
     A tuple is allowed too, with the same values just for width/height.
 * `use_html_widgets = false`: Whether to replace the Makie Block widgets with HTML native widgets.
+* `spinner = automatic`: The spinner to display while the scene is loading. Use `automatic` for the default CircleSpinner, or provide a custom spinner component.
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
@@ -13,15 +14,21 @@ struct ScreenConfig
     scalefactor::Union{Nothing, Float64}
     resize_to_body::Bool # deprecated, but needs to be here in the struct to correctly iterate over all screen config names
     use_html_widgets::Bool
+    spinner::Any # The spinner component to show while loading
     function ScreenConfig(
             framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
-            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool}, use_html_widgets::Bool
+            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool},
+            use_html_widgets::Bool, spinner::Any
         )
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
         if scalefactor isa Automatic
             scalefactor = nothing
+        end
+        # Construct default spinner if automatic
+        if spinner isa Automatic
+            spinner = CircleSpinner()
         end
         if resize_to_body isa Bool
             @warn("`resize_to_body` is deprecated, use `resize_to = :body` instead")
@@ -35,7 +42,7 @@ struct ScreenConfig
         if !(resize_to isa Union{ResizeType, Tuple{ResizeType, ResizeType}})
             error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
         end
-        return new(framerate, resize_to, px_per_unit, scalefactor, false, use_html_widgets)
+        return new(framerate, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
     end
 end
 """

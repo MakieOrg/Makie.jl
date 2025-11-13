@@ -474,6 +474,45 @@ function set_render_size(screen, width, height) {
     return;
 }
 
+/**
+ * Initialize canvas size early, before scene is fully loaded
+ * This ensures layout is fixed and prevents reflow
+ */
+export function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor) {
+    if (!scalefactor) {
+        scalefactor = window.devicePixelRatio || 1.0;
+    }
+    if (!px_per_unit) {
+        px_per_unit = scalefactor;
+    }
+
+    let initial_width = width;
+    let initial_height = height;
+
+    // Calculate size based on resize_to setting
+    if (resize_to == "body") {
+        [initial_width, initial_height] = get_body_size();
+    } else if (resize_to == "parent") {
+        [initial_width, initial_height] = get_parent_size(canvas);
+    } else if (resize_to && resize_to.length == 2) {
+        const [width_mode, height_mode] = resize_to;
+        const [parent_width, parent_height] = get_parent_size(canvas);
+        initial_width = width_mode == "parent" ? parent_width : width;
+        initial_height = height_mode == "parent" ? parent_height : height;
+    }
+
+    // Set canvas CSS dimensions immediately so layout is fixed
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+    const swidth = winscale * initial_width;
+    const sheight = winscale * initial_height;
+
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+
+    return [initial_width, initial_height];
+}
+
 function add_picking_target(screen) {
     const { picking_target, canvas } = screen;
     const [w, h] = [canvas.width, canvas.height];
@@ -881,6 +920,9 @@ window.WGL = {
     register_popup,
     render_scene,
     get_texture_atlas,
+    get_body_size,
+    get_parent_size,
+    initialize_canvas_size,
 };
 
 export {
@@ -899,4 +941,6 @@ export {
     events2unitless,
     on_next_insert,
     get_texture_atlas,
+    get_body_size,
+    get_parent_size,
 };

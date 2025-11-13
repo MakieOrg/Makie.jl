@@ -36,6 +36,7 @@ const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 
 include("html-widgets.jl")
 include("shader-abstractions.jl")
+include("spinner.jl")
 include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")
