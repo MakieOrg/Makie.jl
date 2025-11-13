@@ -527,7 +527,7 @@ function create_recipe_expr(Tsym, args, attrblock)
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
-            "No docstring defined.\n"
+            md"No docstring defined.\n"
         end
 
 
