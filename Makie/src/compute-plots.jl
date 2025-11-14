@@ -216,29 +216,33 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     map!(
         attr,
         [colorname, :colorscale, :alpha],
-        [:raw_color, :scaled_color, :fetch_pixel]
+        [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        val = if color isa Union{AbstractArray{<:Real}, Real}
-            clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+        auto_colorrange = nothing
+        if color isa Union{AbstractArray{<:Real}, Real}
+            scaled = el32convert(apply_scale(colorscale, color))
+            auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
+            val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
         elseif color isa AbstractPattern
-            ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
+            val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color
+            val = color
         elseif color isa AbstractArray
-            add_alpha.(color, alpha)
+            val = add_alpha.(color, alpha)
         else
-            add_alpha(color, alpha)
+            val = add_alpha(color, alpha)
         end
-        return (color, val, color isa AbstractPattern)
+        return (color, val, color isa AbstractPattern, auto_colorrange)
     end
 
     return map!(
         attr,
-        [:colorrange, :colorscale, :scaled_color], :scaled_colorrange
-    ) do colorrange, colorscale, color
-        (color isa AbstractArray{<:Real} || color isa Real) || return nothing
-        if colorrange === automatic
-            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
+    ) do colorrange, colorscale, autorange
+        if isnothing(autorange) # colors are actual colors, so no colormapping
+            return nothing
+        elseif colorrange === automatic
+            return autorange
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end

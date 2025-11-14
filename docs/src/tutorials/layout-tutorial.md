@@ -224,7 +224,7 @@ axtop.xticks = 0:3:9
 f
 ```
 
-### Legend
+### [Legend](@id Legend_layout_example)
 
 We have set the `label` attribute in the scatter call so it's easier to construct the legend. We can just pass `axmain` as the second argument to `Legend`.
 
