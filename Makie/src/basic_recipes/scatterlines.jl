@@ -1,7 +1,5 @@
 """
-    scatterlines(xs, ys, [zs]; kwargs...)
-
-Plots `scatter` markers and `lines` between them.
+Plots `scatter` markers with `lines` between them.
 """
 @recipe ScatterLines (positions,) begin
     documented_attributes(Lines)...

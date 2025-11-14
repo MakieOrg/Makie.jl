@@ -1,12 +1,6 @@
 """
-    violin(x, y)
-
 Draws a violin plot which consists of pairs of density plots draw side by side.
 The density pairs can be sourced from the same or from different data.
-
-## Arguments
-- `x`: positions of the categories
-- `y`: variables whose density is computed
 """
 @recipe Violin (x, y) begin
     "Number of points used per density plot."

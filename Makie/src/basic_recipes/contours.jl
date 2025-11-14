@@ -4,13 +4,8 @@ function contour_label_formatter(level::Real)::String
 end
 
 """
-    contour(x, y, z)
-    contour(z::Matrix)
-
-Creates a contour plot of the plane spanning `x::Vector`, `y::Vector`, `z::Matrix`.
-If only `z::Matrix` is supplied, the indices of the elements in `z` will be used as the `x` and `y` locations when plotting the contour.
-
-`x` and `y` can also be Matrices that define a curvilinear grid, similar to how [`surface`](@ref) works.
+Draws 2D lines on the grid defined by `xs` and `ys` where the `data` value matches
+a level value. In the 3D case lines generalize to surfaces.
 """
 @recipe Contour begin
     """
@@ -70,10 +65,12 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
 end
 
 """
-    contour3d(x, y, z)
+Draws 3D lines on the grid defined by `xs` and `ys` where the `z` value matches
+a level value. The line will be drawn with a matching z value.
 
-Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-with z-elevation for each level.
+3D contour plots exist in two variants.
+`contour` implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
+`contour3d` computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
 """
 @recipe Contour3d begin
     documented_attributes(Contour)...

@@ -1,8 +1,4 @@
 """
-    textlabel(positions, text; attributes...)
-    textlabel(position; text, attributes...)
-    textlabel(text_position; attributes...)
-
 Plots the given text(s) with a background(s) at the given position(s).
 """
 @recipe TextLabel (positions,) begin

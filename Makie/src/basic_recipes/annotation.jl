@@ -53,10 +53,10 @@ end
 using .Ann
 
 """
-    annotation(x_target, y_target)
-    annotation(x_label, y_label, x_target, y_target)
-    annotation(points_target)
-    annotation(points_label, points_target)
+    annotation(xs_target, ys_target; attributes...)
+    annotation(xs_label, ys_label, xs_target, ys_target; attributes...)
+    annotation(points_target; attributes...)
+    annotation(points_label, points_target; attributes...)
 
 Annotate one or more target points with a combination of optional text labels and
 connections between labels and targets, typically in the form of an arrow.
@@ -64,6 +64,14 @@ connections between labels and targets, typically in the form of an arrow.
 If no label positions are given, they will be determined automatically such
 that overlaps between labels and data points are reduced. In this mode, the labels should
 be very close to their associated data points so connection plots are typically not visible.
+
+## Arguments
+- `xs_target, ys_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
+- `xs_label, ys_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
+- `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
+  an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
+- `points_label`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}`
+  defining 2D label positions.
 """
 @recipe Annotation begin
     """
@@ -167,40 +175,40 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return ([Vec4d(NaN, NaN, x, y)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
     return ([Vec4d(NaN, NaN, p...)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
     return ([Vec4d(x, y, x2, y2)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
     return ([Vec4d(p1..., p2...)],)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
     return (Vec4d.(getindex.(v1, 1), getindex.(v1, 2), getindex.(v2, 1), getindex.(v2, 2)),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
     return (Vec4d.(NaN, NaN, v1, v2),)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
     return (Vec4d.(v1, v2, v3, v4),)
 end
 
-function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
-    scene = Makie.get_scene(p)
+function plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
+    scene = get_scene(p)
 
     textpositions = lift(p[1]) do vecs
         Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
@@ -538,8 +546,8 @@ function startpoint(::Ann.Paths.Corner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
-Makie.boundingbox(p::Annotation, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
+data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
+boundingbox(p::Annotation, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
     return BezierPath(
@@ -966,7 +974,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
+annotation_style_plotspecs(::Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
 function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth)
     length(path.commands) < 2 && return PlotSpec[]
@@ -1006,7 +1014,7 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
     ]
 end
 
-_auto(x::Makie.Automatic, default) = default
+_auto(x::Automatic, default) = default
 _auto(x, default) = x
 
 shrinksize(other) = 0.0
@@ -1024,7 +1032,7 @@ function plotspecs(l::Ann.Arrows.Line, pos; rotation, color, linewidth)
     p1 = pos + dir1 * sidelen
     p2 = pos + dir2 * sidelen
     return [
-        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
+        PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
     ]
 end
 
@@ -1038,78 +1046,9 @@ function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
 
     marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
     return [
-        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
+        PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
     ]
 end
 
-function attribute_examples(::Type{Annotation})
-    return Dict(
-        :shrink => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], xgridvisible = false, ygridvisible = false)
-                shrinks = [(0, 0), (5, 5), (10, 10), (20, 20), (5, 20), (20, 5)]
-                for (i, shrink) in enumerate(shrinks)
-                    annotation!(ax, -200, 0, 0, i; text = "shrink = $shrink", shrink, style = Ann.Styles.LineArrow())
-                    scatter!(ax, 0, i)
-                end
-                fig
-                """
-            ),
-        ],
-        :style => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                annotation!(-200, 0, 0, 0, style = Ann.Styles.Line())
-                annotation!(-200, 0, 0, -1, style = Ann.Styles.LineArrow())
-                annotation!(-200, 0, 0, -2, style = Ann.Styles.LineArrow(head = Ann.Arrows.Head()))
-                annotation!(-200, 0, 0, -3, style = Ann.Styles.LineArrow(tail = Ann.Arrows.Line(length = 20)))
-                fig
-                """
-            ),
-        ],
-        :path => [
-            Example(
-                code = raw"""
-                fig = Figure()
-                ax = Axis(fig[1, 1], yautolimitmargin = (0.3, 0.3), xgridvisible = false, ygridvisible = false)
-                scatter!(ax, fill(0, 4), 0:-1:-3)
-                annotation!(-200, 0, 0, 0, path = Ann.Paths.Line(), text = "Line()")
-                annotation!(-200, 0, 0, -1, path = Ann.Paths.Arc(height = 0.1), text = "Arc(height = 0.1)")
-                annotation!(-200, 0, 0, -2, path = Ann.Paths.Arc(height = 0.3), text = "Arc(height = 0.3)")
-                annotation!(-200, 30, 0, -3, path = Ann.Paths.Corner(), text = "Corner()")
-                fig
-                """
-            ),
-        ],
-        :labelspace => [
-            Example(
-                code = raw"""
-                g(x) = cos(6x) * exp(x)
-                xs = 0:0.01:4
-                ys = g.(xs)
-
-                f, ax, _ = lines(xs, ys; axis = (; xgridvisible = false, ygridvisible = false))
-
-                annotation!(ax, 1, 20, 2.1, g(2.1),
-                    text = "(1, 20)\nlabelspace = :data",
-                    path = Ann.Paths.Arc(0.3),
-                    style = Ann.Styles.LineArrow(),
-                    labelspace = :data
-                )
-
-                annotation!(ax, -100, -100, 2.65, g(2.65),
-                    text = "(-100, -100)\nlabelspace = :relative_pixel",
-                    path = Ann.Paths.Arc(-0.3),
-                    style = Ann.Styles.LineArrow()
-                )
-
-                f
-                """
-            ),
-        ],
-    )
-end
+# attribute_examples for Annotation has been moved to documentation/plots/annotation.md
+# under the "## Attributes" section and is now loaded automatically.
