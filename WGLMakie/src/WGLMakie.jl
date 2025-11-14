@@ -27,21 +27,20 @@ using Makie: attribute_per_char, layout_text
 using Makie: MouseButtonEvent, KeyEvent
 using Makie: apply_transform, transform_func_obs
 using Makie: spaces, is_data_space, is_pixel_space, is_relative_space, is_clip_space
-using Makie: apply_transform_and_f32_conversion, f32_conversion_obs, f32_convert
+using Makie: f32_conversion_obs, f32_convert
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
-const WGL = ES6Module(@path joinpath(@__DIR__, "wglmakie.js"))
+const WGL = ES6Module(joinpath(@__DIR__, "javascript", "WGLMakie.js"))
 # using as THREE version: "https://cdn.esm.sh/v66/three@0.173/es2021/three.js"
 
+include("html-widgets.jl")
+include("shader-abstractions.jl")
 include("display.jl")
 include("three_plot.jl")
 include("serialization.jl")
 include("events.jl")
-include("particles.jl")
-include("lines.jl")
-include("meshes.jl")
-include("imagelike.jl")
+include("plot-primitives.jl")
 include("picking.jl")
 include("voxel.jl")
 
@@ -57,7 +56,7 @@ Note, that the `screen_config` can also be set permanently via `Makie.set_theme!
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config...)
+function activate!(; inline::Union{Automatic, Bool} = LAST_INLINE[], screen_config...)
     Makie.inline!(inline)
     LAST_INLINE[] = inline
     Makie.set_active_backend!(WGLMakie)
@@ -68,19 +67,14 @@ function activate!(; inline::Union{Automatic,Bool}=LAST_INLINE[], screen_config.
     return
 end
 
-# This is deprecated, but we'll leave it here for now
-# until the next breaking release.
-const TEXTURE_ATLAS = Observable(Float32[])
-
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    DISABLE_JS_FINALZING[] = false
     return
 end
 
 # re-export Makie, including deprecated names
-for name in names(Makie, all=true)
+for name in names(Makie, all = true)
     if Base.isexported(Makie, name) && name !== :Button && name !== :Slider
         @eval using Makie: $(name)
         @eval export $(name)

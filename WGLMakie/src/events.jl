@@ -98,7 +98,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 if button != Keyboard.unknown
                     e.keyboardbutton[] = KeyEvent(button, Keyboard.press)
                 end
-                if length(keydown[2])==1 && isascii(keydown[2])
+                if length(keydown[2]) == 1 && isascii(keydown[2])
                     e.unicode_input[] = keydown[2][1]
                 end
             end
@@ -116,7 +116,7 @@ function connect_scene_events!(screen::Screen, scene::Scene, comm::Observable)
                 resize!(scene, tuple(resize...))
             end
         catch err
-            @warn "Error in window event callback" exception=(err, Base.catch_backtrace())
+            @warn "Error in window event callback" exception = (err, Base.catch_backtrace())
         end
         return
     end
@@ -131,9 +131,7 @@ function connect_post_init_events(screen, scene)
     Makie.start!(screen.tick_clock) do timer
         if !Makie.isclosed(scene)
             tick_callback(Makie.RegularRenderTick)
-            # @info "$key tick $(e.tick[].count) $(e.tick[].delta_time)"
         else
-            # @info "stopping $key"
             Makie.stop!(timer)
             e.window_open[] = false
         end

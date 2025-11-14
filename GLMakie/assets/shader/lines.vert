@@ -36,7 +36,7 @@ uniform float depth_shift;
 
 void main()
 {
-    g_lastlen = lastlen;
+    g_lastlen = px_per_unit * lastlen;
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_valid_vertex = get_valid_vertex(valid_vertex);

@@ -6,17 +6,18 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     debug = to_value(pop!(data, :debug, ""))
     @gen_defaults! data begin
         voxel_id = main => Texture
-        gap = 0f0
+        gap = 0.0f0
         instances = const_lift(gap, voxel_id) do gap, chunk
             N = sum(size(chunk))
             ifelse(gap > 0.01, 2 * N, N + 3)
         end
         model = Mat4f(I)
         transparency = false
-        backlight = 0f0
+        backlight = 0.0f0
         color = nothing => Texture
         color_map = nothing => Texture
         uv_transform = nothing => Texture
+        px_per_unit = 1.0f0
         shader = GLVisualizeShader(
             screen,
             "voxel.vert",

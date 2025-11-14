@@ -43,6 +43,7 @@ out vec3 o_view_normal;
 uniform float pattern_length;
 uniform vec2 resolution;
 uniform vec2 scene_origin;
+uniform float px_per_unit;
 
 uniform int linecap;
 uniform int joinstyle;
@@ -63,7 +64,7 @@ const int MITER  = 0;
 const int BEVEL  = 3;
 
 vec3 screen_space(vec4 vertex) {
-    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * resolution, vertex.z / vertex.w);
+    return vec3((0.5 * vertex.xy / vertex.w + 0.5) * px_per_unit * resolution, vertex.z / vertex.w);
 }
 
 struct LineVertex {
@@ -78,7 +79,7 @@ struct LineVertex {
 };
 
 void emit_vertex(LineVertex vertex) {
-    gl_Position    = vec4((2.0 * vertex.position.xy / resolution) - 1.0, vertex.position.z, 1.0);
+    gl_Position    = vec4(2.0 * vertex.position.xy / (px_per_unit * resolution) - 1.0, vertex.position.z, 1.0);
     f_quad_sdf    = vertex.quad_sdf;
     f_truncation   = vertex.truncation;
     f_linestart    = vertex.linestart;
@@ -120,7 +121,7 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2, inout bool[4] isvalid)
     }
 
     return false;
-} 
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,14 +446,14 @@ void main(void)
     // two segments. I.e. (previous segment).p2 == (next segment).p1 and
     // (previous segment).miter_v2 == (next segment).miter_v1 should be the case.
     if (isvalid[0] && is_truncated[0] && (adjustment[0] == 0.0)) {
-        f_linepoints.xy = p1.xy + scene_origin; // FragCoords are relative to the window
+        f_linepoints.xy = p1.xy + px_per_unit * scene_origin; // FragCoords are relative to the window
         f_miter_vecs.xy = -miter_v1.xy;         // but p1/p2 is relative to the scene origin
     } else {
         f_linepoints.xy = vec2(-1e12);          // FragCoord > 0
         f_miter_vecs.xy = normalize(vec2(-1));
     }
     if (isvalid[3] && is_truncated[1] && (adjustment[1] == 0.0)) {
-        f_linepoints.zw = p2.xy + scene_origin;
+        f_linepoints.zw = p2.xy + px_per_unit * scene_origin;
         f_miter_vecs.zw = miter_v2.xy;
     } else {
         f_linepoints.zw = vec2(-1e12);

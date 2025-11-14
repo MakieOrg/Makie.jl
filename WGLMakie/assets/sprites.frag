@@ -22,8 +22,9 @@ in vec4 frag_uv_offset_width;
 flat in uint frag_instance_id;
 in float o_clip_distance[8];
 flat in vec2 f_sprite_scale;
+flat in vec4 frag_strokecolor;
 
-uniform int num_clip_planes;
+uniform int uniform_num_clip_planes;
 
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
@@ -63,6 +64,12 @@ float rounded_rectangle(vec2 uv, vec2 tl, vec2 br){
     return -((length(max(vec2(0.0), d)) + min(0.0, max(d.x, d.y)))-tl.x);
 }
 
+vec4 fill(vec4 fillcolor, vec4 color, vec2 uv) {
+    return color;
+}
+vec4 fill(vec4 fillcolor, float color, vec2 uv) {
+    return fillcolor;
+}
 vec4 fill(vec4 fillcolor, bool image, vec2 uv) { return fillcolor; }
 vec4 fill(vec4 c, sampler2D image, vec2 uv) { return texture(image, uv.yx); }
 
@@ -136,7 +143,7 @@ vec4 pack_int(uint id, uint index) {
 }
 
 void main() {
-    for (int i = 0; i < num_clip_planes; i++)
+    for (int i = 0; i < uniform_num_clip_planes; i++)
         if (o_clip_distance[i] < 0.0)
             discard;
 
@@ -146,7 +153,7 @@ void main() {
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
     float aa_radius = ANTIALIAS_RADIUS;
 
-    int shape = get_shape_type();
+    int shape = get_sdf_marker_shape();
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);
     else if(shape == DISTANCEFIELD) {
@@ -173,10 +180,10 @@ void main() {
     float inside_start = max(-stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance, aa_radius);
 
-    vec4 final_color = fill(frag_color, image, frag_uv);
+    vec4 final_color = fill(frag_color, uniform_color, frag_uv);
     final_color.a = final_color.a * inside;
 
-    stroke(get_strokecolor(), signed_distance, -stroke_width, final_color, aa_radius);
+    stroke(frag_strokecolor, signed_distance, -stroke_width, final_color, aa_radius);
     glow(get_glowcolor(), signed_distance, aastep(-stroke_width, signed_distance, aa_radius), final_color);
 
     // debug - show background

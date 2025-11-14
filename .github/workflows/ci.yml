@@ -24,7 +24,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
+          - '1.10'
           - '1'
         os:
           - ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
@@ -45,10 +45,12 @@ jobs:
           # dev mono repo versions
           pkg"registry up"
           Pkg.update()
-          pkg"dev . ./MakieCore"
+          pkg"dev ./Makie ./ComputePipeline"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
       - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
