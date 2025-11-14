@@ -79,7 +79,7 @@ function Makie.plot!(plot::Band)
     mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
 
     map!(plot, :strokecolor, :linecolor) do strokecolor
-        if strokecolor isa Vector
+        if strokecolor isa AbstractVector
             return vcat(strokecolor, strokecolor[1:1], strokecolor)
         else
             return strokecolor
@@ -98,7 +98,7 @@ function Makie.plot!(plot::Band)
 
     lines!(
         plot, plot.attributes, plot.merged_points,
-        linewidth = plot.strokewidth, color = plot.strokecolor,
+        linewidth = plot.strokewidth, color = plot.linecolor,
         fxaa = false
     )
 
