@@ -98,7 +98,8 @@ function Makie.plot!(plot::Band)
 
     lines!(
         plot, plot.attributes, plot.merged_points,
-        linewidth = plot.strokewidth, color = plot.strokecolor
+        linewidth = plot.strokewidth, color = plot.strokecolor,
+        fxaa = false
     )
 
     return
