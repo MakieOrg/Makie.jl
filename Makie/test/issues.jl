@@ -95,7 +95,7 @@
     @testset "Menu option resize before display" begin
         fig = Figure()
         menu = Menu(fig[1, 1]; options = zip(["no options"], [nothing]))
-        labels = ["A","B", "C", "D", "E", "F", "G", "H"]
+        labels = ["A", "B", "C", "D", "E", "F", "G", "H"]
         values = collect(1:8)
         menu.options[] = zip(labels, values)
         p = menu.blockscene.children[1].plots[2]
