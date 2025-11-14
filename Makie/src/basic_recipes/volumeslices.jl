@@ -1,7 +1,12 @@
 """
-    volumeslices(x, y, z, v)
+    volumeslices(x, y, z, v; attributes...)
 
-Draws heatmap slices of the volume `v`.
+Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
+
+## Arguments
+- `x, y, z`: Defines the extends of the volume `v`. Can be any type that
+  implements `extrema`.
+- `v`: An `AbstractArray{3, Real}` defining the volume data.
 """
 @recipe VolumeSlices (x, y, z, volume) begin
     documented_attributes(Heatmap)...

@@ -1,9 +1,10 @@
 """
-    stairs(xs, ys; kwargs...)
+    stairs(xs, ys; attributes...)
+    stairs(positions; attributes...)
 
-Plot a stair function.
+Plots a line that connects coordinates with only axis-aligned segments.
 
-The conversion trait of `stairs` is `PointBased`.
+$(argument_docs(:PointBased2D))
 """
 @recipe Stairs begin
     """

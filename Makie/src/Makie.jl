@@ -106,6 +106,7 @@ macro noconstprop(expr)
 end
 
 include("documentation/docstringextension.jl")
+include("documentation/argument_docs.jl")
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("coretypes.jl")
