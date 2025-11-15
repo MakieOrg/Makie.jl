@@ -131,6 +131,7 @@ include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
 include("dim-converts/dates-integration.jl")
+include("dim-converts/argument_dims.jl")
 
 include("scenes.jl")
 include("float32-scaling.jl")

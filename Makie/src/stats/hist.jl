@@ -27,7 +27,7 @@ end
 
 Plot a step histogram of `values`.
 """
-@recipe StepHist (values,) begin
+@recipe StepHist (values::RealVector,) begin
     documented_attributes(Stairs)...
 
     """
@@ -55,6 +55,8 @@ Plot a step histogram of `values`.
     scale_to = nothing
 end
 
+argument_dims(::Type{<:StepHist}, vals) = (1,)
+
 function plot!(plot::StepHist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
@@ -81,7 +83,7 @@ end
 
 Plot a histogram of `values`.
 """
-@recipe Hist (values,) begin
+@recipe Hist (values::RealVector,) begin
     """
     Sets the number of bins if set to an integer or the edges of bins if set to
     an sorted collection of real numbers.
@@ -123,6 +125,9 @@ Plot a histogram of `values`.
     "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
     over_bar_color = automatic
 end
+
+argument_dim_kwargs(::Type{<:Hist}) = (:direction,)
+argument_dims(::Type{<:Hist}, vals; direction) = (ifelse(direction === :y, 1, 2),)
 
 function pick_hist_edges(vals, bins)
     if bins isa Int

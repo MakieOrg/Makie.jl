@@ -21,7 +21,7 @@ end
 
 Plot a kernel density estimate of `values`.
 """
-@recipe Density begin
+@recipe Density (values::RealVector,) begin
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
     """
@@ -62,9 +62,12 @@ Plot a kernel density estimate of `values`.
     cycle = [:color => :patchcolor]
 end
 
-function plot!(plot::Density{<:Tuple{<:AbstractVector}})
+argument_dim_kwargs(::Type{<:Density}) = (:direction,)
+argument_dims(::Type{<:Density}, vals; direction) = (ifelse(direction === :x, 1, 2),)
+
+function plot!(plot::Density{<:Tuple{<:RealVector}})
     map!(
-        plot, [:converted_1, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
+        plot, [:values, :direction, :boundary, :offset, :npoints, :bandwidth, :weights],
         [:lower, :upper]
     ) do x, dir, bound, offs, n, bw, weights
 

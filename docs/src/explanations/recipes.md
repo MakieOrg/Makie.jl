@@ -107,7 +107,7 @@ myplot(args...; kw_args...) = ...
 myplot!(args...; kw_args...) = ...
 ```
 
-#### Argument Names
+#### Converted Argument Names
 
 A specialization of `argument_names` is emitted if you have an argument list provided to the recipe macro.
 Otherwise a set of default names `Symbol(:converted_, i)` is used.
@@ -122,6 +122,41 @@ Alternatively you can always fetch the `i`th converted argument using `plot_obje
 If you leave out the `(x, y, z)` the default version of `argument_names` will provide `plot_object.converted_1` etc.
 To get the unconverted arguments of the plot, i.e. the `rand(10)` vectors, `plot_object.arg1` etc can be used.
 Unlike converted argument, their names can not be changed.
+
+#### Converted Argument Types
+
+Converted arguments can also be typed.
+This will mainly have two effects.
+The first is that plot construction now checks that the type after `convert_arguments()` matches the types and layout given in the recipe.
+I.e. it improves error checking.
+The second is that Makie can now differentiate if a conversion has finished converting.
+This is used in conjunction with dim converts when a plot is part of a recipe.
+In that case a finished conversion is treated as already dim-converted while an unfinished or unknown conversion state is treated as (potentially) needing dim converts.
+
+To set up target types in a recipe, they are simply added as type annotations to the converted argument names:
+
+```julia
+@recipe MyPlot (x::Vector{<:Real}, y::Vector{<:Real}, z::Matrix{<:Real}) begin
+    ...
+end
+```
+
+An alternative option is to define the types for a conversion trait.
+
+```julia
+function Makie.types_for_plot_arguments(::MyConversionTrait)
+    return Tuple{Convert1Type, Converted2Type, ...}
+end
+```
+
+Note that these methods are only considered when `@recipe` does not specify types.
+If both are needed one can overload this method instead:
+
+```julia
+function Makie.types_for_plot_arguments(::Type{<:MyPlot}, ::MyConversionTrait)
+    return Tuple{Convert1Type, Converted2Type, ...}
+end
+```
 
 #### Recipe Attributes
 

@@ -38,7 +38,10 @@ function calculate_protrusion(
     real_labelsize::Float32 = if label_is_empty
         0.0f0
     else
-        boundingbox(labeltext, :data).widths[horizontal[] ? 2 : 1]
+        # TODO: This can probably be
+        #   widths(fast_string_boundingboxes(labeltext)[1])
+        # to skip positions? (This only runs for axis labels)
+        widths(boundingbox(labeltext, :data))[horizontal[] ? 2 : 1]
     end
 
     labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0.0f0
@@ -261,6 +264,16 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_
     return
 end
 
+function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, use_short_units)
+    should_show = show_dim_convert_in_axis_label(dim_convert, show_unit_in_label)
+    if should_show
+        suffix = get_label_suffix(dim_convert, formatter, use_short_units)
+        return isempty(label) ? suffix : rich("$label ", suffix)
+    else
+        return label
+    end
+end
+
 function LineAxis(parent::Scene, attrs::Attributes)
     decorations = Dict{Symbol, Any}()
 
@@ -412,8 +425,22 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end::Float32
     end
 
+    # label + dim convert suffix
+    # TODO probably make these mandatory
+    suffix_formatter = get(attrs, :label_suffix, Observable(""))
+    unit_in_label = get(attrs, :unit_in_label, Observable(false))
+    use_short_unit = get(attrs, :use_short_unit, Observable(true))
+
+    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    label_with_suffix = Observable{Any}()
+    map!(
+        label_with_suffix, label, suffix_formatter, unit_in_label, use_short_unit, obs, update = true
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        return build_label_with_unit_suffix(dim_convert[], formatter, label, show_unit_in_label, use_short_unit)
+    end
+
     labeltext = text!(
-        parent, labelpos, text = label, fontsize = labelsize, color = labelcolor,
+        parent, labelpos, text = label_with_suffix, fontsize = labelsize, color = labelcolor,
         visible = labelvisible,
         align = labelalign, rotation = labelrot, font = labelfont,
         markerspace = :data, inspectable = false
@@ -425,7 +452,9 @@ function LineAxis(parent::Scene, attrs::Attributes)
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0.0f0, 0.0f0
         else
-            wx, wy = widths(boundingbox(labeltext, :data))
+            # There is only one string here and if we only case about widths
+            # we don't need to include positions through a higher level bbox function
+            wx, wy = widths(string_boundingboxes(labeltext)[1])
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0.0f0, Float32(sign * 0.5f0 * wy)
@@ -439,14 +468,16 @@ function LineAxis(parent::Scene, attrs::Attributes)
     decorations[:labeltext] = labeltext
 
     tickvalues = Observable(Float64[]; ignore_equal_values = true)
+    unit_in_ticklabel = get(attrs, :unit_in_ticklabel, Observable(true))
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
-    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
-        attrs.scale
-    ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale
-        return get_ticks(dim_convert[], ticks, scale, tickformat, limits...)
+        attrs.scale, unit_in_ticklabel
+    ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale, show_option
+        dc = dim_convert[]
+        should_show = show_dim_convert_in_ticklabel(dc, show_option)
+        return get_ticks(dim_convert[], ticks, scale, tickformat, limits..., should_show)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values = true)
@@ -510,8 +541,11 @@ function LineAxis(parent::Scene, attrs::Attributes)
         calculate_protrusion, parent, protrusion,
         # we pass these as observables, to not trigger on them
         Observable((horizontal, labeltext, ticklabel_annotation_obs)),
-        ticksvisible, label, labelvisible, labelpadding, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
-        # we don't need these as arguments to calculate it, but we need to pass it because it indirectly influences the protrusion
+        ticksvisible, label_with_suffix, labelvisible, labelpadding, tickspace,
+        ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
+        # TODO: this can rely on a ...boundingbox_obs() function instead now
+        # we don't need these as arguments to calculate it, but we need to pass it because it
+        # indirectly influences the protrusion
         labelfont, labelalign, labelrot, labelsize, ticklabelfont, tickalign
     )
 

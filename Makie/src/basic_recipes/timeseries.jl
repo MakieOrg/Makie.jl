@@ -21,11 +21,13 @@ end
 
 ```
 """
-@recipe TimeSeries (signal,) begin
+@recipe TimeSeries (signal::Real,) begin
     "Number of tracked points."
     history = 100
     documented_attributes(Lines)...
 end
+
+argument_dims(::Type{<:TimeSeries}, signal) = (2,)
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)
 signal2point(signal::Point2, start) = signal
@@ -34,7 +36,6 @@ signal2point(signal, start) = error(
     Found: $(typeof(signal))
     """
 )
-
 
 function Makie.plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
