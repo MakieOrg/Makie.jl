@@ -9,6 +9,9 @@ on:
     branches:
       - master
 
+env:
+  JULIA_NUM_THREADS: 4
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true

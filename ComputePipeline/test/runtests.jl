@@ -11,4 +11,5 @@ using ComputePipeline.Observables
 
     include("unit_tests.jl")
     include("system_tests.jl")
+    include("test_spawn.jl")
 end
