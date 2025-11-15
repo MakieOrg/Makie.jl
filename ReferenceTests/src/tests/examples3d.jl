@@ -389,8 +389,8 @@ end
     wh = widths(scene)
     t = text!(
         campixel(scene),
-        "Multipole Representation of first resonances of U-238",
-        position = (wh[1] / 2.0, wh[2] - 20.0),
+        (wh[1] / 2.0, wh[2] - 20.0);
+        text = "Multipole Representation of first resonances of U-238",
         align = (:center, :center),
         fontsize = 20,
         font = "helvetica"

@@ -1,30 +1,29 @@
-function boundingbox(plot::Text, target_space::Symbol)
-    # TODO:
-    # This is temporary prep work for the future. We should actually consider
-    # plot.space, markerspace, textsize, etc when computing the boundingbox in
-    # the target_space given to the function.
-    # We may also want a cheap version that only considers forward
-    # transformations (i.e. drops textsize etc when markerspace is not part of
-    # the plot.space -> target_space conversion chain)
-    if target_space == plot.markerspace[]
-        return full_boundingbox(plot, target_space)
-    elseif Makie.is_data_space(target_space)
-        return _project(plot.model[]::Mat4d, Rect3d(plot.positions_transformed[])::Rect3d)
-    else
-        error("`target_space = :$target_space` must be either :data or markerspace = :$(plot.markerspace[])")
-    end
-end
-
-@deprecate string_boundingbox(plot::Text) full_boundingbox(plot::Text)
-# @deprecate unchecked_boundingbox string_boundingboxes
+# @deprecate string_boundingbox(plot::Text) full_boundingbox(plot::Text)
+# # @deprecate unchecked_boundingbox string_boundingboxes
 
 # Utility
+# TODO: only used in axis3d for the width of some labels?
 function text_bb(str, font, size)
     rot = Quaternionf(0, 0, 0, 1)
-    layout = glyph_collection(str, font, size, 0.0f0, 0.0f0, 0.0f0, 0.0f0, -1, rot)
-    return unchecked_boundingbox(layout.glyphindices, layout.char_origins, size, layout.glyph_extents, rot)
+    glyphinfos = to_glyphinfos(
+        str,
+        font,
+        size,
+        (0.0f0, 0.0f0),
+        0.0f0,
+        0.0f0,
+        -1,
+        rot,
+        RGBAf(0.0, 0.0, 0.0, 1.0),
+        RGBAf(0.0, 0.0, 0.0, 1.0),
+        0.0,
+    )
+    return unchecked_boundingbox(
+        [i.glyph for i in glyphinfos], [i.origin for i in glyphinfos], size, [i.extent for i in glyphinfos], rot
+    )
 end
 
+# TODO: deprecated and only used in text_bb
 function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
     isempty(glyphs) && return Rect3d(Point3d(0), Vec3d(0))
     glyphbbs = gl_bboxes(glyphs, scales, extents)
@@ -47,15 +46,6 @@ function gl_bboxes(glyphs, scales, extents)
         # TODO c != 0 filters out all non renderables, which is not always desired
         return Rect2d(origin(hi_bb) * scale, (c != 0) * widths(hi_bb) * scale)
     end
-end
-
-# tested but not used?
-function height_insensitive_boundingbox(ext::GlyphExtent)
-    l = ext.ink_bounding_box.origin[1]
-    w = ext.ink_bounding_box.widths[1]
-    b = ext.descender
-    h = ext.ascender
-    return Rect2d((l, b), (w, h - b))
 end
 
 function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)

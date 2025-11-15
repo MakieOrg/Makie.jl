@@ -43,11 +43,11 @@ plot_types = [
 end
 
 @testset "text updating colormap" begin
-    f, a, p = text(fill("aa", 10); position = rand(Point2f, 10), color = 1:10)
+    f, a, p = text(rand(Point2f, 10); text = fill("aa", 10), color = 1:10)
     p.colormap = :blues
     colors = to_colormap(:blues)
-    @test p.text_color[][1] == colors[1]
-    @test p.text_color[][end] == colors[2]
+    @test p.plots[1].plots[1].glyphinfos[][1].color == colors[1]
+    @test p.plots[1].plots[end].glyphinfos[][1].color == colors[2]
 end
 
 #=

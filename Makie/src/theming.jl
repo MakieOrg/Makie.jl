@@ -38,6 +38,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
     fontsize = 14,
+    string_layouter = DefaultStringLayouter(),
     textcolor = :black,
     padding = Vec3f(0.05),
     figure_padding = 16,

@@ -423,7 +423,7 @@ struct GlyphExtent
 end
 
 function GlyphExtent(font, char)
-    extent = get_extent(font, char)
+    extent = FreeTypeAbstraction.get_extent(font, char)
     ink_bb = FreeTypeAbstraction.inkboundingbox(extent)
     ascender = FreeTypeAbstraction.ascender(font)
     descender = FreeTypeAbstraction.descender(font)
@@ -444,6 +444,7 @@ function GlyphExtent(texchar::TeXChar)
     return GlyphExtent(Rect2f((l, b), (r - l, t - b)), ascender, descender, hadvance)
 end
 
+# TODO: I think we can get rid of the glyph collection as well as ScalarOrVector?
 """
     GlyphCollection
 
