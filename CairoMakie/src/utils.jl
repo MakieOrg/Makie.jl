@@ -33,7 +33,7 @@ function build_combined_transformation_matrix(
         scene::Scene, space::Symbol, model::Mat4, yflip = true
     )
     f32convert = Makie.f32_convert_matrix(scene.float32convert, space)
-    M = Makie.space_to_clip(scene.camera, space) * f32convert * model
+    M = Makie.get_space_to_space_matrix(scene, space, :clip) * f32convert * model
     return cairo_viewport_matrix(scene.camera.resolution[], yflip) * M
 end
 
@@ -114,7 +114,7 @@ function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
-function clip_poly(clip_planes::Vector{Plane3f}, ps::Vector{PT}, space::Symbol, model::Mat4) where {PT <: VecTypes{2}}
+function clip_poly(clip_planes::Vector{Plane3f}, ps::AbstractVector{PT}, space::Symbol, model::Mat4) where {PT <: VecTypes{2}}
     if isempty(clip_planes) || !Makie.is_data_space(space)
         return ps
     end
@@ -316,10 +316,10 @@ cairo_scatter_marker(marker) = Makie.to_spritemarker(marker)
 
 to_cairo_image(img::AbstractMatrix{<:Colorant}) = to_cairo_image(to_uint32_color.(img))
 
-function to_cairo_image(img::Matrix{UInt32})
+function to_cairo_image(img::AbstractMatrix{UInt32})
     # we need to convert from column-major to row-major storage,
     # therefore we permute x and y
-    return Cairo.CairoARGBSurface(permutedims(img))
+    return Cairo.CairoARGBSurface(convert(Matrix, permutedims(img)))
 end
 
 

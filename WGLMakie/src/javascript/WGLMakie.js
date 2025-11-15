@@ -179,8 +179,33 @@ function get_body_size() {
     return [width, height];
 }
 function get_parent_size(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    return [rect.width, rect.height];
+    // The first parent is the wrapper div (width/height: 100%),
+    // the second is the actual parent (could be ResizableCard, body, or other container)
+    const wrapper = canvas.parentElement;
+    if (!wrapper) {
+        console.error("Canvas has no parent wrapper - this should not happen!");
+        return [canvas.width, canvas.height];
+    }
+
+    const real_parent = wrapper.parentElement;
+    if (!real_parent) {
+        console.error("Canvas wrapper has no parent - this should not happen!");
+        return [canvas.width, canvas.height];
+    }
+
+    const rect = real_parent.getBoundingClientRect();
+    const style = window.getComputedStyle(real_parent);
+
+    // Subtract padding to get the actual content area available for the canvas
+    const paddingLeft = parseFloat(style.paddingLeft) || 0;
+    const paddingRight = parseFloat(style.paddingRight) || 0;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const paddingBottom = parseFloat(style.paddingBottom) || 0;
+
+    const availableWidth = rect.width - paddingLeft - paddingRight;
+    const availableHeight = rect.height - paddingTop - paddingBottom;
+    console.log(`Parent size: width=${availableWidth}, height=${availableHeight}`);
+    return [availableWidth, availableHeight];
 }
 
 export function wglerror(gl, error) {
@@ -368,10 +393,8 @@ function add_canvas_events(screen, comm, resize_to) {
                 screen.renderer._width,
                 screen.renderer._height,
             ];
-            console.log(`rwidht: ${_width}, rheight: ${_height}`);
             width = _width == "parent" ? width : f_width;
             height = _height == "parent" ? height : f_height;
-            console.log(`widht: ${width}, height: ${height}`);
         } else {
             console.warn("Invalid resize_to option");
             return;
@@ -389,9 +412,7 @@ function add_canvas_events(screen, comm, resize_to) {
         window.addEventListener("resize", (event) =>
             resize_callback_throttled()
         );
-        // Fire the resize event once at the start to auto-size our window
-        // Without setTimeout, the parent doesn't have the right size yet?
-        // TODO, there should be a way to do this cleanly
+        // Initial resize
         setTimeout(resize_callback, 50);
     }
 }

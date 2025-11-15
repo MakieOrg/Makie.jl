@@ -53,6 +53,8 @@ struct Cycled
 end
 
 """
+    LinearTicks(n_ideal::Int)
+
 LinearTicks with ideally a number of `n_ideal` tick marks.
 """
 struct LinearTicks
@@ -78,6 +80,8 @@ struct WilkinsonTicks
 end
 
 """
+    MultipleTicks(n_ideal, multiple, suffix[; strip_zero])
+
 Like LinearTicks but for multiples of `multiple`.
 Example where approximately 5 numbers should be found
 that are multiples of pi, printed like "1π", "2π", etc.:

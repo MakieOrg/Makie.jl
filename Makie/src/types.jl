@@ -40,7 +40,7 @@ Identifies the source of a tick:
 end
 
 """
-    struct TickState
+    struct Tick
 
 Contains information for tick events:
 - `state::TickState`: identifies what caused the tick (see Makie.TickState)
@@ -533,11 +533,11 @@ struct ReversibleScale{F <: Function, I <: Function, T <: AbstractInterval} <: F
     """
     inverse::I
     """
-    default limits (optional)
+    default limits (optional, defaults to `(0, 10)`)
     """
     limits::NTuple{2, Float32}
     """
-    valid limits interval (optional)
+    valid limits interval (optional, defaults to `(-Inf32, Inf32)`)
     """
     interval::T
     name::Symbol

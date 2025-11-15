@@ -28,3 +28,4 @@ metrics/ttfp/benchmark-projects/*
 *benchmark.json
 benchmark_results
 WGLMakie/test/electron.log
+reference_images_site/build/
