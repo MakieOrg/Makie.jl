@@ -223,6 +223,11 @@ function mouseposition(scene::Scene = hovered_scene())
     return to_world(scene, mouseposition_px(scene))
 end
 
+"""
+    mouseposition_px(scenelike)
+
+Returns the pixel space position of the cursor relative to the passed scene (or axis).
+"""
 mouseposition_px(x) = mouseposition_px(get_scene(x))
 function mouseposition_px(scene::Scene = hovered_scene())
     return screen_relative(scene, events(scene).mouseposition[])
