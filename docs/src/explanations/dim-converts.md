@@ -61,6 +61,47 @@ f = Figure()
 ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```
 
+### Experimental DynamicQuantities.jl support
+
+!!! warning
+    This feature might change outside breaking releases, since the API is not yet finalized
+
+Makie also provides support for [DynamicQuantities.jl](https://github.com/SymbolicML/DynamicQuantities.jl). This can used almost as a drop-in replacement for Unitful.jl, with the following key design differences:
+
+* There is no conversion support between Dates.jl and DynamicQuantities.jl objects. Use `1.0u"hr"` in place of `Dates.Hour(1.0)`, `1.0u"d"` in place of `Dates.day(1.0)`, etc.
+* Units are set by the first object plotted by default. This is to prevent unexpected changes to other units when plotting multiple objects on the same axis.
+* Units are displayed in SI be default. Use `us"<desired unit>"` (note the `s`) to explicitly set your desired units, either implicitly in a plot call or explicitly as a `dim_conversion` axis argument.
+
+Below are a few common usage examples to construct the same plot. Please file a bug report if you find an issue with this experimental feature!
+
+```@setup DQ_dimconverts
+using DynamicQuantities
+```
+
+```@figure DQ_dimconverts
+using DynamicQuantities
+
+# Implicitly define figure, axis, and units
+f, ax, pl = scatter((100:100:1_000)us"cm")
+scatter!(ax, (10:-1:1)u"m")
+
+# Implicitly define axis and units
+scatter(f[1, 2], (100:100:1_000)us"cm")
+scatter!(f[1, 2], (10:-1:1)u"m")
+
+# Explicitly define axis, implicitly define units
+ax3 = Axis(f[2, 1])
+scatter!(ax3, (100:100:1_000)us"cm") # The first plot sets the units
+scatter!(ax3, (10:-1:1)u"m")
+
+# Explicitly define axis and units
+ax4 = Axis(f[2, 2]; dim2_conversion=Makie.DQConversion(us"cm"))
+scatter!(ax4, (100:100:1_000)u"cm") # No need for us"cm" now
+scatter!(ax4, (10:-1:1)u"m")
+
+f
+```
+
 ### Limitations
 
 
@@ -75,6 +116,7 @@ ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
 ```@docs
 Makie.CategoricalConversion
 Makie.UnitfulConversion
+Makie.DQConversion
 Makie.DateTimeConversion
 ```
 
@@ -106,8 +148,8 @@ end
 Makie.create_dim_conversion(::Type{MyUnit}) = MyDimConversion()
 
 # This function needs to be overloaded too, even though it's redundant to the above in a sense.
-# We did not want to use `hasmethod(MakieCore.should_dim_convert, (MyDimTypes,))` because it can be slow and error prown.
-Makie.MakieCore.should_dim_convert(::Type{MyUnit}) = true
+# We did not want to use `hasmethod(Makie.should_dim_convert, (MyDimTypes,))` because it can be slow and error prown.
+Makie.should_dim_convert(::Type{MyUnit}) = true
 
 # The non observable version of the actual conversion function
 # This is needed to convert axis limits, and should be a pure version of the below `convert_dim_observable`
@@ -115,18 +157,11 @@ function Makie.convert_dim_value(::MyDimConversion, values)
     return [v.value for v in values]
 end
 
-function Makie.convert_dim_observable(conversion::MyDimConversion, values_obs::Observable, deregister)
+function Makie.convert_dim_value(conversion::MyDimConversion, attr, values, prev_values)
     # Do the actual conversion here
-    # Most complex dim conversions need to operate on the observable (e.g. to create a Dict of all used categories), so `convert_dim_value` alone is not enough.
-    result = Observable(Float64[])
-    f = on(values_obs; update=true) do values
-        result[] = Makie.convert_dim_value(conversion, values)
-    end
-
-    # any observable operation like `on` or `map` should be pushed to `deregister`, to clean up state properly if e.g. the plot gets destroyed.
-    # for `result = map(func, values_obs)` one can use `append!(deregister, result.inputs)`
-    push!(deregister, f)
-    return result
+    # The `attr` can be used to identify the conversion, e.g. if you want to cache results.
+    # Take a look at categorical-integration.jl for an example of how to use it.
+    return Makie.convert_dim_value(conversion, values)
 end
 
 function Makie.get_ticks(::MyDimConversion, user_set_ticks, user_dim_scale, user_formatter, limits_min, limits_max)

@@ -9,16 +9,18 @@ end
 
 @reference_test "Figure with Blocks" begin
     fig = Figure(size = (900, 900))
-    ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
+    ax, sc = scatter(fig[1, 1][1, 1], RNG.randn(100, 2), axis = (; title = "Random Dots", xlabel = "Time"))
     sc2 = scatter!(ax, RNG.randn(100, 2) .+ 2, color = :red)
     ll = fig[1, 1][1, 2] = Legend(fig, [sc, sc2], ["Scatter", "Other"])
-    lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, axis = (;title = "Exponential Sine"))
+    lines(fig[2, 1:2][1, 3][1, 1], 0 .. 3, sin ∘ exp, axis = (; title = "Exponential Sine"))
     heatmap(fig[2, 1:2][1, 1], RNG.randn(30, 30))
     heatmap(fig[2, 1:2][1, 2], RNG.randn(30, 30), colormap = :grays)
     lines!(fig[2, 1:2][1, 2], cumsum(RNG.rand(30)), color = :red, linewidth = 10)
     surface(fig[1, 2], collect(1.0:40), collect(1.0:40), (x, y) -> 10 * cos(x) * sin(y))
-    fig[2, 1:2][2, :] = Colorbar(fig, vertical = false,
-        height = 20, ticklabelalign = (:center, :top), flipaxis = false)
+    fig[2, 1:2][2, :] = Colorbar(
+        fig, vertical = false,
+        height = 20, ticklabelalign = (:center, :top), flipaxis = false
+    )
     fig[3, :] = Menu(fig, options = ["A", "B", "C"])
     lt = fig[0, :] = Label(fig, "Figure Demo")
     fig[5, :] = Textbox(fig)
@@ -27,18 +29,18 @@ end
 
 @reference_test "Figure with boxes" begin
     fig = Figure(size = (900, 900))
-    Box(fig[1,1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black)
-    Box(fig[1,2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red)
-    Box(fig[1,3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5))
-    Box(fig[2,1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black, cornerradius = 0)
-    Box(fig[2,2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red, cornerradius = 20)
-    Box(fig[2,3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5), cornerradius = (0, 10, 20, 30))
+    Box(fig[1, 1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black)
+    Box(fig[1, 2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red)
+    Box(fig[1, 3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5))
+    Box(fig[2, 1], color = :red, strokewidth = 3, linestyle = :solid, strokecolor = :black, cornerradius = 0)
+    Box(fig[2, 2], color = (:red, 0.5), strokewidth = 3, linestyle = :dash, strokecolor = :red, cornerradius = 20)
+    Box(fig[2, 3], color = :white, strokewidth = 3, linestyle = :dot, strokecolor = (:black, 0.5), cornerradius = (0, 10, 20, 30))
     fig
 end
 
 @reference_test "menus" begin
     fig = Figure()
-    funcs = [sqrt, x->x^2, sin, cos]
+    funcs = [sqrt, x -> x^2, sin, cos]
     options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs)
 
     menu1 = Menu(fig, options = ["viridis", "heat", "blues"], default = 1)
@@ -65,7 +67,7 @@ end
 @reference_test "Label with text wrapping" begin
     lorem_ipsum = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
     fig = Figure(size = (1000, 660))
-    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading=NoShading)
+    m!(fig, lbl) = mesh!(fig.scene, lbl.layoutobservables.computedbbox, color = (:red, 0.5), shading = NoShading)
     lbl1 = Label(fig[1, 1:2], "HEADER "^10, fontsize = 40, word_wrap = true)
     m!(fig, lbl1)
 
@@ -141,11 +143,11 @@ end
         f = Figure()
         ax = Axis(f[1, 1], backgroundcolor = :gray80)
         for i in 1:3
-            lines!(ax,( 1:10) .* i, label = "$i")
+            lines!(ax, (1:10) .* i, label = "$i")
         end
         # To verify that RGB values differ across entries
-        axislegend(ax, position = :lt, patchcolor = :red, patchsize = (100, 100), backgroundcolor = :gray50);
-        Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), backgroundcolor = :gray50);
+        axislegend(ax, position = :lt, patchcolor = :red, patchsize = (100, 100), backgroundcolor = :gray50)
+        Legend(f[1, 2], ax, patchcolor = :gray80, patchsize = (100, 100), backgroundcolor = :gray50)
         f
     end
 end
@@ -223,13 +225,13 @@ end
 
 @reference_test "Legend Image-, Mesh- and MeshScatterElements" begin
     f = Figure(size = (400, 400))
-    a,p = heatmap(f[1, 1:2], RNG.rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
-    image!(10.5..20.5, 0.5..10.5, RNG.rand(10, 10), label = "Image" => (colormap = :viridis,))
+    a, p = heatmap(f[1, 1:2], RNG.rand(10, 10), label = "Heatmap" => (colormap = :RdBu,))
+    image!(10.5 .. 20.5, 0.5 .. 10.5, RNG.rand(10, 10), label = "Image" => (colormap = :viridis,))
     axislegend(a)
 
-    a,p = meshscatter(f[2, 1], [RNG.rand(Point3f) + Vec3f(0,0,1) for i in 1:10] , label = "MeshScatter" => (color = :orange,))
-    mesh!(Rect3f(0,0,0,1,1,1), label = "Mesh" => (color = :lightblue,))
-    surface!(-1..2, -1..2, RNG.rand(10, 10), label = "Surface" => (colormap = :magma,))
+    a, p = meshscatter(f[2, 1], [RNG.rand(Point3f) + Vec3f(0, 0, 1) for i in 1:10], label = "MeshScatter" => (color = :orange,))
+    mesh!(Rect3f(0, 0, 0, 1, 1, 1), label = "Mesh" => (color = :lightblue,))
+    surface!(-1 .. 2, -1 .. 2, RNG.rand(10, 10), label = "Surface" => (colormap = :magma,))
     Legend(f[2, 2], a, tellwidth = false)
     f
 
@@ -243,6 +245,7 @@ end
     click(e, 300, 125)
     click(e, 300, 100)
     click(e, 300, 75)
+    sleep(0.5) # wait for animations to finish
     Makie.step!(st)
 
     st
@@ -251,26 +254,30 @@ end
 @reference_test "Legend visibility toggles" begin
     f = Figure(size = (500, 500))
 
-    ax  = Axis(f[1,1])
-    lb = lines!(ax, 0:4, 0:4, linewidth = 10, color=:blue, label="lines 1")
-    lo = lines!(ax, 0:4, -4:0, linewidth = 10, color=:orange, label="lines 2")
-    sb = scatter!(ax, range(0, 4, length=10), fill(3, 10), markersize = 10, color=:blue, label="scatter 1")
-    so = scatter!(ax, range(0, 4, length=10), fill(2, 10), markersize = 10, color=:orange, label="scatter 2")
+    ax = Axis(f[1, 1])
+    lb = lines!(ax, 0:4, 0:4, linewidth = 10, color = :blue, label = "lines 1")
+    lo = lines!(ax, 0:4, -4:0, linewidth = 10, color = :orange, label = "lines 2")
+    sb = scatter!(ax, range(0, 4, length = 10), fill(3, 10), markersize = 10, color = :blue, label = "scatter 1")
+    so = scatter!(ax, range(0, 4, length = 10), fill(2, 10), markersize = 10, color = :orange, label = "scatter 2")
     x = LinRange(0, 4, 100)
-    slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color=:blue, label="band 1")
-    slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color=:orange, label="band 2")
+    slb = band!(ax, x, cos.(x) .- 1, cos.(x) .- 2, color = :blue, label = "band 1")
+    slo = band!(ax, x, sin.(x) .- 1, sin.(x) .- 2, color = :orange, label = "band 2")
 
-    ax2 = Axis(f[2,1])
+    ax2 = Axis(f[2, 1])
     x = 1:2:20
-    y = 5 * (0.5 .+ sin.(x).^2)
-    bb = barplot!(ax2, x, y; strokewidth = 1, color = :blue, label="barplot 1")
-    bo = barplot!(ax2, x, -y; strokewidth = 1, color = :orange, label="barplot 2")
+    y = 5 * (0.5 .+ sin.(x) .^ 2)
+    bb = barplot!(ax2, x, y; strokewidth = 1, color = :blue, label = "barplot 1")
+    bo = barplot!(ax2, x, -y; strokewidth = 1, color = :orange, label = "barplot 2")
 
-    l1 = Legend(f[1,2], ax)
-    l2 = Legend(f[2,2],
-        [ PolyElement(plots = [lb, sb, slb, bb], color = :blue),
-            PolyElement(plots = [lo, so, slo, bo], color = :orange) ],
-        [ "blue", "orange" ], "Colors" )
+    l1 = Legend(f[1, 2], ax)
+    l2 = Legend(
+        f[2, 2],
+        [
+            PolyElement(plots = [lb, sb, slb, bb], color = :blue),
+            PolyElement(plots = [lo, so, slo, bo], color = :orange),
+        ],
+        ["blue", "orange"], "Colors"
+    )
     f
 
     st = Makie.Stepper(f)
@@ -347,14 +354,14 @@ end
     # tests: some decorations, theta_as_x, title, scatter, lines
     f = Figure(size = (800, 800), backgroundcolor = :gray)
     ax1 = PolarAxis(f[1, 1], title = "No spine", spinevisible = false, theta_as_x = false)
-    scatterlines!(ax1, range(0, 1, length=100), range(0, 10pi, length=100), color = 1:100)
+    scatterlines!(ax1, range(0, 1, length = 100), range(0, 10pi, length = 100), color = 1:100)
 
     ax2 = PolarAxis(f[1, 2], title = "Modified spine")
     ax2.spinecolor[] = :red
     ax2.spinestyle[] = :dash
     ax2.spinewidth[] = 5
     rlims!(ax2, 0, 1.5)
-    scatterlines!(ax2, range(0, 10pi, length=100), range(0, 1, length=100), color = 1:100)
+    scatterlines!(ax2, range(0, 10pi, length = 100), range(0, 1, length = 100), color = 1:100)
 
     # may fail in CairoMakie due to different text stroke handling
     # and in WGLMakie due to missing stroke
@@ -368,11 +375,11 @@ end
         thetaminorgridwidth = 1.0, thetaminorgridstyle = :dash,
         rgridwidth = 2, rgridcolor = :red,
         thetagridwidth = 2, thetagridcolor = :blue,
-        rticklabelsize = 18, rticklabelcolor = :red, rtickangle = pi/6,
+        rticklabelsize = 18, rticklabelcolor = :red, rtickangle = pi / 6,
         rticklabelstrokewidth = 1, rticklabelstrokecolor = :white,
         thetaticklabelsize = 18, thetaticklabelcolor = :blue,
         thetaticklabelstrokewidth = 1, thetaticklabelstrokecolor = :white,
-        thetaticks = ([0, π/2, π, 3π/2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
+        thetaticks = ([0, π / 2, π, 3π / 2], ["A", "B", "C", rich("D", color = :orange)]), # https://github.com/MakieOrg/Makie.jl/issues/3583
         rticks = ([0.0, 2.5, 5.0, 7.5, 10.0], ["0.0", "2.5", "5.0", "7.5", rich("10.0", color = :orange)])
     )
 
@@ -381,8 +388,8 @@ end
     hidedecorations!(ax)
     ax.rgridvisible[] = true
     ax.thetagridvisible[] = true
-    zs = [r*cos(phi) for phi in range(0, 4pi, length=100), r in range(1, 2, length=100)]
-    p = surface!(ax, 0..2pi, 0..10, zeros(size(zs)), color = zs, shading = NoShading, colormap = :coolwarm, colorrange=(-2, 2))
+    zs = [r * cos(phi) for phi in range(0, 4pi, length = 100), r in range(1, 2, length = 100)]
+    p = surface!(ax, 0 .. 2pi, 0 .. 10, zeros(size(zs)), color = zs, shading = NoShading, colormap = :coolwarm, colorrange = (-2, 2))
     rlims!(ax, 0, 11) # verify that r = 10 doesn't end up at r > 10
     f
 end
@@ -393,9 +400,10 @@ end
     for (i, mirror) in enumerate([false, true])
         for (j, dir) in enumerate([1, -1])
             Label(f[i, j][1, 1], "mirror = $mirror, dir = $dir", tellwidth = false)
-            a = PolarAxis(f[i, j][2, 1],
+            a = PolarAxis(
+                f[i, j][2, 1],
                 # thetaticks = Makie.LinearTicks(4),
-                thetaticks = Makie.MultiplesTicks(4, pi/180, "°"),
+                thetaticks = Makie.MultiplesTicks(4, pi / 180, "°"),
                 rticksvisible = true, rticksize = 12, rtickwidth = 4, rtickcolor = :red,
                 thetaticksvisible = true, thetaticksize = 12, thetatickwidth = 4, thetatickcolor = :blue,
                 rminorgridvisible = true, thetaminorgridvisible = true,
@@ -405,8 +413,8 @@ end
                 rticklabelrotation = :aligned,
                 direction = dir
             )
-            phi = pi/8 + i * pi/2 + (j-1) * pi
-            thetalims!(a, phi, phi + pi/4)
+            phi = pi / 8 + i * pi / 2 + (j - 1) * pi
+            thetalims!(a, phi, phi + pi / 4)
             rlims!(a, 0.5, 0.9)
             push!(as, a)
         end
@@ -429,11 +437,11 @@ end
 
 @reference_test "PolarAxis limits" begin
     f = Figure(size = (800, 600))
-    for (i, theta_0) in enumerate((0, -pi/6, pi/2))
-        for (j, thetalims) in enumerate(((0, 2pi), (-pi/2, pi/2), (0, pi/12)))
-            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j-1), 7))
-            po.scene.backgroundcolor[] = RGBAf(1,0.5,0.5,1)
-            lines!(po, range(0, 20pi, length=201), range(0, 10, length=201), color = :white, linewidth = 5)
+    for (i, theta_0) in enumerate((0, -pi / 6, pi / 2))
+        for (j, thetalims) in enumerate(((0, 2pi), (-pi / 2, pi / 2), (0, pi / 12)))
+            po = PolarAxis(f[i, j], theta_0 = theta_0, thetalimits = thetalims, rlimits = (1 + 2(j - 1), 7))
+            po.scene.backgroundcolor[] = RGBAf(1, 0.5, 0.5, 1)
+            lines!(po, range(0, 20pi, length = 201), range(0, 10, length = 201), color = :white, linewidth = 5)
 
             b = Box(f[i, j], color = (:blue, 0.2))
             translate!(b.blockscene, 0, 0, 9999)
@@ -445,8 +453,8 @@ end
 end
 
 @reference_test "PolarAxis radial shift and clip" begin
-    phis = range(pi/4, 9pi/4, length=201)
-    rs = 1.0 ./ sin.(range(pi/4, 3pi/4, length=51)[1:end-1])
+    phis = range(pi / 4, 9pi / 4, length = 201)
+    rs = 1.0 ./ sin.(range(pi / 4, 3pi / 4, length = 51)[1:(end - 1)])
     rs = vcat(rs, rs, rs, rs, rs[1])
 
     fig = Figure(size = (900, 300))
@@ -474,10 +482,10 @@ end
 @reference_test "Axis3 fullbox" begin
     f = Figure(size = (400, 400))
     a = Axis3(f[1, 1], front_spines = true, xspinewidth = 5, yspinewidth = 5, zspinewidth = 5)
-    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
-    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+    mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1.0f0), color = :darkgray, transparency = false)
+    mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1.0f0), color = :darkgray, transparency = true)
 
-    for ((x, y), viskey, colkey) in zip([(1,2), (2,1), (2,2)], [:x, :y, :z], [:y, :z, :x])
+    for ((x, y), viskey, colkey) in zip([(1, 2), (2, 1), (2, 2)], [:x, :y, :z], [:y, :z, :x])
         kwargs = Dict(
             Symbol(viskey, :spinesvisible) => false,
             Symbol(colkey, :spinecolor_1) => :red,
@@ -487,10 +495,11 @@ end
         )
         a = Axis3(
             f[x, y], title = "$viskey hidden, $colkey colored", front_spines = true,
-            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...)
+            xspinewidth = 5, yspinewidth = 5, zspinewidth = 5; kwargs...
+        )
 
-        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1f0), color = :darkgray, transparency = false)
-        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1f0), color = :darkgray, transparency = true)
+        mesh!(a, Sphere(Point3f(-0.2, 0.2, 0), 1.0f0), color = :darkgray, transparency = false)
+        mesh!(a, Sphere(Point3f(0.2, -0.2, 0), 1.0f0), color = :darkgray, transparency = true)
     end
     f
 end
@@ -503,13 +512,15 @@ end
     cat = GeometryBasics.expand_faceviews(load(Makie.assetpath("cat.obj")))
     cs = 1:length(Makie.coordinates(cat))
 
-    for (bx, by, viewmode) in [(1,1,:fit), (1,2,:fitzoom), (2,1,:free), (2,2,:stretch)]
+    for (bx, by, viewmode) in [(1, 1, :fit), (1, 2, :fitzoom), (2, 1, :free), (2, 2, :stretch)]
         gl = GridLayout(fig[by, bx])
         Label(gl[0, 1:2], "viewmode = :$viewmode")
         for (x, rev) in enumerate((true, false))
             for (y, aspect) in enumerate((:data, :equal, (1.2, 0.8, 1.0)))
-                ax = Axis3(gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
-                    protrusions = protrusions, perspectiveness = perspectiveness)
+                ax = Axis3(
+                    gl[y, x], viewmode = viewmode, xreversed = rev, aspect = aspect,
+                    protrusions = protrusions, perspectiveness = perspectiveness
+                )
                 mesh!(ax, cat, color = cs)
 
                 # for debug purposes
@@ -542,7 +553,7 @@ end
     basis = Vec3f[[-6.2831855, 6.2831855, 6.2831855], [6.2831855, -6.2831855, 6.2831855], [6.2831855, 6.2831855, -6.2831855]]
     fs = [[6, 3, 4, 14, 13, 5], [15, 13, 14, 17, 18, 16], [17, 14, 4, 11], [17, 11, 12, 24, 23, 18], [3, 1, 2, 12, 11, 4], [1, 3, 6, 10], [24, 12, 2, 22], [5, 13, 15, 8], [19, 20, 7, 8, 15, 16], [16, 18, 23, 19], [10, 6, 5, 8, 7, 9], [24, 22, 21, 20, 19, 23], [1, 10, 9, 21, 22, 2], [20, 21, 9, 7]]
     verts = Vec3i[[1, -1, -2], [2, 1, -1], [1, -2, -1], [2, -1, 1], [-2, -3, -1], [-1, -3, -2], [-3, -1, -2], [-3, -2, -1], [-2, -1, -3], [-1, -2, -3], [3, 1, 2], [3, 2, 1], [-1, -2, 1], [1, -1, 2], [-2, -1, 1], [-1, 1, 2], [2, 1, 3], [1, 2, 3], [-1, 2, 1], [-2, 1, -1], [-1, 1, -2], [1, 2, -1], [1, 3, 2], [2, 3, 1]]
-    ps = map(((a,b,c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
+    ps = map(((a, b, c),) -> Point3f(basis[1] * a + basis[2] * b + basis[3] * c), verts)
     ls = Point3f[]
     for f in fs
         append!(ls, ps[f])
@@ -553,15 +564,17 @@ end
 
     # Should create closed square and hexagonal cells
     f = Figure(size = (600, 300))
-    a = Axis3(f[1, 1], aspect = :data,
-        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    a = Axis3(
+        f[1, 1], aspect = :data,
+        xautolimitmargin = (0, 0), yautolimitmargin = (0, 0), zautolimitmargin = (0, 0)
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
     scatter!(a, ps, markersize = 30, transparency = true)
 
-    a = Axis3(f[1, 2], aspect = :data, clip = false,
-        xautolimitmargin=(0,0), yautolimitmargin=(0,0), zautolimitmargin=(0,0)
+    a = Axis3(
+        f[1, 2], aspect = :data, clip = false,
+        xautolimitmargin = (0, 0), yautolimitmargin = (0, 0), zautolimitmargin = (0, 0)
     )
     lines!(a, ls, linewidth = 3, transparency = true)
     mesh!(a, m, color = (:orange, 0.2), transparency = true)
@@ -570,37 +583,47 @@ end
 end
 
 @reference_test "Colorbar for recipes" begin
-    fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis), figure=(;size=(800, 800)))
-    Colorbar(fig[1, 2], pl; size=100)
+    fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis), figure = (; size = (800, 800)))
+    Colorbar(fig[1, 2], pl; size = 100)
     x = LinRange(-1, 1, 20)
     y = LinRange(-1, 1, 20)
     z = LinRange(-1, 1, 20)
     values = [sin(x[i]) * cos(y[j]) * sin(z[k]) for i in 1:20, j in 1:20, k in 1:20]
 
     # TO not make this fail in CairoMakie, we dont actually plot the volume
-    _f, ax, cp = contour(-1..1, -1..1, -1..1, values; levels=10, colormap=:viridis)
-    Colorbar(fig[2, 1], cp; size=300)
+    _f, ax, cp = contour(-1 .. 1, -1 .. 1, -1 .. 1, values; levels = 10, colormap = :viridis)
+    Colorbar(fig[2, 1], cp; size = 300)
 
-    _f, ax, vs = volumeslices(x, y, z, values, colormap=:bluesreds)
+    _f, ax, vs = volumeslices(x, y, z, values, colormap = :bluesreds)
     Colorbar(fig[2, 2], vs)
 
     # horizontal colorbars
-    Colorbar(fig[1, 3][2, 1]; limits=(0, 10), colormap=:viridis,
-             vertical=false)
-    Colorbar(fig[1, 3][3, 1]; limits=(0, 5), size=25,
-             colormap=cgrad(:Spectral, 5; categorical=true), vertical=false)
-    Colorbar(fig[1, 3][4, 1]; limits=(-1, 1), colormap=:heat, vertical=false, flipaxis=false,
-             highclip=:cyan, lowclip=:red)
+    Colorbar(
+        fig[1, 3][2, 1]; limits = (0, 10), colormap = :viridis,
+        vertical = false
+    )
+    Colorbar(
+        fig[1, 3][3, 1]; limits = (0, 5), size = 25,
+        colormap = cgrad(:Spectral, 5; categorical = true), vertical = false
+    )
+    Colorbar(
+        fig[1, 3][4, 1]; limits = (-1, 1), colormap = :heat, vertical = false, flipaxis = false,
+        highclip = :cyan, lowclip = :red
+    )
     xs = LinRange(0, 20, 50)
     ys = LinRange(0, 15, 50)
     zs = [cos(x) * sin(y) for x in xs, y in ys]
-    ax, hm = contourf(fig[2, 3][1, 1], xs, ys, zs;
-                      colormap=:Spectral, levels=[-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
-    Colorbar(fig[2, 3][1, 2], hm; ticks=-1:0.25:1)
+    ax, hm = contourf(
+        fig[2, 3][1, 1], xs, ys, zs;
+        colormap = :Spectral, levels = [-1, -0.5, -0.25, 0, 0.25, 0.5, 1]
+    )
+    Colorbar(fig[2, 3][1, 2], hm; ticks = -1:0.25:1)
 
-    ax, hm = contourf(fig[3, :][1, 1], xs, ys, zs;
-                      colormap=:Spectral, colorscale=sqrt, levels=[ 0, 0.25, 0.5, 1])
-    Colorbar(fig[3, :][1, 2], hm; width=200)
+    ax, hm = contourf(
+        fig[3, :][1, 1], xs, ys, zs;
+        colormap = :Spectral, colorscale = sqrt, levels = [0, 0.25, 0.5, 1]
+    )
+    Colorbar(fig[3, :][1, 2], hm; width = 200)
 
     fig
 end
@@ -619,8 +642,8 @@ end
 @reference_test "Categorical Colorbar with nan_color" begin
     arr = [0 0 NaN; 1 1 NaN; 3 3 NaN]
     fig = Figure(size = (300, 200))
-    a, hm = heatmap(fig[1,1], arr; colormap=Makie.Categorical(:Paired_8), colorrange=(1,3), lowclip=:black)
-    Colorbar(fig[1,2], hm)
+    a, hm = heatmap(fig[1, 1], arr; colormap = Makie.Categorical(:Paired_8), colorrange = (1, 3), lowclip = :black)
+    Colorbar(fig[1, 2], hm)
     fig
 end
 
@@ -628,15 +651,15 @@ end
     airports = Point2f.(eachrow(readdlm(assetpath("airportlocations.csv"))))
     # Don't use the full dataset, since WGLMakie seems to time out if it's too big
     fewer = airports[RNG.rand(1:length(airports), 1000)]
-    fig, ax, ds = datashader(fewer; async=false)
-    Colorbar(fig[1, 2], ds; width=100)
+    fig, ax, ds = datashader(fewer; async = false)
+    Colorbar(fig[1, 2], ds; width = 100)
     hidedecorations!(ax)
     hidespines!(ax)
 
     normaldist = RNG.randn(Point2f, 100000)
     ds1 = normaldist .+ (Point2f(-1, 0),)
     ds2 = normaldist .+ (Point2f(1, 0),)
-    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async=false)
+    ax, pl = datashader(fig[2, :], Dict("a" => ds1, "b" => ds2); async = false)
     hidedecorations!(ax)
     axislegend(ax)
     fig
@@ -644,7 +667,7 @@ end
 
 @reference_test "Axis limits with translation, scaling and transform_func" begin
     f = Figure()
-    a = Axis(f[1,1], xscale = log10, yscale = log10)
+    a = Axis(f[1, 1], xscale = log10, yscale = log10)
     ps = Point2f.([0.1, 0.1, 1000, 1000], [1, 100, 1, 100])
     hl = linesegments!(a, ps[[1, 3, 2, 4]], color = :red)
     vl = linesegments!(a, ps, color = :blue)
@@ -659,14 +682,15 @@ end
 @reference_test "Latex labels after the fact" begin
     f = Figure(fontsize = 50)
     ax = Axis(f[1, 1])
-    ax.xticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
-    ax.yticks = ([3, 6, 9], [L"x" , L"y" , L"z"])
+    ax.xticks = ([3, 6, 9], [L"x", L"y", L"z"])
+    ax.yticks = ([3, 6, 9], [L"x", L"y", L"z"])
     f
 end
 
 @reference_test "Rich text" begin
     f = Figure(fontsize = 30, size = (800, 600))
-    ax = Axis(f[1, 1],
+    ax = Axis(
+        f[1, 1],
         limits = (1, 100, 0.001, 1),
         xscale = log10,
         yscale = log2,
@@ -702,20 +726,20 @@ end
     f = Figure()
     e = events(f)
 
-    tb1 = Makie.Textbox(f[1,1])
+    tb1 = Makie.Textbox(f[1, 1])
     Makie.set!(tb1, "1234567890qwertyuiop")
     Makie.focus!(tb1)
     click(e, 297, 221)
     Makie.defocus!(tb1)
 
-    tb2 = Makie.Textbox(f[2,1], width=100)
+    tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
     tb2.cursorindex[] = 20
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
-    tb3 = Makie.Textbox(f[3,1], width=100)
+    tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
     tb3.cursorindex[] = 20
     Makie.focus!(tb3)
@@ -724,7 +748,7 @@ end
     send(e, Keyboard.left)
     Makie.defocus!(tb3)
 
-    tb4 = Makie.Textbox(f[4,1], width=100)
+    tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
     tb4.cursorindex[] = 20
     tb4.cursorindex[] = 10
@@ -740,43 +764,59 @@ end
 @reference_test "Button - Slider - Toggle - Textbox" begin
     f = Figure(size = (500, 250))
     Makie.Button(f[1, 1:2])
-    Makie.Button(f[2, 1:2], buttoncolor = :orange, cornerradius = 20,
+    Makie.Button(
+        f[2, 1:2], buttoncolor = :orange, cornerradius = 20,
         strokecolor = :red, strokewidth = 2,  # TODO: allocate space for this
-        fontsize = 16, labelcolor = :blue)
+        fontsize = 16, labelcolor = :blue
+    )
 
     IntervalSlider(f[1, 3])
-    sl = IntervalSlider(f[2, 3], range = 0:100, linewidth = 20,
-        color_inactive = :orange, color_active_dimmed = :lightgreen)
+    sl = IntervalSlider(
+        f[2, 3], range = 0:100, linewidth = 20,
+        color_inactive = :orange, color_active_dimmed = :lightgreen
+    )
     Makie.set_close_to!(sl, 30, 70)
 
     Toggle(f[3, 1])
     t = Toggle(f[4, 1], framecolor_inactive = :lightblue, rimfraction = 0.6)
-    t.orientation = 3pi/4
+    t.orientation = 3pi / 4
     Toggle(f[3, 2], active = true, orientation = :horizontal)
-    Toggle(f[4, 2], active = true, framecolor_inactive = :lightblue,
-        framecolor_active = :yellow, rimfraction = 0.6, orientation = :vertical)
+    Toggle(
+        f[4, 2], active = true, framecolor_inactive = :lightblue,
+        framecolor_active = :yellow, rimfraction = 0.6, orientation = :vertical
+    )
 
     Makie.Slider(f[3, 3])
-    sl = Makie.Slider(f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan,
-        color_active_dimmed = :lightgreen)
+    sl = Makie.Slider(
+        f[4, 3], range = 0:100, linewidth = 20, color_inactive = :cyan,
+        color_active_dimmed = :lightgreen
+    )
     Makie.set_close_to!(sl, 30)
+
+    Makie.Slider(f[3, 4])
+    sl = Makie.Slider(f[4, 4], range = (0:100)u"m")
+    Makie.set_close_to!(sl, 30.5u"m")
 
     gl = GridLayout(f[5, 1:3])
     Textbox(gl[1, 1])
-    Textbox(gl[1, 2], bordercolor = :red, cornerradius = 0,
-        placeholder = "test string", fontsize = 16, textcolor_placeholder = :blue)
-    tb = Textbox(gl[1, 3], bordercolor = :black, cornerradius = 20,
-        fontsize =10, textcolor = :red, boxcolor = :lightblue)
+    Textbox(
+        gl[1, 2], bordercolor = :red, cornerradius = 0,
+        placeholder = "test string", fontsize = 16, textcolor_placeholder = :blue
+    )
+    tb = Textbox(
+        gl[1, 3], bordercolor = :black, cornerradius = 20,
+        fontsize = 10, textcolor = :red, boxcolor = :lightblue
+    )
     Makie.set!(tb, "some string")
     f
 end
 
 @reference_test "Toggle orientation" begin
     f = Figure()
-    for x=1:3, y=1:3
-        x==y==2 && continue
+    for x in 1:3, y in 1:3
+        x == y == 2 && continue
         Box(f[x, y], color = :tomato)
-        Toggle(f[x, y], orientation = atan(x-2,2-y))
+        Toggle(f[x, y], orientation = atan(x - 2, 2 - y))
     end
     f
 end

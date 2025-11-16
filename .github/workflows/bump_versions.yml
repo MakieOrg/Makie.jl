@@ -1,0 +1,61 @@
+name: Bump Package Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Type of version bump'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      packages:
+        description: 'Specific packages to bump (comma-separated, leave empty for auto-detection)'
+        required: false
+        default: ''
+      update_changelog:
+        description: 'Update CHANGELOG.md'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  bump-versions:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0  # Need full history for git diff
+
+      - name: Setup Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.10'
+
+      - name: Configure git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run version bump workflow
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd tooling
+          julia bump_versions_ci.jl \
+            "${{ github.event.inputs.bump_type }}" \
+            "${{ github.event.inputs.packages }}" \
+            "${{ github.event.inputs.update_changelog }}"
+
+      - name: Workflow completed
+        run: |
+          echo "🎉 Version bump workflow has completed!"
+          echo "Check the output above for details about any created PRs."

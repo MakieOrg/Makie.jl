@@ -1,0 +1,46 @@
+name: ComputePipeline.jl
+on:
+  pull_request:
+    paths:
+      - 'ComputePipeline/**'
+  push:
+    tags:
+      - '*'
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.9'
+          - '1'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - name: Develop and test ComputePipeline
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg
+          # dev mono repo versions
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./ComputePipeline"
+          Pkg.test("ComputePipeline")

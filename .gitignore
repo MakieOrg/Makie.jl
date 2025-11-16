@@ -22,7 +22,10 @@ monorepo
 .vscode/settings.json
 docs/documentation/news.md
 
+!metrics/ttfp/Manifest.toml
 metrics/ttfp/current-pr-project/
 metrics/ttfp/benchmark-projects/*
 *benchmark.json
+benchmark_results
 WGLMakie/test/electron.log
+reference_images_site/build/

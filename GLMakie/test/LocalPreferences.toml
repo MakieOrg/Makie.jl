@@ -1,0 +1,2 @@
+[ComputePipeline]
+ENABLE_COMPUTE_CHECKS = true
