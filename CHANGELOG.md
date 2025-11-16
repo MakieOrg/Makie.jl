@@ -23,6 +23,7 @@
 - Fixed outline based `poly` fats paths no considering transform functions in CairoMakie [#5397](https://github.com/MakieOrg/Makie.jl/pull/5397)
 - Fixed manual `DateTime` and `Time` ticks given via `StepRange`s or `AbstractVector`s with or without formatters [#5404](https://github.com/MakieOrg/Makie.jl/pull/5404).
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
+- Adjusted `viewmode = :fit` in Axis3 to produce less whitespace when the axis has unequal aspect ratios. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
 
 ## [0.24.6] - 2025-08-19
 
