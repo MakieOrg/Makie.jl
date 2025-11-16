@@ -759,6 +759,27 @@ end
     end
 end
 
+@testset "Validation" begin
+    graph = ComputeGraph()
+    add_input!(graph, :a, 1)
+
+    @test_throws ErrorException add_input!(graph, :b, Ref(graph.a))
+    @test_throws ErrorException add_input!(graph, :c, Ref(graph.inputs[:a]))
+    @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
+
+    # add_input!() processes this, so we need to check more manually
+    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
+    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
+
+    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
+    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
+    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
+    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
+
+    map!(x -> graph.a, graph, :a, :j)
+    @test_throws ResolveException{ErrorException} graph.j[]
+end
+
 @testset "mixed-map" begin
     graph1 = ComputeGraph()
     add_input!(graph1, :a1, 1)
@@ -777,4 +798,60 @@ end
     map!(+, graph2, [graph1[:a1], :a2], :merged3)
     e3 = graph2.merged3.parent
     @test e3.inputs == [graph1.a1, graph2.a2]
+end
+
+@testset "compute_identity" begin
+    graph1 = ComputeGraph()
+    add_input!(graph1, :a1, Ref{Any}(1))
+    map!(x -> Ref{Any}(x), graph1, :a1, :b1)
+
+    graph2 = ComputeGraph()
+    add_input!(graph2, :b1, graph1.b1)
+    graph2.b1[]
+    @test graph2.b1.value isa Ref{Any}
+
+    edge = graph2.b1.parent
+    @test edge.callback == ComputePipeline.compute_identity
+    @test length(edge.inputs) == length(edge.outputs)
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test !ComputePipeline.isdirty(out)
+    end
+
+    update!(graph1, a1 = 5.0)
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test ComputePipeline.isdirty(in)
+        @test ComputePipeline.isdirty(out)
+    end
+
+    graph1.b1[]
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test ComputePipeline.isdirty(out)
+    end
+
+    graph2.b1[]
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test !ComputePipeline.isdirty(out)
+    end
+end
+
+@testset "is_same NaN and missing" begin
+    # vectors
+    v = [NaN, missing, 1]
+    @test ComputePipeline.is_same(v, copy(v))
+    @test !ComputePipeline.is_same(v, v)
+
+    # Dicts with NaN
+    d = Dict(:a => NaN, :b => missing, :c => 1)
+    @test ComputePipeline.is_same(d, copy(d))
+    @test !ComputePipeline.is_same(d, d)
 end

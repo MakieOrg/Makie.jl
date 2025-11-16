@@ -10,6 +10,7 @@ Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 DelaunayTriangulation = "927a84f5-c5f4-47a5-9785-b46e178433df"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FixedPointNumbers = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
@@ -26,11 +27,13 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tar = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[compat]
-julia = "1.3"
-
 [sources]
-Makie = { path = "../Makie" }
+Makie = {path = "../Makie"}
+
+[compat]
+DynamicQuantities = "1.8.0"
+julia = "1.3"

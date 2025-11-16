@@ -205,7 +205,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
+            cache2plot::Dict{UInt32, Plot},
             reuse::Bool
         ) where {GLWindow}
 
@@ -327,7 +327,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         Tuple{ZIndex, ScreenID, RenderObject}[],
         postprocessors,
         Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
+        Dict{UInt32, Plot}(),
         reuse,
     )
 
@@ -884,7 +884,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative)
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
     if !isopen(screen)
         error("Screen not open!")
     end

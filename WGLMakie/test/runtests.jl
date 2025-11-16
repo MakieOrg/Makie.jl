@@ -27,7 +27,6 @@ excludes = Set(
         "Image on Surface Sphere", # TODO: texture rotated 180°
         "Array of Images Scatter", # scatter does not support texture images
         "Order Independent Transparency",
-        "3D Contour with 2D contour slices", # looks like a z-fighting issue
         "Mesh with 3d volume texture", # Not implemented yet
         "matcap", # not yet implemented
     ]
@@ -38,9 +37,20 @@ edisplay = Bonito.use_electron_display(devtools = true)
 
 @testset "reference tests" begin
     WGLMakie.activate!()
+
+    @testset "ComputeGraph Sanity Checks" begin
+        # This is supposed to catch changes in ComputePipeline causing nodes to
+        # be skipped or become duplicated. This will also trigger if plot attributes
+        # are modified in which case the numbers should just be updated
+        f, a, p = scatter(rand(10))
+        colorbuffer(f)
+        @test length(p.attributes.inputs) == 43
+        @test length(p.attributes.outputs) == 96
+    end
+
     @testset "refimages" begin
         ReferenceTests.mark_broken_tests(excludes)
-        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl"
+        recorded_files, recording_dir = @include_reference_tests WGLMakie "refimages.jl" joinpath(@__DIR__, "html_widgets_refimages.jl")
         missing_images, scores = ReferenceTests.record_comparison(recording_dir, "WGLMakie")
         ReferenceTests.test_comparison(scores; threshold = 0.05)
     end
@@ -230,6 +240,10 @@ edisplay = Bonito.use_electron_display(devtools = true)
             av = last(tick_record).time / round(Int, last(tick_record).time * 30)
             @test abs(av - dt) < 0.005dt
         end
+    end
+
+    @testset "html-widgets" begin
+        include("html-widgets.jl")
     end
 
     @testset "memory leaks" begin

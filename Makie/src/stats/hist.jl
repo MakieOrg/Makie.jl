@@ -9,7 +9,7 @@ end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     w = wgts === automatic ? () : (StatsBase.weights(wgts),)
-    h = StatsBase.fit(StatsBase.Histogram, values[], w..., edges)
+    h = StatsBase.fit(StatsBase.Histogram, values, w..., edges)
     h_norm = StatsBase.normalize(h; mode = normalization)
     weights = h_norm.weights
     centers = edges[1:(end - 1)] .+ (diff(edges) ./ 2)
@@ -28,13 +28,18 @@ end
 Plot a step histogram of `values`.
 """
 @recipe StepHist (values,) begin
-    "Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges."
+    documented_attributes(Stairs)...
+
+    """
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
+    """
     bins = 15 # Int or iterable of edges
-    """Allows to apply a normalization to the histogram.
-    Possible values are:
+    """
+    Sets the normalization applied to the histogram. Possible values are:
 
     * `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-      has norm 1 and represents a PDF.
+      has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
       count density of input and does not have norm 1. Will not modify the
       histogram if it already represents a density (`h.isdensity == 1`).
@@ -44,25 +49,17 @@ Plot a step histogram of `values`.
     * `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to provide statistical weights."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
-    color = @inherit patchcolor
-    linewidth = @inherit linewidth
-    linestyle = :solid
-    "Allows to scale all values to a certain height."
+    "Scales the histogram by a common factor such that the largest bin reaches the given value."
     scale_to = nothing
 end
 
-function Makie.plot!(plot::StepHist)
+function plot!(plot::StepHist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
         _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         phantomedge = edges[end] # to bring step back to baseline
         edges = vcat(edges, phantomedge)
@@ -70,14 +67,12 @@ function Makie.plot!(plot::StepHist)
         heights = vcat(z, weights, z)
         return Point2.(edges, heights)
     end
-    color = lift(plot, plot.color) do color
-        if color === :values
-            return last.(points[])
-        else
-            return color
-        end
+
+    map!(plot, [:points, :color], :computed_colors) do points, color
+        return color === :values ? last.(points) : color
     end
-    stairs!(plot, Attributes(plot), points; color = color)
+
+    stairs!(plot, Attributes(plot), plot.points; color = plot.computed_colors)
     return plot
 end
 
@@ -88,14 +83,15 @@ Plot a histogram of `values`.
 """
 @recipe Hist (values,) begin
     """
-    Can be an `Int` to create that number of equal-width bins over the range of `values`. Alternatively, it can be a sorted iterable of bin edges.
+    Sets the number of bins if set to an integer or the edges of bins if set to
+    an sorted collection of real numbers.
     """
     bins = 15
     """
-    Allows to normalize the histogram. Possible values are:
+    Sets the normalization applied to the histogram. Possible values are:
 
     *  `:pdf`: Normalize by sum of weights and bin sizes. Resulting histogram
-       has norm 1 and represents a PDF.
+       has norm 1 and represents a probability density function.
     * `:density`: Normalize by bin sizes only. Resulting histogram represents
        count density of input and does not have norm 1. Will not modify the
        histogram if it already represents a density (`h.isdensity == 1`).
@@ -105,41 +101,27 @@ Plot a histogram of `values`.
     *  `:none`: Do not normalize.
     """
     normalization = :none
-    "Allows to statistically weight the observations."
+    "Sets optional statistical weights."
     weights = automatic
-    cycle = [:color => :patchcolor]
     """
-    Color can either be:
-    * a vector of `bins` colors
-    * a single color
-    * `:values`, to color the bars with the values from the histogram
-    """
-    color = @inherit patchcolor
-    strokewidth = @inherit patchstrokewidth
-    strokecolor = @inherit patchstrokecolor
-    "Adds an offset to every value."
-    offset = 0.0
-    "Defines where the bars start."
-    fillto = automatic
-    """
-    Allows to scale all values to a certain height. This can also be set to
-    `:flip` to flip the direction of histogram bars without scaling them to a
-    common height.
+    Scales the histogram by a common factor such that the largest bin reaches the
+    given value. This can also be set to `:flip` to flip the direction of histogram
+    bars without scaling them.
     """
     scale_to = nothing
-    bar_labels = nothing
-    flip_labels_at = Inf
-    label_color = @inherit textcolor
-    over_background_color = automatic
-    over_bar_color = automatic
-    label_offset = 5
-    label_font = @inherit font
-    label_size = 20
-    label_formatter = bar_label_formatter
-    "Set the direction of the bars."
-    direction = :y
-    "Gap between the bars (see barplot)."
+
+    filtered_attributes(
+        BarPlot, exclude = (
+            :dodge, :n_dodge, :dodge_gap, :stack, :width,
+            :color_over_background, :color_over_bar, # renamed here :(
+        )
+    )...
+    "Sets the gap between bars relative to their width. The new width is `w * (1 - gap)`."
     gap = 0
+    "Sets the color of labels that are drawn outside of bars. Defaults to `label_color`"
+    over_background_color = automatic
+    "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
+    over_bar_color = automatic
 end
 
 function pick_hist_edges(vals, bins)
@@ -159,39 +141,29 @@ function pick_hist_edges(vals, bins)
     end
 end
 
-function Makie.plot!(plot::Hist)
+function plot!(plot::Hist)
 
-    values = plot.values
-    edges = lift(pick_hist_edges, plot, values, plot.bins)
+    map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    points = lift(
-        plot, edges, plot.normalization, plot.scale_to,
-        plot.weights
-    ) do edges, normalization, scale_to, wgts
+    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
         centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         return Point2.(centers, weights)
     end
-    widths = lift(diff, plot, edges)
-    color = lift(plot, plot.color) do color
-        if color === :values
-            return last.(points[])
-        else
-            return color
-        end
+
+    map!(diff, plot, :edges, :widths)
+    map!(plot, [:points, :color], :computed_colors) do points, color
+        return color === :values ? last.(points) : color
     end
 
-    bar_labels = lift(plot, plot.bar_labels) do x
-        x === :values ? :y : x
+    map!(plot, :bar_labels, :computed_bar_labels) do x
+        return x === :values ? :y : x
     end
 
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(
-        plot, Attributes(plot), points; width = widths, fillto = plot.fillto,
-        offset = plot.offset, bar_labels = bar_labels, color = color
+    barplot!(
+        plot, Attributes(plot), plot.points;
+        bar_labels = plot.computed_bar_labels, color = plot.computed_colors
     )
 
-    onany(plot, plot.normalization, plot.scale_to, plot.weights) do _, _, _
-        bp[1][] = points[]
-    end
     return plot
 end

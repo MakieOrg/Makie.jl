@@ -53,6 +53,8 @@ struct Cycled
 end
 
 """
+    LinearTicks(n_ideal::Int)
+
 LinearTicks with ideally a number of `n_ideal` tick marks.
 """
 struct LinearTicks
@@ -78,6 +80,8 @@ struct WilkinsonTicks
 end
 
 """
+    MultipleTicks(n_ideal, multiple, suffix[; strip_zero])
+
 Like LinearTicks but for multiples of `multiple`.
 Example where approximately 5 numbers should be found
 that are multiples of pi, printed like "1π", "2π", etc.:
@@ -229,6 +233,40 @@ end
 struct KeysEvent
     keys::Set{Makie.Keyboard.Button}
 end
+
+tickinfo = """
+The following is a list of common tick objects.
+
+Numeric:
+- A vector of numbers
+- A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
+- [`WilkinsonTicks`](@ref), the default tick finder for linear ticks
+- [`LinearTicks`](@ref), an alternative tick finder for linear ticks
+- [`LogTicks`](@ref), a wrapper that applies any other wrapped tick finder on log-transformed values
+- [`MultiplesTicks`](@ref), for finding ticks at multiples of a given value, such as `π`
+- [`AngularTicks`](@ref), for finding tick steps that are fitting for angles with base 12 numbering (90° instead of 100)
+
+DateTime:
+- A vector of `DateTime`s
+- A tuple with two vectors `(datetimes, labels)`
+- [`DateTimeTicks`](@ref), the default tick finder for datetime ticks
+"""
+
+tickformatinfo = """
+The following is a list of common tick formatter objects.
+
+Numeric:
+- A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
+    formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+
+DateTime:
+- A `Function` that takes a vector of datetimes and returns a vector of labels. A label can be anything
+    that can be plotted by the `text` primitive.
+- A `String` which is used to construct a `Dates.DateFormat` object for use with `Dates.format`. For example, `"dd.mm.yyyy"`.
+- A `Dates.DateFormat` object which is used with `Dates.format` like the `String` option.
+"""
 
 """
 A 2D axis which can be plotted into.
@@ -501,13 +539,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `xtickvalues = Makie.get_tickvalues(xticks, xscale, xmin, xmax)` after which the labels are determined using
         `Makie.get_ticklabels(xtickformat, xtickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         xticks = Makie.automatic
         """
@@ -518,11 +550,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `xticks` for more information.
 
-        Common objects that can be used for tick formatting are:
-        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
-          that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
-          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        $tickformatinfo
         """
         xtickformat = Makie.automatic
         """
@@ -535,13 +563,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         `ytickvalues = Makie.get_tickvalues(yticks, yscale, ymin, ymax)` after which the labels are determined using
         `Makie.get_ticklabels(ytickformat, ytickvalues)`.
 
-        Common objects that can be used as ticks are:
-        - A vector of numbers
-        - A tuple with two vectors `(numbers, labels)` where `labels` can be any objects that `text` can handle.
-        - `WilkinsonTicks`, the default tick finder for linear ticks
-        - `LinearTicks`, an alternative tick finder for linear ticks
-        - `LogTicks`, a wrapper that applies any other wrapped tick finder on log-transformed values
-        - `MultiplesTicks`, for finding ticks at multiples of a given value, such as `π`
+        $tickinfo
         """
         yticks = Makie.automatic
         """
@@ -552,25 +574,21 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         tick values and labels can be determined together using `Makie.get_ticks` instead. Check the
         docstring for `yticks` for more information.
 
-        Common objects that can be used for tick formatting are:
-        - A `Function` that takes a vector of numbers and returns a vector of labels. A label can be anything
-          that can be plotted by the `text` primitive.
-        - A `String` which is used as a format specifier for `Format.jl`. For example, `"{:.2f}kg"`
-          formats numbers rounded to 2 decimal digits and with the suffix `kg`.
+        $tickformatinfo
         """
         ytickformat = Makie.automatic
         "The button for panning."
-        panbutton::Makie.Mouse.Button = Makie.Mouse.right
+        panbutton::IsPressedInputType = Makie.Mouse.right
         "The key for limiting panning to the x direction."
-        xpankey::Makie.Keyboard.Button = Makie.Keyboard.x
+        xpankey::IsPressedInputType = Makie.Keyboard.x
         "The key for limiting panning to the y direction."
-        ypankey::Makie.Keyboard.Button = Makie.Keyboard.y
+        ypankey::IsPressedInputType = Makie.Keyboard.y
         "The key for limiting zooming to the x direction."
-        xzoomkey::Makie.Keyboard.Button = Makie.Keyboard.x
+        xzoomkey::IsPressedInputType = Makie.Keyboard.x
         "The key for limiting zooming to the y direction."
-        yzoomkey::Makie.Keyboard.Button = Makie.Keyboard.y
+        yzoomkey::IsPressedInputType = Makie.Keyboard.y
         "Button that needs to be pressed to allow scroll zooming."
-        zoombutton::Union{Bool, Makie.Keyboard.Button} = true
+        zoombutton::IsPressedInputType = true
         "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition::Symbol = :bottom
         "The position of the y axis (`:left` or `:right`)."
@@ -679,7 +697,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the x axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 
@@ -698,7 +716,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         The scaling function for the y axis.
 
         Can be any invertible function, some predefined options are
-        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10` and `Makie.Symlog10`.
+        `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
         To use a custom function, you have to define appropriate methods for `Makie.inverse_transform`,
         `Makie.defaultlimits` and `Makie.defined_interval`.
 
@@ -2329,9 +2347,9 @@ end
         "Sets the speed of scroll based zooming. Setting this to 0 effectively disables zooming."
         zoomspeed::Float32 = 0.1
         "Sets the key used to restrict zooming to the r-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
-        rzoomkey = Keyboard.r
+        rzoomkey::IsPressedInputType = Keyboard.r
         "Sets the key used to restrict zooming to the theta-direction. Can be set to `true` to always restrict zooming or `false` to disable the interaction."
-        thetazoomkey = Keyboard.t
+        thetazoomkey::IsPressedInputType = Keyboard.t
         "Controls whether rmin remains fixed during zooming and translation. (The latter will be turned off by setting this to true.)"
         fixrmin::Bool = true
         "Controls whether adjusting the rlimits through interactive zooming is blocked."
@@ -2339,13 +2357,13 @@ end
         "Controls whether adjusting the thetalimits through interactive zooming is blocked."
         thetazoomlock::Bool = true
         "Sets the mouse button for translating the plot in r-direction."
-        r_translation_button = Mouse.right
+        r_translation_button::IsPressedInputType = Mouse.right
         "Sets the mouse button for translating the plot in theta-direction. Note that this can be the same as `radial_translation_button`."
-        theta_translation_button = Mouse.right
+        theta_translation_button::IsPressedInputType = Mouse.right
         "Sets the button for rotating the PolarAxis as a whole. This replaces theta translation when triggered and must include a mouse button."
-        axis_rotation_button = Keyboard.left_control & Mouse.right
+        axis_rotation_button::IsPressedInputType = Keyboard.left_control & Mouse.right
         "Sets the button or button combination for resetting the axis view. (This should be compatible with `ispressed`.)"
-        reset_button = Keyboard.left_control & Mouse.left
+        reset_button::IsPressedInputType = Keyboard.left_control & Mouse.left
         "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
         reset_axis_orientation::Bool = false
     end

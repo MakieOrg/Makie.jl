@@ -17,6 +17,8 @@ uniform vec3 light_color;
 uniform vec3 ambient;
 uniform vec3 light_direction;
 
+uniform mat4 projection, view;
+
 float _normalize(float val, float from, float to) { return (val-from) / (to - from); }
 
 vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm) {
@@ -315,22 +317,30 @@ void main()
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = frag_vert;
     vec3 dir = normalize(eye_unit - back_position);
-    // solve back_position + distance * dir == 1
-    // solve back_position + distance * dir == 0
-    // to see where it first hits unit cube!
-    vec3 solution_1 = (1.0 - back_position) / dir;
-    vec3 solution_0 = (0.0 - back_position) / dir;
-    float solution = min_bigger_0(solution_1, solution_0);
 
-    vec3 start = back_position + solution * dir;
+    bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
+            || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
+
+    vec3 start = eye_unit;
+    vec3 stop = back_position;
+
+    if (is_outside_box) {
+        // only trace inside the box:
+        // solve back_position + distance * dir == 1
+        // solve back_position + distance * dir == 0
+        // to see where it first hits unit cube!
+        vec3 solution_1 = (1.0 - back_position) / dir;
+        vec3 solution_0 = (0.0 - back_position) / dir;
+        float solution = min_bigger_0(solution_1, solution_0);
+        start = back_position + solution * dir;
+    }
 
     // if completely clipped discard this ray tracing attempt
-    if (process_clip_planes(start, back_position))
+    if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (back_position - start) / float(num_samples);
+    vec3 step_in_dir = (stop - start) / float(num_samples);
 
-    float steps = 0.1;
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);
     else if(algorithm == 1)
@@ -355,6 +365,11 @@ void main()
     if (color.a <= 0.0){
         discard;
     }
-    fragment_color = color;
 
+    // use front face for depth, see GLMakie
+    // TODO: depth calculation for contour, isosurface
+    vec4 frag_coord = projection * view * model * vec4(start, 1.0);
+    gl_FragDepth = 0.5 * (frag_coord.z / frag_coord.w + depth_shift + 1.0);
+
+    fragment_color = color;
 }

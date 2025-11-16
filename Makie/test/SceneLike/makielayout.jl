@@ -552,13 +552,18 @@ end
     y = 1.0:0.1:5.0
     z = broadcast((x, y) -> x, x, y')
 
-    scale = Makie.Symlog10(2)
-    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
-    Colorbar(fig[1, 2], hm)
-
-    scale = Makie.pseudolog10
-    fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
-    Colorbar(fig[1, 2], hm)
+    for scale in (
+            Makie.Symlog10(2),
+            Makie.pseudolog10,
+            Makie.AsinhScale(0.1),
+            Makie.SinhScale(1 / 3),
+            Makie.LogScale(1000, ℯ),
+            Makie.LuptonAsinhScale(0.1, 0.01, 0.1),
+            Makie.PowerScale(1),
+        )
+        fig, ax, hm = heatmap(x, y, z; colorscale = scale, axis = (; xscale = scale))
+        Colorbar(fig[1, 2], hm)
+    end
 end
 
 @testset "Axis scale" begin
@@ -603,9 +608,17 @@ end
 
 @testset "Toggle" begin
     f = Figure()
-    Toggle(f[1, 1])
+    t = Toggle(f[1, 1])
     Toggle(f[2, 1], orientation = :vertical)
     Toggle(f[3, 1], orientation = pi / 4)
+
+    # changing active triggers animation
+    e = events(f)
+    @test length(e.tick.listeners) == 0
+    t.active[] = true
+    @test length(e.tick.listeners) == 1
+    e.tick[] = Makie.Tick(Makie.RegularRenderTick, 1, 1.0, 1.0)
+    @test length(e.tick.listeners) == 0
 end
 
 @testset "Textbox set! & unsafe_set!" begin

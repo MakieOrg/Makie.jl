@@ -832,7 +832,6 @@ function getlimits(la::Axis, dim)
         try
             bb = apply_transform(itf, bb)
         catch e
-            # TODO: Is this necessary?
             @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
             bb = data_limits(la.scene, exclude)
         end
@@ -1256,6 +1255,13 @@ function Makie.xlims!(ax::Axis, xlims)
 
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
+
+    # update xlims for linked axes
+    for xlink in ax.xaxislinks
+        xlink_mlims = convert_limit_attribute(xlink.limits[])
+        xlink.limits.val = (xlims, xlink_mlims[2])
+    end
+
     reset_limits!(ax, yauto = false)
     return nothing
 end
@@ -1274,6 +1280,13 @@ function Makie.ylims!(ax::Axis, ylims)
     end
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (mlims[1], ylims)
+
+    # update ylims for linked axes
+    for ylink in ax.yaxislinks
+        ylink_mlims = convert_limit_attribute(ylink.limits[])
+        ylink.limits.val = (ylink_mlims[1], ylims)
+    end
+
     reset_limits!(ax, xauto = false)
     return nothing
 end
@@ -1829,7 +1842,13 @@ function attribute_examples(::Type{Axis})
                     yticks = [-100, -10, 0, 10, 100]
                 )
 
-                for ax in [ax1, ax2]
+                ax3 = Axis(f[1, 1],
+                    yscale = Makie.pseudolog10,
+                    title = "Pseudolog scale with LogTicks",
+                    yticks = LogTicks(-2:2)
+                )
+
+                for ax in [ax1, ax2, ax3]
                     lines!(ax, -100:0.1:100)
                 end
 
