@@ -457,3 +457,41 @@ function Makie.plot!(p::BarPlot)
 
     return p
 end
+
+function boundingbox(p::BarPlot, space::Symbol = :data)
+    if is_identity_transform(p.transform_func[])
+        x0, x1 = extrema(p.x[])
+        y0, y1 = extrema(p.y[] .+ p.offset[])
+        y0 = min.(y0, p.computed_fillto[])
+        y1 = max.(y1, p.computed_fillto[])
+        w = p.barwidth[]
+        bb = Rect2d(x0 - 0.5w, y0, x1 - x0 + w, y1 - y0)
+    else
+        # track the minimum and maximum of all bar vertices after tranform_func
+        # For log axis we may get log(0) = -Inf from the default `fillto = 0`.
+        # If we do, we use
+        #   apply_transform(tf, 0.5 * minimum(ys + offset))
+        # as the lower limit instead. (E.g. log(0.5 * min_bar_height))
+        alt_ref = Point2d(Inf)
+        maxi = Point2d(-Inf)
+        mini = Point2d(Inf)
+        tf = p.transform_func[]
+        broadcast_foreach(p.x[], p.barwidth[], p.y[], p.offset[], p.computed_fillto[]) do x, width, y, offset, fillto
+            w = 0.5width
+            ymin = min(y + offset, fillto)
+            ymax = max(y + offset, fillto)
+            p00 = apply_transform(tf, Point2d(x - w, ymin))
+            p01 = apply_transform(tf, Point2d(x - w, ymax))
+            p11 = apply_transform(tf, Point2d(x + w, ymax))
+            p10 = apply_transform(tf, Point2d(x + w, ymin))
+            mini = min.(mini, p00, p01, p11, p10)
+            maxi = max.(maxi, p00, p01, p11, p10)
+            alt_ref = min.(alt_ref, Point2d(x - w, ymax))
+        end
+        alt_mini = apply_transform(tf, 0.5 * alt_ref)
+        mini = ifelse.(isfinite.(mini), mini, alt_mini)
+        bb = Rect2d(mini, maxi .- mini)
+    end
+    bb = ifelse(p.in_y_direction[], bb, flip(bb))
+    return apply_model(transformationmatrix(p)[], Rect3d(bb))
+end
