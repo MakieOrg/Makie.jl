@@ -306,44 +306,42 @@ function barplot_labels(
 end
 
 function Makie.plot!(p::BarPlot)
-    bar_points = p[1]
-    if !(eltype(bar_points[]) <: Point2)
-        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(bar_points[])")
-    end
-    labels = Observable(Tuple{Union{String, LaTeXStrings.LaTeXString}, Point2d}[])
-    label_aligns = Observable(Vec2d[])
-    label_offsets = Observable(Vec2d[])
-    label_colors = Observable(RGBAf[])
-    function calculate_bars(
-            xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
-            dir, bar_labels, flip_labels_at, label_color, color_over_background,
-            color_over_bar, label_formatter, label_offset, label_rotation, label_align, label_position
-        )
-
-        in_y_direction = get((y = true, x = false), dir) do
+    map!(p, :direction, :in_y_direction) do dir
+        return get((y = true, x = false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
         end
+    end
 
-        x = first.(xy)
-        y = last.(xy)
+    map!(p, :positions, [:raw_x, :raw_y]) do xy
+        return first.(xy), last.(xy)
+    end
 
+    # Bar width + dodge
+    map!(
+        p, [:raw_x, :width, :gap, :dodge, :n_dodge, :dodge_gap], [:x, :barwidth]
+    ) do x, userwidth, gap, dodge, n_dodge, dodge_gap
         # by default, `width` is `minimum(diff(sort(unique(x)))`
-        if width === automatic
+        if userwidth === automatic
             x_unique = unique(filter(isfinite, x))
             x_diffs = diff(sort(x_unique))
             width = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+        else
+            width = userwidth
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)
-        x̂, barwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+        return compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+    end
 
-        # --------------------------------
-        # ----------- Stacking -----------
-        # --------------------------------
-
+    # stack
+    map!(
+        p,
+        [:stack, :fillto, :x, :raw_y, :transform_func, :offset, :in_y_direction],
+        [:y, :computed_fillto]
+    ) do stack, fillto, x, y, transform_func, offset, in_y_direction
         if stack === automatic
             if fillto === automatic
-                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
+                return bar_default_fillto(transform_func, y, offset, in_y_direction)
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -353,43 +351,55 @@ function Makie.plot!(p::BarPlot)
             end
             i_stack = stack
 
-            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
-            y, fillto = to, from
+            from, to = stack_grouped_from_to(i_stack, y, (x = x,))
+            return to, from
         else
-            ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
+            throw(ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`"))
         end
+    end
 
-        # --------------------------------
-        # ----------- Labels -------------
-        # --------------------------------
+    map!(
+        p, [:x, :y, :offset, :barwidth, :computed_fillto, :in_y_direction], :bar_rectangles
+    ) do x, y, offset, barwidth, fillto, in_y_direction
+        return bar_rectangle.(x, y .+ offset, barwidth, fillto, in_y_direction)
+    end
+
+    # bar Labels
+    map!(
+        p,
+        [
+            :label_color, :color_over_background, :color_over_bar,
+            :x, :y, :offset, :bar_labels, :in_y_direction, :flip_labels_at,
+            :label_formatter, :label_offset, :label_rotation, :label_align,
+            :label_position, :computed_fillto
+        ],
+        [:labels, :label_aligns, :label_offsets, :label_colors]
+    ) do label_color, color_over_background, color_over_bar,
+            x, y, offset, bar_labels, in_y_direction, flip_labels_at,
+            label_formatter, label_offset, label_rotation, label_align,
+            label_position, fillto
 
         if !isnothing(bar_labels)
-            oback = color_over_background === automatic ? label_color : color_over_background
-            obar = color_over_bar === automatic ? label_color : color_over_bar
-            label_args = barplot_labels(
-                x̂, y, offset, bar_labels, in_y_direction,
+            oback = default_automatic(color_over_background, label_color)
+            obar = default_automatic(color_over_bar, label_color)
+            return barplot_labels(
+                x, y, offset, bar_labels, in_y_direction,
                 flip_labels_at, to_color(oback), to_color(obar),
                 label_formatter, label_offset, label_rotation, label_align, label_position, fillto
             )
-            labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
-
-        return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(
-        calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
-        p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-        p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align, p.label_position; priority = 1
-    )
-    poly!(
-        p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency, space = p.space,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
-    )
 
-    return if !isnothing(p.bar_labels[])
-        text!(p, labels; align = label_aligns, offset = label_offsets, color = label_colors, font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation)
+    poly!(p, p.attributes, p.bar_rectangles)
+
+    if !isnothing(p.bar_labels[])
+        text!(
+            p, p.attributes, p.labels;
+            align = p.label_aligns, offset = p.label_offsets, color = p.label_colors,
+            font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation
+        )
     end
+
+    return p
 end
