@@ -401,7 +401,12 @@ function Makie.plot!(p::BarPlot)
         end
     end
 
-    add_slow_limits!(p)
+    try
+        add_slow_limits!(p)
+    catch e
+        # allow PolarAxis to not error
+        add_input!(p.attributes, :slow_limits_transformed, Rect2d(-Inf, -Inf, Inf, Inf))
+    end
 
     map!(
         p,
