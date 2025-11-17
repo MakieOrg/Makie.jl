@@ -340,6 +340,11 @@ function draw_plot(
         if color isa Cairo.CairoPattern
             pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
         end
+
+        for p in band.plots
+            p isa Mesh && continue
+            draw_plot(scene, screen, p)
+        end
     else
         for p in band.plots
             draw_plot(scene, screen, p)

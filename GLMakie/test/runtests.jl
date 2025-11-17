@@ -42,7 +42,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         f, a, p = scatter(rand(10))
         colorbuffer(f)
         @test length(p.attributes.inputs) == 43
-        @test length(p.attributes.outputs) == 87
+        @test length(p.attributes.outputs) == 88
     end
 
     @testset "Reference Tests" begin

@@ -8,6 +8,7 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
 end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
+    isempty(edges) && return Float64[], Float64[]
     w = wgts === automatic ? () : (StatsBase.weights(wgts),)
     h = StatsBase.fit(StatsBase.Histogram, values, w..., edges)
     h_norm = StatsBase.normalize(h; mode = normalization)
@@ -60,6 +61,7 @@ function plot!(plot::StepHist)
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
     map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
+        isempty(edges) && return Point2d[]
         _, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
         phantomedge = edges[end] # to bring step back to baseline
         edges = vcat(edges, phantomedge)
@@ -126,6 +128,7 @@ number of values that full into certain ranges.
 end
 
 function pick_hist_edges(vals, bins)
+    isempty(vals) && return 1.0:0.0
     if bins isa Int
         mi, ma = float.(extrema(vals))
         if mi == ma

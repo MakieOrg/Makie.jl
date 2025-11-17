@@ -22,6 +22,12 @@ points in `lower` and `upper`.
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
+    "Sets the color of the lines at the lower and upper limits of the band"
+    strokecolor = @inherit patchstrokecolor
+    "Sets the colormap that is sampled for numeric `strokecolor`s."
+    strokecolormap = @inherit colormap
+    "Sets the width of the lines at the lower and upper limits of the band"
+    strokewidth = @inherit patchstrokewidth
     shading = NoShading
 end
 
@@ -40,7 +46,6 @@ function band_connect(n)
 end
 
 function plot!(plot::Band)
-    @extract plot (lowerpoints, upperpoints)
     nanpoint(::Type{<:Point3}) = Point3(NaN)
     nanpoint(::Type{<:Point2}) = Point2(NaN)
     map!(plot, [:lowerpoints, :upperpoints, :direction], :coordinates) do lowerpoints, upperpoints, direction
@@ -60,9 +65,11 @@ function plot!(plot::Band)
         end
         return concat
     end
+
     map!(plot, [:lowerpoints], :connectivity) do lowerpoints
         return band_connect(length(lowerpoints))
     end
+
     map!(plot, [:lowerpoints, :color], :colors) do lowerpoints, c
         if c isa AbstractVector
             # if the same number of colors is given as there are
@@ -81,7 +88,33 @@ function plot!(plot::Band)
         end
     end
 
-    return mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
+    mesh!(plot, plot.attributes, plot.coordinates, plot.connectivity, color = plot.colors)
+
+    map!(plot, :strokecolor, :linecolor) do strokecolor
+        if strokecolor isa AbstractVector
+            return vcat(strokecolor, strokecolor[1:1], strokecolor)
+        else
+            return strokecolor
+        end
+    end
+
+    map!(plot, [:lowerpoints, :upperpoints, :direction], :merged_points) do lower, upper, direction
+        ps = copy(lower)
+        push!(ps, eltype(ps)(NaN))
+        append!(ps, upper)
+        if direction === :y
+            ps .= reverse.(ps)
+        end
+        return ps
+    end
+
+    lines!(
+        plot, plot.attributes, plot.merged_points,
+        linewidth = plot.strokewidth, color = plot.linecolor,
+        fxaa = false
+    )
+
+    return
 end
 
 function fill_view(x, y1, y2, where::Nothing)
