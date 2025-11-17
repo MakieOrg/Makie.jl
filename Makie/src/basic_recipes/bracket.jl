@@ -1,20 +1,12 @@
 """
-    bracket(xs1, ys1, xs2, ys2; attributes...)
-    bracket(points1, points2; attributes...)
-    bracket(points12; attributes...)
-
-Draws a bracket between each pair of points (x1, y1) and (x2, y2) with a text
-label at the midpoint. By default each label is rotated parallel to the line
-between the bracket points.
+Draws a bracket between each pair of points with a text label at the midpoint.
+By default each label is rotated parallel to the line between the bracket points.
 
 ## Arguments
-- `xs1, ys1, xs2, ys1`: A `Real` or `AbstractVector{<:Real}` setting the respective
-  `x` or `y` coordinate of the start (1) or end point (2) of a bracket.
-- `points1, points2`: A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
-  `AbstractVector{<:VecTypes}` setting the (x, y) coordinate of a start point
-  in `points1` or end point in `points2` of a bracket.
-- `points12`: An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}`
-  containing the start and end points of the bracket as tuples `(startpoint, endpoint)`.
+
+* `xs1, ys1, xs2, ys2` Defines brackets where each is a `Real` or `AbstractVector{<:Real}` setting the respective x or y coordinate of the start (1) or end point (2) of a bracket.
+* `points1, points2` Defines brackets where each is a `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}` setting the (x, y) coordinate of a start point in `points1` or end point in `points2` of a bracket.
+* `points12` An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}` containing the start and end points of the bracket as tuples `(startpoint, endpoint)`.
 """
 @recipe Bracket (positions,) begin
     """

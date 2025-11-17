@@ -1,12 +1,12 @@
 struct DelaunayTriangulation end
 
 """
-    tricontourf(triangles::Triangulation, zs; attributes...)
-    tricontourf(xs, ys, zs; attributes...)
+Plots a filled tricontour of height information.
 
-Plots a filled tricontour of the height information in `zs` at the horizontal positions `xs` and
-vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`
-for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
+## Arguments
+
+* `xs, ys, zs` Plots filled contours where `xs` and `ys` are positions (`AbstractVector{<:Real}`) and `zs` are height values. An unconstrained triangulation of `xs` and `ys` is computed automatically.
+* `triangles, zs` Plots filled contours where `triangles` is a `Triangulation` from DelaunayTriangulation.jl specifying the triangulation, and `zs` are the height values at each point.
 """
 @recipe Tricontourf begin
     """

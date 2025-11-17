@@ -5,8 +5,8 @@ Plots with the `SampleBased` trait work with sample-based data where values are 
 
 ## Arguments
 
-* `ys`: An `AbstractVector{<:Real}` defining samples.
-* `xs`: An `AbstractVector{<:Real}` defining the x positions and grouping of `ys`. This can typically be reinterpreted as y positions by adjusting the `orientation` or `direction` attribute. (x, y) pairs with the same x value are considered part of the same group, category or sample.
+* `ys` An `AbstractVector{<:Real}` defining samples.
+* `xs, ys` Defines the x positions and grouping of `ys`. `xs` is an `AbstractVector{<:Real}` and can typically be reinterpreted as y positions by adjusting the `orientation` or `direction` attribute. (x, y) pairs with the same x value are considered part of the same group, category or sample.
 """
 struct SampleBased <: ConversionTrait end
 

@@ -1,5 +1,12 @@
 """
 Plots the given text(s) with a background(s) at the given position(s).
+
+## Arguments
+
+* `p, str` Plots a single text label where `p` is a `VecTypes` (`Point`, `Vec` or `Tuple`) specifying the position, and `str` is the text string.
+* `ps, strs` Plots multiple text labels where `ps` is an `AbstractVector{<:VecTypes}` of positions and `strs` is an `AbstractVector` of text strings.
+* `x, y, strs` Plots text labels at 2D positions defined by separate x and y coordinates (`Real` or `AbstractVector{<:Real}`), with `strs` being the text strings.
+* `x, y, z, strs` Plots text labels at 3D positions defined by separate x, y, and z coordinates, with `strs` being the text strings.
 """
 @recipe TextLabel (positions,) begin
     # text-like args interface

@@ -2,14 +2,9 @@
 Plots a circular arc centered at `origin` with the given `radius` from `start_angle`
 to `stop_angle`.
 
-`origin` must be a coordinate in 2 dimensions (i.e., a `Point2`); the rest of the arguments must be
-`<: Number`.
-
 ## Arguments
-- `origin`: A 2D `Point{2, <:Real}` determining the origin position of the arc.
-- `radius`: A `Real` determining the radius of the arc, measured from `origin`.
-- `start_angle`: A `Real` determining the angle from the x-axis at which the arc starts.
-- `stop_angle`: A `Real` determining the angle from the x-axis at which the arc stops.
+
+* `origin, radius, start_angle, stop_angle` Defines a circular arc where `origin` is a 2D `Point{2, <:Real}` determining the center position, `radius` is a `Real` determining the radius measured from `origin`, `start_angle` is a `Real` determining the angle from the x-axis at which the arc starts, and `stop_angle` is a `Real` determining the angle from the x-axis at which the arc stops.
 """
 @recipe Arc (origin, radius, start_angle, stop_angle) begin
     documented_attributes(Lines)...

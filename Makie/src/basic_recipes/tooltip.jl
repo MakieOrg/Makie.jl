@@ -1,8 +1,10 @@
 """
-    tooltip(position, string; attributes...)
-    tooltip(x, y, string; attributes...)
+Creates a tooltip pointing at a position displaying the given string.
 
-Creates a tooltip pointing at `position` displaying the given `string`.
+## Arguments
+
+* `position, string` Creates a tooltip where `position` is a `VecTypes` (`Point`, `Vec` or `Tuple`) and `string` is the text to display.
+* `x, y, string` Creates a tooltip where `x` and `y` are `Real` coordinates and `string` is the text to display.
 """
 @recipe Tooltip begin
     # General

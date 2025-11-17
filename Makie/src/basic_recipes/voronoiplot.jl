@@ -13,16 +13,9 @@ however the cells are not restricted to a rectangular shape. It can be called wi
 point based (like `scatter` or `lines`) or `heatmap`-like inputs.
 
 ## Arguments
-- `positions`: An `AbstractVector{<:VecTypes{D, <:Real}}` (`Point`, `Vec` or `Tuple`)
-  defining positions around which voronoi cells are formed. If third dimension
-  is used in place of `color` for colormapping if present.
-- `xs, ys`: An `AbstractVector{<:Real}` setting cell positions per dimension.
-- `values`: An `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` used in place
-  of colors. `xs` and `ys` will be interpreted per matrix axes if this is given
-  as a matrix. If `values` is the sole argument it must be a matrix. In this case
-  `xs` and `ys` default to `axes(values, dim)`.
-- `vorn`: A `DelaunayTriangulation.VoronoiTessellation` defining the voronoi cells
-  explicitly.
+* `positions` An `AbstractVector{<:VecTypes{D, <:Real}}` (`Point`, `Vec` or `Tuple`) defining positions around which voronoi cells are formed. If a third dimension is present, it is used in place of `color` for colormapping.
+* `xs, ys, [values]` Cell positions per dimension as `AbstractVector{<:Real}`. Optionally with `values` (an `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}`) used in place of colors. When `values` is a matrix, `xs` and `ys` are interpreted per matrix axes. If `values` is the sole argument it must be a matrix, in which case `xs` and `ys` default to `axes(values, dim)`.
+* `vorn` A `DelaunayTriangulation.VoronoiTessellation` defining the voronoi cells explicitly.
 """
 @recipe Voronoiplot begin
     "Determines whether to plot the individual generators."

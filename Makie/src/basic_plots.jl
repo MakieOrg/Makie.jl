@@ -442,10 +442,10 @@ Note that `meshscatter` is much better for plotting a single mesh at multiple po
 
 ## Arguments
 
-- `mesh`: A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.
-- `vertices, indices`: Vertex positions and face indices defining the mesh geometry.
-- `x, y, z`: Coordinates defining a surface (converted to mesh internally).
-- `geom`: Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh.
+* `mesh` A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.
+* `vertices, indices` Vertex positions and face indices defining the mesh geometry.
+* `x, y, z` Coordinates defining a surface (converted to mesh internally).
+* `geom` Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh.
 """
 @recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh, GeometryBasics.MetaMesh},) begin
     """
@@ -655,6 +655,10 @@ Plots a 3D array of data as voxels (small cubes) within the limits defined by
 
 Note that `voxels` is currently considered experimental and may still see breaking
 changes in patch releases.
+
+## Arguments
+
+* `x, y, z, chunk` Defines the 3D volume where `x`, `y`, and `z` specify the limits as `ClosedInterval` or `Tuple{Real, Real}`, and `chunk` is a 3D array of voxel data. Each non-air voxel is rendered as a small cube.
 """
 @recipe Voxels (x, y, z, chunk) begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
@@ -709,9 +713,9 @@ and `connectivity` (the edges between the vertices).
 
 ## Arguments
 
-- `polygon`: A `Polygon`, `MultiPolygon`, `Circle`, `Rect`, `AbstractMesh`, `VecTypes`, or `AbstractVector{<:VecTypes}` defining the polygon(s) to draw. Can also be an `AbstractVector` of any of these types to draw multiple polygons.
-- `xs, ys`: Two `AbstractVector{<:Real}` defining the x and y coordinates of polygon vertices.
-- `vertices, indices`: Vertex and index arrays defining a mesh (same as `Mesh` plot).
+* `polygon` A `Polygon`, `MultiPolygon`, `Circle`, `Rect`, `AbstractMesh`, `VecTypes`, or `AbstractVector{<:VecTypes}` defining the polygon(s) to draw. Can also be an `AbstractVector` of any of these types to draw multiple polygons.
+* `xs, ys` Two `AbstractVector{<:Real}` defining the x and y coordinates of polygon vertices.
+* `vertices, indices` Vertex and index arrays defining a mesh (same as `Mesh` plot).
 """
 @recipe Poly (polygon,) begin
     """
@@ -776,8 +780,9 @@ Draws a wireframe of surface or mesh data.
 
 ## Arguments
 
-- `mesh`: A `GeometryBasics.Mesh` object to render as a wireframe.
-- `positions`: An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh).
+* `mesh` A `GeometryBasics.Mesh` object to render as a wireframe.
+* `positions` An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh).
+* `x, y, z` Coordinates defining a surface (converted to mesh internally).
 """
 @recipe Wireframe begin
     documented_attributes(LineSegments)...

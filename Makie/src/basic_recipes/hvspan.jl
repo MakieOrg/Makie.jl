@@ -5,14 +5,8 @@
 Draws horizontal bands spanning across an `Axis`.
 
 ## Arguments
-- `ys_low`: A `Real` or `AbstractVector{<:Real}` setting the y start position of bands.
-- `ys_high`: A `Real` or `AbstractVector{<:Real}` setting the y end position of bands.
-- `ys_lowhigh`: An `Interval` or `AbstractVector{<:Interval}` setting the y start and
-end positions together.
-- `xmin`: A `Real` or `AbstractVector{<:Real}` setting the x start position of bands
-in relative (0 .. 1) space. (Attribute)
-- `xmax`: A `Real` or `AbstractVector{<:Real}` setting the x end position of bands
-in relative (0 .. 1) space. (Attribute)
+* `ys_low, ys_high` The y start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`). These can also be combined as `ys_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
+* `xmin, xmax` The x start and end positions of bands in relative (0 .. 1) space (each a `Real` or `AbstractVector{<:Real}`). These are attributes.
 """
 @recipe HSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the x dimension."
@@ -29,14 +23,8 @@ end
 Draws vertical bands spanning across an `Axis`.
 
 ## Arguments
-- `xs_low`: A `Real` or `AbstractVector{<:Real}` setting the x start position of bands.
-- `xs_high`: A `Real` or `AbstractVector{<:Real}` setting the x end position of bands.
-- `xs_lowhigh`: An `Interval` or `AbstractVector{<:Interval}` setting the x start and
-  end positions together.
-- `ymin`: A `Real` or `AbstractVector{<:Real}` setting the y start position of bands
-  in relative (0 .. 1) space. (Attribute)
-- `ymax`: A `Real` or `AbstractVector{<:Real}` setting the y end position of bands
-  in relative (0 .. 1) space. (Attribute)
+* `xs_low, xs_high` The x start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`). These can also be combined as `xs_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
+* `ymin, ymax` The y start and end positions of bands in relative (0 .. 1) space (each a `Real` or `AbstractVector{<:Real}`). These are attributes.
 """
 @recipe VSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."

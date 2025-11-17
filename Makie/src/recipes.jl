@@ -492,7 +492,6 @@ function extract_before_arguments_section(doc::Markdown.MD)
     idx = findfirst(doc_flat.content) do x
         x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
     end
-    @show idx
     if isnothing(idx)
         return doc_flat
     end

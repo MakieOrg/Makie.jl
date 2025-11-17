@@ -1,10 +1,9 @@
 """
-    hlines(ys; xmin = 0.0, xmax = 1.0, attributes...)
-
 Draws horizontal lines across an `Axis`.
 
-The lines will be placed at `ys` in data coordinates and span from `xmin` to `xmax`
-in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:Real}`.
+## Arguments
+
+* `ys` Positions where lines will be drawn in data coordinates. Can be a `Real` or `AbstractVector{<:Real}`. The lines span from `xmin` to `xmax` in relative coordinates (0 to 1).
 """
 @recipe HLines begin
     "The start of the lines in relative axis units (0 to 1) along the x dimension."
@@ -15,12 +14,11 @@ in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:R
 end
 
 """
-    vlines(xs; ymin = 0.0, ymax = 1.0, attributes...)
-
 Draws vertical lines across an `Axis`.
 
-The lines will be placed at `xs` in data coordinates and span from `ymin` to `ymax`
-in relative coordinates (0 to 1). All three can be `Real` or `AbstractVector{<:Real}`.
+## Arguments
+
+* `xs` Positions where lines will be drawn in data coordinates. Can be a `Real` or `AbstractVector{<:Real}`. The lines span from `ymin` to `ymax` in relative coordinates (0 to 1).
 """
 @recipe VLines begin
     "The start of the lines in relative axis units (0 to 1) along the y dimension."

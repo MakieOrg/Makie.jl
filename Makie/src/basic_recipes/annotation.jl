@@ -61,11 +61,8 @@ that overlaps between labels and data points are reduced. In this mode, the labe
 be very close to their associated data points so connection plots are typically not visible.
 
 ## Arguments
-- `xs_target, ys_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
-- `xs_label, ys_label, xs_target, ys_target`: defining label positions on top of target positions.
-- `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
-  an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
-- `points_label, points_target`: defining label positions on top of target positions.
+* `xs_target, ys_target` Target positions defined per dimension (each a `Real` or `AbstractVector{<:Real}`). Can also be given as `points_target` (a `VecTypes{2, <:Real}` like `Point2`, `Vec2`, `Tuple` of `Real`, or an `AbstractVector{<:VecTypes{2, <:Real}}`).
+* `xs_label, ys_label, xs_target, ys_target` Label positions specified on top of target positions per dimension. Can also be given as `points_label, points_target`.
 """
 @recipe Annotation (textpositions::AbstractVector{<:Vec4},) begin
     """

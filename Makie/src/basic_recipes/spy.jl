@@ -14,9 +14,7 @@ spy(0..1, 0..1, x)
 ```
 
 ## Arguments
-- `matrix`: An `AbstractSparseArray{2, <:Real}` containing the sparse matrix data.
-- `x, y`: A `ClosedInterval` or `Tuple{<:Real, <:Real}` setting the x or y
-  limits of the sparse matrix. If omitted, this will default to `0 .. size(matrix, dim)`.
+* `[x, y], matrix` Visualizes a sparse `matrix` (an `AbstractSparseArray{2, <:Real}`). Optionally, the limits of the sparse matrix can be set with `x, y` (each a `ClosedInterval` or `Tuple{<:Real, <:Real}`). If omitted, limits default to `0 .. size(matrix, dim)`.
 """
 @recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
     """

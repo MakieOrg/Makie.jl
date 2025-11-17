@@ -16,13 +16,8 @@ streamplot(v, -2..2, -2..2)
 ```
 
 ## Arguments
-- `bbox`: A 2D or 3D `Rect` setting the bounding box in which `f` is evaluated
-  to generate streamlines.
-- `f`: A function `pos::Point{D} -> direction::VecTypes{D}` or `(x, y, [z]) -> direction`
-  which defines the tangent direction of the streamline at any point in the bounding box.
-  Can be 2 or 3 dimensional.
-- `x, y, z`: Sets the bounding box of streamline plot per dimension. Can be any
-  type that implements `extrema()`.
+* `f, bbox` A function `f` (either `pos::Point{D} -> direction::VecTypes{D}` or `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point, and a bounding box `bbox` (a 2D or 3D `Rect`) in which `f` is evaluated to generate streamlines. Can be 2 or 3 dimensional.
+* `f, x, y, [z]` The function `f` with the bounding box specified per dimension via `x, y, z` (any type that implements `extrema()`).
 """
 @recipe StreamPlot (f, limits) begin
     """

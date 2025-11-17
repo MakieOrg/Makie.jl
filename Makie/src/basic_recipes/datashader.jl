@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<:Point}; attributes...)
+Data shader for large point datasets.
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
@@ -293,6 +293,10 @@ this might be slower than just copying the data into a new array.
 
 For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto`
 or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+
+## Arguments
+
+* `points` An `AbstractVector{<:Point}` containing the point data to visualize via aggregation.
 """
 @recipe DataShader (points,) begin
     """
