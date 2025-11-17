@@ -53,11 +53,6 @@ end
 using .Ann
 
 """
-    annotation(xs_target, ys_target; attributes...)
-    annotation(xs_label, ys_label, xs_target, ys_target; attributes...)
-    annotation(points_target; attributes...)
-    annotation(points_label, points_target; attributes...)
-
 Annotate one or more target points with a combination of optional text labels and
 connections between labels and targets, typically in the form of an arrow.
 
@@ -67,13 +62,12 @@ be very close to their associated data points so connection plots are typically 
 
 ## Arguments
 - `xs_target, ys_target`: A `Real` or `AbstractVector{<:Real}` defining target positions per dimension.
-- `xs_label, ys_label`: A `Real` or `AbstractVector{<:Real}` defining label positions per dimension.
+- `xs_label, ys_label, xs_target, ys_target`: defining label positions on top of target positions.
 - `points_target`: A `VecTypes{2, <:Real}` (`Point2`, `Vec2`, `Tuple` of `Real`) or
   an `AbstractVector{<:VecTypes{2, <:Real}}` defining 2D target positions.
-- `points_label`: A `VecTypes{2, <:Real}` or `AbstractVector{<:VecTypes{2, <:Real}}`
-  defining 2D label positions.
+- `points_label, points_target`: defining label positions on top of target positions.
 """
-@recipe Annotation begin
+@recipe Annotation (textpositions::AbstractVector{<:Vec4},) begin
     """
     The color of the text labels. If `automatic`, `textcolor` matches `color`.
     """

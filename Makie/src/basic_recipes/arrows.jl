@@ -234,7 +234,7 @@ Plots arrows as 2D shapes.
 - `directions`: A `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point in. These maybe reinterpreted as positions arrows point towards if `argmode = :endpoint`.
 - `xs, ys, [zs]`: Defines `points` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `points` as an argument and is affected by `align` in the same way.
 - `us, vs, [ws]`: Defines `directions` using a `Real` or an `AbstractVector{<:Real}` for each dimension. This replaces `directions` as an argument and is affected by `argmode` in the same way.
-- `f`: A callback function `point -> direction` which returns a direction for each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]` or `points`.
+- `points, f`: A callback function `point -> direction` which returns a direction for each anchor point. Replaces `directions` and can be used with either `xs, ys, [zs]` or `points`.
 """
 @recipe Arrows2D (points, directions) begin
     """

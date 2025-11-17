@@ -338,8 +338,8 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples=1
     append!(combined.content, signatures.content)
     append!(combined.content, user_docs.content)
     append!(combined.content, arguments_section.content)
-    append!(combined.content, attributes_section.content)
     append!(combined.content, examples_section.content)
+    append!(combined.content, attributes_section.content)
     return combined
 end
 

@@ -1,16 +1,9 @@
 """
-    arc(origin, radius, start_angle, stop_angle; attributes...)
-
 Plots a circular arc centered at `origin` with the given `radius` from `start_angle`
 to `stop_angle`.
 
 `origin` must be a coordinate in 2 dimensions (i.e., a `Point2`); the rest of the arguments must be
 `<: Number`.
-
-Examples:
-
-`arc(Point2f(0), 1, 0.0, π)`
-`arc(Point2f(1, 2), 0.3, π, -π)`
 
 ## Arguments
 - `origin`: A 2D `Point{2, <:Real}` determining the origin position of the arc.
