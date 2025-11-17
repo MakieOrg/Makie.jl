@@ -19,11 +19,13 @@ using Makie
 end
 
 @testset "Empty histogram" begin
-    arg = Observable(Float64[])
-    f, a, p = @test_nowarn hist(arg)
-    Makie.update_state_before_display!(f)
-    @test all(iszero, p.plots[1][1][])
-    push!(arg[], 0.1)
-    notify(arg)
-    @test !all(iszero, p.plots[1][1][])
+    for plotfunc in (hist, stephist)
+        arg = Observable(Float64[])
+        f, a, p = @test_nowarn plotfunc(arg)
+        Makie.update_state_before_display!(f)
+        @test isempty(p.plots[1][1][])
+        push!(arg[], 0.1)
+        notify(arg)
+        @test !isempty(p.plots[1][1][])
+    end
 end
