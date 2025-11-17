@@ -1,6 +1,3 @@
-using Test
-using Makie
-
 @testset "Histogram plotting" begin
     unequal_vec = [1; rand(2:9, rand(1:9))]
     allequal_vec = fill(rand(1:9), rand(1:9))
