@@ -130,13 +130,57 @@ end
 
 conversion_trait(::Type{<:BarPlot}) = PointBased()
 
-function bar_rectangle(x, y, width, fillto, in_y_direction)
+"""
+    add_slow_limits!(plot)
+
+Adds `slow_limits_transformed` to the plot.
+
+These limits update when the real axis limits are no longer inside the slow
+limits, or if the slow limits become more than 20000 times larger.
+"""
+function add_slow_limits!(plot::Plot)
+    scene = parent_scene(plot)
+    add_axis_limits!(plot)
+    register_computation!(
+        scene.compute, [:axis_limits_transformed], [:slow_limits_transformed]
+    ) do (lims,), changed, cached
+        ws = widths(lims)
+        if isnothing(cached) || !(lims in cached[1]) || any(widths(cached[1]) .> 20000 .* ws)
+            mini = minimum(lims)
+            return (Rect2d(mini - 100ws, 201ws),)
+        else
+            return nothing
+        end
+    end
+    add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)
+end
+
+function bar_rectangle(tf, x, y, offset, width, fillto, in_y_direction, lims)
     # y could be smaller than fillto...
+    y += offset
     ymin = min(fillto, y)
     ymax = max(fillto, y)
-    w = abs(width)
-    rect = Rectd(x - (w / 2.0f0), ymin, w, ymax - ymin)
-    return in_y_direction ? rect : flip(rect)
+    w = 0.5 * abs(width)
+
+    # To deal with log transforms we apply the transform_func here and clamp
+    # the result to a renderable range of values. Edge case problems:
+    # - clamping to e.g. -floatmax(Float32) .. floatmax(Float32) breaks down
+    #   when the visible area <<< than that range (maybe float issues in
+    #   projectionview * position?)
+    # - `Rect` can't deal with transformations that curve space (e.g. Polar)
+    #    because it only stores the origin and widths
+    # - `Rect` also has float precision issues due to calculating origin + widths
+    # - to avoid running this excessively `lims` should update slowly (but always
+    #   be larger than the real axis limits)
+    minlim = minimum(lims)
+    maxlim = maximum(lims)
+    points = Point2d[(x - w, ymin), (x - w, ymax), (x + w, ymax), (x + w, ymin)]
+    points = map(points) do point
+        point = ifelse(in_y_direction, point, reverse(point))
+        return clamp.(apply_transform(tf, point), minlim, maxlim)
+    end
+
+    return Polygon(points)
 end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
@@ -335,13 +379,12 @@ function Makie.plot!(p::BarPlot)
 
     # stack
     map!(
-        p,
-        [:stack, :fillto, :x, :raw_y, :transform_func, :offset, :in_y_direction],
-        [:y, :computed_fillto]
-    ) do stack, fillto, x, y, transform_func, offset, in_y_direction
+        p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
+    ) do stack, fillto, x, y, offset
         if stack === automatic
             if fillto === automatic
-                return bar_default_fillto(transform_func, y, offset, in_y_direction)
+                return y, offset
+                # TODO: no else?
             end
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
@@ -358,10 +401,16 @@ function Makie.plot!(p::BarPlot)
         end
     end
 
+    add_slow_limits!(p)
+
     map!(
-        p, [:x, :y, :offset, :barwidth, :computed_fillto, :in_y_direction], :bar_rectangles
-    ) do x, y, offset, barwidth, fillto, in_y_direction
-        return bar_rectangle.(x, y .+ offset, barwidth, fillto, in_y_direction)
+        p,
+        [:x, :y, :offset, :barwidth, :computed_fillto, :in_y_direction, :transform_func, :slow_limits_transformed],
+        :bar_rectangles
+    ) do x, y, offset, barwidth, fillto, in_y_direction, transform_func, lims
+        return bar_rectangle.(
+            Ref(transform_func), x, y, offset, barwidth, fillto, in_y_direction, Ref(lims)
+        )
     end
 
     # bar Labels
@@ -391,7 +440,7 @@ function Makie.plot!(p::BarPlot)
     end
 
 
-    poly!(p, p.attributes, p.bar_rectangles)
+    poly!(p, p.attributes, p.bar_rectangles, transformation = :inherit_model)
 
     if !isnothing(p.bar_labels[])
         text!(
