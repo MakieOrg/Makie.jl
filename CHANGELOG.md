@@ -18,8 +18,11 @@
 - Fixed `band` not working with StructArrays in CairoMakie [#5381](https://github.com/MakieOrg/Makie.jl/pull/5381)
 - Updated `scatterlines` to include all remaining `scatter` attributes and pass all applicable attributes to its subplots [#5388](https://github.com/MakieOrg/Makie.jl/pull/5388)
 - Adjusted `stem` so that dash and dot patterns of stems start at the trunk [#5367](https://github.com/MakieOrg/Makie.jl/pull/5367)
+- Fixed `heatmap`, `surface`, `image` not ignoring `-Inf`/`Inf` values when computing their automatic colorrange [#5384](https://github.com/MakieOrg/Makie.jl/issues/5384)
 - Fixed cases of `heatmap` not displaying with `log10` scale and narrow `xlims`/`ylims` [#5390](https://github.com/MakieOrg/Makie.jl/pull/5390)
 - Fixed outline based `poly` fats paths no considering transform functions in CairoMakie [#5397](https://github.com/MakieOrg/Makie.jl/pull/5397)
+- Fixed manual `DateTime` and `Time` ticks given via `StepRange`s or `AbstractVector`s with or without formatters [#5404](https://github.com/MakieOrg/Makie.jl/pull/5404).
+- Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 
 ## [0.24.6] - 2025-08-19
 
@@ -147,6 +150,7 @@
 - Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
 - Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
+- Fixed `hist` erroring if it was passed an empty vector, it now defaults to an interval of `0..10` in the absence of any input.  [#5022](https://github.com/MakieOrg/Makie.jl/pull/5022)
 
 ## [0.22.7] - 2025-05-23
 
