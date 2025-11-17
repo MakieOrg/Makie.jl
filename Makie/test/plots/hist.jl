@@ -14,3 +14,15 @@
     # change to unequal vector
     @test_nowarn v[] = unequal_vec
 end
+
+@testset "Empty histogram" begin
+    for plotfunc in (hist, stephist)
+        arg = Observable(Float64[])
+        f, a, p = @test_nowarn plotfunc(arg)
+        Makie.update_state_before_display!(f)
+        @test isempty(p.plots[1][1][])
+        push!(arg[], 0.1)
+        notify(arg)
+        @test !isempty(p.plots[1][1][])
+    end
+end
