@@ -319,6 +319,10 @@ function barplot_labels(
 end
 
 function Makie.plot!(p::BarPlot)
+    if !(eltype(p.positions[]) <: Point2)
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(p.positions[])")
+    end
+
     map!(p, :direction, :in_y_direction) do dir
         return get((y = true, x = false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
