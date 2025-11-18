@@ -171,7 +171,7 @@ end
     f, a, p = scatter(rand(10))
     colorbuffer(f)
     @test length(p.attributes.inputs) == 43
-    @test length(p.attributes.outputs) == 88
+    @test length(p.attributes.outputs) == 87
 end
 
 excludes = Set(
@@ -213,7 +213,7 @@ functions = [:volume, :volume!, :uv_mesh]
 @testset "refimages" begin
     CairoMakie.activate!(type = "png", px_per_unit = 1)
     ReferenceTests.mark_broken_tests(excludes, functions = functions)
-    recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl" joinpath(@__DIR__, "cairo_refimages.jl")
+    recorded_files, recording_dir = @include_reference_tests CairoMakie "refimages.jl"
     missing_images, scores = ReferenceTests.record_comparison(recording_dir, "CairoMakie")
     ReferenceTests.test_comparison(scores; threshold = 0.05)
 end

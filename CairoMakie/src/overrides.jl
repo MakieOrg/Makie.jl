@@ -53,8 +53,10 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
     linecap = to_cairo_linecap(poly.linecap[])
 
-    draw_poly(scene, screen, poly, points, color, 
-        poly.model[], strokecolor, strokestyle, poly.strokewidth[], miter_limit, joinstyle, linecap)
+    draw_poly(
+        scene, screen, poly, points, color,
+        poly.model[], strokecolor, strokestyle, poly.strokewidth[], miter_limit, joinstyle, linecap
+    )
     if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
@@ -194,7 +196,7 @@ function create_shape_path!(ctx, b::BezierPath)
     N == 0 && return
     cmd = first(b.commands)
     !isa(cmd, MoveTo) && return
-    p2 = p1 = cmd.p 
+    p2 = p1 = cmd.p
     for (i, cmd) in enumerate(b.commands)
         path_command(ctx, cmd)
         if i == N

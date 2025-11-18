@@ -333,7 +333,7 @@ function to_cairo_joinstyle(joinstyle)
 end
 
 function to_cairo_miter_limit(miter_limit)
-    return 2f0 * Makie.miter_angle_to_distance(miter_limit)
+    return 2.0f0 * Makie.miter_angle_to_distance(miter_limit)
 end
 
 ########################################
