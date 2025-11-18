@@ -130,12 +130,12 @@
 
     @testset "empty construction" begin
         # Also indirectly checks that boundingbox works
-        f,a,p = barplot(Float64[], Float64[])
+        f, a, p = barplot(Float64[], Float64[])
         Makie.update_state_before_display!(f)
         @test isempty(p.bar_rectangles[])
 
         # ... with multiple transform_funcs
-        f,a,p = barplot(Float64[], Float64[], axis = (yscale = log10, xscale = log2))
+        f, a, p = barplot(Float64[], Float64[], axis = (yscale = log10, xscale = log2))
         Makie.update_state_before_display!(f)
         @test isempty(p.bar_rectangles[])
 
@@ -149,13 +149,13 @@
     end
 
     @testset "zero construction" begin
-        f,a,p = barplot(1:10, zeros(10))
+        f, a, p = barplot(1:10, zeros(10))
         Makie.update_state_before_display!(f)
         whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
         @test all(wh -> wh ≈ Vec2d(0.8, 0), whs)
 
         # no regular width here because space isn't linear
-        f,a,p = barplot(1:10, zeros(10), axis = (yscale = log10, xscale = log2))
+        f, a, p = barplot(1:10, zeros(10), axis = (yscale = log10, xscale = log2))
         Makie.update_state_before_display!(f)
         whs = widths.(Rect2d.(coordinates.(p.bar_rectangles[])))
         @test all(wh -> wh[2] == 0, whs)
