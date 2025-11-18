@@ -4,7 +4,7 @@
 
 ### Simple live data stream
 
-```@figure
+```@example
 fig, ax, pl = timeseries(0.5)
 
 # Update with new values on each frame
@@ -18,7 +18,7 @@ Record(identity, fig, 1:150)
 
 ### Multiple synchronized timeseries
 
-```@figure
+```@example
 using Statistics
 
 fig = Figure()
