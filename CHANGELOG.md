@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## [0.24.7] - 2025-11-18
+
 - Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
 - Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
@@ -959,7 +961,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...HEAD
+[0.24.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...v0.24.7
 [0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6
 [0.24.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...v0.24.5
 [0.24.4]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.3...v0.24.4
