@@ -350,10 +350,7 @@ function Makie.plot!(p::BarPlot)
         p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
     ) do stack, fillto, x, y, offset
         if stack === automatic
-            if fillto === automatic
-                return y, offset
-                # TODO: no else?
-            end
+            return y, offset
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
