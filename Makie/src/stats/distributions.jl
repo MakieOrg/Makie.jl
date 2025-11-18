@@ -28,6 +28,7 @@ end
 
 """
     qqplot(x, y; kwargs...)
+    qqplot(y; distribution, kwargs...)
 
 Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
 samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
@@ -35,6 +36,9 @@ samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - an abstract distribution, e.g. `Normal(0, 1)`,
 - a distribution type, e.g. `Normal`.
 In the last case, the distribution type is fitted to the data `y`.
+
+If only one positional argument is given, this must be a vector `y` and the distribution
+to use or distribution type to fit must be given as the keyword argument `distribution`.
 
 The attribute `qqline` (defaults to `:none`) determines how to compute a fit line for the Q-Q plot.
 Possible values are the following.
