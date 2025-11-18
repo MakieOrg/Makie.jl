@@ -25,6 +25,7 @@
 - Fixed `Menu` erroring when changing size of `options` before display [#5410](https://github.com/MakieOrg/Makie.jl/pull/5410)
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 - Adjusted `viewmode = :fit` in Axis3 to produce less whitespace when the axis has unequal aspect ratios. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
+- Reexport `Protrustion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
 
 ## [0.24.6] - 2025-08-19
 
