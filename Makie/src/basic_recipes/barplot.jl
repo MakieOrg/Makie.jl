@@ -121,6 +121,7 @@ function add_slow_limits!(plot::Plot)
         end
     end
     add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)
+    return
 end
 
 function bar_rectangle(tf, x, y, offset, width, fillto, in_y_direction, lims)
@@ -390,7 +391,7 @@ function Makie.plot!(p::BarPlot)
             :label_color, :color_over_background, :color_over_bar,
             :x, :y, :offset, :bar_labels, :in_y_direction, :flip_labels_at,
             :label_formatter, :label_offset, :label_rotation, :label_align,
-            :label_position, :computed_fillto
+            :label_position, :computed_fillto,
         ],
         [:labels, :label_aligns, :label_offsets, :label_colors]
     ) do label_color, color_over_background, color_over_bar,
