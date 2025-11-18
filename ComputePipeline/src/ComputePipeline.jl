@@ -16,7 +16,7 @@ end
 
 using Observables
 
-using Base: RefValue
+using Base: RefValue, tail
 
 deref(r::RefValue) = r[]
 deref(x) = x
@@ -1061,6 +1061,64 @@ function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outpu
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end
+
+function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false)
+    update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
+
+    add_input!(attr, update_key, time())
+
+    # Channel for input requests (unlimited size to never block)
+    input_channel = Channel{Any}(Inf)
+    # Background worker task that processes computation requests
+    result_channel = Channel(1; spawn=spawn) do result_channel
+        while isopen(input_channel)
+            try
+                # Take the first item (blocking if empty)
+                inputs = take!(input_channel)
+                # Drain the channel to get only the most recent item
+                while isready(input_channel)
+                    inputs = take!(input_channel)
+                end
+                # Process the most recent inputs
+                result = f(inputs...)
+                # Put result in the result channel
+                put!(result_channel, result)
+                # Notify that we got a new value, for the below computation to run
+                t = time()
+                update!(attr, update_key => t)
+            catch e
+                @error "Error in background computation task: $e"
+            end
+        end
+    end
+
+    register_computation!(attr, [update_key, inputs...], outputs) do inputs, changed, last
+        # Always queue new computation unless this comes from the update trigger
+        user_inputs = tail(values(inputs))
+        if !changed[update_key]
+            put!(input_channel, user_inputs)
+        end
+        result = nothing
+        # Try to get latest result if available (non-blocking)
+        while isready(result_channel)
+            # we have a fresh result
+            result = take!(result_channel)
+        end
+        !isnothing(result) && return result # we have a new value :)
+
+        # we have no new computation so this is either the first call or
+        # we are working on something and while doing so return the last value
+        if isnothing(last)
+            # Blocking wait for first result
+            result = f(user_inputs...)
+        else
+            result = values(last)
+        end
+        return result
+    end
+end
+
+
 
 function Base.empty!(attr::ComputeGraph)
     # empty!(attr.inputs)

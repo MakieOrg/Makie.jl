@@ -855,3 +855,153 @@ end
     @test ComputePipeline.is_same(d, copy(d))
     @test !ComputePipeline.is_same(d, d)
 end
+
+@testset "map_latest!" begin
+    @testset "Basic functionality" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input, 1)
+
+        # Simple computation with single input and output
+        map_latest!(graph, [:input], [:output]) do x
+            return (x * 2,)
+        end
+
+        # First call should block until result is ready
+        @test graph[:output][] == 2
+
+        # Update and verify it computes the new value
+        update!(graph, input = 5)
+        graph[:output][] # poll
+        sleep(0.1)
+        # Force resolution to pick up the new value
+        @test graph[:output][] == 10
+    end
+
+    @testset "Multiple inputs and outputs" begin
+        graph = ComputeGraph()
+        add_input!(graph, :a, 1)
+        add_input!(graph, :b, 2)
+
+        map_latest!(graph, [:a, :b], [:sum, :product]) do a, b
+            return (a + b, a * b)
+        end
+
+        @test graph[:sum][] == 3
+        @test graph[:product][] == 2
+
+        update!(graph, a = 3, b = 4)
+        graph[:sum][]  # poll
+        sleep(0.3)
+        # Check results - these will force resolution
+        @test graph[:sum][] == 7
+        @test graph[:product][] == 12
+    end
+
+    @testset "Skips intermediate updates" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input, 0)
+
+        computation_count = Ref(0)
+        processed_values = Int[]
+
+        map_latest!(graph, [:input], [:output]) do x
+            computation_count[] += 1
+            push!(processed_values, x)
+            sleep(0.2)  # Simulate slow computation
+            return (x * 2,)
+        end
+
+        # Initialize
+        @test graph[:output][] == 0
+        @test computation_count[] == 1
+
+        # Rapidly update multiple times
+        for i in 1:5
+            update!(graph, input = i)
+        end
+
+        # Wait for computation to complete
+        graph[:output][]  # poll
+        sleep(0.5)
+
+        # Access the result - this forces resolution
+        result = graph[:output][]
+
+        # Should have processed initial + final value(s), but not all intermediate ones
+        @test computation_count[] == 2  # Less than initial + all 5 updates
+        @test result == 10  # Final value (5 * 2)
+    end
+
+    @testset "Returns previous value while computing" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input, 1)
+
+        map_latest!(graph, [:input], [:output]) do x
+            sleep(0.3)  # Simulate slow computation
+            return (x * 10,)
+        end
+
+        # Get initial value
+        @test graph[:output][] == 10
+
+        # Update with new value
+        update!(graph, input = 2)
+
+        # Immediately check - should return previous value while computing
+        prev_value = graph[:output][]
+        @test prev_value == 10  # Still the old value
+
+        # Wait for computation to finish
+        sleep(0.6)
+
+        # Now should have new value
+        @test graph[:output][] == 20
+    end
+
+    @testset "spawn parameter" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input, 5)
+
+        # Test with spawn=false (runs on current task)
+        map_latest!(graph, [:input], [:output]; spawn=false) do x
+            return (x + 1,)
+        end
+
+        @test graph[:output][] == 6
+
+        update!(graph, input = 10)
+        graph[:output][] # poll
+        sleep(0.2)
+        @test graph[:output][] == 11
+    end
+
+    @testset "Computation updates trigger correctly" begin
+        graph = ComputeGraph()
+        add_input!(graph, :input, 1)
+
+        update_count = Ref(0)
+
+        map_latest!(graph, [:input], [:output]) do x
+            sleep(0.05)
+            return (x * 3,)
+        end
+
+        # Initialize
+        @test graph[:output][] == 3
+
+        # Set up an observable listener to count updates
+        obs = ComputePipeline.get_observable!(graph, :output)
+        on(obs) do val
+            update_count[] += 1
+        end
+
+        # Update input
+        update!(graph, input = 2)
+        sleep(0.3)
+
+        # Should have triggered at least one update
+        @test update_count[] >= 1
+        @test graph[:output][] == 6
+    end
+
+end
