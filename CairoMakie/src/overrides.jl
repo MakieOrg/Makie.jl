@@ -117,7 +117,10 @@ end
 
 # As a general fallback, draw all polys as meshes.
 # This also applies for e.g. per-vertex color.
-function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+function draw_poly(
+        scene::Scene, screen::Screen, poly, points, color,
+        model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap
+    )
     return draw_poly_as_mesh(scene, screen, poly)
 end
 
