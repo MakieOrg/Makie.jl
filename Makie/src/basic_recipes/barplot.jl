@@ -424,21 +424,47 @@ function Makie.plot!(p::BarPlot)
     return p
 end
 
+is_log_transform(tf) = false
+is_log_transform(t::Tuple) = any(is_log_transform, t)
+is_log_transform(::LogFunctions) = true
+is_log_transform(::Base.Fix1{<:LogFunctions}) = true
+
 function boundingbox(p::BarPlot, space::Symbol = :data)
-    if is_identity_transform(p.transform_func[])
+    if isempty(p.x[])
+        # no data should result in empty limits
+        bb = Rect2d()
+
+    elseif is_identity_transform(p.transform_func[])
+        # bit of a fast path for untransformed data
         x0 = minimum(p.x[] .- 0.5 .* p.barwidth[])
         x1 = maximum(p.x[] .+ 0.5 .* p.barwidth[])
         y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
         y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
         bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
         bb = ifelse(p.in_y_direction[], bb, flip(bb))
+
+    elseif is_log_transform(p.transform_func[])
+        # log transformed data needs to dodge log(0).
+        # Find the minimum y value > 0 instead, and take log(0.5 * ymin_greater_0)
+        # as the transformed minimum
+        maxi = Point2d(-Inf)
+        mini = Point2d(Inf)
+        tf = p.transform_func[]
+        maybe_flip = p.in_y_direction[] ? identity : reverse
+        broadcast_foreach(p.x[], p.barwidth[], p.y[], p.offset[], p.computed_fillto[]) do x, width, y, offset, fillto
+            w = 0.5width
+            ymax = max(y + offset, fillto)
+            ymin = ifelse(fillto <= 0, 0.5 * ymax, fillto)
+            p0 = apply_transform(tf, maybe_flip(Point2d(x - w, ymin)))
+            p1 = apply_transform(tf, maybe_flip(Point2d(x + w, ymax)))
+            mini = ifelse.(isfinite.(p0) .&& (mini .> p0), p0, mini)
+            maxi = ifelse.(isfinite.(p1) .&& (maxi .< p1), p1, maxi)
+        end
+        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+
     else
-        # track the minimum and maximum of all bar vertices after tranform_func
-        # For log axis we may get log(0) = -Inf from the default `fillto = 0`.
-        # If we do, we use
-        #   apply_transform(tf, 0.5 * minimum(ys + offset))
-        # as the lower limit instead. (E.g. log(0.5 * min_bar_height))
-        alt_ref = Point2d(Inf)
+        # In the general transformed case all the (un-clamped) poly vertices need
+        # to be transformed
         maxi = Point2d(-Inf)
         mini = Point2d(Inf)
         tf = p.transform_func[]
@@ -453,11 +479,17 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
             p10 = apply_transform(tf, maybe_flip(Point2d(x + w, ymin)))
             mini = min.(mini, p00, p01, p11, p10)
             maxi = max.(maxi, p00, p01, p11, p10)
-            alt_ref = min.(alt_ref, maybe_flip(Point2d(x - w, ymax)))
         end
-        alt_mini = apply_transform(tf, 0.5 * alt_ref)
-        mini = ifelse.(isfinite.(mini), mini, alt_mini)
-        bb = Rect2d(mini, maxi .- mini)
+        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
     end
-    return apply_model(transformationmatrix(p)[], Rect3d(bb))
+
+    bb3 = apply_model(transformationmatrix(p)[], Rect3d(bb))
+
+    # add optional text subplot
+    if length(p.plots) > 1
+        tbb = boundingbox(p.plots[2])
+        bb3 = update_boundingbox(bb3, tbb)
+    end
+
+    return bb3
 end
