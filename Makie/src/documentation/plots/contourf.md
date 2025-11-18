@@ -2,7 +2,7 @@
 
 ## Examples
 
-
+### Basic contourf with colorbar
 
 ```@figure
 using DelimitedFiles
@@ -19,6 +19,8 @@ Colorbar(f[1, 2], co)
 
 f
 ```
+
+### Custom extend colors
 
 ```@figure
 using DelimitedFiles
@@ -40,6 +42,8 @@ Colorbar(f[1, 2], co)
 f
 ```
 
+### Auto extend colors
+
 ```@figure
 using DelimitedFiles
 
@@ -60,7 +64,7 @@ Colorbar(f[1, 2], co)
 f
 ```
 
-#### Relative mode
+### Relative mode
 
 Sometimes it's beneficial to drop one part of the range of values, usually towards the outer boundary.
 Rather than specifying the levels to include manually, you can set the `mode` attribute
@@ -82,8 +86,6 @@ contourf!(volcano, levels = 10)
 
 f
 ```
-
-
 
 ### Curvilinear grids
 
@@ -111,6 +113,3 @@ ax2 = Axis(f[1, 2])
 ctrf2 = contourf!(ax2, xs, ys, zs; levels = levels)
 f
 ```
-
-
-
