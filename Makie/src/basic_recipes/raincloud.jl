@@ -16,19 +16,14 @@ rand_localized(min, max) = rand_localized(RAINCLOUD_RNG[], min, max)
 rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ min
 
 """
-    rainclouds!(ax, category_labels, data_array; plot_boxplots=true, plot_clouds=true, attributes...)
+Plot a combination of violin plot, box plot and scatter points with appropriate spacing.
 
-Plot a violin (/histogram), boxplot and individual data points with appropriate spacing
-between each.
+Raincloud plots combine a (half) violin plot, box plot and individual scatter points to create
+an appealing and informative visualization, particularly useful for large datasets.
 
-"Raincloud" plots are a combination of a (half) violin plot, box plot and scatter plots. The
-three together can make an appealing and informative visual, particularly for large N datasets.
+## Arguments
 
-# Arguments
-- `ax`: Axis used to place all these plots onto.
-- `category_labels`: Typically `Vector{String}` with a label for each element in
-  `data_array`
-- `data_array`: Typically `Vector{Float64}` used for to represent the datapoints to plot.
+* `category_labels, data_array` where both are vectors of the same length. `category_labels` (typically `Vector{String}`) assigns a category label to each data point in `data_array` (typically `Vector{Float64}`). Data points with the same category label are grouped together in the visualization.
 """
 @recipe RainClouds (category_labels, data_array) begin
     """

@@ -38,15 +38,18 @@ function convert_arguments(P::Type{<:Plot}, x0::AbstractInterval, ecdf::StatsBas
 end
 
 """
-    ecdfplot(values::AbstractArray{<:Real}; npoints=10_000[, weights], attributes...)
+Plot the empirical cumulative distribution function (ECDF) of data values.
 
-Plot the empirical cumulative distribution function (ECDF) of `values`.
+## Arguments
 
-`npoints` controls the resolution of the plot.
-If `weights` for the values are provided, a weighted ECDF is plotted.
+* `values::AbstractVector{<:Real}` is the data for which to compute and plot the ECDF.
 """
 @recipe ECDFPlot begin
     documented_attributes(Stairs)...
+    "Controls the resolution of the plot by setting the number of points used to draw the ECDF."
+    npoints = 10_000
+    "Optional statistical weights for the values. If provided, a weighted ECDF is plotted."
+    weights = StatsBase.Weights(Float64[])
 end
 
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
