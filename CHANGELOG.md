@@ -24,6 +24,7 @@
 - Fixed manual `DateTime` and `Time` ticks given via `StepRange`s or `AbstractVector`s with or without formatters [#5404](https://github.com/MakieOrg/Makie.jl/pull/5404).
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 - Adjusted `viewmode = :fit` in Axis3 to produce less whitespace when the axis has unequal aspect ratios. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
+- Added a variant to `qqplot` that takes one positional argument and a `distribution` keyword to make it compatible with AlgebraOfGraphics [#5413](https://github.com/MakieOrg/Makie.jl/pull/5413).
 
 ## [0.24.6] - 2025-08-19
 
