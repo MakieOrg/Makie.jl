@@ -48,7 +48,13 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
-    draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
+
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
+    draw_poly(scene, screen, poly, points, color, 
+        poly.model[], strokecolor, strokestyle, poly.strokewidth[], miter_limit, joinstyle, linecap)
     if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
@@ -60,11 +66,15 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
     broadcast_foreach(
         points_list, color,
         strokecolor, strokestyle, poly.strokewidth[], Ref(poly.model[])
     ) do points, color, strokecolor, strokestyle, strokewidth, model
-        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+        draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap)
     end
     if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
@@ -77,7 +87,7 @@ draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene,
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
 function draw_poly(
         scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokestyle, strokewidth
+        model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap
     )
     space = poly.space[]
     points = apply_transform(transform_func(poly), points)
@@ -95,6 +105,9 @@ function draw_poly(
     Cairo.fill_preserve(screen.context)
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
     Cairo.set_line_width(screen.context, strokewidth)
+    set_miter_limit(screen.context, miter_limit)
+    Cairo.set_line_join(screen.context, joinstyle)
+    Cairo.set_line_cap(screen.context, linecap)
     isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
     Cairo.stroke(screen.context)
     return
@@ -134,6 +147,11 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         error("Wrong type for linestyle: $(poly.linestyle[]).")
     end
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
+
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
     broadcast_foreach(projected_shapes, color, strokecolor, poly.strokewidth[]) do shape, c, sc, sw
         create_shape_path!(screen.context, shape)
         set_source(screen.context, c)
@@ -141,6 +159,9 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
+        set_miter_limit(screen.context, miter_limit)
+        Cairo.set_line_join(screen.context, joinstyle)
+        Cairo.set_line_cap(screen.context, linecap)
         Cairo.stroke(screen.context)
     end
     if color isa Cairo.CairoPattern
@@ -169,8 +190,21 @@ function create_shape_path!(ctx, r::Rect2)
 end
 
 function create_shape_path!(ctx, b::BezierPath)
-    for cmd in b.commands
+    N = length(b.commands)
+    N == 0 && return
+    cmd = first(b.commands)
+    !isa(cmd, MoveTo) && return
+    p2 = p1 = cmd.p 
+    for (i, cmd) in enumerate(b.commands)
         path_command(ctx, cmd)
+        if i == N
+            if !isa(cmd, ClosePath)
+                p2 = Makie.endpoint(cmd)
+                if p1 ≈ p2
+                    Cairo.close_path(ctx)
+                end
+            end
+        end
     end
     return
 end
@@ -212,18 +246,26 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
 
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
         polypath(screen.context, po)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
+        set_miter_limit(screen.context, miter_limit)
+        Cairo.set_line_join(screen.context, joinstyle)
+        Cairo.set_line_cap(screen.context, linecap)
         Cairo.stroke(screen.context)
     end
 
-    return if color isa Cairo.CairoPattern
+    if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
+    return
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:MultiPolygon})
@@ -236,6 +278,10 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
     broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
         for po in mpo.polygons
             polypath(screen.context, po)
@@ -244,13 +290,17 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
             set_source(screen.context, sc)
             isnothing(ss) || Cairo.set_dash(screen.context, diff(Float64.(ss)) .* sw)
             Cairo.set_line_width(screen.context, sw)
+            set_miter_limit(screen.context, miter_limit)
+            Cairo.set_line_join(screen.context, joinstyle)
+            Cairo.set_line_cap(screen.context, linecap)
             Cairo.stroke(screen.context)
         end
     end
 
-    return if color isa Cairo.CairoPattern
+    if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
+    return
 end
 
 
