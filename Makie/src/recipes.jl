@@ -482,7 +482,7 @@ function extract_arguments_section(doc::Markdown.MD)
     if isnothing(idx)
         return Markdown.MD()
     end
-    return Markdown.MD(doc_flat.content[idx+1:end])
+    return Markdown.MD(doc_flat.content[(idx + 1):end])
 end
 
 function extract_before_arguments_section(doc::Markdown.MD)
@@ -495,7 +495,7 @@ function extract_before_arguments_section(doc::Markdown.MD)
     if isnothing(idx)
         return doc_flat
     end
-    return Markdown.MD(doc_flat.content[1:idx-1])
+    return Markdown.MD(doc_flat.content[1:(idx - 1)])
 end
 
 function argument_docs end
@@ -576,9 +576,9 @@ function create_recipe_expr(Tsym, args, attrblock)
         end
 
         # Override Docs.getdoc to generate comprehensive documentation
-        function Base.Docs.getdoc(::Type{T}; max_examples=1, full_attributes=false) where {T <: $(PlotType)}
+        function Base.Docs.getdoc(::Type{T}; max_examples = 1, full_attributes = false) where {T <: $(PlotType)}
             return $(Makie).document_recipe(
-                T, user_docstring; max_examples=max_examples, full_attributes=full_attributes
+                T, user_docstring; max_examples = max_examples, full_attributes = full_attributes
             )
         end
 

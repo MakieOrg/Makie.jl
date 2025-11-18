@@ -46,7 +46,7 @@ plots_dir = joinpath(@__DIR__, "src/reference/plots")
 isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
 mkpath(plots_dir)
 plots = Makie.generate_plot_docs(joinpath(@__DIR__, "src/reference/plots"))
-plots = map(x-> "reference/plots/$(x).md", plots)
+plots = map(x -> "reference/plots/$(x).md", plots)
 ##
 
 pages = [

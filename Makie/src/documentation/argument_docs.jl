@@ -10,7 +10,6 @@ function argument_docs(::Type{LineSegments})
 end
 
 
-
 ################################################################################
 ### convert_arguments method collection
 ################################################################################
@@ -114,7 +113,6 @@ function conversion_docs(PlotType)
 end
 
 
-
 """
     format_argument_signature(::Type{PT}) where {PT<:Plot}
 
@@ -122,7 +120,7 @@ Returns a formatted string showing the argument signature with types for a plot 
 For example: "positions::AbstractVector{<:Union{Point2, Point3}}"
 Returns nothing if type information is not available.
 """
-function format_argument_signature(::Type{PT}) where {PT<:Plot}
+function format_argument_signature(::Type{PT}) where {PT <: Plot}
     # Get argument names
     arg_names = argument_names(PT, 10)
     isempty(arg_names) && return nothing

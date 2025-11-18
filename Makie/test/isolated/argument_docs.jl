@@ -1,6 +1,6 @@
 @testset "argument_docs format validation" begin
     # Get all concrete plot types
-    plot_types = filter(names(Makie, all=true)) do name
+    plot_types = filter(names(Makie, all = true)) do name
         isdefined(Makie, name) || return false
         val = getfield(Makie, name)
         val isa Type && val <: Makie.Plot && !isabstracttype(val)
@@ -78,7 +78,7 @@
     if !isempty(plot_types_without_docs)
         total = length(plot_types)
         with_docs = total - length(plot_types_without_docs)
-        coverage = round(100 * with_docs / total, digits=1)
+        coverage = round(100 * with_docs / total, digits = 1)
         @info "argument_docs coverage: $with_docs/$total plot types ($coverage%)"
         @info "Plot types needing argument_docs: $(join(sort(plot_types_without_docs), ", "))"
     end

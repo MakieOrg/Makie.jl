@@ -650,7 +650,7 @@ For Plot types, this loads examples from the markdown documentation file at
 `documentation/plots/{plotname}.md` under the "## Attributes" section.
 For Block types, returns an empty dictionary (Block examples are not yet moved to markdown).
 """
-function attribute_examples(::Type{PT}) where {PT<:Plot}
+function attribute_examples(::Type{PT}) where {PT <: Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     # Path to markdown file
@@ -665,7 +665,7 @@ function attribute_examples(::Type{PT}) where {PT<:Plot}
 end
 
 # Fallback for Block types (not yet moved to markdown)
-function attribute_examples(::Type{BT}) where {BT<:Block}
+function attribute_examples(::Type{BT}) where {BT <: Block}
     return Dict{Symbol, Vector{Example}}()
 end
 
