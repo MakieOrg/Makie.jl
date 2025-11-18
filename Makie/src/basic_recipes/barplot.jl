@@ -416,7 +416,8 @@ function Makie.plot!(p::BarPlot)
         text!(
             p, p.attributes, p.labels;
             align = p.label_aligns, offset = p.label_offsets, color = p.label_colors,
-            font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation
+            font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation,
+            fxaa = false
         )
     end
 
