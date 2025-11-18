@@ -122,6 +122,7 @@ used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, y) = (:qqline, :distribution)
 
 plottype(::Type{<:QQNorm}, args...) = QQPlot
+plottype(::Type{<:QQNorm}, ::Type{Plot{plot}}) = QQNorm # resolve ambiguity hit in AlgebraOfGraphics
 
 function Makie.plot!(p::QQPlot)
     map!(default_automatic, p, [:markercolor, :color], :real_markercolor)
