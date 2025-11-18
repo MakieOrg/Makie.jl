@@ -425,12 +425,11 @@ end
 
 function boundingbox(p::BarPlot, space::Symbol = :data)
     if is_identity_transform(p.transform_func[])
-        x0, x1 = extrema(p.x[])
-        y0, y1 = extrema(p.y[] .+ p.offset[])
-        y0 = min.(y0, p.computed_fillto[])
-        y1 = max.(y1, p.computed_fillto[])
-        w = p.barwidth[]
-        bb = Rect2d(x0 - 0.5w, y0, x1 - x0 + w, y1 - y0)
+        x0 = minimum(p.x[] .- 0.5 .* p.barwidth[])
+        x1 = maximum(p.x[] .+ 0.5 .* p.barwidth[])
+        y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
     else
         # track the minimum and maximum of all bar vertices after tranform_func
         # For log axis we may get log(0) = -Inf from the default `fillto = 0`.
