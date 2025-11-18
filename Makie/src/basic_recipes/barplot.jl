@@ -430,6 +430,7 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
         y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
         y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
         bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
+        bb = ifelse(p.in_y_direction[], bb, flip(bb))
     else
         # track the minimum and maximum of all bar vertices after tranform_func
         # For log axis we may get log(0) = -Inf from the default `fillto = 0`.
@@ -440,22 +441,22 @@ function boundingbox(p::BarPlot, space::Symbol = :data)
         maxi = Point2d(-Inf)
         mini = Point2d(Inf)
         tf = p.transform_func[]
+        maybe_flip = p.in_y_direction[] ? identity : reverse
         broadcast_foreach(p.x[], p.barwidth[], p.y[], p.offset[], p.computed_fillto[]) do x, width, y, offset, fillto
             w = 0.5width
             ymin = min(y + offset, fillto)
             ymax = max(y + offset, fillto)
-            p00 = apply_transform(tf, Point2d(x - w, ymin))
-            p01 = apply_transform(tf, Point2d(x - w, ymax))
-            p11 = apply_transform(tf, Point2d(x + w, ymax))
-            p10 = apply_transform(tf, Point2d(x + w, ymin))
+            p00 = apply_transform(tf, maybe_flip(Point2d(x - w, ymin)))
+            p01 = apply_transform(tf, maybe_flip(Point2d(x - w, ymax)))
+            p11 = apply_transform(tf, maybe_flip(Point2d(x + w, ymax)))
+            p10 = apply_transform(tf, maybe_flip(Point2d(x + w, ymin)))
             mini = min.(mini, p00, p01, p11, p10)
             maxi = max.(maxi, p00, p01, p11, p10)
-            alt_ref = min.(alt_ref, Point2d(x - w, ymax))
+            alt_ref = min.(alt_ref, maybe_flip(Point2d(x - w, ymax)))
         end
         alt_mini = apply_transform(tf, 0.5 * alt_ref)
         mini = ifelse.(isfinite.(mini), mini, alt_mini)
         bb = Rect2d(mini, maxi .- mini)
     end
-    bb = ifelse(p.in_y_direction[], bb, flip(bb))
     return apply_model(transformationmatrix(p)[], Rect3d(bb))
 end
