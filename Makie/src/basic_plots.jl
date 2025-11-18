@@ -780,7 +780,7 @@ Draws a wireframe of surface or mesh data.
 
 ## Arguments
 
-* `mesh` A `GeometryBasics.Mesh` object to render as a wireframe.
+* `geom` A `GeometryBasics.Mesh` object to render as a wireframe or any GeometryBasics geometry.
 * `positions` An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh).
 * `x, y, z` Coordinates defining a surface (converted to mesh internally).
 """

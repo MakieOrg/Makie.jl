@@ -1,8 +1,8 @@
 # textlabel
 
-
-
 ## Examples
+
+### Basic text label on image
 
 ```@figure
 using CairoMakie
@@ -12,6 +12,8 @@ f, a, p = image(rotr90(load(assetpath("cow.png"))))
 textlabel!(a, Point2f(200, 150), text = "Cow", fontsize = 20)
 f
 ```
+
+### Text labels on scatter plot
 
 ```@figure
 using CairoMakie
@@ -32,7 +34,7 @@ ylims!(a, -5, 65)
 f
 ```
 
-### Custom Background Shapes
+### Custom background shapes with circle
 
 The background shape can be adjusted with the `shape` attribute.
 It can be anything that converts to a vector of points through `convert_arguments`, e.g. a GeometryPrimitive, a BezierPath, a vector of points, etc.
@@ -69,6 +71,8 @@ ylims!(a, -2.5, 0.5)
 f
 ```
 
+### Custom shape function
+
 Another option for `shape` is to pass a function that constructs an already transformed vector of points from a translation and scale.
 If `shape_limits = Rect2f(0,0,1,1)` those are the origin and size of text boundingbox plus padding.
 This can be used, for example, to construct a circle that more tightly fits the text bounding box:
@@ -98,4 +102,3 @@ xlims!(a, -1.5, 1.5)
 ylims!(a, -1.75, 1.75)
 f
 ```
-

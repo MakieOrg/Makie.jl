@@ -236,9 +236,6 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
-include("basic_recipes/makiecore_examples/scatter.jl")
-include("basic_recipes/makiecore_examples/lines.jl")
-
 # conversions: need to be after plot recipes
 include("conversions.jl")
 

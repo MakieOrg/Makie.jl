@@ -231,7 +231,7 @@ end
 ################################################################################
 function get_attribute_docs(io::IO, attrs, examples, attribute; full = false)
     attr_meta = get(attrs.d, attribute, nothing)
-    return if full
+    if full
         println(io, "### `$attribute`\n")
         if !isnothing(attr_meta)
             println(io, attr_meta)
@@ -253,6 +253,7 @@ function get_attribute_docs(io::IO, attrs, examples, attribute; full = false)
         # Summary line
         println(io, "- **`$attribute`**", isnothing(attr_meta) ? "" : " = `$(attr_meta.default_expr)`")
     end
+    return nothing
 end
 
 function get_attribute_docs(io::IO, ::Type{PT}, attribute; full = false) where {PT <: Plot}
@@ -267,17 +268,19 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
     attrs = documented_attributes(PT)
     attr_names = attribute_names(PT)
     # Show detailed attribute documentation
-    return if isnothing(attr_names) || isempty(attr_names)
-        Markdown.parse("## Attributes\n\nNo attributes available.")
+    if isnothing(attr_names) || isempty(attr_names)
+        return Markdown.parse("## Attributes\n\nNo attributes available.")
     else
         io = IOBuffer()
         println(io, "## Attributes\n")
-        for attr in attr_names
+        sorted_names = sort!(collect(attr_names))
+        for attr in sorted_names
             examples = attribute_examples(PT, attr)
             get_attribute_docs(io, attrs, examples, attr; full = full)
         end
-        Markdown.parse(String(take!(io)))
+        return Markdown.parse(String(take!(io)))
     end
+
 end
 
 

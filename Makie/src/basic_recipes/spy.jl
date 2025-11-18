@@ -1,6 +1,4 @@
 """
-    spy([x, y], matrix; attributes...)
-
 Visualizes a sparse matrix as a collection of colored rectangles.
 
 Usage:

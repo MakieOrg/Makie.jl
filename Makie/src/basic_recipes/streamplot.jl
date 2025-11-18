@@ -1,23 +1,14 @@
 """
-    streamplot(f::function, x, y, [z]; attributes...)
-    streamplot(f::function, bbox; attributes...)
+Plot streamlines of a vector field function in a given bounding box.
 
-Plots streamlines of the function `f` in the given bounding box. A streamline is
-defined by matching its tangent vector with `f(p)` at any point `p`.
-
-`f` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
-and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a
-`Vec2f` or `Point3d`.
-
-Example:
-```julia
-v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
-streamplot(v, -2..2, -2..2)
-```
+A streamline is defined by matching its tangent vector with `f(p)` at any point `p`.
+The function `f` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
+and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a `Vec2f` or `Point3d`.
 
 ## Arguments
-* `f, bbox` A function `f` (either `pos::Point{D} -> direction::VecTypes{D}` or `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point, and a bounding box `bbox` (a 2D or 3D `Rect`) in which `f` is evaluated to generate streamlines. Can be 2 or 3 dimensional.
-* `f, x, y, [z]` The function `f` with the bounding box specified per dimension via `x, y, z` (any type that implements `extrema()`).
+
+* `f, bbox` where `f` is a function (either `pos::Point{D} -> direction::VecTypes{D}` or `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point, and `bbox` is a 2D or 3D `Rect` in which `f` is evaluated to generate streamlines.
+* `f, x, y, [z]` where `f` is the function and the bounding box is specified per dimension via `x, y, z` (any type that implements `extrema()`).
 """
 @recipe StreamPlot (f, limits) begin
     """

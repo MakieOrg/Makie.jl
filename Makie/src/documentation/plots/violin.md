@@ -1,7 +1,5 @@
 # violin
 
-
-
 ## Examples
 
 ### Basic violin plot
