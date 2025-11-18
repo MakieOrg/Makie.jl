@@ -1062,6 +1062,60 @@ function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outpu
     return attr
 end
 
+"""
+    map_latest!(f, compute_graph::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false)
+
+Registers an asynchronous computation in the `compute_graph` that processes only the
+most recent input changes, skipping intermediate updates if the computation is still running.
+
+This is useful for expensive computations where intermediate results are not needed, such as:
+- Heavy image processing or rendering operations
+- Slow network requests
+- Complex data analysis or simulations
+
+## Behavior
+
+When inputs change:
+- any new value is put in a queue to be computed
+- If multiple updates occur while computing, only the **most recent** input values are
+  kept; intermediate values are discarded
+- The outputs return cached values while the computation is in progress
+- finishing a computation invalidates the graph, so on the next poll the latest result is returned
+
+The first call to retrieve outputs will block until the initial computation completes.
+
+## Arguments
+- `f`: Callback function that receives input values as individual arguments and returns
+  a tuple of output values
+- `compute_graph`: The compute graph to register the computation in
+- `inputs`: Vector of Symbol names referring to input nodes in the graph
+- `outputs`: Vector of Symbol names for the output nodes to be created
+- `spawn=false`: If `true`, runs the background worker on a separate thread. If `false`,
+  runs an async task.
+
+## Example
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :image_data, initial_image)
+add_input!(graph, :filter_strength, 1.0)
+
+# Register expensive async computation that skips intermediate updates
+map_latest!(graph, [:image_data, :filter_strength], [:filtered_image]) do img, strength
+    # This expensive operation only runs on the latest inputs
+    result = expensive_filter(img, strength)
+    return (result,)
+end
+
+# Rapidly update inputs - only the final values will be processed
+for i in 1:100
+    update!(graph, filter_strength = i / 10.0)
+end
+graph[:filtered_image][] # poll to trigger computation queue
+sleep(0.1) # wait for a computation to finish to not get old result
+result = graph[:filtered_image][]
+```
+"""
 function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
 
