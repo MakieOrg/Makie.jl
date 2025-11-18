@@ -101,11 +101,21 @@ function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     return (points, line)
 end
 
+function convert_arguments(::Type{<:QQPlot}, y; qqline = :none, distribution = nothing)
+    if distribution === nothing
+        throw(ArgumentError("When calling QQPlot with a single array argument, the `distribution` keyword argument must be provided"))
+    end
+    x = maybefit(distribution, y)
+    points, line = fit_qqplot(x, y; qqline = qqline)
+    return (points, line)
+end
+
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
+used_attributes(::Type{<:QQPlot}, y) = (:qqline, :distribution)
 
 plottype(::Type{<:QQNorm}, args...) = QQPlot
 
