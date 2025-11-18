@@ -27,7 +27,7 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
     code = js"""$(WGL).then(WGL=> {
         function try_find_scene(_retries) {
             let retries = _retries || 0;
-            const max_retries = 5;
+            const max_retries = 100;
             const retry_delay = 100;
             const scene = WGL.find_scene($(js_uuid(scene)));
             if (scene) {
