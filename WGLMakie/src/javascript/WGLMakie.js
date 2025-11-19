@@ -77,6 +77,10 @@ export function dispose_screen(screen) {
     if (picking_target) {
         picking_target.dispose();
     }
+    if (screen.resizeObserver) {
+        screen.resizeObserver.disconnect();
+        screen.resizeObserver = undefined;
+    }
     Object.keys(screen).forEach((key) => delete screen[key]);
     return;
 }
@@ -161,23 +165,99 @@ function start_renderloop(three_scene) {
     renderloop();
 }
 
-function get_body_size() {
-    const bodyStyle = window.getComputedStyle(document.body);
-    // Subtract padding that is added by VSCode
-    const width_padding =
-        parseInt(bodyStyle.paddingLeft, 10) +
-        parseInt(bodyStyle.paddingRight, 10) +
-        parseInt(bodyStyle.marginLeft, 10) +
-        parseInt(bodyStyle.marginRight, 10);
-    const height_padding =
-        parseInt(bodyStyle.paddingTop, 10) +
-        parseInt(bodyStyle.paddingBottom, 10) +
-        parseInt(bodyStyle.marginTop, 10) +
-        parseInt(bodyStyle.marginBottom, 10);
-    const width = (window.innerWidth - width_padding);
-    const height = (window.innerHeight - height_padding);
+/**
+ * Get the content size of an element in CSS pixels (excluding padding)
+ * @param {Element} element - The element to measure
+ * @returns {Array<number>} [width, height] in CSS pixels
+ */
+function get_element_size(element) {
+    if (!element) {
+        throw new Error("Element is null or undefined");
+    }
+
+    const style = window.getComputedStyle(element);
+    const paddingLeft = parseFloat(style.paddingLeft) || 0;
+    const paddingRight = parseFloat(style.paddingRight) || 0;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const paddingBottom = parseFloat(style.paddingBottom) || 0;
+
+    let width, height;
+
+    if (element === document.body) {
+        // For body, use window dimensions and subtract padding/margins
+        const marginLeft = parseFloat(style.marginLeft) || 0;
+        const marginRight = parseFloat(style.marginRight) || 0;
+        const marginTop = parseFloat(style.marginTop) || 0;
+        const marginBottom = parseFloat(style.marginBottom) || 0;
+
+        width = window.innerWidth - paddingLeft - paddingRight - marginLeft - marginRight;
+        height = window.innerHeight - paddingTop - paddingBottom - marginTop - marginBottom;
+    } else {
+        // For regular elements, use getBoundingClientRect
+        const rect = element.getBoundingClientRect();
+        width = rect.width - paddingLeft - paddingRight;
+        height = rect.height - paddingTop - paddingBottom;
+    }
+
     return [width, height];
 }
+
+/**
+ * Get the element to observe for resize events
+ * @param {HTMLCanvasElement} canvas - The canvas element
+ * @param {string|Array} resize_to - The resize mode ("body", "parent", or ["width_mode", "height_mode"])
+ * @returns {Element|null} The element to observe for size changes
+ */
+function get_resize_element(canvas, resize_to) {
+    if (!resize_to) {
+        return null;
+    }
+    if (resize_to == "body") {
+        return document.body;
+    } else if (resize_to == "parent" || (Array.isArray(resize_to) && resize_to.length == 2)) {
+        // For parent mode or mixed mode, observe the parent
+        const wrapper = canvas.parentElement;
+        if (!wrapper) {
+            console.error("Canvas has no parent wrapper");
+            return null;
+        }
+        const real_parent = wrapper.parentElement;
+        if (!real_parent) {
+            console.error("Canvas wrapper has no parent");
+            return null;
+        }
+        return real_parent;
+    }
+    return null;
+}
+
+/**
+ * Convert element size to Makie size based on resize mode
+ * @param {number} element_width - Width from element in CSS pixels
+ * @param {number} element_height - Height from element in CSS pixels
+ * @param {number} fixed_width - The fixed/initial width in Makie units
+ * @param {number} fixed_height - The fixed/initial height in Makie units
+ * @param {string|Array} resize_to - The resize mode
+ * @param {number} winscale - Window scale factor
+ * @returns {Array<number>} [width, height] in Makie units
+ */
+function convert_to_makie_size(element_width, element_height, fixed_width, fixed_height, resize_to, winscale) {
+    let makie_width = fixed_width;
+    let makie_height = fixed_height;
+
+    if (resize_to == "body" || resize_to == "parent") {
+        makie_width = element_width;
+        makie_height = element_height;
+    } else if (Array.isArray(resize_to) && resize_to.length == 2) {
+        const [width_mode, height_mode] = resize_to;
+        makie_width = width_mode == "parent" ? element_width : fixed_width;
+        makie_height = height_mode == "parent" ? element_height : fixed_height;
+    }
+
+    // Convert from CSS pixels to Makie units
+    return [makie_width / winscale, makie_height / winscale];
+}
+
 function get_parent_size(canvas) {
     // The first parent is the wrapper div (width/height: 100%),
     // the second is the actual parent (could be ResizableCard, body, or other container)
@@ -193,19 +273,7 @@ function get_parent_size(canvas) {
         return [canvas.width, canvas.height];
     }
 
-    const rect = real_parent.getBoundingClientRect();
-    const style = window.getComputedStyle(real_parent);
-
-    // Subtract padding to get the actual content area available for the canvas
-    const paddingLeft = parseFloat(style.paddingLeft) || 0;
-    const paddingRight = parseFloat(style.paddingRight) || 0;
-    const paddingTop = parseFloat(style.paddingTop) || 0;
-    const paddingBottom = parseFloat(style.paddingBottom) || 0;
-
-    const availableWidth = rect.width - paddingLeft - paddingRight;
-    const availableHeight = rect.height - paddingTop - paddingBottom;
-    console.log(`Parent size: width=${availableWidth}, height=${availableHeight}`);
-    return [availableWidth, availableHeight];
+    return get_element_size(real_parent);
 }
 
 export function wglerror(gl, error) {
@@ -380,40 +448,42 @@ function add_canvas_events(screen, comm, resize_to) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
 
-    function resize_callback() {
-        let width, height;
-        if (resize_to == "body") {
-            [width, height] = get_body_size();
-        } else if (resize_to == "parent") {
-            [width, height] = get_parent_size(canvas);
-        } else if (resize_to.length == 2) {
-            [width, height] = get_parent_size(canvas);
-            const [_width, _height] = resize_to;
-            const [f_width, f_height] = [
-                screen.renderer._width,
-                screen.renderer._height,
-            ];
-            width = _width == "parent" ? width : f_width;
-            height = _height == "parent" ? height : f_height;
-        } else {
-            console.warn("Invalid resize_to option");
-            return;
-        }
-        if (height > 0 && width > 0) {
-            // Send the resize event to Julia
-            comm.notify({ resize: [width / winscale, height / winscale] });
-        }
-    }
+    // Set up ResizeObserver for the parent element
     if (resize_to) {
-        const resize_callback_throttled = Bonito.throttle_function(
-            resize_callback,
-            100
-        );
-        window.addEventListener("resize", (event) =>
-            resize_callback_throttled()
-        );
-        // Initial resize
-        setTimeout(resize_callback, 50);
+        const resize_element = get_resize_element(canvas, resize_to);
+
+        if (resize_element) {
+            function resize_callback() {
+                const [element_width, element_height] = get_element_size(resize_element);
+                const [f_width, f_height] = [screen.renderer._width, screen.renderer._height];
+                const [width, height] = convert_to_makie_size(
+                    element_width,
+                    element_height,
+                    f_width,
+                    f_height,
+                    resize_to,
+                    winscale
+                );
+
+                if (height > 0 && width > 0) {
+                    // Send the resize event to Julia
+                    comm.notify({ resize: [width, height] });
+                }
+            }
+
+            const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
+
+            // Use ResizeObserver for efficient resize detection
+            const resizeObserver = new ResizeObserver((entries) => {
+                resize_callback_throttled();
+            });
+
+            resizeObserver.observe(resize_element);
+            // Store observer in screen for cleanup
+            screen.resizeObserver = resizeObserver;
+        } else {
+            console.warn("Could not find element to observe for resize_to:", resize_to);
+        }
     }
 }
 
@@ -486,24 +556,32 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
         px_per_unit = scalefactor;
     }
 
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+
     let initial_width = width;
     let initial_height = height;
 
-    // Calculate size based on resize_to setting
-    if (resize_to == "body") {
-        [initial_width, initial_height] = get_body_size();
-    } else if (resize_to == "parent") {
-        [initial_width, initial_height] = get_parent_size(canvas);
-    } else if (resize_to && resize_to.length == 2) {
-        const [width_mode, height_mode] = resize_to;
-        const [parent_width, parent_height] = get_parent_size(canvas);
-        initial_width = width_mode == "parent" ? parent_width : width;
-        initial_height = height_mode == "parent" ? parent_height : height;
+    // Calculate size based on resize_to setting using helper functions
+    if (resize_to) {
+        const resize_element = get_resize_element(canvas, resize_to);
+        if (resize_element) {
+            const [element_width, element_height] = get_element_size(resize_element);
+            // Note: convert_to_makie_size expects Makie units for fixed sizes,
+            // but here we're working with CSS pixels, so we pass width/height directly
+            // and get back CSS pixel values
+            [initial_width, initial_height] = convert_to_makie_size(
+                element_width,
+                element_height,
+                width,
+                height,
+                resize_to,
+                1.0  // Use 1.0 here since we want CSS pixels, not Makie units
+            );
+        }
     }
 
     // Set canvas CSS dimensions immediately so layout is fixed
-    const pixel_ratio = window.devicePixelRatio || 1.0;
-    const winscale = scalefactor / pixel_ratio;
     const swidth = winscale * initial_width;
     const sheight = winscale * initial_height;
 
@@ -511,6 +589,64 @@ export function initialize_canvas_size(canvas, resize_to, width, height, px_per_
     canvas.style.height = sheight + "px";
 
     return [initial_width, initial_height];
+}
+
+export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+    const spinner = wrapper.querySelector('.wglmakie-spinner');
+    try {
+        // Calculate and apply the correct canvas size based on resize_to setting
+        // This ensures the canvas has correct dimensions and layout is fixed
+        // before serialization starts, preventing reflow
+        let final_width = width;
+        let final_height = height;
+
+        if (resize_to) {
+            const sizes = initialize_canvas_size(
+                canvas,
+                resize_to,
+                width,
+                height,
+                px_per_unit,
+                scalefactor
+            );
+            final_width = sizes[0];
+            final_height = sizes[1];
+        }
+
+        // Send the real size to Julia to trigger scene resize and serialization
+        real_size.notify([final_width, final_height]);
+
+        const init_scene = (scene_data) => {
+            try {
+                const renderer = create_scene(
+                    wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height,
+                    framerate, resize_to, px_per_unit, scalefactor
+                );
+                // Remove spinner after successful initialization
+                done_init.notify(true);
+                spinner.remove();
+            } catch (e) {
+                Bonito.Connection.send_error("error initializing scene", e);
+                done_init.notify(e);
+                spinner.remove();
+                return;
+            }
+            return false; // Deregister callback after first successful run
+        };
+
+        if (scene_serialized.value != null) {
+            // If scene is already serialized, initialize immediately
+            init_scene(scene_serialized.value);
+        } else {
+            // Otherwise, wait for serialization to complete
+            scene_serialized.on(init_scene);
+        }
+    } catch (e) {
+        Bonito.Connection.send_error("error setting up scene", e);
+        done_init.notify(e);
+        spinner.remove();
+        return;
+    }
 }
 
 function add_picking_target(screen) {
@@ -599,6 +735,11 @@ function create_scene(
         // `renderer.setSize` correctly updates `canvas` dimensions
         set_render_size(screen, ...w_h);
     });
+    const gl = renderer.getContext();
+    const err = gl.getError();
+    if (err != gl.NO_ERROR) {
+        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+    }
     return renderer;
 }
 
@@ -920,9 +1061,13 @@ window.WGL = {
     register_popup,
     render_scene,
     get_texture_atlas,
-    get_body_size,
     get_parent_size,
+    get_element_size,
+    get_resize_element,
+    convert_to_makie_size,
     initialize_canvas_size,
+    setup_scene_init,
+    execute_in_order,
 };
 
 export {
@@ -941,6 +1086,8 @@ export {
     events2unitless,
     on_next_insert,
     get_texture_atlas,
-    get_body_size,
     get_parent_size,
+    get_element_size,
+    get_resize_element,
+    convert_to_makie_size,
 };
