@@ -963,7 +963,7 @@ end
         add_input!(graph, :input, 5)
 
         # Test with spawn=false (runs on current task)
-        map_latest!(graph, [:input], [:output]; spawn=false) do x
+        map_latest!(graph, [:input], [:output]; spawn = false) do x
             return (x + 1,)
         end
 

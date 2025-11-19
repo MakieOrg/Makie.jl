@@ -1116,7 +1116,7 @@ sleep(0.1) # wait for a computation to finish to not get old result
 result = graph[:filtered_image][]
 ```
 """
-function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false)
+function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
 
     add_input!(attr, update_key, time())
@@ -1124,7 +1124,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
     # Channel for input requests (unlimited size to never block)
     input_channel = Channel{Any}(Inf)
     # Background worker task that processes computation requests
-    result_channel = Channel(1; spawn=spawn) do result_channel
+    result_channel = Channel(1; spawn = spawn) do result_channel
         while isopen(input_channel)
             try
                 # Take the first item (blocking if empty)
@@ -1146,7 +1146,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
         end
     end
 
-    register_computation!(attr, [update_key, inputs...], outputs) do inputs, changed, last
+    return register_computation!(attr, [update_key, inputs...], outputs) do inputs, changed, last
         # Always queue new computation unless this comes from the update trigger
         user_inputs = tail(values(inputs))
         if !changed[update_key]
@@ -1171,7 +1171,6 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
         return result
     end
 end
-
 
 
 function Base.empty!(attr::ComputeGraph)
