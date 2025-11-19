@@ -144,3 +144,52 @@ end
         end
     end
 end
+
+@testset "text boundingboxes" begin
+    @testset "empty string" begin
+        scene = Scene(camera = campixel!)
+        p = text!(scene, 30, 50, text = "")
+        @test Makie.raw_glyph_boundingboxes(p) == Rect2d[]
+        @test Makie.fast_glyph_boundingboxes(p) == Rect3d[]
+        @test Makie.glyph_boundingboxes(p) == Rect2d[]
+        @test length(Makie.fast_string_boundingboxes(p)) == 1
+        @test Makie.fast_string_boundingboxes(p)[1] ≈ Rect3d(Point3d(NaN), Vec3d(0))
+        @test Makie.string_boundingboxes(p) == [Rect3d(Point3d(30, 50, 0), Vec3d(0))]
+        @test Makie.full_boundingbox(p) == Rect3d(Point3d(30, 50, 0), Vec3d(0))
+    end
+
+    @testset "single string" begin
+        scene = Scene(camera = campixel!)
+        p = text!(scene, 30, 50, text = "val")
+
+        charbbs = [Rect2d(0, -3.0519999265670776, 7.0, 16.309999465942383), Rect2d(0, -3.0519999265670776, 7.783999919891357, 16.309999465942383), Rect2d(0, -3.0519999265670776, 3.1080000400543213, 16.309999465942383)]
+        @test all(Makie.raw_glyph_boundingboxes(p) .≈ charbbs)
+        charbbs = [Rect3d(0.0, 1.1920928955078125e-7, 0, 7.0, 16.309999465942383, 0), Rect3d(7.0, 1.1920928955078125e-7, 0.0, 7.783999919891357, 16.309999465942383, 0.0), Rect3d(14.784000396728516, 1.1920928955078125e-7, 0.0, 3.1080000400543213, 16.309999465942383, 0.0)]
+        @test all(Makie.fast_glyph_boundingboxes(p) .≈ charbbs)
+        @test all(Makie.glyph_boundingboxes(p) .≈ [bb + Point3d(30, 50, 0) for bb in charbbs])
+
+        @test all(Makie.fast_string_boundingboxes(p) .≈ [Rect3d(0.0, 1.1920928955078125e-7, 0.0, 17.892000436782837, 16.309999465942383, 0.0)])
+        @test all(Makie.string_boundingboxes(p) .≈ [Rect3d(30.0, 50.00000011920929, 0.0, 17.892000436782837, 16.309999465942383, 0.0)])
+
+        @test Makie.full_boundingbox(p) ≈ Rect3d(30.0, 50.00000011920929, 0.0, 17.892000436782837, 16.309999465942383, 0.0)
+    end
+
+    @testset "multi string" begin
+        scene = Scene(camera = campixel!)
+        p = text!(scene, [30, 100, 50], [50, 20, 100], text = ["val", "b", ""])
+
+        charbbs = [Rect2d(0.0, -3.0519999265670776, 7.0, 16.309999465942383), Rect2d(0.0, -3.0519999265670776, 7.783999919891357, 16.309999465942383), Rect2d(0.0, -3.0519999265670776, 3.1080000400543213, 16.309999465942383), Rect2d(0.0, -3.0519999265670776, 7.783999919891357, 16.309999465942383)]
+        @test all(Makie.raw_glyph_boundingboxes(p) .≈ charbbs)
+        charbbs = [Rect3d(0.0, 1.1920928955078125e-7, 0.0, 7.0, 16.309999465942383, 0.0), Rect3d(7.0, 1.1920928955078125e-7, 0.0, 7.783999919891357, 16.309999465942383, 0.0), Rect3d(14.784000396728516, 1.1920928955078125e-7, 0.0, 3.1080000400543213, 16.309999465942383, 0.0), Rect3d(0.0, 1.1920928955078125e-7, 0.0, 7.783999919891357, 16.309999465942383, 0.0)]
+        @test all(Makie.fast_glyph_boundingboxes(p) .≈ charbbs)
+        charbbs = [charbbs[1] + Point3d(30, 50, 0), charbbs[2] + Point3d(30, 50, 0), charbbs[3] + Point3d(30, 50, 0), charbbs[4] + Point3d(100, 20, 0)]
+        @test all(Makie.glyph_boundingboxes(p) .≈ charbbs)
+
+        stringbbs = [Rect3d(0.0, 1.1920928955078125e-7, 0.0, 17.892000436782837, 16.309999465942383, 0.0), Rect3d(0.0, 1.1920928955078125e-7, 0.0, 7.783999919891357, 16.309999465942383, 0.0), Rect3d(NaN, NaN, NaN, 0.0, 0.0, 0.0)]
+        @test all(Makie.fast_string_boundingboxes(p) .≈ stringbbs)
+        stringbbs = [Rect3d(30.0, 50.00000011920929, 0.0, 17.892000436782837, 16.309999465942383, 0.0), Rect3d(100.0, 20.00000011920929, 0.0, 7.783999919891357, 16.309999465942383, 0.0), Rect3d(50.0, 100.0, 0.0, 0.0, 0.0, 0.0)]
+        @test all(Makie.string_boundingboxes(p) .≈ stringbbs)
+
+        @test Makie.full_boundingbox(p) ≈ Rect3d(30.0, 20.00000011920929, 0.0, 77.78399991989136, 79.99999988079071, 0.0)
+    end
+end
