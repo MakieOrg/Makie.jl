@@ -2,7 +2,7 @@ using ComputePipeline
 using Test
 using Random
 
-using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException
+using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException, map_latest!
 using ComputePipeline.Observables
 
 @testset "ComputePipeline.jl" begin

@@ -16,7 +16,7 @@ end
 
 using Observables
 
-using Base: RefValue
+using Base: RefValue, tail
 
 deref(r::RefValue) = r[]
 deref(x) = x
@@ -1061,6 +1061,117 @@ function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outpu
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     return attr
 end
+
+"""
+    map_latest!(f, compute_graph::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false)
+
+Registers an asynchronous computation in the `compute_graph` that processes only the
+most recent input changes, skipping intermediate updates if the computation is still running.
+
+This is useful for expensive computations where intermediate results are not needed, such as:
+- Heavy image processing or rendering operations
+- Slow network requests
+- Complex data analysis or simulations
+
+## Behavior
+
+When inputs change:
+- any new value is put in a queue to be computed
+- If multiple updates occur while computing, only the **most recent** input values are
+  kept; intermediate values are discarded
+- The outputs return cached values while the computation is in progress
+- finishing a computation invalidates the graph, so on the next poll the latest result is returned
+
+The first call to retrieve outputs will block until the initial computation completes.
+
+## Arguments
+- `f`: Callback function that receives input values as individual arguments and returns
+  a tuple of output values
+- `compute_graph`: The compute graph to register the computation in
+- `inputs`: Vector of Symbol names referring to input nodes in the graph
+- `outputs`: Vector of Symbol names for the output nodes to be created
+- `spawn=false`: If `true`, runs the background worker on a separate thread. If `false`,
+  runs an async task.
+
+## Example
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :image_data, initial_image)
+add_input!(graph, :filter_strength, 1.0)
+
+# Register expensive async computation that skips intermediate updates
+map_latest!(graph, [:image_data, :filter_strength], [:filtered_image]) do img, strength
+    # This expensive operation only runs on the latest inputs
+    result = expensive_filter(img, strength)
+    return (result,)
+end
+
+# Rapidly update inputs - only the final values will be processed
+for i in 1:100
+    update!(graph, filter_strength = i / 10.0)
+end
+graph[:filtered_image][] # poll to trigger computation queue
+sleep(0.1) # wait for a computation to finish to not get old result
+result = graph[:filtered_image][]
+```
+"""
+function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false)
+    update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
+
+    add_input!(attr, update_key, time())
+
+    # Channel for input requests (unlimited size to never block)
+    input_channel = Channel{Any}(Inf)
+    # Background worker task that processes computation requests
+    result_channel = Channel(1; spawn = spawn) do result_channel
+        while isopen(input_channel)
+            try
+                # Take the first item (blocking if empty)
+                inputs = take!(input_channel)
+                # Drain the channel to get only the most recent item
+                while isready(input_channel)
+                    inputs = take!(input_channel)
+                end
+                # Process the most recent inputs
+                result = f(inputs...)
+                # Put result in the result channel
+                put!(result_channel, result)
+                # Notify that we got a new value, for the below computation to run
+                t = time()
+                update!(attr, update_key => t)
+            catch e
+                @error "Error in background computation task: $e"
+            end
+        end
+    end
+
+    return register_computation!(attr, [update_key, inputs...], outputs) do inputs, changed, last
+        # Always queue new computation unless this comes from the update trigger
+        user_inputs = tail(values(inputs))
+        if !changed[update_key]
+            put!(input_channel, user_inputs)
+        end
+        result = nothing
+        # Try to get latest result if available (non-blocking)
+        while isready(result_channel)
+            # we have a fresh result
+            result = take!(result_channel)
+        end
+        !isnothing(result) && return result # we have a new value :)
+
+        # we have no new computation so this is either the first call or
+        # we are working on something and while doing so return the last value
+        if isnothing(last)
+            # Blocking wait for first result
+            result = f(user_inputs...)
+        else
+            result = values(last)
+        end
+        return result
+    end
+end
+
 
 function Base.empty!(attr::ComputeGraph)
     # empty!(attr.inputs)
