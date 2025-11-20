@@ -11,7 +11,7 @@ using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
-using ReferenceTests.Distributions
+import ReferenceTests.Distributions
 using ReferenceTests.SparseArrays
 using ReferenceTests.StructArrays
 using Makie: Record, volume
