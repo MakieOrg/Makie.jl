@@ -1,11 +1,7 @@
 """
-    triplot(x, y; kwargs...)
-    triplot(positions; kwargs...)
-    triplot(triangles::Triangulation; kwargs...)
-
-Plots a triangulation based on the provided position or `Triangulation` from DelaunayTriangulation.jl.
+Plots a triangulation based on the provided positions or `Triangulation` from DelaunayTriangulation.jl.
 """
-@recipe Triplot (triangles,) begin
+@recipe Triplot (triangles::Union{AbstractVector{<:Point2}, DelTri.Triangulation},) begin
     # Toggles
     "Determines whether to plot the individual points. Note that this will only plot points included in the triangulation."
     show_points = false
@@ -78,6 +74,16 @@ Plots a triangulation based on the provided position or `Triangulation` from Del
     constrained_edge_linestyle = @inherit linestyle
     "Sets the width of the constrained edges."
     constrained_edge_linewidth = @inherit linewidth
+end
+
+# Document our additional argument besides PointBased2D
+function argument_docs(::Type{Triplot})
+    ldocs = argument_docs(PointBased2D())
+    triangulation = "* `triangulation`: A `DelaunayTriangulation.Triangulation` object from DelaunayTriangulation.jl, which contains the triangulation data structure including points, triangles, and other geometric information."
+
+    items = Markdown.parse(triangulation).content[1].items
+    append!(ldocs.content[1].items, items)
+    return ldocs
 end
 
 function get_all_triangulation_points!(points, tri)
@@ -189,14 +195,14 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
 end
 
 # TODO: restrict to Point2?
-Makie.convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
-Makie.convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
-Makie.convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
+convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
+convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
+convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
 
-function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
+function plot!(p::Triplot{<:Tuple{<:AbstractVector{<:Point2}}})
     # Handle transform_func early so tessellation is in cartesian space.
     map!(p, [:transform_func, :triangles], :triangulation) do tf, ps
-        transformed = Makie.apply_transform(tf, ps)
+        transformed = apply_transform(tf, ps)
         return DelTri.triangulate(transformed, randomise = false)
     end
 
@@ -204,7 +210,7 @@ function Makie.plot!(p::Triplot{<:Tuple{<:Vector{<:Point}}})
     return
 end
 
-function Makie.plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
+function plot!(p::Triplot{<:Tuple{<:DelTri.Triangulation}})
     # Using external arrays in computations is somewhat experimental
     triangle_points = Point2f[]
     triangle_faces = TriangleFace{Int}[]

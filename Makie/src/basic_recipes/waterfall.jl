@@ -1,6 +1,4 @@
 """
-    waterfall(x, y; kwargs...)
-
 Plots a [waterfall chart](https://en.wikipedia.org/wiki/Waterfall_chart) to visualize individual
 positive and negative components that add up to a net result as a barplot with stacked bars next
 to each other.
@@ -30,7 +28,7 @@ to each other.
     final_dodge_gap = 0
 end
 
-conversion_trait(::Type{<:Waterfall}) = PointBased()
+conversion_trait(::Type{<:Waterfall}) = PointBased2D()
 
 function Makie.plot!(p::Waterfall)
     function stack_bars(xy, dodge, stack)
