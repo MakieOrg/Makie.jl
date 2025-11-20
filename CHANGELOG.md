@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
+
 ## Unreleased
 
 - Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
