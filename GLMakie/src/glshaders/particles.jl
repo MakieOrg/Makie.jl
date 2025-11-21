@@ -89,8 +89,7 @@ function draw_mesh_particle(screen, data)
                 "shading" => light_calc(shading),
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "TARGET_STAGE" => target_stage(screen, data)
             )
         )
     end
@@ -119,10 +118,7 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict(
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
-            )
+            view = Dict("TARGET_STAGE" => target_stage(screen, data))
         )
         gl_primitive = GL_POINTS
     end
@@ -171,8 +167,7 @@ function draw_scatter(screen, position, data)
             "sprites.vert", "distance_shape.frag",
             view = Dict(
                 "position_calc" => position_calc(position, GLBuffer),
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "TARGET_STAGE" => target_stage(screen, data)
             )
         )
         scale_primitive = true
