@@ -22,6 +22,7 @@
 - Fixed cases of `heatmap` not displaying with `log10` scale and narrow `xlims`/`ylims` [#5390](https://github.com/MakieOrg/Makie.jl/pull/5390)
 - Fixed outline based `poly` fats paths no considering transform functions in CairoMakie [#5397](https://github.com/MakieOrg/Makie.jl/pull/5397)
 - Fixed manual `DateTime` and `Time` ticks given via `StepRange`s or `AbstractVector`s with or without formatters [#5404](https://github.com/MakieOrg/Makie.jl/pull/5404).
+- Fixed `Menu` erroring when changing size of `options` before display [#5410](https://github.com/MakieOrg/Makie.jl/pull/5410)
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 - Adjusted `viewmode = :fit` in Axis3 to produce less whitespace when the axis has unequal aspect ratios. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
 - Added a variant to `qqplot` that takes one positional argument and a `distribution` keyword to make it compatible with AlgebraOfGraphics [#5413](https://github.com/MakieOrg/Makie.jl/pull/5413).
