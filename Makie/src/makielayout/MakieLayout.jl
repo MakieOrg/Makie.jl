@@ -72,7 +72,7 @@ export Cycled
 export GridLayout, GridPosition, GridSubposition
 export BBox
 export LayoutObservables
-export Inside, Outside, Mixed
+export Inside, Outside, Mixed, Protrusion
 export Fixed, Auto, Relative, Aspect
 export width, height, top, bottom, left, right
 export with_updates_suspended
