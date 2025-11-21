@@ -1,9 +1,3 @@
-function Base.isapprox(r1::Rect{D}, r2::Rect{D}; kwargs...) where {D}
-    left = vcat(minimum(r1), widths(r1))
-    right = vcat(minimum(r2), widths(r2))
-    return all((isnan.(left) .& isnan.(right)) .| (left .≈ right))
-end
-
 @testset "data_limits(plot)" begin
     ps = Point2f[(0, 0), (1, 1)]
 

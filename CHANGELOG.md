@@ -1,5 +1,7 @@
 # Changelog
 
+- Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
+
 ## Unreleased
 
 ## [0.24.7] - 2025-11-18
