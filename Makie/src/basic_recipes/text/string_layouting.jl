@@ -1,6 +1,7 @@
-struct DefaultStringLayouter end
-struct RichTextStringLayouter end
-struct LaTeXStringLayouter end
+abstract type AbstractTextLayouter end
+struct DefaultStringLayouter <: AbstractTextLayouter end
+struct RichTextStringLayouter <: AbstractTextLayouter end
+struct LaTeXStringLayouter <: AbstractTextLayouter end
 
 struct LayoutedString{S, L}
     string::S
