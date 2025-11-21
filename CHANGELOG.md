@@ -1,5 +1,7 @@
 # Changelog
 
+- Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
+
 ## Unreleased
 
 ## [0.24.7] - 2025-11-18
