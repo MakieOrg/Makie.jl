@@ -148,8 +148,8 @@ function initialize_block!(ax::Axis3)
     end
 
     titlet = text!(
-        blockscene, ax.title,
-        position = titlepos,
+        blockscene, titlepos;
+        text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
         align = titlealignnode,

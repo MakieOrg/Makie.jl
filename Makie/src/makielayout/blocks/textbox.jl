@@ -79,10 +79,15 @@ function initialize_block!(tbox::Textbox)
     )
 
     textplot = t.blockscene.plots[1]
+    glyphplot = textplot.plots[1].plots[1]
+    register_raw_glyph_boundingboxes!(glyphplot)
+
     # Manually add positions without considering transformations to prevent
     # infinite loop from translate!() in on(cursorpoints)
-    displayed_charbbs = map(textplot.positions, fast_glyph_boundingboxes_obs(textplot)) do pos, bbs
-        return [Rect2f(bb) + Point2f(pos[1]) for bb in bbs]
+    glyphs_bbox_obs = ComputePipeline.get_observable!(glyphplot.attributes, :raw_glyph_boundingboxes)
+
+    displayed_charbbs = map(glyphplot.position, glyphs_bbox_obs) do pos, bbs
+        return [Rect2f(bb) + Point2f(pos) for bb in bbs]
     end
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
@@ -91,8 +96,9 @@ function initialize_block!(tbox::Textbox)
         textplot = t.blockscene.plots[1]
 
         hadvances = Float32[]
-        broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
-            hadvance = ex.hadvance * sc[1]
+        glyph_plot = textplot.plots[1].plots[1]
+        broadcast_foreach(glyph_plot.glyphinfos[]) do glyphinfo
+            hadvance = glyphinfo.extent.hadvance * glyphinfo.size[1]
             push!(hadvances, hadvance)
         end
 

@@ -551,6 +551,8 @@ function Base.getproperty(pl::PlotList, property::Symbol)
     haskey(pl.attributes, property) && return pl.attributes[property]
     if length(pl.plots) == 1
         return getproperty(pl.plots[1], property)
+    elseif length(pl.plots) ==0
+        error("Can't set property $property on empty PlotList.")
     else
         error("Can't get property $property on PlotList with multiple plots.")
     end
@@ -564,6 +566,8 @@ function Base.setproperty!(pl::PlotList, property::Symbol, value)
     end
     return if length(pl.plots) == 1
         setproperty!(pl.plots[1], property, value)
+    elseif length(pl.plots) == 0
+        error("Can't set property $property on empty PlotList.")
     else
         error("Can't set property $property on PlotList with multiple plots.")
     end

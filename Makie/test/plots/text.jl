@@ -15,7 +15,7 @@
     end
 end
 
-@testset "Glyph Collections" begin
+@testset "Glyph Informations" begin
     using Makie.FreeTypeAbstraction
 
     # Test whether Makie's padded signed distance field text matches
@@ -26,7 +26,8 @@ end
 
     scene = Scene()
     campixel!(scene)
-    p = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline), fontsize = 20)
+    t = text!(scene, Point2f(30, 37), text = str, align = (:left, :baseline), fontsize = 20)
+    p = t.plots[1].plots[1]
 
     # This doesn't work well because FreeTypeAbstraction doesn't quite scale
     # linearly
@@ -58,20 +59,17 @@ end
         ]
     )
 
-    @test p.glyphindices[] == FreeTypeAbstraction.glyph_index.(font, chars)
-    @test p.font_per_char[] == [font for _ in 1:4]
-    @test all(isapprox.(p.glyph_origins[], [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
-    @test all(s -> s == Vec2f(p.fontsize[]), p.text_scales[])
-    @test all(r -> r == Quaternionf(0, 0, 0, 1), p.text_rotation[])
-    @test all(c -> c == RGBAf(0, 0, 0, 1), p.text_color[])
-    @test all(x -> x == RGBAf(0, 0, 0, 0), p.text_strokecolor[])
-    @test all(x -> x == 0, p.text_strokewidth[])
+    @test [g.glyph for g in p.glyphinfos[]] == FreeTypeAbstraction.glyph_index.(font, chars)
+    @test [g.font for g in p.glyphinfos[]] == [font for _ in 1:4]
+    @test all(isapprox.([g.origin for g in p.glyphinfos[]], [Point3f(x, 0, 0) for x in origins], atol = 1.0e-10))
+    @test all(s -> s == Vec2f(t.fontsize[]), [g.size for g in p.glyphinfos[]])
+    @test all(r -> r == Quaternionf(0, 0, 0, 1), [g.rotation for g in p.glyphinfos[]])
+    @test all(c -> c == RGBAf(0, 0, 0, 1), [g.color for g in p.glyphinfos[]])
+    @test all(x -> x == RGBAf(0, 0, 0, 0), [g.strokecolor for g in p.glyphinfos[]])
+    @test all(x -> x == 0, [g.strokewidth for g in p.glyphinfos[]])
 
-    makie_hi_bb = Makie.height_insensitive_boundingbox.(p.glyph_extents[])
-    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.(p.glyph_extents[])
-    fta_hi_bb = FreeTypeAbstraction.height_insensitive_boundingbox.(unit_extents, Ref(font))
+    makie_hi_bb_wa = Makie.height_insensitive_boundingbox_with_advance.([g.extent for g in p.glyphinfos[]])
     fta_ha = FreeTypeAbstraction.hadvance.(unit_extents)
-    @test makie_hi_bb == fta_hi_bb
     @test fta_ha == [bb.origin[1] + bb.widths[1] for bb in makie_hi_bb_wa]
     atlas = Makie.get_texture_atlas()
     # Test quad data
@@ -101,21 +99,16 @@ end
         Vec2f(mini .+ 2 * atlas.glyph_padding * 20.0 / atlas.pix_per_glyph)
     end
 
-    @test all(pos -> pos == p.arg1[], positions)
-    @test char_offsets == p.glyph_origins[]
+    @test all(pos -> pos == p.position[], positions)
+    @test char_offsets == [g.origin for g in p.glyphinfos[]]
     @test quad_offsets == fta_quad_offsets
     @test scales == fta_scales
 end
 
 @testset "old text syntax" begin
-    text("text", position = Point2f(0, 0))
-    text(["text"], position = [Point2f(0, 0)])
-    text(["text", "text"], position = [Point2f(0, 0), Point2f(1, 1)])
-    text(collect(zip(["text", "text"], [Point2f(0, 0), Point2f(1, 1)])))
-    text(L"text", position = Point2f(0, 0))
-    text([L"text"], position = [Point2f(0, 0)])
-    text([L"text", L"text"], position = [Point2f(0, 0), Point2f(1, 1)])
-    text(collect(zip([L"text", L"text"], [Point2f(0, 0), Point2f(1, 1)])))
+    err = ["Keyword `position` is deprecated for plot type Makie.Text", "`position` has been deprecated in Makie v0.21."]
+    @test_throws err text("text", position = Point2f(0, 0))
+    @test_throws err text(["text"], position = [Point2f(0, 0)])
 
     err = ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.")
     @test_throws err Label(Figure()[1, 1], "hi", textsize = 30)
@@ -129,7 +122,8 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = changed
-                p.glyphindices[]
+                gp = first(filter(i -> i isa Glyphs, p.plots[1].plots))
+                gp.glyphinfos[]
             end
             true
         end
@@ -138,7 +132,8 @@ end
         @test begin
             for changed in ["test", rich("test"), L"test"]
                 p.text = [changed]
-                p.glyphindices[]
+                gp = first(filter(i -> i isa Glyphs, p.plots[1].plots))
+                gp.glyphinfos[]
             end
             true
         end

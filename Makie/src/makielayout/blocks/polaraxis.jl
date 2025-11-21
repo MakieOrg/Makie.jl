@@ -40,12 +40,17 @@ function initialize_block!(po::PolarAxis; palette = nothing)
     # Draw clip, grid lines, spine, ticks
     rticklabelplot, thetaticklabelplot = draw_axis!(po)
 
+    register_text_boundingboxes!(thetaticklabelplot)
+    register_text_boundingboxes!(rticklabelplot)
+    thetatick_bbox_obs = ComputePipeline.get_observable!(thetaticklabelplot.attributes, :text_boundingboxes)
+    rticklabel_bbox_obs = ComputePipeline.get_observable!(rticklabelplot.attributes, :text_boundingboxes)
+
     # Calculate fraction of screen usable after reserving space for theta ticks
     # OPT: only update on relevant text attributes rather than glyphcollection
     onany(
         po.blockscene,
-        fast_string_boundingboxes_obs(thetaticklabelplot), thetaticklabelplot.visible,
-        fast_string_boundingboxes_obs(rticklabelplot), rticklabelplot.visible,
+        thetatick_bbox_obs, thetaticklabelplot.visible,
+        rticklabel_bbox_obs, rticklabelplot.visible,
         po.rticklabelpad,
         po.rticksvisible, po.rticksize, po.rtickalign,
         po.thetaticklabelpad,

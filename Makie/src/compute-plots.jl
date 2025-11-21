@@ -542,7 +542,8 @@ function register_marker_computations!(attr::ComputeGraph)
 end
 
 const PrimitivePlotTypes = Union{
-    Scatter, Lines, LineSegments, Text, Mesh,
+    # TODO: is Text still primitive? Keeping it primitive helps with color conversion...
+    Text, Scatter, Lines, LineSegments, Glyphs, Mesh,
     MeshScatter, Image, Heatmap, Surface, Voxels, Volume,
 }
 
@@ -732,6 +733,12 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 
         # Blacklist these because they are controlled by Transformations()
         filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
+
+        # FIXME: plotlists overwrite all explicity set attributes on the children
+        # HACK: exclude :space from propagating
+        if P == PlotList
+            filter!(kv -> !in(kv[1], [:space]), attr)
+        end
 
         # remove attributes that the parent graph has but don't apply to this plot
         valid_keys = keys(plot_attributes(nothing, P))
