@@ -25,6 +25,7 @@
 - Fixed `Menu` erroring when changing size of `options` before display [#5410](https://github.com/MakieOrg/Makie.jl/pull/5410)
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 - Adjusted `viewmode = :fit` in Axis3 to produce less whitespace when the axis has unequal aspect ratios. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
+- Added a variant to `qqplot` that takes one positional argument and a `distribution` keyword to make it compatible with AlgebraOfGraphics [#5413](https://github.com/MakieOrg/Makie.jl/pull/5413).
 
 ## [0.24.6] - 2025-08-19
 
