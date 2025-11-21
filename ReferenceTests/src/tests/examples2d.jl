@@ -1951,6 +1951,8 @@ end
     qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
     qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
+    qqplot(fig[3, 1], ys, distribution = Distributions.Normal)
+    qqplot(fig[3, 2], RNG.rand(30), distribution = Distributions.Beta, qqline = :fit)
     fig
 end
 

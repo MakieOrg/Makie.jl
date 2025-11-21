@@ -4,8 +4,8 @@
 
 ## [0.24.7] - 2025-11-18
 
-- Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
-- Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
+- Fixed `ComputePipeline.is_same` for `missing` data [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
+- Fixed `resize_to` in WGLMakie [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Fixed `streamplot` and `contour` plots not considering transform functions in arrow/text rotation [#5249](https://github.com/MakieOrg/Makie.jl/pull/5249)
 - `LogTicks` now work well with `pseudolog10` [#5135](https://github.com/MakieOrg/Makie.jl/pull/5135)
 - Fixed `Symlog10` to work correctly with lower or upper thresholds smaller than 1, and adds a `linscale` argument [#5279](https://github.com/MakieOrg/Makie.jl/pull/5279)
@@ -27,6 +27,7 @@
 - Fixed `Menu` erroring when changing size of `options` before display [#5410](https://github.com/MakieOrg/Makie.jl/pull/5410)
 - Added stroke to `band` [#5035](https://github.com/MakieOrg/Makie.jl/pull/5035)
 - Reduced whitespace in Axis3 when aspect ratios aren't 1. [#5183](https://github.com/MakieOrg/Makie.jl/pull/5183)
+- Added a variant to `qqplot` that takes one positional argument and a `distribution` keyword to make it compatible with AlgebraOfGraphics [#5413](https://github.com/MakieOrg/Makie.jl/pull/5413).
 
 ## [0.24.6] - 2025-08-19
 
