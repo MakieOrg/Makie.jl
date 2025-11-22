@@ -44,7 +44,7 @@ However it usually inherited and controlled by the `Axis`.
 
 As a **developer**, i.e. someone who wants to extend Makie, you can interact with most these steps.
 Most likely you will extend with `convert_arguments()` to allow special types to be plotted.
-But you can also implement more dim_converts, add methods for `expand_dimensions()`, implement more transform functions or add a camera which produces its own `view` and `projection` matrix.
+But you can also implement more `dim_converts`, add methods for `expand_dimensions()`, implement more transform functions or add a camera which produces its own `view` and `projection` matrix.
 Only `model` and `viewport` handling as well as the interpretation of `space` are set.
 
 ## Argument Conversions
@@ -116,9 +116,9 @@ Makie.apply_transform(transform_func, arg::VecTypes{N, T}) where {N, T}
 ```
 where the transform function can be represented by any type, not just a `Function`.
 That way it can carry auxiliary information that may be important to the transformation.
-Additionally methods with other `arg` types such as numbers of `Vector`s thereof may also be implemented to more efficiently apply the transform_func.
+Additionally methods with other `arg` types such as numbers of `Vector`s thereof may also be implemented to more efficiently apply the `transform_func`.
 
-Typically a transform_func also implements
+Typically a `transform_func` also implements
 ```julia
 Makie.inverse_transform(transform_func)
 Makie.apply_transform(transform_func, arg::Rect3)
@@ -194,7 +194,7 @@ As of Makie 0.24.3 the function `register_projected_positions!()` can be used to
 register_projected_positions!
 ```
 
-The most common cases are that you either want to project positions to pixel space, e.g. to mix in attributes that apply in pixel space, or apply the transform_func as it is a potentially non-linear transform.
+The most common cases are that you either want to project positions to pixel space, e.g. to mix in attributes that apply in pixel space, or apply the `transform_func` as it is a potentially non-linear transform.
 
 To project to pixel space you can simply call `register_projected_positions!(plot, input_name = ...)`.
 For this positions need to exist as a compute node and their name needs to be passed as `input_name`.
