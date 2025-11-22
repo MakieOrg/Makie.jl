@@ -199,6 +199,10 @@ function transform_figure_code(code::String; id::String, page::String, pagetitle
     backend in (:CairoMakie, :GLMakie) || error("Invalid backend $backend")
     mimetype = mime == :svg ? "image/svg+xml" : mime == :png ? "image/png" : error("Unknown mimetype $mime")
 
+    # For Windows: If there's a backslash in the path, double it so that it's
+    # escaped when the string is interpolated later.
+    page = replace(page, "\\" => "\\\\")
+
     return (
         is_continued ? "" : """
             using $backend
