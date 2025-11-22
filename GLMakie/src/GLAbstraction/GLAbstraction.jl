@@ -107,6 +107,7 @@ export prerender!               # adds a function to a RenderObject, which gets 
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
 export extract_renderable
 export set_arg!
+export add_instructions!
 export GLVertexArray            # VertexArray wrapper object
 export GLBuffer                 # OpenGL Buffer object wrapper
 export indexbuffer              # Shortcut to create an OpenGL Buffer object for indexes (1D, cardinality of one and GL_ELEMENT_ARRAY_BUFFER set)

@@ -25,7 +25,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<:GeometryBasics.M
     to_buffer(:uvw, :texturecoordinates)
 
     # Only emit normals, when we shadin'
-    shading = get(result, :shading, NoShading)::Makie.ShadingAlgorithm
+    shading = get!(result, :shading, NoShading)::Makie.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
         to_buffer(:normal, :normals)
@@ -36,7 +36,6 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<:GeometryBasics.M
 end
 
 function draw_mesh(screen, data::Dict)
-    shading = pop!(data, :shading, NoShading)::Makie.ShadingAlgorithm
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
@@ -48,25 +47,30 @@ function draw_mesh(screen, data::Dict)
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
-        texturecoordinates = Vec2f(0) => GLBuffer
+        texturecoordinates = nothing => GLBuffer
         uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
         transparency = false
         px_per_unit = 1.0f0
         interpolate_in_fragment_shader = true
-        shader = GLVisualizeShader(
-            screen,
-            "util.vert", "mesh.vert",
-            "fragment_output.frag", "mesh.frag",
-            "lighting.frag",
-            view = Dict(
-                "shading" => light_calc(shading),
-                "picking_mode" => to_value(get(data, :picking_mode, "")),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
     end
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
+end
+
+function default_shader(screen, robj, plot::Union{Mesh, Image})
+    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    shader = GLVisualizeShader(
+        screen,
+        "util.vert", "mesh.vert",
+        "fragment_output.frag", "mesh.frag",
+        "lighting.frag",
+        view = Dict(
+            "shading" => light_calc(shading),
+            "picking_mode" => to_value(get(robj.uniforms, :picking_mode, "")),
+            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
+            "TARGET_STAGE" => target_stage(screen, robj)
+        )
+    )
+    return shader
 end

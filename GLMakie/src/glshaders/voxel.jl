@@ -2,8 +2,6 @@
 function draw_voxels(screen, main::VolumeTypes, data::Dict)
     geom = Rect2f(Point2f(0), Vec2f(1.0))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
-    shading = pop!(data, :shading, FastShading)
-    debug = to_value(pop!(data, :debug, ""))
     @gen_defaults! data begin
         voxel_id = main => Texture
         gap = 0.0f0
@@ -18,20 +16,27 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
         color_map = nothing => Texture
         uv_transform = nothing => Texture
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "voxel.vert",
-            "fragment_output.frag", "voxel.frag", "lighting.frag",
-            view = Dict(
-                "shading" => light_calc(shading),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data),
-                "DEBUG_FLAG_DEFINE" => debug
-            )
-        )
     end
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
+
+function default_shader(screen, robj, plot::Voxels)
+    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    debug = to_value(get(plot.attributes, :debug, ""))
+    shader = GLVisualizeShader(
+        screen,
+        "voxel.vert",
+        "fragment_output.frag", "voxel.frag", "lighting.frag",
+        view = Dict(
+            "shading" => light_calc(shading),
+            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
+            "TARGET_STAGE" => target_stage(screen, robj),
+            "DEBUG_FLAG_DEFINE" => debug
+        )
+    )
+    return shader
+end
+
 @specialize

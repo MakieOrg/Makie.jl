@@ -96,37 +96,23 @@ function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisual
     return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
 end
 
-function assemble_shader(data)
-    shader = data[:shader]::GLVisualizeShader
-    delete!(data, :shader)
-    primitive = get(data, :gl_primitive, GL_TRIANGLES)
-    pre_fun = get(data, :prerender, nothing)
-    post_fun = get(data, :postrender, nothing)
 
-    transp = get(data, :transparency, Observable(false))
-    overdraw = get(data, :overdraw, Observable(false))
-
-    pre = if !isnothing(pre_fun)
-        _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
-        () -> (_pre_fun(); pre_fun())
-    else
-        GLAbstraction.StandardPrerender(transp, overdraw)
+function initialize_robj!(screen::Screen, robj::RenderObject, plot::Plot)
+    for stage in screen.render_pipeline
+        initialize_robj!(screen, stage, robj, plot)
     end
+end
 
-    robj = RenderObject(data, shader, pre, nothing, shader.screen.glscreen)
+initialize_robj!(screen, stage, robj, plot) = nothing
 
-    post = if haskey(data, :instances)
-        GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)
-    else
-        GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
-    end
+function initialize_robj!(screen, stage::RenderPlots, robj, plot)
+    return default_setup!(screen, robj, plot)
+end
 
-    robj.postrenderfunction = if !isnothing(post_fun)
-        () -> (post(); post_fun())
-    else
-        post
-    end
-    return robj
+function default_setup!(screen, robj, plot)
+    program_like = default_shader(screen, robj, plot)
+    add_instructions!(robj, :main, program_like)
+    return
 end
 
 """
@@ -158,8 +144,8 @@ to_index_buffer(ctx, x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function target_stage(screen, data)
-    idx = findfirst(stage -> renders_in_stage(data, stage), screen.render_pipeline.stages)
+function target_stage(screen, robj)
+    idx = findfirst(stage -> renders_in_stage(robj, stage), screen.render_pipeline.stages)
     @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
 
     # Activate the required outputs + code via `#define` and `#ifdef` blocks.
@@ -171,7 +157,7 @@ function target_stage(screen, data)
     elseif fb.counter == 2
         "#define DEFAULT_TARGET"
     elseif fb.counter == 3
-        data[:oit_scale] = screen.config.transparency_weight_scale
+        robj.uniforms[:oit_scale] = screen.config.transparency_weight_scale
         "#define OIT_TARGET"
     elseif fb.counter == 4
         "#define SSAO_TARGET"

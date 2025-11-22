@@ -31,9 +31,10 @@ using Makie.ComputePipeline
 
 function missing_uniforms(robj, inputs, input2name)
     inputset = Set([get(input2name, k, k) for k in inputs])
+    vertexarray = robj.variants[:main]
     uniformset = union(
-        keys(robj.vertexarray.program.uniformloc),
-        Symbol.(collect(keys(robj.vertexarray.buffers))),
+        keys(vertexarray.program.uniformloc),
+        Symbol.(collect(keys(vertexarray.buffers))),
         [:visible]
     )
     skip = [:objectid]
@@ -56,7 +57,7 @@ function flag_float64(robj)
         AbstractArray{<:VecTypes{N, Float64}} where {N},
         Observable,
     }
-    for (k, v) in robj.vertexarray.buffers
+    for (k, v) in robj.buffers
         v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
@@ -69,6 +70,18 @@ end
 ### Generic (more or less)
 ################################################################################
 
+struct RenderObjectUpdater <: Function
+    screen::Screen
+    robj::RenderObject
+    gl_names::Dict{Symbol, Symbol}
+end
+
+function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, last)
+    update_robjs!(updater.robj, args, changed, updater.gl_names)
+    updater.screen.requires_update = true
+    return (updater.robj,)
+end
+
 function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Dict{Symbol, Symbol})
     for name in keys(args)
         changed[name] || continue
@@ -78,26 +91,26 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         if name === :visible
             robj.visible = value
         elseif gl_name === :indices || gl_name === :faces
-            if robj.vertexarray.indices isa GLAbstraction.GPUArray
-                GLAbstraction.update!(robj.vertexarray.indices, value)
+            if robj.indices isa GLAbstraction.GPUArray
+                GLAbstraction.update!(robj.indices, value)
             else
-                robj.vertexarray.indices = value
+                robj.indices = value
             end
         elseif gl_name === :instances
             # TODO: Is this risky since postprocessors are variable?
-            robj.postrenderfunction.n_instances[] = value
+            robj.instances = value
         elseif haskey(robj.uniforms, gl_name)
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.uniforms[gl_name], value)
             else
                 converted = GLAbstraction.gl_convert(robj.context, value)
                 if typeof(robj.uniforms[gl_name]) !== typeof(converted)
-                    @error("Uniforms can not change their type. uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))")
+                    @error("Uniforms can not change their type.\n  uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))\n  in robj $(robj.id)")
                 end
                 robj.uniforms[gl_name] = converted
             end
-        elseif haskey(robj.vertexarray.buffers, string(gl_name))
-            GLAbstraction.update!(robj.vertexarray.buffers[string(gl_name)], value)
+        elseif haskey(robj.buffers, gl_name)
+            GLAbstraction.update!(robj.buffers[gl_name], value)
         else
             # println("Could not update ", name)
         end
@@ -234,24 +247,56 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
-    register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
-        if isnothing(last)
-            # Generate complex defaults
-            # TODO: Should we add an initializer in ComputePipeline to extract this?
-            # That would simplify this code and remove attr, uniforms from the enclosed variables here
-            _robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
-        else
-            _robj = last.gl_renderobject
-            update_robjs!(_robj, args, changed, input2glname)
-            # names = ([k for (k, v) in pairs(changed) if v])
-            # @info "updating robj $(robj.id) due to changes in: $names"
-        end
-        screen.requires_update = true
-        return (_robj,)
+    robj = let
+        args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))
+        robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
+        initialize_robj!(screen, robj, plot)
+        robj
     end
-    robj = attr[:gl_renderobject][]
+
+    @info keys(robj.buffers)
+    @info keys(robj.uniforms)
+
+    # Filter out unused inputs and static attributes to prevent overwrite
+    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa, :ssao, :transparency])
+    discarded = Symbol[] # TODO: for debugging
+    filter!(merged_inputs) do name
+        glname = get(input2glname, name, name)
+        println()
+        @info name => glname
+        if in(glname, always_keep) || haskey(robj.buffers, glname)
+            @info "whitelist || buffers"
+            return true
+        elseif haskey(robj.uniforms, glname)
+            @info robj.uniforms[glname]
+            is_static = isnothing(robj[glname])
+            if !is_static
+                @info "uniforms keep"
+                return true
+            else
+                @info "uniforms discard"
+                push!(discarded, name)
+                return false
+            end
+            # return !is_static
+        else
+            @info "nada"
+            push!(discarded, name)
+            return false
+        end
+    end
+    @info "Discarded in $(typeof(plot))\n  $discarded"
+    @info "Kept: $merged_inputs"
 
     flag_float64(robj)
+
+    register_computation!(
+        RenderObjectUpdater(screen, robj, input2glname),
+        attr, merged_inputs, [:gl_renderobject]
+    )
+
+    # Initialize node (this is required for visible checks)
+    attr.gl_renderobject[]
 
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
@@ -1057,9 +1102,6 @@ function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
         args.alpha_colormap,
         args.scaled_colorrange
     )
-
-    data[:normals] === nothing && delete!(data, :normals)
-    data[:texturecoordinates] === nothing && delete!(data, :texturecoordinates)
 
     return draw_mesh(screen, data)
 end

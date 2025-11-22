@@ -1,11 +1,4 @@
 # Utilities:
-function draw_fullscreen(vao_id)
-    glBindVertexArray(vao_id)
-    glDrawArrays(GL_TRIANGLES, 0, 3)
-    glBindVertexArray(0)
-    return
-end
-
 struct PostprocessPrerender end
 
 function (sp::PostprocessPrerender)()
@@ -288,9 +281,10 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
-    robj = RenderObject(
-        inputs, shader,
-        () -> begin
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(
+        robj, :main, shader,
+        pre = () -> begin
             glDepthMask(GL_TRUE)
             glDisable(GL_DEPTH_TEST)
             glDisable(GL_CULL_FACE)
@@ -302,10 +296,8 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
             # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
             # opaque.a   = 0 * src.a   + 1 * opaque.a
             glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
-        end,
-        nothing, screen.glscreen
+        end
     )
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
 
     return RenderPass{:OIT}(framebuffer, robj)
 end
@@ -348,8 +340,8 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     inputs[:projection] = Mat4f(I)
     inputs[:bias] = 0.025f0
     inputs[:radius] = 0.5f0
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
     return RenderPass{:SSAO1}(framebuffer, robj)
 end
@@ -365,8 +357,8 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     )
     inputs[:inv_texel_size] = rcpframe(size(screen))
     inputs[:blur_range] = Int32(2)
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
@@ -446,8 +438,8 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
         view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
     filter_fxaa_in_shader || pop!(inputs, :objectid_buffer)
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
     return RenderPass{:FXAA1}(framebuffer, robj)
 end
@@ -462,8 +454,8 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fxaa.frag")
     )
     inputs[:RCPFrame] = rcpframe(size(framebuffer))
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
     return RenderPass{:FXAA2}(framebuffer, robj)
 end

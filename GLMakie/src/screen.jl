@@ -635,15 +635,13 @@ function destroy!(rob::RenderObject, keep_alive = UInt32[])
                 GLAbstraction.free(v)
             end
         end
-        for obs in rob.observables
-            Observables.clear(obs)
-        end
-        GLAbstraction.free(rob.vertexarray)
+        GLAbstraction.free.(values(rob.variants))
+        GLAbstraction.free.(values(rob.buffers))
+        GLAbstraction.free(rob.indices)
+        empty!(rob.variants)
+        empty!(rob.buffers)
     end
-    for obs in rob.observables
-        Observables.clear(obs)
-    end
-    return GLAbstraction.free(rob.vertexarray)
+    return
 end
 
 # Note: can be called from scene finalizer, must not error or print unless to Core.stdout

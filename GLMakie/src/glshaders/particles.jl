@@ -80,25 +80,32 @@ function draw_mesh_particle(screen, data)
         instances = const_lift(length, position)
         transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "util.vert", "particles.vert",
-            "fragment_output.frag", "lighting.frag", "mesh.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, TextureBuffer),
-                "shading" => light_calc(shading),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
+
     end
     if !isnothing(Makie.to_value(intensity))
         data[:intensity] = intensity_convert_tex(screen.glscreen, intensity, position)
     end
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
 
+function default_shader(screen, robj, plot::MeshScatter)
+    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    # TODO: We don't actually have different position types here anymore...
+    position = plot.positions_transformed_f32c[]
+    shader = GLVisualizeShader(
+        screen,
+        "util.vert", "particles.vert",
+        "fragment_output.frag", "lighting.frag", "mesh.frag",
+        view = Dict(
+            "position_calc" => position_calc(position, TextureBuffer),
+            "shading" => light_calc(shading),
+            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
+            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
+            "TARGET_STAGE" => target_stage(screen, robj)
+        )
+    )
+    return shader
+end
 
 """
 This is the most primitive particle system, which uses simple points as primitives.
@@ -115,15 +122,9 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         f32c_scale = Vec3f(1)
         transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict("TARGET_STAGE" => target_stage(screen, data))
-        )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = () -> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
 
 """
@@ -161,15 +162,6 @@ function draw_scatter(screen, position, data)
         fxaa = false
         transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "util.vert", "sprites.geom",
-            "sprites.vert", "distance_shape.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, GLBuffer),
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
@@ -178,7 +170,59 @@ function draw_scatter(screen, position, data)
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(screen.glscreen, intensity, position)
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
+end
+
+function default_setup!(screen, robj, plot::Scatter)
+    if plot.marker[] isa FastPixel
+
+        _prerender = GLAbstraction.StandardPrerender(robj)
+        prerender = () -> begin
+            _prerender()
+            glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
+            return
+        end
+        shader = GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "dots.vert", "dots.frag",
+            view = Dict("TARGET_STAGE" => target_stage(screen, robj))
+        )
+        add_instructions!(robj, :main, shader, pre = prerender)
+
+    else
+
+        # TODO: We don't actually have different position types here anymore...
+        position = plot.positions_transformed_f32c[]
+        shader = GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "util.vert", "sprites.geom",
+            "sprites.vert", "distance_shape.frag",
+            view = Dict(
+                "position_calc" => position_calc(position, GLBuffer),
+                "TARGET_STAGE" => target_stage(screen, robj)
+            )
+        )
+        add_instructions!(robj, :main, shader)
+
+    end
+    return
+end
+
+function default_setup!(screen, robj, plot::Text)
+    # TODO: We don't actually have different position types here anymore...
+    position = plot.positions_transformed_f32c[]
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "util.vert", "sprites.geom",
+        "sprites.vert", "distance_shape.frag",
+        view = Dict(
+            "position_calc" => position_calc(position, GLBuffer),
+            "TARGET_STAGE" => target_stage(screen, robj)
+        )
+    )
+    add_instructions!(robj, :main, shader)
+
+    return
 end
 
 @specialize

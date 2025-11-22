@@ -21,8 +21,9 @@ end
 When rendering a specialised list of Renderables, we can do some optimizations
 """
 function render(list::Vector{RenderObject{Pre}}) where {Pre}
+    error("I'm not dead yet!")
     isempty(list) && return nothing
-    first(list).prerenderfunction()
+    first(list).prerender()
     vertexarray = first(list).vertexarray
     program = vertexarray.program
     glUseProgram(program.id)
@@ -51,7 +52,7 @@ function render(list::Vector{RenderObject{Pre}}) where {Pre}
                 end
             end
         end
-        renderobject.postrenderfunction()
+        renderobject.postrender(instructions.vertexarray)
     end
     # we need to assume, that we're done here, which is why
     # we need to bind VertexArray to 0.
@@ -68,11 +69,11 @@ It uses dictionaries and doesn't care about OpenGL call optimizations.
 So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
-function render(renderobject::RenderObject, vertexarray = renderobject.vertexarray)
+function render(renderobject::RenderObject, instructions = renderobject.variants[:main])
     if renderobject.visible
-        renderobject.prerenderfunction()
+        instructions.prerender()
         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
-        program = vertexarray.program
+        program = instructions.program
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
@@ -91,114 +92,110 @@ function render(renderobject::RenderObject, vertexarray = renderobject.vertexarr
                 end
             end
         end
-        bind(vertexarray)
-        renderobject.postrenderfunction()
+        bind(instructions.vertexarray)
+        N_verts = num_vetices(renderobject) # Can we do an early iszero exit condition?
+        render(renderobject.primitive, renderobject.indices, renderobject.instances, N_verts)
+        instructions.postrender()
         glBindVertexArray(0)
     end
     return
 end
 
-function vao_boundscheck(target::Integer, current::Integer, vao)
-    return if target <= current # assuming 0-based OpenGL indices
+# TODO: maybe do this earlier to produce better error?
+function vao_boundscheck(target::Integer, current::Integer)
+    if target <= current # assuming 0-based OpenGL indices
         msg = IOBuffer()
         print(msg, "BoundsError: OpenGL vertex index $current exceeds the number of vertices $target.\n Occurred with ")
-        show(msg, MIME"text/plain"(), vao)
+        # show(msg, MIME"text/plain"(), vao)
         error(String(take!(msg)))
     end
+    return
 end
 
 # multiple index ranges
-"""
-    render(vao::GLVertexArray[, mode = GL_TRIANGLES])
-
-Renders a vertexarray based on its `vao.indices` type.
-"""
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: VecOrSignal{UnitRange{Int}}}
-    N_vert = length(vao)
-    for elem in to_value(vao.indices)
+function render(mode::GLenum, indices::Vector{UnitRange{Int}}, ::Nothing, N_vert)
+    for elem in to_value(indices)
         # TODO: Should this exclude last(elem), i.e. shift a:b to (a-1):(b-1)
         #       instead of (a-1):b?
-        vao_boundscheck(N_vert, last(elem), vao)
+        vao_boundscheck(N_vert, last(elem))
         glDrawArrays(mode, max(first(elem) - 1, 0), length(elem) + 1)
     end
     return nothing
 end
 
 # by index range to draw
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: TOrSignal{UnitRange{Int}}}
-    r = to_value(vao.indices)
-    ndraw = length(r)
+function render(mode::GLenum, indices::UnitRange{Int}, ::Nothing, nverts)
+    ndraw = length(indices)
     ndraw == 0 && return nothing
-    offset = first(r) - 1 # 1 based -> 0 based
-    nverts = length(vao)
+    offset = first(indices) - 1 # 1 based -> 0 based
     offset < 0 && error("Range of vertex indices must not be < 0, but is $offset")
-    vao_boundscheck(nverts, offset + nverts, vao)
+    vao_boundscheck(nverts, offset + nverts)
     glDrawArrays(mode, offset, ndraw)
     return nothing
 end
 
 # by number of triangles
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where {T <: TOrSignal{Int}}
-    r = to_value(vao.indices)
-    r == 0 && return nothing
-    glDrawArrays(mode, 0, r)
+function render(mode::GLenum, indices::Int, ::Nothing, N_verts)
+    indices == 0 && return nothing
+    glDrawArrays(mode, 0, indices)
     return nothing
 end
 
 # using indexbuffer (faces)
-function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum = GL_TRIANGLES) where {T <: Union{Integer, AbstractFace}}
+function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T <: Union{Integer, AbstractFace}}
     # Note: not discarding draw calls with 0 indices may cause segfaults even if
     # the draw call is later discarded based on on `mode`. See #4782
-    N = length(vao.indices) * cardinality(vao.indices)
+    N = length(indices) * cardinality(indices)
     N == 0 && return nothing
     if DEBUG[]
-        data = gpu_data_no_unbind(vao.indices)
+        data = gpu_data_no_unbind(indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
-        vao_boundscheck(length(vao), N_addressed, vao)
+        vao_boundscheck(N_verts, N_addressed)
     end
     glDrawElements(mode, N, julia2glenum(T), C_NULL)
     return nothing
 end
 
+# TODO: Is this reachable?
 # undefined indices, default to rendering all vertices
-function render(vao::GLVertexArray, mode::GLenum = GL_TRIANGLES)
-    length(vao) == 0 && return nothing
-    glDrawArrays(mode, 0, length(vao))
+function render(mode::GLenum, indices, ::Nothing, N_verts)
+    N_verts == 0 && return nothing
+    glDrawArrays(mode, 0, N_verts)
     return nothing
 end
 
-"""
-    renderinstanced(vao::GLVertexArray, instance_count[, primitive = GL_TRIANGLES])
+# Instanced Versions:
 
-Render `instance_count` instances of the given vertex array based on the type of
-`vao.indices`.
-"""
-renderinstanced(vao::GLVertexArray, a, primitive = GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
+# TODO: Is this reachable?
+# TODO: instances::AbstractVector?
+function render(mode::GLenum, indices, instances, N_verts)
+    render(mode, indices, length(instances), N_verts)
+    return nothing
+end
 
 # using index buffer
-function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive = GL_TRIANGLES) where {T <: Union{Integer, AbstractFace}}
-    N = length(vao.indices) * cardinality(vao.indices)
+function render(mode::GLenum, indices::GLBuffer{T}, amount::Integer, N_verts) where {T <: Union{Integer, AbstractFace}}
+    N = length(indices) * cardinality(indices)
     N * amount == 0 && return nothing
     if DEBUG[]
-        data = gpu_data_no_unbind(vao.indices)
+        data = gpu_data_no_unbind(indices)
         @assert !isempty(data)
         # raw() to get 0-based value from Faces, does nothing for Int
         N_addressed = GeometryBasics.raw(mapreduce(maximum, max, data))
-        vao_boundscheck(length(vao), N_addressed, vao)
+        vao_boundscheck(N_verts, N_addressed)
     end
-    glDrawElementsInstanced(primitive, N, julia2glenum(T), C_NULL, amount)
+    glDrawElementsInstanced(mode, N, julia2glenum(T), C_NULL, amount)
     return nothing
 end
 
 # based on number of vertices
-function renderinstanced(vao::GLVertexArray, amount::Integer, primitive = GL_TRIANGLES)
-    length(vao) * amount == 0 && return nothing
-    glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)
+function renderinstanced(mode::GLenum, indices, amount::Integer, N_verts)
+    N_verts * amount == 0 && return nothing
+    glDrawElementsInstanced(mode, N_verts, GL_UNSIGNED_INT, C_NULL, amount)
     return nothing
 end
-# handle all uniform objects
 
 ##############################################################################################
 #  Generic render functions
