@@ -97,7 +97,6 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
                 robj.indices = value
             end
         elseif gl_name === :instances
-            # TODO: Is this risky since postprocessors are variable?
             robj.instances = value
         elseif haskey(robj.uniforms, gl_name)
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray

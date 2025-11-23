@@ -23,7 +23,6 @@ function pack_bool(id, bool)
     return id + (bool ? highbit_mask : UInt32(0))
 end
 
-
 mutable struct RenderObject{IndexT, InstanceT}
     context # OpenGL context
     id::UInt32
@@ -203,7 +202,41 @@ function RenderObject(context, data::Dict{Symbol, Any})
 end
 
 function Base.show(io::IO, obj::RenderObject)
-    return print(io, "RenderObject(id = ", obj.id, ", visible = ", obj.visible, ")")
+    print(io, "RenderObject(id = ", obj.id, ", visible = ", obj.visible, ")")
+    return io
+end
+
+# these collide with other names when using `GLENUM(primitive).name`
+const GL_PRIMITIVE_TO_NAME = Dict{GLuint, String}(
+    GL_POINTS => "GL_POINTS",
+    GL_LINES => "GL_LINES",
+    GL_LINE_LOOP => "GL_LINE_LOOP",
+    GL_LINE_STRIP => "GL_LINE_STRIP",
+    GL_TRIANGLES => "GL_TRIANGLES",
+    GL_TRIANGLE_STRIP => "GL_TRIANGLE_STRIP",
+    GL_TRIANGLE_FAN => "GL_TRIANGLE_FAN",
+    GL_LINES_ADJACENCY => "GL_LINES_ADJACENCY",
+    GL_LINE_STRIP_ADJACENCY => "GL_LINE_STRIP_ADJACENCY",
+    GL_TRIANGLES_ADJACENCY => "GL_TRIANGLES_ADJACENCY",
+    GL_TRIANGLE_STRIP_ADJACENCY => "GL_TRIANGLE_STRIP_ADJACENCY",
+)
+
+_print_indices(io::IO, n::Integer) = println(io, "  indices: ", Int64(n))
+_print_indices(io::IO, is::AbstractVector{<:Integer}) = println(io, "  indices: ", Int64.(is))
+_print_indices(io::IO, fs) = println(io, "  faces: ", fs)
+
+function Base.show(io::IO, ::MIME"text/plain", robj::RenderObject)
+    println(io, "RenderObject")
+    println(io, "  id: ", robj.id)
+    println(io, "  visible: ", robj.visible)
+    _print_indices(io, robj.indices)
+    isnothing(robj.instances) || println(io, "  instances: ", robj.instances)
+    primitive = get(GL_PRIMITIVE_TO_NAME, robj.primitive, GLENUM(robj.primitive).name)
+    println(io, "  primitive: ", primitive)
+    println(io, "  ", length(robj.buffers), " vertex buffers")
+    println(io, "  ", length(robj.uniforms), " uniforms")
+    print(io, "  ", length(robj.variants), " variants")
+    return io
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
@@ -254,7 +287,6 @@ function StandardPrerender(robj::RenderObject)
     return StandardPrerender(overdraw)
 end
 
-# TODO: this in general
 # TODO: rework data (used for mustache replacements?)
 function RenderInstructions(
         robj::RenderObject, maybe_program;

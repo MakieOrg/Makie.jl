@@ -142,16 +142,10 @@ end
 
 include("GLBuffer.jl")
 include("GLTexture.jl")
-
-########################################################################
-
 include("GLVertexArray.jl")
 
-##################################################################################
+include("RenderObject.jl")
 
-include("GLRenderObject.jl")
-
-####################################################################################
 # freeing
 
 # Note: can be called from scene finalizer, must not error or print unless to Core.stdout

@@ -89,8 +89,3 @@ function Base.show(io::IO, ::MIME"text/plain", vao::GLVertexArray)
     print(io, "used buffers: ", vao.buffers)
     return
 end
-
-# TODO: move
-_print_indices(io::IO, n::Integer) = print(io, "\nindices: ", Int64(n))
-_print_indices(io::IO, is::AbstractVector{<:Integer}) = print(io, "\nindices: ", Int64.(is))
-_print_indices(io::IO, fs) = print(io, "\nfaces: ", fs)
