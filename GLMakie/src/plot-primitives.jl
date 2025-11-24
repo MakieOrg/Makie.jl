@@ -264,6 +264,12 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         end
     end
 
+    # TODO: clean this up
+    # allows `constructor!` to remove inputs by making their name not appear in
+    # uniforms so the filter above deletes it. This then removes the mapping
+    # so it's not carried around with the callback
+    filter!(p -> p[2] === :unused, input2glname)
+
     flag_float64(robj)
 
     register_computation!(
@@ -306,7 +312,8 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
         input2glname[:scaled_color] = :intensity
     end
     if !isnothing(get(data, :image, nothing))
-        input2glname[:scaled_color] = :image
+        # input2glname[:scaled_color] = :image
+        input2glname[:scaled_color] = :unused
     end
 
     if fast_pixel
@@ -410,7 +417,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :sdf_marker_shape => :shape,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
-        :quad_scale => :scale, :gl_image => :image,
+        :quad_scale => :scale,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,

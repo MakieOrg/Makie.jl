@@ -247,7 +247,7 @@ function (pre::OITPrerender)()
     # destination <- 0 * source + (source) * destination
     glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
 
-    GLAbstraction.handle_overdraw(pre.overdraw)
+    handle_overdraw(pre.overdraw)
 
     # Disable cullface for now, until all rendering code is corrected!
     glDisable(GL_CULL_FACE)

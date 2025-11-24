@@ -222,16 +222,18 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
                     @test to_value(uniform).id == 0
                 end
             end
-            @test robj.vertexarray.id == 0
-            if robj.vertexarray.indices isa GLMakie.GLAbstraction.GPUArray
-                @test robj.vertexarray.indices.id == 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id == 0
+                @test inst.program.id == 0
+                for shader in inst.program.shader
+                    @test shader.id == 0
+                end
             end
-            for buffer in values(robj.vertexarray.buffers)
+            if robj.indices isa GLMakie.GLAbstraction.GPUArray
+                @test robj.indices.id == 0
+            end
+            for buffer in values(robj.buffers)
                 @test buffer.id == 0
-            end
-            @test robj.vertexarray.program.id == 0
-            for shader in robj.vertexarray.program.shader
-                @test shader.id == 0
             end
         end
 

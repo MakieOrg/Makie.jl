@@ -59,7 +59,7 @@ function draw_volume(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_setup!(screen, robj, ::Volume, name, param)
+function default_setup!(screen, robj, plot::Volume, name, param)
     shading = get!(robj.uniforms, :shading, FastShading)
     shader = GLVisualizeShader(
         screen,

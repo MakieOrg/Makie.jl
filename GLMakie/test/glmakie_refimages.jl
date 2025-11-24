@@ -254,11 +254,8 @@ end
 
         inputs[:color_transform] = parent.attributes[:color_transform]
 
-        robj = GLMakie.RenderObject(
-            inputs, shader,
-            GLMakie.PostprocessPrerender(), nothing, screen.glscreen
-        )
-        robj.postrenderfunction = () -> GLMakie.draw_fullscreen(robj.vertexarray.id)
+        robj = GLMakie.RenderObject(screen.glscreen, inputs)
+        GLMakie.add_instructions!(robj, :main, shader, pre = GLMakie.PostprocessPrerender())
 
         return GLMakie.RenderPass{:Tint}(framebuffer, robj)
     end

@@ -12,7 +12,8 @@ end
 
 function free(x::RenderInstructions)
     free(x.vertexarray)
-    free(x.program)
+    # These are cached and freed when the cache is cleared/deleted
+    # free(x.program)
     return
 end
 
@@ -271,8 +272,8 @@ function RenderInstructions(
     vertexarray = GLVertexArray(robj.buffers, program, robj.indices)
 
     if DEBUG[]
-        require_context(program.context, context)
-        require_context(vertexarray.context, context)
+        require_context(program.context, robj.context)
+        require_context(vertexarray.context, robj.context)
     end
 
     return RenderInstructions(vertexarray, program, pre, post)
