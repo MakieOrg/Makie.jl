@@ -191,7 +191,7 @@ function render(mode::GLenum, indices::GLBuffer{T}, amount::Integer, N_verts) wh
 end
 
 # based on number of vertices
-function renderinstanced(mode::GLenum, indices, amount::Integer, N_verts)
+function render(mode::GLenum, indices, amount::Integer, N_verts)
     N_verts * amount == 0 && return nothing
     glDrawElementsInstanced(mode, N_verts, GL_UNSIGNED_INT, C_NULL, amount)
     return nothing
