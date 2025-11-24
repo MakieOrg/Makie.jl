@@ -88,9 +88,8 @@ function draw_mesh_particle(screen, data)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::MeshScatter)
+function default_shader(screen, robj, plot::MeshScatter, param)
     shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
-    # TODO: We don't actually have different position types here anymore...
     position = plot.positions_transformed_f32c[]
     shader = GLVisualizeShader(
         screen,
@@ -101,7 +100,7 @@ function default_shader(screen, robj, plot::MeshScatter)
             "shading" => light_calc(shading),
             "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
             "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            "TARGET_STAGE" => target_stage(screen, robj)
+            param...
         )
     )
     return shader
@@ -173,10 +172,10 @@ function draw_scatter(screen, position, data)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_setup!(screen, robj, plot::Scatter)
+function default_setup!(screen, robj, plot::Scatter, name, param)
     if plot.marker[] isa FastPixel
 
-        _prerender = GLAbstraction.StandardPrerender(robj)
+        _prerender = get_default_prerender(robj, name)
         prerender = () -> begin
             _prerender()
             glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
@@ -185,13 +184,12 @@ function default_setup!(screen, robj, plot::Scatter)
         shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict("TARGET_STAGE" => target_stage(screen, robj))
+            view = Dict(param...)
         )
-        add_instructions!(robj, :main, shader, pre = prerender)
+        add_instructions!(robj, name, shader, pre = prerender)
 
     else
 
-        # TODO: We don't actually have different position types here anymore...
         position = plot.positions_transformed_f32c[]
         shader = GLVisualizeShader(
             screen,
@@ -199,17 +197,17 @@ function default_setup!(screen, robj, plot::Scatter)
             "sprites.vert", "distance_shape.frag",
             view = Dict(
                 "position_calc" => position_calc(position, GLBuffer),
-                "TARGET_STAGE" => target_stage(screen, robj)
+                param...
             )
         )
-        add_instructions!(robj, :main, shader)
+        prerender = get_default_prerender(robj, name)
+        add_instructions!(robj, name, shader, pre = prerender)
 
     end
     return
 end
 
-function default_setup!(screen, robj, plot::Text)
-    # TODO: We don't actually have different position types here anymore...
+function default_shader(screen, robj, plot::Text, param)
     position = plot.positions_transformed_f32c[]
     shader = GLVisualizeShader(
         screen,
@@ -217,12 +215,10 @@ function default_setup!(screen, robj, plot::Text)
         "sprites.vert", "distance_shape.frag",
         view = Dict(
             "position_calc" => position_calc(position, GLBuffer),
-            "TARGET_STAGE" => target_stage(screen, robj)
+            param...
         )
     )
-    add_instructions!(robj, :main, shader)
-
-    return
+    return shader
 end
 
 @specialize

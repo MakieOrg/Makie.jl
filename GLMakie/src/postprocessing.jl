@@ -149,25 +149,59 @@ struct RenderPlots <: GLRenderStage
     transparency::FilterOptions
     fxaa::FilterOptions
 
-    for_oit::Bool
+    target::Symbol
 end
 
-function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
-    ssao = FilterOptions(get(parent.attributes, :ssao, 2)) # can't do FilterOptions(::FilterOptions) ???
+function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target = :forward_render_objectid)
+    # can't do FilterOptions(::FilterOptions) ???
+    ssao = FilterOptions(get(parent.attributes, :ssao, 2))
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
     transparency = FilterOptions(get(parent.attributes, :transparency, 2))
-    return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
+    return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, target)
 end
 
 function construct(::Val{Symbol("SSAO Render")}, screen, framebuffer, inputs, parent)
-    return construct(Val{:Render}(), screen, framebuffer, inputs, parent)
+    return construct(Val{:Render}(), screen, framebuffer, inputs, parent, :forward_render_objectid_geom)
 end
 
 function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, parent)
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
     clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, true)
+    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, :forward_render_objectid_oit)
+end
+
+struct OITPrerender
+    overdraw::Bool
+end
+OITPrerender(robj::RenderObject) = OITPrerender(get(robj.uniforms, :overdraw, false))
+
+function (pre::OITPrerender)()
+    # disable depth buffer writing
+    glDepthMask(GL_FALSE)
+
+    # Blending
+    glEnable(GL_BLEND)
+    glBlendEquation(GL_FUNC_ADD)
+
+    # buffer 0 contains weight * color.rgba, should do sum
+    # destination <- 1 * source + 1 * destination
+    glBlendFunci(0, GL_ONE, GL_ONE)
+
+    # buffer 1 is objectid, do nothing
+    glDisablei(GL_BLEND, 1)
+
+    # buffer 2 is color.a, should do product
+    # destination <- 0 * source + (source) * destination
+    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+    GLAbstraction.handle_overdraw(pre.overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
 end
 
 function id2scene(screen, id1)
@@ -204,7 +238,7 @@ function run_stage(screen, glscene, stage::RenderPlots)
         set_draw_buffers(stage.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
-            elem.visible && renders_in_stage(elem, stage) || continue
+            elem.visible && haskey(elem.variants, stage.target) || continue
 
             found, scene = id2scene(screen, screenid)
             (found && scene.visible[]) || continue
@@ -216,31 +250,7 @@ function run_stage(screen, glscene, stage::RenderPlots)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             elem[:px_per_unit] = ppu
 
-            if stage.for_oit
-                # disable depth buffer writing
-                glDepthMask(GL_FALSE)
-
-                # Blending
-                glEnable(GL_BLEND)
-                glBlendEquation(GL_FUNC_ADD)
-
-                # buffer 0 contains weight * color.rgba, should do sum
-                # destination <- 1 * source + 1 * destination
-                glBlendFunci(0, GL_ONE, GL_ONE)
-
-                # buffer 1 is objectid, do nothing
-                glDisablei(GL_BLEND, 1)
-
-                # buffer 2 is color.a, should do product
-                # destination <- 0 * source + (source) * destination
-                glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
-
-            else
-                glDepthMask(GL_TRUE)
-                GLAbstraction.enabletransparency()
-            end
-
-            render(elem)
+            render(elem, elem.variants[stage.target])
         end
     catch e
         @error "Error while rendering!" exception = e

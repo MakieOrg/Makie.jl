@@ -196,17 +196,3 @@ function renderinstanced(mode::GLenum, indices, amount::Integer, N_verts)
     glDrawElementsInstanced(mode, N_verts, GL_UNSIGNED_INT, C_NULL, amount)
     return nothing
 end
-
-##############################################################################################
-#  Generic render functions
-#####
-function enabletransparency()
-    glDisable(GL_BLEND)
-    glEnablei(GL_BLEND, 0)
-    # This does:
-    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
-    # target.a = 0 * source.a + 1 * target.a
-    # the latter is required to keep target.a = 1 for the OIT pass
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
-    return
-end

@@ -1,14 +1,14 @@
 using .GLAbstraction: StandardPrerender
 
-struct VolumePrerender
-    sp::StandardPrerender
+struct VolumePrerender{T}
+    pre::T
 end
-VolumePrerender(a::Bool) = VolumePrerender(StandardPrerender(a))
 
 function (x::VolumePrerender)()
-    x.sp()
+    x.pre()
     glEnable(GL_CULL_FACE)
-    return glCullFace(GL_FRONT)
+    glCullFace(GL_FRONT)
+    return
 end
 
 @nospecialize
@@ -30,11 +30,11 @@ function draw_heatmap(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, ::Heatmap)
+function default_shader(screen, robj, ::Heatmap, param)
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "heatmap.vert", "heatmap.frag",
-        view = Dict("TARGET_STAGE" => target_stage(screen, robj))
+        view = Dict(param...)
     )
     return shader
 end
@@ -64,7 +64,7 @@ function draw_volume(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_setup!(screen, robj, ::Volume)
+function default_setup!(screen, robj, ::Volume, name, param)
     shading = get!(robj.uniforms, :shading, FastShading)
     shader = GLVisualizeShader(
         screen,
@@ -75,14 +75,14 @@ function default_setup!(screen, robj, ::Volume)
             "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
             "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
             "ENABLE_DEPTH" => Bool(robj.uniforms[:enable_depth]) ? "#define ENABLE_DEPTH" : "",
-            "TARGET_STAGE" => target_stage(screen, robj)
+            param...
         )
     )
-    prerender = VolumePrerender(Bool(robj[:overdraw]))
+    prerender = VolumePrerender(get_default_prerender(robj, name))
     # TODO: make a struct for this to clean it up?
     postrender = () -> glDisable(GL_CULL_FACE)
 
-    add_instructions!(robj, :main, shader, pre = prerender, post = postrender)
+    add_instructions!(robj, name, shader, pre = prerender, post = postrender)
     return
 end
 @specialize

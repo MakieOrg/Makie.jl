@@ -55,15 +55,15 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::Lines)
+function default_shader(screen, robj, plot::Lines, param)
     color_type = gl_color_type_annotation(plot[:scaled_color][])
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
         view = Dict(
-            "TARGET_STAGE" => target_stage(screen, robj),
             "define_fast_path" => Bool(robj[:fast]) ? "#define FAST_PATH" : "",
-            "stripped_color_type" => color_type
+            "stripped_color_type" => color_type,
+            param...,
         )
     )
     return shader
@@ -90,15 +90,15 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
     return robj
 end
 
-function default_shader(screen, robj, plot::LineSegments)
+function default_shader(screen, robj, plot::LineSegments, param)
     color_type = gl_color_type_annotation(plot[:scaled_color][])
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "line_segment.vert", "line_segment.geom",
         "lines.frag",
         view = Dict(
-            "TARGET_STAGE" => target_stage(screen, robj),
-            "stripped_color_type" => color_type
+            "stripped_color_type" => color_type,
+            param...
         )
     )
     return shader

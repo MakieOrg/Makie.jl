@@ -57,7 +57,7 @@ function draw_mesh(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::Union{Mesh, Image})
+function default_shader(screen, robj, plot::Union{Mesh, Image}, param)
     shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
     shader = GLVisualizeShader(
         screen,
@@ -69,7 +69,7 @@ function default_shader(screen, robj, plot::Union{Mesh, Image})
             "picking_mode" => to_value(get(robj.uniforms, :picking_mode, "")),
             "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
             "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            "TARGET_STAGE" => target_stage(screen, robj)
+            param...
         )
     )
     return shader
