@@ -258,7 +258,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         glname = get(input2glname, name, name)
         if in(glname, always_keep)
             return true
-        elseif name in values(input2glname)
+        elseif any(kv -> (kv[1] !== name) && (kv[2] === name), input2glname)
             # something else is overwriting a direct passthrough
             # (e.g. color -> image for scatter)
             return false

@@ -46,7 +46,7 @@
         screen = scene.current_screens[1]
         for plt in (hm, hm2)
             robj = screen.cache[objectid(plt)]
-            shaders = values(robj.variants)[1].program.shader
+            shaders = first(values(robj.variants)).program.shader
             names = [string(shader.name) for shader in shaders]
             @test any(name -> endswith(name, "heatmap.vert"), names) && any(name -> endswith(name, "heatmap.frag"), names)
         end
