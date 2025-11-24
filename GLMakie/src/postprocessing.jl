@@ -250,6 +250,7 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
+    inputs[:indices] = 3
     robj = RenderObject(screen.glscreen, inputs)
     add_instructions!(
         robj, :main, shader,
@@ -309,6 +310,7 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     inputs[:projection] = Mat4f(I)
     inputs[:bias] = 0.025f0
     inputs[:radius] = 0.5f0
+    inputs[:indices] = 3
     robj = RenderObject(screen.glscreen, inputs)
     add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
@@ -326,6 +328,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     )
     inputs[:inv_texel_size] = rcpframe(size(screen))
     inputs[:blur_range] = Int32(2)
+    inputs[:indices] = 3
     robj = RenderObject(screen.glscreen, inputs)
     add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
@@ -407,6 +410,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
         view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
     filter_fxaa_in_shader || pop!(inputs, :objectid_buffer)
+    inputs[:indices] = 3
     robj = RenderObject(screen.glscreen, inputs)
     add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 
@@ -423,6 +427,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fxaa.frag")
     )
     inputs[:RCPFrame] = rcpframe(size(framebuffer))
+    inputs[:indices] = 3
     robj = RenderObject(screen.glscreen, inputs)
     add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
 

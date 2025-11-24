@@ -100,9 +100,8 @@ function process_buffers(context, bufferdict::Dict)
         end
     end
 
-    if indexes == -1
-        indexes = len
-    end
+    indexes = ifelse(indexes == -1, len, indexes)
+    indexes = ifelse(indexes == -1, nothing, indexes)
 
     return buffers, indexes
 end
