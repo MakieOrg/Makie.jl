@@ -71,7 +71,6 @@ using GeometryBasics: width, widths, height, positive_widths, VecTypes, Abstract
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 
 import FileIO: save
-import FreeTypeAbstraction: height_insensitive_boundingbox
 using Printf: @sprintf
 using StatsFuns: logit, logistic
 # Imports from Base which we don't want to have to qualify
@@ -185,6 +184,8 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
+include("basic_recipes/text/string_layouting.jl")
+
 include("basic_recipes/makiecore_examples/scatter.jl")
 include("basic_recipes/makiecore_examples/lines.jl")
 
@@ -204,7 +205,6 @@ include("themes/theme_latexfonts.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
-include("layouting/text_layouting.jl")
 include("layouting/boundingbox.jl")
 include("layouting/text_boundingbox.jl")
 
@@ -412,7 +412,11 @@ export resize_to_layout!
 include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
-include("basic_recipes/text.jl")
+include("basic_recipes/text/glyphs.jl")
+include("basic_recipes/text/abstract_strings.jl")
+include("basic_recipes/text/rich_text_strings.jl")
+include("basic_recipes/text/latex_strings.jl")
+include("basic_recipes/text/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 

@@ -641,6 +641,19 @@ function deprecated_attributes(::Type{<:MeshScatter})
     )
 end
 
+@recipe Glyphs (glyphinfos,) begin
+    "The position of the group of glyphs in `space` units."
+    position = Point2f(0, 0)
+    "The offset of the group of glyphs from the given position in `markerspace` units."
+    offset = Point2f(0, 0)
+    "Sets the space in which the properties of the `glyphinfos` act. See `Makie.spaces()` for possible inputs."
+    markerspace = :pixel
+    "Controls whether the model matrix (without translation) applies to the glyphs itself, rather than just the positions. (If this is true, `scale!` and `rotate!` will affect the text glyphs.)"
+    transform_marker = false
+    mixin_generic_plot_attributes()...
+    fxaa = false
+end
+
 """
     text(positions; text, kwargs...)
     text(x, y; text, kwargs...)
@@ -658,6 +671,8 @@ Plots one or multiple texts passed via the `text` keyword.
     font = @inherit font
     "Used as a dictionary to look up fonts specified by `Symbol`, for example `:regular`, `:bold` or `:italic`."
     fonts = @inherit fonts
+    "Specifies the algorithm of a vector of algorithms that will be used to calculate the layout of the text(s) given in `text`"
+    string_layouter = @inherit string_layouter
     "Sets the color of the outline around a marker."
     strokecolor = (:black, 0.0)
     "Sets the width of the outline around a marker."
@@ -668,8 +683,6 @@ Plots one or multiple texts passed via the `text` keyword.
     rotation = 0.0
     "The fontsize in units depending on `markerspace`."
     fontsize = @inherit fontsize
-    "Deprecated: Specifies the position of the text. Use the positional argument to `text` instead."
-    position = (0.0, 0.0)
     "Sets the alignment of text w.r.t its bounding box. Can be `:left, :center, :right` or a fraction. Will default to the horizontal alignment in `align`."
     justification = automatic
     "The lineheight multiplier."
@@ -694,6 +707,7 @@ end
 function deprecated_attributes(::Type{<:Text})
     return (
         (; attribute = :textsize, message = "`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version.", error = true),
+        (; attribute = :position, message = "`position` has been deprecated in Makie v0.21. For setting the text value, use the `text` attribute, and pass in the position via the positional argument(s).", error = true),
     )
 end
 

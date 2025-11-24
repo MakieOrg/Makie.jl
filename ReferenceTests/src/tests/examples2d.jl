@@ -524,7 +524,8 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace
             )
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
+                ax, Point2f(xs[i][i], xs[i][j]);
+                text = "$space\n$mspace",
                 fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black
             )
@@ -570,7 +571,7 @@ end
                 markersize = 5scales[j], space = space, markerspace = mspace
             )
             text!(
-                ax, "$space\n$mspace", position = Point2f(xs[i][i], xs[i][j]),
+                ax, Point2f(xs[i][i], xs[i][j]); text = "$space\n$mspace",
                 fontsize = scales[j], space = space, markerspace = mspace,
                 align = (:center, :center), color = :black
             )
@@ -742,7 +743,8 @@ end
     )
     textlabel!(ax, [("Lbl 1", (1, 0)), ("Lbl 2", (2, 0))])
     p = textlabel!(
-        ax, "Wrapped Label", position = Point2f(3, 0),
+        ax, Point2f(3, 0);
+        text ="Wrapped Label",
         background_color = :orange,
         text_rotation = pi / 8,
         word_wrap_width = 8,
@@ -806,8 +808,8 @@ end
     textlabel!(ax, Point3f(0), text = "Brain", background_color = :white)
 
     textlabel!(
-        ax,
-        ["-x -x", "+z\n+z", "-y -y"], position = [(-65, 0, 0), (0, 0, 45), (0, -90, 0)],
+        ax, [(-65, 0, 0), (0, 0, 45), (0, -90, 0)];
+        text = ["-x -x", "+z\n+z", "-y -y"],
         background_color = :lightgray, text_align = (:center, :center),
         draw_on_top = false
     )
