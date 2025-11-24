@@ -49,7 +49,6 @@ function draw_mesh(screen, data::Dict)
         fetch_pixel = false
         texturecoordinates = nothing => GLBuffer
         uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
-        transparency = false
         px_per_unit = 1.0f0
         interpolate_in_fragment_shader = true
     end

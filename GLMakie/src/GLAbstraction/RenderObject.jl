@@ -252,65 +252,18 @@ end
 
 ################################################################################
 
-"""
-Represents standard sets of function applied before rendering
-"""
-struct StandardPrerender
-    overdraw::Bool
-end
-
-function enabletransparency()
-    glDisable(GL_BLEND)
-    glEnablei(GL_BLEND, 0)
-    # This does:
-    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
-    # target.a = 0 * source.a + 1 * target.a
-    # the latter is required to keep target.a = 1 for the OIT pass
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
-    return
-end
-
-function handle_overdraw(overdraw)
-    if overdraw
-        # Disable depth testing if overdrawing
-        glDisable(GL_DEPTH_TEST)
-    else
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LEQUAL)
-    end
-    return
-end
-
-function (sp::StandardPrerender)()
-    glDepthMask(GL_TRUE)
-    GLAbstraction.enabletransparency()
-
-    handle_overdraw(sp.overdraw)
-
-    # Disable cullface for now, until all rendering code is corrected!
-    glDisable(GL_CULL_FACE)
-    # glCullFace(GL_BACK)
-
-    return
-end
-
 struct EmptyPrerender end
 (sp::EmptyPrerender)() = nothing
 
 struct EmptyPostrender end
 (sp::EmptyPostrender)() = nothing
 
-export EmptyPrerender
-
-function StandardPrerender(robj::RenderObject)
-    overdraw = get(robj.uniforms, :overdraw, false)
-    return StandardPrerender(overdraw)
-end
+export EmptyPrerender, EmptyPostrender
 
 # TODO: rework data (used for mustache replacements?)
 function RenderInstructions(
         robj::RenderObject, maybe_program;
-        pre = StandardPrerender(robj), post = EmptyPostrender()
+        pre = EmptyPrerender(), post = EmptyPostrender()
     )
     # "compile" lazyshader
     data = merge(robj.uniforms, robj.buffers) # TODO: avoid this?

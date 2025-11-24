@@ -104,8 +104,16 @@ end
 
 initialize_robj!(screen, stage, robj, plot) = nothing
 
+
+renders_in_stage(robj, ::GLRenderStage) = false
+function renders_in_stage(plot::Plot, stage::RenderPlots)
+    return compare(to_value(get(plot.attributes, :ssao, false)), stage.ssao) &&
+        compare(to_value(get(plot.attributes, :transparency, false)), stage.transparency) &&
+        compare(to_value(get(plot.attributes, :fxaa, false)), stage.fxaa)
+end
+
 function initialize_robj!(screen, stage::RenderPlots, robj, plot)
-    renders_in_stage(robj, stage) || return
+    renders_in_stage(plot, stage) || return
     name = stage.target
     if name === :forward_render_objectid
         kwargs = ("TARGET_STAGE" => "#define DEFAULT_TARGET",)
@@ -120,17 +128,17 @@ function initialize_robj!(screen, stage::RenderPlots, robj, plot)
     return
 end
 
-function get_default_prerender(robj, name::Symbol)
+function get_default_prerender(plot, name::Symbol)
     if name === :forward_render_objectid_oit
-        return OITPrerender(robj)
+        return OITPrerender(plot)
     else
-        return GLAbstraction.StandardPrerender(robj)
+        return StandardPrerender(plot)
     end
 end
 
 function default_setup!(screen, robj, plot, name, kwargs)
     program_like = default_shader(screen, robj, plot, kwargs)
-    pre = get_default_prerender(robj, name)
+    pre = get_default_prerender(plot, name)
     add_instructions!(robj, name, program_like, pre = pre)
     return
 end
@@ -163,3 +171,87 @@ to_index_buffer(ctx, x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
+
+# TODO: What's a good place for these?
+
+"""
+Represents standard sets of function applied before rendering
+"""
+struct StandardPrerender
+    overdraw::Bool
+end
+
+function StandardPrerender(plot::Plot)
+    return StandardPrerender(to_value(get(plot.attributes, :overdraw, false)))
+end
+
+function enabletransparency()
+    glDisable(GL_BLEND)
+    glEnablei(GL_BLEND, 0)
+    # This does:
+    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
+    # target.a = 0 * source.a + 1 * target.a
+    # the latter is required to keep target.a = 1 for the OIT pass
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    return
+end
+
+function handle_overdraw(overdraw)
+    if overdraw
+        # Disable depth testing if overdrawing
+        glDisable(GL_DEPTH_TEST)
+    else
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+    end
+    return
+end
+
+function (sp::StandardPrerender)()
+    glDepthMask(GL_TRUE)
+    enabletransparency()
+
+    handle_overdraw(sp.overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end
+
+struct OITPrerender
+    overdraw::Bool
+end
+
+function OITPrerender(plot::Plot)
+    return OITPrerender(to_value(get(plot.attributes, :overdraw, false)))
+end
+
+function (pre::OITPrerender)()
+    # disable depth buffer writing
+    glDepthMask(GL_FALSE)
+
+    # Blending
+    glEnable(GL_BLEND)
+    glBlendEquation(GL_FUNC_ADD)
+
+    # buffer 0 contains weight * color.rgba, should do sum
+    # destination <- 1 * source + 1 * destination
+    glBlendFunci(0, GL_ONE, GL_ONE)
+
+    # buffer 1 is objectid, do nothing
+    glDisablei(GL_BLEND, 1)
+
+    # buffer 2 is color.a, should do product
+    # destination <- 0 * source + (source) * destination
+    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+    GLAbstraction.handle_overdraw(pre.overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end

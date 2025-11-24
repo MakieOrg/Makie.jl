@@ -38,12 +38,10 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm = nothing
         thickness = 2.0f0 => GLBuffer
         pattern = nothing => Texture
-        fxaa = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
         indices = Cuint[] => to_index_buffer
-        transparency = false
         fast = false
         gl_primitive = GL_LINE_STRIP_ADJACENCY
         valid_vertex = Float32[] => GLBuffer
@@ -78,9 +76,7 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         thickness = 2.0f0 => GLBuffer
         shape = RECTANGLE
         pattern = nothing => Texture
-        fxaa = false
         indices = 0 => to_index_buffer
-        transparency = false
         gl_primitive = GL_LINES
         pattern_length = 1.0f0
         debug = false

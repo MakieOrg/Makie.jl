@@ -171,53 +171,12 @@ function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, par
     return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, :forward_render_objectid_oit)
 end
 
-struct OITPrerender
-    overdraw::Bool
-end
-OITPrerender(robj::RenderObject) = OITPrerender(get(robj.uniforms, :overdraw, false))
-
-function (pre::OITPrerender)()
-    # disable depth buffer writing
-    glDepthMask(GL_FALSE)
-
-    # Blending
-    glEnable(GL_BLEND)
-    glBlendEquation(GL_FUNC_ADD)
-
-    # buffer 0 contains weight * color.rgba, should do sum
-    # destination <- 1 * source + 1 * destination
-    glBlendFunci(0, GL_ONE, GL_ONE)
-
-    # buffer 1 is objectid, do nothing
-    glDisablei(GL_BLEND, 1)
-
-    # buffer 2 is color.a, should do product
-    # destination <- 0 * source + (source) * destination
-    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
-
-    GLAbstraction.handle_overdraw(pre.overdraw)
-
-    # Disable cullface for now, until all rendering code is corrected!
-    glDisable(GL_CULL_FACE)
-    # glCullFace(GL_BACK)
-
-    return
-end
-
 function id2scene(screen, id1)
     # TODO: maybe we should use a different data structure
     for (id2, scene) in screen.screens
         id1 == id2 && return true, scene
     end
     return false, nothing
-end
-
-renders_in_stage(robj, ::GLRenderStage) = false
-renders_in_stage(robj::RenderObject, stage::RenderPlots) = renders_in_stage(robj.uniforms, stage)
-function renders_in_stage(robj, stage::RenderPlots)
-    return compare(to_value(get(robj, :ssao, false)), stage.ssao) &&
-        compare(to_value(get(robj, :transparency, false)), stage.transparency) &&
-        compare(to_value(get(robj, :fxaa, false)), stage.fxaa)
 end
 
 on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)

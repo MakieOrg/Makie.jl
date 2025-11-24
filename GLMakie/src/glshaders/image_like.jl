@@ -1,5 +1,3 @@
-using .GLAbstraction: StandardPrerender
-
 struct VolumePrerender{T}
     pre::T
 end
@@ -23,8 +21,6 @@ function draw_heatmap(screen, data::Dict)
         intensity = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
-        transparency = false
-        fxaa = false
         px_per_unit = 1.0f0
     end
     return RenderObject(screen.glscreen, data)
@@ -58,7 +54,6 @@ function draw_volume(screen, data::Dict)
         isorange = 0.01f0
         backlight = 1.0f0
         enable_depth = true
-        transparency = false
         px_per_unit = 1.0f0
     end
     return RenderObject(screen.glscreen, data)
@@ -78,7 +73,7 @@ function default_setup!(screen, robj, ::Volume, name, param)
             param...
         )
     )
-    prerender = VolumePrerender(get_default_prerender(robj, name))
+    prerender = VolumePrerender(get_default_prerender(plot, name))
     # TODO: make a struct for this to clean it up?
     postrender = () -> glDisable(GL_CULL_FACE)
 

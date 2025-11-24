@@ -201,10 +201,7 @@ end
 
 function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
-        :ssao => attr[:ssao][],
         :fxaa => attr[:fxaa][],
-        :transparency => attr[:transparency][],
-        :overdraw => attr[:overdraw][],
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
     )
 
@@ -257,7 +254,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     @info keys(robj.uniforms)
 
     # Filter out unused inputs and static attributes to prevent overwrite
-    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa, :ssao, :transparency])
+    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
     discarded = Symbol[] # TODO: for debugging
     filter!(merged_inputs) do name
         glname = get(input2glname, name, name)

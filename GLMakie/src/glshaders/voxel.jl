@@ -10,7 +10,6 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
             ifelse(gap > 0.01, 2 * N, N + 3)
         end
         model = Mat4f(I)
-        transparency = false
         backlight = 0.0f0
         color = nothing => Texture
         color_map = nothing => Texture

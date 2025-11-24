@@ -78,7 +78,6 @@ function draw_mesh_particle(screen, data)
         backlight = 0.0f0
 
         instances = const_lift(length, position)
-        transparency = false
         px_per_unit = 1.0f0
 
     end
@@ -119,7 +118,6 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         color_norm = nothing
         scale = 2.0f0
         f32c_scale = Vec3f(1)
-        transparency = false
         px_per_unit = 1.0f0
         gl_primitive = GL_POINTS
     end
@@ -158,8 +156,6 @@ function draw_scatter(screen, position, data)
         indices = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard = rotation == Vec4f(0, 0, 0, 1) => "if `billboard` == true, particles will always face camera"
-        fxaa = false
-        transparency = false
         px_per_unit = 1.0f0
         scale_primitive = true
         gl_primitive = GL_POINTS
@@ -175,7 +171,7 @@ end
 function default_setup!(screen, robj, plot::Scatter, name, param)
     if plot.marker[] isa FastPixel
 
-        _prerender = get_default_prerender(robj, name)
+        _prerender = get_default_prerender(plot, name)
         prerender = () -> begin
             _prerender()
             glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
@@ -200,7 +196,7 @@ function default_setup!(screen, robj, plot::Scatter, name, param)
                 param...
             )
         )
-        prerender = get_default_prerender(robj, name)
+        prerender = get_default_prerender(plot, name)
         add_instructions!(robj, name, shader, pre = prerender)
 
     end
