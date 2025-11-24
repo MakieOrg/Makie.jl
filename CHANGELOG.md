@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Reexport `Protrustion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
 
 ## [0.24.7] - 2025-11-18
 
