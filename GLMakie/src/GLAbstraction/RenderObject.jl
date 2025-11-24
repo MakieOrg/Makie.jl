@@ -39,6 +39,8 @@ mutable struct RenderObject{IndexT, InstanceT}
 
     variants::Dict{Symbol, RenderInstructions}
 
+    observables::Vector{Observable} # for clean up
+
     function RenderObject(
             context, visible,
             buffers::Dict{Symbol, GLBuffer},
@@ -46,6 +48,7 @@ mutable struct RenderObject{IndexT, InstanceT}
             instances::InstanceT,
             primitive::GLenum,
             uniforms::Dict{Symbol, Any},
+            observables::Vector{Observable},
         ) where {IndexT, InstanceT}
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
@@ -60,7 +63,15 @@ mutable struct RenderObject{IndexT, InstanceT}
             buffers, indices, instances, primitive,
             uniforms,
             Dict{Symbol, RenderInstructions}(),
+            observables
         )
+        if visible isa Observable # old way, set in GLMakie now
+            push!(observables, visible)
+            on(visible) do visible
+                robj.visible = visible
+                return
+            end
+        end
         return robj
     end
 end
@@ -118,11 +129,14 @@ function RenderObject(context, data::Dict{Symbol, Any})
     visible = pop!(data, :visible, true)
     @assert !isa(visible, Observable) "No more of this!"
 
+    # for clean up on deletion
+    observables = Observable[]
+
     # Overwriting data with break direct iteration over it
     _keys = collect(keys(data))
     for k in _keys
         v = data[k]
-        v isa Observable && error("An Observable? In this economy?")
+        v isa Observable && push!(observables, v)
 
         if haskey(targets, k)
             # glconvert is designed to convert everything to a fitting opengl datatype, but sometimes
@@ -193,7 +207,7 @@ function RenderObject(context, data::Dict{Symbol, Any})
     instances = pop!(data, :instances, nothing)
     primitive = pop!(data, :gl_primitive, GL_TRIANGLES)
 
-    robj = RenderObject(context, visible, buffers, indices, instances, primitive, data)
+    robj = RenderObject(context, visible, buffers, indices, instances, primitive, data, observables)
 
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id

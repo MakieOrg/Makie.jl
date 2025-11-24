@@ -635,6 +635,9 @@ function destroy!(rob::RenderObject, keep_alive = UInt32[])
                 GLAbstraction.free(v)
             end
         end
+        for obs in rob.observables
+            Observables.clear(obs)
+        end
         GLAbstraction.free.(values(rob.variants))
         GLAbstraction.free.(values(rob.buffers))
         GLAbstraction.free(rob.indices)
