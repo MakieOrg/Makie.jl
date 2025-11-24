@@ -125,15 +125,17 @@ function add_color_attributes!(screen, attr, data, color, colormap, colornorm)
     interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
     data[:color_map] = needs_mapping ? Texture(screen.glscreen, colormap, minfilter = interp) : nothing
 
+    target = ifelse(needs_mapping, :intensity, :color)
     if _color isa Matrix{RGBAf} || _color isa ShaderAbstractions.Sampler
         data[:image] = _color
         data[:color] = RGBAf(1, 1, 1, 1)
+        target = :image
     else
         data[:color] = _color
     end
     data[:intensity] = intensity
     data[:color_norm] = colornorm
-    return nothing
+    return target
 end
 
 function add_color_attributes_lines!(screen, attr, data, color, colormap, colornorm)
@@ -254,7 +256,13 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
     filter!(merged_inputs) do name
         glname = get(input2glname, name, name)
-        if in(glname, always_keep) || haskey(robj.buffers, glname)
+        if in(glname, always_keep)
+            return true
+        elseif name in values(input2glname)
+            # something else is overwriting a direct passthrough
+            # (e.g. color -> image for scatter)
+            return false
+        elseif haskey(robj.buffers, glname)
             return true
         elseif haskey(robj.uniforms, glname)
             is_static = isnothing(robj[glname])
@@ -305,15 +313,13 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, Makie.get_texture_atlas()) : nothing
     data[:shape] = marker_shape
 
-    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
+    colortarget = add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # Correct the name mapping
-    if !isnothing(get(data, :intensity, nothing))
-        input2glname[:scaled_color] = :intensity
-    end
-    if !isnothing(get(data, :image, nothing))
-        # input2glname[:scaled_color] = :image
+    if attr[:marker][] isa Union{AbstractMatrix, AbstractVector{<:AbstractMatrix}}
         input2glname[:scaled_color] = :unused
+    else
+        input2glname[:scaled_color] = colortarget
     end
 
     if fast_pixel
@@ -527,18 +533,13 @@ function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glna
         data[:uv_transform] = args.packed_uv_transform
     end
 
-    add_color_attributes!(screen, attr, data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
+    colortarget = add_color_attributes!(
+        screen, attr, data, args.scaled_color, args.alpha_colormap,
+        args.scaled_colorrange
+    )
 
     # Correct the name mapping
-    if !isnothing(get(data, :intensity, nothing))
-        input2glname[:scaled_color] = :intensity
-    end
-    if !isnothing(get(data, :image, nothing))
-        input2glname[:scaled_color] = :image
-    end
-    if !isnothing(get(data, :color, nothing))
-        input2glname[:scaled_color] = :color
-    end
+    input2glname[:scaled_color] = colortarget
 
     return draw_mesh_particle(screen, data)
 end
