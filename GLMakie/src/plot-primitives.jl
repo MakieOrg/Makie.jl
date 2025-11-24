@@ -250,39 +250,19 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         robj
     end
 
-    @info keys(robj.buffers)
-    @info keys(robj.uniforms)
-
     # Filter out unused inputs and static attributes to prevent overwrite
     always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
-    discarded = Symbol[] # TODO: for debugging
     filter!(merged_inputs) do name
         glname = get(input2glname, name, name)
-        println()
-        @info name => glname
         if in(glname, always_keep) || haskey(robj.buffers, glname)
-            @info "whitelist || buffers"
             return true
         elseif haskey(robj.uniforms, glname)
-            @info robj.uniforms[glname]
             is_static = isnothing(robj[glname])
-            if !is_static
-                @info "uniforms keep"
-                return true
-            else
-                @info "uniforms discard"
-                push!(discarded, name)
-                return false
-            end
-            # return !is_static
+            return !is_static
         else
-            @info "nada"
-            push!(discarded, name)
             return false
         end
     end
-    @info "Discarded in $(typeof(plot))\n  $discarded"
-    @info "Kept: $merged_inputs"
 
     flag_float64(robj)
 
