@@ -1058,6 +1058,7 @@ function apply_window_resize!(screen::Screen)
         area[] = Recti(minimum(area[]), winw, winh)
         screen.requires_resize = false
     end
+    return
 end
 
 # const time_record = sizehint!(Float64[], 100_000)
