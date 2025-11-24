@@ -268,7 +268,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     # allows `constructor!` to remove inputs by making their name not appear in
     # uniforms so the filter above deletes it. This then removes the mapping
     # so it's not carried around with the callback
-    filter!(p -> p[2] === :unused, input2glname)
+    filter!(p -> p[2] !== :unused, input2glname)
 
     flag_float64(robj)
 
