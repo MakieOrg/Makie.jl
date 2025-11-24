@@ -55,7 +55,8 @@ function Makie.window_area(scene::Scene, screen::Screen)
         end
         winw, winh = round.(Int, (width, height) ./ winscale)
         if Vec(winw, winh) != widths(area[])
-            area[] = Recti(minimum(area[]), winw, winh)
+            screen.pending_resize = (winw, winh)
+            screen.requires_resize = true
         end
         return
     end
