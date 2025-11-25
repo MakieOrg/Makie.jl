@@ -127,7 +127,7 @@ pages = [
             "clip_planes.md",
             "transformations.md",
             "space.md",
-           ]),
+        ]),
         "Scene" => joinpath.("reference", "scene", [
             "lighting.md",
             "matcap.md",
