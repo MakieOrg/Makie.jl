@@ -1222,21 +1222,6 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
-    nplots = length(ax.scene.plots)
-    println(io, "Axis with $nplots plots:")
-
-    for (i, p) in enumerate(ax.scene.plots)
-        println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
-    end
-    return
-end
-
-function Base.show(io::IO, ax::Axis)
-    nplots = length(ax.scene.plots)
-    return print(io, "Axis ($nplots plots)")
-end
-
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
 Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
 
