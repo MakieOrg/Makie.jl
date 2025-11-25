@@ -63,6 +63,34 @@ hist(fig[1,2], x, weights = w)
 fig
 ```
 
+#### Stack & Dodge
+
+Histograms implements the same stack and dodge interface as `barplot`.
+Both take a `Vector{Int}` identifying the group each input value belongs to.
+
+```@figure
+data1 = rand(100) .* 2.0 .- 1.0
+data2 = rand(100) .* 2.0
+data3 = randn(200)
+
+data = vcat(data1, data2, data3)
+groups = vcat(fill(3, 100), fill(2, 100), fill(1, 200))
+
+f = Figure(size = (800, 400))
+hist(
+     f[1, 1], data, stack = groups,
+     colormap = :Set3_10, color = :stack,
+     strokecolor = :black, strokewidth = 1,
+)
+hist(
+     f[1, 2], data, dodge = groups,
+     color = [:tomato, :aqua, :darkgreen],
+)
+
+f
+```
+
+
 ## Attributes
 
 ```@attrdocs

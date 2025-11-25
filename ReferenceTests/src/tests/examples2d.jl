@@ -1364,22 +1364,24 @@ end
 end
 
 @reference_test "MultiHist" begin
-    data1 = rand(100) .* 2.0 .- 1.0
-    data2 = rand(100) .* 2.0
+    data1 = RNG.rand(100) .* 2.0 .- 1.0
+    data2 = RNG.rand(100) .* 2.0
     fig = Figure(size = (600, 300))
-    multihist!(
-        Axis(fig[1, 1]),
-        [data1, data2];
+    hist(
+        fig[1, 1],
+        vcat(data1, data2);
+        color = :stack,
         colormap = :Set3_10,
         label = ["red", "blue"],
-        positioning = :stack,
+        stack = vcat(fill(1, 100), fill(2, 100)),
     )
-    multihist!(
-        Axis(fig[1, 2]),
-        [data1, data2];
+    hist(
+        fig[1, 2],
+        vcat(data1, data2);
+        color = :dodge,
         colormap = :Set3_10,
         label = ["red", "blue"],
-        positioning = :dodge,
+        dodge = vcat(fill(1, 100), fill(2, 100)),
     )
     fig
 end
