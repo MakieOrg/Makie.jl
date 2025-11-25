@@ -1375,7 +1375,7 @@ end
         color = :stack, colormap = :Set3_10,
     )
     hist(
-        fig[1, 2], data; dodge = groups,
+        fig[1, 2], [data1, data2]; dodge = [1, 2],
         color = :dodge, colormap = :Set3_10,
     )
     hist(
@@ -1383,7 +1383,7 @@ end
         color = [:red, :lightgreen], strokewidth = 2, strokecolor = :blue
     )
     hist(
-        fig[2, 2], data; stack = groups,
+        fig[2, 2], [data1, data2]; stack = [1, 2],
         color = :values, strokewidth = 2, strokecolor = :red
     )
     fig

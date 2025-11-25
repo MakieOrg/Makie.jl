@@ -136,7 +136,7 @@ end
 function pick_hist_edges(vals, bins)
     isempty(vals) && return 1.0:0.0
     if bins isa Int
-        mi, ma = float.(extrema(vals))
+        mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
@@ -185,6 +185,10 @@ function plot!(plot::Hist)
         [:values, :edges, :normalization, :scale_to, :weights, :groups],
         [:points, :grouplengths]
     ) do values, edges, normalization, scale_to, wgts, groups
+        get_group(x, idx, range) = x
+        get_group(x::AbstractVector{<:AbstractVector}, group, indices) = x[group]
+        get_group(x::AbstractVector, group, indices) = view(x, indices)
+
         if isnothing(groups) # ungrouped data
             centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
             return Point2.(centers, weights), nothing
@@ -192,8 +196,8 @@ function plot!(plot::Hist)
             points = Point2d[]
             grouplengths = Vector{Int}(undef, length(groups))
             for (group, indices) in enumerate(groups)
-                vals = view(values, indices)
-                ws = wgts isa AbstractVector ? view(wgts, indices) : wgts
+                vals = get_group(values, group, indices)
+                ws = get_group(wgts, group, indices)
                 centers, weights = _hist_center_weights(vals, edges, normalization, scale_to, ws)
                 # Without filtering 0 height bars draw outlines when stroke is set
                 ps = [Point2d(x, y) for (x, y) in zip(centers, weights) if y > 0]

@@ -73,17 +73,15 @@ data1 = rand(100) .* 2.0 .- 1.0
 data2 = rand(100) .* 2.0
 data3 = randn(200)
 
-data = vcat(data1, data2, data3)
-groups = vcat(fill(3, 100), fill(2, 100), fill(1, 200))
-
 f = Figure(size = (800, 400))
 hist(
-     f[1, 1], data, stack = groups,
+     f[1, 1], vcat(data1, data2, data3),
+     stack = vcat(fill(3, 100), fill(2, 100), fill(1, 200)),
      colormap = :Set3_10, color = :stack,
      strokecolor = :black, strokewidth = 1,
 )
 hist(
-     f[1, 2], data, dodge = groups,
+     f[1, 2], [data1, data2, data3], dodge = [1, 2, 3],
      color = [:tomato, :aqua, :darkgreen],
 )
 
