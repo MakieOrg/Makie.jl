@@ -16,7 +16,7 @@ end
 function draw_surface(screen, main, data::Dict)
     primitive = triangle_mesh(Rect2(0.0f0, 0.0f0, 1.0f0, 1.0f0))
     to_opengl_mesh!(screen.glscreen, data, primitive)
-    shading = get!(data, :shading, FastShading)::Makie.ShadingAlgorithm
+    shading = data[:shading]
     @gen_defaults! data begin
         scale = nothing
         position = nothing
@@ -46,8 +46,8 @@ function draw_surface(screen, main, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, ::Surface, param)
-    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+function default_shader(screen, robj, plot::Surface, param)
+    shading = Makie.get_shading_mode(plot)
     shader = GLVisualizeShader(
         screen,
         "util.vert", "surface.vert",

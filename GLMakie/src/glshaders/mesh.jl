@@ -25,7 +25,7 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<:GeometryBasics.M
     to_buffer(:uvw, :texturecoordinates)
 
     # Only emit normals, when we shadin'
-    shading = get!(result, :shading, NoShading)::Makie.ShadingAlgorithm
+    shading = get(result, :shading, NoShading)::Makie.ShadingAlgorithm
     matcap_active = !isnothing(to_value(get(result, :matcap, nothing)))
     if matcap_active || shading != NoShading
         to_buffer(:normal, :normals)
@@ -57,7 +57,7 @@ function draw_mesh(screen, data::Dict)
 end
 
 function default_shader(screen, robj, plot::Union{Mesh, Image}, param)
-    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    shading = Makie.get_shading_mode(plot)
     shader = GLVisualizeShader(
         screen,
         "util.vert", "mesh.vert",

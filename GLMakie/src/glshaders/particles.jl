@@ -63,7 +63,6 @@ function draw_mesh_particle(screen, data)
         f32c_scale = Vec3f(1) # drawing_primitives.jl
     end
 
-    shading = pop!(data, :shading)::Makie.ShadingAlgorithm
     data[:color] = to_meshcolor(screen.glscreen, get!(data, :color, nothing))
     @gen_defaults! data begin
         color_map = nothing => Texture
@@ -88,7 +87,7 @@ function draw_mesh_particle(screen, data)
 end
 
 function default_shader(screen, robj, plot::MeshScatter, param)
-    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    shading = Makie.get_shading_mode(plot)
     position = plot.positions_transformed_f32c[]
     shader = GLVisualizeShader(
         screen,

@@ -259,7 +259,7 @@ end
 # shading is a compile time variable for robjs, but it is allowed to change
 # when the robj is recompiled (e.g. screen reopened) so we make it dynamic
 # here. It should not be used outside of renderobject construction
-function get_shading_mode(scene)
+function get_shading_mode(scene::AbstractScene)
     graph = scene.compute
     if !haskey(graph, :lighting_mode)
         register_computation!(graph, Symbol[:shading, :lights], [:lighting_mode]) do (shading, _lights), changed, cached
@@ -274,6 +274,13 @@ function get_shading_mode(scene)
         end
     end
     return graph[:lighting_mode][]
+end
+
+function get_shading_mode(plot::Plot)
+    if !haskey(plot, :shading) || !plot.shading[]::Bool
+        return NoShading
+    end
+    return get_shading_mode(parent_scene(plot))
 end
 
 # These return the number of parameter slots they used

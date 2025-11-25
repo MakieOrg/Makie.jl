@@ -21,7 +21,7 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
 end
 
 function default_shader(screen, robj, plot::Voxels, param)
-    shading = get!(robj.uniforms, :shading, NoShading)::Makie.ShadingAlgorithm
+    shading = Makie.get_shading_mode(plot)
     debug = to_value(get(plot.attributes, :debug, ""))
     shader = GLVisualizeShader(
         screen,

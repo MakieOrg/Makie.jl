@@ -16,7 +16,6 @@ A matrix of Intensities will result in a contourf kind of plot
 function draw_heatmap(screen, data::Dict)
     primitive = triangle_mesh(Rect2(0.0f0, 0.0f0, 1.0f0, 1.0f0))
     to_opengl_mesh!(screen.glscreen, data, primitive)
-    get!(data, :shading, FastShading)
     @gen_defaults! data begin
         intensity = nothing => Texture
         color_map = nothing => Texture
@@ -38,7 +37,6 @@ end
 function draw_volume(screen, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
-    shading = get!(data, :shading, FastShading)
     pop!(data, :backlight, 0.0f0) # We overwrite this
     @gen_defaults! data begin
         volumedata = Array{Float32, 3}(undef, 0, 0, 0) => Texture
@@ -60,7 +58,7 @@ function draw_volume(screen, data::Dict)
 end
 
 function default_setup!(screen, robj, plot::Volume, name, param)
-    shading = get!(robj.uniforms, :shading, FastShading)
+    shading = Makie.get_shading_mode(plot)
     shader = GLVisualizeShader(
         screen,
         "volume.vert",
