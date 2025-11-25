@@ -199,8 +199,10 @@ function plot!(plot::Hist)
                 vals = get_group(values, group, indices)
                 ws = get_group(wgts, group, indices)
                 centers, weights = _hist_center_weights(vals, edges, normalization, scale_to, ws)
-                # Without filtering 0 height bars draw outlines when stroke is set
-                ps = [Point2d(x, y) for (x, y) in zip(centers, weights) if y > 0]
+                # Without filtering 0-height bars draw outlines when stroke is set
+                # With filtering we can't set color per bin
+                # ps = [Point2d(x, y) for (x, y) in zip(centers, weights) if y > 0]
+                ps = [Point2d(x, y) for (x, y) in zip(centers, weights)]
                 append!(points, ps)
                 grouplengths[group] = length(ps)
             end
