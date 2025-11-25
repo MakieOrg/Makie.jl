@@ -205,6 +205,8 @@ function construct_robj(constructor!, screen, scene, attr, args, uniforms, input
     data = Dict{Symbol, Any}(
         :fxaa => attr[:fxaa][],
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
+        # TODO: integrate this into the OIT Render Stage
+        :oit_scale => screen.config.transparency_weight_scale,
     )
 
     if haskey(attr, :shading)
