@@ -1,8 +1,8 @@
 # Changelog
 
 ## Unreleased
-
 - Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Improved window resize performance in GLMakie, especially noticeable with many subplots [#5431](https://github.com/MakieOrg/Makie.jl/pull/5431)
 
 ## [0.24.7] - 2025-11-18
 
