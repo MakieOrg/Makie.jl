@@ -190,9 +190,6 @@ mutable struct Screen{GLWindow} <: MakieScreen
     close_after_renderloop::Bool
     # To trigger rerenders that aren't related to an existing renderobject.
     requires_update::Bool
-    # To control window resizing
-    requires_resize::Bool
-    pending_resize::Tuple{Int, Int}
 
     function Screen(
             glscreen::GLWindow,
@@ -219,7 +216,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             Observable(0.0f0), screen2scene,
             screens, renderlist, postprocessors, cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
-            Observable(true), Observable(0.0f0), nothing, reuse, true, false, false, (0, 0)
+            Observable(true), Observable(0.0f0), nothing, reuse, true, false
         )
         push!(ALL_SCREENS, screen) # track all created screens
         return screen
@@ -1013,7 +1010,6 @@ function vsynced_renderloop(screen)
         end
         pollevents(screen, Makie.RegularRenderTick) # GLFW poll
         poll_updates(screen)
-        apply_window_resize!(screen)
         render_frame(screen)
         yield()
         GC.safepoint()
@@ -1030,7 +1026,6 @@ function fps_renderloop(screen::Screen)
         else
             pollevents(screen, Makie.RegularRenderTick)
             poll_updates(screen)
-            apply_window_resize!(screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
         end
@@ -1048,17 +1043,6 @@ function requires_update(screen::Screen)
     end
 
     return false
-end
-
-function apply_window_resize!(screen::Screen)
-    isnothing(screen.scene) && return
-    area = screen.scene.events.window_area
-    (winw, winh) = screen.pending_resize
-    if screen.requires_resize
-        area[] = Recti(minimum(area[]), winw, winh)
-        screen.requires_resize = false
-    end
-    return
 end
 
 # const time_record = sizehint!(Float64[], 100_000)
@@ -1096,7 +1080,6 @@ function on_demand_renderloop(screen::Screen)
         with_context(screen.glscreen) do
             pollevents(screen, tick_state) # GLFW poll
             poll_updates(screen)
-            apply_window_resize!(screen)
             if !screen.config.pause_renderloop && requires_update(screen)
                 tick_state = Makie.RegularRenderTick
                 render_frame(screen)

@@ -37,6 +37,32 @@ function Makie.disconnect!(window::GLFW.Window, ::typeof(window_open))
     return GLFW.SetWindowCloseCallback(window, nothing)
 end
 
+mutable struct WindowResizeUpdater
+    scene::Scene
+    screen::Screen
+    new_size::Tuple{Cint, Cint}
+    need_update::Bool
+end
+
+function (wru::WindowResizeUpdater)(::Makie.TickState)
+    !wru.need_update && return
+    wru.need_update = false
+
+    area = wru.scene.events.window_area
+    winscale = wru.screen.scalefactor[]
+    width, height = wru.new_size
+    window = to_native(wru.screen)
+    gl_switch_context!(window)
+    if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
+        winscale /= scale_factor(window)
+    end
+    winw, winh = round.(Int, (width, height) ./ winscale)
+    if Vec(winw, winh) != widths(area[])
+        area[] = Recti(minimum(area[]), winw, winh)
+    end
+    return Consume(false)
+end
+
 function Makie.window_area(scene::Scene, screen::Screen)
     disconnect!(screen, window_area)
 
@@ -45,19 +71,12 @@ function Makie.window_area(scene::Scene, screen::Screen)
     props = MonitorProperties(monitor)
     scene.events.window_dpi[] = minimum(props.dpi)
 
-    function windowsizecb(window, width::Cint, height::Cint)
-        area = scene.events.window_area
-        winscale = screen.scalefactor[]
-
-        gl_switch_context!(window)
-        if GLFW.GetPlatform() in (GLFW.PLATFORM_COCOA, GLFW.PLATFORM_WAYLAND)
-            winscale /= scale_factor(window)
-        end
-        winw, winh = round.(Int, (width, height) ./ winscale)
-        if Vec(winw, winh) != widths(area[])
-            screen.pending_resize = (winw, winh)
-            screen.requires_resize = true
-        end
+    window = to_native(screen)
+    initial_size = Cint.(window_size(window))
+    updater = WindowResizeUpdater(scene, screen, initial_size, true)
+    function windowsizecb(width::Cint, height::Cint)
+        updater.new_size = (width, height)
+        updater.need_update = true
         return
     end
     # TODO put back window position, but right now it makes more trouble than it helps
@@ -72,11 +91,10 @@ function Makie.window_area(scene::Scene, screen::Screen)
     #    return
     #end
 
-    window = to_native(screen)
-    GLFW.SetWindowSizeCallback(window, (win, w, h) -> windowsizecb(win, w, h))
+    GLFW.SetWindowSizeCallback(window, (win, w, h) -> windowsizecb(w, h))
     #GLFW.SetWindowPosCallback(window, (win, x, y) -> windowposcb(win, x, y))
 
-    windowsizecb(window, Cint.(window_size(window))...)
+    on(updater, scene, screen.render_tick, priority = typemax(Int))
     return
 end
 
@@ -84,6 +102,7 @@ function Makie.disconnect!(screen::Screen, ::typeof(window_area))
     window = to_native(screen)
     #GLFW.SetWindowPosCallback(window, nothing)
     GLFW.SetWindowSizeCallback(window, nothing)
+    filter!(wru -> !isa(wru[2], WindowResizeUpdater), screen.render_tick.listeners)
     return
 end
 function Makie.disconnect!(::GLFW.Window, ::typeof(window_area))
