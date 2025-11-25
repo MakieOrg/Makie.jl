@@ -37,7 +37,6 @@ end
 function draw_volume(screen, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
-    pop!(data, :backlight, 0.0f0) # We overwrite this
     @gen_defaults! data begin
         volumedata = Array{Float32, 3}(undef, 0, 0, 0) => Texture
         model = Mat4f(I)
@@ -50,7 +49,6 @@ function draw_volume(screen, data::Dict)
         absorption = 1.0f0
         isovalue = 0.5f0
         isorange = 0.01f0
-        backlight = 1.0f0
         enable_depth = true
         px_per_unit = 1.0f0
     end
