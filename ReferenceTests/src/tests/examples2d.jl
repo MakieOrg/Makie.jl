@@ -178,12 +178,12 @@ end
     f, ax, p = lines(t, μ, color = :yellow, linewidth = 2) # plot mean line
     translate!(p, 0, 0, 1) # make it draw on top
     σ = vec(std(X, dims = 1))  # stddev
-    band!(ax, t, μ + σ, μ - σ)   # plot stddev band
+    band!(ax, t, μ + σ, μ - σ, strokewidth = 3)   # plot stddev band
 
     # vertical version
     ax2, p = lines(f[1, 2], μ, t, color = :yellow, linewidth = 2)
     translate!(p, 0, 0, 1)
-    band!(ax2, t, μ + σ, μ - σ, direction = :y, alpha = 0.5)   # plot stddev band
+    band!(ax2, t, μ + σ, μ - σ, direction = :y, color = (:red, 0.5), strokewidth = 3, strokecolor = µ)   # plot stddev band
 
     # array colors
     band(f[2, 1], t, μ + σ, μ - σ, direction = :x, color = eachindex(t))
@@ -1974,6 +1974,8 @@ end
     qqplot(fig[1, 2], xs, ys, qqline = :none, markersize = 15, marker = Rect, markercolor = :red)
     qqplot(fig[2, 1], xs, ys, qqline = :fit, linestyle = :dash, linewidth = 6)
     qqplot(fig[2, 2], xs, ys, qqline = :identity, color = :orange)
+    qqplot(fig[3, 1], ys, distribution = Distributions.Normal)
+    qqplot(fig[3, 2], RNG.rand(30), distribution = Distributions.Beta, qqline = :fit)
     fig
 end
 

@@ -28,6 +28,7 @@ end
 
 """
     qqplot(x, y; kwargs...)
+    qqplot(y; distribution, kwargs...)
 
 Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
 samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
@@ -35,6 +36,9 @@ samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - an abstract distribution, e.g. `Normal(0, 1)`,
 - a distribution type, e.g. `Normal`.
 In the last case, the distribution type is fitted to the data `y`.
+
+If only one positional argument is given, this must be a vector `y` and the distribution
+to use or distribution type to fit must be given as the keyword argument `distribution`.
 
 The attribute `qqline` (defaults to `:none`) determines how to compute a fit line for the Q-Q plot.
 Possible values are the following.
@@ -101,13 +105,24 @@ function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     return (points, line)
 end
 
+function convert_arguments(::Type{<:QQPlot}, y; qqline = :none, distribution = nothing)
+    if distribution === nothing
+        throw(ArgumentError("When calling QQPlot with a single array argument, the `distribution` keyword argument must be provided"))
+    end
+    x = maybefit(distribution, y)
+    points, line = fit_qqplot(x, y; qqline = qqline)
+    return (points, line)
+end
+
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
+used_attributes(::Type{<:QQPlot}, y) = (:qqline, :distribution)
 
 plottype(::Type{<:QQNorm}, args...) = QQPlot
+plottype(::Type{<:QQNorm}, ::Type{Plot{plot}}) = QQNorm # resolve ambiguity hit in AlgebraOfGraphics
 
 function Makie.plot!(p::QQPlot)
     map!(default_automatic, p, [:markercolor, :color], :real_markercolor)
