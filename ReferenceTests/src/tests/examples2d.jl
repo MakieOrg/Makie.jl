@@ -1365,23 +1365,26 @@ end
 
 @reference_test "MultiHist" begin
     data1 = RNG.rand(100) .* 2.0 .- 1.0
-    data2 = RNG.rand(100) .* 2.0
-    fig = Figure(size = (600, 300))
+    data2 = RNG.rand(150) .* 2.0
+    data = vcat(data1, data2)
+    groups = vcat(fill(1, 100), fill(2, 150))
+
+    fig = Figure(size = (500, 500))
     hist(
-        fig[1, 1],
-        vcat(data1, data2);
-        color = :stack,
-        colormap = :Set3_10,
-        label = ["red", "blue"],
-        stack = vcat(fill(1, 100), fill(2, 100)),
+        fig[1, 1], data; stack = groups,
+        color = :stack, colormap = :Set3_10,
     )
     hist(
-        fig[1, 2],
-        vcat(data1, data2);
-        color = :dodge,
-        colormap = :Set3_10,
-        label = ["red", "blue"],
-        dodge = vcat(fill(1, 100), fill(2, 100)),
+        fig[1, 2], data; dodge = groups,
+        color = :dodge, colormap = :Set3_10,
+    )
+    hist(
+        fig[2, 1], data; dodge = groups,
+        color = [:red, :lightgreen], strokewidth = 2, strokecolor = :blue
+    )
+    hist(
+        fig[2, 2], data; stack = groups,
+        color = :values, strokewidth = 2, strokecolor = :red
     )
     fig
 end

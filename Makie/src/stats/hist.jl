@@ -156,8 +156,8 @@ function plot!(plot::Hist)
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
     map!(plot, [:stack, :dodge], [:groupmap, :groups]) do stack, dodge
-        if stack === automatic && dodge === automatic
-            return automatic, automatic
+        if (stack === automatic) && (dodge === automatic)
+            return nothing, nothing
         else
             stack = stack === automatic ? fill(1, length(dodge)) : stack
             dodge = dodge === automatic ? fill(1, length(stack)) : dodge
@@ -185,7 +185,7 @@ function plot!(plot::Hist)
         [:values, :edges, :normalization, :scale_to, :weights, :groups],
         [:points, :grouplengths]
     ) do values, edges, normalization, scale_to, wgts, groups
-        if groups === automatic # ungrouped data
+        if isnothing(groups) # ungrouped data
             centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
             return Point2.(centers, weights), nothing
         else
@@ -205,7 +205,7 @@ function plot!(plot::Hist)
     end
 
     map!(plot, [:groupmap, :grouplengths], [:bar_stack, :bar_dodge]) do groupmap, lengths
-        if groupmap === automatic
+        if isnothing(groupmap)
             return automatic, automatic
         else
             stack = Int[]
@@ -219,6 +219,7 @@ function plot!(plot::Hist)
     end
 
     map!(diff, plot, :edges, :widths)
+
     map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
         if color === :values
             return last.(points)
@@ -226,7 +227,7 @@ function plot!(plot::Hist)
             return [stack for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
         elseif color === :dodge
             return [dodge for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
-        elseif color isa AbstractVector
+        elseif (color isa AbstractVector) && !isnothing(lengths) && (length(color) == length(groupmap))
             # assume either stack or dodge is given and there is one color per stack/dodge index
             groups = [max(stack, dodge) for (stack, dodge) in groupmap]
             return [color[group] for (i, group) in enumerate(groups) for _ in 1:lengths[i]]
