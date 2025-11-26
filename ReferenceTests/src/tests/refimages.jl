@@ -11,7 +11,9 @@ using ReferenceTests.DelimitedFiles
 using ReferenceTests.Test
 using ReferenceTests.Colors: RGB, N0f8
 using ReferenceTests.DelaunayTriangulation
+import ReferenceTests.Distributions
 using ReferenceTests.SparseArrays
+using ReferenceTests.StructArrays
 using Makie: Record, volume
 
 function click(events::Events, pos::VecTypes{2}, button::Mouse.Button = Mouse.left)
@@ -40,6 +42,9 @@ end
 end
 @testset "unitful" begin
     include("unitful.jl")
+end
+@testset "dynamicquantities" begin
+    include("dynamicquantities.jl")
 end
 @testset "specapi" begin
     include("specapi.jl")

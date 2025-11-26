@@ -28,12 +28,17 @@ end
 
 """
     qqplot(x, y; kwargs...)
+    qqplot(y; distribution, kwargs...)
+
 Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
 samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
 - a list of samples,
 - an abstract distribution, e.g. `Normal(0, 1)`,
 - a distribution type, e.g. `Normal`.
 In the last case, the distribution type is fitted to the data `y`.
+
+If only one positional argument is given, this must be a vector `y` and the distribution
+to use or distribution type to fit must be given as the keyword argument `distribution`.
 
 The attribute `qqline` (defaults to `:none`) determines how to compute a fit line for the Q-Q plot.
 Possible values are the following.
@@ -46,17 +51,7 @@ whereas `qqline = :fit` and `qqline = :fitrobust` are useful to see if the distr
 obtained from the distribution of `x` via an affine transformation.
 """
 @recipe QQPlot begin
-    "Control color of both line and markers (if `markercolor` is not specified)."
-    color = @inherit linecolor
-    linestyle = nothing
-    linewidth = @inherit linewidth
-    markercolor = automatic
-    markersize = @inherit markersize
-    strokecolor = @inherit markerstrokecolor
-    strokewidth = @inherit markerstrokewidth
-    marker = @inherit marker
-    mixin_generic_plot_attributes()...
-    cycle = [:color]
+    filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
 end
 
 """
@@ -110,34 +105,37 @@ function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
     return (points, line)
 end
 
+function convert_arguments(::Type{<:QQPlot}, y; qqline = :none, distribution = nothing)
+    if distribution === nothing
+        throw(ArgumentError("When calling QQPlot with a single array argument, the `distribution` keyword argument must be provided"))
+    end
+    x = maybefit(distribution, y)
+    points, line = fit_qqplot(x, y; qqline = qqline)
+    return (points, line)
+end
+
 convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
     convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
+used_attributes(::Type{<:QQPlot}, y) = (:qqline, :distribution)
 
 plottype(::Type{<:QQNorm}, args...) = QQPlot
+plottype(::Type{<:QQNorm}, ::Type{Plot{plot}}) = QQNorm # resolve ambiguity hit in AlgebraOfGraphics
 
 function Makie.plot!(p::QQPlot)
-    map!(p, [:color, :markercolor], :real_markercolor) do color, markercolor
-        return to_color(markercolor === automatic ? color : markercolor)
-    end
+    map!(default_automatic, p, [:markercolor, :color], :real_markercolor)
+    map!(default_automatic, p, [:markercolormap, :colormap], :real_markercolormap)
+    map!(default_automatic, p, [:markercolorrange, :colorrange], :real_markercolorrange)
 
     scatter!(
-        p, p[1];
+        p, Attributes(p), p[1];
         color = p.real_markercolor,
-        strokecolor = p.strokecolor,
-        strokewidth = p.strokewidth,
-        marker = p.marker,
-        markersize = p.markersize,
-        inspectable = p.inspectable
+        colormap = p.real_markercolormap,
+        colorrange = p.real_markercolorrange,
     )
-    linesegments!(
-        p, p[2];
-        color = p.color,
-        linestyle = p.linestyle,
-        linewidth = p.linewidth,
-        inspectable = p.inspectable
-    )
+    linesegments!(p, Attributes(p), p[2])
+
     return p
 end

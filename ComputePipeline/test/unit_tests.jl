@@ -799,3 +799,59 @@ end
     e3 = graph2.merged3.parent
     @test e3.inputs == [graph1.a1, graph2.a2]
 end
+
+@testset "compute_identity" begin
+    graph1 = ComputeGraph()
+    add_input!(graph1, :a1, Ref{Any}(1))
+    map!(x -> Ref{Any}(x), graph1, :a1, :b1)
+
+    graph2 = ComputeGraph()
+    add_input!(graph2, :b1, graph1.b1)
+    graph2.b1[]
+    @test graph2.b1.value isa Ref{Any}
+
+    edge = graph2.b1.parent
+    @test edge.callback == ComputePipeline.compute_identity
+    @test length(edge.inputs) == length(edge.outputs)
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test !ComputePipeline.isdirty(out)
+    end
+
+    update!(graph1, a1 = 5.0)
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test ComputePipeline.isdirty(in)
+        @test ComputePipeline.isdirty(out)
+    end
+
+    graph1.b1[]
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test ComputePipeline.isdirty(out)
+    end
+
+    graph2.b1[]
+
+    for (in, out) in zip(edge.inputs, edge.outputs)
+        @test in.value === out.value
+        @test !ComputePipeline.isdirty(in)
+        @test !ComputePipeline.isdirty(out)
+    end
+end
+
+@testset "is_same NaN and missing" begin
+    # vectors
+    v = [NaN, missing, 1]
+    @test ComputePipeline.is_same(v, copy(v))
+    @test !ComputePipeline.is_same(v, v)
+
+    # Dicts with NaN
+    d = Dict(:a => NaN, :b => missing, :c => 1)
+    @test ComputePipeline.is_same(d, copy(d))
+    @test !ComputePipeline.is_same(d, d)
+end

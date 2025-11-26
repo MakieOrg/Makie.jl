@@ -610,7 +610,7 @@ function is_same(a::T, b::T) where {T}
         # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
         same_object = a === b
-        return same_object ? false : a == b
+        return same_object ? false : isequal(a, b)
     end
 end
 
@@ -735,6 +735,30 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
 end
 
 compute_identity(inputs, changed, cached) = values(inputs)
+
+function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
+    if length(inputs) != length(edge.outputs)
+        error("A `compute_identity` callback requires the length of inputs and outputs to match.")
+    end
+
+    # use input refs as output refs so we don't even need to evaluate the callback
+    for i in eachindex(values(inputs))
+        edge.outputs[i].value = inputs[i]
+        edge.outputs[i].dirty = true
+    end
+
+    return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
+end
+
+function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
+    # outputs are identical to inputs, so just copy the input state. To be safe
+    # don't overwrite any `dirty = true` state with false (maybe a problem if
+    # the input gets resolved?)
+    for i in eachindex(edge.inputs_dirty)
+        edge.output_nodes[i].dirty |= edge.inputs_dirty[i]
+    end
+    return
+end
 
 """
     add_input!([callback], compute_graph, name::Symbol, node::Computed)

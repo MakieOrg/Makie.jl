@@ -16,15 +16,15 @@ function draw_plot(scene::Scene, screen::Screen, poly::Poly)
     # so, we should also take a look at converted
     # First, we check whether a `draw_poly` method exists for the input arguments
     # before conversion:
-    return if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(deref(poly.args[]))...})
-        draw_poly(scene, screen, poly, deref(poly.args[])...)
+    if Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(deref(poly.args[]))...})
+        return draw_poly(scene, screen, poly, deref(poly.args[])...)
         # If not, we check whether a `draw_poly` method exists for the arguments after conversion
         # (`plot.converted`).  This allows anything which decomposes to be checked for.
     elseif Base.hasmethod(draw_poly, Tuple{Scene, Screen, typeof(poly), typeof.(deref(poly.converted[]))...})
-        draw_poly(scene, screen, poly, deref(poly.converted[])...)
+        return draw_poly(scene, screen, poly, deref(poly.converted[])...)
         # In the worst case, we return to drawing the polygon as a mesh + lines.
     else
-        draw_poly_as_mesh(scene, screen, poly)
+        return draw_poly_as_mesh(scene, screen, poly)
     end
 end
 
@@ -40,43 +40,19 @@ function draw_poly_as_mesh(scene, screen, poly)
     return
 end
 
-# As a general fallback, draw all polys as meshes.
-# This also applies for e.g. per-vertex color.
-function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
-    return draw_poly_as_mesh(scene, screen, poly)
-end
+########################################
+### outline methods (::Vector{<:VecTypes{2}})
+########################################
 
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
     strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
     draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokestyle, poly.strokewidth[])
-    return if color isa Cairo.CairoPattern
+    if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
-end
-
-# when color is a Makie.AbstractPattern, we don't need to go to Mesh
-function draw_poly(
-        scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
-        model, strokecolor, strokestyle, strokewidth
-    )
-    space = poly.space[]
-    points = clip_poly(poly.clip_planes[], points, space, model)
-    points = _project_position(scene, space, points, model, true)
-    Cairo.move_to(screen.context, points[1]...)
-    for p in points[2:end]
-        Cairo.line_to(screen.context, p...)
-    end
-    Cairo.close_path(screen.context)
-
-    set_source(screen.context, color)
-
-    Cairo.fill_preserve(screen.context)
-    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
-    Cairo.set_line_width(screen.context, strokewidth)
-    isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
-    return Cairo.stroke(screen.context)
+    return
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
@@ -90,10 +66,49 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     ) do points, color, strokecolor, strokestyle, strokewidth, model
         draw_poly(scene, screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
     end
-    return if color isa Cairo.CairoPattern
+    if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
+    return
 end
+
+draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
+
+# when color is a Makie.AbstractPattern, we don't need to go to Mesh
+function draw_poly(
+        scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Union{Colorant, Cairo.CairoPattern},
+        model, strokecolor, strokestyle, strokewidth
+    )
+    space = poly.space[]
+    points = apply_transform(transform_func(poly), points)
+    points = clip_poly(poly.clip_planes[], points, space, model)
+    points = _project_position(scene, space, points, model, true)
+
+    Cairo.move_to(screen.context, points[1]...)
+    for p in points[2:end]
+        Cairo.line_to(screen.context, p...)
+    end
+    Cairo.close_path(screen.context)
+
+    set_source(screen.context, color)
+
+    Cairo.fill_preserve(screen.context)
+    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
+    Cairo.set_line_width(screen.context, strokewidth)
+    isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
+    Cairo.stroke(screen.context)
+    return
+end
+
+# As a general fallback, draw all polys as meshes.
+# This also applies for e.g. per-vertex color.
+function draw_poly(scene::Scene, screen::Screen, poly, points, color, model, strokecolor, strokestyle, strokewidth)
+    return draw_poly_as_mesh(scene, screen, poly)
+end
+
+########################################
+### GeometryPrimtive and BezierPath methods
+########################################
 
 draw_poly(scene::Scene, screen::Screen, poly, rect::Rect2) = draw_poly(scene, screen, poly, [rect])
 draw_poly(scene::Scene, screen::Screen, poly, bezierpath::BezierPath) = draw_poly(scene, screen, poly, [bezierpath])
@@ -128,9 +143,10 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         Cairo.set_line_width(screen.context, sw)
         Cairo.stroke(screen.context)
     end
-    return if color isa Cairo.CairoPattern
+    if color isa Cairo.CairoPattern
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
+    return
 end
 
 function project_shape(scene, space, shape::BezierPath, model)
@@ -184,7 +200,6 @@ end
 
 draw_poly(scene::Scene, screen::Screen, poly, polygon::Polygon) = draw_poly(scene, screen, poly, [polygon])
 draw_poly(scene::Scene, screen::Screen, poly, multipolygon::MultiPolygon) = draw_poly(scene, screen, poly, multipolygon.polygons)
-draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<:Polygon})
     model = poly.model[]
@@ -279,14 +294,7 @@ function draw_plot(
         band::Band{<:Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Point2}}}
     )
     if is_linear_gradient_compatible(band) || !(band.color[] isa AbstractArray)
-        basecolor = to_cairo_color(band.color[], band)
-        color = if basecolor isa Cairo.CairoPattern
-            basecolor
-        elseif basecolor isa AbstractVector # CairoPattern doesn't broadcast
-            coloralpha.(basecolor, alpha.(basecolor) .* band.alpha[])
-        else
-            coloralpha(basecolor, alpha(basecolor) * band.alpha[])
-        end
+        color = to_cairo_color(band.color[], band)
 
         model = band.model[]
         space = band.space[]
@@ -329,8 +337,13 @@ function draw_plot(
             end
         end
 
-        if basecolor isa Cairo.CairoPattern
-            pattern_set_matrix(basecolor, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+        if color isa Cairo.CairoPattern
+            pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+        end
+
+        for p in band.plots
+            p isa Mesh && continue
+            draw_plot(scene, screen, p)
         end
     else
         for p in band.plots

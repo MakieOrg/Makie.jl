@@ -24,7 +24,27 @@ function Bonito.print_js_code(io::IO, plot::AbstractPlot, context::Bonito.JSSour
 end
 
 function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceContext)
-    return Bonito.print_js_code(io, js"""$(WGL).then(WGL=> WGL.find_scene($(js_uuid(scene))))""", context)
+    code = js"""$(WGL).then(WGL=> {
+        function try_find_scene(_retries) {
+            let retries = _retries || 0;
+            const max_retries = 5;
+            const retry_delay = 100;
+            const scene = WGL.find_scene($(js_uuid(scene)));
+            if (scene) {
+                return Promise.resolve(scene);
+            } else if (retries < max_retries) {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        try_find_scene(retries + 1).then(resolve);
+                    }, retry_delay);
+                });
+            } else {
+                return Promise.reject(new Error("Scene not found after retries"));
+            }
+        }
+        return try_find_scene();
+    })"""
+    return Bonito.print_js_code(io, code, context)
 end
 
 
@@ -56,7 +76,8 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # https://jupyterlab.readthedocs.io/en/4.2.x/extension/extension_points.html#context-menu
         dataLmSuppressShortcuts = true, dataJpSuppressContextMenu = nothing,
     )
-    wrapper = DOM.div(canvas; style = "width: 100%; height: 100%")
+    # position: relative is needed to make sure that absolute children (e.g., widgets) are positioned correctly
+    wrapper = DOM.div(canvas; style = "width: 100%; height: 100%; position: relative")
     comm = Observable(Dict{String, Any}())
     done_init = Observable{Any}(nothing)
     # Keep texture atlas in parent session, so we don't need to send it over and over again
@@ -64,7 +85,6 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         session, js"""
         $(WGL).then(WGL => {
             WGL.execute_in_order($order, ()=> {
-                console.log("RUNNING IN ORDER: ", $order)
                 try {
                     const wrapper = $wrapper
                     const canvas = $canvas
