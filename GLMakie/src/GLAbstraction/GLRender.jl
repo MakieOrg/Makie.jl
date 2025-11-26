@@ -17,50 +17,50 @@ end
 
 # Note: context required in renderloop, not per renderobject here
 
-"""
-When rendering a specialised list of Renderables, we can do some optimizations
-"""
-function render(list::Vector{RenderObject{Pre}}) where {Pre}
-    error("I'm not dead yet!")
-    isempty(list) && return nothing
-    first(list).prerender()
-    vertexarray = first(list).vertexarray
-    program = vertexarray.program
-    glUseProgram(program.id)
-    bind(vertexarray)
-    for renderobject in list
-        renderobject.visible || continue # skip invisible
-        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
-        # make sure we only bind new programs and vertexarray when it is actually
-        # different from the previous one
-        if renderobject.vertexarray != vertexarray
-            vertexarray = renderobject.vertexarray
-            if vertexarray.program != program
-                program = renderobject.vertexarray.program
-                glUseProgram(program.id)
-            end
-            bind(vertexarray)
-        end
-        for (key, value) in program.uniformloc
-            if haskey(renderobject.uniforms, key)
-                if length(value) == 1
-                    gluniform(value[1], renderobject.uniforms[key])
-                elseif length(value) == 2
-                    gluniform(value[1], value[2], renderobject.uniforms[key])
-                else
-                    error("Uniform tuple too long: $(length(value))")
-                end
-            end
-        end
-        renderobject.postrender(instructions.vertexarray)
-    end
-    # we need to assume, that we're done here, which is why
-    # we need to bind VertexArray to 0.
-    # Otherwise, every glBind(::GLBuffer) operation will be recorded into the state
-    # of the currently bound vertexarray
-    glBindVertexArray(0)
-    return
-end
+# """
+# When rendering a specialised list of Renderables, we can do some optimizations
+# """
+# function render(list::Vector{RenderObject{Pre}}) where {Pre}
+#     error("I'm not dead yet!")
+#     isempty(list) && return nothing
+#     first(list).prerender()
+#     vertexarray = first(list).vertexarray
+#     program = vertexarray.program
+#     glUseProgram(program.id)
+#     bind(vertexarray)
+#     for renderobject in list
+#         renderobject.visible || continue # skip invisible
+#         setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
+#         # make sure we only bind new programs and vertexarray when it is actually
+#         # different from the previous one
+#         if renderobject.vertexarray != vertexarray
+#             vertexarray = renderobject.vertexarray
+#             if vertexarray.program != program
+#                 program = renderobject.vertexarray.program
+#                 glUseProgram(program.id)
+#             end
+#             bind(vertexarray)
+#         end
+#         for (key, value) in program.uniformloc
+#             if haskey(renderobject.uniforms, key)
+#                 if length(value) == 1
+#                     gluniform(value[1], renderobject.uniforms[key])
+#                 elseif length(value) == 2
+#                     gluniform(value[1], value[2], renderobject.uniforms[key])
+#                 else
+#                     error("Uniform tuple too long: $(length(value))")
+#                 end
+#             end
+#         end
+#         renderobject.postrender(instructions.vertexarray)
+#     end
+#     # we need to assume, that we're done here, which is why
+#     # we need to bind VertexArray to 0.
+#     # Otherwise, every glBind(::GLBuffer) operation will be recorded into the state
+#     # of the currently bound vertexarray
+#     glBindVertexArray(0)
+#     return
+# end
 
 """
 Renders a RenderObject
@@ -71,32 +71,51 @@ a lot of objects.
 """
 function render(renderobject::RenderObject, instructions = renderobject.variants[:main])
     if renderobject.visible
-        instructions.prerender()
-        setup_clip_planes(to_value(get(renderobject.uniforms, :num_clip_planes, 0)))
-        program = instructions.program
-        glUseProgram(program.id)
-        for (key, value) in program.uniformloc
-            if haskey(renderobject.uniforms, key)
-                # uniform_name_type(program, value[1])
-                try
-                    if length(value) == 1
-                        gluniform(value[1], renderobject.uniforms[key])
-                    elseif length(value) == 2
-                        gluniform(value[1], value[2], renderobject.uniforms[key])
-                    else
-                        error("Uniform tuple too long: $(length(value))")
-                    end
-                catch e
-                    Base.showerror(stderr, e)
-                    @warn error("uniform $key doesn't work with value $(renderobject.uniforms[key])::$(typeof(renderobject.uniforms[key]))") exception = (e, Base.catch_backtrace())
-                end
-            end
-        end
-        bind(instructions.vertexarray)
-        N_verts = num_vetices(renderobject) # Can we do an early iszero exit condition?
+        prerender_setup!(instructions, renderobject.uniforms)
+        # Can we do an early iszero exit condition with N_verts?
+        N_verts = num_vetices(renderobject)
         render(renderobject.primitive, renderobject.indices, renderobject.instances, N_verts)
         instructions.postrender()
         glBindVertexArray(0)
+    end
+    return
+end
+
+function prerender_setup!(instructions::RenderInstructions, uniforms::Dict)
+    instructions.prerender()
+    prerender_setup!(instructions.program, instructions.vertexarray, uniforms)
+    return
+end
+function prerender_setup!(program::GLProgram, vertexarray::GLVertexArray, uniforms::Dict)
+    setup_clip_planes(to_value(get(uniforms, :num_clip_planes, 0)))
+    update_uniforms!(program, uniforms)
+    bind(vertexarray)
+    return
+end
+
+function update_uniforms!(instructions::RenderInstructions, uniforms::Dict)
+    return update_uniforms!(instructions.program, uniforms)
+end
+
+function update_uniforms!(program::GLProgram, uniforms::Dict)
+    glUseProgram(program.id)
+    for (key, value) in program.uniformloc
+        if haskey(uniforms, key)
+            # uniform_name_type(program, value[1])
+            try
+                if length(value) == 1
+                    gluniform(value[1], uniforms[key])
+                elseif length(value) == 2
+                    gluniform(value[1], value[2], uniforms[key])
+                else
+                    error("Uniform tuple too long: $(length(value))")
+                end
+            catch e
+                # TODO: Isn't this problematic due to task switches?
+                Base.showerror(stderr, e)
+                @warn error("uniform $key doesn't work with value $(uniforms[key])::$(typeof(uniforms[key]))") exception = (e, Base.catch_backtrace())
+            end
+        end
     end
     return
 end
