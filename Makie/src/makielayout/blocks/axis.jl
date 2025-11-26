@@ -415,7 +415,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     xticksmirrored_lines = linesegments!(
         blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
-        linewidth = ax.xtickwidth, color = ax.xtickcolor
+        linewidth = ax.xtickwidth, color = ax.xtickcolor, inspectable = false
     )
     translate!(xticksmirrored_lines, 0, 0, 10)
     yticksmirrored = lift(
@@ -424,7 +424,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     yticksmirrored_lines = linesegments!(
         blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
-        linewidth = ax.ytickwidth, color = ax.ytickcolor
+        linewidth = ax.ytickwidth, color = ax.ytickcolor, inspectable = false
     )
     translate!(yticksmirrored_lines, 0, 0, 10)
     xminorticksmirrored = lift(
@@ -433,7 +433,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     xminorticksmirrored_lines = linesegments!(
         blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
-        linewidth = ax.xminortickwidth, color = ax.xminortickcolor
+        linewidth = ax.xminortickwidth, color = ax.xminortickcolor, inspectable = false
     )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
     yminorticksmirrored = lift(
@@ -442,7 +442,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     yminorticksmirrored_lines = linesegments!(
         blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
-        linewidth = ax.yminortickwidth, color = ax.yminortickcolor
+        linewidth = ax.yminortickwidth, color = ax.yminortickcolor, inspectable = false
     )
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
