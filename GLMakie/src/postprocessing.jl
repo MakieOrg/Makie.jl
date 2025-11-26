@@ -11,6 +11,32 @@ end
 
 rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 
+"""
+    PostProcessRenderObject(screen, inputs, shader; kwargs...)
+
+Creates a `RenderObject` with some default settings useful for post-processors.
+
+## Default Keyword Arguments:
+
+- `prerender = PostprocessPrerender()`: turns off depth testing, blending and face culling
+- `postrender = EmptyPostrender()`: does nothing
+- `primitive = GL_TRIANGLES`: render OpenGL triangles
+- `indices = 3`: Renders 4 vertices, 2 triangles (`(0, 1, 2), (1, 2, 3)`)
+- `instances = nothing`: No instanced rendering
+"""
+function PostProcessRenderObject(
+        screen::Screen, inputs::Dict{Symbol, Any}, shader;
+        prerender = PostprocessPrerender(),
+        postrender = GLAbstraction.EmptyPostrender(),
+        indices = 3, instances = nothing, primitive = GLAbstraction.GL_TRIANGLES
+    )
+    get!(inputs, :indices, indices)
+    get!(inputs, :instances, instances)
+    get!(inputs, :gl_primitive, primitive)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = prerender, post = postrender)
+    return robj
+end
 
 # or maybe Task? Stage?
 """
@@ -250,25 +276,20 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
-    inputs[:indices] = 3
-    robj = RenderObject(screen.glscreen, inputs)
-    add_instructions!(
-        robj, :main, shader,
-        pre = () -> begin
-            glDepthMask(GL_TRUE)
-            glDisable(GL_DEPTH_TEST)
-            glDisable(GL_CULL_FACE)
-            glEnable(GL_BLEND)
-            # shader computes:
-            # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
-            # src.a = prod_alpha
-            # blending: (assumes opaque.a = 1)
-            # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
-            # opaque.a   = 0 * src.a   + 1 * opaque.a
-            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
-        end
-    )
-
+    prerender = () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        # shader computes:
+        # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
+        # src.a = prod_alpha
+        # blending: (assumes opaque.a = 1)
+        # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
+        # opaque.a   = 0 * src.a   + 1 * opaque.a
+        glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+    end
+    robj = PostProcessRenderObject(screen, inputs, shader, prerender = prerender)
     return RenderPass{:OIT}(framebuffer, robj)
 end
 
@@ -310,9 +331,7 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     inputs[:projection] = Mat4f(I)
     inputs[:bias] = 0.025f0
     inputs[:radius] = 0.5f0
-    inputs[:indices] = 3
-    robj = RenderObject(screen.glscreen, inputs)
-    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:SSAO1}(framebuffer, robj)
 end
@@ -328,9 +347,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     )
     inputs[:inv_texel_size] = rcpframe(size(screen))
     inputs[:blur_range] = Int32(2)
-    inputs[:indices] = 3
-    robj = RenderObject(screen.glscreen, inputs)
-    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
@@ -410,9 +427,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
         view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
     filter_fxaa_in_shader || pop!(inputs, :objectid_buffer)
-    inputs[:indices] = 3
-    robj = RenderObject(screen.glscreen, inputs)
-    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:FXAA1}(framebuffer, robj)
 end
@@ -427,9 +442,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fxaa.frag")
     )
     inputs[:RCPFrame] = rcpframe(size(framebuffer))
-    inputs[:indices] = 3
-    robj = RenderObject(screen.glscreen, inputs)
-    add_instructions!(robj, :main, shader, pre = PostprocessPrerender())
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:FXAA2}(framebuffer, robj)
 end

@@ -253,10 +253,8 @@ end
         )
 
         inputs[:color_transform] = parent.attributes[:color_transform]
-        inputs[:indices] = 3
 
-        robj = GLMakie.RenderObject(screen.glscreen, inputs)
-        GLMakie.add_instructions!(robj, :main, shader, pre = GLMakie.PostprocessPrerender())
+        robj = GLMakie.PostProcessRenderObject(screen, inputs, shader)
 
         return GLMakie.RenderPass{:Tint}(framebuffer, robj)
     end
