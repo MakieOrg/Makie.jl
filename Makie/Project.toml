@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.24.6"
+version = "0.24.7"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -68,8 +68,8 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
-[sources.ComputePipeline]
-path = "../ComputePipeline"
+[sources]
+ComputePipeline = {path = "../ComputePipeline"}
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
