@@ -470,12 +470,31 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input = :args
     end
 end
 
+function error_check_convert_arguments(P, args, user_kw, args_converted)
+    if args_converted isa Tuple
+        return :Tuple
+    elseif args_converted isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
+        return :SpecApi
+    else
+        _join(a, b) = "$a, $b"
+        args_splatted = mapreduce(x -> "::$(typeof(x))", _join, args)
+        kwargs_splatted = mapreduce(kv -> "$(kv[1])", _join, user_kw)
+        if isempty(kwargs_splatted)
+            call = "convert_arguments($P, $args_splatted)"
+        else
+            call = "convert_arguments($P, $args_splatted; $kwargs_splatted)"
+        end
+        error("Result of `$call` needs to be a Tuple or SpecApi object, but is `$args_converted`.")
+    end
+end
+
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
+    error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
     force_dimconverts = needs_dimconvert(dim_converts)
     if force_dimconverts
@@ -504,19 +523,16 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
         x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        if x isa Tuple
-            return x
-        elseif x isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
-            return (x,)
-        else
-            error("Result needs to be Tuple or SpecApi")
-        end
+        result_type = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
+        return result_type === :Tuple ? x : (x,)
     end
 
     # If dim converts didn't do anything we can use the previous result of
     # `convert_arguments()` to init the node
     if attr.dim_converted[] === args
-        ComputePipeline.unsafe_init!(attr.converted, args_converted)
+        result_type = error_check_convert_arguments(P, args, user_kw, args_converted)
+        x = result_type === :Tuple ? args_converted : (args_converted,)
+        ComputePipeline.unsafe_init!(attr.converted, x)
     end
 
     converted = attr[:converted][]
