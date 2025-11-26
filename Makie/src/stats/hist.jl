@@ -114,7 +114,7 @@ Plot a histogram of `values`.
 
     filtered_attributes(
         BarPlot, exclude = (
-            :dodge, :n_dodge, :dodge_gap, :stack, :width,
+            :width,
             :color_over_background, :color_over_bar, # renamed here :(
         )
     )...
@@ -124,12 +124,19 @@ Plot a histogram of `values`.
     over_background_color = automatic
     "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
     over_bar_color = automatic
+    """
+    Sets the color of histogram bars.
+    Can be a single color, `:values` to use the bar heights as values for colormapping,
+    `:stack` or `:dodge` to use the stack/dodge integers as values for colormapping,
+    or a vector of colors indexed by stack or dodge (whichever is defined).
+    """
+    color = @inherit patchcolor
 end
 
 function pick_hist_edges(vals, bins)
     isempty(vals) && return 1.0:0.0
     if bins isa Int
-        mi, ma = float.(extrema(vals))
+        mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
         end
@@ -148,14 +155,91 @@ function plot!(plot::Hist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
 
-    map!(plot, [:values, :edges, :normalization, :scale_to, :weights], :points) do values, edges, normalization, scale_to, wgts
-        centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
-        return Point2.(centers, weights)
+    map!(plot, [:stack, :dodge], [:groupmap, :groups]) do stack, dodge
+        if (stack === automatic) && (dodge === automatic)
+            return nothing, nothing
+        else
+            stack = stack === automatic ? fill(1, length(dodge)) : stack
+            dodge = dodge === automatic ? fill(1, length(stack)) : dodge
+
+            groupmap = Dict{Tuple{Int, Int}, Int}()
+            groups = Vector{UInt32}[]
+            for (i, stack_dodge) in enumerate(zip(stack, dodge))
+                if haskey(groupmap, stack_dodge)
+                    group = groupmap[stack_dodge]
+                else
+                    group = length(groupmap) + 1
+                    groupmap[stack_dodge] = group
+                    push!(groups, UInt32[])
+                end
+                push!(groups[group], i)
+            end
+            inv_groupmap = Vector{Tuple{Int, Int}}(undef, length(groupmap))
+            foreach(kv -> inv_groupmap[kv[2]] = kv[1], groupmap)
+            return inv_groupmap, groups
+        end
+    end
+
+    map!(
+        plot,
+        [:values, :edges, :normalization, :scale_to, :weights, :groups],
+        [:points, :grouplengths]
+    ) do values, edges, normalization, scale_to, wgts, groups
+        get_group(x, idx, range) = x
+        get_group(x::AbstractVector{<:AbstractVector}, group, indices) = x[group]
+        get_group(x::AbstractVector, group, indices) = view(x, indices)
+
+        if isnothing(groups) # ungrouped data
+            centers, weights = _hist_center_weights(values, edges, normalization, scale_to, wgts)
+            return Point2.(centers, weights), nothing
+        else
+            points = Point2d[]
+            grouplengths = Vector{Int}(undef, length(groups))
+            for (group, indices) in enumerate(groups)
+                vals = get_group(values, group, indices)
+                ws = get_group(wgts, group, indices)
+                centers, weights = _hist_center_weights(vals, edges, normalization, scale_to, ws)
+                # Without filtering 0-height bars draw outlines when stroke is set
+                # With filtering we can't set color per bin
+                # ps = [Point2d(x, y) for (x, y) in zip(centers, weights) if y > 0]
+                ps = [Point2d(x, y) for (x, y) in zip(centers, weights)]
+                append!(points, ps)
+                grouplengths[group] = length(ps)
+            end
+            return points, grouplengths
+        end
+    end
+
+    map!(plot, [:groupmap, :grouplengths], [:bar_stack, :bar_dodge]) do groupmap, lengths
+        if isnothing(groupmap)
+            return automatic, automatic
+        else
+            stack = Int[]
+            dodge = Int[]
+            for (N, (stack_val, dodge_val)) in zip(lengths, groupmap)
+                append!(stack, fill(stack_val, N))
+                append!(dodge, fill(dodge_val, N))
+            end
+            return stack, dodge
+        end
     end
 
     map!(diff, plot, :edges, :widths)
-    map!(plot, [:points, :color], :computed_colors) do points, color
-        return color === :values ? last.(points) : color
+
+    map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
+        if color === :values
+            return last.(points)
+        elseif color === :stack
+            return [stack for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
+        elseif color === :dodge
+            return [dodge for (i, (stack, dodge)) in enumerate(groupmap) for _ in 1:lengths[i]]
+        elseif (color isa AbstractVector) && !isnothing(lengths) && (length(color) == length(groupmap))
+            # assume either stack or dodge is given and there is one color per stack/dodge index
+            groups = [max(stack, dodge) for (stack, dodge) in groupmap]
+            return [color[group] for (i, group) in enumerate(groups) for _ in 1:lengths[i]]
+        else
+            return color
+        end
     end
 
     map!(plot, :bar_labels, :computed_bar_labels) do x
@@ -165,7 +249,8 @@ function plot!(plot::Hist)
     # plot the values, not the observables, to be in control of updating
     barplot!(
         plot, Attributes(plot), plot.points;
-        bar_labels = plot.computed_bar_labels, color = plot.computed_colors
+        bar_labels = plot.computed_bar_labels, color = plot.computed_colors,
+        stack = plot.bar_stack, dodge = plot.bar_dodge
     )
 
     return plot
