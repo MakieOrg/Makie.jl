@@ -3,7 +3,9 @@
 ## Unreleased
 
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
-- Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Reexported `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
+
 
 ## [0.24.7] - 2025-11-18
 
