@@ -863,7 +863,7 @@ end
     add_input!(graph, :y, 2)
     map!(graph, [:x, :y], [:xy, :yx]) do x, y
         calls += 1
-        return (x+y, x-y)
+        return (x + y, x - y)
     end
     map!(x -> 2x, graph, :xy, :z)
 
@@ -901,7 +901,7 @@ end
     add_input!(graph, :y, 2)
     map!(graph, [:x, :y], [:xy, :yx]) do x, y
         calls += 1
-        return (x+y, x-y)
+        return (x + y, x - y)
     end
     map!(x -> 2x, graph, :xy, :z)
     ComputePipeline.unsafe_init!(graph.xy, 1)
