@@ -1219,9 +1219,9 @@ returned by the parent edge callback.
 """
 function unsafe_init!(node::Computed, value)
     if isdefined(node, :value)
-        node.value[] = value
+        error("Node already initialized.")
     else
-        node.value = Ref(value)
+        node.value = value isa RefValue ? value : RefValue(value)
     end
 
     edge = node.parent

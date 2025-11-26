@@ -920,7 +920,7 @@ end
     end
 
     @testset "Full output init does init edge" begin
-        ComputePipeline.unsafe_init!(graph.yx, 2)
+        ComputePipeline.unsafe_init!(graph.yx, Base.Ref{Any}(2))
 
         @test !isdirty(graph.x)
         @test !isdirty(graph.y)
@@ -949,5 +949,9 @@ end
         @test graph.xy[] == 4
         @test graph.z[] == 8
         @test calls == 1
+    end
+
+    @testset "error on double init" begin
+        @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
     end
 end
