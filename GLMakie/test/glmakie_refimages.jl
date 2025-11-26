@@ -315,3 +315,21 @@ end
     cow = load(Makie.assetpath("cow.png"))
     f, a, p = image(rotr90(cow))
 end
+
+@reference_test "Dynamic Render Pipeline replacement" begin
+    scene = Scene(size = (300, 300))
+    meshscatter!(scene, Rect2f(-0.5, -0.5, 1, 1), alpha = 0.5, markersize = Vec3f(0.4, 0.6, 0.5), transparency = true);
+    meshscatter!(scene, [0, 0], [-0.5, 0.5], [0.5, -0.5], alpha = 0.5, markersize = 0.2, transparency = true);
+    screen = display(scene, render_pipeline = Makie.minimal_render_pipeline(), visible = false)
+    img1 = copy(colorbuffer(screen))
+    id = screen.renderlist[1][3].id
+    screen = display(scene, render_pipeline = Makie.default_pipeline(), visible = false)
+    img2 = copy(colorbuffer(screen))
+    # renderobjects should not get destroyed here, so ids should persist
+    @test id == screen.renderlist[1][3].id
+
+    scene = Scene(size = (600, 300), camera = campixel!)
+    image!(scene, 0..300, 0..300, img1)
+    image!(scene, 300..600, 0..300, img2)
+    scene
+end

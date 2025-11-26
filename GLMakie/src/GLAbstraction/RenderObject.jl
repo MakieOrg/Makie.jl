@@ -299,3 +299,9 @@ function add_instructions!(robj::RenderObject, name::Symbol, program; kwargs...)
     end
     return
 end
+
+function clear_instructions!(robj::RenderObject)
+    free.(values(robj.variants))
+    empty!(robj.variants)
+    return
+end

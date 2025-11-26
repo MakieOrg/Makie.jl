@@ -96,13 +96,13 @@ function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisual
     return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
 end
 
-function initialize_robj!(screen::Screen, robj::RenderObject, plot::Plot)
+function initialize_renderobject!(screen::Screen, robj::RenderObject, plot::Plot)
     for stage in screen.render_pipeline
-        initialize_robj!(screen, stage, robj, plot)
+        initialize_renderobject!(screen, stage, robj, plot)
     end
 end
 
-initialize_robj!(screen, stage, robj, plot) = nothing
+initialize_renderobject!(screen, stage, robj, plot) = nothing
 
 
 renders_in_stage(robj, ::GLRenderStage) = false
@@ -112,7 +112,7 @@ function renders_in_stage(plot::Plot, stage::RenderPlots)
         compare(to_value(get(plot.attributes, :fxaa, false)), stage.fxaa)
 end
 
-function initialize_robj!(screen, stage::RenderPlots, robj, plot)
+function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
     renders_in_stage(plot, stage) || return
     name = stage.target
     if name === :forward_render_objectid
@@ -140,6 +140,15 @@ function default_setup!(screen, robj, plot, name, kwargs)
     program_like = default_shader(screen, robj, plot, kwargs)
     pre = get_default_prerender(plot, name)
     add_instructions!(robj, name, program_like, pre = pre)
+    return
+end
+
+function reinitialize_renderobjects!(screen::Screen)
+    for (_, _, robj) in screen.renderlist
+        GLAbstraction.clear_instructions!(robj)
+        plot = screen.cache2plot[robj.id]
+        initialize_renderobject!(screen, robj, plot)
+    end
     return
 end
 

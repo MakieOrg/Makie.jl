@@ -250,7 +250,7 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
     robj = let
         args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))
         robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
-        initialize_robj!(screen, robj, plot)
+        initialize_renderobject!(screen, robj, plot)
         robj
     end
 
