@@ -512,6 +512,13 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
             error("Result needs to be Tuple or SpecApi")
         end
     end
+
+    # If dim converts didn't do anything we can use the previous result of
+    # `convert_arguments()` to init the node
+    if attr.dim_converted[] === args
+        ComputePipeline.unsafe_init!(attr.converted, args_converted)
+    end
+
     converted = attr[:converted][]
     n_args = length(converted)
     map!(attr, :converted, [argument_names(P, n_args)...]) do converted
