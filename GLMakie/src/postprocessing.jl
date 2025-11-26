@@ -25,7 +25,7 @@ Creates a `RenderObject` with some default settings useful for post-processors.
 - `instances = nothing`: No instanced rendering
 """
 function PostProcessRenderObject(
-        screen::Screen, inputs::Dict{Symbol, Any}, shader;
+        screen, inputs::Dict{Symbol, Any}, shader;
         prerender = PostprocessPrerender(),
         postrender = GLAbstraction.EmptyPostrender(),
         indices = 3, instances = nothing, primitive = GLAbstraction.GL_TRIANGLES
