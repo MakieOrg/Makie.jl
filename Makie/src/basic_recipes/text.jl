@@ -372,13 +372,6 @@ function register_text_computations!(attr::ComputeGraph)
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
-    map!(attr, [:text_blocks, :positions], :text_positions) do blocks, pos
-        if length(blocks) != length(pos)
-            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
-        end
-        return [p for (b, p) in zip(blocks, pos) for i in b]
-    end
-
     map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
         return glyph_uv_width!.((atlas,), gi, fonts)
     end
@@ -408,7 +401,15 @@ function register_text_computations!(attr::ComputeGraph)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, input_name = :text_positions, transformed_name = :positions_transformed)
+    register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
+
+    map!(attr, [:text_blocks, :positions_transformed_f32c], :per_char_positions_transformed_f32c) do blocks, pos
+        if length(blocks) != length(pos)
+            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
+        end
+        return [p for (b, p) in zip(blocks, pos) for i in b]
+    end
+
     return
 end
 
@@ -445,7 +446,7 @@ function tex_linesegments!(plot)
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
-            return seg + markerspace_positions[glyph_idx]
+            return seg + markerspace_positions[block_idx]
         end
     end
 
@@ -478,6 +479,36 @@ function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwarg
         apply_model = true, apply_clip_planes = true
     )
 end
+
+struct PerCharIterator{T}
+    blocks::Vector{UnitRange{Int64}}
+    data::Vector{T}
+    is_per_block::Bool
+end
+function PerCharIterator(blocks, data)
+    return PerCharIterator(blocks, data, length(blocks) == length(data))
+end
+
+function Base.iterate(iter::PerCharIterator, state = (1, 1))
+    char_idx, block_idx = state
+    if block_idx > length(iter.blocks) || char_idx > last(last(iter.blocks))
+        return nothing
+    end
+
+    if iter.is_per_block
+
+        if char_idx in iter.blocks[block_idx]
+            return iter.data[block_idx], (char_idx + 1, block_idx)
+        else
+            return iterate(iter, (char_idx, block_idx + 1))
+        end
+    else
+        return iter.data[char_idx], (char_idx + 1, 0)
+    end
+end
+
+Base.length(iter::PerCharIterator) = last(last(iter.blocks))
+
 
 # TODO: anything per-string should include lines?
 
@@ -535,11 +566,11 @@ function register_glyph_boundingboxes!(plot)
         register_markerspace_positions!(plot)
         map!(
             plot.attributes,
-            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
+            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_blocks, :markerspace_positions],
             :glyph_boundingboxes
-        ) do bbs, origins, rotations, positions
+        ) do bbs, origins, rotations, blocks, positions
 
-            return map(bbs, origins, rotations, positions) do bb, o, rotation, position
+            return map(bbs, origins, rotations, PerCharIterator(blocks, positions)) do bb, o, rotation, position
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
                 return rotate_bbox(glyphbb3, rotation) + o + position
             end
@@ -574,7 +605,7 @@ function register_fast_string_boundingboxes!(plot)
         ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
 
             text_bbs = map(blocks) do idxs
-                output = Rect3d()
+                output = Rect3d(Point3d(NaN), Vec3d(0))
                 for i in idxs
                     glyphbb = bbs[i]
                     glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
@@ -613,15 +644,16 @@ function register_string_boundingboxes!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,
-            [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
+            [:fast_string_boundingboxes, :markerspace_positions],
             :string_boundingboxes
-        ) do text_blocks, bbs, positions
+        ) do bbs, positions
 
-            return map(enumerate(text_blocks)) do (i, idxs)
-                if isempty(idxs)
-                    return Rect3d(Point3d(NaN), Vec3d(0))
-                else
-                    return bbs[i] + positions[first(idxs)]
+            return map(bbs, positions) do bb, pos
+                mini = minimum(bb)
+                if isfinite(mini)
+                    return bb + pos
+                else # empty bboxes end up as Rect3d(Point3d(Inf), Vec3d(-Inf))
+                    return Rect3d(pos, Vec3d(0))
                 end
             end
         end

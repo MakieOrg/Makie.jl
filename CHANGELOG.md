@@ -1,5 +1,7 @@
 # Changelog
 
+- Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
+
 ## Unreleased
 
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
