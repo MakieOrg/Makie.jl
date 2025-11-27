@@ -433,10 +433,14 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     d1 = dim1(dim)
     d2 = dim2(dim)
 
-
     tickvalues = @lift($ticknode[1])
 
-    endpoints = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
+    endpoints = lift(
+    	topscene, limits, tickvalues, miv, min1, min2,
+    	scene.camera.projectionview, scene.viewport,
+    	xreversed, yreversed, zreversed
+    ) do lims, ticks, miv, min1, min2, pview, pxa, xrev, yrev, zrev
+    	o = origin(pxa) - origin(topscene.viewport[])
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
         f1 = min1 ⊻ rev1 ? minimum(lims)[d1] : maximum(lims)[d1]
@@ -445,30 +449,47 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         mi = minimum(lims)
         ma = maximum(lims)
         map(filter(x -> !any(y -> x ≈ y[dim], extrema(lims)), ticks)) do t
-            dpoint(t, f1, mi[d2]), dpoint(t, f1, ma[d2])
+            p1 = dpoint(t, f1, mi[d2])
+            p2 = dpoint(t, f1, ma[d2])
+            pp1 = Point2f(o + Makie.project(scene, p1))
+            pp2 = Point2f(o + Makie.project(scene, p2))
+            (pp1, pp2)
         end
     end
     gridline1 = linesegments!(
-        scene, endpoints, color = attr(:gridcolor),
+        topscene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false
     )
 
-    endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
+    endpoints2 = lift(
+    	topscene, limits, tickvalues, miv, min1, min2,
+    	scene.camera.projectionview, scene.viewport,
+    	xreversed, yreversed, zreversed
+    ) do lims, ticks, miv, min1, min2, pview, pxa, xrev, yrev, zrev
+    	o = origin(pxa) - origin(topscene.viewport[])
+
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
+
         f1 = min1 ⊻ rev1 ? minimum(lims)[d1] : maximum(lims)[d1]
         f2 = min2 ⊻ rev2 ? minimum(lims)[d2] : maximum(lims)[d2]
+
         # from tickvalues and f1 and min2:max2
         mi = minimum(lims)
         ma = maximum(lims)
+
         map(filter(x -> !any(y -> x ≈ y[dim], extrema(lims)), ticks)) do t
-            dpoint(t, mi[d1], f2), dpoint(t, ma[d1], f2)
+            p1 = dpoint(t, mi[d1], f2)
+            p2 = dpoint(t, ma[d1], f2)
+            pp1 = Point2f(o + Makie.project(scene, p1))
+            pp2 = Point2f(o + Makie.project(scene, p2))
+            (pp1, pp2)
         end
     end
     gridline2 = linesegments!(
-        scene, endpoints2, color = attr(:gridcolor),
+        topscene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false
@@ -476,8 +497,11 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
 
 
     framepoints = lift(
-        limits, min1, min2, xreversed, yreversed, zreversed
-    ) do lims, mi1, mi2, xrev, yrev, zrev
+        topscene, limits, miv, min1, min2,
+        scene.camera.projectionview, scene.viewport,
+        xreversed, yreversed, zreversed
+    ) do lims, miv, mi1, mi2, pview, pxa, xrev, yrev, zrev
+		o = origin(pxa) - origin(topscene.viewport[])
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -486,19 +510,20 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         mi2 = mi2 ⊻ rev2
 
         f(mi) = mi ? minimum : maximum
-        p1 = dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p2 = dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p3 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p4 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2])
-        p5 = dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
-        p6 = dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2])
+        pns = [
+            dpoint(minimum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2]),
+            dpoint(maximum(lims)[dim], f(!mi1)(lims)[d1], f(mi2)(lims)[d2]),
+            dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2]),
+            dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(mi2)(lims)[d2]),
+            dpoint(minimum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2]),
+            dpoint(maximum(lims)[dim], f(mi1)(lims)[d1], f(!mi2)(lims)[d2]),
+        ]
 
-        return [p1, p2, p3, p4, p5, p6]
+        return map(pi -> Point2f(o + Makie.project(scene, pi)), pns)
     end
     framepoints_front_spines = lift(
         limits, min1, min2, xreversed, yreversed, zreversed
     ) do lims, mi1, mi2, xrev, yrev, zrev
-
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
 
@@ -516,7 +541,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
 
     framelines = linesegments!(
-        scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
     )
