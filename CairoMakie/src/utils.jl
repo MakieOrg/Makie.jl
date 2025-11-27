@@ -95,7 +95,8 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1.0f0 - 2.0f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        p_0_to_1 = (p_yflip .+ 1.0f0) ./ 2.0f0
+        # and also clamp so that we don't run into float issues
+        p_0_to_1 = clamp.((p_yflip .+ 1.0f0) ./ 2.0f0, -1.0f0, 2.0f0)
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
@@ -150,7 +151,7 @@ function clip_shape(clip_planes::Vector{Plane3f}, shape::Rect2, space::Symbol, m
 
     xy = origin(shape)
     w, h = widths(shape)
-    ps = Vec2f[xy, xy + Vec2f(w, 0), xy + Vec2f(w, h), xy + Vec2f(0, h)]
+    ps = Point2d[xy, xy + Vec2d(w, 0), xy + Vec2d(w, h), xy + Vec2d(0, h)]
     if any(p -> Makie.is_clipped(clip_planes, p), ps)
         push!(ps, xy)
         ps = clip_poly(clip_planes, ps, space, model)
