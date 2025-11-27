@@ -177,9 +177,8 @@ function render(mode::GLenum, indices::GLBuffer{T}, ::Nothing, N_verts) where {T
     return nothing
 end
 
-# TODO: Is this reachable?
 # undefined indices, default to rendering all vertices
-function render(mode::GLenum, indices, ::Nothing, N_verts)
+function render(mode::GLenum, ::Nothing, ::Nothing, N_verts)
     N_verts == 0 && return nothing
     glDrawArrays(mode, 0, N_verts)
     return nothing

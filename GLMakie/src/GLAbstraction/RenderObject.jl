@@ -78,16 +78,16 @@ end
 
 function process_buffers(context, bufferdict::Dict)
     # get the size of the first array, to assert later, that all have the same size
-    indexes = -1
+    indices = -1
     len = -1
     gl_switch_context!(context)
 
     buffers = Dict{Symbol, GLBuffer}()
     for (name, buffer) in bufferdict
         if isa(buffer, GLBuffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
-            indexes = buffer
+            indices = buffer
         elseif Symbol(name) === :indices
-            indexes = buffer
+            indices = buffer
         else
             attribute = string(name)
             len == -1 && (len = length(buffer))
@@ -111,10 +111,9 @@ function process_buffers(context, bufferdict::Dict)
         end
     end
 
-    indexes = ifelse(indexes == -1, len, indexes)
-    indexes = ifelse(indexes == -1, nothing, indexes)
+    indices = ifelse(indices == -1, nothing, indices)
 
-    return buffers, indexes
+    return buffers, indices
 end
 
 function RenderObject(context, data::Dict{Symbol, Any})
