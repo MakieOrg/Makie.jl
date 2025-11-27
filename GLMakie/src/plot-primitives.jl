@@ -1224,3 +1224,64 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
 
     return robj
 end
+
+
+function assemble_shadertoy_robj!(data, screen::Screen, attr, args, input2glname)
+    uniforms = copy(attr.uniforms)
+    uniforms[:model] = attr.model
+    uniforms[:px_per_unit] = screen.px_per_unit
+
+    templates = Dict(
+        "SHADERTOY_INPUTS" => """
+            uniform vec2 iResolution;
+            uniform vec2 iMouse;
+            uniform float iGlobalTime;
+            uniform sampler2D iChannel0;
+            uniform sampler2D iChannel1;
+            uniform sampler2D iChannel2;
+            uniform sampler2D iChannel3;
+            """,
+        "TOY_SHADER" => plot.shader[],
+        "buffers" => output_buffers(screen, to_value(false)),
+        "buffer_writes" => output_buffer_writes(screen, to_value(false))
+    )
+
+    @gen_defaults! uniforms begin
+        faces = faces => indexbuffer
+        vertices = vertices => GLBuffer
+        uv = uv => GLBuffer
+        iResolution = scene.camera.resolution
+        iChannel0 = nothing => Texture
+        iChannel1 = nothing => Texture
+        iChannel2 = nothing => Texture
+        iChannel3 = nothing => Texture
+        iGlobalTime = lift(x -> Float32(x.time), scene.events.tick)
+        iMouse = lift(Vec2f, scene.events.mouseposition)
+        iGlobalTime = 0.0f0
+        shader = GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "shadertoy.frag", "shadertoy.vert";
+            view = templates
+        )
+    end
+    get!(uniforms, :ssao, Observable(false))
+    get!(uniforms, :transparency, Observable(false))
+    return GLMakie.assemble_shader(uniforms)
+end
+
+function draw_atomic(screen::Screen, scene::Scene, plot::Makie.ShaderToy)
+    map!(plot.attributes, [:rect], [:faces, :vertices, :uv]) do m
+        faces = decompose(GLTriangleFace, m)
+        vertices = decompose(Point2f, m)
+        uv = GeometryBasics.decompose_uv(m)
+        return (faces, vertices, uv)
+    end
+    inputs = [
+        :faces, :vertices, :uv,
+        # Special
+        :space,
+        # Needs explicit handling
+        :iChannel0, :iChannel1, :iChannel2, :iChannel3,
+    ]
+    return register_robj!(assemble_shadertoy_robj!, screen, scene, plot, inputs, uniforms, input2glname)
+end
