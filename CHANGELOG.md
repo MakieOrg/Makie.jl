@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- When plotting `PlotSpec`s, allow them to inherit all attributes of the provided `plotlist`.  This includes `transformation` and `transform_func`, which fix plotspecs in e.g. log-scaled axes, PolarAxis, and GeoAxis [#5206](https://github.com/MakieOrg/Makie.jl/pull/5206).
 
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
 - Reexported `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
