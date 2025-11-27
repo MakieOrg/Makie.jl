@@ -95,8 +95,7 @@ function _project_position(scene::Scene, space, point::VecTypes{N, T1}, model, y
         # flip y to match cairo
         p_yflip = Vec2f(p[1], (1.0f0 - 2.0f0 * yflip) * p[2])
         # normalize to between 0 and 1
-        # and also clamp so that we don't run into float issues
-        p_0_to_1 = clamp.((p_yflip .+ 1.0f0) ./ 2.0f0, -1.0f0, 2.0f0)
+        p_0_to_1 = (p_yflip .+ 1.0f0) ./ 2.0f0
     end
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
@@ -110,8 +109,11 @@ end
 
 
 function project_shape(@nospecialize(scenelike), space, rect::Rect, model)
-    mini = project_position(scenelike, space, minimum(rect), model)
-    maxi = project_position(scenelike, space, maximum(rect), model)
+    # Note that this assumes the Rect to remain axis-aligned through transformations
+    # clamp to prevent float issues from switching to widths = maxi .- mini
+    res = Makie.get_scene(scenelike).camera.resolution[]
+    mini = clamp.(project_position(scenelike, space, minimum(rect), model), -res, 2 .* res)
+    maxi = clamp.(project_position(scenelike, space, maximum(rect), model), -res, 2 .* res)
     return Rect(mini, maxi .- mini)
 end
 

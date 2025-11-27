@@ -55,8 +55,8 @@ end
 end
 
 @reference_test "poly Float64 rect" begin
-    f = Figure();
-    ax = Axis(f[1,1]; limits = (nothing, nothing, 12_000_001, 12_000_004));
+    f = Figure()
+    ax = Axis(f[1, 1]; limits = (nothing, nothing, 12_000_001, 12_000_004))
     p = poly!(ax, [Rect2d(0, 0, 1, 12_000_002), Rect2d(2, 0, 1, 12_000_003)])
     f
 end
