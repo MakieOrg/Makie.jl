@@ -42,6 +42,8 @@ function get_attribute_location(program::GLuint, name::String)
     return location
 end
 
+get_attribute_count(program::GLuint) = glGetProgramiv(program, GL_ACTIVE_ATTRIBUTES)
+
 
 get_uniform_location(program::GLuint, name::Symbol) = get_uniform_location(program, String(name))
 function get_uniform_location(program::GLuint, name::String)

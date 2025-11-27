@@ -169,24 +169,15 @@ function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, stage)
     inputs[:color_transform] = stage.attributes[:color_transform]
 
     # We then create a RenderObject:
-    robj = GLMakie.RenderObject(
-        inputs, # Dict{Symbol, Any} containing uniforms, vertex buffers and indices
-        shader, # the shader (program) to use
-        GLMakie.PostprocessPrerender(), # setup function "prerender"
-        nothing, # render function "postrender"
-        screen.glscreen # OpenGL context of the RenderObject
-    )
+    # This function does some additional setup for full screen post processors,
+    # like setting indices and disabling depth buffering, blending, etc
+    robj = GLMakie.PostProcessRenderObject(screen, inputs, shader)
 
     # Rendering of a RenderObject happens in 3 stages:
     # 1. the prerender function runs
     # 2. uniforms, buffers and the shader program are bound and get updated
-    # 3. the postrender function runs
-
-    # The PostprocessPrerender() is a callable struct that disables depth tests,
-    # blending and face culling.
-    # The postrender function
-    robj.postrenderfunction = () -> GLMakie.draw_fullscreen(robj.vertexarray.id)
-    # binds the vertexarray and draws two triangles.
+    # 3. render(primitive, indices, instances, N_vertices) is called
+    # 4. the postrender function runs
 
     # With the finalized renderobject we create a renderpass. This just holds on
     # to the framebuffer and render object

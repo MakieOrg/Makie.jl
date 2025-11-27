@@ -96,37 +96,60 @@ function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisual
     return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
 end
 
-function assemble_shader(data)
-    shader = data[:shader]::GLVisualizeShader
-    delete!(data, :shader)
-    primitive = get(data, :gl_primitive, GL_TRIANGLES)
-    pre_fun = get(data, :prerender, nothing)
-    post_fun = get(data, :postrender, nothing)
-
-    transp = get(data, :transparency, Observable(false))
-    overdraw = get(data, :overdraw, Observable(false))
-
-    pre = if !isnothing(pre_fun)
-        _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
-        () -> (_pre_fun(); pre_fun())
-    else
-        GLAbstraction.StandardPrerender(transp, overdraw)
+function initialize_renderobject!(screen::Screen, robj::RenderObject, plot::Plot)
+    for stage in screen.render_pipeline
+        initialize_renderobject!(screen, stage, robj, plot)
     end
+end
 
-    robj = RenderObject(data, shader, pre, nothing, shader.screen.glscreen)
+initialize_renderobject!(screen, stage, robj, plot) = nothing
 
-    post = if haskey(data, :instances)
-        GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)
+
+renders_in_stage(robj, ::GLRenderStage) = false
+function renders_in_stage(plot::Plot, stage::RenderPlots)
+    return compare(to_value(get(plot.attributes, :ssao, false)), stage.ssao) &&
+        compare(to_value(get(plot.attributes, :transparency, false)), stage.transparency) &&
+        compare(to_value(get(plot.attributes, :fxaa, false)), stage.fxaa)
+end
+
+function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
+    renders_in_stage(plot, stage) || return
+    name = stage.target
+    if name === :forward_render_objectid
+        kwargs = ("TARGET_STAGE" => "#define DEFAULT_TARGET",)
+    elseif name === :forward_render_objectid_geom
+        kwargs = ("TARGET_STAGE" => "#define SSAO_TARGET",)
+    elseif name === :forward_render_objectid_oit
+        kwargs = ("TARGET_STAGE" => "#define OIT_TARGET",)
     else
-        GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
+        error("Could not define render outputs.")
     end
+    default_setup!(screen, robj, plot, name, kwargs)
+    return
+end
 
-    robj.postrenderfunction = if !isnothing(post_fun)
-        () -> (post(); post_fun())
+function get_default_prerender(plot, name::Symbol)
+    if name === :forward_render_objectid_oit
+        return OITPrerender(plot)
     else
-        post
+        return StandardPrerender(plot)
     end
-    return robj
+end
+
+function default_setup!(screen, robj, plot, name, kwargs)
+    program_like = default_shader(screen, robj, plot, kwargs)
+    pre = get_default_prerender(plot, name)
+    add_instructions!(robj, name, program_like, pre = pre)
+    return
+end
+
+function reinitialize_renderobjects!(screen::Screen)
+    for (_, _, robj) in screen.renderlist
+        GLAbstraction.clear_instructions!(robj)
+        plot = screen.cache2plot[robj.id]
+        initialize_renderobject!(screen, robj, plot)
+    end
+    return
 end
 
 """
@@ -158,25 +181,86 @@ to_index_buffer(ctx, x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function target_stage(screen, data)
-    idx = findfirst(stage -> renders_in_stage(data, stage), screen.render_pipeline.stages)
-    @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
+# TODO: What's a good place for these?
 
-    # Activate the required outputs + code via `#define` and `#ifdef` blocks.
-    # For now we can just check the number of outputs to figure out what branch
-    # we need. If render stages get more complex this may need to be more generative.
-    fb = screen.render_pipeline.stages[idx].framebuffer
-    define = if fb.counter == 1
-        "#define MINIMAL_TARGET"
-    elseif fb.counter == 2
-        "#define DEFAULT_TARGET"
-    elseif fb.counter == 3
-        data[:oit_scale] = screen.config.transparency_weight_scale
-        "#define OIT_TARGET"
-    elseif fb.counter == 4
-        "#define SSAO_TARGET"
+"""
+Represents standard sets of function applied before rendering
+"""
+struct StandardPrerender
+    overdraw::Bool
+end
+
+function StandardPrerender(plot::Plot)
+    return StandardPrerender(to_value(get(plot.attributes, :overdraw, false)))
+end
+
+function enabletransparency()
+    glDisable(GL_BLEND)
+    glEnablei(GL_BLEND, 0)
+    # This does:
+    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
+    # target.a = 0 * source.a + 1 * target.a
+    # the latter is required to keep target.a = 1 for the OIT pass
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    return
+end
+
+function handle_overdraw(overdraw)
+    if overdraw
+        # Disable depth testing if overdrawing
+        glDisable(GL_DEPTH_TEST)
     else
-        error("Number of colorbuffers in render framebuffer does not match any known configurations ($(fb.counter))")
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
     end
-    return define
+    return
+end
+
+function (sp::StandardPrerender)()
+    glDepthMask(GL_TRUE)
+    enabletransparency()
+
+    handle_overdraw(sp.overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end
+
+struct OITPrerender
+    overdraw::Bool
+end
+
+function OITPrerender(plot::Plot)
+    return OITPrerender(to_value(get(plot.attributes, :overdraw, false)))
+end
+
+function (pre::OITPrerender)()
+    # disable depth buffer writing
+    glDepthMask(GL_FALSE)
+
+    # Blending
+    glEnable(GL_BLEND)
+    glBlendEquation(GL_FUNC_ADD)
+
+    # buffer 0 contains weight * color.rgba, should do sum
+    # destination <- 1 * source + 1 * destination
+    glBlendFunci(0, GL_ONE, GL_ONE)
+
+    # buffer 1 is objectid, do nothing
+    glDisablei(GL_BLEND, 1)
+
+    # buffer 2 is color.a, should do product
+    # destination <- 0 * source + (source) * destination
+    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+    handle_overdraw(pre.overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
 end

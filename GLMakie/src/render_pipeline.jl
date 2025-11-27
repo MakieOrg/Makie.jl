@@ -139,6 +139,8 @@ function gl_render_pipeline!(screen::Screen, pipeline::Makie.LoweredRenderPipeli
 
     screen.render_pipeline = GLRenderPipeline(pipeline, render_pipeline)
 
+    reinitialize_renderobjects!(screen)
+
     return
 end
 
