@@ -462,94 +462,343 @@ end
     f
 end
 
+# otherwise positions of jittered points change
+Makie.RAINCLOUD_RNG[] = RNG.STABLE_RNG
+
+# helper function for collecting the state of each tooltip
+function collect_di_state!(states, di, attr_names)
+    tt = di.dynamic_tooltip
+    state = map(name -> getproperty(tt, name)[], attr_names)
+    push!(states, state)
+    return
+end
+
+# helper function for checking the state matches up
+function test_di_state(di, state, attr_names)
+    tt = di.dynamic_tooltip
+    for (name, value) in zip(attr_names, state)
+        @test getproperty(tt, name)[] == value
+    end
+    return
+end
+
 @reference_test "DataInspector" begin
-    scene = Scene(camera = campixel!, size = (290, 140))
+    RNG.seed_rng!() # for local execution
 
-    p1 = scatter!(scene, Point2f(20), markersize = 30)
-    p2 = meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
-    p3 = lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
-    p4 = linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
-    p5 = mesh!(scene, Rect2f(10, 80, 40, 40))
-    p6 = surface!(scene, 60 .. 100, 80 .. 120, [1 2; 3 4])
-    p7 = heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
-    p8 = image!(scene, 120 .. 160, 60 .. 100, [1 2; 3 4])
+    attr_names = (:converted_1, :text, :visible, :placement, :model, :space)
+    states = [(Point{3, Float64}[[20.0, 20.0, 0.0]], "(20.000, 20.000)", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[90.0, 20.0, 0.0]], "(90.000, 20.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[20.0, 40.0, 0.0]], "(20.000, 40.000)", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[37.69230782985687, 28.46153825521469, 0.0]], "(37.692, 28.462)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[30.0, 60.0, 0.0]], "(30.000, 60.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[60.0, 50.0, 0.0]], "(60.000, 50.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[29.999998092651367, 100.0, 0.0]], "(30.000, 100.000)", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[90.0, 110.0, 3.25]], "(90.000, 110.000, 3.250)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[130.0, 20.0, 0.0]], "1.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[150.0, 90.0, 0.0]], "4.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[200.0, 20.0, 0.0]], "(200.000, 20.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[200.0, 45.0, 0.0]], "(200.000, 45.000)\n(0, 30.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[196.0, 72.0, 0.0]], "(196.000, 72.000, 0)\n(-48.000, -16.000, 0)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[200.0, 45.0, 0.0]], "(200.000, 45.000)\n(0, 30.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[196.0, 72.0, 0.0]], "(196.000, 72.000, 0)\n(-48.000, -16.000, 0)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[260.0, 30.0, 0.0]], "0.333", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[259.9999998410543, 93.3333331743876, 0.0]], "2.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[204.99997973442078, 107.49998986721039, 0.0]], "(205.000, 126.667)\n(205.000, 88.333)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[17.651653289794922, 153.07676696777344, 0.0]], "(17.652, 153.077)", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[66.0, 162.58578491210938, 0.0]], "1.414", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[90.0, 152.0, 0.0]], "(90.000, 152.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[4.367025852203369, 0.038466792553663254, 0.0]], "(4.367, 0.038467)", true, :above, [1.0 0.0 0.0 135.0; 0.0 700.0 0.0 140.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[160.0, 155.0, 0.0]], "±10.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[175.0, 155.0, 0.0]], "140.000 .. 170.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[209.99911499023438, 156.66641235351562, 0.0]], "16.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[237.49924101775025, 34.0, 0.0]], "(237.499, 34.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 140.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[264.99998212181765, 153.99999210000752, 0.0]], "13.000", true, :left, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[20.0, 175.00000029802322, 0.0]], "(20.000, 175.000)", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[0.6923919320106506, 209.0, 0.0]], "0.045761", true, :right, [70.0 0.0 0.0 -40.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[1.0285714864730835, 194.0, 0.0]], "(1.029, 194.000)", true, :above, [70.0 0.0 0.0 -40.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[1.130394812494225, 193.70112005725545, 0.0]], "(1.130, 193.701)", true, :above, [70.0 0.0 0.0 -40.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[60.0, 210.0, 0.0]], "(60.000, 210.000)", true, :below, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[55.50000011920929, 194.4999998807907, 0.0]], "(55.500, 194.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[76.5, 206.5, 0.0]], "(76.500, 206.500)", true, :below, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[101.00000001490116, 200.0, 0.0]], "(101.000, 200.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[130.0, 195.0, 0.0]], "(130.000, 195.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[155.0000043035159, 24.0, 0.0]], "(155.000, 24.000)", true, :below, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 190.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[185.0, 193.0, 0.0]], "50.500", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[0.6092928647994995, 193.0, 0.0]], "0.046985", true, :above, [20.0 0.0 0.0 190.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[1.3942478895187378, 208.0, 0.0]], "0.049843", true, :below, [20.0 0.0 0.0 190.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[240.0, 10.0, 0.0]], "(240.000, 10.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 190.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data)]
 
-    # barplot, arrows, contourf, volumeslices, band, spy, heatmapshader
-    p9 = barplot!(scene, [180, 200, 220], [40, 20, 60])
-    p10 = arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
-    p11 = arrows3d!(
+    scene = Scene(camera = campixel!, size = (290, 230))
+
+    # bottom rect (roughly 0..290 x 0..140)
+
+    # primitives
+    scatter!(scene, Point2f(20), markersize = 30)
+    meshscatter!(scene, Point2f[(90, 20), (90, 60)], marker = Rect2f(-1, -1, 2, 2), markersize = 15)
+    lines!(scene, [10, 30, 50, 70], [40, 40, 10, 10], linewidth = 10)
+    linesegments!(scene, [10, 50, 60, 60], [60, 60, 70, 30], linewidth = 10)
+    mesh!(scene, Rect2f(10, 80, 40, 40))
+    surface!(scene, 60 .. 100, 80 .. 120, [1 2; 3 4])
+    heatmap!(scene, [120, 140, 160], [10, 30, 50], [1 2; 3 4])
+    image!(scene, 120 .. 160, 60 .. 100, [1 2; 3 4])
+
+    # barplot, arrows, contourf, volumeslices, band, spy,
+    barplot!(scene, [180, 200, 220], [40, 20, 60])
+    arrows2d!(scene, Point2f[(200, 30)], Vec2f[(0, 30)], shaftwidth = 4, tiplength = 15, tipwidth = 12)
+    arrows3d!(
         scene, Point3f[(220, 80, 0)], Vec3f[(-48, -16, 0)],
         shaftradius = 2.5, tiplength = 15, tipradius = 7, markerscale = 1.0
     )
-    p12 = contourf!(scene, 240 .. 280, 10 .. 50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
-    p13 = spy!(scene, 240 .. 280, 60 .. 100, [1 2 1; 2 0 2; 1 2 1])
-    p14 = band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+    contourf!(scene, 240 .. 280, 10 .. 50, [1 2 1; 2 0 2; 1 2 1], levels = 3)
+    spy!(scene, 240 .. 280, 60 .. 100, [1 2 1; 2 0 2; 1 2 1])
+    band!(scene, [150, 180, 210, 240], [110, 80, 90, 110], [120, 110, 130, 120])
+
+    # lines!(scene, [0, 285, 285], [135, 135, 0])
+
+    # below top row
+    arc!(scene, Point2f(25, 140), 15, pi / 3, pi, linewidth = 10)
+    contour!(scene, 40:5:80, 140:5:180, [sqrt(x^2 + y^2) for x in -4:4, y in -4:4], levels = 3, linewidth = 5)
+    crossbar!(scene, [90, 105], [160, 160], [140, 145], [170, 165], width = 15)
+    p = density!(scene, 10 .* sin.(1:100))
+    translate!(p, 135, 140, 0)
+    scale!(p, 1, 700, 1)
+    errorbars!(scene, [160], [155], [10], linewidth = 5, whiskerwidth = 10)
+    rangebars!(scene, [175], [140], [170], linewidth = 5, whiskerwidth = 10)
+    hexbin!(scene, 200 .+ 10 .* sin.(1:100), 160 .+ 10 .* cos.(1:100), bins = 4)
+    p = hist!(scene, 230 .+ 10 .* sin.(1:100), bins = 4)
+    translate!(p, 0, 140, 0)
+    pie!(scene, 260, 160, [3, 5, 7, 11, 13], radius = 15, color = 1:5)
+    poly!(scene, [10, 30, 20], [170, 165, 180])
+
+    # top row
+    p = rainclouds!(scene, ones(100), 200 .+ 10 .* sin.(1:100))
+    translate!(p, -40, 0, 0)
+    scale!(p, 70, 1, 1)
+    scatterlines!(scene, [60, 50, 60], [190, 200, 210], linewidth = 3, markersize = 10)
+    series!(scene, [Point2f.([80, 70, 80], [190, 200, 210])], linewidth = 4)
+    stairs!(scene, [90, 100, 110], [190, 210, 200], linewidth = 4)
+    stem!(scene, [120, 130], [200, 210], offset = 190, stemwidth = 3, trunkwidth = 3, markersize = 10)
+    p = stephist!(scene, 150 .+ 10 .* sin.(1:70), bins = 4, linewidth = 4)
+    translate!(p, 0, 190, 0)
+    tricontourf!(scene, 180 .+ 15 .* sin.(1:100), 200 .+ 15 .* cos.(1:100), 1:100, levels = 3)
+    p = violin!(scene, ones(100), 200 .+ 10 .* sin.(range(0, 10, length = 100) .^ 2), side = ifelse.(1:100 .> 50, :left, :right))
+    translate!(p, 190, 0, 0)
+    scale!(p, 20, 1, 1)
+    v = p
+    p = waterfall!(scene, [230, 240], [25, -15])
+    translate!(p, 0, 190, 0)
+
+    # mouse positions for targetting each plot
+    mps = [
+        # 0..285 x 0..135 block
+        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
+        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35),
+        (217, 79), (200, 45), (181, 67), (260, 30), (260, 90), (205, 110),
+        # top-1 row
+        (17, 153), (67, 163), (90, 152), (139, 153), (160, 163), (175, 150), (210, 156),
+        (235, 145), (265, 154), (20, 175),
+        # top row
+        (17, 209), (32, 194), (39, 193), (61, 211), (56, 195), (76, 207), (101, 199),
+        (130, 195), (155, 214), (185, 193), (205, 193), (214, 208), (242, 208),
+    ]
+
+    # any plot with an indicator should get a refimage, everything else should
+    # just verify state
+    make_refimg = Bool[
+        # same blocks as above, not that that helps much
+        0, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, # index 1 .. 18
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, # 1 per plot here, 19...28
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, # 29 .. 41
+    ]
 
     e = events(scene)
     # Prevent the hover event Channel getting closed
     e.window_open[] = true
     # blocking = true forces immediately resolution of DataInspector updates
-    di = DataInspector(
+    di = Makie.DataInspector(
         scene, offset = 5.0, fontsize = 12, outline_linewidth = 1,
-        textpadding = (2, 2, 2, 2), blocking = true
+        textpadding = (2, 2, 2, 2),
+        blocking = true, no_tick_discard = true
     )
     # force indicator plots to be created for WGLMakie
-    Makie.get_indicator_plot(di, scene, Lines)
-    Makie.get_indicator_plot(di, scene, LineSegments)
-    Makie.get_indicator_plot(di, scene, Scatter)
+    Makie.get_indicator_plot(di, Lines)
+    Makie.get_indicator_plot(di, LineSegments)
+    Makie.get_indicator_plot(di, Scatter)
     scene
 
     st = Makie.Stepper(scene)
 
-    mps = [
-        (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
-        (90, 110), (130, 20), (150, 90), (200, 10), (200, 35), (200, 45),
-        (217, 79), (181, 67), (260, 30), (260, 90), (205, 110),
-    ]
-
     # record
-    for mp in mps
+    for i in eachindex(mps)
+        mp = mps[i]
+
         # remove tooltip so we don't select it
-        e.mouseposition[] = (289, 139)
-        colorbuffer(scene) # force update of picking buffer
-        sleep(0.15) # wait for WGLMakie
-        @test isempty(di.temp_plots) # verify cleanup
-        e.mouseposition[] = mp
-        sleep(0.15) # wait for WGLMakie
-        Makie.step!(st)
+        wait_for_data_inspector(scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
+
+        wait_for_data_inspector(scene, di, true) do
+            e.mouseposition[] = mp
+        end
+
+        # collect_di_state!(states, di, attr_names)
+        test_di_state(di, states[i], attr_names)
+
+        if make_refimg[i]
+            Makie.step!(st)
+        else
+            # if this is false we skipped a plot that uses indicators
+            @test all(p -> !p.visible[], values(di.indicator_cache))
+        end
     end
 
     st
 end
 
-@reference_test "DataInspector 2" begin
-    f = Figure(size = (500, 500))
-    a, p = volumeslices(f[1, 1], 1:10, 1:10, 1:10, reshape(sin.(1:1000), (10, 10, 10)))
+@reference_test "DataInspector continued" begin
+    f = Figure(size = (450, 750))
+    col3d = f[1, 1]
+    data3d = reshape(sin.(1:1000), (10, 10, 10))
+    volumeslices(col3d[1, 1], 1:10, 1:10, 1:10, data3d)
+    voxels(col3d[2, 1], data3d)
+    contour3d(col3d[3, 1], 1:10, 1:10, reshape(10 .* sin.(1:100), (10, 10)), linewidth = 3)
+    wireframe(col3d[4, 1], Rect3d(0, 0, 0, 1, 1, 1))
+
+    col2d = f[1, 2]
     x = sin.(1:10_000) .* sin.(0.1:0.1:1000)
     y = sin.(2:2:20000) .* sin.(5:5:50000)
-    a, p2 = datashader(f[1, 2], Point2f.(x, y), async = false)
-    a, p3 = heatmap(f[2, 2], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
-    Colorbar(f[1, 3], p2)
+    datashader(col2d[1, 1], Point2f.(x, y), async = false)
+    heatmap(col2d[2, 1], Resampler(reshape(sin.(1:1_000_000), (1000, 1000))))
+    ablines(col2d[3, 1], 0, 1.0)
+    hlines!(1)
+    vlines!(1)
+    hspan!(9, 10)
+    vspan!(9, 10)
+
+    colsize!(f.layout, 1, 125)
+
     e = events(f)
     e.window_open[] = true # Prevent the hover event Channel from getting closed
-    di = DataInspector(f, blocking = true)
-    # force indicator plots to be created for WGLMakie
-    Makie.get_indicator_plot(di, a.scene, LineSegments)
-    Makie.get_indicator_plot(di, a.scene, Lines)
-    Makie.get_indicator_plot(di, a.scene, Scatter)
-    f
+
+    dis = []
+    for a in f.content
+        di = Makie.DataInspector(a, blocking = true, no_tick_discard = true)
+        # force indicator plots to be created for WGLMakie
+        Makie.get_indicator_plot(di, LineSegments)
+        Makie.get_indicator_plot(di, Lines)
+        Makie.get_indicator_plot(di, Scatter)
+        push!(dis, di)
+    end
+
+    mps = [
+        # 3D
+        (97.0, 658.0), (65.0, 634.0), (98.0, 471.0), (75.0, 314.0), (102.0, 140.0),
+        # 2D
+        (315.0, 632.0), (312.0, 387.0), (362.0, 226.0), (410.0, 146.0), (311.0, 134.0),
+        (210.0, 151.0), (305.0, 41.0),
+    ]
 
     st = Makie.Stepper(f)
 
-    mps = [(90, 411), (344, 388), (329, 137), (226, 267)]
-    for (i, mp) in enumerate(mps)
-        e.mouseposition[] = (1, 1)
-        colorbuffer(f) # force update of picking buffer
-        sleep(0.15) # wait for WGLMakie
-        @test isempty(di.temp_plots) # verify cleanup
-        e.mouseposition[] = mp
-        sleep(0.2 + (i == 2)) # wait for WGLMakie, datashader extra slow
+    # record
+    for mp in mps
+        idx = findfirst(block -> mp in block.scene.viewport[], f.content)
+
+        wait_for_data_inspector(f, dis[idx], true) do
+            e.mouseposition[] = mp
+        end
         Makie.step!(st)
+
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(f, dis[idx], false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+
+        # verify cleanup
+        @test !any(di -> di.dynamic_tooltip.visible[], dis)
+    end
+
+    st
+end
+
+@reference_test "DataInspector persistent tooltips" begin
+    xy = [Point2f(x, y) for x in -2:2 for y in -2:2]
+    f = Figure(size = (400, 400))
+    a, p = scatter(f[1, 1], xy, markersize = 20)
+    di = Makie.DataInspector(a)
+    st = Makie.Stepper(f)
+
+    e = events(f)
+
+    # Make 3 persistent tooltips
+    mps = [(135, 290), (213, 209), (291, 130)]
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    for mp in mps
+        wait_for_data_inspector(f, di) do
+            e.mouseposition[] = mp
+        end
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    end
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that tooltips move with axis changes
+    Makie.xlims!(a, -4, 4)
+    Makie.ylims!(a, -3, 4)
+
+    Makie.step!(st)
+
+    # remove center tooltip
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.press)
+    wait_for_data_inspector(f, di) do
+        e.mouseposition[] = (210, 220)
+    end
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.press)
+    e.mousebutton[] = Makie.MouseButtonEvent(Mouse.left, Mouse.release)
+    e.keyboardbutton[] = Makie.KeyEvent(Keyboard.left_shift, Keyboard.release)
+
+    Makie.step!(st)
+
+    # check that model is included
+    translate!(p, 0, 1, 0)
+
+    Makie.step!(st)
+
+    st
+end
+
+@reference_test "DataInspector in log space" begin
+    attr_names = (:converted_1, :text, :visible, :placement, :model, :space)
+
+    f = Figure(size = (600, 500))
+    ax = Axis(f[1, 1], xscale = log10, yscale = log10)
+    ylims!(ax, 0.6, 2.5)
+    xlims!(ax, 0.008, 1.5)
+
+    rangebars!([0.01], [0.7], [2.2], linewidth = 5, color = :green)
+    errorbars!([0.014], [1.4], [0.7], linewidth = 5, color = :blue)
+    arrows2d!(Point2f(0.02, 0.7), Vec2f(0, 1.5))
+    arrows3d!(Point2f(0.03, 0.7), Vec2f(0, 1.5))
+    meshscatter!(0.05, 1.8, markersize = 0.1)
+
+    text!(0.05, 1.25, text = "0", fontsize = 20, align = (:center, :center))
+    scatter!(0.05, 1.1, markersize = 20)
+    barplot!([0.05], [1.0], fillto = 0.7, width = 0.01)
+    lines!([0.08, 0.08], [0.7, 2.2], linewidth = 10)
+    linesegments!([0.12, 0.12], [0.7, 2.2], linewidth = 10)
+
+    heatmap!(0.24 .. 0.4, 1.7 .. 1.9, Resampler([1 2; 3 4]))
+    image!(0.15 .. 0.5, 1.3 .. 1.5, [1 2; 3 4], colormap = :viridis)
+    heatmap!(0.24 .. 0.4, 1.1 .. 1.2, [1 2; 3 4])
+    surface!(0.15 .. 0.5, 0.85 .. 1.0, [1 1; 0 0; 1 1], shading = NoShading)
+    mesh!(Rect2f(0.15, 0.7, 0.5, 0.1))
+
+    violin!(fill(1, 100), 1.5 .+ 0.5 .* sin.(1:100))
+
+    f
+
+    di = DataInspector(ax)
+    colorbuffer(f)
+    e = events(f)
+
+    # One per plot, in order
+    mpos = [
+        (82, 325), (116, 325),
+        (152, 350), (192, 350),
+        (243, 380), (243, 270), (243, 230), (243, 180),
+        (290, 325), (331, 325),
+        (430, 400), (430, 300), (420, 250), (430, 170), (430, 110),
+        (570, 300),
+    ]
+    indicator_indices = [5, 8, 11, 12, 13, 15]
+    states = Any[(Point{3, Float64}[[-2.0, 0.16136800223497494, 0.0]], "0.700 .. 2.200", true, :right, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.853871964321762, 0.146128035678238, 0.0]], "±0.700", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.698970014043257, 0.0937603555436011, 0.0]], "(0.020000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.5228787549875757, 0.0937603555436011, 0.0]], "(0.030000, 1.241)\n(0, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.25527250510330607, 0.0]], "(0.050000, 1.800)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.09691001300805642, 0.0]], "(0.050000, 1.250)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.04139268515822508, 0.0]], "(0.050000, 1.100)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.3010299956639813, 0.0, 0.0]], "(0.050000, 1.000)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-1.0969100130080565, 0.175988612545332, 0.0]], "(0.080000, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.9208187539523752, 0.175988612545332, 0.0]], "(0.120, 1.500)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.438039094209671, 0.2768024802207947, 0.0]], "4.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, 0.14109061658382416, 0.0]], "2.913", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.6197887659072876, 0.0791812613606453, 0.0]], "2.000", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.49192829634113217, -0.04037907175276083, 0.01135124173015356]], "(0.322, 0.911, 0.011351)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[-0.4919283092021942, -0.12413430958986282, 0.0]], "(0.322, 0.751)", true, :above, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data), (Point{3, Float64}[[0.10839772969484329, 0.14109061658382416, 0.0]], "0.687", true, :left, [1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 1.0 0.0; 0.0 0.0 0.0 1.0], :data)]
+
+    st = Makie.Stepper(f)
+
+    for i in eachindex(mpos)
+        mp = mpos[i]
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(f.scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
+
+        wait_for_data_inspector(f.scene, di, true) do
+            e.mouseposition[] = mp
+        end
+
+        # collect_di_state!(states, di, attr_names)
+        test_di_state(di, states[i], attr_names)
+
+        if i in indicator_indices
+            Makie.step!(st)
+        else
+            # if this is false we skipped a plot that uses indicators
+            @test all(p -> !p.visible[], values(di.indicator_cache))
+        end
     end
 
     st
