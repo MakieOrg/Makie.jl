@@ -12,8 +12,8 @@ end
 
 function free(x::RenderInstructions)
     free(x.vertexarray)
-    # These are cached and freed when the cache is cleared/deleted
-    # free(x.program)
+    # Programs are cached in the ShaderCache and freed there. Freeing them here
+    # would break things
     return
 end
 
@@ -186,25 +186,16 @@ function RenderObject(context, data::Dict{Symbol, Any})
         end
     end
 
-    # remove all uniforms not occurring in shader
-    # ssao, instances transparency are special for rendering passes. TODO do this more cleanly
-    # special = Set([:ssao, :transparency, :instances, :fxaa, :num_clip_planes])
-    # for k in setdiff(keys(data), keys(program.nametype))
-    #     if !(k in special)
-    #         !haskey(buffers, k) && (data[k] isa GPUArray) && free(data[k])
-    #         delete!(data, k)
-    #     end
-    # end
+    instances = pop!(data, :instances, nothing)
+    primitive = pop!(data, :gl_primitive, GL_TRIANGLES)
+
+    # remove non-uniform elements from data
+    # most of this should happen before creating the render object
     for k in keys(buffers)
         delete!(data, k)
     end
-
-    # overdraw, transparency, ssao, fxaa, shading
-    cleanup = [:indices, :doc_string]
+    cleanup = [:indices, :doc_string] # maybe also: overdraw, transparency, ssao, shading?
     foreach(key -> pop!(data, key, nothing), cleanup)
-
-    instances = pop!(data, :instances, nothing)
-    primitive = pop!(data, :gl_primitive, GL_TRIANGLES)
 
     robj = RenderObject(context, visible, buffers, indices, instances, primitive, data, observables)
 
