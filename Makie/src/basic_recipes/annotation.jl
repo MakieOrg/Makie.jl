@@ -243,7 +243,7 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
     #   a per-glyph index anymore. Probably better to rework text.positions pipeline here...
 
     text_bbs = lift(
-            p, txt.text_blocks, txt.positions, labelpositions, scene.viewport, scene.camera.projectionview, p.labelspace, transform_func(p)
+        p, txt.text_blocks, txt.positions, labelpositions, scene.viewport, scene.camera.projectionview, p.labelspace, transform_func(p)
     ) do _, tpos, lpos, _, _, labelspace, _
         string_bbs = Rect2f.(fast_string_boundingboxes(txt))
         @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0, 0))
