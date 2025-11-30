@@ -839,6 +839,10 @@ where both scripts are right-aligned against the following text.
 """
 left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 
+Base.:*(x::RichText, y::AbstractString) = rich(x, y)
+Base.:*(x::AbstractString, y::RichText) = rich(x, y)
+Base.:*(x::RichText, y::RichText) = rich(x, y)
+
 export rich, subscript, superscript, subsup, left_subsup
 
 struct GlyphState
