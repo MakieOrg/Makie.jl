@@ -195,21 +195,18 @@ function create_shape_path!(ctx, r::Rect2)
 end
 
 function create_shape_path!(ctx, b::BezierPath)
-    N = length(b.commands)
-    N == 0 && return
-    cmd = first(b.commands)
-    !isa(cmd, MoveTo) && return
-    p2 = p1 = cmd.p
-    for (i, cmd) in enumerate(b.commands)
+    isempty(b.commands) && return
+    if !isa(first(b.commands), MoveTo)
+        error("The first command in a BezierPath must be `MoveTo`, but is $(first(b.commands)).")
+    end
+
+    for cmd in b.commands
         path_command(ctx, cmd)
-        if i == N
-            if !isa(cmd, ClosePath)
-                p2 = Makie.endpoint(cmd)
-                if p1 ≈ p2
-                    Cairo.close_path(ctx)
-                end
-            end
-        end
+    end
+
+    # match W/GLMakie
+    if !isa(last(b.commands), ClosePath)
+        Cairo.close_path(ctx)
     end
     return
 end

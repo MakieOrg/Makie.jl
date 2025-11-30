@@ -44,29 +44,14 @@ function draw_lineplot(ctx, attributes)
         isodd(length(pattern)) && push!(pattern, 0)
         Cairo.set_dash(ctx, pattern)
     end
+
     # linecap
-    if linecap == 1
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_SQUARE)
-    elseif linecap == 2
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-    elseif linecap == 0
-        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
-    else
-        error("$linecap is not a valid linecap. Valid: 0 (:butt), 1 (:square), 2 (:round)")
-    end
+    Cairo.set_line_cap(ctx, to_cairo_linecap(linecap))
 
     miter_angle = is_lines_plot ? miter_limit : 2pi / 3
-    set_miter_limit(ctx, 2.0 * Makie.miter_angle_to_distance(miter_angle))
+    set_miter_limit(ctx, to_cairo_miter_limit(miter_angle))
     joinstyle = is_lines_plot ? attributes.joinstyle : 0
-    if joinstyle == 2
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
-    elseif joinstyle == 3
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_BEVEL)
-    elseif joinstyle == 0
-        Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_MITER)
-    else
-        error("$joinstyle is not a valid linecap. Valid: 0 (:miter), 2 (:round), 3 (:bevel)")
-    end
+    Cairo.set_line_join(ctx, to_cairo_joinstyle(joinstyle))
 
     # TODO, how do we allow this conversion?s
     # if is_lines_plot && to_value(plot.attributes) isa BezierPath
