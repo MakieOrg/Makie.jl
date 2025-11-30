@@ -110,7 +110,11 @@ function draw_poly(
     set_miter_limit(screen.context, miter_limit)
     Cairo.set_line_join(screen.context, joinstyle)
     Cairo.set_line_cap(screen.context, linecap)
-    isnothing(strokestyle) || Cairo.set_dash(screen.context, diff(Float64.(strokestyle)) .* strokewidth)
+
+    pattern = to_cairo_linestyle(strokestyle, strokewidth)
+    if !isnothing(pattern)
+        Cairo.set_dash(screen.context, pattern)
+    end
     Cairo.stroke(screen.context)
     return
 end
@@ -161,7 +165,10 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
         create_shape_path!(screen.context, shape)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
-        isnothing(linestyle_diffed) || Cairo.set_dash(screen.context, linestyle_diffed .* sw)
+        pattern = to_cairo_linestyle(linestyle, sw)
+        if !isnothing(pattern)
+            Cairo.set_dash(screen.context, pattern)
+        end
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         set_miter_limit(screen.context, miter_limit)
@@ -252,12 +259,16 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
     linecap = to_cairo_linecap(poly.linecap[])
 
-    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do po, c, sc, ss, sw
+    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
         polypath(screen.context, po)
         set_source(screen.context, c)
         Cairo.fill_preserve(screen.context)
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
+        pattern = to_cairo_linestyle(strokestyle, sw)
+        if !isnothing(pattern)
+            Cairo.set_dash(screen.context, pattern)
+        end
         set_miter_limit(screen.context, miter_limit)
         Cairo.set_line_join(screen.context, joinstyle)
         Cairo.set_line_cap(screen.context, linecap)
@@ -284,14 +295,17 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     miter_limit = to_cairo_miter_limit(poly.miter_limit[])
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
     linecap = to_cairo_linecap(poly.linecap[])
-    broadcast_foreach(projected_polys, color, strokecolor, strokestyle, poly.strokewidth[]) do mpo, c, sc, ss, sw
+    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
         for po in mpo.polygons
             polypath(screen.context, po)
             set_source(screen.context, c)
             Cairo.fill_preserve(screen.context)
             set_source(screen.context, sc)
-            isnothing(ss) || Cairo.set_dash(screen.context, diff(Float64.(ss)) .* sw)
             Cairo.set_line_width(screen.context, sw)
+            pattern = to_cairo_linestyle(strokestyle, sw)
+            if !isnothing(pattern)
+                Cairo.set_dash(screen.context, pattern)
+            end
             set_miter_limit(screen.context, miter_limit)
             Cairo.set_line_join(screen.context, joinstyle)
             Cairo.set_line_cap(screen.context, linecap)

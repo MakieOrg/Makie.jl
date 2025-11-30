@@ -31,17 +31,8 @@ function draw_lineplot(ctx, attributes)
     linecap = attributes.linecap
 
     # The linestyle can be set globally, as we do here.
-    # However, there is a discrepancy between Makie
-    # and Cairo when it comes to linestyles.
-    # For Makie, the linestyle array is cumulative,
-    # and defines the "absolute" endpoints of segments.
-    # However, for Cairo, each value provides the length of
-    # alternate "on" and "off" portions of the stroke.
-    # Therefore, we take the diff of the given linestyle,
-    # to convert the "absolute" coordinates into "relative" ones.
-    if !isnothing(linestyle) && !(linewidth isa AbstractArray)
-        pattern = diff(Float64.(linestyle)) .* linewidth
-        isodd(length(pattern)) && push!(pattern, 0)
+    pattern = to_cairo_linestyle(linestyle, linewidth)
+    if !isnothing(pattern)
         Cairo.set_dash(ctx, pattern)
     end
 
@@ -74,9 +65,7 @@ function draw_lineplot(ctx, attributes)
         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
         draw_single(is_lines_plot, ctx, positions)
     end
-    return if !isnothing(linestyle)
-        Cairo.set_dash(ctx, Float64[])  # Reset dash pattern
-    end
+    return
 end
 
 
