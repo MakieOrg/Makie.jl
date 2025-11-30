@@ -67,6 +67,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
+    pattern = Cairo.CairoPatternMesh()
     for i in indices
         c1, c2, c3 = per_face_cols[i]
         t1, t2, t3 = vs[fs[i]] #triangle points
@@ -75,8 +76,6 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         if isnan(t1) || isnan(t2) || isnan(t3)
             continue
         end
-
-        pattern = Cairo.CairoPatternMesh()
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -89,13 +88,13 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
-        Cairo.destroy(pattern)
-        # Reset any lingering pattern state
-        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
     end
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    Cairo.destroy(pattern)
+    # Reset any lingering pattern state
+    Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
     return nothing
 end
 
