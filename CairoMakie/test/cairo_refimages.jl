@@ -71,7 +71,7 @@ end
 @reference_test "poly fast paths - miter limits" begin
     build_poly_refimg(
         identity,
-        joinstyle = :miter, miter_limit = 2pi/3,
+        joinstyle = :miter, miter_limit = 2pi / 3,
         strokewidth = 10, strokecolor = :black
     )
 end

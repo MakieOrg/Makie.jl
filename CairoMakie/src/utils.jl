@@ -339,7 +339,7 @@ end
 to_cairo_linestyle(::Nothing, ::Any) = nothing
 to_cairo_linestyle(::AbstractVector, ::AbstractArray) = nothing
 function to_cairo_linestyle(linestyle::AbstractVector, linewidth::Real)
-# There is a discrepancy between Makie and Cairo when it comes to linestyles.
+    # There is a discrepancy between Makie and Cairo when it comes to linestyles.
     # For Makie, the linestyle array is cumulative, and defines the "absolute"
     # endpoints of segments. However, for Cairo, each value provides the length of
     # alternate "on" and "off" portions of the stroke. Therefore, we take the
