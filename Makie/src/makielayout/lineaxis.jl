@@ -450,7 +450,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     end
 
     tickpositions = Observable(Point2f[]; ignore_equal_values = true)
-    tickstrings = Observable(Any[]; ignore_equal_values = true)
+    tickstrings = Observable(Any[]; ignore_equal_values = false)
 
     onany(
         update_tickpos_string, parent,
