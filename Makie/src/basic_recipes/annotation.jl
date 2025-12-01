@@ -65,7 +65,7 @@ If no label positions are given, they will be determined automatically such
 that overlaps between labels and data points are reduced. In this mode, the labels should
 be very close to their associated data points so connection plots are typically not visible.
 """
-@recipe Annotation begin
+@recipe Annotation (label_offsets_or_positions::Vector{<:Vec2}, target_positions::Vector{<:Point2}) begin
     """
     The color of the text labels. If `automatic`, `textcolor` matches `color`.
     """
@@ -104,12 +104,12 @@ be very close to their associated data points so connection plots are typically 
     lineheight = 1.0
     """
     One path type or an array of path types that determine how to connect each label to its point.
-    Suitable objects can be found in the module `Makie.Ann.Paths`.
+    Suitable objects can be found in the module `Ann.Paths`.
     """
     path = Ann.Paths.Line()
     """
     One style object or an array of style objects that determine how the path from a label to its point
-    is visualized. Suitable objects can be found in the module `Makie.Ann.Styles`.
+    is visualized. Suitable objects can be found in the module `Ann.Styles`.
     """
     style = automatic
     """
@@ -167,58 +167,53 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
-    return ([Vec4d(NaN, NaN, x, y)],)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
+    return [Vec2d(NaN)], [Vec2d(x, y)]
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
-    return ([Vec4d(NaN, NaN, p...)],)
+function convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+    return [Vec2d(NaN)], [Point2d(p...)]
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
-    return ([Vec4d(x, y, x2, y2)],)
+function convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2::Real)
+    return [Vec2d(x, y)], [Point2d(x2, y2)]
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
-    return ([Vec4d(p1..., p2...)],)
+function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+    return [Vec2d(p1...)], [Point2d(p2...)]
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
-    return (Vec4d.(NaN, NaN, getindex.(v, 1), getindex.(v, 2)),)
+function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
+    N = length(v)
+    return fill(Vec2d(NaN), N), Point2d.(getindex.(v, 1), getindex.(v, 2))
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
-    return (Vec4d.(getindex.(v1, 1), getindex.(v1, 2), getindex.(v2, 1), getindex.(v2, 2)),)
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+    return Vec2d.(getindex.(v1, 1), getindex.(v1, 2)), Point2d.(getindex.(v2, 1), getindex.(v2, 2))
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
-    return (Vec4d.(NaN, NaN, v1, v2),)
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real})
+    N = length(v1)
+    return fill(Vec2d(NaN), N), Point2d.(v1, v2)
 end
 
-function Makie.convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
-    return (Vec4d.(v1, v2, v3, v4),)
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2::AbstractVector{<:Real}, v3::AbstractVector{<:Real}, v4::AbstractVector{<:Real})
+    return Vec2d.(v1, v2), Point2d.(v3, v4)
 end
 
-function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
-    scene = Makie.get_scene(p)
+function plot!(p::Annotation)
+    # Used as an initial input, updated later
+    offsets = zeros(Vec2f, length(p.target_positions[]))
 
-    textpositions = lift(p[1]) do vecs
-        Point2d.(getindex.(vecs, 3), getindex.(vecs, 4))
-    end
-
-    offsets = Observable(zeros(Vec2f, length(textpositions[])))
-    textcolor = Observable{Any}()
-    map!(textcolor, p.textcolor, p.color) do tc, c
-        tc === automatic ? c : tc
-    end
+    map!(default_automatic, p, [:textcolor, :color], :computed_textcolor)
 
     txt = text!(
         p,
-        textpositions;
+        p.target_positions;
         text = p.text,
         align = p.align,
         offset = offsets,
-        color = textcolor,
+        color = p.computed_textcolor,
         font = p.font,
         fonts = p.fonts,
         fontsize = p.fontsize,
@@ -227,89 +222,101 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         visible = p.visible,
     )
 
-    screenpoints_target = Ref{Vector{Point2f}}()
-    screenpoints_label = Ref{Vector{Point2f}}()
+    # text bounding boxes per string, excluding `offsets` (including them here
+    # would error when input lengths change as they do not get resized beforehand)
+    register_raw_string_boundingboxes!(txt)
 
-    # TODO:
-    # This needs some more reworking. Problems:
-    # - fast_string_boundingboxes_obs() includes offset, so it will update too much
-    #   - specifically the recursion will trigger this
-    # - string_boundingboxes_obs() would be better to use since it includes points already, but
-    #   we'd duplicate the project() code or we'd have to filter out the correct positions from
-    #   txt.markerspace_positions with text_blocks, which is risky as empty strings don't refer to
-    #   a per-glyph index anymore. Probably better to rework text.positions pipeline here...
+    add_constant!(p.attributes, :space, :data)
+    register_projected_positions!(
+        p, Point2f, input_name = :target_positions,
+        output_name = :screenpoints_target, output_space = :pixel
+    )
 
-    text_bbs = lift(p, txt.text_blocks, scene.viewport, scene.camera.projectionview, p.labelspace, transform_func(p)) do _, _, _, labelspace, _
-        string_bbs = Rect2f.(fast_string_boundingboxes(txt))
-        @. string_bbs = ifelse(isfinite_rect(string_bbs), string_bbs, Rect2f(offsets[], 0, 0))
-        points = plot_to_screen(p, textpositions[])
-        screenpoints_target[] = points
-        screenpoints_label[] = if labelspace === :data
-            plot_to_screen(p, Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2)))
-        elseif labelspace === :relative_pixel
-            points .+ Point2d.(getindex.(p[1][], 1), getindex.(p[1][], 2))
+    # still without offset
+    map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
+        return Rect2d.(bboxes) .+ px_pos
+    end
+
+    register_camera_matrix!(p, :data, :pixel)
+    inputs = [
+        :screenpoints_target, :labelspace, :label_offsets_or_positions,
+        :world_to_pixel, :f32c, :model, :transform_func
+    ]
+    register_computation!(
+        p.attributes, inputs, [:screenpoints_label]
+    ) do (tps, space, loffpos, proj, f32c, model, tf), changed, cached
+        if space === :relative_pixel
+            if isnothing(cached) || changed[1] || changed[2] || changed[3]
+                return (tps .+ loffpos, )
+            else
+                # Skip updates from camera and transform func
+                return (nothing, )
+            end
         else
-            error("Invalid `labelspace` $(repr(labelspace)). Valid options are `:relative_pixel` and `:data`.")
+            transformed_label_pos = apply_transform(tf, loffpos)
+            f32c_mat = f32_convert_matrix(f32c)
+            return (_project(Point2f, proj * f32c_mat * model, transformed_label_pos), )
         end
-        return string_bbs .- offsets[] .+ points
     end
 
-    onany(text_bbs, p.algorithm, p.maxiter, p.labelspace; update = true) do text_bbs, algorithm, maxiter, labelspace
+    add_input!(p.attributes, :viewport, parent_scene(p).compute[:viewport])
+    add_input!(p.attributes, :__advance_optimization, 0)
+
+    # To make offsets accessible in plot attributes and get good synchronization
+    # we create a compute node here and an Observable later
+    inputs = [
+        :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
+        :viewport, :labelspace, :maxiter, :__advance_optimization
+    ]
+    register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
+        # We should only advance if it's the only thing causing an update?
+        advance = sum(values(changed)) == 1 && changed.__advance_optimization
+
+        # Probably required when input sizes change?
+        offsets = isnothing(cached) ? Vec2f[] : cached[1]
+        resize!(offsets, length(args.screenpoints_target))
+
         calculate_best_offsets!(
-            algorithm,
-            offsets[],
-            screenpoints_target[],
-            screenpoints_label[],
-            text_bbs,
-            Rect2d((0, 0), scene.viewport[].widths);
-            labelspace,
-            maxiter,
-            reset = true, # start with zero offsets whenever text positions or texts change basically, so solutions are not influenced by previous ones
+            args.algorithm,
+            offsets,
+            args.screenpoints_target,
+            args.screenpoints_label,
+            args.text_bbs,
+            Rect2d((0, 0), widths(args.viewport));
+            labelspace = args.labelspace,
+            maxiter = ifelse(advance, args.__advance_optimization, args.maxiter),
+            # start with zero offsets whenever text positions or texts change
+            # basically, so solutions are not influenced by previous ones
+            # If we advance, keep offsets
+            reset = !advance,
         )
-        notify(offsets)
+
+        return (offsets,)
     end
 
-    p.__advance_optimization = 0
+    # create observable updating offsets in text plot
+    # This forces everything offsets rely on to update asap, before the backend pulls
+    on(offsets -> update!(txt, offset = offsets), p.offsets, update = true)
 
-    on(p.__advance_optimization) do advance_optimization
-        calculate_best_offsets!(
-            p.algorithm[],
-            offset[],
-            screenpoints_target[],
-            screenpoints_label[],
-            text_bbs[],
-            Rect2d((0, 0), scene.viewport[].widths);
-            labelspace = p.labelspace[],
-            maxiter = advance_optimization,
-            reset = false, # don't reset on advance_optimization so we can advance the same one frame by frame
-        )
-        notify(offsets)
-    end
-
-    plotspecs = lift(
-        p,
-        text_bbs,
-        p.path,
-        p.clipstart,
-        p.shrink,
-        p.style,
-        p.color,
-        p.linewidth,
-    ) do text_bbs, pth, clipstart, shrink, style, color, linewidth
+    inputs = [
+        :text_bbs, :screenpoints_target, :offsets, :path, :clipstart, :shrink,
+        :style, :color, :linewidth
+    ]
+    map!(p, inputs, :plotspecs) do text_bbs, points, offsets, path, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]
-        broadcast_foreach(text_bbs, screenpoints_target[], pth, clipstart, offsets[]) do text_bb, p2, conn, clipstart, offset
+        broadcast_foreach(text_bbs, points, clipstart, offsets) do text_bb, p2, clipstart, offset
             offset_bb = text_bb + offset
 
             p2 in offset_bb && return
-            p1 = startpoint(pth, offset_bb, p2)
-            path = connection_path(pth, p1, p2)
+            p1 = startpoint(path, offset_bb, p2)
+            _path = connection_path(path, p1, p2)
 
             clipstart = if clipstart === automatic
                 offset_bb
             else
                 clipstart
             end
-            clipped_path = clip_path_from_start(path, clipstart)
+            clipped_path = clip_path_from_start(_path, clipstart)
 
             shrunk_path = shrink_path(clipped_path, shrink)
 
@@ -318,11 +325,9 @@ function Makie.plot!(p::Annotation{<:Tuple{<:AbstractVector{<:Vec4}}})
         return specs
     end
 
-    plotlist!(
-        p,
-        plotspecs;
-        visible = p.visible[], # TODO: currently the observable doesn't seem to work here
-    )
+    # TODO: passing dynamic attributes doesn't work (visible)
+    plotlist!(p, p.plotspecs; visible = p.visible[])
+
     return p
 end
 
@@ -538,8 +543,8 @@ function startpoint(::Ann.Paths.Corner, text_bb, p2)
     return Point2d(x, y)
 end
 
-Makie.data_limits(p::Annotation) = Rect3f(Rect2f([Vec2f(x[3], x[4]) for x in p[1][]]))
-Makie.boundingbox(p::Annotation, space::Symbol = :data) = Makie.apply_transform_and_model(p, Makie.data_limits(p))
+data_limits(p::Annotation) = Rect3f(Rect2f(p.target_positions[]))
+boundingbox(p::Annotation, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function connection_path(::Ann.Paths.Line, p1, p2)
     return BezierPath(
@@ -966,7 +971,7 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
     end
 end
 
-annotation_style_plotspecs(::Makie.Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
+annotation_style_plotspecs(::Automatic, path, p1, p2; kwargs...) = annotation_style_plotspecs(Ann.Styles.Line(), path, p1, p2; kwargs...)
 
 function annotation_style_plotspecs(l::Ann.Styles.LineArrow, path::BezierPath, p1, p2; color, linewidth)
     length(path.commands) < 2 && return PlotSpec[]
@@ -1006,7 +1011,7 @@ function annotation_style_plotspecs(::Ann.Styles.Line, path::BezierPath, p1, p2;
     ]
 end
 
-_auto(x::Makie.Automatic, default) = default
+_auto(x::Automatic, default) = default
 _auto(x, default) = x
 
 shrinksize(other) = 0.0
@@ -1024,7 +1029,7 @@ function plotspecs(l::Ann.Arrows.Line, pos; rotation, color, linewidth)
     p1 = pos + dir1 * sidelen
     p2 = pos + dir2 * sidelen
     return [
-        Makie.PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
+        PlotSpec(:Lines, [p1, pos, p2]; space = :pixel, color, linewidth),
     ]
 end
 
@@ -1038,7 +1043,7 @@ function plotspecs(h::Ann.Arrows.Head, pos; rotation, color, linewidth)
 
     marker = BezierPath([MoveTo(0, 0), LineTo(p1), LineTo(p2), LineTo(p3), ClosePath()])
     return [
-        Makie.PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
+        PlotSpec(:Scatter, pos; space = :pixel, rotation, color, marker, markersize = len),
     ]
 end
 

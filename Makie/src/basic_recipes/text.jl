@@ -561,6 +561,47 @@ which need to be transformed to `markerspace`.
 glyph_boundingboxes(plot) = register_glyph_boundingboxes!(plot)[]::Vector{Rect3d}
 glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_boundingboxes!(plot))
 
+# target: rotation aware layouting, e.g. Axis ticks, Menu, ...
+function register_raw_string_boundingboxes!(plot)
+    if !haskey(plot.attributes, :raw_string_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices],
+            :raw_string_boundingboxes
+        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+
+            text_bbs = map(blocks) do idxs
+                output = Rect3d()
+                for i in idxs
+                    glyphbb = bbs[i]
+                    glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    output = update_boundingbox(output, ms_bb)
+                end
+                return output
+            end
+
+            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
+                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            return text_bbs
+        end
+    end
+    return plot.raw_string_boundingboxes
+end
+
+"""
+    raw_string_boundingboxes(plot::Text)
+
+Returns the markerspace string boundingboxes without including `positions` and `offset`.
+Rotation is included. Lines from LaTeXStrings are included.
+"""
+raw_string_boundingboxes(plot) = register_raw_string_boundingboxes!(plot)[]::Vector{Rect3d}
+raw_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_string_boundingboxes!(plot))
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_string_boundingboxes!(plot)
