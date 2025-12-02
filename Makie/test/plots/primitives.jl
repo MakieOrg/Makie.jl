@@ -116,3 +116,30 @@ end
     @test !any(isnan, p.x_transformed_f32c[])
     @test !any(isnan, p.y_transformed_f32c[])
 end
+
+@testset "Scatter" begin
+    @testset "marker updates" begin
+        img = fill(RGBf(1, 0, 0), 4, 4)
+        f, a, p = scatter(rand(Point2f, 10), marker = img)
+        Makie.all_marker_computations!(p.attributes)
+        @test p.image[] == img
+        img = fill(RGBf(0, 1, 0), 2, 2)
+        p.marker = img
+        @test p.image[] == img
+
+        imgs = [fill(RGBf(1, 0, 0), 4, 4), fill(RGBf(1, 0, 0), 4, 4)]
+        f, a, p = scatter(rand(Point2f, 2), marker = imgs)
+        Makie.all_marker_computations!(p.attributes)
+        @test p.image[] == imgs
+        img = [fill(RGBf(0, 1, 0), 2, 2), fill(RGBf(0, 1, 0), 2, 2)]
+        p.marker = imgs
+        @test p.image[] == imgs
+
+        # Should be consistent since we always add a-z to the texture atlas?
+        f, a, p = scatter(rand(Point2f, 2), marker = 'a')
+        Makie.all_marker_computations!(p.attributes)
+        @test p.sdf_uv[] == Vec4f(0.02758789, 0.8718262, 0.05444336, 0.90063477)
+        p.marker = 'b'
+        @test p.sdf_uv[] == Vec4f(0.02758789, 0.90112305, 0.053955078, 0.935791)
+    end
+end
