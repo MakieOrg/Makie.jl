@@ -193,3 +193,35 @@ end
         @test Makie.full_boundingbox(p) ≈ Rect3d(30.0, 20.00000011920929, 0.0, 77.78399991989136, 79.99999988079071, 0.0)
     end
 end
+    
+@testset "Rich Text equality" begin
+    for (a, b, c) in [
+            (rich("A", rich("B", color = :gray)), rich("A", rich("B", color = :gray)), rich("A", rich("B", color = :green))),
+            (
+                rich("Chemists use notations like ", left_subsup("92", "238"), "U or PO", subsup("4", "3−")),
+                rich("Chemists use notations like ", left_subsup("92", "238"), "U or PO", subsup("4", "3−")),
+                rich("Chemists use notations like ", "U or PO", subsup("4", "3−")),
+            ),
+            (
+                rich(
+                    "H", subscript("2"), "O is the formula for ",
+                    rich("water", color = :cornflowerblue, font = :italic)
+                ),
+                rich(
+                    "H", subscript("2"), "O is the formula for ",
+                    rich("water", color = :cornflowerblue, font = :italic)
+                ),
+                rich(
+                    "H", subscript("2"), "O is the formula for ",
+                    rich("water", color = :cornflowerblue, font = :bold)
+                ),
+
+            ),
+        ]
+        @test a == b
+        @test a != c
+        @test hash(a) == hash(b)
+        @test hash(b) != hash(c)
+        @test length(unique([a, b, c])) == 2
+    end
+end
