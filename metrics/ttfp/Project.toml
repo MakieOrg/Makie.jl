@@ -1,7 +1,8 @@
 [deps]
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
-GitHub = "bc5e4493-9b4d-5f90-b8aa-2b2bcaad7a26"
-HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
+AlgebraOfGraphics = "cbdf2221-f076-402e-a563-3d30da359d67"
+Bootstrap = "e28b5b4c-05e8-5b66-bc03-6f0c0a0a06e0"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"

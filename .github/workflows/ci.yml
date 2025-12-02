@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - sd/beta-20
   push:
     tags:
       - '*'
@@ -25,29 +24,33 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
+          - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Develop and test Makie
         shell: julia --project=monorepo {0}
         run: |
           using Pkg
           # dev mono repo versions
-          pkg"dev . ./MakieCore"
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./ComputePipeline"
           Pkg.test("Makie"; coverage=true)
 
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+        with:
+          directories: Makie/src
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info

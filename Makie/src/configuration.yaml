@@ -1,0 +1,55 @@
+theme:
+  palette:
+    color: wong
+    marker: ["circle", "xcross", "utriangle", "diamond", "dtriangle", "star8", "pentagon", "rect"]
+    linestyle: [nothing, "dash", "dot", "dashdot", "dashdotdot"]
+    side: ["left", "right"]
+  font: Dejavu Sans
+  backgroundcolor: white
+  color: black
+  colormap: viridis
+  marker: Circle
+  markersize: 5px
+  linestyle: nothing
+  resolution: automatic
+  visible: true
+  show_axis: true
+  scale_plot: true
+
+  SSAO:
+    enable: false
+    bias: 0.025 # z threshold for occlusion
+    radius: 0.5 # range of sample positions (in world space)
+    blur: 2 # A (2blur+1) by (2blur+1) range is used for blurring
+    N_samples: 64 # number of samples (requires shader reload)
+
+# Backend specific configuration
+# Can be set manually via Backend.activate!(; options...)
+# Backend.activate!() will use the following defaults:
+CairoMakie:
+  resolution: [500, 500]
+  # options: "svg", "png", "pdf", "eps"
+  type: png
+  # Only inline display in plotpane/IJulia/Pluto is supported right now
+  display: inline
+
+GLMakie:
+  resolution: [600, 600]
+  # When using display doesn't pause
+  # when inlining into e.g. Pluto, it pauses renderloop
+  pause_rendering: automatic
+  vsync: false
+  framerate: 30.0
+  float: false
+  focus_on_show: false
+  decorated: true
+  title: Makie
+  # Default opens a window
+  display: window
+
+WGLMakie:
+  listen_port: 9284
+  listen_url: 127.0.0.1
+  # options: browserdisplay, electron, plotpane
+  # automatic: depends on the IDE
+  display: automatic

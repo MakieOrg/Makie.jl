@@ -11,10 +11,10 @@ scatter(rand(4))
 
 In the REPL, this will open a browser tab, that will refresh on a new display.
 In VSCode, this should open in the plotpane.
-You can also embed plots in a JSServe webpage:
+You can also embed plots in a Bonito webpage:
 
 ```julia
-using JSServe
+using Bonito
 app = App() do session, request
     return DOM.div(
         DOM.h1("Some Makie Plots:"),
@@ -27,7 +27,7 @@ app = App() do session, request
     )
 end
 isdefined(Main, :server) && close(server)
-server = JSServe.Server(app, "127.0.0.1", 8082)
+server = Bonito.Server(app, "127.0.0.1", 8082)
 ```
 
 ## Sponsors

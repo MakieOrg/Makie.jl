@@ -4,7 +4,6 @@ if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@optle
     @eval Base.Experimental.@optlevel 0
 end
 
-# Write your package code here.
 using Test
 using MeshIO
 using FileIO
@@ -20,6 +19,7 @@ using ImageShow
 using Downloads: download
 
 # Deps for tests
+using Makie.ComputePipeline: ResolveException
 using CategoricalArrays
 using LinearAlgebra
 using Colors
@@ -27,9 +27,13 @@ using LaTeXStrings
 using GeometryBasics
 using DelimitedFiles
 using DelaunayTriangulation
+using SparseArrays
+using DynamicQuantities
+using StructArrays
+using Distributions
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
-loadasset(files...) = FileIO.load(assetpath(files...))
+using Makie: loadasset
 
 # The version in Images.jl throws an error... whyyyyy!?
 # TODO look into error!
@@ -37,8 +41,10 @@ using Images, FixedPointNumbers, Colors, ColorTypes
 
 include("database.jl")
 include("stable_rng.jl")
+include("compare_media.jl")
 include("runtests.jl")
 include("image_download.jl")
+include("cross_backend_scores.jl")
 
 export @include_reference_tests
 

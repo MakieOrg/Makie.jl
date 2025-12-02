@@ -24,42 +24,45 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
+          - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./CairoMakie ./ReferenceTests"
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: ReferenceImages_CairoMakie
-          path: ./CairoMakie/test/recorded_reference_images/
+          name: ReferenceImages_CairoMakie_${{ matrix.version }}
+          path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+        with:
+          directories: Makie/src
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -72,27 +75,29 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
+          - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
+      - uses: julia-actions/cache@v2
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./GLMakie ./ReferenceTests"
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         id: referencetests
         continue-on-error: true
@@ -100,32 +105,18 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: ReferenceImages_GLMakie
+          name: ReferenceImages_GLMakie_${{ matrix.version }}
           path: |
-            ./GLMakie/test/recorded_reference_images/
-      - name: Save number of missing refimages to file
-        if: matrix.version == '1'
-        env:
-          N_MISSING: ${{ steps.referencetests.outputs.n_missing_refimages }}
-          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-        run: |
-          mkdir -p ./n_missing
-          echo $N_MISSING > ./n_missing/n_missing_refimages
-          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
-      - name: Upload artifact with number of missing refimages
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
-        with:
-          name: n_missing_refimages
-          path: n_missing/
+            ./GLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+        with:
+          directories: Makie/src
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
 
@@ -136,42 +127,113 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.6'
-          - '1' # automatically expands to the latest stable 1.x release of Julia
+          - '1.10'
+          - '1'
         os:
-          - ubuntu-20.04
+          - ubuntu-latest
         arch:
           - x64
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v1
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - uses: julia-actions/cache@v2
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           # dev mono repo versions
-          pkg"dev . ./MakieCore ./WGLMakie ./ReferenceTests"
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
         run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
+          DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        if: matrix.version == '1'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: ReferenceImages_WGLMakie
-          path: ./WGLMakie/test/recorded_reference_images/
+          name: ReferenceImages_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/reference_images/
+      - name: Upload test Electron logs
+        uses: actions/upload-artifact@v5
+        with:
+          name: Electron_Logs_WGLMakie_${{ matrix.version }}
+          path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+        with:
+          directories: Makie/src
+      - uses: codecov/codecov-action@v5
         with:
           file: lcov.info
+
+  consolidation:
+    name: Merge artifacts
+    runs-on: ubuntu-latest
+    if: ${{ always() }} # run even if any of the three backend test jobs failed
+    needs: [cairomakie, glmakie, wglmakie]
+    steps:
+      - uses: actions/download-artifact@v6
+        with:
+          name: ReferenceImages_WGLMakie_1
+          path: ./ReferenceImages/WGLMakie
+      - uses: actions/download-artifact@v6
+        with:
+          name: ReferenceImages_CairoMakie_1
+          path: ./ReferenceImages/CairoMakie
+      - uses: actions/download-artifact@v6
+        with:
+          name: ReferenceImages_GLMakie_1
+          path: ./ReferenceImages/GLMakie
+      - name: Consolidate reference image folders
+        run: |
+          baseDir="./ReferenceImages"
+
+          # Create new top-level directory for combined files
+          mkdir -p "./ReferenceImagesCombined"
+
+          # Copy the reference folder from GLMakie, it's the same for all backends
+          cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
+
+          # Initialize empty files for concatenation
+          > "./ReferenceImagesCombined/scores.tsv"
+          > "./ReferenceImagesCombined/new_files.txt"
+
+          # Loop through the directories and concatenate the files, and copy recorded folders
+          for dir in WGLMakie CairoMakie GLMakie; do
+              # Concatenate scores.tsv, new_files.txt and missing_files.txt
+              cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
+              cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
+
+              # Copy recorded folder
+              mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
+              cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
+          done
+
+          echo "Files and folders have been successfully combined into ReferenceImagesCombined."
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ReferenceImages
+          path: ./ReferenceImagesCombined/
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v5
+        with:
+          name: n_missing_refimages
+          path: n_missing/

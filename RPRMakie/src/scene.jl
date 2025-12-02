@@ -5,17 +5,18 @@ function update_rpr_camera!(oldvals, camera, cam_controls, cam)
     c = cam_controls
     l, u, p, fov = c.lookat[], c.upvector[], c.eyeposition[], c.fov[]
     far, near, res = c.far[], c.near[], cam.resolution[]
-    fov = 45f0 # The current camera ignores fov updates
     new_vals = (; l, u, p, fov, far, near, res)
     new_vals == oldvals && return oldvals
     wd = norm(l - p)
     RPR.rprCameraSetSensorSize(camera, res...)
     RPR.rprCameraSetFocusDistance(camera, wd)
     lookat!(camera, p, l, u)
+    far = wd * 10
+    near = wd * 0.001
     RPR.rprCameraSetFarPlane(camera, far)
     RPR.rprCameraSetNearPlane(camera, near)
-    h = norm(res)
-    RPR.rprCameraSetFocalLength(camera, (30*h)/fov)
+    focal_length = res[2] / (2 * tand(fov / 2)) # fov is vertical
+    RPR.rprCameraSetFocalLength(camera, focal_length)
     # RPR_CAMERA_FSTOP
     # RPR_CAMERA_MODE
     return new_vals
@@ -27,11 +28,11 @@ function to_rpr_object(context, matsys, scene, plot)
 end
 
 function insert_plots!(context, matsys, scene, mscene::Makie.Scene, @nospecialize(plot::Plot))
-    if isempty(plot.plots) # if no plots inserted, this truly is an atomic
+    return if isempty(plot.plots) # if no plots inserted, this truly is an atomic
         object = to_rpr_object(context, matsys, mscene, plot)
         if !isnothing(object)
             if object isa AbstractVector
-                foreach(x-> push!(scene, x), object)
+                foreach(x -> push!(scene, x), object)
             else
                 push!(scene, object)
             end
@@ -48,12 +49,9 @@ to_rpr_light(ctx, rpr_scene, light, scene) = to_rpr_light(ctx, rpr_scene, light)
 # TODO attenuation
 function to_rpr_light(context::RPR.Context, matsys, light::Makie.PointLight)
     pointlight = RPR.PointLight(context)
-    map(light.position) do pos
-        transform!(pointlight, Makie.translationmatrix(pos))
-    end
-    map(light.color) do c
-        setradiantpower!(pointlight, red(c), green(c), blue(c))
-    end
+    transform!(pointlight, Makie.translationmatrix(light.position))
+    c = light.color
+    setradiantpower!(pointlight, red(c), green(c), blue(c))
     return pointlight
 end
 
@@ -66,19 +64,17 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.DirectionalLight, scene)
     directionallight = RPR.DirectionalLight(context)
-    map(light.direction) do dir
-        if light.camera_relative
-            T = inv(scene.camera.view[][Vec(1,2,3), Vec(1,2,3)])
-            dir = normalize(T * dir)
-        else
-            dir = normalize(dir)
-        end
-        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
-        transform!(directionallight, Makie.rotationmatrix4(quart))
+    dir = light.direction
+    if light.camera_relative
+        T = inv(scene.camera.view[][Vec(1, 2, 3), Vec(1, 2, 3)])
+        dir = normalize(T * dir)
+    else
+        dir = normalize(dir)
     end
-    map(light.color) do c
-        setradiantpower!(directionallight, red(c), green(c), blue(c))
-    end
+    quart = Makie.rotation_between(Vec3f(dir), Vec3f(0, 0, -1))
+    transform!(directionallight, Makie.rotationmatrix4(quart))
+    c = light.color
+    setradiantpower!(directionallight, red(c), green(c), blue(c))
     return directionallight
 end
 
@@ -103,7 +99,7 @@ end
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.SpotLight)
     spotlight = RPR.SpotLight(context)
     map(light.position, light.direction) do pos, dir
-        quart = Makie.rotation_between(dir, Vec3f(0,0,-1))
+        quart = Makie.rotation_between(dir, Vec3f(0, 0, -1))
         transform!(spotlight, Makie.translationmatrix(pos) * Makie.rotationmatrix4(quart))
     end
     map(light.color) do c
@@ -115,8 +111,8 @@ function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.SpotLight)
     return spotlight
 end
 
-function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.AmbientLight)
-    env_img = fill(light.color[], 1, 1)
+function to_rpr_light(context::RPR.Context, rpr_scene, color::Colorant)
+    env_img = fill(color, 1, 1)
     img = RPR.Image(context, env_img)
     env_light = RPR.EnvironmentLight(context)
     set!(env_light, img)
@@ -125,18 +121,26 @@ end
 
 function to_rpr_light(context::RPR.Context, rpr_scene, light::Makie.EnvironmentLight)
     env_light = RPR.EnvironmentLight(context)
-    last_img = RPR.Image(context, light.image[])
+    last_img = RPR.Image(context, light.image')
     set!(env_light, last_img)
     setintensityscale!(env_light, light.intensity[])
-    on(light.intensity) do i
-        setintensityscale!(env_light, i)
-    end
-    on(light.image) do img
-        new_img = RPR.Image(context, img)
-        set!(env_light, new_img)
-        RPR.release(last_img)
-        last_img = new_img
-    end
+    # exchange y and z axis to align Makie's and RPR's representations
+    flipmat = Makie.Mat4f(
+        1, 0, 0, 0,
+        0, 0, 1, 0,
+        0, 1, 0, 0,
+        0, 0, 0, 1,
+    )
+    transform!(env_light, flipmat)
+    # on(light.intensity) do i
+    #     setintensityscale!(env_light, i)
+    # end
+    # on(light.image) do img
+    #     new_img = RPR.Image(context, img)
+    #     set!(env_light, new_img)
+    #     RPR.release(last_img)
+    #     last_img = new_img
+    # end
     return env_light
 end
 
@@ -145,15 +149,19 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     set!(context, scene)
     # Only set background image if it isn't set by env light, since
     # background image takes precedence
-    if !any(x-> x isa Makie.EnvironmentLight, mscene.lights)
+    lights = mscene.compute.lights[]
+    if !any(x -> x isa Makie.EnvironmentLight, lights)
         env_img = fill(to_color(mscene.backgroundcolor[]), 1, 1)
         img = RPR.Image(context, env_img)
         RPR.rprSceneSetBackgroundImage(scene, img)
     end
-    for light in mscene.lights
+    for light in lights
+        @show typeof(light)
         rpr_light = to_rpr_light(context, scene, light, mscene)
         push!(scene, rpr_light)
     end
+    push!(scene, to_rpr_light(context, scene, mscene.compute.ambient_color[]))
+
 
     for plot in mscene.plots
         insert_plots!(context, matsys, scene, mscene, plot)
@@ -161,7 +169,7 @@ function to_rpr_scene(context::RPR.Context, matsys, mscene::Makie.Scene)
     return scene
 end
 
-function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Observable(nothing))
+function replace_scene_rpr!(scene::Makie.Scene, screen = Screen(scene); refresh = Observable(nothing))
     context = screen.context
     matsys = screen.matsys
     screen.scene = scene
@@ -193,14 +201,14 @@ function replace_scene_rpr!(scene::Makie.Scene, screen=Screen(scene); refresh=Ob
     task = @async while isopen(scene)
         t = time()
         cam_values = update_rpr_camera!(cam_values, camera, cam_controls, cam)
-        framebuffer2 = render(screen; clear=clear[], iterations=1)
+        framebuffer2 = render(screen; clear = clear[], iterations = 1)
         if clear[]
             clear[] = false
         end
         data = RPR.get_data(framebuffer2)
-        im[1] = reverse(reshape(data, screen.fb_size); dims=2)
+        im[1] = reverse(reshape(data, screen.fb_size); dims = 2)
         tframe = time() - t
-        to_sleep = (1/10) - tframe
+        to_sleep = (1 / 10) - tframe
         if to_sleep < 0.0
             yield()
         else
@@ -239,11 +247,11 @@ Base.size(screen::Screen) = screen.fb_size
 
 function Base.show(io::IO, ::MIME"image/png", screen::Screen)
     img = colorbuffer(screen)
-    FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
+    return FileIO.save(FileIO.Stream{FileIO.format"PNG"}(Makie.raw_io(io)), img)
 end
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
-    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+    context = RPR.Context(; resource = config.resource, plugin = config.plugin)
     screen.context = context
     screen.matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
@@ -252,7 +260,7 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig)
     return screen
 end
 
-function Screen(fb_size::NTuple{2,<:Integer}; screen_config...)
+function Screen(fb_size::NTuple{2, <:Integer}; screen_config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(screen_config))
     return Screen(fb_size, config)
 end
@@ -271,8 +279,8 @@ end
 Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
-function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
-    context = RPR.Context(; resource=config.resource, plugin=config.plugin)
+function Screen(fb_size::NTuple{2, <:Integer}, config::ScreenConfig)
+    context = RPR.Context(; resource = config.resource, plugin = config.plugin)
     matsys = RPR.MaterialSystem(context, 0)
     set_standard_tonemapping!(context)
     set!(context, RPR.RPR_CONTEXT_MAX_RECURSION, UInt(config.max_recursion))
@@ -282,10 +290,11 @@ function Screen(fb_size::NTuple{2,<:Integer}, config::ScreenConfig)
     return Screen(
         context, matsys, framebuffer1, framebuffer2, fb_size,
         nothing, false, nothing,
-        config.iterations, false)
+        config.iterations, false
+    )
 end
 
-function render(screen; clear=true, iterations=screen.iterations)
+function render(screen; clear = true, iterations = screen.iterations)
     context = screen.context
     fb_size = screen.fb_size
     framebuffer1 = screen.framebuffer1
@@ -309,19 +318,19 @@ function render(screen; clear=true, iterations=screen.iterations)
     return framebuffer2
 end
 
-function Makie.colorbuffer(screen::Screen)
+function Makie.colorbuffer(screen::Screen; figure = nothing)
     if !screen.setup_scene
-        display(screen, screen.scene)
+        display(screen, screen.scene; figure = figure)
     end
     data_1d = RPR.get_data(render(screen))
-    r = reverse(reshape(data_1d, screen.fb_size), dims=2)
+    r = reverse(reshape(data_1d, screen.fb_size), dims = 2)
     img = rotl90(r)
     return map(img) do color
-        RGB{Colors.N0f8}(mapc(x-> clamp(x, 0, 1), color))
+        RGB{Colors.N0f8}(mapc(x -> clamp(x, 0, 1), color))
     end
 end
 
-function Base.display(screen::Screen, scene::Scene; display_kw...)
+function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw...)
     screen.scene = scene
     rpr_scene = to_rpr_scene(screen.context, screen.matsys, scene)
     screen.rpr_scene = rpr_scene

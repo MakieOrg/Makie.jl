@@ -1,16 +1,17 @@
 function Base.show(io::IO, obj::RenderObject)
-    println(io, "RenderObject with ID: ", obj.id)
+    return print(io, "RenderObject(id = ", obj.id, ", visible = ", obj.visible, ")")
 end
 
 Base.getindex(obj::RenderObject, symbol::Symbol) = obj.uniforms[symbol]
 Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
+Base.haskey(obj::RenderObject, symbol::Symbol) = haskey(obj.uniforms, symbol)
 
 Base.getindex(obj::RenderObject, symbol::Symbol, x::Function) = getindex(obj, Val(symbol), x)
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x]
 Base.getindex(obj::RenderObject, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x]
 
-Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = setindex!(obj, value, Val(symbol), x)
-Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
+Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function) = setindex!(obj, value, Val(symbol), x)
+Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function) = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 
 """
@@ -30,11 +31,11 @@ function (sp::StandardPrerender)()
         glDepthFunc(GL_LEQUAL)
     end
 
-    # Disable cullface for now, untill all rendering code is corrected!
+    # Disable cullface for now, until all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
 
-    if sp.transparency[]
+    return if sp.transparency[]
         # disable depth buffer writing
         glDepthMask(GL_FALSE)
 
@@ -65,17 +66,17 @@ struct StandardPostrender
 end
 
 function (sp::StandardPostrender)()
-    render(sp.vao, sp.primitive)
+    return render(sp.vao, sp.primitive)
 end
 
-struct StandardPostrenderInstanced{T}
-    main::T
+struct StandardPostrenderInstanced
+    n_instances::Observable{Int}
     vao::GLVertexArray
     primitive::GLenum
 end
 
 function (sp::StandardPostrenderInstanced)()
-    renderinstanced(sp.vao, to_value(sp.main), sp.primitive)
+    return renderinstanced(sp.vao, sp.n_instances[], sp.primitive)
 end
 
 struct EmptyPrerender end

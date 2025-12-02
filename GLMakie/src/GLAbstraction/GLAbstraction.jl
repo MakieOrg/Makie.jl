@@ -6,6 +6,9 @@ using Makie
 using FixedPointNumbers
 using ColorTypes
 using ..GLMakie.GLFW
+using ..GLMakie: ShaderSource
+import ..GLMakie.Makie.ComputePipeline: update!
+import ..GLMakie: DEBUG
 using Printf
 using LinearAlgebra
 using Observables
@@ -16,6 +19,54 @@ using GeometryBasics: StaticVector
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
 import Base: merge, resize!, similar, length, getindex, setindex!
+
+# Debug tools
+const CONTEXT_LOCK1 = ReentrantLock()
+const CONTEXT_LOCK2 = ReentrantLock()
+
+# implemented in GLMakie/glwindow.jl
+function require_context_no_error(args...) end
+
+function require_context(ctx, current = ShaderAbstractions.current_context())
+    msg = require_context_no_error(ctx, current)
+    isnothing(msg) && return nothing
+    error(msg)
+end
+
+function gl_switch_context!(context = nothing)
+    return lock(CONTEXT_LOCK1) do
+        if isnothing(context)
+            ShaderAbstractions.switch_context!()
+        elseif ShaderAbstractions.context_alive(context)
+            ShaderAbstractions.switch_context!(context)
+        else
+            error("Switching to unalived context!")
+        end
+    end
+end
+
+function with_context(f, context)
+    if !ShaderAbstractions.context_alive(context)
+        error("Context is not alive anymore!")
+    end
+    old_ctx = nothing
+    lock(CONTEXT_LOCK1) do
+        CTX = ShaderAbstractions.ACTIVE_OPENGL_CONTEXT
+        old_ctx = isassigned(CTX) ? CTX[] : nothing
+        ShaderAbstractions.switch_context!(context)
+    end
+    return try
+        f()
+    finally
+        if isnothing(old_ctx) || !ShaderAbstractions.context_alive(old_ctx)
+            gl_switch_context!()
+        else
+            gl_switch_context!(old_ctx)
+        end
+    end
+end
+
+export require_context, with_context, gl_switch_context!
 
 include("AbstractGPUArray.jl")
 
@@ -40,9 +91,9 @@ import ModernGL.glGetShaderiv
 import ModernGL.glViewport
 import ModernGL.glScissor
 
+include("shaderabstraction.jl")
 include("GLUtils.jl")
 
-include("shaderabstraction.jl")
 include("GLTypes.jl")
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
@@ -52,7 +103,7 @@ export update!                  # updates a gpu array with a Julia array
 export gpu_data                 # gets the data of a gpu array as a Julia Array
 
 export RenderObject             # An object which holds all GPU handles and datastructes to ready for rendering by calling render(obj)
-export prerender!               # adds a function to a RenderObject, which gets executed befor setting the OpenGL render state
+export prerender!               # adds a function to a RenderObject, which gets executed before setting the OpenGL render state
 export postrender!              # adds a function to a RenderObject, which gets executed after setting the OpenGL render states
 export extract_renderable
 export set_arg!

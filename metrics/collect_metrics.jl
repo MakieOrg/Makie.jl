@@ -47,8 +47,9 @@ for metric_target in metric_targets
     glmakieversion = match(r"version = \"(.*?)\"", read("GLMakie/Project.toml", String))[1]
     cairomakieversion = match(r"version = \"(.*?)\"", read("CairoMakie/Project.toml", String))[1]
     commit_date = DateTime(
-        strip(String(read(`git show -s --format=%ci`)))[1:end-6],
-        "yyyy-mm-dd HH:MM:SS")
+        strip(String(read(`git show -s --format=%ci`)))[1:(end - 6)],
+        "yyyy-mm-dd HH:MM:SS"
+    )
 
     df = DataFrame()
     date = now()
@@ -65,7 +66,7 @@ for metric_target in metric_targets
 
             @everywhere i_proc begin
                 pkg"activate --temp"
-                pkg"dev . MakieCore GLMakie CairoMakie"
+                pkg"dev ./Makie GLMakie CairoMakie"
                 Pkg.precompile()
                 @timed begin end
             end
@@ -83,24 +84,26 @@ for metric_target in metric_targets
                     include_string(Main, p)
                 end
 
-                push!(df, (
-                    date = date,
-                    commit_date = commit_date,
-                    metric_target = metric_target,
-                    juliaversion = string(Sys.VERSION),
-                    makie = makieversion,
-                    glmakie = glmakieversion,
-                    cairomakie = cairomakieversion,
-                    name = partname,
-                    time = timing.time,
-                    allocations = timing.bytes,
-                    gc_time = timing.gctime,
-                ))
+                push!(
+                    df, (
+                        date = date,
+                        commit_date = commit_date,
+                        metric_target = metric_target,
+                        juliaversion = string(Sys.VERSION),
+                        makie = makieversion,
+                        glmakie = glmakieversion,
+                        cairomakie = cairomakieversion,
+                        name = partname,
+                        time = timing.time,
+                        allocations = timing.bytes,
+                        gc_time = timing.gctime,
+                    )
+                )
             end
 
         finally
             rmprocs(i_proc)
-        end    
+        end
     end
     append!(results, df, cols = :union)
 end

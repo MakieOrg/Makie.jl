@@ -1,9 +1,18 @@
+precision highp float;
+precision highp int;
+
 in vec2 frag_uv;
 in vec4 frag_color;
-flat in int sample_frag_color;
 
 in vec3 o_normal;
 in vec3 o_camdir;
+in float o_clip_distance[8];
+flat in uint frag_instance_id;
+
+uniform int uniform_num_clip_planes;
+uniform vec3 light_color;
+uniform vec3 ambient;
+uniform vec3 light_direction;
 
 // Smoothes out edge around 0 light intensity, see GLMakie
 float smooth_zero_max(float x) {
@@ -28,7 +37,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
         spec_coeff = 0.0;
 
     // final lighting model
-    return get_light_color() * vec3(
+    return light_color * vec3(
         get_diffuse() * diff_coeff * color +
         get_specular() * spec_coeff
     );
@@ -46,17 +55,25 @@ vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
     return frag_color;  // color not in uniform
 }
 
+vec2 apply_uv_transform(mat3 transform, vec2 uv){ return (transform * vec3(uv, 1)).xy; }
+vec2 apply_uv_transform(sampler2D transforms, vec2 uv){
+    // can't have matrices in a texture so we have 3x vec2 instead
+    mat3 transform;
+    transform[0] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 0, 0), 0).xy, 0);
+    transform[1] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 1, 0), 0).xy, 0);
+    transform[2] = vec3(texelFetch(transforms, ivec2(3 * int(frag_instance_id) + 2, 0), 0).xy, 0);
+    return (transform * vec3(uv, 1)).xy;
+}
+
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     if (get_pattern()) {
-        vec2 size = vec2(textureSize(color, 0));
-        vec2 pos = gl_FragCoord.xy;
-        return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+        vec2 pos = apply_uv_transform(wgl_uv_transform, gl_FragCoord.xy);
+        // vec2 pos = vec2(gl_FragCoord.xy) / vec2(textureSize(color, 0));
+        return texture(color, pos);
     } else {
         return texture(color, uv);
     }
 }
-
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
 vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     float cmin = colorrange.x;
@@ -64,9 +81,9 @@ vec4 get_color_from_cmap(float value, sampler2D color_map, vec2 colorrange) {
     if (value <= cmax && value >= cmin) {
         // in value range, continue!
     } else if (value < cmin) {
-        return get_lowclip();
+        return get_lowclip_color();
     } else if (value > cmax) {
-        return get_highclip();
+        return get_highclip_color();
     } else {
         // isnan is broken (of course) -.-
         // so if outside value range and not smaller/bigger min/max we assume NaN
@@ -87,7 +104,9 @@ vec4 get_color(bool color, vec2 uv, vec2 colorrange, sampler2D colormap){
         return frag_color;
     }
 }
-
+vec4 get_color(float value, vec2 uv, vec2 colorrange, sampler2D colormap) {
+    return get_color_from_cmap(value, colormap, colorrange);
+}
 vec4 get_color(sampler2D values, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(values, uv).x;
     return get_color_from_cmap(value, colormap, colorrange);
@@ -97,29 +116,57 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
 
-flat in uint frag_instance_id;
+vec2 encode_uint_to_float(uint value) {
+    float lower = float(value & 0xFFFFu) / 65535.0;
+    float upper = float(value >> 16u) / 65535.0;
+    return vec2(lower, upper);
+}
+
 vec4 pack_int(uint id, uint index) {
     vec4 unpack;
-    unpack.x = float((id & uint(0xff00)) >> 8) / 255.0;
-    unpack.y = float((id & uint(0x00ff)) >> 0) / 255.0;
-    unpack.z = float((index & uint(0xff00)) >> 8) / 255.0;
-    unpack.w = float((index & uint(0x00ff)) >> 0) / 255.0;
+    unpack.rg = encode_uint_to_float(id);
+    unpack.ba = encode_uint_to_float(index);
     return unpack;
 }
 
-void main() {
-    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
+// for picking indices in image, heatmap, surface
+uint picking_index_from_uv(sampler2D img, vec2 uv) {
+    ivec2 size = textureSize(img, 0);
+    ivec2 jl_idx = clamp(ivec2(uv * vec2(size)), ivec2(0), size-1);
+    uint idx = uint(jl_idx.x + jl_idx.y * size.x);
+    return idx;
+}
+
+// These should not get hit
+uint picking_index_from_uv(float img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(bool img, vec2 uv) {
+    return frag_instance_id;
+}
+uint picking_index_from_uv(vec3 img, vec2 uv) { return frag_instance_id; }
+uint picking_index_from_uv(vec4 img, vec2 uv) { return frag_instance_id; }
+
+void main()
+{
+    for (int i = 0; i < uniform_num_clip_planes; i++) {
+        if (o_clip_distance[i] < 0.0) {
+            discard;
+        }
+    }
+
+    vec4 real_color = get_color(uniform_color, frag_uv, get_uniform_colorrange(), uniform_colormap);
     vec3 shaded_color = real_color.rgb;
 
     if(get_shading()){
-        vec3 L = get_light_direction();
+        vec3 L = light_direction;
         vec3 N = normalize(o_normal);
         vec3 light = blinnphong(N, normalize(o_camdir), L, real_color.rgb);
-        shaded_color = get_ambient() * real_color.rgb + light;
+        shaded_color = ambient * real_color.rgb + light;
     }
 
-    if (picking) {
-        if (real_color.a > 0.1) {
+    if (picking && (real_color.a > 0.1)) {
+        if (PICKING_INDEX_FROM_UV) {
+            fragment_color = pack_int(object_id, picking_index_from_uv(uniform_color, frag_uv));
+        } else {
             fragment_color = pack_int(object_id, frag_instance_id);
         }
         return;

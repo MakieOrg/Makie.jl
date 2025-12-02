@@ -1,9 +1,9 @@
 <div align="center">
     <picture>
-      <source media="(prefers-color-scheme: dark)" 
-        srcset="/assets/makie_logo_canvas_dark.svg" >
-      <img alt="Makie.jl logo" 
-        src="/assets/makie_logo_canvas.svg" width="350">
+      <source media="(prefers-color-scheme: dark)"
+        srcset="/images/logo_with_text_dark.svg" >
+      <img alt="Makie.jl logo"
+        src="/images/logo_with_text.svg" height="100">
     </picture>
 </div>
 
@@ -14,12 +14,11 @@
 
 [![Build Status](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/MakieOrg/Makie.jl/actions/workflows/ci.yml?query=branch%3Amaster)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/MakieOrg/Makie.jl/blob/main/LICENSE)
-[![Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/Makie&label=Downloads)](https://pkgs.genieframework.com?packages=Makie)
+[![Downloads](https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Fmonthly_downloads%2FMakie&query=total_requests&suffix=%2Fmonth&label=Downloads)](http://juliapkgstats.com/pkg/Makie)
 
 [![JOSS][joss-img]][joss-url]
-[![Citation Badge](https://api.juleskreuer.eu/citation-badge.php?doi=10.21105/joss.03349)](https://juleskreuer.eu/projekte/citation-badge)
 
-[![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://julialang.social/@makie)
+[![Mastodon](https://img.shields.io/badge/-mastodon-%232B90D9?style=for-the-badge&logo=mastodon&logoColor=white)](https://mastodon.social/@makieorg)
 
 [![chat][discord-img]][discord-url]
 
@@ -76,7 +75,7 @@ Journal of Open Source Software, 6(65), 3349, https://doi.org/10.21105/joss.0334
 ```
 </details>
 
-or [Download the BibTeX file](./assets/DanischKrumbiegel2021.bibtex).
+or [Download the BibTeX file](./DanischKrumbiegel2021.bibtex).
 
 ## Community Channels
 
@@ -116,8 +115,9 @@ This makes it easier to change code across all packages.
 Therefore, dev'ing Makie almost works as with other Julia packages, just, that one needs to also dev the sub packages:
 
 ```julia
-]dev --local Makie # local will clone the repository at ./dev/Makie
-]dev dev/Makie/MakieCore dev/Makie/GLMakie dev/Makie/CairoMakie dev/Makie/WGLMakie dev/Makie/RPRMakie
+# local will clone the repository at ./dev/Makie
+# Pkg is smart enough to dev the backends at `/dev/Makie/GLMakie` for the below
+]dev --local Makie GLMakie CairoMakie WGLMakie RPRMakie
 ```
 
 To run the tests, you also should add:
@@ -139,11 +139,11 @@ fig = lines(x, x.^2; label = "Parabola",
     axis = (; xlabel = "x", ylabel = "y", title ="Title"),
     figure = (; size = (800,600), fontsize = 22))
 axislegend(; position = :lt)
-save("./assets/parabola.png", fig)
+save("./images/parabola.png", fig)
 fig
 ```
 
-<img src="./assets/parabola.png" width="600">
+<img src="./images/parabola.png" width="600">
 
 ### A more complex plot with unicode characters and LaTeX strings:
 [Similar to the one on this link](<https://github.com/gcalderone/Gnuplot.jl#a-slightly-more-complex-plot-with-unicode-on-x-tics>)
@@ -169,13 +169,13 @@ with_theme(palette = (; patchcolor = cgrad(cmap, alpha=0.45))) do
     band!(x, sin.(x), approx .+= -x .^ 7 / 5040; label = L"n = 3")
     limits!(-3.8, 3.8, -1.5, 1.5)
     axislegend(; position = :ct, backgroundcolor = (:white, 0.75), framecolor = :orange)
-    save("./assets/approxsin.png", fig, size = (800, 600))
+    save("./images/approxsin.png", fig, size = (800, 600))
     fig
 end
 ```
 </details>
 
-<img src="./assets/approxsin.png" width="600">
+<img src="./images/approxsin.png" width="600">
 
 ### Simple layout: Heatmap, contour and 3D surface plot
 
@@ -200,13 +200,13 @@ with_theme(colormap = cmap) do
     colsize!(fig.layout, 1, Aspect(1, 1.0))
     colsize!(fig.layout, 2, Aspect(1, 1.0))
     resize_to_layout!(fig)
-    save("./assets/simpleLayout.png", fig)
+    save("./images/simpleLayout.png", fig)
     fig
 end
 ```
 </details>
 
-<img src="./assets/simpleLayout.png" width="600">
+<img src="./images/simpleLayout.png" width="600">
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
@@ -218,11 +218,7 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 ](https://github.com/JuliaDynamics/InteractiveChaos.jl)
 
 
-You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the latest, outstanding examples:
-[![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
-
-
 ## Sponsors
 
-<img src="https://github.com/MakieOrg/Makie.jl/blob/master/assets/BMBF_gefoerdert_2017_en.jpg?raw=true" width="300"/>
+<img src="./images/BMBF_gefoerdert_2017_en.jpg" width="300"/>
 Förderkennzeichen: 01IS10S27, 2020

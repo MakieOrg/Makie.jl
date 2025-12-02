@@ -7,8 +7,8 @@ struct SelectionID{T <: Integer}
     id::T
     index::T
 end
-Base.convert(::Type{SelectionID{T}}, s::SelectionID) where T = SelectionID{T}(T(s.id), T(s.index))
-Base.zero(::Type{GLMakie.SelectionID{T}}) where T = SelectionID{T}(T(0), T(0))
+Base.convert(::Type{SelectionID{T}}, s::SelectionID) where {T} = SelectionID{T}(T(s.id), T(s.index))
+Base.zero(::Type{GLMakie.SelectionID{T}}) where {T} = SelectionID{T}(T(0), T(0))
 
 mutable struct GLFramebuffer
     resolution::Observable{NTuple{2, Int}}
@@ -25,16 +25,16 @@ Base.haskey(fb::GLFramebuffer, key::Symbol) = haskey(fb.buffers, key)
 Base.getindex(fb::GLFramebuffer, key::Symbol) = fb.buffer_ids[key] => fb.buffers[key]
 
 function getfallback(fb::GLFramebuffer, key::Symbol, fallback_key::Symbol)
-    haskey(fb, key) ? fb[key] : fb[fallback_key]
+    return haskey(fb, key) ? fb[key] : fb[fallback_key]
 end
 
 
-function attach_framebuffer(t::Texture{T, 2}, attachment) where T
-    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
+function attach_framebuffer(t::Texture{T, 2}, attachment) where {T}
+    return glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
 
 # attach texture as color attachment with automatic id picking
-function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where T
+function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) where {T}
     if haskey(fb.buffer_ids, key) || haskey(fb.buffers, key)
         error("Key $key already exists.")
     end
@@ -45,7 +45,7 @@ function attach_colorbuffer!(fb::GLFramebuffer, key::Symbol, t::Texture{T, 2}) w
             max_color_id = id
         end
     end
-    next_color_id = max_color_id + 0x1
+    next_color_id = max_color_id + 0x01
     if next_color_id > GL_COLOR_ATTACHMENT15
         error("Ran out of color buffers.")
     end
@@ -86,7 +86,10 @@ function check_framebuffer()
     return enum_to_error(status)
 end
 
-function GLFramebuffer(fb_size::NTuple{2, Int})
+Makie.@noconstprop function GLFramebuffer(context, fb_size::NTuple{2, Int})
+    gl_switch_context!(context)
+    require_context(context)
+
     # Create framebuffer
     frambuffer_id = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, frambuffer_id)
@@ -94,25 +97,25 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # Buffers we always need
     # Holds the image that eventually gets displayed
     color_buffer = Texture(
-        RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # Holds a (plot id, element id) for point picking
     objectid_buffer = Texture(
-        Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
     # holds depth and stencil values
     depth_buffer = Texture(
-        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
+        context, Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
         minfilter = :nearest, x_repeat = :clamp_to_edge,
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
     # Order Independent Transparency
     HDR_color_buffer = Texture(
-        RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
+        context, RGBA{Float16}, fb_size, minfilter = :linear, x_repeat = :clamp_to_edge
     )
     OIT_weight_buffer = Texture(
-        N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
+        context, N0f8, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge
     )
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
@@ -129,13 +132,13 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     # To allow adding postprocessors in various combinations we need to keep
     # track of the buffer ids that are already in use. We may also want to reuse
     # buffers so we give them names for easy fetching.
-    buffer_ids = Dict{Symbol,GLuint}(
-        :color    => GL_COLOR_ATTACHMENT0,
+    buffer_ids = Dict{Symbol, GLuint}(
+        :color => GL_COLOR_ATTACHMENT0,
         :objectid => GL_COLOR_ATTACHMENT1,
         :HDR_color => GL_COLOR_ATTACHMENT2,
         :OIT_weight => GL_COLOR_ATTACHMENT3,
-        :depth    => GL_DEPTH_ATTACHMENT,
-        :stencil  => GL_STENCIL_ATTACHMENT,
+        :depth => GL_DEPTH_ATTACHMENT,
+        :stencil => GL_STENCIL_ATTACHMENT,
     )
     buffers = Dict{Symbol, Texture}(
         :color => color_buffer,
@@ -153,8 +156,29 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )::GLFramebuffer
 end
 
+function destroy!(fb::GLFramebuffer)
+    fb.id == 0 && return
+    @assert !isempty(fb.buffers) "GLFramebuffer was cleared incorrectly (i.e. not by destroy!())"
+    ctx = first(values(fb.buffers)).context
+    with_context(ctx) do
+        for buff in values(fb.buffers)
+            GLAbstraction.free(buff)
+        end
+        empty!(fb.buffers)
+        # Only print error if the context is not alive/active
+        id = fb.id
+        fb.id = 0
+        if GLAbstraction.context_alive(ctx) && id > 0
+            glDeleteFramebuffers(1, Ref(id))
+        end
+    end
+    return
+end
+
 function Base.resize!(fb::GLFramebuffer, w::Int, h::Int)
     (w > 0 && h > 0 && (w, h) != size(fb)) || return
+    isempty(fb.buffers) && return # or error?
+    gl_switch_context!(first(values(fb.buffers)).context)
     for (name, buffer) in fb.buffers
         resize_nocopy!(buffer, (w, h))
     end
@@ -184,7 +208,7 @@ function MonitorProperties(monitor::GLFW.Monitor)
     dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
     videomode_supported = GLFW.GetVideoModes(monitor)
 
-    MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
+    return MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
 end
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
@@ -197,11 +221,24 @@ function GLContext()
 end
 
 function ShaderAbstractions.native_switch_context!(x::GLFW.Window)
-    GLFW.MakeContextCurrent(x)
+    return GLFW.MakeContextCurrent(x)
 end
 
 function ShaderAbstractions.native_context_alive(x::GLFW.Window)
-    GLFW.is_initialized() && !was_destroyed(x)
+    return GLFW.is_initialized() && !was_destroyed(x)
+end
+
+function check_context(ctx)
+    !GLFW.is_initialized() && return "GLFW is not initialized, and therefore $ctx is invalid."
+    was_destroyed(ctx) && return "Context $ctx has been destroyed."
+    return nothing
+end
+
+function GLAbstraction.require_context_no_error(ctx, current = ShaderAbstractions.current_context())
+    msg = check_context(ctx)
+    msg !== nothing && return msg
+    ctx !== current && return "Context $ctx must be current, but $current is."
+    return nothing
 end
 
 function destroy!(nw::GLFW.Window)
@@ -212,7 +249,7 @@ function destroy!(nw::GLFW.Window)
         GLFW.DestroyWindow(nw)
         nw.handle = C_NULL
     end
-    was_current && ShaderAbstractions.switch_context!()
+    return was_current && gl_switch_context!()
 end
 
 function window_size(nw::GLFW.Window)
@@ -228,7 +265,7 @@ function framebuffer_size(nw::GLFW.Window)
     return Tuple(GLFW.GetFramebufferSize(nw))
 end
 function scale_factor(nw::GLFW.Window)
-    was_destroyed(nw) && return 1f0
+    was_destroyed(nw) && return 1.0f0
     return minimum(GLFW.GetWindowContentScale(nw))
 end
 

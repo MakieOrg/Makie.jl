@@ -1,8 +1,8 @@
 function setup!(screen::Screen)
     glEnable(GL_SCISSOR_TEST)
-    if isopen(screen) && !isnothing(screen.root_scene)
+    if isopen(screen) && !isnothing(screen.scene)
         ppu = screen.px_per_unit[]
-        glScissor(0, 0, round.(Int, size(screen.root_scene) .* ppu)...)
+        glScissor(0, 0, round.(Int, size(screen.scene) .* ppu)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
         for (id, scene) in screen.screens
@@ -26,26 +26,32 @@ end
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen; resize_buffers=true)
+function render_frame(screen::Screen; resize_buffers = true)
+    isnothing(screen.scene) && return
+
     nw = to_native(screen)
-    ShaderAbstractions.switch_context!(nw)
+    gl_switch_context!(nw)
+    GLAbstraction.require_context(nw)
+
     function sortby(x)
         robj = x[3]
         plot = screen.cache2plot[robj.id]
         # TODO, use actual boundingbox
-        return Makie.zvalue2d(plot)
+        # ~7% faster than calling zvalue2d doing the same thing?
+        return Makie.transformationmatrix(plot)[][3, 4]
+        # return Makie.zvalue2d(plot)
     end
-    zvals = sortby.(screen.renderlist)
-    permute!(screen.renderlist, sortperm(zvals))
+
+    sort!(screen.renderlist; by = sortby)
 
     # NOTE
     # The transparent color buffer is reused by SSAO and FXAA. Changing the
     # render order here may introduce artifacts because of that.
 
     fb = screen.framebuffer
-    if resize_buffers && !isnothing(screen.root_scene)
+    if resize_buffers
         ppu = screen.px_per_unit[]
-        resize!(fb, round.(Int, ppu .* size(screen.root_scene))...)
+        resize!(fb, round.(Int, ppu .* size(screen.scene::Scene))...)
     end
 
     # prepare stencil (for sub-scenes)
@@ -98,6 +104,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     # transfer everything to the screen
     screen.postprocessors[4].render(screen)
 
+    GLAbstraction.require_context(nw)
+
     return
 end
 
@@ -121,6 +129,7 @@ function GLAbstraction.render(filter_elem_func, screen::Screen)
             ppu = screen.px_per_unit[]
             a = viewport(scene)[]
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
+            elem[:px_per_unit] = ppu
             render(elem)
         end
     catch e
