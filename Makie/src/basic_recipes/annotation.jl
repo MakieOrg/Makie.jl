@@ -425,9 +425,9 @@ function calculate_best_offsets!(
 end
 
 function calculate_best_offsets!(
-        algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2}, textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
-        maxiter::Union{Automatic, Int},
-        labelspace::Symbol,
+        algorithm::LabelRepel, offsets::Vector{<:Vec2}, textpositions::Vector{<:Point2},
+        textpositions_offset::Vector{<:Point2}, text_bbs::Vector{<:Rect2}, bbox::Rect2;
+        maxiter::Union{Automatic, Int}, labelspace::Symbol,
     )
 
     maxiter = maxiter === automatic ? 200 : maxiter
@@ -436,6 +436,17 @@ function calculate_best_offsets!(
         Rect2(bb.origin .- algorithm.padding, bb.widths .+ 2 * algorithm.padding)
     end
     offset_bbs = copy(padded_bbs)
+
+    # Bias everything towards the center so self-repelling forces move away from
+    # edges
+    if all(iszero, offsets)
+        center = minimum(bbox) .+ 0.5 .* widths(bbox)
+        for i in eachindex(offset_bbs)
+            bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
+            v = normalize(center - bb_center)
+            offsets[i] = v
+        end
+    end
 
     for _ in 1:maxiter
         offset_bbs .= padded_bbs .+ offsets
