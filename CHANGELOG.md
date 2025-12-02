@@ -6,6 +6,7 @@
 - Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
 - Fixed `poly(Rect2[...])` having float precision issues in CairoMakie [#5441](https://github.com/MakieOrg/Makie.jl/pull/5441)
 - Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
+- Fixed `poly!()` ignoring `linecap`, `joinstyle`, `miter_limit` and `linestyle` in CairoMakie [#5415](https://github.com/MakieOrg/Makie.jl/pull/5415)
 
 ## [0.24.7] - 2025-11-18
 

@@ -299,6 +299,60 @@ function set_source(ctx::Cairo.CairoContext, color::Colorant)
     return Cairo.set_source_rgba(ctx, rgbatuple(color)...)
 end
 
+#######################################
+#        Stroking properties          #
+#######################################
+
+function to_cairo_linecap(linecap_symb::Symbol)
+    linecap = Makie.convert_attribute(linecap_symb, key"linecap"())
+    return to_cairo_linecap(linecap)
+end
+function to_cairo_linecap(linecap)
+    if linecap == 1
+        return Cairo.CAIRO_LINE_CAP_SQUARE
+    elseif linecap == 2
+        return Cairo.CAIRO_LINE_CAP_ROUND
+    elseif linecap == 0
+        return Cairo.CAIRO_LINE_CAP_BUTT
+    else
+        error("$linecap is not a valid linecap. Valid: 0 (:butt), 1 (:square), 2 (:round)")
+    end
+end
+
+function to_cairo_joinstyle(joinstyle_symb::Symbol)
+    joinstyle = Makie.convert_attribute(joinstyle_symb, key"joinstyle"())
+    return to_cairo_joinstyle(joinstyle)
+end
+function to_cairo_joinstyle(joinstyle)
+    if joinstyle == 2
+        return Cairo.CAIRO_LINE_JOIN_ROUND
+    elseif joinstyle == 3
+        return Cairo.CAIRO_LINE_JOIN_BEVEL
+    elseif joinstyle == 0
+        return Cairo.CAIRO_LINE_JOIN_MITER
+    else
+        error("$joinstyle is not a valid linecap. Valid: 0 (:miter), 2 (:round), 3 (:bevel)")
+    end
+end
+
+function to_cairo_miter_limit(miter_limit)
+    return 2.0f0 * Makie.miter_angle_to_distance(miter_limit)
+end
+
+to_cairo_linestyle(::Nothing, ::Any) = nothing
+to_cairo_linestyle(::AbstractVector, ::AbstractArray) = nothing
+function to_cairo_linestyle(linestyle::AbstractVector, linewidth::Real)
+    # There is a discrepancy between Makie and Cairo when it comes to linestyles.
+    # For Makie, the linestyle array is cumulative, and defines the "absolute"
+    # endpoints of segments. However, for Cairo, each value provides the length of
+    # alternate "on" and "off" portions of the stroke. Therefore, we take the
+    # diff of the given linestyle, to convert the "absolute" coordinates into
+    # "relative" ones.
+    pattern = diff(Float64.(linestyle)) .* linewidth
+    isodd(length(pattern)) && push!(pattern, 0)
+    return pattern
+end
+
 ########################################
 #        Marker conversion API         #
 ########################################
