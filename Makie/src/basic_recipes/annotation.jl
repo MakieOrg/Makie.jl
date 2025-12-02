@@ -202,9 +202,6 @@ function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2:
 end
 
 function plot!(p::Annotation)
-    # Used as an initial input, updated later
-    offsets = zeros(Vec2f, length(p.target_positions[]))
-
     map!(default_automatic, p, [:textcolor, :color], :computed_textcolor)
 
     txt = text!(
@@ -212,7 +209,7 @@ function plot!(p::Annotation)
         p.target_positions;
         text = p.text,
         align = p.align,
-        offset = offsets,
+        offset = zeros(Vec2f, length(p.target_positions[])),
         color = p.computed_textcolor,
         font = p.font,
         fonts = p.fonts,
