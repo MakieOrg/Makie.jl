@@ -47,8 +47,7 @@ digraph MakieSceneGraph {
     graph [
         rankdir=TB,
         fontsize=10,
-        labelloc="t",
-        label="Conceptual Scene Graph Structure in Makie"
+        labelloc="t"
     ];
     node [shape=box, fontsize=10];
     Root [
@@ -81,7 +80,6 @@ digraph MakieSceneGraph {
     Axis1 -> PlotA;
     Axis1 -> PlotB;
 }
-
 ```
 
 ## [Plots](@id architecture_plots)
