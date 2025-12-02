@@ -444,7 +444,7 @@ function calculate_best_offsets!(
         for i in eachindex(offset_bbs)
             bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
             v = normalize(center - bb_center)
-            offsets[i] = v
+            offsets[i] = 0.01 * v
         end
     end
 
