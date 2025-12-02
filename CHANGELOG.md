@@ -8,6 +8,7 @@
 - Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
 - Fixed `scatter` markers not updating correctly [#5451](https://github.com/MakieOrg/Makie.jl/pull/5451)
 - Fixed `poly!()` ignoring `linecap`, `joinstyle`, `miter_limit` and `linestyle` in CairoMakie [#5415](https://github.com/MakieOrg/Makie.jl/pull/5415)
+- Translated  `annotation` to compute graph and fix resizing updates [#5448](https://github.com/MakieOrg/Makie.jl/pull/5448)
 
 ## [0.24.7] - 2025-11-18
 
