@@ -32,12 +32,12 @@ Typst_jll = "eb4b1da6-20f6-5c66-9826-fdb8ad410d0e"
 WGLMakie = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 
 [sources]
-CairoMakie = {path = "../CairoMakie"}
-ComputePipeline = {path = "../ComputePipeline"}
-GLMakie = {path = "../GLMakie"}
-Makie = {path = "../Makie"}
-RPRMakie = {path = "../RPRMakie"}
-WGLMakie = {path = "../WGLMakie"}
+CairoMakie = {path = "..\\CairoMakie"}
+ComputePipeline = {path = "..\\ComputePipeline"}
+GLMakie = {path = "..\\GLMakie"}
+Makie = {path = "..\\Makie"}
+RPRMakie = {path = "..\\RPRMakie"}
+WGLMakie = {path = "..\\WGLMakie"}
 
 [compat]
 DocumenterVitepress = "0.2.4"

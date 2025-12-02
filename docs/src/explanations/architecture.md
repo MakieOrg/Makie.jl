@@ -2,6 +2,8 @@
 
 The idea behind Makie is to describe complex plots as a composition of primitive building blocks. These primitives are rendered to GUI windows, bitmaps or vector graphics using one of Makie's backend packages.
 
+This page provides a deeper, architectural view of how Makie organizes this building blocks. It is not intended as introductory material; instead, it explains the underlying structure that makes layout, interaction, and rendering possible. 
+
 From an architecture perspective, the two most important objects in Makie are `Scene`s and `Plot`s.
 
 ## [Scenes](@id architecture_scenes)
@@ -35,6 +37,52 @@ digraph {
 Every `Scene` in Makie has a 3D camera (consisting of two 4x4 projection and view matrices) and is therefore 3D capable, although some scenes will have orthographic cameras set up which effectively make content look 2D.
 
 A given Makie backend can `display` or render a `Scene` by attaching it to a `[MakieBackend].Screen`. Usually the displayed `Scene` will be the root scene of a given scene graph but it doesn't have to be. The root `Scene` of the scene graph will also usually be held by a `Figure` object (more on `Figure`s below).
+
+
+To clarify how these Scene objects relate to one another at a structural level,
+the following diagram shows the conceptual hierarchy that Makie constructs when a Figure contains several axes and plots.
+
+```@graphviz
+digraph MakieSceneGraph {
+    graph [
+        rankdir=TB,
+        fontsize=10,
+        labelloc="t",
+        label="Conceptual Scene Graph Structure in Makie"
+    ];
+    node [shape=box, fontsize=10];
+    Root [
+        label="Root Scene (window / backend context)"
+    ];
+    Block [
+        label="Figure Block Scene (GridLayout for fig[*,*])"
+    ];
+    Axis1 [
+        label="Axis Scene (cam2d!, owns plots)"
+    ];
+    Axis2 [
+        label="Axis Scene (cam2d!, owns plots)"
+    ];
+    Colorbar [
+        label="Colorbar Scene (pixel-space scene)"
+    ];
+    PlotA [
+        label="Plot (scatter!)"
+    ];
+    PlotB [
+        label="Plot (lines!)"
+    ];
+    Root -> Block;
+
+    Block -> Axis1 [label="fig[1,1]"];
+    Block -> Axis2 [label="fig[1,2]"];
+    Block -> Colorbar [label="fig[1,3]"];
+
+    Axis1 -> PlotA;
+    Axis1 -> PlotB;
+}
+
+```
 
 ## [Plots](@id architecture_plots)
 
