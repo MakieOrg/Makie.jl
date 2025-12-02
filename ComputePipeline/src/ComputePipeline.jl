@@ -1315,6 +1315,63 @@ function unsafe_atomic_delete!(edge::ComputeEdge)
     return
 end
 
+
+is_initialized(node::Computed) = isdefined(node, :value) && isassigned(node.value)
+
+"""
+    unsafe_init!(node::Computed, value)
+
+Initializes a node to the given value. If this causes all outputs of the parent
+compute edge to be initialized, the edge will be initialized without calling its
+callback.
+
+This function makes no checks to confirm that the given value matches the type
+returned by the parent edge callback.
+"""
+function unsafe_init!(node::Computed, value)
+    if isdefined(node, :value)
+        error("Node already initialized.")
+    else
+        node.value = value isa RefValue ? value : RefValue(value)
+    end
+
+    edge = node.parent
+    if !all(is_initialized, edge.outputs)
+        return false
+    end
+
+    return lock(edge.graph.lock) do
+        # Resolve inputs first
+        foreach(_resolve!, edge.inputs)
+        edge.typed_edge[] = TypedEdge_no_call(edge)
+        edge.got_resolved[] = true
+        fill!(edge.inputs_dirty, false)
+        for dep in edge.dependents
+            mark_input_dirty!(edge, dep)
+        end
+        foreach(comp -> comp.dirty = false, edge.outputs)
+        return true
+    end
+end
+
+function TypedEdge_no_call(edge::ComputeEdge)
+    inputs = let
+        N = length(edge.inputs)
+        names = ntuple(i -> edge.inputs[i].name, N)
+        values = ntuple(i -> edge.inputs[i].value, N)
+        NamedTuple{names}(values)
+    end
+
+    outputs = let
+        N = length(edge.outputs)
+        names = ntuple(i -> edge.outputs[i].name, N)
+        values = ntuple(i -> edge.outputs[i].value, N)
+        NamedTuple{names}(values)
+    end
+
+    return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
 include("io.jl")
 
 export Computed, ComputeEdge
