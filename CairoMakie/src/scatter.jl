@@ -32,7 +32,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     attr = plot.attributes
     # input -> markerspace
     # TODO: We're doing per-string/glyphcollection work per glyph here
-    cairo_unclipped_indices!(attr)
+    cairo_unclipped_indices!(attr, :per_char_positions_transformed_f32c)
     Makie.register_positions_projected!(
         scene.compute, attr, Point3d;
         input_name = :positions_transformed_f32c, output_name = :positions_in_markerspace,
@@ -137,6 +137,8 @@ function draw_text(ctx, attr::NamedTuple)
     for (block_idx, glyph_indices) in enumerate(text_blocks)
         Cairo.save(ctx)  # Block save
 
+        glyph_pos = positions[block_idx]
+
         for glyph_idx in glyph_indices
             glyph_idx in valid_indices || continue
 
@@ -148,8 +150,6 @@ function draw_text(ctx, attr::NamedTuple)
             strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
             scale = Makie.sv_getindex(text_scales, glyph_idx)
-
-            glyph_pos = positions[glyph_idx]
 
             # Not renderable by font (e.g. '\n')
             glyph == 0 && continue
@@ -193,10 +193,10 @@ function draw_text(ctx, attr::NamedTuple)
     return
 end
 
-function cairo_unclipped_indices!(attr::Makie.ComputeGraph)
+function cairo_unclipped_indices!(attr::Makie.ComputeGraph, position_name = :positions_transformed_f32c)
     return Makie.register_computation!(
         attr,
-        [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
+        [position_name, :model_f32c, :space, :clip_planes],
         [:unclipped_indices]
     ) do (transformed, model, space, clip_planes), changed, outputs
         return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
