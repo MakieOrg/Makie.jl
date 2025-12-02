@@ -3,11 +3,11 @@
 ## Unreleased
 
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
-- Reexported `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
+- Fixed `poly(Rect2[...])` having float precision issues in CairoMakie [#5441](https://github.com/MakieOrg/Makie.jl/pull/5441)
 - Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
 - Fixed `scatter` markers not updating correctly [#5451](https://github.com/MakieOrg/Makie.jl/pull/5451)
 - Fixed `poly!()` ignoring `linecap`, `joinstyle`, `miter_limit` and `linestyle` in CairoMakie [#5415](https://github.com/MakieOrg/Makie.jl/pull/5415)
-
 
 ## [0.24.7] - 2025-11-18
 
