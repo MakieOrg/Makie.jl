@@ -237,22 +237,22 @@ function plot!(p::Annotation)
     register_camera_matrix!(p, :data, :pixel)
     inputs = [
         :screenpoints_target, :labelspace, :label_offsets_or_positions,
-        :world_to_pixel, :f32c, :model, :transform_func
+        :world_to_pixel, :f32c, :model, :transform_func,
     ]
     register_computation!(
         p.attributes, inputs, [:screenpoints_label]
     ) do (tps, space, loffpos, proj, f32c, model, tf), changed, cached
         if space === :relative_pixel
             if isnothing(cached) || changed[1] || changed[2] || changed[3]
-                return (tps .+ loffpos, )
+                return (tps .+ loffpos,)
             else
                 # Skip updates from camera and transform func
-                return (nothing, )
+                return (nothing,)
             end
         else
             transformed_label_pos = apply_transform(tf, loffpos)
             f32c_mat = f32_convert_matrix(f32c)
-            return (_project(Point2f, proj * f32c_mat * model, transformed_label_pos), )
+            return (_project(Point2f, proj * f32c_mat * model, transformed_label_pos),)
         end
     end
 
@@ -263,7 +263,7 @@ function plot!(p::Annotation)
     # we create a compute node here and an Observable later
     inputs = [
         :algorithm, :screenpoints_target, :screenpoints_label, :text_bbs,
-        :viewport, :labelspace, :maxiter, :__advance_optimization
+        :viewport, :labelspace, :maxiter, :__advance_optimization,
     ]
     register_computation!(p.attributes, inputs, [:offsets]) do args, changed, cached
         # We should only advance if it's the only thing causing an update?
@@ -297,7 +297,7 @@ function plot!(p::Annotation)
 
     inputs = [
         :text_bbs, :screenpoints_target, :offsets, :path, :clipstart, :shrink,
-        :style, :color, :linewidth
+        :style, :color, :linewidth,
     ]
     map!(p, inputs, :plotspecs) do text_bbs, points, offsets, path, clipstart, shrink, style, color, linewidth
         specs = PlotSpec[]

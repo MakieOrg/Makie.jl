@@ -147,12 +147,12 @@ end
 @testset "annotation" begin
     @testset "updates" begin
         ps = rand(Point2f, 20)
-        f,a,p = annotation(ps, text = ["long overlapping label" for _ in 1:20], maxiter = 0)
+        f, a, p = annotation(ps, text = ["long overlapping label" for _ in 1:20], maxiter = 0)
         offsets = copy(p.offsets[])
         p.__advance_optimization = 1
         @test p.offsets[] != offsets
 
-        f,a,p = annotation(Point2f.(1:10), text = string.(1:10))
+        f, a, p = annotation(Point2f.(1:10), text = string.(1:10))
         update!(p, arg1 = Point2f.(1:20), text = string.(1:20))
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 20
@@ -161,7 +161,7 @@ end
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 5
 
-        f,a,p = annotation(fill(Vec2f(10), 10), Point2f.(1:10), text = string.(1:10))
+        f, a, p = annotation(fill(Vec2f(10), 10), Point2f.(1:10), text = string.(1:10))
         update!(p, arg1 = fill(Vec2f(10), 20), arg2 = Point2f.(1:20), text = string.(1:20))
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 20
