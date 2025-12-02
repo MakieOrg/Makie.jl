@@ -193,7 +193,7 @@ end
         @test Makie.full_boundingbox(p) ≈ Rect3d(30.0, 20.00000011920929, 0.0, 77.78399991989136, 79.99999988079071, 0.0)
     end
 end
-    
+
 @testset "Rich Text equality" begin
     for (a, b, c) in [
             (rich("A", rich("B", color = :gray)), rich("A", rich("B", color = :gray)), rich("A", rich("B", color = :green))),
