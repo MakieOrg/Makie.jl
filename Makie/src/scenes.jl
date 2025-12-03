@@ -693,18 +693,45 @@ is2d(lims::Rect3) = widths(lims)[3] == 0.0
 ##### Figure type
 #####
 
+"""
+    GUIState
+
+Stores the configuration and state of GUI elements for a Figure.
+Created during Figure construction with normalized options from figure attributes and theme.
+
+## Fields
+Options (nothing = disabled, Dict = enabled with options):
+- `hovermenu_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the hover menu bar
+- `legend_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the legend overlay
+- `colorbar_options::Union{Nothing, Dict{Symbol,Any}}`: Options for the colorbar overlay
+
+Created elements (nothing until added):
+- `hovermenu::Union{Nothing, Any}`: Reference to the hover menu elements if created
+- `legend::Union{Nothing, Block}`: Reference to the legend if created
+- `colorbar::Union{Nothing, Block}`: Reference to the colorbar if created
+"""
+mutable struct GUIState
+    # Options (nothing = disabled)
+    hovermenu_options::Union{Nothing, Dict{Symbol, Any}}
+    legend_options::Union{Nothing, Dict{Symbol, Any}}
+    colorbar_options::Union{Nothing, Dict{Symbol, Any}}
+    # Created elements
+    hovermenu::Union{Nothing, Any}
+    legend::Union{Nothing, Block}
+    colorbar::Union{Nothing, Block}
+end
+
+function GUIState(; hovermenu_options = nothing, legend_options = nothing, colorbar_options = nothing)
+    return GUIState(hovermenu_options, legend_options, colorbar_options, nothing, nothing, nothing)
+end
+
 struct Figure
     scene::Scene
     layout::GridLayoutBase.GridLayout
     content::Vector
     attributes::Attributes
     current_axis::Ref{Any}
-
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        return f
-    end
+    gui_state::GUIState
 end
 
 struct FigureAxisPlot
