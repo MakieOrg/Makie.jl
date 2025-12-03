@@ -17,33 +17,34 @@ function initialize_block!(g::HoverMenu)
     visible = Observable(false)
 
     # Create background box using layout (for @forwarded_layout blocks)
-    g.box = Box(g.layout[1, 1:3];
-        height=g.height,
-        width=g.width,
-        color=g.bar_color,
-        cornerradius=g.corner_radius,
-        strokewidth=0.5,
-        strokecolor=(:gray70, 0.5)
+    g.box = Box(
+        g.layout[1, 1:3];
+        height = g.height,
+        width = g.width,
+        color = g.bar_color,
+        cornerradius = g.corner_radius,
+        strokewidth = 0.5,
+        strokecolor = (:gray70, 0.5)
     )
 
     # Button styling from block attributes
     bstyle = (
-        buttoncolor=g.button_color,
-        buttoncolor_hover=g.button_color_hover,
-        labelcolor=g.label_color,
-        font=g.font,
-        fontsize=g.fontsize,
-        cornerradius=4,
+        buttoncolor = g.button_color,
+        buttoncolor_hover = g.button_color_hover,
+        labelcolor = g.label_color,
+        font = g.font,
+        fontsize = g.fontsize,
+        cornerradius = 4,
     )
 
-    g.save_button = Button(g.layout[1, 1]; label="Save", width=60, bstyle...)
-    g.copy_button = Button(g.layout[1, 2]; label="Copy", width=60, bstyle...)
-    g.reset_button = Button(g.layout[1, 3]; label="Reset", width=60, bstyle...)
+    g.save_button = Button(g.layout[1, 1]; label = "Save", width = 60, bstyle...)
+    g.copy_button = Button(g.layout[1, 2]; label = "Copy", width = 60, bstyle...)
+    g.reset_button = Button(g.layout[1, 3]; label = "Reset", width = 60, bstyle...)
 
     colgap!(g.layout, 8)
 
     # Visibility toggle
-    on(g.blockscene, visible; update=true) do v
+    on(g.blockscene, visible; update = true) do v
         g.box.blockscene.visible[] = v
         g.save_button.blockscene.visible[] = v
         g.copy_button.blockscene.visible[] = v
@@ -65,7 +66,7 @@ function initialize_block!(g::HoverMenu)
         if !isnothing(fig)
             file = save_file_dialogue()
             if !isnothing(file)
-                save(file, fig; update=false)
+                save(file, fig; update = false)
             end
         end
     end
@@ -74,7 +75,7 @@ function initialize_block!(g::HoverMenu)
     on(g.blockscene, g.copy_button.clicks) do _
         visible[] = false
         if !isnothing(fig)
-            img = colorbuffer(fig; update=false)
+            img = colorbuffer(fig; update = false)
             ImageClipboard.clipboard_img(img)
         end
     end

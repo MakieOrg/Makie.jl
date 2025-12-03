@@ -1,9 +1,11 @@
 using NativeFileDialog_jll
 
-function choose_file_dialogue(filter=C_NULL)
+function choose_file_dialogue(filter = C_NULL)
     path = Ref(Ptr{UInt8}())
-    r = @ccall libnfd.NFD_OpenDialog(filter::Ptr{Cchar}, C_NULL::Ptr{Cchar},
-                                     path::Ref{Ptr{UInt8}})::Cint
+    r = @ccall libnfd.NFD_OpenDialog(
+        filter::Ptr{Cchar}, C_NULL::Ptr{Cchar},
+        path::Ref{Ptr{UInt8}}
+    )::Cint
     if r == 2
         # User clicked "Cancel"
         out = nothing
@@ -15,10 +17,12 @@ function choose_file_dialogue(filter=C_NULL)
     return out
 end
 
-function save_file_dialogue(filter=C_NULL)
+function save_file_dialogue(filter = C_NULL)
     path = Ref(Ptr{UInt8}())
-    r = @ccall libnfd.NFD_SaveDialog(filter::Ptr{Cchar}, C_NULL::Ptr{Cchar},
-                                     path::Ref{Ptr{UInt8}})::Cint
+    r = @ccall libnfd.NFD_SaveDialog(
+        filter::Ptr{Cchar}, C_NULL::Ptr{Cchar},
+        path::Ref{Ptr{UInt8}}
+    )::Cint
     if r == 2
         # User clicked "Cancel"
         out = nothing

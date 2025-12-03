@@ -20,13 +20,13 @@ Create a legend for the plot if it has labeled elements.
 
 Returns the Legend object or `nothing` if no labeled plots exist.
 """
-function create_gui_legend!(fig::Figure, ax, plot::AbstractPlot, options::Dict{Symbol,Any})
+function create_gui_legend!(fig::Figure, ax, plot::AbstractPlot, options::Dict{Symbol, Any})
     position = get(options, :position, :rt)
 
     # Check if there are any labeled plots
     unique_labels = get(options, :unique, false)
     merge_labels = get(options, :merge, false)
-    plots, labels = Makie.get_labeled_plots(ax; unique=unique_labels, merge=merge_labels)
+    plots, labels = Makie.get_labeled_plots(ax; unique = unique_labels, merge = merge_labels)
     isempty(plots) && return nothing
 
     # Validate margin usage
@@ -56,7 +56,7 @@ Create a colorbar for the plot if it has a colormap.
 
 Returns the Colorbar object or `nothing` if no colormap exists.
 """
-function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict{Symbol,Any})
+function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict{Symbol, Any})
     position = get(options, :position, [1, 2])
     options = filter(((name, _),) -> name != :position, options)
 
@@ -74,7 +74,7 @@ function create_gui_colorbar!(fig::Figure, ax, plot::AbstractPlot, options::Dict
     end
     # Use Colorbar(ax, plot; position=...) for overlay, Colorbar(fig[pos...], plot; ...) for grid
     if position isa Symbol
-        return Colorbar(ax, plot; position=position, options...)
+        return Colorbar(ax, plot; position = position, options...)
     else
         return Colorbar(fig[position...], plot; options...)
     end

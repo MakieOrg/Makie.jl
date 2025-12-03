@@ -518,8 +518,10 @@ Colorbar(ax, pl)  # Creates colorbar at default position :rt
 Colorbar(ax, pl; position=:lt, label="Temperature")
 ```
 """
-function Colorbar(ax::AbstractAxis, plot::AbstractPlot;
-                  position = :rt, margin = (6, 50, 6, 6), kwargs...)
+function Colorbar(
+        ax::AbstractAxis, plot::AbstractPlot;
+        position = :rt, margin = (6, 50, 6, 6), kwargs...
+    )
     pos_kw = legend_position_to_aligns(position)
     # Extract colormap from the plot
     cmap = extract_colormap_recursive(plot)

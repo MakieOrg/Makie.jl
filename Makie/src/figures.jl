@@ -138,13 +138,13 @@ function normalize_gui_option(value, name::Symbol)
     if value === false || isnothing(value)
         return nothing
     elseif value === true
-        return Dict{Symbol,Any}()
+        return Dict{Symbol, Any}()
     elseif value isa NamedTuple
-        return Dict{Symbol,Any}(pairs(value))
+        return Dict{Symbol, Any}(pairs(value))
     elseif value isa Attributes
-        return Dict{Symbol,Any}(k => to_value(v) for (k, v) in value)
+        return Dict{Symbol, Any}(k => to_value(v) for (k, v) in value)
     elseif value isa Dict
-        return Dict{Symbol,Any}(value)
+        return Dict{Symbol, Any}(value)
     else
         error("Invalid `$name` option: expected Bool, NamedTuple, Attributes, or Dict, got $(typeof(value))")
     end
@@ -156,7 +156,7 @@ end
 Extract and normalize a GUI option from kwargs (with fallback to Figure theme).
 Pops the option from kwargs_dict if present.
 """
-function get_gui_options(kwargs_dict::Dict{Symbol,Any}, figure_theme::Attributes, name::Symbol)
+function get_gui_options(kwargs_dict::Dict{Symbol, Any}, figure_theme::Attributes, name::Symbol)
     kwarg_opt = pop!(kwargs_dict, name, nothing)
     theme_opt = haskey(figure_theme, name) ? to_value(figure_theme[name]) : nothing
     opt = !isnothing(kwarg_opt) ? kwarg_opt : theme_opt
@@ -164,11 +164,11 @@ function get_gui_options(kwargs_dict::Dict{Symbol,Any}, figure_theme::Attributes
 end
 
 function Figure(; kwargs...)
-    kwargs_dict = Dict{Symbol,Any}(kwargs)
+    kwargs_dict = Dict{Symbol, Any}(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
 
     # Check Figure theme for GUI options (set_theme!(Figure=(; gui=true, ...)))
-    figure_theme = theme(:Figure; default=Attributes())::Attributes
+    figure_theme = theme(:Figure; default = Attributes())::Attributes
 
     # Extract and normalize GUI options: kwargs > Figure theme
     hovermenu_options = get_gui_options(kwargs_dict, figure_theme, :gui)

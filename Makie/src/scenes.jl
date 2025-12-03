@@ -712,16 +712,16 @@ Created elements (nothing until added):
 """
 mutable struct GUIState
     # Options (nothing = disabled)
-    hovermenu_options::Union{Nothing, Dict{Symbol,Any}}
-    legend_options::Union{Nothing, Dict{Symbol,Any}}
-    colorbar_options::Union{Nothing, Dict{Symbol,Any}}
+    hovermenu_options::Union{Nothing, Dict{Symbol, Any}}
+    legend_options::Union{Nothing, Dict{Symbol, Any}}
+    colorbar_options::Union{Nothing, Dict{Symbol, Any}}
     # Created elements
     hovermenu::Union{Nothing, Any}
     legend::Union{Nothing, Block}
     colorbar::Union{Nothing, Block}
 end
 
-function GUIState(; hovermenu_options=nothing, legend_options=nothing, colorbar_options=nothing)
+function GUIState(; hovermenu_options = nothing, legend_options = nothing, colorbar_options = nothing)
     return GUIState(hovermenu_options, legend_options, colorbar_options, nothing, nothing, nothing)
 end
 
