@@ -49,7 +49,7 @@ end
 function Base.setproperty!(plot::AbstractPlot, key::Symbol, val::Observable)
     error(
         "Setting an Attribute ($key) to an Observable is no longer allowed.\n" *
-        "Use `add_input!(plot.attributes, key, obs)` explicitly."
+            "Use `add_input!(plot.attributes, key, obs)` explicitly."
     )
 end
 

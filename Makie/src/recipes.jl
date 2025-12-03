@@ -565,23 +565,28 @@ function create_recipe_expr(Tsym, args, attrblock, is_complex::Bool)
 
     # Non-complex recipes also have the ! variant
     if !is_complex
-        push!(q.args,
-            :(function ($funcname!)(args...; kw...)
-                kwdict = Dict{Symbol, Any}(kw)
-                return _create_plot!($funcname, kwdict, args...)
-            end),
+        push!(
+            q.args,
+            :(
+                function ($funcname!)(args...; kw...)
+                    kwdict = Dict{Symbol, Any}(kw)
+                    return _create_plot!($funcname, kwdict, args...)
+                end
+            ),
             :(@doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym),
             :(export $funcname!)
         )
     end
 
     if !isempty(syms)
-        push!(q.args,
+        push!(
+            q.args,
             :($(esc(:($(Makie).argument_names)))(::Type{<:$PlotType}, len::Integer) = ($(QuoteNode.(syms)...),))
         )
         # Complex recipes also need the 1-argument version for _create_complex_recipe
         if is_complex
-            push!(q.args,
+            push!(
+                q.args,
                 :($(esc(:($(Makie).argument_names)))(::Type{<:$PlotType}) = ($(QuoteNode.(syms)...),))
             )
         end
@@ -590,7 +595,8 @@ function create_recipe_expr(Tsym, args, attrblock, is_complex::Bool)
     # Mark as complex recipe if specified - for is_complex_recipe dispatch
     # This is used so _create_plot knows to call _create_complex_plot
     if is_complex
-        push!(q.args,
+        push!(
+            q.args,
             :($(Makie).is_complex_recipe(::Type{<:Plot{$funcname}}) = true)
         )
     end
@@ -599,7 +605,7 @@ function create_recipe_expr(Tsym, args, attrblock, is_complex::Bool)
 end
 
 
-function make_recipe_docstring(P::Type{<:AbstractPlot}, Tsym, funcname_sym, docstring, is_complex::Bool=false)
+function make_recipe_docstring(P::Type{<:AbstractPlot}, Tsym, funcname_sym, docstring, is_complex::Bool = false)
     io = IOBuffer()
     print(io, docstring)
 
