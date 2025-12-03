@@ -294,6 +294,8 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         attr, merged_inputs, [:gl_renderobject]
     )
 
+    ComputePipeline.unsafe_init!(attr.gl_renderobject, robj)
+
     # Initialize node (this is required for visible checks)
     attr.gl_renderobject[]
 
