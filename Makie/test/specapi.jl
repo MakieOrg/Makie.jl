@@ -313,3 +313,9 @@ end
         end
     end
 end
+
+@testset "transform_func propagation" begin
+    plotspecs = [S.Lines(rand(10))]
+    f, a, p = plot(plotspecs; axis = (; xscale = log10))
+    @test only(p.plots).transformation.transform_func[][1] == log10
+end
