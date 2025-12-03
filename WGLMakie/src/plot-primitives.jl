@@ -52,9 +52,9 @@ function backend_colors!(attr, color_name = :scaled_color)
         end
     end
 
-    register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
-        color isa Real && return (color,)
-        return color isa AbstractVector ? (color,) : (false,)
+    map!(attr, color_name, :vertex_color) do color
+        color isa Real && return color
+        return color isa AbstractVector ? color : false
     end
 
     return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
@@ -173,7 +173,8 @@ function handle_color_getter!(uniform_dict)
 end
 
 function assemble_particle_robj!(attr, data)
-    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
+    pos_key = haskey(attr, :wgl_positions) ? :wgl_positions : :positions_transformed_f32c
+    data[pos_key] = getproperty(attr, pos_key)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
@@ -190,7 +191,7 @@ function assemble_particle_robj!(attr, data)
     data[:transform_marker] = attr.transform_marker
     per_instance_keys = Set(
         [
-            :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
+            pos_key, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
             :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize,
         ]
     )
@@ -277,11 +278,12 @@ function create_shader(scene::Scene, plot::Scatter)
 
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :positions_transformed_f32c, :wgl_positions)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :scatter_color)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap,
         :uniform_colorrange, :nan_color, :highclip_color,
@@ -365,8 +367,9 @@ function create_shader(scene::Scene, plot::Makie.Text)
 
     ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :per_char_positions_transformed_f32c, :wgl_positions)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange,
         :nan_color, :highclip_color, :lowclip_color, :pattern,

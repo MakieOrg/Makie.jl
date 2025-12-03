@@ -126,6 +126,7 @@ function initialize_block!(tbox::Textbox)
 
     on(cursorpoints) do cpts
         typeof(tbox.width[]) <: Number || return
+        isempty(displayed_charbbs[]) && return
 
         # translate scene to keep cursor within box
         rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]

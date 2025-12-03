@@ -196,7 +196,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             cache::Dict{UInt64, RenderObject},
-            cache2plot::Dict{UInt32, AbstractPlot},
+            cache2plot::Dict{UInt32, Plot},
             reuse::Bool
         ) where {GLWindow}
 
@@ -312,7 +312,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
         Dict{UInt64, RenderObject}(),
-        Dict{UInt32, AbstractPlot}(),
+        Dict{UInt32, Plot}(),
         reuse,
     )
 

@@ -216,29 +216,33 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
     map!(
         attr,
         [colorname, :colorscale, :alpha],
-        [:raw_color, :scaled_color, :fetch_pixel]
+        [:raw_color, :scaled_color, :fetch_pixel, :auto_colorrange]
     ) do color, colorscale, alpha
-        val = if color isa Union{AbstractArray{<:Real}, Real}
-            clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+        auto_colorrange = nothing
+        if color isa Union{AbstractArray{<:Real}, Real}
+            scaled = el32convert(apply_scale(colorscale, color))
+            auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
+            val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
         elseif color isa AbstractPattern
-            ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
+            val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
         elseif color isa ShaderAbstractions.Sampler
-            color
+            val = color
         elseif color isa AbstractArray
-            add_alpha.(color, alpha)
+            val = add_alpha.(color, alpha)
         else
-            add_alpha(color, alpha)
+            val = add_alpha(color, alpha)
         end
-        return (color, val, color isa AbstractPattern)
+        return (color, val, color isa AbstractPattern, auto_colorrange)
     end
 
     return map!(
         attr,
-        [:colorrange, :colorscale, :scaled_color], :scaled_colorrange
-    ) do colorrange, colorscale, color
-        (color isa AbstractArray{<:Real} || color isa Real) || return nothing
-        if colorrange === automatic
-            return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        [:colorrange, :colorscale, :auto_colorrange], :scaled_colorrange
+    ) do colorrange, colorscale, autorange
+        if isnothing(autorange) # colors are actual colors, so no colormapping
+            return nothing
+        elseif colorrange === automatic
+            return autorange
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end
@@ -466,12 +470,31 @@ function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input = :args
     end
 end
 
+function error_check_convert_arguments(P, args, user_kw, args_converted)
+    if args_converted isa Tuple
+        return :Tuple
+    elseif args_converted isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
+        return :SpecApi
+    else
+        _join(a, b) = "$a, $b"
+        args_splatted = mapreduce(x -> "::$(typeof(x))", _join, args)
+        kwargs_splatted = mapreduce(kv -> "$(kv[1])", _join, user_kw)
+        if isempty(kwargs_splatted)
+            call = "convert_arguments($P, $args_splatted)"
+        else
+            call = "convert_arguments($P, $args_splatted; $kwargs_splatted)"
+        end
+        error("Result of `$call` needs to be a Tuple or SpecApi object, but is `$args_converted`.")
+    end
+end
+
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
     args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
+    error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
     force_dimconverts = needs_dimconvert(dim_converts)
     if force_dimconverts
@@ -500,14 +523,18 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
         x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        if x isa Tuple
-            return x
-        elseif x isa Union{PlotSpec, AbstractVector{PlotSpec}, GridLayoutSpec}
-            return (x,)
-        else
-            error("Result needs to be Tuple or SpecApi")
-        end
+        result_type = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
+        return result_type === :Tuple ? x : (x,)
     end
+
+    # If dim converts didn't do anything we can use the previous result of
+    # `convert_arguments()` to init the node
+    if attr.dim_converted[] === args
+        result_type = error_check_convert_arguments(P, args, user_kw, args_converted)
+        x = result_type === :Tuple ? args_converted : (args_converted,)
+        ComputePipeline.unsafe_init!(attr.converted, x)
+    end
+
     converted = attr[:converted][]
     n_args = length(converted)
     map!(attr, :converted, [argument_names(P, n_args)...]) do converted
@@ -713,10 +740,10 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
-        # TODO: Should this copy to keep user_args[1] unchanged?
+        # This should keep user_args[1] unchanged, in case they get reused.
         attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        merge!(attr, user_attributes)
-        return Plot{Func}(Base.tail(user_args), attr)
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return Plot{Func}(Base.tail(user_args), user_attributes)
     end
 
     P = Plot{Func}
