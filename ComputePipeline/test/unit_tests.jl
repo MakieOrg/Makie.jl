@@ -1003,6 +1003,7 @@ end
         @test update_count[] >= 1
         @test graph[:output][] == 6
     end
+end
 
 @testset "explicit node initialization" begin
     calls = 0
