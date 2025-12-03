@@ -154,7 +154,9 @@ end
                     @test v.id == 0
                 end
             end
-            @test robj.vertexarray.id == 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id == 0
+            end
         end
     end
     ax = Axis(fig[1, 1])
@@ -168,7 +170,9 @@ end
                     @test v.id != 0
                 end
             end
-            @test robj.vertexarray.id != 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id != 0
+            end
         end
     end
     close(screen)
@@ -197,7 +201,9 @@ end
                 @test v.id == 0
             end
         end
-        @test robj.vertexarray.id == 0
+        for inst in values(robj.variants)
+            @test inst.vertexarray.id == 0
+        end
     end
 
     heatmap!(ax, rand(4, 4))
@@ -210,7 +216,9 @@ end
                     @test v.id != 0
                 end
             end
-            @test robj.vertexarray.id != 0
+            for inst in values(robj.variants)
+                @test inst.vertexarray.id != 0
+            end
         end
     end
     close(screen)
@@ -499,7 +507,7 @@ end
     p = lines!(scene, Point2f[])
     screen = display(scene, visible = false)
     robj = screen.cache[objectid(p)]
-    indexbuffer = robj.vertexarray.indices
+    indexbuffer = robj.indices
     @test isempty(indexbuffer)
     @test length(indexbuffer) == 0 # skip condition for draw call
 
