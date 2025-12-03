@@ -24,17 +24,50 @@ function ComputePipeline.add_input!(
 end
 
 
-Base.haskey(x::Plot, key) = haskey(x.attributes, key)
-Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
-Base.get(x::Plot, key::Symbol, default) = get(() -> default, x, key)
+# === Shared interface for Plot and ComplexRecipe ===
+# Both types use ComputeGraph for attributes, so they share these methods
 
-Base.getindex(plot::Plot, key::Symbol) = getproperty(plot, key)
-Base.setindex!(plot::Plot, val, key::Symbol) = setproperty!(plot, key, val)
+Base.haskey(x::AbstractPlot, key) = haskey(x.attributes, key)
+Base.get(f::Function, x::AbstractPlot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
+Base.get(x::AbstractPlot, key::Symbol, default) = get(() -> default, x, key)
+
+Base.getindex(plot::AbstractPlot, key::Symbol) = getproperty(plot, key)
+Base.setindex!(plot::AbstractPlot, val, key::Symbol) = setproperty!(plot, key, val)
+
 function Base.setindex!(plot::Plot, val, key::Int)
     sym = Symbol("arg", key)
     return setindex!(plot, val, sym)
 end
 
+function Base.getproperty(plot::AbstractPlot, key::Symbol)
+    if key in fieldnames(typeof(plot))
+        return getfield(plot, key)
+    end
+    return plot.attributes[key]
+end
+
+function Base.setproperty!(plot::AbstractPlot, key::Symbol, val::Observable)
+    error(
+        "Setting an Attribute ($key) to an Observable is no longer allowed.\n" *
+        "Use `add_input!(plot.attributes, key, obs)` explicitly."
+    )
+end
+
+function Base.setproperty!(plot::AbstractPlot, key::Symbol, val)
+    if key in fieldnames(typeof(plot))
+        return Base.setfield!(plot, key, val)
+    end
+    attr = plot.attributes
+    if haskey(attr.inputs, key)
+        setproperty!(attr, key, val)
+    else
+        add_input!(attr, key, val)
+        # maybe best to not make assumptions about user attributes?
+        # CairoMakie rasterize needs this (or be treated with more care)
+        attr[key].value = RefValue{Any}(nothing)
+    end
+    return plot
+end
 
 function data_limits(plot::Plot)::Rect3d
     if haskey(plot, :data_limits)
@@ -64,39 +97,6 @@ function ComputePipeline.update!(plot::Plot, args...; attr...)
     end
     ComputePipeline.update!(plot.attributes, kw)
     return
-end
-
-function Base.getproperty(plot::Plot, key::Symbol)
-    if key in fieldnames(typeof(plot))
-        return getfield(plot, key)
-    end
-    return plot.attributes[key]
-end
-
-function Base.setproperty!(plot::Plot, key::Symbol, val::Observable)
-    error(
-        "Setting an Attribute ($key) to an Observable is no longer allowed.\n" *
-            "If you are using attributes as storage in a recipe, i.e. `plot[key] = map/lift(...)` " *
-            "either track the Observable as a variable `var = map/lift(...)` or consider using " *
-            "`register_computation!()` or the ComputePipelines `map!()` methods.\n" *
-            "If you are trying to create a new input to a ComputeGraph use `add_input!(graph, key, obs)` explicitly."
-    )
-end
-
-function Base.setproperty!(plot::Plot, key::Symbol, val)
-    if key in fieldnames(typeof(plot))
-        return Base.setfield!(plot, key, val)
-    end
-    attr = plot.attributes
-    if haskey(attr.inputs, key)
-        setproperty!(attr, key, val)
-    else
-        add_input!(attr, key, val)
-        # maybe best to not make assumptions about user attributes?
-        # CairoMakie rasterize needs this (or be treated with more care)
-        attr[key].value = RefValue{Any}(nothing)
-    end
-    return plot
 end
 
 # temp fix axis selection

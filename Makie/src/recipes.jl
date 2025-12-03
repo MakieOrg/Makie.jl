@@ -406,11 +406,19 @@ function create_args_type_expr(PlotType, args)
 end
 
 macro recipe(Tsym::Symbol, attrblock)
-    return create_recipe_expr(Tsym, nothing, attrblock)
+    return create_recipe_expr(Tsym, nothing, attrblock, false)
 end
 
 macro recipe(Tsym::Symbol, args, attrblock)
-    return create_recipe_expr(Tsym, args, attrblock)
+    return create_recipe_expr(Tsym, args, attrblock, false)
+end
+
+# Complex recipe variants: @recipe complex MyRecipe (args...) begin ... end
+macro recipe(complex_kw::Symbol, Tsym::Symbol, args, attrblock)
+    if complex_kw !== :complex
+        throw(ArgumentError("Expected `complex` keyword, got: $complex_kw"))
+    end
+    return create_recipe_expr(Tsym, args, attrblock, true)
 end
 
 function types_for_plot_arguments end
@@ -471,7 +479,16 @@ function extract_docstring(str)
     end
 end
 
-function create_recipe_expr(Tsym, args, attrblock)
+"""
+    is_complex_recipe(::Type{<:AbstractPlot}) -> Bool
+
+Returns `true` if the plot type is a complex recipe that creates its own axes.
+Complex recipes bypass the normal axis creation in `_create_plot` and instead
+construct a `ComplexRecipe` that manages its own layout.
+"""
+is_complex_recipe(::Type{<:AbstractPlot}) = false
+
+function create_recipe_expr(Tsym, args, attrblock, is_complex::Bool)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -482,11 +499,19 @@ function create_recipe_expr(Tsym, args, attrblock)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
-    # attrblock = expand_mixins(attrblock)
-    # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
+
+    # Complex recipes require arguments
+    if is_complex && isempty(syms)
+        throw(ArgumentError("Complex recipes require at least one argument"))
+    end
 
     docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
+
+    # Choose the base type based on whether this is a complex recipe
+    BaseType = is_complex ? :ComplexRecipe : :Plot
+    type_alias_expr = :(const $(PlotType){$(esc(:ArgType))} = $(BaseType){$funcname, $(esc(:ArgType))})
+    type_name = is_complex ? "ComplexRecipe" : "plot"
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -507,9 +532,8 @@ function create_recipe_expr(Tsym, args, attrblock)
             "No docstring defined.\n"
         end
 
-
         $(funcname)() = not_implemented_for($funcname)
-        const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
+        $(type_alias_expr)
 
         # This weird syntax is so that the output of the macrocall can be escaped because it
         # contains user expressions, without escaping what's passed to the macro because that
@@ -529,27 +553,45 @@ function create_recipe_expr(Tsym, args, attrblock)
             kwdict = Dict{Symbol, Any}(kw)
             return _create_plot($funcname, kwdict, args...)
         end
-        function ($funcname!)(args...; kw...)
-            kwdict = Dict{Symbol, Any}(kw)
-            return _create_plot!($funcname, kwdict, args...)
-        end
 
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
+        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring, $is_complex)
         @doc docstring_modified $funcname_sym
-        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
-        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
-        export $PlotType, $funcname, $funcname!
+        @doc "`$($(string(Tsym)))` is the $($type_name) type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
+
+        export $PlotType, $funcname
+    end
+
+    # Non-complex recipes also have the ! variant
+    if !is_complex
+        push!(q.args,
+            :(function ($funcname!)(args...; kw...)
+                kwdict = Dict{Symbol, Any}(kw)
+                return _create_plot!($funcname, kwdict, args...)
+            end),
+            :(@doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym),
+            :(export $funcname!)
+        )
     end
 
     if !isempty(syms)
-        push!(
-            q.args,
-            :(
-                $(esc(:($(Makie).argument_names)))(::Type{<:$PlotType}, len::Integer) =
-                    ($(QuoteNode.(syms)...),)
-            ),
+        push!(q.args,
+            :($(esc(:($(Makie).argument_names)))(::Type{<:$PlotType}, len::Integer) = ($(QuoteNode.(syms)...),))
+        )
+        # Complex recipes also need the 1-argument version for _create_complex_recipe
+        if is_complex
+            push!(q.args,
+                :($(esc(:($(Makie).argument_names)))(::Type{<:$PlotType}) = ($(QuoteNode.(syms)...),))
+            )
+        end
+    end
+
+    # Mark as complex recipe if specified - for is_complex_recipe dispatch
+    # This is used so _create_plot knows to call _create_complex_plot
+    if is_complex
+        push!(q.args,
+            :($(Makie).is_complex_recipe(::Type{<:Plot{$funcname}}) = true)
         )
     end
 
@@ -557,26 +599,41 @@ function create_recipe_expr(Tsym, args, attrblock)
 end
 
 
-function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
+function make_recipe_docstring(P::Type{<:AbstractPlot}, Tsym, funcname_sym, docstring, is_complex::Bool=false)
     io = IOBuffer()
-
-    attr_docstrings = _attribute_docs(P)
-
     print(io, docstring)
 
-    println(io, "## Plot type")
-    println(io, "The plot type alias for the `$funcname_sym` function is `$Tsym`.")
-
-    println(io, "## Attributes")
+    type_name = is_complex ? "ComplexRecipe" : "Plot"
+    println(io, "## $type_name type")
+    println(io, "The $type_name type alias for the `$funcname_sym` function is `$Tsym`.")
     println(io)
 
-    names = sort(collect(attribute_names(P)))
-    exprdict = attribute_default_expressions(P)
-    for name in names
-        default = exprdict[name]
-        print(io, "**`", name, "`** = ", " `", default, "`  — ")
-        println(io, something(attr_docstrings[name], "*No docs available.*"))
+    if is_complex
+        arg_names = argument_names(P)
+        if !isempty(arg_names)
+            println(io, "## Arguments")
+            for name in arg_names
+                println(io, "- `$name`")
+            end
+            println(io)
+        end
+        println(io, "ComplexRecipes create multi-axis layouts. Use `cr[row, col]` to access grid positions within the recipe.")
         println(io)
+    end
+
+    attr_docstrings = _attribute_docs(P)
+    if !isnothing(attr_docstrings) && !isempty(attr_docstrings)
+        println(io, "## Attributes")
+        println(io)
+
+        names = sort(collect(keys(attr_docstrings)))
+        exprdict = attribute_default_expressions(P)
+        for name in names
+            default = get(exprdict, name, "unknown")
+            print(io, "**`", name, "`** = ", " `", default, "`  — ")
+            println(io, something(get(attr_docstrings, name, nothing), "*No docs available.*"))
+            println(io)
+        end
     end
 
     return String(take!(io))

@@ -414,6 +414,10 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+
+# Complex recipes (multi-axis layouts)
+include("complex_recipes/ComplexRecipes.jl")
+
 include("deprecated.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
