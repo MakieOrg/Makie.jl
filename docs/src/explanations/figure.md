@@ -109,7 +109,7 @@ f
 
 Figures can automatically create legends and colorbars from your plots using the `legend` and `colorbar` keyword arguments.
 
-### Legend
+### Automatic Legend
 
 Enable automatic legend creation with the `legend` keyword:
 
@@ -129,7 +129,7 @@ Legend options:
 - `merge`: Merge plots with the same label (default: `false`)
 - All other options are passed to [`Legend`](@ref)
 
-### Colorbar
+### Automatic Colorbar
 
 Enable automatic colorbar creation with the `colorbar` keyword:
 
