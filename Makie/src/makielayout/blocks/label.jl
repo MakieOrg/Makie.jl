@@ -46,8 +46,11 @@ function initialize_block!(l::Label)
 
         tx = box + padding[1] + 0.5 * tw
         ty = boy + padding[3] + 0.5 * th
-
-        textpos[] = Point3f(tx, ty, 0)
+        # only update if finite to avoid propagating NaNs
+        # Which happens for a "" label, which cant be recovered from.
+        if all(isfinite, (tx, ty))
+            textpos[] = Point3f(tx, ty, 0)
+        end
 
         if l.word_wrap[] && (word_wrap_width[] != tw)
             word_wrap_width[] = tw

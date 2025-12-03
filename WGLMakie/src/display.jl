@@ -221,7 +221,7 @@ function Bonito.jsrender(session::Session, wconfig::WithConfig)
     Makie.update_state_before_display!(fig)
     scene = Makie.get_scene(fig)
     screen = Screen(scene, wconfig.config)
-    return render_with_init(screen, session, scene, Makie.get_figure(fig))
+    return Bonito.jsrender(session, render_with_init(screen, session, scene, Makie.get_figure(fig)))
 end
 
 

@@ -15,6 +15,13 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
     elseif x isa Text
         draw_atomic(screen, scene, x)
         insert!(screen, scene, x.plots[1])
+    elseif x isa Makie.PlotList
+        # ignore unless not yet displayed
+        Makie.for_each_atomic_plot(x) do plot
+            if !haskey(screen.cache, objectid(plot))
+                insert!(screen, scene, plot)
+            end
+        end
     else
         foreach(x.plots) do x
             insert!(screen, scene, x)
@@ -461,7 +468,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         # is projectionview enough to trigger on scene resize in all cases?
         register_computation!(
             attr,
-            [:positions_transformed_f32c, :projectionview, :model_f32c],
+            [:per_char_positions_transformed_f32c, :projectionview, :model_f32c],
             [:gl_depth_cache, :gl_indices]
         ) do (pos, projectionview, space, model), changed, last
             pvm = projectionview * model
@@ -470,12 +477,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
             return depthsort!(pos, depth_vals, indices, pvm)
         end
     else
-        register_computation!(attr, [:positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
+        register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_indices]) do (ps,), changed, last
             return (length(ps),)
         end
     end
 
-    register_computation!(attr, [:positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
+    register_computation!(attr, [:per_char_positions_transformed_f32c], [:gl_len]) do (ps,), changed, last
         return (Int32(length(ps)),)
     end
 
@@ -485,7 +492,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
 
     # Simple forwards
     uniforms = [
-        :positions_transformed_f32c,
+        :per_char_positions_transformed_f32c,
         :text_color, :text_strokecolor, :text_rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
         :lowclip_color, :highclip_color, :nan_color,
@@ -505,7 +512,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
     # O(1) and only takes ~4ns
     input2glname = Dict{Symbol, Symbol}(
         :text_rotation => :rotation,
-        :positions_transformed_f32c => :position,
+        :per_char_positions_transformed_f32c => :position,
         :text_color => :color,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,

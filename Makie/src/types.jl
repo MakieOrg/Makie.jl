@@ -40,7 +40,7 @@ Identifies the source of a tick:
 end
 
 """
-    struct TickState
+    struct Tick
 
 Contains information for tick events:
 - `state::TickState`: identifies what caused the tick (see Makie.TickState)
