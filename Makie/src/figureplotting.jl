@@ -284,12 +284,18 @@ figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
 figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
-update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+function update_state_before_display!(f::FigureAxisPlot)
+    update_state_before_display!(f.figure)
+    # Apply GUI from theme if enabled (add_gui! handles the theme check internally)
+    add_gui!(f)
+    return
+end
 
 function update_state_before_display!(f::Figure)
     for c in f.content
         update_state_before_display!(c)
     end
+    add_gui!(f)
     return
 end
 

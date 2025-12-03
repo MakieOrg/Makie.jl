@@ -95,19 +95,89 @@ to_rectsides(n::Number) = to_rectsides((n, n, n, n))
 to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
 
 """
-    Figure(; [figure_padding,] kwargs...)
+    Figure(; kwargs...)
 
 Construct a `Figure` which allows to place `Block`s like [`Axis`](@ref), [`Colorbar`](@ref) and [`Legend`](@ref) inside.
-The outer padding of the figure (the distance of the content to the edges) can be set by passing either
-one number or a tuple of four numbers for left, right, bottom and top paddings via the `figure_padding` keyword.
 
-All other keyword arguments such as `size` and `backgroundcolor` are forwarded to the
-[`Scene`](@ref) owned by the figure which acts as the container for all other visual objects.
+## Keyword Arguments
+
+- `size`: Figure size as `(width, height)` tuple (default: `(800, 600)`)
+- `figure_padding`: Padding around the figure content. Either a single number or tuple `(left, right, bottom, top)`
+- `backgroundcolor`: Background color of the figure
+
+### Automatic Legend and Colorbar
+
+- `legend`: Automatic legend from labeled plots. `true`, `false`, or `NamedTuple` with options like `(position=:lt, title="Legend")`.
+  Position can be a Symbol (`:lt`, `:rt`, `:lb`, `:rb`) for overlay or grid position like `[1, 2]`.
+- `colorbar`: Automatic colorbar from colormapped plots. `true`, `false`, or `NamedTuple` with options like `(position=[1,2], label="Values")`.
+
+### Hover Bar
+
+- `gui`: Enable hover bar with save/copy/reset buttons. `true`, `false`, or `NamedTuple` with style options.
+
+## Examples
+
+```julia
+f = Figure(size=(800, 600))
+f = Figure(; legend=(position=:lt,))
+f = Figure(; colorbar=(position=[1, 2], label="Values"))
+f = Figure(; gui=true)
+```
 """
-function Figure(; kwargs...)
+function Figure end
 
-    kwargs_dict = Dict(kwargs)
+"""
+    normalize_gui_option(value, name::Symbol) -> Union{Nothing, Dict{Symbol,Any}}
+
+Normalize GUI options (gui/hovermenu, legend, colorbar) to a consistent format.
+- `false` or `nothing` returns `nothing` (disabled)
+- `true` returns empty Dict (enabled with defaults)
+- NamedTuple/Attributes/Dict are converted to Dict{Symbol,Any}
+"""
+function normalize_gui_option(value, name::Symbol)
+    if value === false || isnothing(value)
+        return nothing
+    elseif value === true
+        return Dict{Symbol,Any}()
+    elseif value isa NamedTuple
+        return Dict{Symbol,Any}(pairs(value))
+    elseif value isa Attributes
+        return Dict{Symbol,Any}(k => to_value(v) for (k, v) in value)
+    elseif value isa Dict
+        return Dict{Symbol,Any}(value)
+    else
+        error("Invalid `$name` option: expected Bool, NamedTuple, Attributes, or Dict, got $(typeof(value))")
+    end
+end
+
+"""
+    get_gui_options(kwargs_dict, figure_theme, name::Symbol) -> Union{Nothing, Dict{Symbol,Any}}
+
+Extract and normalize a GUI option from kwargs (with fallback to Figure theme).
+Pops the option from kwargs_dict if present.
+"""
+function get_gui_options(kwargs_dict::Dict{Symbol,Any}, figure_theme::Attributes, name::Symbol)
+    kwarg_opt = pop!(kwargs_dict, name, nothing)
+    theme_opt = haskey(figure_theme, name) ? to_value(figure_theme[name]) : nothing
+    opt = !isnothing(kwarg_opt) ? kwarg_opt : theme_opt
+    return isnothing(opt) ? nothing : normalize_gui_option(opt, name)
+end
+
+function Figure(; kwargs...)
+    kwargs_dict = Dict{Symbol,Any}(kwargs)
     padding = pop!(kwargs_dict, :figure_padding, theme(:figure_padding))
+
+    # Check Figure theme for GUI options (set_theme!(Figure=(; gui=true, ...)))
+    figure_theme = theme(:Figure; default=Attributes())::Attributes
+
+    # Extract and normalize GUI options: kwargs > Figure theme
+    hovermenu_options = get_gui_options(kwargs_dict, figure_theme, :gui)
+    legend_options = get_gui_options(kwargs_dict, figure_theme, :legend)
+    colorbar_options = get_gui_options(kwargs_dict, figure_theme, :colorbar)
+
+    # Create GUIState with normalized options
+    gui_state = GUIState(; hovermenu_options, legend_options, colorbar_options)
+
     scene = Scene(; camera = campixel!, clear = true, kwargs_dict...)
     padding = convert(Observable{Any}, padding)
     alignmode = lift(Outside ∘ to_rectsides, padding)
@@ -125,8 +195,10 @@ function Figure(; kwargs...)
         layout,
         [],
         Attributes(),
-        Ref{Any}(nothing)
+        Ref{Any}(nothing),
+        gui_state
     )
+    current_figure!(f)
     # set figure as layout parent so GridPositions can refer to the figure
     # if connected correctly
     layout.parent = f

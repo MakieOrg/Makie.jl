@@ -45,6 +45,10 @@ using Makie: volume
         include("SceneLike/PolarAxis.jl")
     end
 
+    @testset "GUI" begin
+        include("gui.jl")
+    end
+
     @testset "Conversion & Projection Pipeline" begin
         # TODO: move some things in here
         include("conversions/convert_arguments.jl")

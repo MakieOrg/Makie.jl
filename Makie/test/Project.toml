@@ -16,3 +16,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+
+[sources]
+ComputePipeline = {path = "../../ComputePipeline"}

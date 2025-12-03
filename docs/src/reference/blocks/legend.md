@@ -90,6 +90,10 @@ f
 
 ## Legend Inside An Axis
 
+There are two ways to place a legend inside an axis: `axislegend` and `Legend(ax; position=...)`.
+
+### Using axislegend
+
 The `axislegend` function is a quick way to add a legend to an Axis.
 You can pass a selected axis plus arguments which are forwarded to the `Legend` constructor, or the current axis is used by default.
 If you pass only a string, it's used as the title with the current axis.
@@ -117,6 +121,21 @@ axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
 
 f
 ```
+
+### Using Legend(ax; position=...)
+
+You can also use the `Legend(ax; position=...)` constructor to place a legend inside an axis. This is equivalent to `axislegend` but uses position symbols like `:lt` (left-top), `:rt` (right-top), `:lb` (left-bottom), `:rb` (right-bottom), etc.
+
+```@figure
+fig, ax, pl = scatter(rand(10), label="Points")
+lines!(ax, rand(10), label="Line")
+
+# Create legend inside axis at left-top
+Legend(ax; position=:lt)
+fig
+```
+
+### Manual positioning
 
 Alternatively, you can simply add a Legend to the same layout slot
 that an axis lives in. As long as the axis is bigger than the legend you can

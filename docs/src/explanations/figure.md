@@ -105,6 +105,123 @@ scatter!(1:10)
 f
 ```
 
+## Automatic Legend and Colorbar
+
+Figures can automatically create legends and colorbars from your plots using the `legend` and `colorbar` keyword arguments.
+
+### Legend
+
+Enable automatic legend creation with the `legend` keyword:
+
+```@figure
+f = Figure(; legend=(position=:lt,))
+ax = Axis(f[1, 1])
+scatter!(ax, rand(10), label="Points A")
+scatter!(ax, rand(10), label="Points B")
+f
+```
+
+Legend options:
+- `position`: Symbol (`:lt`, `:rt`, `:lb`, `:rb`, etc.) for overlay, or grid position like `[1, 2]`
+- `margin`: Margin around the legend as `(left, right, bottom, top)` - only for overlay positions
+- `title`: Legend title
+- `unique`: Only show unique labels (default: `false`)
+- `merge`: Merge plots with the same label (default: `false`)
+- All other options are passed to [`Legend`](@ref)
+
+### Colorbar
+
+Enable automatic colorbar creation with the `colorbar` keyword:
+
+```@figure
+# Grid position colorbar - best for heatmaps
+f, ax, pl = heatmap(rand(20, 20);
+    figure=(;
+        colorbar=(
+            position=[1, 2],
+            label="Values",
+        ),
+    )
+)
+```
+
+```@figure
+# Overlay colorbar - works well with 3D plots
+f, ax, pl = surface(0:0.5:10, 0:0.5:10, (x, y) -> sin(x) * cos(y);
+    figure=(;
+        colorbar=(
+            position=:rt,
+            label="Values",
+        ),
+    ),
+    axis=(; type=Axis3)
+)
+```
+
+Colorbar options:
+- `position`: Symbol (`:rt`, `:lt`, etc.) for overlay, or grid position like `[1, 2]` (default)
+- `margin`: Margin around the colorbar as `(left, right, bottom, top)` - only for overlay positions
+- All other options are passed to [`Colorbar`](@ref)
+
+### Using the `figure` keyword
+
+You can also pass these options via the `figure` keyword in plotting functions:
+
+```@figure
+f, ax, pl = scatter(rand(10), rand(10), color=1:10, label="Data";
+    figure=(;
+        legend=(position=:lt,),
+        colorbar=(position=:rt,),
+    ))
+f
+```
+
+### Theme Integration
+
+Enable these options globally using themes:
+
+```julia
+set_theme!(Figure=(;
+    legend=(position=:lt,),
+    colorbar=(position=[1, 2],),
+))
+
+# Now all figures will have these defaults
+scatter(rand(10), label="Auto legend")
+```
+
+## Hover Bar
+
+The `gui` option enables a hover bar that appears at the top of the figure with buttons for common actions:
+
+- **Save**: Opens a file dialog to save the figure
+- **Copy**: Copies the figure to the system clipboard
+- **Reset**: Resets axis limits to automatic values
+
+```julia
+f = Figure(; gui=true)
+```
+
+Customize the hover bar appearance:
+
+```julia
+f = Figure(;
+    gui=(
+        bar_color=(:gray90, 0.95),
+        bar_height=45,
+        button_color=RGBf(0.2, 0.4, 0.6),
+    ),
+)
+```
+
+Enable globally via theme:
+
+```julia
+set_theme!(Figure=(; gui=true))
+```
+
+
+
 ## Retrieving Objects From A Figure
 
 Sometimes users are surprised that indexing into a figure does not retrieve the object placed at that position.

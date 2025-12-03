@@ -898,6 +898,8 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
+        "The additional space between the colorbar content and its suggested boundingbox. Only used for overlay positioning."
+        margin = (0.0f0, 0.0f0, 0.0f0, 0.0f0)
     end
 end
 
@@ -2366,5 +2368,43 @@ end
         reset_button::IsPressedInputType = Keyboard.left_control & Mouse.left
         "Sets whether the axis orientation (changed with the axis_rotation_button) gets reset when resetting the axis. If set to false only the limits will reset."
         reset_axis_orientation::Bool = false
+    end
+end
+
+@Block HoverMenu begin
+    @forwarded_layout
+    box::Box
+    save_button::Button
+    copy_button::Button
+    reset_button::Button
+    @attributes begin
+        "The horizontal alignment of the HoverMenu bar"
+        halign = :center
+        "The vertical alignment of the HoverMenu bar"
+        valign = :top
+        "The width of the HoverMenu bar"
+        width = 220
+        "The height of the HoverMenu bar"
+        height = 40
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = false
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = false
+        "The background color of the bar"
+        bar_color = (:white, 0.9)
+        "The corner radius of the bar"
+        corner_radius = 8
+        "The button background color"
+        button_color = RGBf(0.35, 0.35, 0.4)
+        "The button hover color"
+        button_color_hover = RGBf(0.45, 0.45, 0.5)
+        "The button label color"
+        label_color = :white
+        "The button font"
+        font = :bold
+        "The button font size"
+        fontsize = 12
+        "The axis to reset when clicking the reset button"
+        target_axis = nothing
     end
 end
