@@ -291,7 +291,7 @@ include("backend-functionality.jl")
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
-export help, help_attributes, help_arguments
+export help
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, MakieScreen
