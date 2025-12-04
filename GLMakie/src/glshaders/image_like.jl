@@ -27,10 +27,7 @@ function draw_heatmap(screen, data::Dict)
         shader = GLVisualizeShader(
             screen,
             "fragment_output.frag", "heatmap.vert", "heatmap.frag",
-            view = Dict(
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
-            )
+            view = Dict("TARGET_STAGE" => target_stage(screen, data))
         )
         fxaa = false
         px_per_unit = 1.0f0
@@ -68,8 +65,7 @@ function draw_volume(screen, data::Dict)
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "ENABLE_DEPTH" => to_value(enable_depth) ? "#define ENABLE_DEPTH" : "",
-                "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "TARGET_STAGE" => target_stage(screen, data)
             )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
