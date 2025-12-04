@@ -38,13 +38,57 @@ arrows2d!(ax, xs, ys, arrow_fun, lengthscale = 0.3, color = strength)
 fig
 ```
 
-### Arrow alignment
+### Arrow Components & Details
+
+![Arrow Components](../../assets/arrow_components.png)
+
+#### Arrow Length
+
+The target size of each arrow is determined by its direction vector (second plot argument), `normalize` and `lengthscale`.
+From tail to tip, the length is given as `lengthscale * norm(direction)`.
+If `normalize = true` the direction is normalized first, i.e. the length becomes just `lengthscale`.
+
+There is also the option to treat the second plot argument as the arrows endpoint with `argmode = :endpoint`.
+In this case the directions are determined as `direction = endpoint - startpoint` and then follow the same principles.
+
+#### Scaling
+
+Arrow markers are separated into 3 components, a tail, a shaft and a tip.
+Each component comes with a length and width which determines its size.
+In 2D the sizes are given in pixel units by default (dependent on `markerspace`).
+To fit arrows to the length determined by `directions`, `lengthscale` and `normalize`, the `shaftlength` varies between `minshaftlength` and `maxshaftlength` if it is not explicitly set.
+Outside of this range or if it is explicitly set, all arrow lengths and widths/radii are scaled by a common factor instead.
+
+```@figure
+ps = Point2f.(1:5, 0)
+vs = Vec2f.(0, 2 .^ (1:2:10))
+
+fig = Figure()
+
+ax = Axis(fig[1, 1], title = "Always scale, never elongate")
+arrows2d!(ax, ps, vs, shaftlength = 16)
+
+ax = Axis(fig[1, 2], title = "Never scale, always elongate")
+arrows2d!(ax, ps, vs, minshaftlength = 0)
+
+fig
+```
+
+#### Shapes
+
+The base shape of each component is given by the `tail`, `shaft` and `tip` attributes.
+They can be anything compatible with `poly`, e.g. a 2D mesh, Polygon or Vector of points.
+Each component should be defined in a 0..1 x -0.5..0.5 range, where +x is the direction of the arrow.
+The shape can also be constructed by a callback function `f(length, width, metrics)` returning something poly-compatible.
+It is given the final length and width of the component as well as the all the other final lengths and widths through metrics.
+
+#### Arrow alignment
 
 With `argmode = :direction` (default) arrows are aligned relative to the given positions (first argument).
-If `align = :tail` (or 0) the arrow will start at the respective position, `align = :center` (0.5) will centered and with `align = :tip` (1.0) it will end at the position.
+If `align = :tail` (or 0) the arrow will start at the respective position, `align = :center` (0.5) will be centered and with `align = :tip` (1.0) it will point to the position.
 `align` can also take values outside the 0..1 range to create a gap between the position and the arrow marker.
 
-If `argmode = :endpoint` alignment works differently and only takes effect if `normalize = true` or `lengthscale != 1`.
+If `argmode = :endpoint`, alignment works differently and only takes effect if `normalize = true` or `lengthscale != 1`.
 Here `align` determines a point `p = startpoint + align * (endpoint - startpoint)` which aligns with same fraction of the arrow marker.
 So for example `align = 0.5` (:center) aligns the midpoint between the plot arguments with the midpoint of each arrow marker.
 If the length of arrows is scaled down, this will create a matching gap on either side of the arrow.
@@ -76,21 +120,4 @@ arrows2d!(
     colormap = :rainbow, lengthscale = 0.5
 )
 f
-```
-
-### Arrow scaling behavior
-
-```@figure
-ps = Point2f.(1:5, 0)
-vs = Vec2f.(0, 2 .^ (1:2:10))
-
-fig = Figure()
-
-ax = Axis(fig[1, 1], title = "Always scale, never elongate")
-arrows2d!(ax, ps, vs, shaftlength = 16)
-
-ax = Axis(fig[1, 2], title = "Never scale, always elongate")
-arrows2d!(ax, ps, vs, minshaftlength = 0)
-
-fig
 ```
