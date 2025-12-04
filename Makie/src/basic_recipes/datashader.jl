@@ -727,7 +727,7 @@ function Makie.plot!(p::HeatmapShader)
         p.attributes,
         [:image, :x, :y, :max_resolution, :slow_limits],
         [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
-        init=(p.x[], p.x[], fill(0.0f0, 2, 2), false)
+        init = (p.x[], p.x[], fill(0.0f0, 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
         isnothing(xe_ye_oimg) && return nothing

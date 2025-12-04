@@ -88,6 +88,6 @@ end
 function map_latest(f, observables...; spawn = false, ignore_equal_values = false, throttle = 0.0)
     first_value = f(map(to_value, observables)...)
     result = Observable(first_value; ignore_equal_values = ignore_equal_values)
-    ComputePipeline.map_latest!(f, result, observables...; spawn=spawn, throttle=throttle)
+    ComputePipeline.map_latest!(f, result, observables...; spawn = spawn, throttle = throttle)
     return result
 end

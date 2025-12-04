@@ -1051,7 +1051,7 @@ map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output6, :output7]; init
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
 """
-function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol; init=nothing)
+function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol; init = nothing)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
     if !isnothing(init)
         unsafe_init!(attr.outputs[output], init)
@@ -1059,7 +1059,7 @@ function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol; init=nothing)
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol; init = nothing)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
     if !isnothing(init)
         unsafe_init!(attr.outputs[output], init)
@@ -1067,7 +1067,7 @@ function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol; init=n
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol}; init=nothing)
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol}; init = nothing)
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
     if !isnothing(init)
         @assert init isa Tuple && length(init) == length(outputs) "Initial values for map! must be given as a Tuple matching the number of outputs"
@@ -1078,7 +1078,7 @@ function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol}; init=nothing)
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol}; init = nothing)
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
     if !isnothing(init)
         @assert init isa Tuple && length(init) == length(outputs) "Initial values for map! must be given as a Tuple matching the number of outputs"
@@ -1089,7 +1089,7 @@ function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outpu
     return attr
 end
 
-function take_last!(channel::Channel; wait=false)
+function take_last!(channel::Channel; wait = false)
     result = wait ? take!(channel) : nothing
     while isready(channel)
         result = take!(channel)
@@ -1155,7 +1155,7 @@ sleep(0.1) # wait for a computation to finish to not get old result
 result = graph[:filtered_image][]
 ```
 """
-function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init=nothing)
+function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init = nothing)
     update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
     add_input!(attr, update_key, time())
     # TODO, should both channels be size 1?
@@ -1166,7 +1166,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
         while isopen(input_channel)
             try
                 # Take the first item (blocking if empty)
-                inputs = take_last!(input_channel; wait=true)
+                inputs = take_last!(input_channel; wait = true)
                 # Process the most recent inputs
                 result = f(inputs...)
                 # Put result in the result channel
@@ -1174,7 +1174,7 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vec
                 # Notify that we got a new value, for the below computation to run
                 update!(attr, update_key => time())
             catch e
-                @error "Error in background computation task" exception=(e, catch_backtrace())
+                @error "Error in background computation task" exception = (e, catch_backtrace())
             end
         end
     end
