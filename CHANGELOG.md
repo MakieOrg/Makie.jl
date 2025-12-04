@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
+- Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph and add init kw for map! and map_latest! [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
 - Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
 - Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
