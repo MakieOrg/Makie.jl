@@ -229,6 +229,7 @@ end
 ################################################################################
 ### Main Documentation Function
 ################################################################################
+
 function get_attribute_docs(io::IO, attrs, examples, attribute; full = false)
     attr_meta = get(attrs.d, attribute, nothing)
     if full
@@ -509,12 +510,7 @@ function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
     return Markdown.parse(String(take!(io)))
 end
 
-"""
-    REPL.fielddoc(::Type{T}, attr::Symbol) where {T<:Plot}
-
-Provides attribute documentation in the REPL when using `?PlotType.attribute`.
-Shows both the attribute documentation and examples if available.
-"""
+# This does not work for paramtric types pre 1.12.2 (i.e. not for Plots)
 function REPL.fielddoc(::Type{T}, attr::Symbol) where {T <: Plot}
     return field_docs(T, attr)
 end

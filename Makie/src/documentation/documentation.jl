@@ -22,13 +22,13 @@ end
 
 function help(io::IO, input::Function; extended = false)
     buffer = IOBuffer()
-    _help(buffer, to_type(input); extended = extended)
+    _help(buffer, to_plot_type(input); extended = extended)
     return Markdown.parse(String(take!(buffer)))
 end
 
 # Internal help functions
 function _help(io::IO, input::Type{T}; extended = false) where {T <: AbstractPlot}
-    func = to_func(input)
+    func = to_plot_func(input)
     str = to_string(input)
 
     # Print docstrings
@@ -49,7 +49,7 @@ function _help(io::IO, input::Type{T}; extended = false) where {T <: AbstractPlo
 end
 
 function _help(io::IO, input::Function; extended = false)
-    return _help(io, to_type(input); extended = extended)
+    return _help(io, to_plot_type(input); extended = extended)
 end
 """
     help_arguments([io], func)
@@ -152,7 +152,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Abs
 end
 
 function help_attributes(io::IO, func::Function; extended = false)
-    return help_attributes(io, to_type(func); extended = extended)
+    return help_attributes(io, to_plot_type(func); extended = extended)
 end
 
 function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Axis3D}
@@ -169,37 +169,31 @@ end
 
 # ==========================================================
 # Supporting functions for the help functions
-"""
-    to_func(Typ)
 
-Maps the input of a Type name to its corresponding function.
 """
-function to_func(Typ::Type{<:AbstractPlot{F}}) where {F}
-    return F
-end
+    to_plot_func(plot)
 
-to_func(func::Function) = func
+Returns the plot function of a given plot type (or function).
+"""
+to_plot_func(Typ::Type{<:AbstractPlot{F}}) where {F} = F
+to_plot_func(func::Function) = func
 
 
 """
-    to_type(func)
+    to_plot_type(plot)
 
-Maps the input of a function name to its corresponding Type.
+Returns the plot type of a given plot function (or type).
 """
-to_type(func::Function) = Plot{func}
-
-to_type(Typ::Type{T}) where {T <: AbstractPlot} = Typ
+to_plot_type(func::Function) = Plot{func}
+to_plot_type(Typ::Type{T}) where {T <: AbstractPlot} = Typ
 
 """
     to_string(func)
 
 Turns the input of a function name or plot Type into a string.
 """
-function to_string(func::Function)
-    return str = string(typeof(func).name.mt.name)
-end
-
-to_string(Typ::Type{T}) where {T <: AbstractPlot} = to_string(to_func(Typ))
+to_string(func::Function) = string(typeof(func).name.mt.name)
+to_string(Typ::Type{T}) where {T <: AbstractPlot} = to_string(to_plot_func(Typ))
 to_string(s::Symbol) = string(s)
 to_string(s::String) = s
 
