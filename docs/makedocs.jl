@@ -1,4 +1,4 @@
-ENV["JULIA_DEBUG"] = "Documenter"
+# ENV["JULIA_DEBUG"] = "Documenter"
 
 using Pkg
 cd(@__DIR__)
@@ -11,8 +11,6 @@ using GLMakie
 using WGLMakie
 using RPRMakie
 using Graphviz_jll
-
-##
 
 include("copy_changelog.jl")
 
@@ -47,7 +45,8 @@ isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
 mkpath(plots_dir)
 plots = Makie.generate_plot_docs(joinpath(@__DIR__, "src/reference/plots"))
 plots = map(x -> "reference/plots/$(x).md", plots)
-##
+
+@info plots
 
 pages = [
     "Home" => "index.md",
@@ -73,6 +72,10 @@ pages = [
             "reference/blocks/toggle.md",
         ],
         # "Plots" => plots,
+        "Plots" => [
+            "reference/plots/scatter.md",
+            "reference/plots/lines.md",
+        ],
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",
             "reference/generic/transformations.md",
