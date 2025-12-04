@@ -264,6 +264,16 @@ function get_attribute_docs(io::IO, ::Type{PT}, attribute; full = false) where {
     return
 end
 
+function stripped_plot_type_name(::Type{PT}) where {PT <: AbstractPlot}
+    name = string(PT)
+    idx = findfirst('{', name)
+    if idx === nothing
+        return name
+    else
+        return string(name[1:idx-1])
+    end
+end
+
 function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
     # Build attributes section
     attrs = documented_attributes(PT)
@@ -279,6 +289,13 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
             examples = attribute_examples(PT, attr)
             get_attribute_docs(io, attrs, examples, attr; full = full)
         end
+        typename = stripped_plot_type_name(PT)
+        info = if VERSION < v"1.12.2"
+            "help($typename, :attribute)"
+        else
+            "?$typename.attribute"
+        end
+        full || println(io, "For more information and examples on specific attributes check `$info`.")
         return Markdown.parse(String(take!(io)))
     end
 
