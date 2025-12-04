@@ -1090,7 +1090,7 @@ function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outpu
 end
 
 function take_last!(channel::Channel; wait = false)
-    lock(channel) do
+    return lock(channel) do
         result = wait ? take!(channel) : nothing
         while isready(channel)
             result = take!(channel)
