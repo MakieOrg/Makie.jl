@@ -16,7 +16,7 @@ end
 
 using Observables
 
-using Base: RefValue
+using Base: RefValue, tail
 
 deref(r::RefValue) = r[]
 deref(x) = x
@@ -1014,7 +1014,7 @@ function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospeci
 end
 
 """
-    map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Computed, Vector}, outputs::Union{Symbol, Vector{Symbol}})
+    map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Computed, Vector}, outputs::Union{Symbol, Vector{Symbol}}; init=nothing)
 
 Registers a new ComputeEdge in the `compute_graph` which connect one or multiple
 `inputs` to one or multiple `outputs`.
@@ -1027,6 +1027,11 @@ The callback function `f` will be called with the values of the inputs as argume
 If the output is a `::Symbol`, the function is expected to return a value, otherwise
 it is expected to return a tuple of values to be mapped to the outputs.
 
+## Arguments
+- `init=nothing`: Optional initial value(s) for the output node(s). For a single output,
+  provide the value directly. For multiple outputs, provide a tuple matching the number
+  of outputs. This allows the outputs to have a value before the computation runs.
+
 ```julia
 graph = ComputeGraph()
 add_input!(graph, :input1, 2)
@@ -1038,29 +1043,165 @@ add_input!(other_graph, :input, 3)
 map!(x -> 2x, graph, :input1, :output1)
 map!((x, y) -> x+y, graph, [:input1, other_graph.input], :output2)
 map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
+
+# With initial values
+map!(x -> 2x, graph, :input1, :output5; init=0)
+map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output6, :output7]; init=(0, 0))
 ```
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
 """
-function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, input::Union{Symbol, Computed}, output::Symbol; init = nothing)
     register_computation!(MapFunctionWrapper(f), attr, [input], [output])
+    if !isnothing(init)
+        unsafe_init!(attr.outputs[output], init)
+    end
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol)
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, output::Symbol; init = nothing)
     register_computation!(MapFunctionWrapper(f), attr, inputs, [output])
+    if !isnothing(init)
+        unsafe_init!(attr.outputs[output], init)
+    end
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Vector, outputs::Vector{Symbol}; init = nothing)
     register_computation!(MapFunctionWrapper(f, false), attr, inputs, outputs)
+    if !isnothing(init)
+        @assert init isa Tuple && length(init) == length(outputs) "Initial values for map! must be given as a Tuple matching the number of outputs"
+        for (i, val) in enumerate(init)
+            unsafe_init!(attr.outputs[outputs[i]], val)
+        end
+    end
     return attr
 end
 
-function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol})
+function Base.map!(f, attr::ComputeGraph, inputs::Union{Symbol, Computed}, outputs::Vector{Symbol}; init = nothing)
     register_computation!(MapFunctionWrapper(f, false), attr, [inputs], outputs)
+    if !isnothing(init)
+        @assert init isa Tuple && length(init) == length(outputs) "Initial values for map! must be given as a Tuple matching the number of outputs"
+        for (i, val) in enumerate(init)
+            unsafe_init!(attr.outputs[outputs[i]], val)
+        end
+    end
     return attr
 end
+
+function take_last!(channel::Channel; wait = false)
+    return lock(channel) do
+        result = wait ? take!(channel) : nothing
+        while isready(channel)
+            result = take!(channel)
+        end
+        return result
+    end
+end
+
+"""
+    map_latest!(f, compute_graph::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false, init=nothing)
+
+Registers an asynchronous computation in the `compute_graph` that processes only the
+most recent input changes, skipping intermediate updates if the computation is still running.
+
+This is useful for expensive computations where intermediate results are not needed, such as:
+- Heavy image processing or rendering operations
+- Slow network requests
+- Complex data analysis or simulations
+
+## Behavior
+
+When inputs change:
+- any new value is put in a queue to be computed
+- If multiple updates occur while computing, only the **most recent** input values are
+  kept; intermediate values are discarded
+- The outputs return cached values while the computation is in progress
+- finishing a computation invalidates the graph, so on the next poll the latest result is returned
+
+The first call to retrieve outputs will block until the initial computation completes,
+unless `init` is provided.
+
+## Arguments
+- `f`: Callback function that receives input values as individual arguments and returns
+  a tuple of output values
+- `compute_graph`: The compute graph to register the computation in
+- `inputs`: Vector of Symbol names referring to input nodes in the graph
+- `outputs`: Vector of Symbol names for the output nodes to be created
+- `spawn=false`: If `true`, runs the background worker on a separate thread. If `false`,
+  runs an async task.
+- `init=nothing`: Optional tuple of initial values for the output nodes. Must match the
+  number of outputs. This allows the outputs to have a value before the first computation
+  completes.
+
+## Example
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :image_data, initial_image)
+add_input!(graph, :filter_strength, 1.0)
+
+# Register expensive async computation that skips intermediate updates
+map_latest!(graph, [:image_data, :filter_strength], [:filtered_image]) do img, strength
+    # This expensive operation only runs on the latest inputs
+    result = expensive_filter(img, strength)
+    return (result,)
+end
+
+# Rapidly update inputs - only the final values will be processed
+for i in 1:100
+    update!(graph, filter_strength = i / 10.0)
+end
+graph[:filtered_image][] # poll to trigger computation queue
+sleep(0.1) # wait for a computation to finish to not get old result
+result = graph[:filtered_image][]
+```
+"""
+function map_latest!(f, attr::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init = nothing)
+    update_key = Symbol(:_update_trigger_, string(hash((inputs, outputs))))
+    add_input!(attr, update_key, time())
+    # TODO, should both channels be size 1?
+    # Channel for input requests
+    input_channel = Channel{Any}(2)
+    # Background worker task that processes computation requests
+    result_channel = Channel(2; spawn = spawn) do result_channel
+        while isopen(input_channel)
+            try
+                # Take the first item (blocking if empty)
+                inputs = take_last!(input_channel; wait = true)
+                # Process the most recent inputs
+                result = f(inputs...)
+                # Put result in the result channel
+                put!(result_channel, result)
+                # Notify that we got a new value, for the below computation to run
+                update!(attr, update_key => time())
+            catch e
+                @error "Error in background computation task" exception = (e, catch_backtrace())
+            end
+        end
+    end
+    register_computation!(attr, [update_key, inputs...], outputs) do inputs, changed, last
+        user_inputs = tail(values(inputs))
+        # Blocking wait for first result, this can't be avoided, since the node needs to be initialized
+        isnothing(last) && return f(user_inputs...)
+        # Always queue new computation unless no user inputs changed
+        if any(tail(values(changed)))
+            take_last!(input_channel) # discard old inputs
+            put!(input_channel, user_inputs)
+        end
+        # Always return the last result
+        # if there is non, this returns nothing, which signals no update
+        return take_last!(result_channel)
+    end
+    if !isnothing(init)
+        @assert init isa Tuple && length(init) == length(outputs) "Initial values for map_latest! must be given as a Tuple matching the number of outputs"
+        for (i, val) in enumerate(init)
+            unsafe_init!(attr.outputs[outputs[i]], val)
+        end
+    end
+    return
+end
+
 
 function Base.empty!(attr::ComputeGraph)
     # empty!(attr.inputs)
@@ -1265,7 +1406,7 @@ include("io.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph
-export register_computation!
+export register_computation!, map_latest!
 export add_input!, add_inputs!, add_constant!, add_constants!
 export update!
 
