@@ -230,49 +230,51 @@ end
 ### Main Documentation Function
 ################################################################################
 
-function get_attribute_docs(io::IO, attrs, examples, attribute; full = false)
-    attr_meta = get(attrs.d, attribute, nothing)
-    if full
-        println(io, "### `$attribute`\n")
-        if !isnothing(attr_meta)
-            println(io, attr_meta)
-            # Add example if available
-            if !isempty(examples)
-                println(io, "**Example:**\n")
-                for (i, ex) in enumerate(examples)
-                    show(io, ex)
-                    if i < length(examples)
-                        println(io)
-                    end
-                end
-                println(io)
-            end
-        else
-            println(io, "*No documentation available.*\n")
-        end
-    else
-        # Summary line
-        println(io, "- **`$attribute`**", isnothing(attr_meta) ? "" : " = `$(attr_meta.default_expr)`")
-    end
-    return nothing
+# Consider making a dedicated group for DataInspector?
+const DEFAULT_ATTRIBUTE_GROUPS = let
+    generic = collect(keys(Makie.mixin_generic_plot_attributes().d))
+    push!(generic, :cycle)
+    inspector = [:inspectable, :inspector_label, :inspector_clear, :inspector_hover]
+    filter!(name -> !in(name, inspector), generic)
+    colormapping = collect(keys(Makie.mixin_colormap_attributes().d))
+    shading = collect(keys(Makie.mixin_shading_attributes().d))
+
+    Pair{String, Vector{Symbol}}[
+        "Generic Attributes" => sort!(generic),
+        "DataInspector Attributes" => inspector,
+        "3D Shading Attributes" => sort!(shading),
+        "Colormapping Attributes" => sort!(colormapping)
+    ]
 end
 
-function get_attribute_docs(io::IO, ::Type{PT}, attribute; full = false) where {PT <: Plot}
-    attrs = documented_attributes(PT)
-    examples = attribute_examples(PT, attribute)
-    get_attribute_docs(io, attrs, examples, attribute; full = full)
-    return
-end
+"""
+    default_attribute_groups()
 
-function stripped_plot_type_name(::Type{PT}) where {PT <: AbstractPlot}
-    name = string(PT)
-    idx = findfirst('{', name)
-    if idx === nothing
-        return name
-    else
-        return string(name[1:idx-1])
-    end
+Returns a deepcopy of the default attribute groups for further modification.
+"""
+default_attribute_groups() = deepcopy(DEFAULT_ATTRIBUTE_GROUPS)
+
+"""
+    attribute_groups(::Type{<:Plot})
+
+Returns a list identifying grouped attributes for docstrings. Each element is a
+`Pair` containing the name of the group and a list of the associated attributes.
+
+This function is meant to be extended to refine attribute groups for recipes.
+`default_attribute_groups()` can be used to get the default groups.
+
+```
+function Makie.attribute_names(::Type{<:MyPlot})
+    groups = Makie.default_attribute_groups()
+    push!(groups, "My Attributes" => [:myattrib1, :myattrib2])
 end
+```
+
+If the listed attributes exist in `MyPlot` they will be printed as
+"**My Attributes**: `myattrib1`, `myattrib2`". Attributes that don't exist will
+be skipped. If every attribute does not exist, the group will not be printed.
+"""
+attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
 
 function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
     # Build attributes section
@@ -285,22 +287,98 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
         io = IOBuffer()
         println(io, "## Attributes\n")
         sorted_names = sort!(collect(attr_names))
-        for attr in sorted_names
-            examples = attribute_examples(PT, attr)
-            get_attribute_docs(io, attrs, examples, attr; full = full)
-        end
-        typename = stripped_plot_type_name(PT)
-        info = if VERSION < v"1.12.2"
-            "help($typename, :attribute)"
+        if full
+            write_full_attribute_docs!(io, attrs, sorted_names)
         else
-            "?$typename.attribute"
+            groups = attribute_groups(PT)
+            skips = skipped_group_attributes(PT)
+            write_attribute_groups!(io, sorted_names, groups, skips)
+            typename = string(plotsym(PT))
+            info = if VERSION < v"1.12.2"
+                "help($typename, :attribute)"
+            else
+                "?$typename.attribute"
+            end
+            println(io, "For more information and examples on specific attributes check `$info`.")
         end
-        full || println(io, "For more information and examples on specific attributes check `$info`.")
         return Markdown.parse(String(take!(io)))
     end
 
 end
 
+function write_full_attribute_docs!(io, attrs, sorted_names)
+    for attr in sorted_names
+        examples = attribute_examples(PT, attr)
+        write_full_single_attribute_docs(io, attrs, examples, attr; full = full)
+    end
+    return
+end
+
+function write_full_single_attribute_docs!(io, attrs, examples, attr)
+    attr_meta = get(attrs.d, attribute, nothing)
+    println(io, "### `$attribute`\n")
+    if !isnothing(attr_meta)
+        println(io, attr_meta)
+        # Add example if available
+        if !isempty(examples)
+            println(io, "**Example:**\n")
+            for (i, ex) in enumerate(examples)
+                show(io, ex)
+                if i < length(examples)
+                    println(io)
+                end
+            end
+            println(io)
+        end
+    else
+        println(io, "*No documentation available.*\n")
+    end
+    return
+end
+
+function write_attribute_groups!(io, sorted_names, groups)
+    # Print groups first (assume attributes of each group are sorted)
+    for (groupname, attribute_names) in groups
+        if any(name -> name in sorted_names, attribute_names)
+            print(io, "**", groupname, "**: ")
+            has_prev = false
+            for name in attribute_names
+                idx = findfirst(==(name), sorted_names)
+                if !isnothing(idx)
+                    has_prev && print(io, ", ")
+                    print(io, '`', name, '`')
+                    has_prev = true
+                    deleteat!(sorted_names, idx)
+                end
+            end
+            println(io, "\n")
+        end
+    end
+
+    # Print the rest as plot specific attributes
+    if !isempty(sorted_names)
+        str = mapreduce(name -> "`$name`", (a, b) -> "$a, $b", sorted_names)
+        println(io, "**Plot Attributes**: ", str, "\n")
+    end
+    return
+end
+
+function get_attribute_docs(io::IO, ::Type{PT}, attribute; full = false) where {PT <: Plot}
+    attrs = documented_attributes(PT)
+    if full
+        examples = attribute_examples(PT, attribute)
+        write_full_single_attribute_docs!(io, attrs, examples, attribute)
+    else
+        write_short_attribute_docs!(io, attrs, attribute)
+    end
+    return
+end
+
+function write_short_attribute_docs!(io::IO, attrs, attribute)
+    attr_meta = get(attrs.d, attribute, nothing)
+    println(io, "- **`$attribute`**", isnothing(attr_meta) ? "" : " = `$(attr_meta.default_expr)`")
+    return nothing
+end
 
 """
     document_recipe(::Type{PT}, user_docstring; max_examples=1, full_attributes=false) where {PT<:Plot}
