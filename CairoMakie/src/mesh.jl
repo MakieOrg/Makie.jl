@@ -67,7 +67,10 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
+    cnt = 0
+    flusheach = 16384  # TODO: tune
     pattern = Cairo.CairoPatternMesh()
+
     for i in indices
         c1, c2, c3 = per_face_cols[i]
         t1, t2, t3 = vs[fs[i]] #triangle points
@@ -88,13 +91,29 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+
+        cnt += 1
+        if mod(cnt, flusheach) == 0
+            Cairo.set_source(ctx, pattern)
+            Cairo.close_path(ctx)
+            Cairo.paint(ctx)
+            Cairo.destroy(pattern)
+            # Reset any lingering pattern state
+            Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+            # reopen
+            pattern = Cairo.CairoPatternMesh()
+        end
     end
-    Cairo.set_source(ctx, pattern)
-    Cairo.close_path(ctx)
-    Cairo.paint(ctx)
-    Cairo.destroy(pattern)
-    # Reset any lingering pattern state
-    Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+    if mod(cnt, flusheach) != 0
+        Cairo.set_source(ctx, pattern)
+        Cairo.close_path(ctx)
+        Cairo.paint(ctx)
+        Cairo.destroy(pattern)
+        # Reset any lingering pattern state
+        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+    end
     return nothing
 end
 
@@ -151,6 +170,10 @@ function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient,
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
+    cnt = 0
+    flusheach = 16384  # TODO: tune
+    pattern = Cairo.CairoPatternMesh()
+
     for k in reverse(zorder)
 
         f = meshfaces[k]
@@ -190,8 +213,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         # c2 = RGB(n2...)
         # c3 = RGB(n3...)
 
-        pattern = Cairo.CairoPatternMesh()
-
+        cnt += 1
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -203,6 +225,21 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
+
+        if mod(cnt, flusheach) == 0
+            Cairo.set_source(ctx, pattern)
+            Cairo.close_path(ctx)
+            Cairo.paint(ctx)
+            Cairo.destroy(pattern)
+            # Reset any lingering pattern state
+            Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+            # reopen
+            pattern = Cairo.CairoPatternMesh()
+        end
+    end
+
+    if mod(cnt, flusheach) != 0
         Cairo.set_source(ctx, pattern)
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
