@@ -288,11 +288,9 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
         println(io, "## Attributes\n")
         sorted_names = sort!(collect(attr_names))
         if full
-            write_full_attribute_docs!(io, attrs, sorted_names)
+            write_full_attribute_docs!(io, PT, attrs, sorted_names)
         else
-            groups = attribute_groups(PT)
-            skips = skipped_group_attributes(PT)
-            write_attribute_groups!(io, sorted_names, groups, skips)
+            write_attribute_groups!(io, PT, sorted_names)
             typename = string(plotsym(PT))
             info = if VERSION < v"1.12.2"
                 "help($typename, :attribute)"
@@ -306,15 +304,15 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
 
 end
 
-function write_full_attribute_docs!(io, attrs, sorted_names)
+function write_full_attribute_docs!(io, PT, attrs, sorted_names)
     for attr in sorted_names
         examples = attribute_examples(PT, attr)
-        write_full_single_attribute_docs(io, attrs, examples, attr; full = full)
+        write_full_single_attribute_docs!(io, attrs, examples, attr)
     end
     return
 end
 
-function write_full_single_attribute_docs!(io, attrs, examples, attr)
+function write_full_single_attribute_docs!(io, attrs, examples, attribute)
     attr_meta = get(attrs.d, attribute, nothing)
     println(io, "### `$attribute`\n")
     if !isnothing(attr_meta)
@@ -336,9 +334,9 @@ function write_full_single_attribute_docs!(io, attrs, examples, attr)
     return
 end
 
-function write_attribute_groups!(io, sorted_names, groups)
+function write_attribute_groups!(io, PT, sorted_names)
     # Print groups first (assume attributes of each group are sorted)
-    for (groupname, attribute_names) in groups
+    for (groupname, attribute_names) in attribute_groups(PT)
         if any(name -> name in sorted_names, attribute_names)
             print(io, "**", groupname, "**: ")
             has_prev = false
