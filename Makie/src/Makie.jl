@@ -230,6 +230,7 @@ include("interaction/events.jl")
 include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
+include("interaction/zoom_inset.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")

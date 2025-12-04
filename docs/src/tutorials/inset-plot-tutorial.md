@@ -197,3 +197,86 @@ lines!(ax_main, border_rect, color=:black, linewidth=1)
 ```
 
 Another approach to marking the selected region is to use the [zoom_lines](https://juliaaplavin.github.io/MakieExtraDocs.jl/notebooks/examples.html#3526c688-aea9-411b-a837-dc02ff81a7ee) function from the [MakieExtra.jl](https://juliapackages.com/p/makieextra) package. This function not only marks the region but also connects it to the inset axis with guiding lines, enhancing the visual connection between the main plot and the inset plot.
+
+## Interactive Zoom Inset with `zoom_inset!`
+
+For interactive applications, Makie provides `zoom_inset!` which creates a fully interactive zoom inset. This function automatically:
+
+- Creates an inset axis showing a zoomed view of a rectangular region
+- Draws a rectangle on the main axis indicating the zoomed region
+- Draws connecting lines between the zoom rectangle and the inset
+- Copies all existing plots from the main axis to the inset
+- Allows dragging the inset to reposition it
+- Allows dragging the zoom rectangle edges to resize the zoomed region
+- Allows dragging the inset edges to resize the inset itself
+
+### Basic Usage
+
+```julia
+using GLMakie
+
+fig = Figure()
+ax = Axis(fig[1, 1], title="Interactive Zoom Inset Demo")
+
+# Create some data
+x = 1:100
+y = sin.(x .* 0.1) .+ 0.5 .* cos.(x .* 0.3)
+lines!(ax, x, y)
+
+# Create an interactive zoom inset
+# The rectangle defines the initial zoom region: Rect2f(x_origin, y_origin, width, height)
+zi = zoom_inset!(ax, Rect2f(30, -0.5, 20, 1.5))
+
+fig
+```
+
+### Customization Options
+
+`zoom_inset!` accepts several keyword arguments for customization:
+
+```julia
+zi = zoom_inset!(ax, Rect2f(30, -0.5, 20, 1.5);
+    inset_width = 0.3,      # Width as fraction of parent (default: 0.3)
+    inset_height = 0.3,     # Height as fraction of parent (default: 0.3)
+    halign = 0.9,           # Horizontal position (0=left, 1=right, default: 0.9)
+    valign = 0.9,           # Vertical position (0=bottom, 1=top, default: 0.9)
+    strokewidth = 1.5,      # Zoom rectangle stroke width
+    strokecolor = :black,   # Zoom rectangle stroke color
+    rectcolor = (:black, 0),# Zoom rectangle fill color (transparent by default)
+    linecolor = :black,     # Connecting lines color
+    linestyle = :dot,       # Connecting lines style
+    edge_threshold = 10,    # Pixel threshold for edge detection
+)
+```
+
+### Accessing Components
+
+The function returns a `ZoomInset` struct containing references to all created elements:
+
+```julia
+zi = zoom_inset!(ax, Rect2f(30, -0.5, 20, 1.5))
+
+# Access the inset axis to add more plots or customize
+zi.ax_inset
+zi.ax_main
+
+# Access observables
+zi.zoom_rect[]       # Current zoom rectangle (Rect2f)
+zi.inset_halign[]    # Current horizontal alignment
+zi.inset_valign[]    # Current vertical alignment
+
+# Access plot objects
+zi.rect_plot         # The zoom rectangle poly plot
+zi.lines_plot        # The connecting lines plot
+```
+
+### Interactions
+
+When using an interactive backend like GLMakie or WGLMakie:
+
+- **Move the inset**: Click and drag anywhere inside the inset axis
+- **Resize the zoom region**: Click and drag the edges or corners of the zoom rectangle on the main axis
+- **Move the zoom region**: Click and drag inside the zoom rectangle on the main axis
+- **Resize the inset**: Click and drag the edges or corners of the inset axis
+
+The zoom rectangle provides visual feedback by thickening its stroke when hovering over it.
