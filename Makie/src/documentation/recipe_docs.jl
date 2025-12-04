@@ -287,34 +287,73 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
         io = IOBuffer()
         println(io, "## Attributes\n")
         sorted_names = sort!(collect(attr_names))
-        if full
-            write_full_attribute_docs!(io, PT, attrs, sorted_names)
-        else
-            write_attribute_groups!(io, PT, sorted_names)
-            typename = string(plotsym(PT))
-            info = if VERSION < v"1.12.2"
-                "help($typename, :attribute)"
-            else
-                "?$typename.attribute"
-            end
-            println(io, "For more information and examples on specific attributes check `$info`.")
-        end
+        write_attribute_docs!(io, PT, attrs, sorted_names, full)
         return Markdown.parse(String(take!(io)))
     end
-
 end
 
-function write_full_attribute_docs!(io, PT, attrs, sorted_names)
-    for attr in sorted_names
-        examples = attribute_examples(PT, attr)
-        write_full_single_attribute_docs!(io, attrs, examples, attr)
+function write_attribute_docs!(io, PT, attrs, sorted_names, full)
+    # Print groups first (assume attributes in each group are sorted)
+    for (groupname, attribute_names) in attribute_groups(PT)
+        if any(name -> name in sorted_names, attribute_names)
+            # Try to order attributes to minimize scrolling:
+            # full docs: unique attributes closer to the top of the page
+            # docstring: unique attributes at the bottom, where the terminal input is
+            if full
+                println(io, "### $groupname\n")
+                for name in reverse(attribute_names)
+                    idx = findfirst(==(name), sorted_names)
+                    if !isnothing(idx)
+                        examples = attribute_examples(PT, name)
+                        write_full_single_attribute_docs!(io, attrs, examples, name)
+                        deleteat!(sorted_names, idx)
+                    end
+                end
+            else
+                print(io, "**", groupname, "**: ")
+                has_prev = false
+                for name in attribute_names
+                    idx = findfirst(==(name), sorted_names)
+                    if !isnothing(idx)
+                        has_prev && print(io, ", ")
+                        print(io, '`', name, '`')
+                        has_prev = true
+                        deleteat!(sorted_names, idx)
+                    end
+                end
+                println(io, "\n")
+            end
+        end
+    end
+
+    # Print the rest as plot specific attributes
+    if !isempty(sorted_names)
+        if full
+            for attr in sorted_names
+                examples = attribute_examples(PT, attr)
+                write_full_single_attribute_docs!(io, attrs, examples, attr)
+            end
+        else
+            str = mapreduce(name -> "`$name`", (a, b) -> "$a, $b", sorted_names)
+            println(io, "**Plot Attributes**: ", str, "\n")
+        end
+    end
+
+    if !full
+        typename = string(plotsym(PT))
+        info = if VERSION < v"1.12.2"
+            "help($typename, :attribute)"
+        else
+            "?$typename.attribute"
+        end
+        println(io, "For more information and examples on specific attributes check `$info`.")
     end
     return
 end
 
 function write_full_single_attribute_docs!(io, attrs, examples, attribute)
     attr_meta = get(attrs.d, attribute, nothing)
-    println(io, "### `$attribute`\n")
+    println(io, "#### `$attribute`\n")
     if !isnothing(attr_meta)
         println(io, attr_meta)
         # Add example if available
@@ -332,50 +371,6 @@ function write_full_single_attribute_docs!(io, attrs, examples, attribute)
         println(io, "*No documentation available.*\n")
     end
     return
-end
-
-function write_attribute_groups!(io, PT, sorted_names)
-    # Print groups first (assume attributes of each group are sorted)
-    for (groupname, attribute_names) in attribute_groups(PT)
-        if any(name -> name in sorted_names, attribute_names)
-            print(io, "**", groupname, "**: ")
-            has_prev = false
-            for name in attribute_names
-                idx = findfirst(==(name), sorted_names)
-                if !isnothing(idx)
-                    has_prev && print(io, ", ")
-                    print(io, '`', name, '`')
-                    has_prev = true
-                    deleteat!(sorted_names, idx)
-                end
-            end
-            println(io, "\n")
-        end
-    end
-
-    # Print the rest as plot specific attributes
-    if !isempty(sorted_names)
-        str = mapreduce(name -> "`$name`", (a, b) -> "$a, $b", sorted_names)
-        println(io, "**Plot Attributes**: ", str, "\n")
-    end
-    return
-end
-
-function get_attribute_docs(io::IO, ::Type{PT}, attribute; full = false) where {PT <: Plot}
-    attrs = documented_attributes(PT)
-    if full
-        examples = attribute_examples(PT, attribute)
-        write_full_single_attribute_docs!(io, attrs, examples, attribute)
-    else
-        write_short_attribute_docs!(io, attrs, attribute)
-    end
-    return
-end
-
-function write_short_attribute_docs!(io::IO, attrs, attribute)
-    attr_meta = get(attrs.d, attribute, nothing)
-    println(io, "- **`$attribute`**", isnothing(attr_meta) ? "" : " = `$(attr_meta.default_expr)`")
-    return nothing
 end
 
 """
@@ -510,7 +505,7 @@ function generate_plot_docs(output_dir::String; plot_types = nothing)
     if isnothing(plot_types)
         # Get all markdown files in the plots directory
         plots_dir = joinpath(@__DIR__, "plots")
-        md_files = filter(f -> endswith(f, ".md") && f != "overview.md", readdir(plots_dir))
+        md_files = filter(f -> endswith(f, ".md"), readdir(plots_dir))
         plot_names = [splitext(f)[1] for f in md_files]
     else
         # Use provided plot types

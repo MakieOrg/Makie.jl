@@ -1,5 +1,3 @@
-# ENV["JULIA_DEBUG"] = "Documenter"
-
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
@@ -60,10 +58,6 @@ open(joinpath(plots_dir, "overview.md"), "w") do file
     println(file, content)
 end
 pushfirst!(plots, "reference/plots/overview.md")
-
-#
-
-@info plots
 
 pages = [
     "Home" => "index.md",
