@@ -602,3 +602,8 @@ end
 function REPL.fielddoc(::Type{T}, attr::Symbol) where {T <: Plot}
     return field_docs(T, attr)
 end
+
+# autocomplete for `Scatter.attr...`
+function Base.propertynames(::Type{T}) where {T <: AbstractPlot}
+    return collect(attribute_names(T))
+end
