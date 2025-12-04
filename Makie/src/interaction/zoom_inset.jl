@@ -95,7 +95,6 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         linestyle=:dot,
         edge_threshold::Real=10)
 
-    fig = ax.parent
     # Create observables for the zoom rectangle and inset position/size
     zoom_rect = Observable(Rect2f(rect))
     inset_halign = Observable(Float64(halign))
@@ -103,12 +102,29 @@ function zoom_inset!(ax::Axis, rect::Rect2;
     inset_width_obs = Observable(Float32(inset_width))
     inset_height_obs = Observable(Float32(inset_height))
 
+    # Compute pixel-space bbox for the inset axis based on halign/valign/width/height
+    # relative to the main axis's computed bbox
+    inset_bbox = map(ax.layoutobservables.computedbbox, inset_halign, inset_valign,
+                     inset_width_obs, inset_height_obs) do parent_bbox, ha, va, w_frac, h_frac
+        parent_origin = minimum(parent_bbox)
+        parent_size = widths(parent_bbox)
+
+        inset_w = parent_size[1] * w_frac
+        inset_h = parent_size[2] * h_frac
+
+        # halign/valign position the inset within the available space
+        available_w = parent_size[1] - inset_w
+        available_h = parent_size[2] - inset_h
+
+        inset_x = parent_origin[1] + ha * available_w
+        inset_y = parent_origin[2] + va * available_h
+
+        return Rect2f(inset_x, inset_y, inset_w, inset_h)
+    end
+
     # Create the inset axis
-    ax_inset = Axis(fig[1, 1],
-        width=map(Relative, inset_width_obs),
-        height=map(Relative, inset_height_obs),
-        halign=inset_halign,
-        valign=inset_valign,
+    ax_inset = Axis(ax.blockscene;
+        bbox=inset_bbox,
         backgroundcolor=:white,
         xticklabelsize=10,
         yticklabelsize=10,
@@ -136,7 +152,7 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         limits!(ax_inset, r)
     end
 
-    rect_plot = poly!(ax, zoom_rect;
+    rect_plot = poly!(ax.scene, zoom_rect;
         strokewidth=strokewidth,
         strokecolor=strokecolor,
         color=rectcolor,
@@ -242,15 +258,22 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         tl = Point2f(project(scene, Point2f(mi[1], ma[2])))
         tr = Point2f(project(scene, Point2f(ma[1], ma[2])))
 
-        near_left = abs(mouse_rel[1] - bl[1]) < threshold
-        near_right = abs(mouse_rel[1] - br[1]) < threshold
-        near_bottom = abs(mouse_rel[2] - bl[2]) < threshold
-        near_top = abs(mouse_rel[2] - tl[2]) < threshold
+        # Adapt threshold for small rectangles: edge zone is at most 1/4 of rect dimension
+        # This ensures there's always a center region for panning
+        rect_w = br[1] - bl[1]
+        rect_h = tl[2] - bl[2]
+        effective_threshold_x = min(threshold, rect_w / 4)
+        effective_threshold_y = min(threshold, rect_h / 4)
+
+        near_left = abs(mouse_rel[1] - bl[1]) < effective_threshold_x
+        near_right = abs(mouse_rel[1] - br[1]) < effective_threshold_x
+        near_bottom = abs(mouse_rel[2] - bl[2]) < effective_threshold_y
+        near_top = abs(mouse_rel[2] - tl[2]) < effective_threshold_y
 
         in_x_range = bl[1] - threshold < mouse_rel[1] < br[1] + threshold
         in_y_range = bl[2] - threshold < mouse_rel[2] < tl[2] + threshold
-        strictly_inside = bl[1] + threshold < mouse_rel[1] < br[1] - threshold &&
-                          bl[2] + threshold < mouse_rel[2] < tl[2] - threshold
+        strictly_inside = bl[1] + effective_threshold_x < mouse_rel[1] < br[1] - effective_threshold_x &&
+                          bl[2] + effective_threshold_y < mouse_rel[2] < tl[2] - effective_threshold_y
 
         if near_left && near_top && in_x_range && in_y_range
             return :topleft
@@ -280,15 +303,22 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         mi = minimum(vp)
         ma = maximum(vp)
 
-        near_left = abs(mouse_px[1] - mi[1]) < threshold
-        near_right = abs(mouse_px[1] - ma[1]) < threshold
-        near_bottom = abs(mouse_px[2] - mi[2]) < threshold
-        near_top = abs(mouse_px[2] - ma[2]) < threshold
+        # Adapt threshold for small insets: edge zone is at most 1/4 of inset dimension
+        # This ensures there's always a center region for dragging
+        inset_w = ma[1] - mi[1]
+        inset_h = ma[2] - mi[2]
+        effective_threshold_x = min(threshold, inset_w / 4)
+        effective_threshold_y = min(threshold, inset_h / 4)
+
+        near_left = abs(mouse_px[1] - mi[1]) < effective_threshold_x
+        near_right = abs(mouse_px[1] - ma[1]) < effective_threshold_x
+        near_bottom = abs(mouse_px[2] - mi[2]) < effective_threshold_y
+        near_top = abs(mouse_px[2] - ma[2]) < effective_threshold_y
 
         in_x_range = mi[1] - threshold < mouse_px[1] < ma[1] + threshold
         in_y_range = mi[2] - threshold < mouse_px[2] < ma[2] + threshold
-        strictly_inside = mi[1] + threshold < mouse_px[1] < ma[1] - threshold &&
-                          mi[2] + threshold < mouse_px[2] < ma[2] - threshold
+        strictly_inside = mi[1] + effective_threshold_x < mouse_px[1] < ma[1] - effective_threshold_x &&
+                          mi[2] + effective_threshold_y < mouse_px[2] < ma[2] - effective_threshold_y
 
         if near_left && near_top && in_x_range && in_y_range
             return :inset_topleft

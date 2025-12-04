@@ -230,7 +230,6 @@ include("interaction/events.jl")
 include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
 include("interaction/inspector.jl")
-include("interaction/zoom_inset.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")
@@ -416,6 +415,7 @@ include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
+include("interaction/zoom_inset.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
 export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, wireframe, voxels
