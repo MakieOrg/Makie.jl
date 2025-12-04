@@ -72,7 +72,7 @@ pages = [
             "reference/blocks/textbox.md",
             "reference/blocks/toggle.md",
         ],
-        "Plots" => plots,
+        # "Plots" => plots,
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",
             "reference/generic/transformations.md",
