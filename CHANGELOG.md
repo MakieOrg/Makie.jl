@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `zoom_inset!(ax, rect)` for creating interactive zoom insets with draggable inset positioning, resizable zoom regions, and automatic plot copying from the main axis [#5456](https://github.com/MakieOrg/Makie.jl/pull/5456)
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
 - Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).

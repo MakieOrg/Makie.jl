@@ -24,14 +24,14 @@ struct ZoomInset
     lines_plot::LineSegments
 end
 
-function _copy_plot_to_inset!(ax, plot::P) where {P<:Plot}
+function _copy_plot_to_inset!(ax, plot::P) where {P <: Plot}
     scene = get_scene(ax)
     plot_attr = keys(plot_attributes(scene, P))
-    kw = Dict{Symbol,Any}([name => plot[name] for name in plot_attr if !(name in (:model, :transformation))])
+    kw = Dict{Symbol, Any}([name => plot[name] for name in plot_attr if !(name in (:model, :transformation))])
     names = argument_names(P, length(plot.converted[]))
     args = map(name -> plot[name], names)
     func = plotfunc(P)
-    _create_plot!(func, kw, ax, args...)
+    return _create_plot!(func, kw, ax, args...)
 end
 
 """
@@ -83,17 +83,19 @@ zi = zoom_inset!(ax, Rect2f(30, -0.5, 20, 1.5))
 display(fig)
 ```
 """
-function zoom_inset!(ax::Axis, rect::Rect2;
-        inset_width::Real=0.3,
-        inset_height::Real=0.3,
-        halign::Real=0.9,
-        valign::Real=0.9,
-        strokewidth::Real=1.5,
-        strokecolor=:black,
-        rectcolor=(:black, 0),
-        linecolor=:black,
-        linestyle=:dot,
-        edge_threshold::Real=10)
+function zoom_inset!(
+        ax::Axis, rect::Rect2;
+        inset_width::Real = 0.3,
+        inset_height::Real = 0.3,
+        halign::Real = 0.9,
+        valign::Real = 0.9,
+        strokewidth::Real = 1.5,
+        strokecolor = :black,
+        rectcolor = (:black, 0),
+        linecolor = :black,
+        linestyle = :dot,
+        edge_threshold::Real = 10
+    )
 
     # Create observables for the zoom rectangle and inset position/size
     zoom_rect = Observable(Rect2f(rect))
@@ -104,8 +106,10 @@ function zoom_inset!(ax::Axis, rect::Rect2;
 
     # Compute pixel-space bbox for the inset axis based on halign/valign/width/height
     # relative to the main axis's computed bbox
-    inset_bbox = map(ax.layoutobservables.computedbbox, inset_halign, inset_valign,
-                     inset_width_obs, inset_height_obs) do parent_bbox, ha, va, w_frac, h_frac
+    inset_bbox = map(
+        ax.layoutobservables.computedbbox, inset_halign, inset_valign,
+        inset_width_obs, inset_height_obs
+    ) do parent_bbox, ha, va, w_frac, h_frac
         parent_origin = minimum(parent_bbox)
         parent_size = widths(parent_bbox)
 
@@ -123,17 +127,18 @@ function zoom_inset!(ax::Axis, rect::Rect2;
     end
 
     # Create the inset axis
-    ax_inset = Axis(ax.blockscene;
-        bbox=inset_bbox,
-        backgroundcolor=:white,
-        xticklabelsize=10,
-        yticklabelsize=10,
-        xlabelsize=10,
-        ylabelsize=10,
-        leftspinevisible=true,
-        rightspinevisible=true,
-        topspinevisible=true,
-        bottomspinevisible=true,
+    ax_inset = Axis(
+        ax.blockscene;
+        bbox = inset_bbox,
+        backgroundcolor = :white,
+        xticklabelsize = 10,
+        yticklabelsize = 10,
+        xlabelsize = 10,
+        ylabelsize = 10,
+        leftspinevisible = true,
+        rightspinevisible = true,
+        topspinevisible = true,
+        bottomspinevisible = true,
     )
     translate!(ax_inset.scene, 0, 0, 1000)  # Ensure inset is on top
     translate!(ax_inset.blockscene, 0, 0, 1000)  # Ensure inset is on top
@@ -148,16 +153,17 @@ function zoom_inset!(ax::Axis, rect::Rect2;
     end
 
     # Set inset limits based on zoom rect
-    on(zoom_rect; update=true) do r
+    on(zoom_rect; update = true) do r
         limits!(ax_inset, r)
     end
 
-    rect_plot = poly!(ax.scene, zoom_rect;
-        strokewidth=strokewidth,
-        strokecolor=strokecolor,
-        color=rectcolor,
-        xautolimits=false,
-        yautolimits=false
+    rect_plot = poly!(
+        ax.scene, zoom_rect;
+        strokewidth = strokewidth,
+        strokecolor = strokecolor,
+        color = rectcolor,
+        xautolimits = false,
+        yautolimits = false
     )
 
     # Get the root scene for drawing connecting lines
@@ -218,16 +224,19 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         return nothing
     end
 
-    onany(zoom_rect, ax.scene.viewport, ax_inset.scene.viewport,
-          ax.scene.camera.projectionview; update=true) do args...
+    onany(
+        zoom_rect, ax.scene.viewport, ax_inset.scene.viewport,
+        ax.scene.camera.projectionview; update = true
+    ) do args...
         update_lines()
         return nothing
     end
 
-    lines_plot = linesegments!(pscene, line_points;
-        color=linecolor,
-        linewidth=strokewidth,
-        linestyle=linestyle
+    lines_plot = linesegments!(
+        pscene, line_points;
+        color = linecolor,
+        linewidth = strokewidth,
+        linestyle = linestyle
     )
     translate!(lines_plot, 0, 0, 9999)
 
@@ -273,7 +282,7 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         in_x_range = bl[1] - threshold < mouse_rel[1] < br[1] + threshold
         in_y_range = bl[2] - threshold < mouse_rel[2] < tl[2] + threshold
         strictly_inside = bl[1] + effective_threshold_x < mouse_rel[1] < br[1] - effective_threshold_x &&
-                          bl[2] + effective_threshold_y < mouse_rel[2] < tl[2] - effective_threshold_y
+            bl[2] + effective_threshold_y < mouse_rel[2] < tl[2] - effective_threshold_y
 
         if near_left && near_top && in_x_range && in_y_range
             return :topleft
@@ -318,7 +327,7 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         in_x_range = mi[1] - threshold < mouse_px[1] < ma[1] + threshold
         in_y_range = mi[2] - threshold < mouse_px[2] < ma[2] + threshold
         strictly_inside = mi[1] + effective_threshold_x < mouse_px[1] < ma[1] - effective_threshold_x &&
-                          mi[2] + effective_threshold_y < mouse_px[2] < ma[2] - effective_threshold_y
+            mi[2] + effective_threshold_y < mouse_px[2] < ma[2] - effective_threshold_y
 
         if near_left && near_top && in_x_range && in_y_range
             return :inset_topleft
@@ -346,12 +355,12 @@ function zoom_inset!(ax::Axis, rect::Rect2;
     function mouse_in_inset(mouse_px)
         vp = ax_inset.scene.viewport[]
         return mouse_px[1] >= minimum(vp)[1] && mouse_px[1] <= maximum(vp)[1] &&
-               mouse_px[2] >= minimum(vp)[2] && mouse_px[2] <= maximum(vp)[2]
+            mouse_px[2] >= minimum(vp)[2] && mouse_px[2] <= maximum(vp)[2]
     end
 
     scene = ax.scene
 
-    on(events(scene).mousebutton, priority=100) do event
+    on(events(scene).mousebutton, priority = 100) do event
         mouse_px = Point2f(events(scene).mouseposition[])
 
         if event.action == Mouse.press && event.button == Mouse.left
@@ -396,7 +405,7 @@ function zoom_inset!(ax::Axis, rect::Rect2;
         return Consume(false)
     end
 
-    on(events(scene).mouseposition, priority=100) do mouse_pos
+    on(events(scene).mouseposition, priority = 100) do mouse_pos
         mouse_px = Point2f(mouse_pos)
 
         if dragging_inset[]
