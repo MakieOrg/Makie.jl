@@ -43,8 +43,25 @@ unnest(s::String) = [s]
 plots_dir = joinpath(@__DIR__, "src/reference/plots")
 isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
 mkpath(plots_dir)
-plots = Makie.generate_plot_docs(joinpath(@__DIR__, "src/reference/plots"))
+plots = Makie.generate_plot_docs(plots_dir)
+filter!(p -> p != "timeseries", plots)
 plots = map(x -> "reference/plots/$(x).md", plots)
+
+open(joinpath(plots_dir, "overview.md"), "w") do file
+    content = """
+    # Overview
+
+    ```@example
+    using Markdown # hide
+    import ..MakieDocsHelpers # hide
+    MakieDocsHelpers.OverviewSection("plots") # hide
+    ```
+    """
+    println(file, content)
+end
+pushfirst!(plots, "reference/plots/overview.md")
+
+#
 
 @info plots
 
@@ -71,11 +88,7 @@ pages = [
             "reference/blocks/textbox.md",
             "reference/blocks/toggle.md",
         ],
-        # "Plots" => plots,
-        "Plots" => [
-            "reference/plots/scatter.md",
-            "reference/plots/lines.md",
-        ],
+        "Plots" => plots,
         "Generic Concepts" => [
             "reference/generic/clip_planes.md",
             "reference/generic/transformations.md",
