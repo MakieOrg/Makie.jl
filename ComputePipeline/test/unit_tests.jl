@@ -855,3 +855,103 @@ end
     @test ComputePipeline.is_same(d, copy(d))
     @test !ComputePipeline.is_same(d, d)
 end
+
+@testset "explicit node initialization" begin
+    calls = 0
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    add_input!(graph, :y, 2)
+    map!(graph, [:x, :y], [:xy, :yx]) do x, y
+        calls += 1
+        return (x + y, x - y)
+    end
+    map!(x -> 2x, graph, :xy, :z)
+
+    @testset "Initial State" begin
+        @test isdirty(graph.x)
+        @test isdirty(graph.y)
+        @test isdirty(graph.xy)
+        @test isdirty(graph.yx)
+        @test isdirty(graph.z)
+    end
+
+    @testset "Partial output init doesn't init edge" begin
+        ComputePipeline.unsafe_init!(graph.xy, 1)
+
+        @test isdirty(graph.x)
+        @test isdirty(graph.y)
+        @test isdirty(graph.xy)
+        @test isdirty(graph.yx)
+        @test isdirty(graph.z)
+        @test ComputePipeline.is_initialized(graph.xy)
+        @test !ComputePipeline.is_initialized(graph.yx)
+        @test graph.xy.value[] == 1
+        @test !isassigned(graph.xy.parent.typed_edge)
+        @test calls == 0
+    end
+
+    @testset "Partial output init doesn't break normal init" begin
+        @test graph.z[] == 6
+        @test calls == 1
+    end
+
+    calls = 0
+    graph = ComputeGraph()
+    add_input!(graph, :x, 1)
+    add_input!(graph, :y, 2)
+    map!(graph, [:x, :y], [:xy, :yx]) do x, y
+        calls += 1
+        return (x + y, x - y)
+    end
+    map!(x -> 2x, graph, :xy, :z)
+    ComputePipeline.unsafe_init!(graph.xy, 1)
+
+    @testset "Verify reset" begin
+        @test isdirty(graph.x)
+        @test isdirty(graph.y)
+        @test isdirty(graph.xy)
+        @test isdirty(graph.yx)
+        @test isdirty(graph.z)
+        @test ComputePipeline.is_initialized(graph.xy)
+        @test !ComputePipeline.is_initialized(graph.yx)
+        @test graph.xy.value[] == 1
+        @test !isassigned(graph.xy.parent.typed_edge)
+        @test calls == 0
+    end
+
+    @testset "Full output init does init edge" begin
+        ComputePipeline.unsafe_init!(graph.yx, Base.Ref{Any}(2))
+
+        @test !isdirty(graph.x)
+        @test !isdirty(graph.y)
+        @test !isdirty(graph.xy)
+        @test !isdirty(graph.yx)
+        @test isdirty(graph.z)
+        @test ComputePipeline.is_initialized(graph.xy)
+        @test ComputePipeline.is_initialized(graph.yx)
+        @test isassigned(graph.xy.parent.typed_edge)
+        @test calls == 0
+        @test graph.xy.value[] == 1
+        @test graph.yx.value[] == 2
+        @test calls == 0
+        @test !ComputePipeline.is_initialized(graph.z)
+        @test graph.z[] == 2
+        @test calls == 0
+    end
+
+    @testset "updates still work" begin
+        graph.x = 2
+        @test isdirty(graph.x)
+        @test !isdirty(graph.y)
+        @test isdirty(graph.xy)
+        @test isdirty(graph.z)
+        @test calls == 0
+        @test graph.xy[] == 4
+        @test graph.z[] == 8
+        @test calls == 1
+    end
+
+    @testset "error on double init" begin
+        @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
+    end
+end
