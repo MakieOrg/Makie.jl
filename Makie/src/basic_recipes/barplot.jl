@@ -41,12 +41,11 @@ Plots bars of the given heights at the given positions.
 
 * `positions, heights` Plots bars where `positions` is a `Real` or `AbstractVector{<:Real}` setting
     the x positions of bars, and `heights` is a `Real` or `AbstractVector{<:Real}` setting the y
-    heights of bars. These are interpreted as y positions and x heights respectively if
-    `direction = :x`. The final positions may be further modified by `dodge`, and the start and end
-    height of bars may be further modified by `offset` and `stack`.
+    heights of bars.
 * `position_heights` A `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`) or
-    `AbstractVector{<:VecTypes}` setting the positions and heights together. The x and y components
-    are affected by attributes in the same way as `positions` and `heights`.
+    `AbstractVector{<:VecTypes}` setting the positions and heights together.
+* Setting `direction = :x` will swap the x and y values. The bar positions may be further modified
+    by `dodge`, `stack` and `offset`.
 """
 @recipe BarPlot (positions,) begin
     """
@@ -135,6 +134,16 @@ Plots bars of the given heights at the given positions.
     label_align = automatic
     "The position of each bar's label relative to the bar. Possible values are `:end` or `:center`."
     label_position = :end
+end
+
+function attribute_groups(::Type{<:BarPlot})
+    groups = default_attribute_groups()
+    push!(groups, "Label Attributes" => sort!([
+        :bar_labels, :flip_labels_at, :label_rotation, :label_color, :color_over_background,
+        :color_over_bar, :label_offset, :label_font, :label_size, :label_formatter,
+        :label_align, :label_position,
+    ]))
+    return groups
 end
 
 conversion_trait(::Type{<:BarPlot}) = PointBased()

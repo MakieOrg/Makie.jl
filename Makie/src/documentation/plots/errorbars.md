@@ -2,6 +2,16 @@
 
 ## Examples
 
+### Basic Errorbars
+
+```@figure
+xs = range(0, 10, length=50)
+ys = sin.(xs)
+err = 0.1 .+ 0.1 .* abs.(randn(50))
+
+errorbars(xs, ys, err, whiskerwidth = 5)
+```
+
 ### Errorbars with legend
 
 ```@figure

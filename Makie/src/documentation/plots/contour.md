@@ -4,18 +4,17 @@
 
 ## Examples
 
-```@figure
-f = Figure()
-Axis(f[1, 1])
+### Basic 2D Contour
 
+```@figure
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
 zs = [cos(x) * sin(y) for x in xs, y in ys]
 
-contour!(xs, ys, zs)
-
-f
+contour(xs, ys, zs)
 ```
+
+### Contours without xs and ys
 
 Omitting the `xs` and `ys` results in the indices of `zs` being used. We can also set arbitrary contour-levels using `levels`
 
@@ -23,14 +22,14 @@ Omitting the `xs` and `ys` results in the indices of `zs` being used. We can als
 f = Figure()
 Axis(f[1, 1])
 
-xs = LinRange(0, 10, 100)
-ys = LinRange(0, 15, 100)
 zs = [cos(x) * sin(y) for x in xs, y in ys]
 
 contour!(zs,levels=-1:0.1:1)
 
 f
 ```
+
+### Contour labels
 
 One can also add labels and control label attributes such as `labelsize`, `labelcolor` or `labelfont`.
 
@@ -109,5 +108,3 @@ a2 = Axis3(f[1, 2])
 contour!(a2, -pi .. pi, -pi .. pi, -pi .. pi, data3d, alpha = 0.05)
 f
 ```
-
-

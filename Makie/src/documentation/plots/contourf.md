@@ -7,15 +7,12 @@
 ```@figure
 using DelimitedFiles
 
-
 volcano = readdlm(Makie.assetpath("volcano.csv"), ',', Float64)
 
 f = Figure()
 Axis(f[1, 1])
-
-co = contourf!(volcano, levels = 10)
-
-Colorbar(f[1, 2], co)
+p = contourf!(volcano, levels = 10)
+Colorbar(f[1, 2], p)
 
 f
 ```

@@ -82,8 +82,13 @@ See also: [`CellGrid`](@ref), [`ImageLike`](@ref)
 
 ## Arguments
 
-* `zs` Defines z values for vertices of a grid using an `AbstractMatrix{<:Real}`.
-* `xs, ys, zs` Defines the (x, y) positions of grid vertices along with z values. `xs` and `ys` can be a `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}` interpreted as the outer limits of the grid, between which vertices are spaced regularly. An `AbstractVector{<:Real}` defines vertex positions directly for the respective dimension. An `AbstractMatrix{<:Real}` allows grid positions to be defined per vertex, i.e. in a non-repeating fashion. If `xs` and `ys` are omitted they default to `axes(zs, dim)`.
+* `xs, ys, zs` Defines a 2D grid of (x, y, z) vertices. `xs` and `ys` can be regularly spaced values
+    within the limits of a `ClosedInterval{<:Real}` or `Tuple{<:Real, <:Real}`, irregularly spaced
+    values in an `AbstractVector{<:Real}` or anisotropic positions given by an `AbstractMatrix{<:Real}`.
+    `zs` must always be given as an `AbstractMatrix{<:Real}` matching the respective dimensions of `xs`
+    and `ys`. Note that `zs` may not necessarily be spatial.
+* `zs` When only `zs` are given as an `AbstractMatrix{<:Real}`, `xs` and `ys` are automatically set
+    as `axes(zs, 1)` and `axes(zs, 2)`.
 """
 struct VertexGrid <: GridBased end
 conversion_trait(::Type{<:Surface}) = VertexGrid()

@@ -233,14 +233,14 @@ Plots arrows as 2D shapes.
 * `points, directions` Defines arrow anchor positions and directions. `points` is a
     `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions`
     is a `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point
-    in. With the default `align = :tail`, points are where arrows start from. These may be
-    reinterpreted as positions arrows point towards if `argmode = :endpoint`.
+    in. With the default `align = :tail`, points are where arrows start from.
 * `xs, ys, us, vs` Defines points and directions using separate coordinate arrays. Each can be a
     `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
-    but with coordinates given per dimension. Affected by `align` and `argmode` in the same way.
+    but with coordinates given per dimension.
 * `points, f` A callback function `point -> direction` which returns a direction for each anchor
     point. Can be used with either a `points` array or with `xs, ys` coordinates.
 * `xs, ys, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows2D (points, directions) begin
     """
@@ -516,10 +516,17 @@ Plots arrows as 3D shapes.
 
 ## Arguments
 
-* `points, directions` Defines arrow anchor positions and directions. `points` is a `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions` is a `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point in. With the default `align = :tail`, points are where arrows start from. These may be reinterpreted as positions arrows point towards if `argmode = :endpoint`.
-* `xs, ys, zs, us, vs, ws` Defines points and directions using separate coordinate arrays. Each can be a `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature but with coordinates given per dimension. Affected by `align` and `argmode` in the same way.
-* `points, f` A callback function `point -> direction` which returns a direction for each anchor point. Can be used with either a `points` array or with `xs, ys, zs` coordinates.
+* `points, directions` Defines arrow anchor positions and directions. `points` is a `VecTypes{D, <:Real}`
+    (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions` is a `VecTypes{D, <:Real}`
+    or `AbstractVector{<:VecTypes}` defining the direction arrows point in. With the default `align = :tail`,
+    points are where arrows start from.
+* `xs, ys, zs, us, vs, ws` Defines points and directions using separate coordinate arrays. Each can
+    be a `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
+    but with coordinates given per dimension.
+* `points, f` A callback function `point -> direction` which returns a direction for each anchor point.
+    Can be used with either a `points` array or with `xs, ys, zs` coordinates.
 * `xs, ys, zs, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows3D (points, directions) begin
     """

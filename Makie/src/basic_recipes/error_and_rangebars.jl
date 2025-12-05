@@ -23,7 +23,7 @@ If you want to plot intervals from low to high values instead of relative errors
 * `xy_error_low_high` A `VecTypes{4, <:Real}` or `AbstractVector{<:VecTypes{4, <:Real}}` which sets
     the position together with `error_low` and `error_high`.
 """
-@recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Errorbars (val_low_high::AbstractVector{<:Vec4},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -44,11 +44,16 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 
 ## Arguments
 
-* `vals, lows, highs` Plots rangebars where `vals` is a `Real` or `AbstractVector{<:Real}` setting x positions of bars, and `lows`, `highs` are `Real` or `AbstractVector{<:Real}` setting lower and upper y positions of bars. If `direction = :x` this sets the y position and x positions instead.
-* `vals, low_highs` Plots rangebars where `low_highs` is an `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which sets the lower and upper bar y positions together. Sets x positions instead if `direction = :x`.
-* `val_low_highs` An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position, lower y position and upper y position of bars together. The coordinate interpretation will be swapped if `direction = :x`.
+* `vals, lows, highs` Plots rangebars where `vals` is a `Real` or `AbstractVector{<:Real}` setting x
+    positions of bars, and `lows`, `highs` are `Real` or `AbstractVector{<:Real}` setting lower and
+    upper y positions of bars. If `direction = :x` this sets the y position and x positions instead.
+* `vals, low_highs` Plots rangebars where `low_highs` is an
+    `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which sets the lower and upper bar y
+    positions together. Sets x positions instead if `direction = :x`.
+* `val_low_highs` An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position, lower y position
+    and upper y position of bars together. The coordinate interpretation will be swapped if `direction = :x`.
 """
-@recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Vec3},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."

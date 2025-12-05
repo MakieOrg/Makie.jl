@@ -500,6 +500,11 @@ end
 
 function argument_docs end
 
+# TODO:
+# If this reruns with an `## Arguments` section in the user-written docstring of
+# a @recipe, another empty `## Arguments` section will be added to the final
+# docstring. Any changes from the user-written docstring will not make it into
+# the new docstring. (Until Julia restart)
 function create_recipe_expr(Tsym, args, attrblock)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
@@ -533,7 +538,10 @@ function create_recipe_expr(Tsym, args, attrblock)
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
-            md"No docstring defined.\n"
+            # \n just gets printed as is...
+            md"No docstring defined.
+
+            "
         end
 
 
