@@ -274,6 +274,7 @@ This function is meant to be extended to refine attribute groups for recipes.
 function Makie.attribute_names(::Type{<:MyPlot})
     groups = Makie.default_attribute_groups()
     push!(groups, "My Attributes" => [:myattrib1, :myattrib2])
+    return groups
 end
 ```
 
@@ -410,11 +411,11 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples =
         # return a new figure, axis, and plot
         f, ax, pl = $plfunc_str(args...; kw...)
         # creates an axis in a subfigure grid position
-            ax, pl = $plfunc_str(f[row, col], args...; kw...)
+           ax, pl = $plfunc_str(f[row, col], args...; kw...)
         # Creates a plot in the given axis or scene.
-                pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
+               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
         # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
-        SpecApi.$(PlotType_str)(args...; kw...)
+             spec = SpecApi.$(PlotType_str)(args...; kw...)
         ```
         """
     )
