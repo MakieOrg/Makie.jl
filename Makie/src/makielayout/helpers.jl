@@ -471,3 +471,4 @@ end
 Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene
 Makie.get_scene(ax::LScene) = ax.scene
+Makie.get_scene(ax::PolarAxis) = ax.scene

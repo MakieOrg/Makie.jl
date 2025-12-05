@@ -2399,3 +2399,5 @@ to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
 
 convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
+
+convert_attribute(x, ::key"inspector_label") = Ref{Any}(x)
