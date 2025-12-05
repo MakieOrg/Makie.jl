@@ -80,6 +80,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
             continue
         end
 
+        cnt += 1
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -92,8 +93,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        cnt += 1
-        if mod(cnt, flusheach) == 0
+        if cnt % flusheach == 0
             Cairo.set_source(ctx, pattern)
             Cairo.close_path(ctx)
             Cairo.paint(ctx)
@@ -106,7 +106,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         end
     end
 
-    if mod(cnt, flusheach) != 0
+    if cnt % flusheach != 0
         Cairo.set_source(ctx, pattern)
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
@@ -226,7 +226,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        if mod(cnt, flusheach) == 0
+        if cnt % flusheach == 0
             Cairo.set_source(ctx, pattern)
             Cairo.close_path(ctx)
             Cairo.paint(ctx)
@@ -239,7 +239,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         end
     end
 
-    if mod(cnt, flusheach) != 0
+    if cnt % flusheach != 0
         Cairo.set_source(ctx, pattern)
         Cairo.close_path(ctx)
         Cairo.paint(ctx)
