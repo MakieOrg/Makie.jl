@@ -16,9 +16,7 @@ rand_localized(min, max) = rand_localized(RAINCLOUD_RNG[], min, max)
 rand_localized(RNG::Random.AbstractRNG, min, max) = rand(RNG) * (max - min) .+ min
 
 """
-Plot a combination of violin plot, box plot and scatter points with appropriate spacing.
-
-Raincloud plots combine a (half) violin plot, box plot and individual scatter points to create
+Raincloud plots combine a (half) violin plot, box plot and scattered points to create
 an appealing and informative visualization, particularly useful for large datasets.
 
 ## Arguments

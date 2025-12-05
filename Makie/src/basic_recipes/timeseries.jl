@@ -1,12 +1,10 @@
 """
-Plot the history of a time-varying signal as a line plot.
-
-The signal is tracked over time, displaying the most recent `history` points.
-Updates automatically when the signal observable changes.
+Plot the recent history of a time-varying signal as a line plot. Updates
+automatically when the signal changes.
 
 ## Arguments
 
-* `signal::Union{Number, Point2}` is the signal to track. Can be a scalar value (plotted against
+* `signal::Union{Real, Point2}` is the signal to track. Can be a scalar value (plotted against
     time) or a `Point2` (plotted directly as x-y coordinates).
 """
 @recipe TimeSeries (signal,) begin
@@ -23,8 +21,7 @@ signal2point(signal, start) = error(
     """
 )
 
-
-function Makie.plot!(plot::TimeSeries)
+function plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))

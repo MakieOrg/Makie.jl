@@ -2,6 +2,14 @@
 
 ## Examples
 
+### Simple Volume Slices
+
+```@figure
+r = range(-pi, pi, 31)
+vals = [cos(x) * cos(y) * cos(z) for x in r, y in r, z in r]
+volumeslices(r, r, r, vals)
+```
+
 ### 3D Volume Slices with Interactive Sliders and Toggles
 
 ```@figure backend=GLMakie

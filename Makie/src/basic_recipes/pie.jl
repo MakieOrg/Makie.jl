@@ -5,12 +5,12 @@
 Creates a pie chart from the given `values`.
 
 ## Arguments
-* `[points], values` The values each sector represents as an `AbstractVector{<:Real}`. If
-    `normalize = false` this is the opening angle of the sector. Optionally, `points` (a
-    `VecTypes{2, <:Real}` like `Point`, `Vec` or `Tuple`, or an `AbstractVector{<:VecTypes{2, <:Real}}`)
-    sets the origin of the pie sectors. To draw multiple pie charts, normalization should be done
-    externally and sectors of the same chart should be given the same position.
-* `[xs, ys], values` Alternatively, the origin of pie sectors can be specified per dimension with
+* `[points], values` The size of each circle sector is given by `values` as an `AbstractVector{<:Real}`.
+    If `normalize = false` the values are treated as opening angles, otherwise they are normalized to
+    fill a circle. `points` can be given optionally as a `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`)
+    or `AbstractVector{<.VecTypes{2, <:Real}}` to set the origin of each pie sector. To draw multiple
+    pie charts `normalize` should be `false`.
+* `[xs, ys], values` Alternatively, the origins of pie sectors can be specified per dimension with
     `xs, ys` (each a `Real` or `AbstractVector{<:Real}`).
 """
 @recipe Pie (xs, ys, values) begin

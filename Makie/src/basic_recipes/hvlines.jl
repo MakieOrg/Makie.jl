@@ -5,6 +5,8 @@ Draws horizontal lines across an `Axis`.
 
 * `ys` Positions where lines will be drawn in data coordinates. Can be a `Real` or
     `AbstractVector{<:Real}`. The lines span from `xmin` to `xmax` in relative coordinates (0 to 1).
+* `xmin, xmax` Attributes for setting the start and end positions of lines in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe HLines begin
     "The start of the lines in relative axis units (0 to 1) along the x dimension."
@@ -21,6 +23,8 @@ Draws vertical lines across an `Axis`.
 
 * `xs` Positions where lines will be drawn in data coordinates. Can be a `Real` or
     `AbstractVector{<:Real}`. The lines span from `ymin` to `ymax` in relative coordinates (0 to 1).
+* `ymin, ymax` Attributes for setting the start and end positions of lines in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe VLines begin
     "The start of the lines in relative axis units (0 to 1) along the y dimension."

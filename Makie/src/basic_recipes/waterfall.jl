@@ -28,9 +28,20 @@ to each other.
     final_dodge_gap = 0
 end
 
+function attribute_groups(::Type{<:Waterfall})
+    groups = deepcopy(attribute_groups(BarPlot))
+    push!(groups, "Marker Attributes" => sort!([
+        :show_direction, :marker_pos, :marker_neg, :direction_color
+    ]))
+    push!(groups, "Final Bar Attributes" => sort!([
+        :show_final, :final_color, :final_gap, :final_dodge_gap
+    ]))
+    return groups
+end
+
 conversion_trait(::Type{<:Waterfall}) = PointBased2D()
 
-function Makie.plot!(p::Waterfall)
+function plot!(p::Waterfall)
     function stack_bars(xy, dodge, stack)
         x, y = first.(xy), last.(xy)
         if stack === automatic

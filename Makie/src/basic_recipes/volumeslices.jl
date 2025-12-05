@@ -14,7 +14,7 @@ Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 
-function Makie.plot!(plot::VolumeSlices)
+function plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
 
     map!(plot.attributes, [:colorrange, :volume], :computed_colorrange) do colorrange, volume

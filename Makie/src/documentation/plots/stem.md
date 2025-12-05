@@ -5,14 +5,8 @@
 ### Basic Stem Plot
 
 ```@figure
-f = Figure()
-Axis(f[1, 1])
-
 xs = LinRange(0, 4pi, 30)
-
-stem!(xs, sin.(xs))
-
-f
+stem(xs, sin.(xs))
 ```
 
 ### Stem Plot with Custom Colors and Markers

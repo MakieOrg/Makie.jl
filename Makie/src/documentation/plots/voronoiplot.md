@@ -8,7 +8,6 @@
 using Random
 Random.seed!(1234)
 
-
 f = Figure(size=(1200, 450))
 ax = Axis(f[1, 1])
 voronoiplot!(ax, rand(Point2f, 50))
@@ -107,4 +106,3 @@ smooth_vorn = centroidal_smooth(vorn)
 f, ax, tr = voronoiplot(smooth_vorn, show_generators=false)
 f
 ```
-

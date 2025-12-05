@@ -11,7 +11,6 @@ from [DelaunayTriangulation.jl](https://github.com/DanielVandH/DelaunayTriangula
 
 ```@figure
 using DelaunayTriangulation
-
 using Random
 Random.seed!(1234)
 

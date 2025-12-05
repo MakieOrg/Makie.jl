@@ -2,6 +2,14 @@
 
 ## Examples
 
+### Minimal Rainclouds Example
+
+```@figure
+data = sin.(1:1000) .+ exp.(-abs.(sin.(1:1000)))
+categories = data .> 0
+rainclouds(categories, data, orientation = :horizontal)
+```
+
 ### Raincloud plot with histogram clouds
 
 ```@figure rainclouds
@@ -214,4 +222,3 @@ rainclouds!(
 supertitle = Label(fig[0, :], "Cloud Plot Testing (Scatter, Violin, Boxplot)", fontsize=30)
 fig
 ```
-

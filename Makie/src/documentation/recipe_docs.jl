@@ -262,6 +262,22 @@ Returns a deepcopy of the default attribute groups for further modification.
 default_attribute_groups() = deepcopy(DEFAULT_ATTRIBUTE_GROUPS)
 
 """
+    uncategorized_attributes(PlotType, name = "\$PlotType Attributes")
+
+Returns all attribute names of the given `PlotType` that are not categorized
+in `attribute_groups(PlotType)`. This mostly returns attributes specific to
+the plot type.
+"""
+function uncategorized_attributes(::Type{PT}) where {PT <: AbstractPlot}
+    groups = attribute_groups(PT)
+    all_names = collect(attribute_names(PT))
+    foreach(groups) do (name, entrylist)
+        filter!(name -> !in(name, entrylist), all_names)
+    end
+    return all_names
+end
+
+"""
     attribute_groups(::Type{<:Plot})
 
 Returns a list identifying grouped attributes for docstrings. Each element is a

@@ -7,8 +7,8 @@ Draws horizontal bands spanning across an `Axis`.
 ## Arguments
 * `ys_low, ys_high` The y start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`).
     These can also be combined as `ys_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
-* `xmin, xmax` The x start and end positions of bands in relative (0 .. 1) space (each a `Real` or
-    `AbstractVector{<:Real}`). These are attributes.
+* `xmin, xmax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe HSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the x dimension."
@@ -27,8 +27,8 @@ Draws vertical bands spanning across an `Axis`.
 ## Arguments
 * `xs_low, xs_high` The x start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`).
     These can also be combined as `xs_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
-* `ymin, ymax` The y start and end positions of bands in relative (0 .. 1) space (each a `Real` or
-    `AbstractVector{<:Real}`). These are attributes.
+* `ymin, ymax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe VSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."

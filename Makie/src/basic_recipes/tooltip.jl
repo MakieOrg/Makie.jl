@@ -1,12 +1,10 @@
 """
-Creates a tooltip pointing at a position displaying the given string.
+Creates a tooltip pointing at a position displaying a given string.
 
 ## Arguments
 
-* `position, string` Creates a tooltip where `position` is a `VecTypes` (`Point`,
-    `Vec` or `Tuple`) and `string` is the text to display.
-* `x, y, string` Creates a tooltip where `x` and `y` are `Real` coordinates and
-    `string` is the text to display.
+* `position` Creates a tooltip at a given `position` of type `VecTypes` (`Point`, `Vec` or `Tuple`).
+* `x, y` Creates a tooltip at the given `x` and `y` coordinates fo type `<:Real`.
 """
 @recipe Tooltip begin
     # General
@@ -56,6 +54,15 @@ Creates a tooltip pointing at a position displaying the given string.
 
     mixin_generic_plot_attributes()...
     inspectable = false
+end
+
+function attribute_groups(::Type{<:Tooltip})
+    groups = default_attribute_groups()
+    attr = uncategorized_attributes(Text)
+    filter!(!=(:offset), attr)
+    push!(attr, :textcolor)
+    push!(groups, "Text" => attr)
+    return groups
 end
 
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
