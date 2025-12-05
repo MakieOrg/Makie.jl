@@ -1,12 +1,18 @@
 # Creating an Inset Plot
 
-An **inset plot** (or **inset axis**) is a small plot embedded within a larger plot. It is commonly used to zoom in on a particular region of interest, show detailed views of a subset of the data or provide additional contextual information alongside the main plot. Inset plots are a valuable tool for enhancing data visualization, making them widely used in research, business and presentations. In this tutorial we will discuss how to create an inset plot in Makie.
+An **inset plot** (or **inset axis**) is a small plot embedded within a larger plot. It is commonly used to zoom in on a particular region of interest, show detailed views of a subset of the data or provide additional contextual information alongside the main plot. Inset plots are a valuable tool for enhancing data visualization, making them widely used in research, business and presentations.
+
+**For most users**, the easiest way to create a zoom inset is with [`zoom_inset!`](@ref), which handles everything automatically including interactive dragging and resizing. See [The Easy Way: `zoom_inset!`](@ref) below.
+
+This tutorial first explains how to build an inset plot manually, which is useful when you need full customization or want to understand how inset plots work under the hood.
 
 For example, in a plot showing stock prices over time, an inset can be used to display a magnified view of a specific time period to highlight price fluctuations more clearly.
 
 ![](output.png)
 
-Let's look at how to create this plot.
+## Manual Inset Creation
+
+Let's look at how to manually create this plot.
 
 ### 1. Load the Packages
 
@@ -196,39 +202,39 @@ border_rect = Rect2(50, min_price, 20, max_price - min_price)
 lines!(ax_main, border_rect, color=:black, linewidth=1)
 ```
 
-Another approach to marking the selected region is to use the [zoom_lines](https://juliaaplavin.github.io/MakieExtraDocs.jl/notebooks/examples.html#3526c688-aea9-411b-a837-dc02ff81a7ee) function from the [MakieExtra.jl](https://juliapackages.com/p/makieextra) package. This function not only marks the region but also connects it to the inset axis with guiding lines, enhancing the visual connection between the main plot and the inset plot.
+## The Easy Way: `zoom_inset!`
 
-## Interactive Zoom Inset with `zoom_inset!`
+The manual approach above gives you full control, but for most zoom inset use cases, Makie provides a much simpler solution: `zoom_inset!`. This function handles all the boilerplate for you and adds interactive features.
 
-For interactive applications, Makie provides `zoom_inset!` which creates a fully interactive zoom inset. This function automatically:
+`zoom_inset!` automatically:
 
 - Creates an inset axis showing a zoomed view of a rectangular region
 - Draws a rectangle on the main axis indicating the zoomed region
 - Draws connecting lines between the zoom rectangle and the inset
 - Copies all existing plots from the main axis to the inset
-- Allows dragging the inset to reposition it
+- Allows dragging the inset to reposition it (with interactive backends)
 - Allows dragging the zoom rectangle edges to resize the zoomed region
 - Allows dragging the inset edges to resize the inset itself
 
-### Basic Usage
+Here's is how to use it:
 
-```julia
+```@figure zoom_inset
 using GLMakie
 
 fig = Figure()
-ax = Axis(fig[1, 1], title="Interactive Zoom Inset Demo")
+ax = Axis(fig[1, 1])
 
-# Create some data
 x = 1:100
 y = sin.(x .* 0.1) .+ 0.5 .* cos.(x .* 0.3)
 lines!(ax, x, y)
 
-# Create an interactive zoom inset
-# The rectangle defines the initial zoom region: Rect2f(x_origin, y_origin, width, height)
+# That's it! One line creates the entire zoom inset
 zi = zoom_inset!(ax, Rect2f(30, -0.5, 20, 1.5))
 
 fig
 ```
+
+Compare this to the manual approach above - `zoom_inset!` replaces all the manual axis creation, limit setting, z-ordering, and rectangle drawing with a single function call.
 
 ### Customization Options
 
@@ -280,3 +286,13 @@ When using an interactive backend like GLMakie or WGLMakie:
 - **Resize the inset**: Click and drag the edges or corners of the inset axis
 
 The zoom rectangle provides visual feedback by thickening its stroke when hovering over it.
+
+### When to Use Manual Creation Instead
+
+While `zoom_inset!` covers most use cases, you might prefer the manual approach from earlier in this tutorial when you need:
+
+- An inset showing completely different data (not a zoomed view of the main plot)
+- Custom styling that `zoom_inset!` doesn't support
+- Multiple insets with complex relationships
+- Integration with a legend or other layout elements
+- Full control over every aspect of the inset behavior
