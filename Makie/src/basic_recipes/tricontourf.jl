@@ -5,8 +5,10 @@ Plots a filled tricontour of height information.
 
 ## Arguments
 
-* `xs, ys, zs` Plots filled contours where `xs` and `ys` are positions (`AbstractVector{<:Real}`) and `zs` are height values. An unconstrained triangulation of `xs` and `ys` is computed automatically.
-* `triangles, zs` Plots filled contours where `triangles` is a `Triangulation` from DelaunayTriangulation.jl specifying the triangulation, and `zs` are the height values at each point.
+* `xs, ys, zs` Plots filled contours where `xs` and `ys` are positions (`AbstractVector{<:Real}`)
+    and `zs` are height values. An unconstrained triangulation of `xs` and `ys` is computed automatically.
+* `triangles, zs` Plots filled contours where `triangles` is a `Triangulation` from DelaunayTriangulation.jl
+    specifying the triangulation, and `zs` are the height values at each point.
 """
 @recipe Tricontourf begin
     """

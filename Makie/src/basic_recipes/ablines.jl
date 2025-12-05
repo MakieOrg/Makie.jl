@@ -4,7 +4,8 @@ at its current limits.
 
 ## Arguments
 
-* `intercept, slope` Defines lines where `intercept` is a `Real` or `AbstractVector{<:Real}` containing y intercepts, and `slope` is a `Real` or `AbstractVector{<:Real}` containing slopes.
+* `intercept, slope` Defines lines where `intercept` is a `Real` or `AbstractVector{<:Real}`
+    containing y intercepts, and `slope` is a `Real` or `AbstractVector{<:Real}` containing slopes.
 """
 @recipe ABLines (intercept, slope) begin
     documented_attributes(LineSegments)...

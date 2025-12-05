@@ -23,7 +23,10 @@ an appealing and informative visualization, particularly useful for large datase
 
 ## Arguments
 
-* `category_labels, data_array` where both are vectors of the same length. `category_labels` (typically `Vector{String}`) assigns a category label to each data point in `data_array` (typically `Vector{Float64}`). Data points with the same category label are grouped together in the visualization.
+* `category_labels, data_array` where both are vectors of the same length. `category_labels`
+    (typically `Vector{String}`) assigns a category label to each data point in `data_array`
+    (typically `Vector{Float64}`). Data points with the same category label are grouped together in
+    the visualization.
 """
 @recipe RainClouds (category_labels, data_array) begin
     """

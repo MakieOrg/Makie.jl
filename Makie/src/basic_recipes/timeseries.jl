@@ -6,7 +6,8 @@ Updates automatically when the signal observable changes.
 
 ## Arguments
 
-* `signal::Union{Number, Point2}` is the signal to track. Can be a scalar value (plotted against time) or a `Point2` (plotted directly as x-y coordinates).
+* `signal::Union{Number, Point2}` is the signal to track. Can be a scalar value (plotted against
+    time) or a `Point2` (plotted directly as x-y coordinates).
 """
 @recipe TimeSeries (signal,) begin
     "Number of tracked points."

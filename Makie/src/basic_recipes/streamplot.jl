@@ -7,8 +7,11 @@ and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a `Vec2
 
 ## Arguments
 
-* `f, bbox` where `f` is a function (either `pos::Point{D} -> direction::VecTypes{D}` or `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point, and `bbox` is a 2D or 3D `Rect` in which `f` is evaluated to generate streamlines.
-* `f, x, y, [z]` where `f` is the function and the bounding box is specified per dimension via `x, y, z` (any type that implements `extrema()`).
+* `f, bbox` where `f` is a function (either `pos::Point{D} -> direction::VecTypes{D}` or
+    `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point,
+    and `bbox` is a 2D or 3D `Rect` in which `f` is evaluated to generate streamlines.
+* `f, x, y, [z]` where `f` is the function and the bounding box is specified per dimension via
+    `x, y, z` (any type that implements `extrema()`).
 """
 @recipe StreamPlot (f, limits) begin
     """

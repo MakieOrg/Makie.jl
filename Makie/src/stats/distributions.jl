@@ -31,7 +31,8 @@ Draw a Q-Q plot, comparing quantiles of two distributions.
 
 ## Arguments
 
-* `x` can be a list of samples (`AbstractVector{<:Real}`), an abstract distribution (e.g. `Normal(0, 1)`), or a distribution type (e.g. `Normal`). In the last case, the distribution type is fitted to the data `y`.
+* `x` can be a list of samples (`AbstractVector{<:Real}`), an abstract distribution (e.g. `Normal(0, 1)`),
+    or a distribution type (e.g. `Normal`). In the last case, the distribution type is fitted to the data `y`.
 * `y::AbstractVector{<:Real}` is a list of samples to compare against `x`.
 """
 @recipe QQPlot begin

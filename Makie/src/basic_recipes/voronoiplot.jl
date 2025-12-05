@@ -7,10 +7,16 @@ however the cells are not restricted to a rectangular shape.
 ## Arguments
 
 * `xs, ys` where both are `AbstractVector{<:Real}` defining cell positions per dimension.
-* `xs, ys, values` where `xs` and `ys` are `AbstractVector{<:Real}` and `values` is either `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` used for colormapping. When `values` is a matrix, `xs` and `ys` are interpreted per matrix axes.
-* `positions::AbstractVector{<:VecTypes{D, <:Real}}` where positions are `Point`, `Vec` or `Tuple` defining locations around which voronoi cells are formed. If a third dimension is present, it is used for colormapping.
-* `values::AbstractMatrix{<:Real}` where `values` is the sole argument, in which case `xs` and `ys` default to `axes(values, dim)`.
-* `vorn::VoronoiTessellation` where the tessellation from DelaunayTriangulation.jl is passed directly to define the voronoi cells explicitly.
+* `xs, ys, values` where `xs` and `ys` are `AbstractVector{<:Real}` and `values` is either
+    `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` used for colormapping. When `values` is a
+    matrix, `xs` and `ys` are interpreted per matrix axes.
+* `positions::AbstractVector{<:VecTypes{D, <:Real}}` where positions are `Point`, `Vec` or `Tuple`
+    defining locations around which voronoi cells are formed. If a third dimension is present, it is
+    used for colormapping.
+* `values::AbstractMatrix{<:Real}` where `values` is the sole argument, in which case `xs` and `ys`
+    default to `axes(values, dim)`.
+* `vorn::VoronoiTessellation` where the tessellation from DelaunayTriangulation.jl is passed directly
+    to define the voronoi cells explicitly.
 """
 @recipe Voronoiplot begin
     "Determines whether to plot the individual generators."

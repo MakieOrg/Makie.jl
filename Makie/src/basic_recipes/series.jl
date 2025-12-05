@@ -6,9 +6,12 @@ If any of `marker`, `markersize`, `markercolor`, `strokecolor` or `strokewidth` 
 ## Arguments
 
 * `curves` An `AbstractVector{<:AbstractVector{<:Point2}}` representing a series as a vector of lines.
-* `curves` An `AbstractMatrix` where each row represents y coordinates of the line, while x goes from `1:size(curves, 1)`.
-* `x, curves` Where `x` is an `AbstractVector` setting x values for all lines and `curves` is an `AbstractMatrix` where each row represents y coordinates.
-* `curves` An `AbstractVector{<:Tuple{X<:AbstractVector, Y<:AbstractVector}}` where each tuple contains vectors for the x and y coordinates.
+* `curves` An `AbstractMatrix` where each row represents y coordinates of the line, while x goes from
+    `1:size(curves, 1)`.
+* `x, curves` Where `x` is an `AbstractVector` setting x values for all lines and `curves` is an
+    `AbstractMatrix` where each row represents y coordinates.
+* `curves` An `AbstractVector{<:Tuple{X<:AbstractVector, Y<:AbstractVector}}` where each tuple
+    contains vectors for the x and y coordinates.
 """
 @recipe Series (curves::AbstractVector{<:Union{BezierPath, AbstractVector{<:Point}}},) begin
     filtered_attributes(Lines, exclude = (:cycle,))...

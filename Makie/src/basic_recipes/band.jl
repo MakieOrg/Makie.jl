@@ -3,9 +3,16 @@ Plots a band between lower and upper bounds.
 
 ## Arguments
 
-* `xs, ys_lower, ys_upper` Plots a band from `ys_lower` to `ys_upper` along `xs`. `xs` is an `AbstractVector{<:Real}` containing x-values, and `ys_lower`, `ys_upper` are `AbstractVector{<:Real}` containing the lower and upper y-limits of the band. These are interpreted as x-limits if `direction = :y`.
-* `xs, lowerupper` Plots a band where `lowerupper` is an `AbstractVector{<:Interval}` containing the lower and upper limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
-* `lower, upper` Plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface) between the points in `lower` and `upper`. Both are `AbstractVector{<:Point{D, <:Real}}` containing the (x, y) or (x, y, z) coordinates of the lower and upper limits of the band respectively. Setting `direction = :y` will swap x and y in the 2D case.
+* `xs, ys_lower, ys_upper` Plots a band from `ys_lower` to `ys_upper` along `xs`. `xs` is an
+    `AbstractVector{<:Real}` containing x-values, and `ys_lower`, `ys_upper` are
+    `AbstractVector{<:Real}` containing the lower and upper y-limits of the band. These are
+    interpreted as x-limits if `direction = :y`.
+* `xs, lowerupper` Plots a band where `lowerupper` is an `AbstractVector{<:Interval}` containing the
+    lower and upper limits of the band as intervals. These are interpreted as x-limits if `direction = :y`.
+* `lower, upper` Plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface) between the
+    points in `lower` and `upper`. Both are `AbstractVector{<:Point{D, <:Real}}` containing the
+    (x, y) or (x, y, z) coordinates of the lower and upper limits of the band respectively. Setting
+    `direction = :y` will swap x and y in the 2D case.
 """
 @recipe Band (lowerpoints, upperpoints) begin
     documented_attributes(Mesh)...
