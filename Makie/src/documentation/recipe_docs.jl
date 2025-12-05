@@ -166,7 +166,7 @@ Returns an empty string if the markdown file doesn't exist or has no examples.
 # Arguments
 - `max_examples`: Maximum number of examples to include (default: 1). Use `Inf` for all examples.
 """
-function plot_examples(::Type{PT}, max_examples::Number = 1) where {PT <: Plot}
+function plot_examples(::Type{PT}, max_examples::Number = 1, replace_header = max_examples == 1) where {PT <: Plot}
     plfunc = plotfunc(PT)
     plfunc_str = string(plfunc)
     # Path to markdown file
@@ -178,6 +178,13 @@ function plot_examples(::Type{PT}, max_examples::Number = 1) where {PT <: Plot}
 
     examples = extract_examples(md_path)
     n_examples = examples[1:round(Int, min(length(examples), max_examples))]
+
+    if replace_header && max_examples == 1
+        header = n_examples[1].content[1]
+        if header isa Markdown.Header
+            n_examples[1].content[1] = typeof(header)(Any["Example"])
+        end
+    end
 
     return join(map(string, n_examples), "\n")
 end
