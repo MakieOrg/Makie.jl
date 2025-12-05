@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Improved window resize performance in GLMakie, especially noticeable with many plot objects [#5431](https://github.com/MakieOrg/Makie.jl/pull/5431)
 
 ## [0.24.8] - 2025-12-04
 
