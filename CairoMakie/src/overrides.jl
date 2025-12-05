@@ -487,7 +487,7 @@ function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
         # if mesh is 2D, use the 2D rendering path instead
         points_2d = [
             [Point2(c[1], c[2]) for c in coordinates(mesh)]
-            for mesh in meshes
+                for mesh in meshes
         ]
         return draw_poly(scene, screen, plot, points_2d)
     end
