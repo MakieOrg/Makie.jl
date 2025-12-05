@@ -468,3 +468,33 @@ end
 function is_cairomakie_atomic_plot(plot::Tricontourf)
     return true
 end
+
+
+################################################################################
+#                                   Arrows2D                                   #
+#   The SVG backend does not support CairoMeshPattern, rasterizing the image   #
+#  instead of using vector constructs.  Avoid a simple arrow rasterizing the   #
+#  image by intercepting simple (typical) arrows and redirecting them through  #
+#             the already special cased 2D polygon rendering path.             #
+################################################################################
+
+mesh_is_2d(mesh::GeometryBasics.Mesh{3}) = all(c -> iszero(c[3]), coordinates(mesh))
+
+function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
+    meshes = arrow.meshes[]
+    plot = only(arrow.plots)
+    if mapreduce(mesh_is_2d, &, meshes)
+        # if mesh is 2D, use the 2D rendering path instead
+        points_2d = [
+            [Point2(c[1], c[2]) for c in coordinates(mesh)]
+            for mesh in meshes
+        ]
+        return draw_poly(scene, screen, plot, points_2d)
+    end
+    # fallback to the generic 3D mesh rendering path
+    return draw_plot(scene, screen, plot)
+end
+
+function is_cairomakie_atomic_plot(plot::Arrows2D)
+    return true
+end

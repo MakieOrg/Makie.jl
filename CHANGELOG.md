@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#](https://github.com/MakieOrg/Makie.jl/pull/#)
+
 ## [0.24.8] - 2025-12-04
 
 - Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph and add init kw for map! and map_latest! [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
