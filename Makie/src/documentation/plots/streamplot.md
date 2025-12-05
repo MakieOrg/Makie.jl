@@ -9,7 +9,6 @@ v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
 streamplot(v, -2..2, -2..2)
 ```
 
-
 ### FitzHugh-Nagumo Vector Field with Stream Plot
 
 ```@figure

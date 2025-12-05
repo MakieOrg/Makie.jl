@@ -2,6 +2,12 @@
 
 ## Examples
 
+### Basic vlines
+
+```@figure
+vlines([1, 2, 3])
+```
+
 ### Basic vertical lines with styling
 
 ```@figure

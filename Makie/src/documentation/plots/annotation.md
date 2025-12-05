@@ -2,6 +2,15 @@
 
 ## Examples
 
+### Basic annotation
+
+```@figure
+ps = Point2f[(0, 0), (0.9, 0.9), (0.9, 1.0), (1.0, 0.9), (1.0, 1.0)]
+f, a, p = scatter(ps)
+annotation!(a, ps, text = ["far", "cluster 1", "cluster 2", "cluster 3", "cluster 4"])
+f
+```
+
 ### Automatic label placement
 
 If only target points are specified, text label offsets are automatically optimized for less overlap with their data points, each other and the axis boundary.

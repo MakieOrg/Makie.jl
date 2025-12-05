@@ -2,7 +2,7 @@
 
 ## Examples
 
-### Comparing two distributions
+### Test if two samples follow the same distribution
 
 ```@figure
 xs = randn(100)

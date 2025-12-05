@@ -2,6 +2,12 @@
 
 ## Examples
 
+### Basic lines
+
+```@figure
+lines(0..10, sin)
+```
+
 ### Dealing with outline artifacts in GLMakie
 
 In GLMakie 3D line plots can generate outline artifacts depending on the order line segments are rendered in.
