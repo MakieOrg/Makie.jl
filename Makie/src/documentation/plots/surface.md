@@ -1,8 +1,14 @@
 # surface
 
-
-
 ## Examples
+
+### Basic Example
+
+```@figure
+r = range(-10, 10, length = 51)
+heightmap = [cos(x) * cos(y) for x in r, y in r]
+surface(-10..10, -10..10, heightmap)
+```
 
 ### Gridded surfaces
 
@@ -124,4 +130,3 @@ zs = sin.(rs) .* cosd.(thetas')
 
 surface(xs, ys, zeros(size(zs)), color = zs, shading = NoShading)
 ```
-

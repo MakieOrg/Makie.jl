@@ -2,11 +2,19 @@
 
 ## Examples
 
+### Basic example
+
+```@figure backend=GLMakie
+r = range(-5, 5, 51)
+data = [cos(x) * cos(y) * cos(z) for x in r, y in r, z in r]
+volume(-5..5, -5..5, -5..5, data)
+```
+
 ### Value based Algorithms (:absorption, :mip, :iso, counter)
 
 Value based algorithms samples sample the colormap using values from volume data.
 
-### Basic sphere contour
+#### Basic sphere contour
 
 ```@figure volume backend=GLMakie
 r = LinRange(-1, 1, 100)
@@ -14,14 +22,14 @@ cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
 contour(cube, alpha=0.5)
 ```
 
-### Isosurface with holes
+#### Isosurface with holes
 
 ```@figure volume
 cube_with_holes = cube .* (cube .> 1.4)
 volume(cube_with_holes, algorithm = :iso, isorange = 0.05, isovalue = 1.7)
 ```
 
-### Brain scan with absorption and MIP
+#### Brain scan with absorption and MIP
 
 ```@figure backend=GLMakie
 using NIfTI
@@ -43,7 +51,7 @@ fig
 RGBA algorithms sample colors directly from the given volume data.
 If the data contains less than 4 dimensions the remaining dimensions are filled with 0 for the green and blue channel and 1 for the alpha channel.
 
-### Chain link with RGB data
+#### Chain link with RGB data
 
 ```@figure backend=GLMakie
 using LinearAlgebra
@@ -77,7 +85,7 @@ Indexing Algorithms interpret the value read from volume data as an index into t
 So effectively it reads `idx = round(Int, get(data, sample_pos))` and uses `colormap[idx]` as the color of the sample.
 Note that you can still use float data here, and without `interpolate = false` it will be interpolated.
 
-### Indexed colormap cube
+#### Indexed colormap cube
 
 ```@figure backend=GLMakie
 r = -5:5

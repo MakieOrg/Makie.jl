@@ -2,6 +2,18 @@
 
 ## Examples
 
+### Basic text
+
+```@figure
+f,a,p = text(0, 0, text = "This is a\ntext plot")
+text!(
+    a, [1, 1], [1, -1], text = ["this text is", "right aligned"],
+    align = (:right, :center), color = :navy,
+    font = "Fira Mono", fontsize = 20
+)
+f
+```
+
 ### Marker space pixel
 
 By default, text is drawn with `markerspace = :pixel`, which means that the text size is interpreted in pixel space.

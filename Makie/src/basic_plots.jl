@@ -659,7 +659,7 @@ changes in patch releases.
 
 ## Arguments
 
-* `x, y, z, chunk` Defines the 3D volume where `x`, `y`, and `z` specify the limits as
+* `x, y, z, chunk` Defines a 3D volume where `x`, `y`, and `z` specify the limits as
     `ClosedInterval` or `Tuple{Real, Real}`, and `chunk` is a 3D array of voxel data. Each non-air
     voxel is rendered as a small cube.
 """

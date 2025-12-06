@@ -5,7 +5,7 @@
 ### Basic lines
 
 ```@figure
-lines(0..10, sin)
+f, a, p = lines(0..10, sin)
 ```
 
 ### Dealing with outline artifacts in GLMakie

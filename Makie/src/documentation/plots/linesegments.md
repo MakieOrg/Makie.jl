@@ -4,14 +4,13 @@
 
 ## Examples
 
-```@figure
-f = Figure()
-Axis(f[1, 1])
+### Basic Example
 
+```@figure
 xs = 1:0.2:10
 ys = sin.(xs)
 
-linesegments!(xs, ys)
+f, a, p = linesegments(xs, ys)
 linesegments!(xs, ys .- 1, linewidth = 5)
 linesegments!(xs, ys .- 2, linewidth = 5, color = LinRange(1, 5, length(xs)))
 
@@ -40,4 +39,3 @@ Label(f[3, 2], "overdraw = true", tellwidth = false)
 linesegments(f[4, 2], ps, color = cs, overdraw = true)
 f
 ```
-

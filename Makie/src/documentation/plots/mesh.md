@@ -4,6 +4,20 @@
 
 ## Examples
 
+### GeometryBasics Primitives
+
+```@figure backend=GLMakie
+using GeometryBasics
+
+f, a, p = mesh(Cylinder(Point3f(0), Point3f(0, 0, 1), 0.3), color = :purple)
+mesh!(a, Sphere(Point3f(0, 0, 1.4), 0.3), color = :darkgreen)
+
+a, p = mesh(f[1, 2], Rect2f(0, 0, 1, 1), shading = false)
+mesh!(a, Circle(Point2f(0.5, 2), 0.5), shading = false)
+
+f
+```
+
 ### Simple mesh plots
 
 A mesh can be constructed from a set of vertex coordinates and faces.
@@ -267,4 +281,3 @@ cameracontrols(a).settings.center[] = false # don't recenter on display
 cameracontrols(a).settings.fixed_axis[] = false # rotate freely
 f
 ```
-

@@ -7,13 +7,10 @@
 ```@figure
 using Makie.GeometryBasics
 
-
-f = Figure()
-Axis(f[1, 1])
-
-poly!(Point2f[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :black, strokewidth = 1)
-
-f
+poly(
+    Point2f[(0, 0), (2, 0), (3, 1), (1, 1)],
+    color = :orange, strokecolor = :black, strokewidth = 5
+)
 ```
 
 ### Polygon with Hole

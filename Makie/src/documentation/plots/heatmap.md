@@ -3,6 +3,15 @@
 
 ## Examples
 
+### Basic example
+
+```@figure
+data = [cos(0.5x) * cos(0.5y) for x in -10:10, y in -10:10]
+f, a, p = heatmap(-5..5, -5..5, data)
+Colorbar(f[1, 2], p)
+f
+```
+
 ### Two vectors and a matrix
 
 In this example, `x` and `y` specify the points around which the heatmap cells are placed.
@@ -208,4 +217,3 @@ function (array::ArrayType)(xrange::LinRange, yrange::LinRange)
     ...
 end
 ```
-
