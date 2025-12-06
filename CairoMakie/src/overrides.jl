@@ -478,21 +478,29 @@ end
 #             the already special cased 2D polygon rendering path.             #
 ################################################################################
 
-mesh_is_2d(mesh::GeometryBasics.Mesh{3}) = all(c -> iszero(c[3]), coordinates(mesh))
-
 function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
-    meshes = arrow.meshes[]
-    plot = only(arrow.plots)
-    if mapreduce(mesh_is_2d, &, meshes)
-        # if mesh is 2D, use the 2D rendering path instead
-        points_2d = [
-            [Point2(c[1], c[2]) for c in coordinates(mesh)]
-                for mesh in meshes
-        ]
-        return draw_poly(scene, screen, plot, points_2d)
+    poly = only(arrow.plots)
+    color = to_cairo_color(poly.color[], poly)
+    model = Ref(poly.model[])
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    strokewidth = poly.strokewidth[]
+
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
+    # each individual arrow is planar, but there can be differences in z depth among
+    # the ensemble; plot from back to front
+    meshes = poly.meshes[]
+    order = sortperm(meshes, by = m -> first(coordinates(m))[3])
+    broadcast_foreach_index(
+        order, meshes, color, model, strokecolor, strokestyle, strokewidth
+    ) do mesh, props...
+        points = [Point2(c[1], c[2]) for c in coordinates(mesh)]
+        draw_poly(scene, screen, poly, points, props..., miter_limit, joinstyle, linecap)
     end
-    # fallback to the generic 3D mesh rendering path
-    return draw_plot(scene, screen, plot)
+    return nothing
 end
 
 function is_cairomakie_atomic_plot(plot::Arrows2D)
