@@ -27,13 +27,29 @@ end
 ################################################################################
 
 """
-    extract_attributes(markdown_file_path::String)
+    attribute_examples(::Union{Type{<:Block}, Type{<:Plot}})
+
+Returns a dictionary mapping attribute names to vectors of example code.
+For Plot types, this loads examples from the markdown documentation file at
+`documentation/plots/{plotname}.md` under the "## Attributes" section.
+For Block types, returns an empty dictionary (Block examples are not yet moved to markdown).
+"""
+function attribute_examples(::Type{PT}) where {PT <: AbstractPlot}
+    md_path = path_to_plot_examples(PT)
+    if !isfile(md_path)
+        return Dict{Symbol, Vector{Example}}()
+    end
+    return extract_attribute_examples(md_path)
+end
+
+"""
+    extract_attribute_examples(markdown_file_path::String)
 
 Parse a markdown file and extract all attribute examples that come after the "## Attributes" header.
 Each attribute starts with a "### `attribute_name`" header and includes all code blocks until the next header.
 Returns a dictionary mapping attribute names (as Symbols) to vectors of `Example` objects.
 """
-function extract_attributes(markdown_file_path::String)
+function extract_attribute_examples(markdown_file_path::String)
     # Parse the markdown file
     md = Markdown.parse(read(markdown_file_path, String))
 
@@ -102,6 +118,39 @@ end
 ################################################################################
 ### Plot Examples
 ################################################################################
+
+"""
+    path_to_plot_examples(PlotType)
+
+Returns the path to the markdown file containing examples for the given PlotType.
+This can be extended to point to a markdown file outside the default path.
+"""
+function path_to_plot_examples(::Type{PT}) where {PT <: AbstractPlot}
+    plfunc = plotfunc(PT)
+    plfunc_str = string(plfunc)
+    return joinpath(@__DIR__, "plots", "$plfunc_str.md")
+end
+
+"""
+    extract_examples(PlotType)
+
+Extracts examples from the markdown file given by `path_to_plot_examples(PlotType)`.
+
+This can be extended to return examples directly, without an external file. It
+is expected to return a `Vector{Markdown.MD}`, containing examples each starting
+with a header `### Name of Example`.
+"""
+function extract_examples(::Type{PT}) where {PT <: AbstractPlot}
+    # Path to markdown file
+    md_path = path_to_plot_examples(PT)
+
+    if !isfile(md_path)
+        return Markdown.MD[]
+    end
+
+    return extract_examples(md_path)
+end
+
 """
     extract_examples(markdown_file_path::String)
 
@@ -167,22 +216,15 @@ Returns an empty string if the markdown file doesn't exist or has no examples.
 - `max_examples`: Maximum number of examples to include (default: 1). Use `Inf` for all examples.
 """
 function plot_examples(::Type{PT}, max_examples::Number = 1, replace_header = max_examples == 1) where {PT <: Plot}
-    plfunc = plotfunc(PT)
-    plfunc_str = string(plfunc)
-    # Path to markdown file
-    md_path = joinpath(@__DIR__, "plots", "$plfunc_str.md")
+    examples = extract_examples(PT)
+    isempty(examples) && return ""
 
-    if !isfile(md_path)
-        return ""
-    end
-
-    examples = extract_examples(md_path)
     n_examples = examples[1:round(Int, min(length(examples), max_examples))]
 
     if replace_header && max_examples == 1
         header = n_examples[1].content[1]
         if header isa Markdown.Header
-            n_examples[1].content[1] = typeof(header)(Any["Example"])
+            n_examples[1].content[1] = Markdown.Header{2}(Any["Example"])
         end
     end
 
@@ -325,7 +367,7 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
             # docstring: unique attributes at the bottom, where the terminal input is
             if full
                 println(io, "### $groupname\n")
-                for name in reverse(attribute_names)
+                for name in attribute_names
                     idx = findfirst(==(name), sorted_names)
                     if !isnothing(idx)
                         examples = attribute_examples(PT, name)
@@ -398,6 +440,35 @@ function write_full_single_attribute_docs!(io, attrs, examples, attribute)
 end
 
 """
+    get_call_signature_docs(PlotType)
+
+Returns the call signature section of a docstring for the given `PlotType`.
+"""
+function get_call_signature_docs(::Type{PT}) where {PT <: AbstractPlot}
+    plfunc = plotfunc(PT)
+    plfunc_str = string(plfunc)
+    plfunc!_str = plfunc_str * "!"
+    # Get plot type name by capitalizing the function name (lines -> Lines)
+    PlotType_str = uppercasefirst(plfunc_str)
+
+    # Build function signatures section
+    return Markdown.parse(
+        """
+        ```julia
+        # return a new figure, axis, and plot
+        f, ax, pl = $plfunc_str(args...; kw...)
+        # creates an axis in a subfigure grid position
+           ax, pl = $plfunc_str(f[row, col], args...; kw...)
+        # Creates a plot in the given axis or scene.
+               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
+        # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
+             spec = SpecApi.$(PlotType_str)(args...; kw...)
+        ```
+        """
+    )
+end
+
+"""
     document_recipe(::Type{PT}, user_docstring; max_examples=1, full_attributes=false) where {PT<:Plot}
 
 Generates comprehensive documentation for a plot type by combining:
@@ -414,27 +485,8 @@ This function is called automatically by the `@recipe` macro via `Docs.getdoc`.
 - `full_attributes`: If `true`, shows detailed documentation for each attribute. If `false` (default), shows a summary.
 """
 function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples = 1, full_attributes::Bool = false) where {PT <: Plot}
-    plfunc = plotfunc(PT)
-    plfunc_str = string(plfunc)
-    plfunc!_str = plfunc_str * "!"
-    # Get plot type name by capitalizing the function name (lines -> Lines)
-    PlotType_str = uppercasefirst(plfunc_str)
-
     # Build function signatures section
-    signatures = Markdown.parse(
-        """
-        ```julia
-        # return a new figure, axis, and plot
-        f, ax, pl = $plfunc_str(args...; kw...)
-        # creates an axis in a subfigure grid position
-           ax, pl = $plfunc_str(f[row, col], args...; kw...)
-        # Creates a plot in the given axis or scene.
-               pl = $plfunc!_str(ax::Union{Scene, AbstractAxis}, args...; kw...)
-        # Creates a SpecApi plot, which can be used in `S.Axis(plots=[plot])`.
-             spec = SpecApi.$(PlotType_str)(args...; kw...)
-        ```
-        """
-    )
+    signatures = get_call_signature_docs(PT)
 
     # Build arguments section (argument_docs now returns Markdown directly)
     arguments_section = argument_docs_md(PT)
@@ -445,6 +497,7 @@ function document_recipe(::Type{PT}, user_docstring::Markdown.MD; max_examples =
     examples = plot_examples(PT, max_examples)
     # Add link to online documentation
     if max_examples == 1
+        plfunc_str = string(plotfunc(PT))
         online_docs_link = "\n\nSee the [online documentation](https://docs.makie.org/stable/reference/plots/$plfunc_str) for more examples."
         examples = examples * online_docs_link
     end

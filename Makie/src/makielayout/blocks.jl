@@ -659,28 +659,6 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}
     return Markdown.parse(String(take!(io)))
 end
 
-"""
-    attribute_examples(::Union{Type{<:Block}, Type{<:Plot}})
-
-Returns a dictionary mapping attribute names to vectors of example code.
-For Plot types, this loads examples from the markdown documentation file at
-`documentation/plots/{plotname}.md` under the "## Attributes" section.
-For Block types, returns an empty dictionary (Block examples are not yet moved to markdown).
-"""
-function attribute_examples(::Type{PT}) where {PT <: Plot}
-    plfunc = plotfunc(PT)
-    plfunc_str = string(plfunc)
-    # Path to markdown file
-    md_path = joinpath(@__DIR__, "..", "documentation", "plots", "$plfunc_str.md")
-
-    if !isfile(md_path)
-        return Dict{Symbol, Vector{Example}}()
-    end
-
-    # Load attributes from markdown
-    return extract_attributes(md_path)
-end
-
 # Fallback for Block types (not yet moved to markdown)
 function attribute_examples(::Type{BT}) where {BT <: Block}
     return Dict{Symbol, Vector{Example}}()
