@@ -1,5 +1,5 @@
 """
-Draws a violin plot which consists of pairs of density plots draw side by side.
+Draws a violin plot which consists of pairs of density plots drawn side by side.
 The density pairs can be sourced from the same or from different data.
 """
 @recipe Violin (x, y) begin
@@ -72,6 +72,14 @@ The density pairs can be sourced from the same or from different data.
     - map multiple cycled attributes to a palette attribute, e.g. `[:linecolor, :markercolor] => :color`
     """
     cycle = [:color => :patchcolor]
+end
+
+function attribute_groups(::Type{<:Violin})
+    groups = default_attribute_groups()
+    push!(groups, "Median Line Attributes" => sort!([
+        :mediancolor, :medianlinewidth, :show_median,
+    ]))
+    return groups
 end
 
 conversion_trait(::Type{<:Violin}) = SampleBased()

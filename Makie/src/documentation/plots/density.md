@@ -5,12 +5,8 @@
 ### Basic density plot
 
 ```@figure
-f = Figure()
-Axis(f[1, 1])
-
-density!(randn(200))
+f, a, p = density(randn(200))
 density!(randn(200) .+ 2, alpha = 0.8)
-
 f
 ```
 

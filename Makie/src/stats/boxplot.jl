@@ -57,6 +57,24 @@ Draw a Tukey style boxplot consisting of 3 components:
     outlierstrokewidth = @inherit markerstrokewidth
 end
 
+function attribute_groups(::Type{<:BoxPlot})
+    groups = default_attribute_groups()
+    push!(groups, "Crossbar Attributes" => sort!([
+        :mediancolor, :medianlinewidth, :notchwidth, :show_median, :show_notch,
+        :notchmin, :notchmax, # shouldn't these be settable?
+        :strokecolor, :strokewidth
+    ]))
+    push!(groups, "Outlier Attributes" => sort!([
+        :show_outliers, :marker, :markersize, :outliercolor, :outlierstrokecolor,
+        :outlierstrokewidth
+    ]))
+    push!(groups, "Whisker Attributes" => sort!([
+        :range, :whiskercolor, :whiskerlinewidth, :whiskerwidth
+    ]))
+    return groups
+end
+
+
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
@@ -211,7 +229,8 @@ function Makie.plot!(plot::BoxPlot)
         plot, Attributes(plot),
         plot.centers, plot.medians, plot.boxmin, plot.boxmax,
         gap = 0, color = plot.boxcolor, width = plot.boxwidth,
-        show_midline = plot.show_median, midlinecolor = plot.mediancolor, midlinewidth = plot.medianlinewidth,
+        show_midline = plot.show_median, midlinecolor = plot.mediancolor,
+        midlinewidth = plot.medianlinewidth,
         # These should not be passed/defaulted
         n_dodge = automatic, dodge = automatic
     )

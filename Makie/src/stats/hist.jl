@@ -130,6 +130,14 @@ Plot a histogram which draws bars whose height corresponds to the number of valu
     over_bar_color = automatic
 end
 
+function attribute_groups(::Type{<:Hist})
+    groups = attribute_groups(BarPlot)
+    idx = findfirst(entry -> entry[1] == "Label Attributes", groups)
+    group = groups[idx][2]
+    push!(group, :over_background_color, :over_bar_color)
+    return groups
+end
+
 function pick_hist_edges(vals, bins)
     isempty(vals) && return 1.0:0.0
     if bins isa Int

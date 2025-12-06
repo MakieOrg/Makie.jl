@@ -5,12 +5,7 @@
 ### Basic ECDF plot
 
 ```@figure
-f = Figure()
-Axis(f[1, 1])
-
-ecdfplot!(randn(200))
-
-f
+ecdfplot(randn(200))
 ```
 
 ### ECDF with different point counts

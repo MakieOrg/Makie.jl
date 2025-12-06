@@ -31,9 +31,9 @@ Draw a Q-Q plot, comparing quantiles of two distributions.
 
 ## Arguments
 
-* `x` can be a list of samples (`AbstractVector{<:Real}`), an abstract distribution (e.g. `Normal(0, 1)`),
-    or a distribution type (e.g. `Normal`). In the last case, the distribution type is fitted to the data `y`.
-* `y::AbstractVector{<:Real}` is a list of samples to compare against `x`.
+* `x, y` are the two samples to compare, given as `AbstractVector{<:Real}`. The first argument can
+    also be an abstract distribution or distribution type, e.g. `Normal(0, 1)` or `Normal`. The
+    latter will be fit to the `y` sample.
 """
 @recipe QQPlot begin
     filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
@@ -51,6 +51,14 @@ Draw a Q-Q plot, comparing quantiles of two distributions.
     qqline = :none
 end
 
+function attribute_groups(::Type{<:QQPlot})
+    groups = attribute_groups(ScatterLines)
+    idx = findfirst(entry -> entry[1] == "Line Attributes", groups)
+    group = groups[idx][2]
+    push!(group, :qqline)
+    return groups
+end
+
 """
 Draw a Q-Q plot of data against the standard normal distribution.
 
@@ -59,11 +67,13 @@ See [`qqplot`](@ref) for more details on the `qqline` attribute and other option
 
 ## Arguments
 
-* `y::AbstractVector{<:Real}` is a list of samples to compare against the standard normal distribution.
+* `y::AbstractVector{<:Real}` is a sample to compare against the standard normal distribution.
 """
 @recipe QQNorm begin
     documented_attributes(QQPlot)...
 end
+
+attribute_groups(::Type{<:QQNorm}) = attribute_groups(QQPlot)
 
 # Compute points and line for the qqplot
 function fit_qqplot(x, y; qqline = :none)

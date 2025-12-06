@@ -27,6 +27,7 @@ conversion_trait(::Type{<:ScatterLines}) = PointBased()
 function attribute_groups(::Type{<:ScatterLines})
     groups = default_attribute_groups()
     attr = uncategorized_attributes(Scatter)
+    filter!(!=(:color), attr) # is linecolor first
     push!(attr, :markercolor, :markercolormap, :markercolorrange)
     push!(groups, "Scatter Attributes" => attr)
     push!(groups, "Line Attributes" => uncategorized_attributes(Lines))

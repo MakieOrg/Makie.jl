@@ -4,6 +4,14 @@
 
 ## Examples
 
+### Basic Example
+
+```@figure
+x = randn(1000)
+y = randn(1000)
+hexbin(x, y)
+```
+
 ### Setting the number of bins
 
 Setting `bins` to an integer sets the number of bins to this value for both x and y.
@@ -194,4 +202,3 @@ end
 
 f
 ```
-

@@ -5,25 +5,13 @@
 ### Basic dendrogram
 
 ```@figure
-using CairoMakie
-
 # Relative positions of leaf nodes
 # These positions will be translated to place the root node at `origin`
-leaves = Point2f[
-    (1,0),
-    (2,0.5),
-    (3,1),
-    (4,2),
-    (5,0)
-]
+leaves = Point2f[(1, 0), (2, 0.5), (3, 1), (4, 2), (5, 0)]
 
-# connections between nodes which merge into a new node
-merges = [
-    (1, 2), # creates node 6
-    (6, 3), # 7
-    (4, 5), # 8
-    (7, 8), # 9
-]
+# connections between nodes which merge into a new nodes
+# These add nodes 6, 7, 8, 9
+merges = [(1, 2), (6, 3), (4, 5), (7, 8)]
 
 dendrogram(leaves, merges)
 ```

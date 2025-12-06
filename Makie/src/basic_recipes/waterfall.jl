@@ -29,7 +29,7 @@ to each other.
 end
 
 function attribute_groups(::Type{<:Waterfall})
-    groups = deepcopy(attribute_groups(BarPlot))
+    groups = attribute_groups(BarPlot)
     push!(groups, "Marker Attributes" => sort!([
         :show_direction, :marker_pos, :marker_neg, :direction_color
     ]))
