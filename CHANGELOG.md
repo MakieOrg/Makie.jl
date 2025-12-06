@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Fix `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fix plotting order of multi-arrow `arrows2d[!]` to respect z-coordinates. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
 
 ## [0.24.8] - 2025-12-04
 

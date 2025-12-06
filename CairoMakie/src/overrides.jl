@@ -490,12 +490,8 @@ function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
     joinstyle = to_cairo_joinstyle(poly.joinstyle[])
     linecap = to_cairo_linecap(poly.linecap[])
 
-    # each individual arrow is planar, but there can be differences in z depth among
-    # the ensemble; plot from back to front
-    meshes = poly.meshes[]
-    order = sortperm(meshes, by = m -> first(coordinates(m))[3])
-    broadcast_foreach_index(
-        order, meshes, color, model, strokecolor, strokestyle, strokewidth
+    broadcast_foreach(
+        poly.meshes[], color, model, strokecolor, strokestyle, strokewidth
     ) do mesh, props...
         points = [Point2(c[1], c[2]) for c in coordinates(mesh)]
         draw_poly(scene, screen, poly, points, props..., miter_limit, joinstyle, linecap)
