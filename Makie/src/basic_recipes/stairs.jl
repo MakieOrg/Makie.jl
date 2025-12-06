@@ -1,9 +1,5 @@
 """
-    stairs(xs, ys; kwargs...)
-
-Plot a stair function.
-
-The conversion trait of `stairs` is `PointBased`.
+Plots a line that connects coordinates with only axis-aligned segments.
 """
 @recipe Stairs begin
     """
@@ -16,7 +12,7 @@ The conversion trait of `stairs` is `PointBased`.
     documented_attributes(Lines)...
 end
 
-conversion_trait(::Type{<:Stairs}) = PointBased()
+conversion_trait(::Type{<:Stairs}) = PointBased2D()
 
 function plot!(p::Stairs{<:Tuple{<:AbstractVector{T}}}) where {T <: Point2}
     map!(p, [:converted_1, :step], :steppoints) do points, step

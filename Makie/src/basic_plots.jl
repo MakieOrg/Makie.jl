@@ -240,9 +240,6 @@ Fill in values that can only be calculated when we have all other attributes fil
 calculated_attributes!(plot::T) where {T} = calculated_attributes!(T, plot)
 
 """
-    image(x, y, image)
-    image(image)
-
 Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image).
 """
 @recipe Image (
@@ -267,33 +264,11 @@ Plots an image on a rectangle bounded by `x` and `y` (defaults to size of image)
 end
 
 """
-    heatmap(x, y, matrix)
-    heatmap(x, y, func)
-    heatmap(matrix)
-    heatmap(xvector, yvector, zvector)
+Plots a `data` matrix as a heatmap, i.e. a collection of rectangles colored
+based on the values in `data`.
 
-Plots a heatmap as a collection of rectangles.
-`x` and `y` can either be of length `i` and `j` where
-`(i, j)` is `size(matrix)`, in this case the rectangles will be placed
-around these grid points like voronoi cells. Note that
-for irregularly spaced `x` and `y`, the points specified by them
-are not centered within the resulting rectangles.
-
-`x` and `y` can also be of length `i+1` and `j+1`, in this case they
-are interpreted as the edges of the rectangles.
-
-Colors of the rectangles are derived from `matrix[i, j]`.
-The third argument may also be a `Function` (i, j) -> v which is then evaluated over the
-grid spanned by `x` and `y`.
-
-Another allowed form is using three vectors `xvector`, `yvector` and `zvector`.
-In this case it is assumed that no pair of elements `x` and `y` exists twice.
-Pairs that are missing from the resulting grid will be treated as if `zvector` had a `NaN`
-    element at that position.
-
-If `x` and `y` are omitted with a matrix argument, they default to `x, y = axes(matrix)`.
-
-Note that `heatmap` is slower to render than `image` so `image` should be preferred for large, regularly spaced grids.
+Note that `heatmap` is slower to render than `image` so `image` should be
+preferred for large, regularly spaced grids.
 """
 @recipe Heatmap (
     x::Union{EndPoints, RealVector, RealMatrix},
@@ -307,9 +282,6 @@ Note that `heatmap` is slower to render than `image` so `image` should be prefer
 end
 
 """
-    volume(volume_data)
-    volume(x, y, z, volume_data)
-
 Plots a volume with optional physical dimensions `x, y, z`.
 
 All volume plots are derived from casting rays for each drawn pixel. These rays
@@ -355,11 +327,7 @@ end
 const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
 
 """
-    surface(x, y, z)
-    surface(z)
-
-Plots a surface, where `(x, y)` define a grid whose heights are the entries in `z`.
-`x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
+Plots a surface defined by a grid of vertices.
 """
 @recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
@@ -387,14 +355,10 @@ Plots a surface, where `(x, y)` define a grid whose heights are the entries in `
     mixin_colormap_attributes()...
 end
 
+
 """
-    lines(positions)
-    lines(x, y)
-    lines(x, y, z)
-
-Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
-
-`NaN` values are displayed as gaps in the line.
+Plots a line connecting consecutive positions. `NaN` values are displayed as
+gaps in the line.
 """
 @recipe Lines (positions,) begin
     "The color of the line."
@@ -437,12 +401,9 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 end
 
 """
-    linesegments(positions)
-    linesegments(vector_of_2tuples_of_points)
-    linesegments(x, y)
-    linesegments(x, y, z)
+Plots line segments between each consecutive pair of positions.
 
-Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
+This does not draw a connected line. It connects positions 1 and 2, 3 and 4, etc.
 """
 @recipe LineSegments (positions,) begin
     "The color of the line."
@@ -475,12 +436,17 @@ end
 
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
-    mesh(x, y, z)
-    mesh(mesh_object)
-    mesh(x, y, z, faces)
-    mesh(xyz, faces)
+Plots a 2D or 3D mesh.
 
-Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [GeometryBasics.jl](https://github.com/JuliaGeometry/GeometryBasics.jl).
+Note that `meshscatter` is much better for plotting a single mesh at multiple positions.
+
+## Arguments
+
+* `mesh` A `GeometryBasics.Mesh` or `GeometryBasics.MetaMesh` object, or an
+    `AbstractVector{<:GeometryBasics.Mesh}` for multiple meshes.
+* `vertices, indices` Vertex positions and face indices defining the mesh geometry.
+* `x, y, z` Coordinates defining a surface (converted to mesh internally).
+* `geom` Any `GeometryPrimitive` (e.g. `Sphere`, `Rect3`, `Cylinder`) which will be converted to a mesh.
 """
 @recipe Mesh (mesh::Union{AbstractVector{<:GeometryBasics.Mesh}, GeometryBasics.Mesh, GeometryBasics.MetaMesh},) begin
     """
@@ -521,11 +487,7 @@ Plots a 3D or 2D mesh. Supported `mesh_object`s include `Mesh` types from [Geome
 end
 
 """
-    scatter(positions)
-    scatter(x, y)
-    scatter(x, y, z)
-
-Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
+Plots a marker at each position.
 """
 @recipe Scatter (positions,) begin
     "Sets the color of the marker. If no color is set, multiple calls to `scatter!` will cycle through the axis color palette."
@@ -589,12 +551,8 @@ function deprecated_attributes(::Type{<:Scatter})
 end
 
 """
-    meshscatter(positions)
-    meshscatter(x, y)
-    meshscatter(x, y, z)
-
-Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
-`markersize` is a scaling applied to the primitive passed as `marker`.
+Plots a single mesh at multiple positions. The mesh can be scaled and rotated
+through attributes.
 """
 @recipe MeshScatter (positions,) begin
     matcap = nothing
@@ -642,12 +600,7 @@ function deprecated_attributes(::Type{<:MeshScatter})
 end
 
 """
-    text(positions; text, kwargs...)
-    text(x, y; text, kwargs...)
-    text(x, y, z; text, kwargs...)
-
 Plots one or multiple texts passed via the `text` keyword.
-`Text` uses the `PointBased` conversion trait.
 """
 @recipe Text (positions,) begin
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
@@ -698,20 +651,17 @@ function deprecated_attributes(::Type{<:Text})
 end
 
 """
-    voxels(x, y, z, chunk::Array{<:Real, 3})
-    voxels(chunk::Array{<:Real, 3})
-
-Plots a chunk of voxels centered at 0. Optionally the placement and scaling of
-the chunk can be given as range-like x, y and z. (Only the extrema are
-considered here. Voxels are always uniformly sized.)
-
-Internally voxels are represented as 8 bit unsigned integer, with `0x00` always
-being an invisible "air" voxel. Passing a chunk with matching type will directly
-set those values. Note that color handling is specialized for the internal
-representation and may behave a bit differently than usual.
+Plots a 3D array of data as voxels (small cubes) within the limits defined by
+`x`, `y` and `z`.
 
 Note that `voxels` is currently considered experimental and may still see breaking
 changes in patch releases.
+
+## Arguments
+
+* `x, y, z, chunk` Defines a 3D volume where `x`, `y`, and `z` specify the limits as
+    `ClosedInterval` or `Tuple{Real, Real}`, and `chunk` is a 3D array of voxel data. Each non-air
+    voxel is rendered as a small cube.
 """
 @recipe Voxels (x, y, z, chunk) begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
@@ -755,21 +705,22 @@ end
 
 
 """
-    poly(vertices, indices; kwargs...)
-    poly(points; kwargs...)
-    poly(shape; kwargs...)
-    poly(mesh; kwargs...)
-
 Plots a polygon based on the arguments given.
 When vertices and indices are given, it functions similarly to `mesh`.
 When points are given, it draws one polygon that connects all the points in order.
-When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
+When a shape is given (essentially anything decomposable by `GeometryBasics`), it
+will plot `decompose(shape)`.
 
-    poly(coordinates, connectivity; kwargs...)
+Polygons can also be defined by `coordinates` (the coordinates of the vertices)
+and `connectivity` (the edges between the vertices).
 
-Plots polygons, which are defined by
-`coordinates` (the coordinates of the vertices) and
-`connectivity` (the edges between the vertices).
+## Arguments
+
+* `polygon` A `Polygon`, `MultiPolygon`, `Circle`, `Rect`, `AbstractMesh`, `VecTypes`, or
+    `AbstractVector{<:VecTypes}` defining the polygon(s) to draw. Can also be an `AbstractVector`
+    of any of these types to draw multiple polygons.
+* `xs, ys` Two `AbstractVector{<:Real}` defining the x and y coordinates of polygon vertices.
+* `vertices, indices` Vertex and index arrays defining a mesh (same as `Mesh` plot).
 """
 @recipe Poly (polygon,) begin
     """
@@ -830,11 +781,13 @@ Plots polygons, which are defined by
 end
 
 """
-    wireframe(x, y, z)
-    wireframe(positions)
-    wireframe(mesh)
+Draws a wireframe of surface or mesh data.
 
-Draws a wireframe, either interpreted as a surface or as a mesh.
+## Arguments
+
+* `geom` A `GeometryBasics.Mesh` object to render as a wireframe or any GeometryBasics geometry.
+* `positions` An `AbstractVector{<:VecTypes}` defining vertices (converted to a mesh).
+* `x, y, z` Coordinates defining a surface (converted to mesh internally).
 """
 @recipe Wireframe begin
     documented_attributes(LineSegments)...

@@ -1,16 +1,14 @@
 """
-    arc(origin, radius, start_angle, stop_angle; kwargs...)
+Plots a circular arc centered at `origin` with the given `radius` from `start_angle`
+to `stop_angle`.
 
-This function plots a circular arc, centered at `origin` with radius `radius`,
-from `start_angle` to `stop_angle`.
-`origin` must be a coordinate in 2 dimensions (i.e., a `Point2`); the rest of the arguments must be
-`<: Number`.
+## Arguments
 
-Examples:
-
-`arc(Point2f(0), 1, 0.0, π)`
-`arc(Point2f(1, 2), 0.3, π, -π)`
-
+* `origin, radius, start_angle, stop_angle`: Defines a circular arc where `origin`
+    is a 2D `Point{2, <:Real}` determining the center position, `radius` is a `Real`
+    determining the radius measured from `origin`, `start_angle` is a `Real`
+    determining the angle from the x-axis at which the arc starts, and `stop_angle`
+    is a `Real` determining the angle from the x-axis at which the arc stops.
 """
 @recipe Arc (origin, radius, start_angle, stop_angle) begin
     documented_attributes(Lines)...

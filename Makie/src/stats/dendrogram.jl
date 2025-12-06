@@ -6,16 +6,19 @@ struct DNode
 end
 
 """
-    dendrogram(positions, merges)
-    dendrogram(x, y, merges)
-
-Draw a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
+Draws a [dendrogram](https://en.wikipedia.org/wiki/Dendrogram) with leaf nodes
 specified by `positions` and parent nodes identified by `merges`.
 
-`merges` contain pairs of indices `(i, j)` which connect to a new parent node.
-That node is then added to the list and can be merged with another.
-
 Note that this recipe is still experimental and subject to change in the future.
+
+## Arguments
+
+- `positions, merges` Defines the `positions` of leaf nodes with an `AbstractVector{<:VecTypes{2, <:Real}}`
+    (Point, Vec or Tuple). Their parents are defined by `merges`, which is an
+    `AbstractVector{<:Tuple{<:Integer, <:Integer}}` marking nodes which should merge into a parent
+    node by index. Any node created by `merges` will be pushed to the node array after leaf nodes
+    and can be referred to by index in `merges`.
+-`x, y, merges` Specifies positions per dimension as `AbstractVector{<:Real}` with `x, y`
 """
 @recipe Dendrogram (nodes,) begin
     """
