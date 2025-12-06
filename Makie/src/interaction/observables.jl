@@ -80,7 +80,7 @@ function onany_latest(f, observables...; update = false, spawn = false, throttle
     return on_latest((args) -> f(args...), result; update = update, spawn = spawn, throttle = throttle)
 end
 
-function map_latest!(f, result::Observable, observables...; update = false, spawn = false, throttle = 0.0)
+function ComputePipeline.map_latest!(f, result::Observable, observables...; update = false, spawn = false, throttle = 0.0)
     callback = Observables.MapCallback(f, result, observables)
     return onany_latest(callback, observables...; update = update, spawn = spawn, throttle = throttle)
 end
@@ -88,6 +88,6 @@ end
 function map_latest(f, observables...; spawn = false, ignore_equal_values = false, throttle = 0.0)
     first_value = f(map(to_value, observables)...)
     result = Observable(first_value; ignore_equal_values = ignore_equal_values)
-    map_latest!(f, result, observables..., spawn = spawn, throttle = throttle)
+    ComputePipeline.map_latest!(f, result, observables...; spawn = spawn, throttle = throttle)
     return result
 end

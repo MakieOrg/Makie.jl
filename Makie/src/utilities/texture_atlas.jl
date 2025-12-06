@@ -538,24 +538,25 @@ is_all_equal_scale(::Vector{Real}) = true
 is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
-function compute_marker_attributes((atlas, m, f, scale), changed, last)
+function compute_marker_attributes((atlas, marker, font, scale), changed, last)
+    # Note: Careful, changed[2] is not always called marker
     # TODO, only calculate offset if needed
     # [atlas_sym, :marker, :font, :markersize]
     # [:sdf_marker_shape, :sdf_uv, :image]
-    if m isa Matrix{<:Colorant} # single image marker
-        return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), m)
-    elseif m isa Vector{<:Matrix{<:Colorant}} # multiple image markers
+    if marker isa Matrix{<:Colorant} # single image marker
+        return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), marker)
+    elseif marker isa Vector{<:Matrix{<:Colorant}} # multiple image markers
         # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-        if changed[3]
-            uvs, images = pack_images(m)
+        if changed[2]
+            uvs, images = pack_images(marker)
             return (Cint(RECTANGLE), uvs, images)
         else
             # if marker is up to date don't update
             return (nothing, nothing, nothing)
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-        if changed[3] || changed.markersize
-            shape = Cint(marker_to_sdf_shape(m)) # expensive for arrays with abstract eltype?
+        if changed[2] || changed.markersize
+            shape = Cint(marker_to_sdf_shape(marker)) # expensive for arrays with abstract eltype?
             if shape == 0 && !is_all_equal_scale(scale)
                 shape = Cint(5)
             end
@@ -563,8 +564,8 @@ function compute_marker_attributes((atlas, m, f, scale), changed, last)
             shape = last.sdf_marker_shape
         end
 
-        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
-            uv = Makie.primitive_uv_offset_width(atlas, m, f)
+        if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed.font)
+            uv = Makie.primitive_uv_offset_width(atlas, marker, font)
         elseif isnothing(last)
             uv = Vec4f(0, 0, 1, 1)
         else
