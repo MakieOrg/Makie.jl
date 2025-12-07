@@ -729,21 +729,19 @@ function Makie.plot!(p::HeatmapShader)
         return x, y, _img, cr
     end
 
-    register_computation!(p.attributes, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+    ComputePipeline.map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
+        init = (p.x[], p.x[], fill(0.0f0, 2, 2), false)
+    ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        if isnothing(xe_ye_oimg)
-            if isnothing(last) # first downsample
-                return (x, x, fill(0.0f0, 2, 2), false)
-            else
-                return (nothing, nothing, nothing, false) # simply dont update!
-            end
-        end
+        isnothing(xe_ye_oimg) && return nothing
         return (xe_ye_oimg..., true)
     end
 
     gpa = generic_plot_attributes(p)
     cpa = colormap_attributes(p)
-
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
