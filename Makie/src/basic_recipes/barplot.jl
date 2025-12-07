@@ -138,11 +138,15 @@ end
 
 function attribute_groups(::Type{<:BarPlot})
     groups = default_attribute_groups()
-    push!(groups, "Label Attributes" => sort!([
-        :bar_labels, :flip_labels_at, :label_rotation, :label_color, :color_over_background,
-        :color_over_bar, :label_offset, :label_font, :label_size, :label_formatter,
-        :label_align, :label_position,
-    ]))
+    push!(
+        groups, "Label Attributes" => sort!(
+            [
+                :bar_labels, :flip_labels_at, :label_rotation, :label_color, :color_over_background,
+                :color_over_bar, :label_offset, :label_font, :label_size, :label_formatter,
+                :label_align, :label_position,
+            ]
+        )
+    )
     return groups
 end
 

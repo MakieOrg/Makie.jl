@@ -292,7 +292,7 @@ const DEFAULT_ATTRIBUTE_GROUPS = let
         "Generic Attributes" => sort!(generic),
         "DataInspector Attributes" => inspector,
         "3D Shading Attributes" => sort!(shading),
-        "Colormapping Attributes" => sort!(colormapping)
+        "Colormapping Attributes" => sort!(colormapping),
     ]
 end
 

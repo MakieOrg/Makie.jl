@@ -30,12 +30,20 @@ end
 
 function attribute_groups(::Type{<:Waterfall})
     groups = attribute_groups(BarPlot)
-    push!(groups, "Marker Attributes" => sort!([
-        :show_direction, :marker_pos, :marker_neg, :direction_color
-    ]))
-    push!(groups, "Final Bar Attributes" => sort!([
-        :show_final, :final_color, :final_gap, :final_dodge_gap
-    ]))
+    push!(
+        groups, "Marker Attributes" => sort!(
+            [
+                :show_direction, :marker_pos, :marker_neg, :direction_color,
+            ]
+        )
+    )
+    push!(
+        groups, "Final Bar Attributes" => sort!(
+            [
+                :show_final, :final_color, :final_gap, :final_dodge_gap,
+            ]
+        )
+    )
     return groups
 end
 

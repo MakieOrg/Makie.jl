@@ -59,18 +59,30 @@ end
 
 function attribute_groups(::Type{<:BoxPlot})
     groups = default_attribute_groups()
-    push!(groups, "Crossbar Attributes" => sort!([
-        :mediancolor, :medianlinewidth, :notchwidth, :show_median, :show_notch,
-        :notchmin, :notchmax, # shouldn't these be settable?
-        :strokecolor, :strokewidth
-    ]))
-    push!(groups, "Outlier Attributes" => sort!([
-        :show_outliers, :marker, :markersize, :outliercolor, :outlierstrokecolor,
-        :outlierstrokewidth
-    ]))
-    push!(groups, "Whisker Attributes" => sort!([
-        :range, :whiskercolor, :whiskerlinewidth, :whiskerwidth
-    ]))
+    push!(
+        groups, "Crossbar Attributes" => sort!(
+            [
+                :mediancolor, :medianlinewidth, :notchwidth, :show_median, :show_notch,
+                :notchmin, :notchmax, # shouldn't these be settable?
+                :strokecolor, :strokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Outlier Attributes" => sort!(
+            [
+                :show_outliers, :marker, :markersize, :outliercolor, :outlierstrokecolor,
+                :outlierstrokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Whisker Attributes" => sort!(
+            [
+                :range, :whiskercolor, :whiskerlinewidth, :whiskerwidth,
+            ]
+        )
+    )
     return groups
 end
 

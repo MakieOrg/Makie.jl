@@ -12,25 +12,27 @@ Get comprehensive documentation for any plot type:
 ?lines    # Documentation for line plots
 ```
 
-$(if VERSION < v"1.12.2"
-    """
-    ### Attribute Documentation
-    View documentation for specific attributes of plots:
-    ```julia
-    help(scatter, :color)      # Documentation and examples for the color attribute
-    help(lines, :linewidth)    # Documentation for the linewidth attribute
-    ```
-    """
-else
-    """
-    ### Attribute Documentation
-    View documentation for specific attributes of plots:
-    ```julia
-    ?scatter.color      # Documentation and examples for the color attribute
-    ?lines.linewidth    # Documentation for the linewidth attribute
-    ```
-    """
-end)
+$(
+    if VERSION < v"1.12.2"
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        help(scatter, :color)      # Documentation and examples for the color attribute
+        help(lines, :linewidth)    # Documentation for the linewidth attribute
+        ```
+        """
+    else
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        ?scatter.color      # Documentation and examples for the color attribute
+        ?lines.linewidth    # Documentation for the linewidth attribute
+        ```
+        """
+    end
+)
 
 ### Block Documentation (Axis, Colorbar, Legend, etc.)
 Get documentation for layout blocks:

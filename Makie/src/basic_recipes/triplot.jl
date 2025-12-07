@@ -88,21 +88,37 @@ end
 
 function attribute_groups(::Type{<:Triplot})
     groups = default_attribute_groups()
-    push!(groups, "Ghost Edge Attributes" => sort!([
-        :ghost_edge_color, :ghost_edge_linewidth, :ghost_edge_linestyle,
-        :show_ghost_edges, :ghost_edge_extension_factor
-    ]))
-    push!(groups, "Convex Hull Attributes" => sort!([
-        :convex_hull_color, :convex_hull_linestyle, :convex_hull_linewidth,
-        :show_convex_hull
-    ]))
-    push!(groups, "Constrained Edge Attributes" => sort!([
-        :constrained_edge_color, :constrained_edge_linewidth, :constrained_edge_linestyle,
-        :show_constrained_edges
-    ]))
-    push!(groups, "Vertex Attributes" => sort!([
-        :markersize, :markercolor, :strokecolor, :marker, :show_points
-    ]))
+    push!(
+        groups, "Ghost Edge Attributes" => sort!(
+            [
+                :ghost_edge_color, :ghost_edge_linewidth, :ghost_edge_linestyle,
+                :show_ghost_edges, :ghost_edge_extension_factor,
+            ]
+        )
+    )
+    push!(
+        groups, "Convex Hull Attributes" => sort!(
+            [
+                :convex_hull_color, :convex_hull_linestyle, :convex_hull_linewidth,
+                :show_convex_hull,
+            ]
+        )
+    )
+    push!(
+        groups, "Constrained Edge Attributes" => sort!(
+            [
+                :constrained_edge_color, :constrained_edge_linewidth, :constrained_edge_linestyle,
+                :show_constrained_edges,
+            ]
+        )
+    )
+    push!(
+        groups, "Vertex Attributes" => sort!(
+            [
+                :markersize, :markercolor, :strokecolor, :marker, :show_points,
+            ]
+        )
+    )
     return groups
 end
 

@@ -76,9 +76,13 @@ end
 
 function attribute_groups(::Type{<:Violin})
     groups = default_attribute_groups()
-    push!(groups, "Median Line Attributes" => sort!([
-        :mediancolor, :medianlinewidth, :show_median,
-    ]))
+    push!(
+        groups, "Median Line Attributes" => sort!(
+            [
+                :mediancolor, :medianlinewidth, :show_median,
+            ]
+        )
+    )
     return groups
 end
 
