@@ -60,14 +60,7 @@ function _create_complex_recipe(Func, parent::ComplexRecipeFigureLike, user_args
         if block isa AbstractAxis
             N = num_decoration_plots_in_axis_scene(block)
             axis_plots = block.scene.plots
-
-            for p in view(axis_plots, N+1 : length(axis_plots))
-                if !in(p, cr.plots)
-                    push!(cr.plots, p)
-                end
-            end
-            # Or skip adding plots directly and just do it all here?
-            # append!(axis_plots, view(axis_plots, N+1 : length(axis_plots)))
+            append!(cr.plots, view(axis_plots, N+1 : length(axis_plots)))
         end
     end
 
@@ -108,27 +101,6 @@ end
 # When you call scatter(cr[1,1], args...), it goes through _create_plot which
 # calls plot_args, and we need RecipeSubfig to be recognized as a figure-like argument.
 
-"""
-    RecipeSubfigAxis <: AbstractAxis
-
-Wrapper that carries both the axis and the RecipeSubfig context through the
-plotting dispatch chain. This allows figurelike_return to track the created
-axis and plot in the parent ComplexRecipe.
-
-Inherits from AbstractAxis so it works with the standard plot!(ax, plot) interface.
-"""
-struct RecipeSubfigAxis <: AbstractAxis
-    axis::AbstractAxis
-    rsf::RecipeSubfig
-end
-
-# Constructor that unwraps FigureAxis
-RecipeSubfigAxis(fa::FigureAxis, rsf::RecipeSubfig) = RecipeSubfigAxis(fa.axis, rsf)
-
-# Forward AbstractAxis interface to the wrapped axis
-get_scene(rsa::RecipeSubfigAxis) = get_scene(rsa.axis)
-get_conversions(rsa::RecipeSubfigAxis) = get_conversions(rsa.axis)
-
 # Make RecipeSubfig work with plot_args dispatch
 @inline function plot_args(rsf::RecipeSubfig, args...)
     return (rsf, args)
@@ -138,22 +110,8 @@ end
 function create_axis_like(plot::AbstractPlot, attributes::Dict, rsf::RecipeSubfig)
     gp = get_grid_position(rsf)
     ax = create_axis_like(plot, attributes, gp)
-    return RecipeSubfigAxis(ax, rsf)
-end
-
-# Track plots created via RecipeSubfig - dispatch on the wrapper type
-function figurelike_return(rsa::RecipeSubfigAxis, plot::AbstractPlot)
-    # Track the axis and plot in the parent ComplexRecipe
-    push!(rsa.rsf.parent.blocks, rsa.axis)
-    push!(rsa.rsf.parent.plots, plot)
-    # Return (axis, plot) tuple for destructuring convenience
-    return rsa.axis, plot
-end
-
-# Forward plot! to the wrapped axis
-function plot!(rsa::RecipeSubfigAxis, plot::AbstractPlot)
-    plot!(rsa.axis, plot)
-    return plot
+    push!(rsf.parent.blocks, ax)
+    return ax
 end
 
 # === Mutating plot support for RecipeSubfig ===
@@ -162,7 +120,7 @@ end
     create_axis_like!(attributes::Dict, rsf::RecipeSubfig)
 
 For mutating plots (plot!), get the axis at the RecipeSubfig position.
-The axis must already exist. Returns a RecipeSubfigAxis to enable plot tracking.
+The axis must already exist.
 """
 function create_axis_like!(attributes::Dict, rsf::RecipeSubfig)
     gp = get_grid_position(rsf)
@@ -172,13 +130,7 @@ function create_axis_like!(attributes::Dict, rsf::RecipeSubfig)
         push!(rsf.parent.blocks, ax)
     end
     # Return wrapped axis so figurelike_return! can track the plot
-    return RecipeSubfigAxis(ax, rsf)
-end
-
-# Track plots from mutating calls
-function figurelike_return!(rsa::RecipeSubfigAxis, plot::AbstractPlot)
-    push!(rsa.rsf.parent.plots, plot)
-    return plot
+    return ax
 end
 
 # === Default plot! fallback ===
