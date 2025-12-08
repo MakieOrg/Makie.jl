@@ -192,7 +192,7 @@ function Base.show(io::IO, ::MIME"text/plain", cr::ComplexRecipe{F}) where {F}
     println(io, "ComplexRecipe{$F}")
     println(io, "  parent: $(typeof(cr.parent))")
     println(io, "  blocks: $(length(cr.blocks))")
-    println(io, "  plots: $(length(cr.plots))")
+    print(io, "  plots: $(length(cr.plots))")
     return
 end
 
