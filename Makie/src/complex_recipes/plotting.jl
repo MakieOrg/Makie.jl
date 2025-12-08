@@ -46,6 +46,10 @@ function _create_complex_recipe(Func, parent::ComplexRecipeFigureLike, user_args
     # Add attributes from documented defaults
     add_complex_attributes!(CR, attr, user_kw)
 
+    # We need to update from the theme early so we can create e.g. a Legend
+    # entry that relies on an inherited attribute
+    add_theme!(ComplexRecipe{Func}, user_kw, attr, get_topscene(parent))
+
     # Create the recipe
     converted = attr[:converted][]
     ArgTyp = typeof(converted)

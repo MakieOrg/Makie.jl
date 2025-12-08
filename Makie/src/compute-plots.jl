@@ -674,7 +674,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     return
 end
 
-function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
+function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: AbstractPlot}
     plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
     plot_scene_theme = get(scene_theme, plotsym(T), (;))
