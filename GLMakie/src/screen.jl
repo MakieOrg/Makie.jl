@@ -136,9 +136,13 @@ Note that the `screen_config` can also be set permanently via `Makie.set_theme!(
 
 $(Base.doc(ScreenConfig))
 """
-function activate!(; inline = LAST_INLINE[], screen_config...)
+function activate!(; glfw_platform::Union{Nothing, GLFW.Platform} = nothing, inline = LAST_INLINE[], screen_config...)
     if haskey(screen_config, :pause_rendering)
         error("pause_rendering got renamed to pause_renderloop.")
+    end
+    if glfw_platform != nothing
+        GLFW.Terminate()
+        GLFW.Init(;platform = glfw_platform)
     end
     Makie.inline!(inline)
     LAST_INLINE[] = inline
