@@ -155,3 +155,17 @@ function plot!(cr::ComplexRecipe)
     @warn "No plot! method defined for $(typeof(cr)). Define `Makie.plot!(cr::$(typeof(cr).name.name))` to implement your recipe."
     return cr
 end
+
+########################################
+# Block Extension
+########################################
+
+get_topscene(rsf::RecipeSubfig) = get_topscene(get_grid_position(rsf))
+
+function _block(T::Type{<:Block}, rsf::RecipeSubfig, args...; kwargs...)
+    return _block(T, get_grid_position(rsf), args...; kwargs...)
+end
+
+function GridLayoutBase.GridLayout(rsf::RecipeSubfig, args...; kwargs...)
+    return GridLayout(get_grid_position(rsf), args...; kwargs...)
+end
