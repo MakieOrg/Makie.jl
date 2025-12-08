@@ -5,4 +5,4 @@
 include("complex_recipes.jl")
 include("plotting.jl")
 
-export ComplexRecipe, RecipeSubfig, RecipeSubfigAxis
+export ComplexRecipe, RecipeSubfig
