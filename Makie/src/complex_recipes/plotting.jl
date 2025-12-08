@@ -1,5 +1,25 @@
 # === ComplexRecipe Construction ===
 
+num_decoration_plots_in_axis_scene(::Any) = 0
+num_decoration_plots_in_axis_scene(::Axis3) = 12
+
+function flatten_blocklist(blocks::Vector)
+    clean_blocks = Block[]
+    for thing in blocks
+        if thing isa Block
+            push!(clean_blocks, thing)
+        elseif thing isa GridLayout
+            append!(clean_blocks, flatten_blocklist(thing.content))
+        elseif thing isa GridLayoutBase.GridContent
+            @assert thing.content isa Block
+            push!(clean_blocks, thing.content)
+        else
+            error("What else is there? $(typeof(blocks))")
+        end
+    end
+    return clean_blocks
+end
+
 """
     _create_complex_recipe(Func, parent, args, kw)
 
@@ -33,6 +53,23 @@ function _create_complex_recipe(Func, parent::ComplexRecipeFigureLike, user_args
 
     # Call the user's plot! implementation
     plot!(cr)
+
+    cr.blocks = convert(Vector{Any}, flatten_blocklist(cr.blocks))
+
+    for block in cr.blocks
+        if block isa AbstractAxis
+            N = num_decoration_plots_in_axis_scene(block)
+            axis_plots = block.scene.plots
+
+            for p in view(axis_plots, N+1 : length(axis_plots))
+                if !in(p, cr.plots)
+                    push!(cr.plots, p)
+                end
+            end
+            # Or skip adding plots directly and just do it all here?
+            # append!(axis_plots, view(axis_plots, N+1 : length(axis_plots)))
+        end
+    end
 
     return cr
 end
@@ -107,7 +144,7 @@ end
 # Track plots created via RecipeSubfig - dispatch on the wrapper type
 function figurelike_return(rsa::RecipeSubfigAxis, plot::AbstractPlot)
     # Track the axis and plot in the parent ComplexRecipe
-    push!(rsa.rsf.parent.axes, rsa.axis)
+    push!(rsa.rsf.parent.blocks, rsa.axis)
     push!(rsa.rsf.parent.plots, plot)
     # Return (axis, plot) tuple for destructuring convenience
     return rsa.axis, plot
@@ -131,8 +168,8 @@ function create_axis_like!(attributes::Dict, rsf::RecipeSubfig)
     gp = get_grid_position(rsf)
     ax = create_axis_like!(attributes, gp)
     # Track the axis if not already tracked
-    if ax ∉ rsf.parent.axes
-        push!(rsf.parent.axes, ax)
+    if ax ∉ rsf.parent.blocks
+        push!(rsf.parent.blocks, ax)
     end
     # Return wrapped axis so figurelike_return! can track the plot
     return RecipeSubfigAxis(ax, rsf)
@@ -163,9 +200,13 @@ end
 get_topscene(rsf::RecipeSubfig) = get_topscene(get_grid_position(rsf))
 
 function _block(T::Type{<:Block}, rsf::RecipeSubfig, args...; kwargs...)
-    return _block(T, get_grid_position(rsf), args...; kwargs...)
+    b = _block(T, get_grid_position(rsf), args...; kwargs...)
+    push!(rsf.parent.blocks, b)
+    return b
 end
 
 function GridLayoutBase.GridLayout(rsf::RecipeSubfig, args...; kwargs...)
-    return GridLayout(get_grid_position(rsf), args...; kwargs...)
+    gl = GridLayout(get_grid_position(rsf), args...; kwargs...)
+    push!(rsf.parent.blocks, gl)
+    return gl
 end

@@ -54,8 +54,8 @@ mutable struct ComplexRecipe{Func, T} <: AbstractPlot{Func}
     kw::Dict{Symbol, Any}
     # Converted and processed arguments + attributes
     attributes::ComputeGraph
-    # Track created axes and plots
-    axes::Vector{Any}  # Vector of created axes
+    # Track created blocks and plots
+    blocks::Vector{Any}  # Vector of created blocks
     plots::Vector{AbstractPlot}  # Vector of created plots
     function ComplexRecipe{Func, T}(
             parent::ComplexRecipeFigureLike,
@@ -191,7 +191,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", cr::ComplexRecipe{F}) where {F}
     println(io, "ComplexRecipe{$F}")
     println(io, "  parent: $(typeof(cr.parent))")
-    println(io, "  axes: $(length(cr.axes))")
+    println(io, "  blocks: $(length(cr.blocks))")
     println(io, "  plots: $(length(cr.plots))")
     return
 end

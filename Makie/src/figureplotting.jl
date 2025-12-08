@@ -372,10 +372,10 @@ axes and layout, so they bypass the normal axis creation path.
     # Return appropriate type based on input
     if isnothing(figarg)
         fig = get_top_parent(parent)
-        first_axis = isempty(cr.axes) ? nothing : first(cr.axes)
+        first_axis = isempty(cr.blocks) ? nothing : first(cr.blocks)
         return FigureAxisPlot(fig, first_axis, cr)
     elseif figarg isa Figure
-        first_axis = isempty(cr.axes) ? nothing : first(cr.axes)
+        first_axis = isempty(cr.blocks) ? nothing : first(cr.blocks)
         return FigureAxisPlot(figarg, first_axis, cr)
     else
         return cr
