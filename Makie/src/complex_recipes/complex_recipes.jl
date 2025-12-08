@@ -105,9 +105,13 @@ function get_grid_position(rsf::RecipeSubfig)
     return rsf.parent.parent[rsf.rows, rsf.cols]
 end
 
+GridLayoutBase.content(rsf::RecipeSubfig) = content(get_grid_position(rsf))
+
 # === Indexing and Property Access ===
 # Note: haskey, get, getindex, setindex!, getproperty, setproperty! are inherited
 # from AbstractPlot via shared methods in compute-plots.jl
+
+GridLayoutBase.content(cr::ComplexRecipe) = cr.blocks
 
 # === Recipe Infrastructure ===
 
