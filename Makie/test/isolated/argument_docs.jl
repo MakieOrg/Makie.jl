@@ -52,7 +52,10 @@
             @test !isempty(para.content)
 
             # First element should be a Code block containing the argument signature
-            @test isa(para.content[1], Markdown.Code)
+            # Last item may also be a general note
+            if i < length(list.items)
+                @test isa(para.content[1], Markdown.Code)
+            end
 
         end
     end
