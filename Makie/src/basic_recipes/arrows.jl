@@ -130,20 +130,14 @@ function mixin_arrow_attributes()
     end
 end
 
-const _arrow_args_docs = """
-Their positions are given by a vector of `points` or component vectors `x`, `y`
-and optionally `z`. A single point or value of `x`, `y` and `z` is also allowed.
-Which part of the arrow is aligned with the position depends on the `align` attribute.
-
-Their directions are given by a vector of `directions` or component vectors `u`,
-`v` and optionally `w` just like positions. Additionally they can also be
-calculated by a function `f` which should return a `Point` or `Vec` for each
-arrow `position::Point`.
-Note that direction can also be interpreted as end points with `argmode = :endpoint`.
-"""
 
 arrows(args...; kwargs...) = resolve_arrows_deprecation(false, args, Dict{Symbol, Any}(kwargs))
 arrows!(args...; kwargs...) = resolve_arrows_deprecation(true, args, Dict{Symbol, Any}(kwargs))
+
+function full_docs(::Type{<:Plot{arrows}}; replace_figure = true)
+    str = read(joinpath(@__DIR__, "..", "documentation", "plots", "arrows.md"), String)
+    return Markdown.parse(str)
+end
 
 # For the matlab/matplotlib users
 const quiver = arrows
@@ -232,13 +226,21 @@ function arrowtail2d(l, W, metrics)
 end
 
 """
-    arrows2d(points, directions; kwargs...)
-    arrows2d(x, y, [z], u, v, [w])
-    arrows2d(x, y, [z], f::Function)
-
 Plots arrows as 2D shapes.
 
-$_arrow_args_docs
+## Arguments
+
+* `points, directions` Defines arrow anchor positions and directions. `points` is a
+    `VecTypes{D, <:Real}` (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions`
+    is a `VecTypes{D, <:Real}` or `AbstractVector{<:VecTypes}` defining the direction arrows point
+    in. With the default `align = :tail`, points are where arrows start from.
+* `xs, ys, us, vs` Defines points and directions using separate coordinate arrays. Each can be a
+    `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
+    but with coordinates given per dimension.
+* `points, f` A callback function `point -> direction` which returns a direction for each anchor
+    point. Can be used with either a `points` array or with `xs, ys` coordinates.
+* `xs, ys, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows2D (points, directions) begin
     """
@@ -510,13 +512,21 @@ boundingbox(p::Arrows2D, space::Symbol) = apply_transform_and_model(p, data_limi
 
 
 """
-    arrows3d(points, directions; kwargs...)
-    arrows3d(x, y, [z], u, v, [w])
-    arrows3d(x, y, [z], f::Function)
-
 Plots arrows as 3D shapes.
 
-$_arrow_args_docs
+## Arguments
+
+* `points, directions` Defines arrow anchor positions and directions. `points` is a `VecTypes{D, <:Real}`
+    (`Point`, `Vec` or `Tuple`) or `AbstractVector{<:VecTypes}`. `directions` is a `VecTypes{D, <:Real}`
+    or `AbstractVector{<:VecTypes}` defining the direction arrows point in. With the default `align = :tail`,
+    points are where arrows start from.
+* `xs, ys, zs, us, vs, ws` Defines points and directions using separate coordinate arrays. Each can
+    be a `Real` or an `AbstractVector{<:Real}`. This is equivalent to the `points, directions` signature
+    but with coordinates given per dimension.
+* `points, f` A callback function `point -> direction` which returns a direction for each anchor point.
+    Can be used with either a `points` array or with `xs, ys, zs` coordinates.
+* `xs, ys, zs, f` Same as `points, f` but with coordinates given separately.
+* Setting `argmode = :endpoint` will reinterpret directions as endpoints.
 """
 @recipe Arrows3D (points, directions) begin
     """

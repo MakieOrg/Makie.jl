@@ -191,6 +191,157 @@ Makie.preferred_axis_type(plot::MyPlot) = Makie.LScene
 
 Note that Makie defaults to `Makie.Axis` as the preferred axis.
 
+#### Documentation
+
+The `@recipe` macro merges various sources to create the docstring for a plot recipe.
+In order, the final docstring is composed of the following components.
+
+##### Call Signature
+
+The call signature documentation of the plot is automatically generated from the plot type.
+
+##### Description
+
+The description of the plot is extracted from the docstring attached to the `@recipe` macro.
+It will include everything up until a `## Arguments` header.
+For example, the following would extract "Description" as a `Markdown.Paragraph`:
+
+```julia
+"""
+Description
+
+## Arguments
+"""
+@recipe MyPlot begin ... end
+```
+
+##### Argument docs
+
+Anything under the `## Arguments` header in the `@recipe` docstring will be extracted next, as the `Arguments` section of the final docstring.
+If the recipe has types given for converted arguments, they will be added to the argument docs.
+They will also be added in the recipe uses a ConversionTrait which defines them through a `types_for_plot_arguments(trait)`  method.
+As an example
+
+```julia
+"""
+## Arguments
+
+* `x, y` sets the position of plot elements.
+"""
+@recipe (xs::AbstractVector{<:Real}, ys::AbstractVector{<:Real}) begin ... end
+```
+
+would lower to
+
+```julia
+"""
+## Arguments
+
+**Conversion target:** `xs::AbstractVector{<:Real}, ys::AbstractVector{<:Real}`
+
+* `x, y` sets the position of plot elements.
+"""
+```
+
+It is also possible to overwrite `Makie.argument_docs_md(::Type{<:MyPlot})` to return your argument section as a `Markdown.MD` string.
+
+!!! note
+    Updating the docstring in front of `@recipe` with Revise currently causes the `## Arguments` section to duplicate with no content when it is included. Restarting Julia clears the duplication.
+
+##### Examples
+
+The next part of the docstring is an example, which is usually sourced from a markdown file in the `src/documentation/plots` directory in Makie.
+To include an externally defined example file, you can add a method of `Makie.path_to_plot_examples(::Type{<:MyPlot})` pointing to a markdown file.
+It should structured like this
+
+```
+# myplot
+
+## Examples
+
+### First Example
+
+\`\`\`
+some example code ...
+\`\`\`
+```
+
+so that "First Example" can be extracted and added to the plots docstring.
+You can also add an `## Attributes` section to the file to add examples for plot attributes:
+
+```
+## Attributes
+
+### `name_of_attribute`
+
+\`\`\`
+example code for attribute usage
+\`\`\`
+```
+
+These will be added to `?MyPlot.name_of_attribute` and `help(MyPlot, :name_of_attribute)`.
+
+Alternatively you can also define `Makie.extract_example(::Type{<:MyPlot})` to directly given a list of examples, formatted as `Markdown.MD` strings.
+
+##### Attributes
+
+The last part of the docs is a list of attributes.
+It is automatically generated from the attributes added in the `@recipe` macro.
+For example with this
+
+```julia
+@recipe MyPlot begin
+    Makie.mixin_generic_plot_attributes()...
+    "attribute 1 docs"
+    attribute1 = 1
+    "attribute 2 docs"
+    attribute2 = 2
+    ...
+end
+```
+
+the generic plot attributes like `visible` are added to the recipe alongside `attribute1` and `attribute2`.
+All of these will show up in the attribute section of the docstring.
+By default, "generic", "DataInspector", "colormapping" and "3D Shading" attributes will be moved into separate groups to keep the list more readable.
+Here this would produce:
+
+```
+**Generic Attributes**: `clip_planes`, `cycle`, `depth_shift`, `fxaa`, `model`, `overdraw`, `space`, `ssao`, `transformation`, `transparency`, `visible`
+
+**Plot Attributes**: `attribute1`, `attribute2`
+```
+
+If you want to set your own groups, you can implement a method of `Makie.attribute_groups(::Type{<:MyPlot})`.
+It should return a vector containing `group_name => attribute_names` elements.
+When building the docstring, groups will be iterated in order.
+If an attribute shows up in the `attribute_names` of a group, it will be added to that group and that group only.
+Any attributes that remain ungrouped will be added to the catch-all "Plot Attributes" group.
+If a group remains empty, it will not be shown in the docstring.
+
+For example, if we wanted to move `attribute1` into a dedicated group:
+
+```julia
+function Makie.attribute_groups(::Type{<:MyPlot})
+    groups = Makie.default_attribute_groups()
+    push!(groups, "My Attributes" => [:attribute1])
+    return groups
+end
+```
+
+With this the generated docstring becomes:
+
+```
+**Generic Attributes**: `clip_planes`, `cycle`, `depth_shift`, `fxaa`, `model`, `overdraw`, `space`, `ssao`, `transformation`, `transparency`, `visible`
+
+**My Attributes**: `attribute1`
+
+**Plot Attributes**: ``attribute2`
+```
+
+The detailed information on attributes like their initial value, the attribute docstring defined in `@recipe` and potential examples are not included in the main `?myplot` docstring.
+Instead they are moved to `?MyPlot.attribute_name` / `help(MyPlot, :attribute__name)` to not overwhelm the main docstring.
+A note about this is always added at the end of the main docstring.
+
 ### plot!() Method
 
 As the second part of defining `MyPlot`, you should implement the actual plotting of the `MyPlot` object by specializing `plot!`:

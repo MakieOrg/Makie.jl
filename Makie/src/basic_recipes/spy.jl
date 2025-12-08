@@ -1,18 +1,10 @@
 """
-    spy(z::AbstractSparseArray)
-    spy(x_range::NTuple{2, Number}, y_range::NTuple{2, Number}, z::AbstractSparseArray)
-    spy(x_range::ClosedInterval, y_range::ClosedInterval, z::AbstractSparseArray)
+Visualizes a sparse matrix as a collection of colored rectangles.
 
-Visualizes big sparse matrices.
-Usage:
-```julia
-using SparseArrays, GLMakie
-N = 200_000
-x = sprand(Float64, N, N, (3(10^6)) / (N*N));
-spy(x)
-# or if you want to specify the range of x and y:
-spy(0..1, 0..1, x)
-```
+## Arguments
+* `[x, y], matrix` Visualizes a sparse `matrix` (an `AbstractSparseArray{2, <:Real}`). Optionally,
+    the limits of the sparse matrix can be set with `x, y` (each a `ClosedInterval` or
+    `Tuple{<:Real, <:Real}`). If omitted, limits default to `0 .. size(matrix, dim)`.
 """
 @recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
     """

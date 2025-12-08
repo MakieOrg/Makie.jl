@@ -1,13 +1,22 @@
 """
-    voronoiplot(x, y, values; kwargs...)
-    voronoiplot(values; kwargs...)
-    voronoiplot(x, y; kwargs...)
-    voronoiplot(positions; kwargs...)
-    voronoiplot(vorn::VoronoiTessellation; kwargs...)
+Generate and plot a Voronoi tessellation from heatmap-like or point-based data.
 
-Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
-The tessellation can also be passed directly as a `VoronoiTessellation` from
-DelaunayTriangulation.jl.
+The tessellation generates a cell for each passed position similar to `heatmap`,
+however the cells are not restricted to a rectangular shape.
+
+## Arguments
+
+* `xs, ys` where both are `AbstractVector{<:Real}` defining cell positions per dimension.
+* `xs, ys, values` where `xs` and `ys` are `AbstractVector{<:Real}` and `values` is either
+    `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` used for colormapping. When `values` is a
+    matrix, `xs` and `ys` are interpreted per matrix axes.
+* `positions::AbstractVector{<:VecTypes{D, <:Real}}` where positions are `Point`, `Vec` or `Tuple`
+    defining locations around which voronoi cells are formed. If a third dimension is present, it is
+    used for colormapping.
+* `values::AbstractMatrix{<:Real}` where `values` is the sole argument, in which case `xs` and `ys`
+    default to `axes(values, dim)`.
+* `vorn::VoronoiTessellation` where the tessellation from DelaunayTriangulation.jl is passed directly
+    to define the voronoi cells explicitly.
 """
 @recipe Voronoiplot begin
     "Determines whether to plot the individual generators."
