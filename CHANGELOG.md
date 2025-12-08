@@ -8,6 +8,7 @@
 - Fixed `plot!(..., attr, ...)` overwriting `attr::Attributes` [#5422](https://github.com/MakieOrg/Makie.jl/pull/5422)
 - Fixed `scatter` markers not updating correctly [#5451](https://github.com/MakieOrg/Makie.jl/pull/5451)
 - Fixed `poly!()` ignoring `linecap`, `joinstyle`, `miter_limit` and `linestyle` in CairoMakie [#5415](https://github.com/MakieOrg/Makie.jl/pull/5415)
+- Allow GLFW platform selection when calling `GLMakie.activate!` [#5462](https://github.com/MakieOrg/Makie.jl/pull/5462)
 
 ## [0.24.7] - 2025-11-18
 
