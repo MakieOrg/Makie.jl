@@ -127,9 +127,9 @@ end
 const LAST_INLINE = Ref{Union{Makie.Automatic, Bool}}(false)
 
 """
-    GLMakie.activate!(; screen_config...)
+    GLMakie.activate!(; glfw_platform::Union{Nothing, GLFW.Platform}, screen_config...)
 
-Sets GLMakie as the currently active backend and also optionally modifies the screen configuration using `screen_config` keyword arguments.
+Sets GLMakie as the currently active backend and also optionally modifies the screen configuration using `screen_config` keyword arguments, and the GLFW backend using `glfw_platform`.
 Note that the `screen_config` can also be set permanently via `Makie.set_theme!(GLMakie=(screen_config...,))`.
 
 # Arguments one can pass via `screen_config`:
