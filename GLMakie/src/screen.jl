@@ -140,7 +140,7 @@ function activate!(; glfw_platform::Union{Nothing, GLFW.Platform} = nothing, inl
     if haskey(screen_config, :pause_rendering)
         error("pause_rendering got renamed to pause_renderloop.")
     end
-    if glfw_platform != nothing
+    if !isnothing(glfw_platform)
         GLFW.Terminate()
         GLFW.Init(;platform = glfw_platform)
     end
