@@ -74,7 +74,27 @@ function initialize_block!(ax::Axis3)
         ax.zoom_mult, ax.axis_offset, ax.near
     )
 
-    on(scene, matrices) do (model, view, proj, lookat, eyepos)
+    # We mirror the user-scene transformations to the blockscene instead of
+    # using the default pixel space. That way we can plot to the same 3D space
+    # without plotting to ax.scene
+    cameracontrols!(blockscene, EmptyCamera())
+
+    viewport_scaling = map(blockscene, viewport(scene), viewport(blockscene)) do src_vp, trg_vp
+        # position of minimum(src_vp) relative to minimum(trg_vp)
+        # transformed into clip space of target viewport (-1 .. 1 instead of minimum(trg_vp) .. maximum(trg_vp))
+        clip_src_min_in_trg = 2.0 .* (minimum(src_vp) .- minimum(trg_vp)) ./ widths(trg_vp) .- 1
+        # scaling and offset needed to keep the source clip space in the same
+        # pixel position when switching to target viewport
+        # This is the simple scaling factor:
+        scale = widths(src_vp) ./ widths(trg_vp)
+        # And an offset such that scale * clip_src_min + offset = clip_src_min_in_trg
+        # where clip_src_min = -1 is the minimum of source clip space in the source viewport
+        offset = clip_src_min_in_trg - scale .* -1
+
+        return transformationmatrix(to_ndim(Vec3f, offset, 0), to_ndim(Vec3f, scale, 1))
+    end
+
+    onany(scene, viewport_scaling, matrices) do viewport, (model, view, proj, lookat, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
@@ -86,6 +106,16 @@ function initialize_block!(ax::Axis3)
         cam.eyeposition[] = eyepos
         cam.upvector[] = cross(u_z, u_x)
         cam.view_direction[] = viewdir
+
+        # We mirror the camera to the blockscene with adjusted viewport scaling
+        cam = camera(blockscene)
+        Makie.set_proj_view!(cam, viewport * proj, view)
+        blockscene.transformation.model[] = model
+        cam.eyeposition[] = eyepos
+        cam.upvector[] = cross(u_z, u_x)
+        cam.view_direction[] = viewdir
+
+        return
     end
 
     ticknode_1 = Observable{Any}()
@@ -103,9 +133,9 @@ function initialize_block!(ax::Axis3)
         get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
-    add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
-    add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
-    add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
+    add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
+    add_panel!(blockscene, ax, 2, 3, 1, finallimits, mi1)
+    add_panel!(blockscene, ax, 1, 3, 2, finallimits, mi2)
 
     # This exists as a bandaid for WGLMakie. See add_gridlines_and_frames!()
     overlay = Scene(
@@ -155,8 +185,8 @@ function initialize_block!(ax::Axis3)
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
-        markerspace = :data,
-        inspectable = false
+        inspectable = false,
+        space = :pixel
     )
 
     ax.mouseeventhandle = addmouseevents!(scene)
@@ -449,7 +479,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         end
     end
     gridline1 = linesegments!(
-        scene, endpoints, color = attr(:gridcolor),
+        topscene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false
@@ -468,7 +498,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         end
     end
     gridline2 = linesegments!(
-        scene, endpoints2, color = attr(:gridcolor),
+        topscene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
         visible = attr(:gridvisible), inspectable = false
@@ -516,16 +546,19 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
 
     framelines = linesegments!(
-        scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        clip_planes = Plane3f[]
     )
 
     front_framelines = linesegments!(
         overlay, framepoints_front_spines, color = attr(:spinecolor_4),
-        linewidth = attr(:spinewidth), visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
+        linewidth = attr(:spinewidth),
+        visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
         transparency = true, inspectable = false,
-        xautolimits = false, yautolimits = false, zautolimits = false, clip_planes = Plane3f[]
+        xautolimits = false, yautolimits = false, zautolimits = false,
+        clip_planes = Plane3f[]
     )
 
     #= On transparency and render order
@@ -616,7 +649,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticks = linesegments!(
         topscene, tick_segments,
         transparency = true, inspectable = false,
-        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible)
+        color = attr(:tickcolor), linewidth = attr(:tickwidth),
+        space = :pixel, visible = attr(:ticksvisible)
     )
     # move ticks behind plots, -10000 is the far value in campixel
     translate!(ticks, 0, 0, -10000)
@@ -651,7 +685,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
     ticklabels_text = text!(
         topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
-        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
+        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
+        space = :pixel, inspectable = false
     )
 
     translate!(ticklabels_text, 0, 0, 1000)
@@ -749,7 +784,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         rotation = label_rotation,
         align = label_align,
         visible = attr(:labelvisible),
-        inspectable = false
+        inspectable = false,
+        space = :pixel
     )
 
     return ticks, ticklabels_text, label
@@ -802,7 +838,7 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0),
+        transformation = (plane, 0)
     )
 
     on(plane_offset) do offset
