@@ -144,24 +144,24 @@ function initialize_block!(ax::Axis3)
     )
 
     xgridline1, xgridline2, xframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        blockscene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     ygridline1, ygridline2, yframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        blockscene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     zgridline1, zgridline2, zframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        blockscene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
     xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
     titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
@@ -454,7 +454,7 @@ function dim2(dim)
     end
 end
 
-function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
+function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -589,7 +589,7 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     return gridline1, gridline2, framelines
 end
 
-function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
+function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -607,7 +607,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     tick_segments = lift(
         topscene, limits, tickvalues, miv, min1, min2,
-        scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed
+        topscene.camera.projectionview, topscene.viewport, ticksize,
+        xreversed, yreversed, zreversed
     ) do lims, ticks, miv, min1, min2,
             pview, pxa, tsize, xrev, yrev, zrev
 
@@ -623,8 +624,6 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        o = (origin(pxa) - origin(topscene.viewport[]))
-
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
@@ -638,8 +637,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
                 dpoint(t, f1 + diff_f1, f2)
             end
 
-            pp1 = Point2f(o + Makie.project(scene, p1))
-            pp2 = Point2f(o + Makie.project(scene, p2))
+            pp1 = Point2f(Makie.project(topscene, p1))
+            pp2 = Point2f(Makie.project(topscene, p2))
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
@@ -657,11 +656,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     labels_positions = Observable{Any}()
     map!(
-        topscene, labels_positions, scene.viewport, scene.camera.projectionview,
-        tick_segments, ticklabels, attr(:ticklabelpad)
-    ) do pxa, pv, ticksegs, ticklabs, pad
-
-        o = (origin(pxa) - origin(topscene.viewport[]))
+        topscene, labels_positions, tick_segments, ticklabels, attr(:ticklabelpad)
+    ) do ticksegs, ticklabs, pad
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -669,7 +665,7 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         end
 
         N = min(length(ticklabs), length(points))
-        Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
+        return Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
@@ -697,11 +693,9 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
 
     onany(
         topscene,
-        scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
+        topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
         attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
-
-        o = (origin(pxa) - origin(topscene.viewport[]))
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -718,8 +712,8 @@ function add_ticks_and_ticklabels!(topscene, scene, ax, dim::Int, limits, tickno
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(o + Makie.project(scene, p1))
-        pp2 = Point2f(o + Makie.project(scene, p2))
+        pp1 = Point2f(Makie.project(topscene, p1))
+        pp2 = Point2f(Makie.project(topscene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
@@ -803,7 +797,7 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
-function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
+function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
 
     dimsym(sym) = Symbol(
         string((:x, :y, :z)[dim1]) *
@@ -834,7 +828,7 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
     plane = Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2])
 
     panel = poly!(
-        scene, rect, inspectable = false,
+        topscene, rect, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
