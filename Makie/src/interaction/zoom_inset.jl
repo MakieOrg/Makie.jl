@@ -94,8 +94,8 @@ function zoom_inset!(
         ax::Axis, rect::Rect2;
         inset_width::Real = 0.3,
         inset_height::Real = 0.3,
-        halign::Real = 0.9,
-        valign::Real = 0.9,
+        halign::Union{Automatic, Real} = automatic,
+        valign::Union{Automatic, Real} = automatic,
         strokewidth::Real = 1.5,
         strokecolor = :black,
         rectcolor = (:black, 0),
@@ -104,11 +104,28 @@ function zoom_inset!(
         edge_threshold::Real = 10
     )
 
+    # if align is automatic, move to the opposite side of the selection `rect`
+    update_state_before_display!(ax)
+    lims = ax.finallimits[]
+    ax_center = minimum(lims) .+ 0.5 .* widths(lims)
+    selection_center = minimum(rect) .+ 0.5 .* widths(rect)
+
+    if halign === automatic
+        _halign = ifelse(selection_center[1] < ax_center[1], 0.9, 0.1)
+    else
+        _halign = halign
+    end
+    if valign === automatic
+        _valign = ifelse(selection_center[2] < ax_center[2], 0.9, 0.1)
+    else
+        _valign = valign
+    end
+
     # Create observables for the zoom rectangle and inset position/size
     zoom_rect = Observable(Rect2f(rect))
     zoom_rect_transformed = map(apply_transform, ax.scene.transformation.transform_func, zoom_rect)
-    inset_halign = Observable(Float64(halign))
-    inset_valign = Observable(Float64(valign))
+    inset_halign = Observable(Float64(_halign))
+    inset_valign = Observable(Float64(_valign))
     inset_width_obs = Observable(Float32(inset_width))
     inset_height_obs = Observable(Float32(inset_height))
 
