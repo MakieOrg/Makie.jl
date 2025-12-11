@@ -142,7 +142,7 @@ function activate!(; glfw_platform::Union{Nothing, GLFW.Platform} = nothing, inl
     end
     if !isnothing(glfw_platform)
         GLFW.Terminate()
-        GLFW.Init(;platform = glfw_platform)
+        GLFW.Init(; platform = glfw_platform)
     end
     Makie.inline!(inline)
     LAST_INLINE[] = inline
