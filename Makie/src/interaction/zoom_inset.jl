@@ -177,7 +177,7 @@ function zoom_inset!(
     )
 
     # Get the root scene for drawing connecting lines
-    pscene = root(get_scene(ax))
+    pscene = ax.blockscene
     # Create connecting lines between zoom rect and inset
     line_points = Observable(Point2f[])
 
@@ -248,7 +248,7 @@ function zoom_inset!(
         linewidth = strokewidth,
         linestyle = linestyle
     )
-    translate!(lines_plot, 0, 0, 9999)
+    translate!(lines_plot, 0, 0, 899)
 
     # === INTERACTIONS ===
 
