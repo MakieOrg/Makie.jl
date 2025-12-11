@@ -263,7 +263,7 @@ function zoom_inset!(
         linewidth = strokewidth,
         linestyle = linestyle
     )
-    translate!(lines_plot, 0, 0, 899)
+    translate!(lines_plot, 0, 0, 9999)
 
     # === INTERACTIONS ===
 
