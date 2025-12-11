@@ -28,6 +28,13 @@ function _copy_plot_to_inset!(ax, plot::P) where {P <: Plot}
     scene = get_scene(ax)
     plot_attr = keys(plot_attributes(scene, P))
     kw = Dict{Symbol, Any}([name => plot[name] for name in plot_attr if !(name in (:model, :transformation))])
+    # Copying translation, rotation, scale and origin is necessary for
+    # `translate!(plot, ...)` etc. to be considered
+    t = plot.transformation
+    kw[:transformation] = Transformation(
+        ax.scene, translation = t.translation, rotation = t.rotation,
+        scale = t.scale, origin = t.origin
+    )
     names = argument_names(P, length(plot.converted[]))
     args = map(name -> plot[name], names)
     func = plotfunc(P)
@@ -99,6 +106,7 @@ function zoom_inset!(
 
     # Create observables for the zoom rectangle and inset position/size
     zoom_rect = Observable(Rect2f(rect))
+    zoom_rect_transformed = map(apply_transform, ax.scene.transformation.transform_func, zoom_rect)
     inset_halign = Observable(Float64(halign))
     inset_valign = Observable(Float64(valign))
     inset_width_obs = Observable(Float32(inset_width))
@@ -139,6 +147,8 @@ function zoom_inset!(
         rightspinevisible = true,
         topspinevisible = true,
         bottomspinevisible = true,
+        xscale = ax.xscale,
+        yscale = ax.yscale,
     )
     translate!(ax_inset.scene, 0, 0, 1000)  # Ensure inset is on top
     translate!(ax_inset.blockscene, 0, 0, 1000)  # Ensure inset is on top
@@ -163,7 +173,7 @@ function zoom_inset!(
         strokecolor = strokecolor,
         color = rectcolor,
         xautolimits = false,
-        yautolimits = false
+        yautolimits = false,
     )
 
     # Get the root scene for drawing connecting lines
@@ -172,7 +182,7 @@ function zoom_inset!(
     line_points = Observable(Point2f[])
 
     function update_lines()
-        zr = zoom_rect[]
+        zr = zoom_rect_transformed[]
         zr_min = minimum(zr)
         zr_max = maximum(zr)
 
@@ -225,7 +235,7 @@ function zoom_inset!(
     end
 
     onany(
-        zoom_rect, ax.scene.viewport, ax_inset.scene.viewport,
+        zoom_rect_transformed, ax.scene.viewport, ax_inset.scene.viewport,
         ax.scene.camera.projectionview; update = true
     ) do args...
         update_lines()
@@ -386,11 +396,11 @@ function zoom_inset!(
             end
 
             # Check zoom rect edges
-            edge = detect_edge(mouse_px, zoom_rect, scene, edge_threshold)
+            edge = detect_edge(mouse_px, zoom_rect_transformed, scene, edge_threshold)
             if edge != :none
                 dragging_edge[] = edge
                 drag_start_pos[] = mouse_px
-                drag_start_rect[] = zoom_rect[]
+                drag_start_rect[] = zoom_rect_transformed[]
                 return Consume(true)
             end
         elseif event.action == Mouse.release && event.button == Mouse.left
@@ -529,13 +539,15 @@ function zoom_inset!(
                 end
             end
 
-            zoom_rect[] = Rect2f(Point2f(mi...), Vec2f(ma[1] - mi[1], ma[2] - mi[2]))
+            rect = Rect2f(Point2f(mi...), Vec2f(ma[1] - mi[1], ma[2] - mi[2]))
+            itf = inverse_transform(ax.scene.transformation.transform_func[])
+            zoom_rect[] = apply_transform(itf, rect)
 
             return Consume(true)
         end
 
         # Hover feedback - update rect appearance based on mouse position
-        edge = detect_edge(mouse_px, zoom_rect, scene, edge_threshold)
+        edge = detect_edge(mouse_px, zoom_rect_transformed, scene, edge_threshold)
         if edge != :none
             rect_plot.strokewidth = strokewidth * 1.5
         else
