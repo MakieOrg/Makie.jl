@@ -509,6 +509,10 @@ struct RichText
     end
 end
 
+function Base.:(==)(a::RichText, b::RichText)
+    return a.type == b.type && a.children == b.children && a.attributes == b.attributes
+end
+Base.hash(a::RichText, b::UInt) = hash(a.type, hash(a.children, hash(a.attributes, b)))
 
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}

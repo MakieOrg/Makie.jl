@@ -74,7 +74,27 @@ function initialize_block!(ax::Axis3)
         ax.zoom_mult, ax.axis_offset, ax.near
     )
 
-    on(scene, matrices) do (model, view, proj, lookat, eyepos)
+    # We mirror the user-scene transformations to the blockscene instead of
+    # using the default pixel space. That way we can plot to the same 3D space
+    # without plotting to ax.scene
+    cameracontrols!(blockscene, EmptyCamera())
+
+    viewport_scaling = map(blockscene, viewport(scene), viewport(blockscene)) do src_vp, trg_vp
+        # position of minimum(src_vp) relative to minimum(trg_vp)
+        # transformed into clip space of target viewport (-1 .. 1 instead of minimum(trg_vp) .. maximum(trg_vp))
+        clip_src_min_in_trg = 2.0 .* (minimum(src_vp) .- minimum(trg_vp)) ./ widths(trg_vp) .- 1
+        # scaling and offset needed to keep the source clip space in the same
+        # pixel position when switching to target viewport
+        # This is the simple scaling factor:
+        scale = widths(src_vp) ./ widths(trg_vp)
+        # And an offset such that scale * clip_src_min + offset = clip_src_min_in_trg
+        # where clip_src_min = -1 is the minimum of source clip space in the source viewport
+        offset = clip_src_min_in_trg - scale .* -1
+
+        return transformationmatrix(to_ndim(Vec3f, offset, 0), to_ndim(Vec3f, scale, 1))
+    end
+
+    onany(scene, viewport_scaling, matrices) do viewport, (model, view, proj, lookat, eyepos)
         cam = camera(scene)
         Makie.set_proj_view!(cam, proj, view)
         scene.transformation.model[] = model
@@ -86,6 +106,16 @@ function initialize_block!(ax::Axis3)
         cam.eyeposition[] = eyepos
         cam.upvector[] = cross(u_z, u_x)
         cam.view_direction[] = viewdir
+
+        # We mirror the camera to the blockscene with adjusted viewport scaling
+        cam = camera(blockscene)
+        Makie.set_proj_view!(cam, viewport * proj, view)
+        blockscene.transformation.model[] = model
+        cam.eyeposition[] = eyepos
+        cam.upvector[] = cross(u_z, u_x)
+        cam.view_direction[] = viewdir
+
+        return
     end
 
     x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
@@ -150,9 +180,9 @@ function initialize_block!(ax::Axis3)
         return x
     end
 
-    add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
-    add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
-    add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
+    add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
+    add_panel!(blockscene, ax, 2, 3, 1, finallimits, mi1)
+    add_panel!(blockscene, ax, 1, 3, 2, finallimits, mi2)
 
     # This exists as a bandaid for WGLMakie. See add_gridlines_and_frames!()
     overlay = Scene(
@@ -161,28 +191,28 @@ function initialize_block!(ax::Axis3)
     )
 
     xgridline1, xgridline2, xframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        blockscene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     ygridline1, ygridline2, yframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        blockscene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     zgridline1, zgridline2, zframelines = add_gridlines_and_frames!(
-        blockscene, scene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        blockscene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
     xticks, xticklabels, xlabel = add_ticks_and_ticklabels!(
-        blockscene, scene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
         ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, xlabel_node
     )
     yticks, yticklabels, ylabel = add_ticks_and_ticklabels!(
-        blockscene, scene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
         ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, ylabel_node
     )
     zticks, zticklabels, zlabel = add_ticks_and_ticklabels!(
-        blockscene, scene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
         ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, zlabel_node
     )
 
@@ -208,8 +238,8 @@ function initialize_block!(ax::Axis3)
         align = titlealignnode,
         font = ax.titlefont,
         color = ax.titlecolor,
-        markerspace = :data,
-        inspectable = false
+        inspectable = false,
+        space = :pixel
     )
 
     ax.mouseeventhandle = addmouseevents!(scene)
@@ -296,10 +326,14 @@ function calculate_matrices(
 
     if aspect === :equal
         scales = 2 ./ Float64.(ws)
+        axis_radius = sqrt(3)
     elseif aspect === :data
-        scales = 2 .* sign.(ws) ./ max.(maximum(ws), Float64.(ws))
+        scales = 2 .* sign.(ws) ./ maximum(ws)
+        axis_radius = norm(ws ./ maximum(ws))
     elseif aspect isa VecTypes{3}
-        scales = 2 ./ Float64.(ws) .* Float64.(aspect) ./ maximum(aspect)
+        normalized_aspect = Float64.(aspect) ./ maximum(aspect)
+        scales = 2 ./ Float64.(ws) .* normalized_aspect
+        axis_radius = norm(normalized_aspect)
     else
         error("Invalid aspect $aspect")
     end
@@ -318,8 +352,7 @@ function calculate_matrices(
 
     fov = ang_min + (ang_max - ang_min) * perspectiveness
 
-    # After model content is normalized to a -1..1^3 box, i.e. within radius sqrt(3)
-    radius = zoom_mult * sqrt(3) / sind(fov / 2)
+    radius = zoom_mult * axis_radius / sind(fov / 2)
     camdir = Vec3d(cos(elev) * cos(azim), cos(elev) * sin(azim), sin(elev))
     eyepos = radius * camdir
 
@@ -329,7 +362,7 @@ function calculate_matrices(
         u_x = normalize(cross(up, u_z))
         u_y = cross(u_z, u_x)
 
-        lookat = zoom_mult * sqrt(3) * (scene_offset[1] * u_x + scene_offset[2] * u_y)
+        lookat = zoom_mult * axis_radius * (scene_offset[1] * u_x + scene_offset[2] * u_y)
         eyepos += lookat
     else
         lookat = Vec3d(0)
@@ -342,19 +375,18 @@ function calculate_matrices(
 
     projection_matrix = projectionmatrix(
         lookat_matrix * model, limits, radius, fov,
-        w, h, to_protrusions(protrusions), viewmode, near
+        w, h, to_protrusions(protrusions), viewmode, near, axis_radius
     )
 
     return model, lookat_matrix, projection_matrix, lookat, eyepos
 end
 
-function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protrusions, viewmode, near_limit)
-    # model normalizes the the longest axis of the axis bbox to -1..1, so its
-    # bounding sphere has a radius of sqrt(3)
-    # The distance of the camera to the center of the bounding sphere is "radius"
+function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protrusions, viewmode, near_limit, axis_radius)
+    # axis_radius is the radius of the bounding sphere of the axis
+    # radius is the distance between the camera and the center of the axis
     near_limit > 0.0 || error("near value must be > 0, but is $near_limit.")
-    near = max(near_limit, radius - sqrt(3))
-    far = max((1 + 1.0e-3) * near, radius + sqrt(3))
+    near = max(near_limit, radius - axis_radius)
+    far = max((1 + 1.0e-3) * near, radius + axis_radius)
 
     aspect_ratio = width / height
 
@@ -475,7 +507,7 @@ function dim2(dim)
     end
 end
 
-function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
+function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
     attr(sym) = getproperty(ax, dimsym(sym))
@@ -500,10 +532,10 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         end
     end
     gridline1 = linesegments!(
-        scene, endpoints, color = attr(:gridcolor),
+        topscene, endpoints, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false, force_dimconverts = false
+        visible = attr(:gridvisible), inspectable = false
     )
 
     endpoints2 = lift(limits, tickvalues, min1, min2, xreversed, yreversed, zreversed) do lims, ticks, min1, min2, xrev, yrev, zrev
@@ -519,10 +551,10 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
         end
     end
     gridline2 = linesegments!(
-        scene, endpoints2, color = attr(:gridcolor),
+        topscene, endpoints2, color = attr(:gridcolor),
         linewidth = attr(:gridwidth), clip_planes = Plane3f[],
         xautolimits = false, yautolimits = false, zautolimits = false, transparency = true,
-        visible = attr(:gridvisible), inspectable = false, force_dimconverts = false
+        visible = attr(:gridvisible), inspectable = false
     )
 
 
@@ -567,18 +599,19 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
     map!(vcat, colors, attr(:spinecolor_1), attr(:spinecolor_2), attr(:spinecolor_3))
 
     framelines = linesegments!(
-        scene, framepoints, color = colors, linewidth = attr(:spinewidth),
+        topscene, framepoints, color = colors, linewidth = attr(:spinewidth),
         transparency = true, visible = attr(:spinesvisible), inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        clip_planes = Plane3f[], force_dimconverts = false
+        clip_planes = Plane3f[]
     )
 
     front_framelines = linesegments!(
         overlay, framepoints_front_spines, color = attr(:spinecolor_4),
-        linewidth = attr(:spinewidth), visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
+        linewidth = attr(:spinewidth),
+        visible = map((a, b) -> a && b, ax.front_spines, attr(:spinesvisible)),
         transparency = true, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
-        clip_planes = Plane3f[], force_dimconverts = false
+        clip_planes = Plane3f[]
     )
 
     #= On transparency and render order
@@ -610,8 +643,8 @@ function add_gridlines_and_frames!(topscene, scene, overlay, ax, dim::Int, limit
 end
 
 function add_ticks_and_ticklabels!(
-        topscene, scene, ax, dim::Int, limits, ticknode, miv, min1, min2,
-        azimuth, xreversed, yreversed, zreversed, label
+        topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth,
+        xreversed, yreversed, zreversed, label
     )
 
     dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
@@ -630,7 +663,8 @@ function add_ticks_and_ticklabels!(
 
     tick_segments = lift(
         topscene, limits, tickvalues, miv, min1, min2,
-        scene.camera.projectionview, scene.viewport, ticksize, xreversed, yreversed, zreversed
+        topscene.camera.projectionview, topscene.viewport, ticksize,
+        xreversed, yreversed, zreversed
     ) do lims, ticks, miv, min1, min2,
             pview, pxa, tsize, xrev, yrev, zrev
 
@@ -646,8 +680,6 @@ function add_ticks_and_ticklabels!(
         diff_f1 = f1 - f1_oppo
         diff_f2 = f2 - f2_oppo
 
-        o = (origin(pxa) - origin(topscene.viewport[]))
-
         return map(ticks) do t
             p1 = dpoint(t, f1, f2)
             p2 = if dim == 3
@@ -661,8 +693,8 @@ function add_ticks_and_ticklabels!(
                 dpoint(t, f1 + diff_f1, f2)
             end
 
-            pp1 = Point2f(o + Makie.project(scene, p1))
-            pp2 = Point2f(o + Makie.project(scene, p2))
+            pp1 = Point2f(Makie.project(topscene, p1))
+            pp2 = Point2f(Makie.project(topscene, p2))
             diff_pp = Makie.GeometryBasics.normalize(Point2f(pp2 - pp1))
 
             return (pp1, pp1 .+ Float32(tsize) .* diff_pp)
@@ -672,18 +704,16 @@ function add_ticks_and_ticklabels!(
     ticks = linesegments!(
         topscene, tick_segments,
         transparency = true, inspectable = false,
-        color = attr(:tickcolor), linewidth = attr(:tickwidth), visible = attr(:ticksvisible)
+        color = attr(:tickcolor), linewidth = attr(:tickwidth),
+        space = :pixel, visible = attr(:ticksvisible)
     )
     # move ticks behind plots, -10000 is the far value in campixel
     translate!(ticks, 0, 0, -10000)
 
     labels_positions = Observable{Any}()
     map!(
-        topscene, labels_positions, scene.viewport, scene.camera.projectionview,
-        tick_segments, ticklabels, attr(:ticklabelpad)
-    ) do pxa, pv, ticksegs, ticklabs, pad
-
-        o = (origin(pxa) - origin(topscene.viewport[]))
+        topscene, labels_positions, tick_segments, ticklabels, attr(:ticklabelpad)
+    ) do ticksegs, ticklabs, pad
 
         points = map(ticksegs) do (tstart, tend)
             offset = pad * Makie.GeometryBasics.normalize(Point2f(tend - tstart))
@@ -691,7 +721,7 @@ function add_ticks_and_ticklabels!(
         end
 
         N = min(length(ticklabs), length(points))
-        Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
+        return Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
     align = lift(topscene, miv, min1, min2) do mv, m1, m2
@@ -707,7 +737,8 @@ function add_ticks_and_ticklabels!(
     ticklabels_text = text!(
         topscene, labels_positions, align = align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
-        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible), inspectable = false
+        font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
+        space = :pixel, inspectable = false
     )
 
     translate!(ticklabels_text, 0, 0, 1000)
@@ -718,11 +749,9 @@ function add_ticks_and_ticklabels!(
 
     onany(
         topscene,
-        scene.viewport, scene.camera.projectionview, limits, miv, min1, min2,
+        topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
         attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
-
-        o = (origin(pxa) - origin(topscene.viewport[]))
 
         rev1 = (xrev, yrev, zrev)[d1]
         rev2 = (xrev, yrev, zrev)[d2]
@@ -739,8 +768,8 @@ function add_ticks_and_ticklabels!(
         p2 = dpoint(maximum(lims)[dim], f1, f2)
 
         # project them into screen space
-        pp1 = Point2f(o + Makie.project(scene, p1))
-        pp2 = Point2f(o + Makie.project(scene, p2))
+        pp1 = Point2f(Makie.project(topscene, p1))
+        pp2 = Point2f(Makie.project(topscene, p2))
 
         # find the midpoint
         midpoint = (pp1 + pp2) ./ 2
@@ -805,7 +834,8 @@ function add_ticks_and_ticklabels!(
         rotation = label_rotation,
         align = label_align,
         visible = attr(:labelvisible),
-        inspectable = false
+        inspectable = false,
+        space = :pixel
     )
 
     return ticks, ticklabels_text, labelplot
@@ -823,7 +853,7 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
-function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
+function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
 
     dimsym(sym) = Symbol(
         string((:x, :y, :z)[dim1]) *
@@ -854,11 +884,11 @@ function add_panel!(scene, ax, dim1, dim2, dim3, limits, min3)
     plane = Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2])
 
     panel = poly!(
-        scene, rect, inspectable = false,
+        topscene, rect, inspectable = false,
         xautolimits = false, yautolimits = false, zautolimits = false,
         color = attr(:panelcolor), visible = attr(:panelvisible),
         strokecolor = :transparent, strokewidth = 0,
-        transformation = (plane, 0),
+        transformation = (plane, 0)
     )
 
     on(plane_offset) do offset
