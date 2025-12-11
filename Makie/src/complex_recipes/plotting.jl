@@ -1,8 +1,5 @@
 # === ComplexRecipe Construction ===
 
-num_decoration_plots_in_axis_scene(::Any) = 0
-num_decoration_plots_in_axis_scene(::Axis3) = 12
-
 function flatten_blocklist(blocks::Vector)
     clean_blocks = Block[]
     for thing in blocks
@@ -62,9 +59,7 @@ function _create_complex_recipe(Func, parent::ComplexRecipeFigureLike, user_args
 
     for block in cr.blocks
         if block isa AbstractAxis
-            N = num_decoration_plots_in_axis_scene(block)
-            axis_plots = block.scene.plots
-            append!(cr.plots, view(axis_plots, N+1 : length(axis_plots)))
+            append!(cr.plots, block.scene.plots)
         end
     end
 
