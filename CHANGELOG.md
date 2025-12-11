@@ -1,5 +1,7 @@
 # Changelog
 
+- Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
+
 ## Unreleased
 
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
