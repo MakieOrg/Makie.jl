@@ -453,7 +453,7 @@ end
     # `plot!(parent, parent.attributes, ...)` since that applies transformations
     # multiple times (child.model = parent.mdeol[] * model(child.transformation))
     M = Makie.Mat4d([0.0 0.0 1.0 1.0; 1.0 0.0 0.0 0.0; 0.0 1.0 0.0 0.0; 0.0 0.0 0.0 1.0])
-    f,a,p = scatterlines(rand(Point2f, 10), transformation = (:yz, 1))
+    f, a, p = scatterlines(rand(Point2f, 10), transformation = (:yz, 1))
     @test p.transformation.model[] == M
     @test p.model[] == M
     for plt in p.plots
