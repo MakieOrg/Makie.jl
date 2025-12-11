@@ -128,3 +128,284 @@ end
     obs.val = [1, 1] # Integers are not convertible to Irrational, so if the type was "solidified" here, there should be a conversion error
     @test_nowarn notify(obs)
 end
+
+@testset "Recipe dim converts" begin
+    # These tests mainly test that one set of arguments can correctly generate
+    # dim_converts
+
+    UC = Makie.UnitfulConversion
+    CC = Makie.CategoricalConversion
+    NC = Makie.NoDimConversion
+
+    function test_plot(func, args...; dims = (1, 2), kwargs...)
+        get_value(x) = first(x)
+        get_value(x::Makie.ClosedInterval) = minimum(x)
+
+        simplify(t::Tuple) = simplify.(t)
+        simplify(r::AbstractRange) = ntuple(i -> r[i], length(r))
+        simplify(::Nothing) = nothing
+        simplify(i::Integer) = i
+
+        @testset "$func" begin
+            f, a, p = func(args...; kwargs...)
+
+            args = convert_arguments(typeof(p), args...)
+
+            @test simplify(p.arg_dims[]) == dims
+
+            dc_args = Any[nothing, nothing, nothing]
+            # UnitfulConversion only sees the first arg, so overwrite back to front
+            for i in reverse(eachindex(dims))
+                dims[i] == 0 && continue
+                if dims[i] isa Integer
+                    dc_args[dims[i]] = args[i]
+                else
+                    for (j, d) in enumerate(dims[i])
+                        dc_args[d] = getindex.(args[i], j)
+                    end
+                end
+            end
+
+            dim_converts = p.dim_conversions[]
+            for i in 1:3
+                dc = dim_converts[i]
+
+                if dc isa Makie.CategoricalConversion
+                    @test dc_args[i] isa Categorical
+                    @test keys(dc.category_to_int[]) == Set(dc_args[i].values)
+                elseif dc isa Makie.UnitfulConversion
+                    @test !(dc_args[i] isa Categorical)
+                    @test dc.unit[] == Unitful.unit(get_value(dc_args[i]))
+                elseif dc isa Makie.NoDimConversion
+                    @test !(dc_args[i] isa Categorical)
+                    # @test !(dc_args[i] isa UnitfulThing)
+                    @test eltype(dc_args[i]) <: Real
+                    @test !isnothing(dc_args[i])
+                elseif dc isa Nothing
+                    @test nothing === dc_args[i]
+                else
+                    error("Did not implement $(typeof(dc))")
+                end
+            end
+        end
+    end
+
+    # Skipped:
+    # - ablines
+    # - arc
+    # - axis
+    # - LineSegmentBuffer, TextBuffer
+    # - datashader
+    # - pie
+    # - rainclouds
+
+    # dims are always on the next line so they are easier to see
+
+    # TODO: Primitives
+    @testset "Primitives" begin
+        test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2))
+        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10))
+        test_plot(
+            surface, (1:5) .* u"m", (1:5) .* u"cm", rand(5, 5) .* u"W",
+            dims = (1, 2, 3)
+        )
+        test_plot(scatter, Categorical(["A", "C", "D"]), (1:3) .* u"N")
+        test_plot(meshscatter, (1:3) .* u"m", (1:3) .* u"cm")
+        test_plot(lines, (1:3) .* u"s", Categorical(["A", "C", "D"]))
+        test_plot(linesegments, (4:-1:1) .* u"s", (1:4) .* u"N")
+        test_plot(text, 1u"m", 1u"s", text = "here")
+        test_plot(
+            volume, 0u"m" .. 1u"m", 0u"g" .. 1u"g", 0u"s" .. 1u"s", rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
+        test_plot(
+            mesh, rand(5) .* u"m", rand(5) .* u"s", rand(5) .* u"g",
+            dims = (1, 2, 3)
+        )
+        test_plot(
+            voxels, 0u"m" .. 1u"m", 0u"g" .. 1u"g", 0u"s" .. 1u"s", rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
+    end
+
+    # Recipes (basic_recipes)
+    @testset "Basic Recipes" begin
+        test_plot(annotation, Categorical(["A", "B", "E"]), (1:3) .* u"m", text = ["one", "two", "three"])
+        test_plot(
+            arrows2d, (1:5) .* u"m", 1:5, (0.1:0.1:0.5) .* u"m", zeros(5),
+            dims = (1, 2, 1, 2)
+        )
+        # test_plot(band, 1:4, Categorical(["A", "A", "B", "B"]), Categorical(["D", "D", "C", "C"])) # Broken
+        test_plot(
+            band, Categorical(["A", "B", "C", "D"]), rand(4) .* u"cm", rand(4) .* u"m",
+            dims = (1, 2, 2)
+        )
+        test_plot(
+            band, Categorical(["A", "B", "C", "D"]), rand(4) .* u"cm", rand(4) .* u"m", direction = :y,
+            dims = (2, 1, 1)
+        )
+        test_plot(
+            barplot,
+            Categorical(["A", "B"][mod1.(1:20, 2)]), rand(20) .* u"m",
+            stack = fld1.(1:20, 2), color = fld1.(1:20, 2)
+        )
+        test_plot(
+            bracket, 1u"m", 0, 1u"m", 2,
+            dims = (1, 2, 1, 2)
+        )
+        test_plot(
+            bracket, 1u"m", 0u"s", 1u"m", 2u"s",
+            dims = (1, 2, 1, 2)
+        )
+        test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
+        test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
+        test_plot(
+            contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0 .. 1, rand(10, 10, 10),
+            dims = (1, 2, 3)
+        )
+
+        test_plot(
+            errorbars, 1:3, (1:3) .* u"m", (1:3) .* u"dm",
+            dims = (1, 2, 2)
+        )
+        test_plot(
+            rangebars, 1:3, (1:3) .* u"cm", (1:3) .* u"dm",
+            dims = (1, 2, 2)
+        )
+        test_plot(
+            errorbars, (1:3) .* u"m", (1:3), (1:3) .* u"dm", direction = :x,
+            dims = (1, 2, 1)
+        )
+        test_plot(
+            rangebars, 1:3, (1:3) .* u"cm", (1:3) .* u"dm", direction = :x,
+            dims = (2, 1, 1)
+        )
+
+        test_plot(
+            hlines, rand(3) .* u"m",
+            dims = (2,)
+        )
+        test_plot(
+            vlines, Categorical(["A", "C", "D"]),
+            dims = (1,)
+        )
+        test_plot(
+            vspan, 1u"m", 2u"m",
+            dims = (1, 1)
+        )
+        test_plot(
+            hspan, 1u"m", 2u"m",
+            dims = (2, 2)
+        )
+
+        test_plot(poly, rand(10) .* u"m", rand(10) .* u"s")
+        test_plot(scatterlines, rand(10) .* u"m", rand(10) .* u"s")
+        test_plot(series, rand(10) .* u"m", rand(3, 10) .* u"s")
+        test_plot(spy, 1u"m" .. 10u"m", 1u"s" .. 10u"s", rand(10, 10))
+        test_plot(stairs, rand(10) .* u"m", rand(10) .* u"s")
+        test_plot(stem, rand(10) .* u"m", rand(10) .* u"s")
+        test_plot(
+            streamplot, p -> p, 0u"m" .. 1u"m", (1:10) .* u"s",
+            dims = (0, 1, 2)
+        )
+        test_plot(textlabel, rand(10), rand(10) .* u"m", text = string.(1:10))
+        test_plot(
+            timeseries, 1.0 * u"µm",
+            dims = (2,)
+        )
+        test_plot(tooltip, 1, 2u"m", text = "woo")
+        test_plot(tricontourf, rand(10), rand(10) .* u"m", rand(10))
+        test_plot(voronoiplot, rand(10), rand(10) .* u"m")
+        test_plot(voronoiplot, rand(10), rand(10) .* u"m", rand(10))
+        test_plot(waterfall, 1:10, rand(10) .* u"m")
+        # test_plot(waterfall, rand(10) .* u"m") # test doesn't handle expand_arguments()
+    end
+
+    @testset "stats plots" begin
+        test_plot(
+            boxplot, Categorical(rand(["A", "B"], 10)), rand(10) .* u"m",
+            dims = (1, 2)
+        )
+
+        test_plot(
+            crossbar, Categorical(["A", "B", "C", "D"]), rand(4) .* u"m",
+            (rand(4) .- 1) .* u"m", (rand(4) .+ 1) .* u"m",
+            orientation = :vertical,
+            dims = (1, 2, 2, 2)
+        )
+        test_plot(
+            crossbar, Categorical(["A", "B", "C", "D"]), rand(4) .* u"m",
+            (rand(4) .- 1) .* u"m", (rand(4) .+ 1) .* u"m",
+            orientation = :horizontal,
+            dims = (2, 1, 1, 1)
+        )
+
+        # probably doesn't make sense but it works...
+        test_plot(dendrogram, (1:16) .* u"m", rand(16) .* u"s", [(2i - 1, 2i) for i in 1:15])
+
+        test_plot(
+            density, rand(100) .* u"s",
+            dims = (1,)
+        )
+        test_plot(
+            density, rand(100) .* u"s", direction = :y,
+            dims = (2,)
+        )
+
+        test_plot(qqplot, rand(100) .* u"m", rand(100) .* u"cm")
+        # qqplot(rand(100) .* u"cm", rand(100)) # doesn't work, shouldn't work?
+        test_plot(
+            qqnorm, rand(100) .* u"cm",
+            dims = (2,)
+        )
+        test_plot(
+            ecdfplot, 10 .* rand(100) .* u"m",
+            dims = (1,)
+        )
+
+        test_plot(hexbin, rand(10) .* u"m", rand(10) .* u"s")
+        test_plot(
+            stephist, rand(100) .* u"g",
+            dims = (1,)
+        )
+        test_plot(
+            hist, rand(100) .* u"g",
+            dims = (1,)
+        )
+        test_plot(
+            hist, rand(100) .* u"g", direction = :x,
+            dims = (2,)
+        )
+        test_plot(violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s")
+        test_plot(
+            violin, Categorical(rand(["A", "B"], 100)), rand(100) .* u"s", orientation = :horizontal,
+            dims = (2, 1)
+        )
+    end
+
+    # Sample plots that allow unique Point[] args
+    @testset "point-like conversions" begin
+        # PointBased() with different input types
+        x = rand(10) * u"s"
+        y = rand(10) * u"m"
+        test_plot(scatter, collect(zip(x, y)), dims = ((1, 2),))
+        test_plot(barplot, Vec.(x, y), direction = :x, dims = ((2, 1),))
+        test_plot(scatterlines, Point.(x, y, y), dims = ((1, 2, 3),))
+
+        # Other independent cases
+        ps = Point.(x, y)
+        test_plot(annotation, ps, text = string.(1:10), dims = ((1, 2),))
+        test_plot(annotation, ps, ps, text = string.(1:10), dims = ((1, 2, 1, 2),))
+        test_plot(arrows2d, ps, ps, dims = ((1, 2), (1, 2)))
+        test_plot(bracket, ps, ps, dims = ((1, 2), (1, 2)))
+        test_plot(band, ps, ps, dims = ((1, 2), (1, 2)))
+        test_plot(errorbars, ps, y, dims = ((1, 2), 2))
+        test_plot(errorbars, ps, Vec.(y, y), dims = ((1, 2), (2, 2)))
+        test_plot(errorbars, Point.(x, y, x), direction = :x, dims = ((1, 2, 1),))
+        test_plot(errorbars, Point.(x, y, x, x), direction = :x, dims = ((1, 2, 1, 1),))
+        test_plot(rangebars, x, tuple.(y, y), dims = (1, (2, 2)))
+        test_plot(rangebars, tuple.(x, y, y), dims = ((1, 2, 2),))
+        test_plot(poly, ps, 1:9, dims = ((1, 2),))
+        test_plot(dendrogram, ps, [(i, i + 1) for i in 1:2:13], dims = ((1, 2),))
+    end
+end
