@@ -219,35 +219,33 @@ function zoom_inset!(
         in_tl = Point2f(minimum(inset_vp)[1], minimum(inset_vp)[2] + widths(inset_vp)[2])
         in_tr = Point2f(maximum(inset_vp))
 
-        # Determine which corners to connect based on relative position
-        # We connect the two closest corners of the zoom rect to the two closest corners of the inset
-        zr_center = (zr_bl + zr_tr) / 2
-        in_center = (in_bl + in_tr) / 2
+        # direction from zoom rect to inset
+        v_bl = in_bl - zr_bl
+        v_br = in_br - zr_br
+        v_tl = in_tl - zr_tl
+        v_tr = in_tr - zr_tr
 
+        # we want to draw a connecting line if it doesn't overlap with either
+        # rectangle. Consider the bottom left connection:
+        # - if the line overlaps with zoom_rect, it has to extend from the bottom
+        #   left to the top right
+        # - if the line overlaps with the inset, it has to enter from the top
+        #   right, i.e. extend to the bottom left of the zoom_rect
+        # So we have to exclude two quadrants, the one matching the _yx
+        # direction and the one opposite of it:
+        valid_bl = !all(*(((-1, -1) .* v_bl)...) > 0)
+        valid_br = !all(*(((+1, -1) .* v_br)...) > 0)
+        valid_tl = !all(*(((-1, +1) .* v_tl)...) > 0)
+        valid_tr = !all(*(((+1, +1) .* v_tr)...) > 0)
+
+        # Add points for all the valid directions
         pts = Point2f[]
-        if in_center[1] > zr_center[1]  # Inset is to the right
-            if in_center[2] > zr_center[2]  # Inset is above-right
-                # Connect right side of rect to left side of inset
-                push!(pts, zr_tr, in_tl)
-                push!(pts, zr_br, in_bl)
-            else  # Inset is below-right
-                # Connect right side of rect to left side of inset
-                push!(pts, zr_tr, in_tl)
-                push!(pts, zr_br, in_bl)
-            end
-        else  # Inset is to the left
-            if in_center[2] > zr_center[2]  # Inset is above-left
-                # Connect left side of rect to right side of inset
-                push!(pts, zr_tl, in_tr)
-                push!(pts, zr_bl, in_br)
-            else  # Inset is below-left
-                # Connect left side of rect to right side of inset
-                push!(pts, zr_tl, in_tr)
-                push!(pts, zr_bl, in_br)
-            end
-        end
-
+        valid_bl && push!(pts, in_bl, zr_bl)
+        valid_br && push!(pts, in_br, zr_br)
+        valid_tl && push!(pts, in_tl, zr_tl)
+        valid_tr && push!(pts, in_tr, zr_tr)
         line_points[] = pts
+
         return nothing
     end
 
