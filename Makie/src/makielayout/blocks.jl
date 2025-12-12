@@ -17,12 +17,16 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
-            blockscene::Scene
+            attributes::ComputeGraph
+            plots::Vector{Plot}
         end
     end
 
     fields_vector = structdef.args[2].args[3].args
     basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
+
+    push!(fields_vector, :(blockscene::Scene))
+    push!(fields_vector, :(layout::GridLayout))
 
     attrs = extract_attributes!(body)
 
@@ -34,18 +38,19 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     has_forwarded_layout = i_forwarded_layout !== nothing
 
     if has_forwarded_layout
-        splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
+        popat!(body.args, i_forwarded_layout)
+        # splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
     end
 
     # append remaining fields
     append!(fields_vector, body.args)
 
-    if attrs !== nothing
-        attribute_fields = map(attrs) do a
-            :($(a.symbol)::Observable{$(a.type)})
-        end
-        append!(fields_vector, attribute_fields)
-    end
+    # if attrs !== nothing
+    #     attribute_fields = map(attrs) do a
+    #         :($(a.symbol)::Observable{$(a.type)})
+    #     end
+    #     append!(fields_vector, attribute_fields)
+    # end
 
     constructor = quote
         function $name($(basefields...))
@@ -237,6 +242,22 @@ function extract_attributes!(body)
     return attrs
 end
 
+# macro stuffs ^
+################################################################################
+# object utils v
+
+function Base.getproperty(block::T, name::Symbol) where {T <: Block}
+    if hasfield(T, name)
+        return getfield(block, name)
+    else
+        return getindex(getfield(block, :attributes), name)
+    end
+end
+
+
+################################################################################
+
+
 # intercept all block constructors and divert to _block(T, ...)
 function (::Type{T})(args...; kwargs...) where {T <: Block}
     return _block(T, args...; kwargs...)
@@ -341,6 +362,12 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     else
         attributes = block_defaults(T, attribute_kwargs, topscene)
     end
+
+    graph = ComputeGraph()
+    for (key, attrib) in attributes
+        add_input!(to_recipe_attribute, graph, key, attrib)
+    end
+
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields
 
@@ -363,15 +390,10 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, clear = false, camera = campixel!)
-
     # create base block with otherwise undefined fields
-    b = T(fig_or_scene, lobservables, blockscene)
+    b = T(fig_or_scene, lobservables, graph, Plot[])
 
-    for (key, val) in attributes
-        OT = fieldtype(T, key)
-        init_observable!(b, key, OT, val)
-    end
+    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
 
     if has_forwarded_layout(T)
         # create the gridlayout and set its parent to blockscene so that
@@ -416,7 +438,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         false
     end
     if !isempty(unassigned_fields)
-        error("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
+        @warn("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
     end
 
     # forward all layout attributes to the block's layoutobservables
@@ -473,7 +495,7 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
 end
 
 @inline function Base.setproperty!(x::T, key::Symbol, value) where {T <: Block}
-    return if hasfield(T, key)
+    if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
                 error("It is disallowed to set `$key`, an Observable field of the $T struct, to an Observable with dot notation (`setproperty!`), because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
@@ -483,10 +505,13 @@ end
         else
             setfield!(x, key, value)
         end
+    elseif haskey(getfield(x, :attributes), key)
+        update!(getfield(x, :attributes), key => value)
     else
         # this will throw correctly
         setfield!(x, key, value)
     end
+    return
 end
 
 # treat all blocks as scalars when broadcasting

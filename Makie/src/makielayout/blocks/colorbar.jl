@@ -457,11 +457,11 @@ function initialize_block!(cb::Colorbar)
     notify(cb.vertical)
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
     if (cb.colormap[] isa ColorMapping)
-        setfield!(cb, :limits, convert(Observable{Any}, limits))
-        setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
-        setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
-        setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
-        setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+        on(x -> cb.limits = x, convert(Observable{Any}, limits), update = true)
+        on(x -> cb.colormap = x, convert(Observable{Any}, cmap.colormap), update = true)
+        on(x -> cb.highclip = x, convert(Observable{Any}, cmap.highclip), update = true)
+        on(x -> cb.lowclip = x, convert(Observable{Any}, cmap.lowclip), update = true)
+        on(x -> cb.scale = x, convert(Observable{Any}, cmap.scale), update = true)
     end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)

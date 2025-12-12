@@ -340,7 +340,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -348,7 +348,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,

@@ -93,12 +93,14 @@ function extractattributes(attributes::Attributes, typ::Type)
     return extracted
 end
 
-function extractattributes(leg::Legend, typ::Type)
+function extractattributes(attributes::ComputeGraph, typ::Type)
     extracted = Attributes()
     for name in attributenames(typ)
-        if hasproperty(leg, name)
-            extracted[name] = getproperty(leg, name)
+        if haskey(attributes, name)
+            extracted[name] = ComputePipeline.get_observable!(attributes[name])
         end
     end
     return extracted
 end
+
+extractattributes(leg::Legend, typ::Type) = extractattributes(leg.attributes, typ)
