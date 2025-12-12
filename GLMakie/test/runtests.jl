@@ -156,18 +156,26 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         # texture atlas is triggered by text
         # include SSAO to make sure its cleanup works too
         f, a, p = image(rand(4, 4))
+
+        # make sure switching the render pipeline doesn't cause errors
+        screen = display(f, ssao = true, visible = false)
+        colorbuffer(screen)
+        screen = display(f, ssao = false, visible = false)
+        colorbuffer(screen)
         screen = display(f, ssao = true, visible = false)
         colorbuffer(screen)
 
         # verify that SSAO is active
-        @test screen.postprocessors[1] != GLMakie.empty_postprocessor()
+        @test :SSAO1 in map(x -> x.name, screen.render_pipeline.parent.stages)
 
-        framebuffer = screen.framebuffer
-        framebuffer_textures = copy(screen.framebuffer.buffers)
+        framebuffer = screen.framebuffer_manager
+        framebuffer_depth = GLMakie.get_depth_buffer(GLMakie.display_framebuffer(screen))
+        framebuffer_textures = copy(screen.framebuffer_manager.buffers)
+        framebuffer_children = copy(screen.framebuffer_manager.children)
         atlas_textures = first.(values(GLMakie.atlas_texture_cache))
         shaders = vcat([[shader for shader in values(shaders)] for shaders in values(screen.shader_cache.shader_cache)]...)
         programs = [program for program in values(screen.shader_cache.program_cache)]
-        postprocessors = copy(screen.postprocessors)
+        pipeline = copy(screen.render_pipeline.stages)
         robjs = last.(screen.renderlist)
 
         GLMakie.destroy!(screen)
@@ -180,10 +188,20 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         end
 
         @testset "Framebuffer" begin
-            @test framebuffer.id == 0
+            # FramebufferManager object
+            @test isempty(framebuffer.children)
+            @test isempty(framebuffer.buffers)
+
             @test !isempty(framebuffer_textures)
-            for (k, tex) in framebuffer_textures
+            for tex in framebuffer_textures
                 @test tex.id == 0
+            end
+
+            @test !isempty(framebuffer_children)
+            for fb in framebuffer_children
+                @test fb.id == 0
+                # TODO: Should we bother clearing the attachment and buffer lists?
+                @test all(x -> x.id == 0, fb.buffers)
             end
         end
 
@@ -218,10 +236,10 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         end
 
         @testset "PostProcessors" begin
-            @test map(pp -> length(pp.robjs), postprocessors) == [2, 1, 2, 1]
-            for pp in postprocessors
-                for robj in pp.robjs
-                    validate_robj(robj)
+            @test length(pipeline) == 10
+            for stage in pipeline
+                if hasfield(typeof(stage), :robj)
+                    validate_robj(getfield(stage, :robj))
                 end
             end
         end
@@ -234,6 +252,7 @@ GLMakie.activate!(framerate = 1.0, scalefactor = 1.0)
         end
 
         # Check that no finalizers triggered on un-freed objects throughout all tests
+        GC.gc(true)
         @test GLMakie.GLAbstraction.FAILED_FREE_COUNTER[] == 0
     end
 end
