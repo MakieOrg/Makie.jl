@@ -293,7 +293,7 @@ function initialize_block!(m::Menu; default = 1)
         old_selection = m.selection[]
         old_selected_text = selected_text[]
         should_search = m.i_selected[] > 0
-        m.i_selected.val = 0
+        m.i_selected = 0
 
         new_i = 0 # default to nothing selected
         # if there is a current selection, check if it still exists in the new options

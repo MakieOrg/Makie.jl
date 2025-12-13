@@ -1040,7 +1040,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, mlims[2], mlims[3])
+    ax.limits = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     return nothing
 end
@@ -1058,7 +1058,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], ylims, mlims[3])
+    ax.limits = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     return nothing
 end
@@ -1076,7 +1076,7 @@ function Makie.zlims!(ax::Axis3, zlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], mlims[2], zlims)
+    ax.limits = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     return nothing
 end
