@@ -454,7 +454,7 @@ function initialize_block!(cb::Colorbar)
     end
 
     # trigger protrusions with one of the attributes
-    notify(cb.vertical)
+    notify(ComputePipeline.get_observable!(cb.vertical))
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
     if (cb.colormap[] isa ColorMapping)
         on(x -> cb.limits = x, convert(Observable{Any}, limits), update = true)

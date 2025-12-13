@@ -61,7 +61,7 @@ function initialize_block!(l::Label)
 
 
     # trigger first update, otherwise bounds are wrong somehow
-    notify(l.text)
+    notify(ComputePipeline.get_observable!(l.text))
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
