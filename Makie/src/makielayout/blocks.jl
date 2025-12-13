@@ -17,8 +17,8 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
-            attributes::ComputeGraph
-            plots::Vector{Plot}
+            attributes::Makie.ComputeGraph
+            plots::Vector{AbstractPlot}
         end
     end
 
@@ -119,7 +119,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
-        docstring_modified = make_block_docstring($name, user_docstring)
+        docstring_modified = Makie.make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
     end
 
@@ -391,7 +391,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     )
 
     # create base block with otherwise undefined fields
-    b = T(fig_or_scene, lobservables, graph, Plot[])
+    b = T(fig_or_scene, lobservables, graph, AbstractPlot[])
 
     b.blockscene = Scene(topscene, clear = false, camera = campixel!)
 
