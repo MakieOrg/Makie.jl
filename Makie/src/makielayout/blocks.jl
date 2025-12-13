@@ -563,6 +563,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     end
 
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
+        fieldname === :layout && return false
         try
             getfield(b, fieldname)
         catch e
