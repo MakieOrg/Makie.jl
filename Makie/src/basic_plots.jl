@@ -840,3 +840,21 @@ Draws a wireframe, either interpreted as a surface or as a mesh.
     documented_attributes(LineSegments)...
     depth_shift = -1.0f-5
 end
+
+
+"""
+    shadertoy(rect::Rect2f, shader::String)
+
+Creates a fragment shader object that can be used to render a shader mirroring the shadertoy API.
+Only works for GLMakie for now.
+"""
+@recipe ShaderToy (rect::Rect2f, shader::String) begin
+    """Defines code that replaces the specified keys in shaders.
+    E.g. `{{my_code}}` will be replaced by `shader_injections["my_code"]`.
+    These code injections happen before compile time and require
+    `GLMakie.closeall()` to be overwritten.
+    """
+    uniforms = Dict{Symbol, Any}()
+    mixin_generic_plot_attributes()...
+    fxaa = false
+end
