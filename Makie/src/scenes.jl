@@ -114,6 +114,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -157,6 +158,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
