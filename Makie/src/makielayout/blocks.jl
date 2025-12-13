@@ -264,10 +264,10 @@ function flatten_layout_content(block::Block)
     if isdefined(block, :layout)
         flatten_layout_content(block.layout)
     else
-        return nothing
+        return Block[]
     end
 end
-flatten_layout_content(layout) = append_content_to_list!(Any[], layout)
+flatten_layout_content(layout) = append_content_to_list!(Block[], layout)
 
 function append_content_to_list!(list, layout::GridLayout)
     for content in layout.content
@@ -462,6 +462,13 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # And to skip a few more updates
     hide!(b)
     initialize_block!(b, args...; non_attribute_kwargs...)
+
+    for child in b.blocks
+        if child isa AbstractAxis
+            append!(b.plots, child.scene.plots)
+        end
+    end
+
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
         try
             getfield(b, fieldname)
