@@ -249,10 +249,36 @@ end
 function Base.getproperty(block::T, name::Symbol) where {T <: Block}
     if hasfield(T, name)
         return getfield(block, name)
+    elseif name === :blocks
+        return flatten_layout_content(block)
     else
         return getindex(getfield(block, :attributes), name)
     end
 end
+
+function Base.propertynames(block::T) where {T <: Block}
+    return (fieldnames(T)..., :blocks)
+end
+
+function flatten_layout_content(block::Block)
+    if isdefined(block, :layout)
+        flatten_layout_content(block.layout)
+    else
+        return nothing
+    end
+end
+flatten_layout_content(layout) = append_content_to_list!(Any[], layout)
+
+function append_content_to_list!(list, layout::GridLayout)
+    for content in layout.content
+        append_content_to_list!(list, content)
+    end
+    return list
+end
+function append_content_to_list!(list, content::GridLayoutBase.GridContent)
+    return append_content_to_list!(list, content.content)
+end
+append_content_to_list!(list, content) = push!(list, content)
 
 function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
     isdefined(b, :layout) || init_layout!(b)
