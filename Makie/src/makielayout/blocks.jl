@@ -1,3 +1,7 @@
+################################################################################
+### Block Macro
+################################################################################
+
 function is_attribute end
 function default_attribute_values end
 function attribute_default_expressions end
@@ -7,6 +11,93 @@ function has_forwarded_layout end
 symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
 symbol_to_block(::Val) = nothing
 
+"""
+Creates a new `Block` implementation which represents content within a layout.
+The content may draw to the slot in the layout directly, or represent a layout
+itself, containing more blocks.
+
+## Usage
+
+```
+@Block TypeName <: OptionalParent begin
+    optional_field1::OptionalType
+    optional_field2
+    @attributes begin
+        "docstring"
+        attribute1::OptionalType = value1
+        attribute2 = value2
+    end
+end
+```
+
+The macro generates a `mutable struct` with the name `TypeName`, which always
+needs to be given in the macro. If a parent type `<: OptionalParent` is given,
+the struct will inherit from that type. Otherwise it will inherit from `Block`.
+Note that the parent should also inherit from `Block`.
+
+The content of the struct **always** includes:
+- `parent::Union{Figure, Scene, Nothing}` which refers back to the figure or
+    scene the block is placed in
+- `layoutobservables::Makie.LayoutObservables{GridLayout}` which handle the
+    placement into the parent layout
+- `attributes::Makie.ComputeGraph` which contains the attributes and
+    computations that use them
+- `plots::Vector{AbstractPlot}` which tracks plots added to axes inside the
+    blocks layout
+- `blockscene::Scene` which acts as a container for the inner layout and can be
+    used for decoration plots
+- `layout::GridLayout` which represents an optional internal layout used when
+    implementing a `Block` as a container for more blocks.
+
+Optionally you may also add fields by declaring them in the `begin ... end`
+block, outside the `@attributes begin ... end` block. Each line will be treated
+as a new field to add, with an optional type. You can have any number of fields.
+Note that you will need to initialize them yourself in `initialize_block!()`.
+
+The `@attributes begin ... end` block is necessary but can be empty. Each entry
+needs to have at least a name and value given as `name = value`. Optionally, the
+attribute can be typed by adding a type annotation `name::Type`. Also
+optionally, the attribute can be given a docstring by adding a string in the
+line above. This can also be a triple-quoted multiline string.
+
+Note that some layouting attributes are always defined. These include:
+- `halign = :center` The horizontal alignment of the block in its suggested bounding box.
+- `valign = :center` The vertical alignment of the block in its suggested bounding box.
+- `width = Auto()` The width setting of the block.
+- `height = Auto()` The height setting of the block.
+- `tellwidth::Bool = true` Controls if the parent layout can adjust to this block's width
+- `tellheight::Bool = true` Controls if the parent layout can adjust to this block's height
+- `alignmode = Inside()` The align mode of the block in its parent GridLayout.
+
+All attributes are automatically collected and added to `attributes` ComputeGraph.
+
+## `initialize_block!(block::TypeName, args...; kwargs...)`
+
+The `initialize_block!` function should handle the non-generic parts of the
+block initialization. This includes initializing added fields and building the
+visual aspects of the block.
+
+Self-contained blocks like `Label` or `Axis` typically add plots and sometimes
+child scenes to `block.blockscene` styled by the attributes in the block. They
+also often add interactivity.
+
+Blocks representing layouts typically treat the `block` like a figure, adding
+other blocks to it. These may include axes with plots added to them.
+
+```
+function Makie.initialize_block!(block::TypeName, x, y)
+    ax = Axis(block[1, 1], title = block.title)
+    p = scatter!(ax, x, y, color = block.color, label = "scatter 1")
+    Legend(block[0, 1], ax, nbanks = 5)
+    return
+end
+```
+
+The blocks and plots added this way are automatically tracked in `block` and
+can be queried with `block.blocks` and `block.plots` respectively. After the
+block is constructed further plots can be added to the axis by plotting to its
+layout slot `block[1, 1]`.
+"""
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
@@ -242,9 +333,9 @@ function extract_attributes!(body)
     return attrs
 end
 
-# macro stuffs ^
 ################################################################################
-# object utils v
+### Utility functions (TODO: group with other utilities)
+################################################################################
 
 function Base.getproperty(block::T, name::Symbol) where {T <: Block}
     if hasfield(T, name)
@@ -285,6 +376,8 @@ function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Uni
     return b.layout[i, j]
 end
 
+################################################################################
+### Block Construction
 ################################################################################
 
 
