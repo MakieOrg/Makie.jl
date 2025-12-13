@@ -150,8 +150,8 @@ function initialize_block!(tbox::Textbox)
         tbox.layoutobservables.autosize[] = dims.inner
     end
 
-    # trigger text for autosize
-    t.text = tbox.displayed_string[]
+    # TODO: trigger text for autosize
+    # t.text = tbox.displayed_string[]
 
     # trigger bbox
     tbox.layoutobservables.suggestedbbox[] = tbox.layoutobservables.suggestedbbox[]

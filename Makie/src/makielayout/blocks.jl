@@ -17,12 +17,16 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         mutable struct $(type_expr)
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
-            blockscene::Scene
+            attributes::Makie.ComputeGraph
+            plots::Vector{AbstractPlot}
         end
     end
 
     fields_vector = structdef.args[2].args[3].args
     basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
+
+    push!(fields_vector, :(blockscene::Scene))
+    push!(fields_vector, :(layout::GridLayout))
 
     attrs = extract_attributes!(body)
 
@@ -34,18 +38,19 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     has_forwarded_layout = i_forwarded_layout !== nothing
 
     if has_forwarded_layout
-        splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
+        popat!(body.args, i_forwarded_layout)
+        # splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
     end
 
     # append remaining fields
     append!(fields_vector, body.args)
 
-    if attrs !== nothing
-        attribute_fields = map(attrs) do a
-            :($(a.symbol)::Observable{$(a.type)})
-        end
-        append!(fields_vector, attribute_fields)
-    end
+    # if attrs !== nothing
+    #     attribute_fields = map(attrs) do a
+    #         :($(a.symbol)::Observable{$(a.type)})
+    #     end
+    #     append!(fields_vector, attribute_fields)
+    # end
 
     constructor = quote
         function $name($(basefields...))
@@ -114,7 +119,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
-        docstring_modified = make_block_docstring($name, user_docstring)
+        docstring_modified = Makie.make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
     end
 
@@ -237,6 +242,52 @@ function extract_attributes!(body)
     return attrs
 end
 
+# macro stuffs ^
+################################################################################
+# object utils v
+
+function Base.getproperty(block::T, name::Symbol) where {T <: Block}
+    if hasfield(T, name)
+        return getfield(block, name)
+    elseif name === :blocks
+        return flatten_layout_content(block)
+    else
+        return getindex(getfield(block, :attributes), name)
+    end
+end
+
+function Base.propertynames(block::T) where {T <: Block}
+    return (fieldnames(T)..., :blocks)
+end
+
+function flatten_layout_content(block::Block)
+    if isdefined(block, :layout)
+        flatten_layout_content(block.layout)
+    else
+        return Block[]
+    end
+end
+flatten_layout_content(layout) = append_content_to_list!(Block[], layout)
+
+function append_content_to_list!(list, layout::GridLayout)
+    for content in layout.content
+        append_content_to_list!(list, content)
+    end
+    return list
+end
+function append_content_to_list!(list, content::GridLayoutBase.GridContent)
+    return append_content_to_list!(list, content.content)
+end
+append_content_to_list!(list, content) = push!(list, content)
+
+function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
+    isdefined(b, :layout) || init_layout!(b)
+    return b.layout[i, j]
+end
+
+################################################################################
+
+
 # intercept all block constructors and divert to _block(T, ...)
 function (::Type{T})(args...; kwargs...) where {T <: Block}
     return _block(T, args...; kwargs...)
@@ -318,6 +369,33 @@ function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
     return
 end
 
+function init_layout!(b)
+    # create the gridlayout and set its parent to blockscene so that
+    # one can create objects in the layout and scene more easily
+    b.layout = GridLayout()
+    b.layout.parent = b.blockscene
+
+    lobservables = b.layoutobservables
+
+    # the gridlayout needs to forward its autosize and protrusions to
+    # the block's layoutobservables so from the outside, it looks like
+    # the block has the same layout behavior as its internal encapsulated
+    # gridlayout
+    connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
+    connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
+    # this is needed so that the update mechanism works, because the gridlayout's
+    # suggestedbbox is not connected to anything
+    on(b.layout.layoutobservables.suggestedbbox) do _
+        notify(lobservables.suggestedbbox)
+    end
+    # disable the GridLayout's own computedbbox's effect
+    empty!(b.layout.layoutobservables.computedbbox.listeners)
+    # connect the block's layoutobservables.computedbbox to the align action that
+    # usually the GridLayout executes itself
+    onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -341,6 +419,12 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     else
         attributes = block_defaults(T, attribute_kwargs, topscene)
     end
+
+    graph = ComputeGraph()
+    for (key, attrib) in attributes
+        add_input!(to_recipe_attribute, graph, key, attrib)
+    end
+
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields
 
@@ -363,38 +447,13 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         suggestedbbox = bbox
     )
 
-    blockscene = Scene(topscene, clear = false, camera = campixel!)
-
     # create base block with otherwise undefined fields
-    b = T(fig_or_scene, lobservables, blockscene)
+    b = T(fig_or_scene, lobservables, graph, AbstractPlot[])
 
-    for (key, val) in attributes
-        OT = fieldtype(T, key)
-        init_observable!(b, key, OT, val)
-    end
+    b.blockscene = Scene(topscene, clear = false, camera = campixel!)
 
     if has_forwarded_layout(T)
-        # create the gridlayout and set its parent to blockscene so that
-        # one can create objects in the layout and scene more easily
-        b.layout = GridLayout()
-        b.layout.parent = blockscene
-
-        # the gridlayout needs to forward its autosize and protrusions to
-        # the block's layoutobservables so from the outside, it looks like
-        # the block has the same layout behavior as its internal encapsulated
-        # gridlayout
-        connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
-        connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
-        # this is needed so that the update mechanism works, because the gridlayout's
-        # suggestedbbox is not connected to anything
-        on(b.layout.layoutobservables.suggestedbbox) do _
-            notify(lobservables.suggestedbbox)
-        end
-        # disable the GridLayout's own computedbbox's effect
-        empty!(b.layout.layoutobservables.computedbbox.listeners)
-        # connect the block's layoutobservables.computedbbox to the align action that
-        # usually the GridLayout executes itself
-        onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
+        init_layout!(b)
     end
 
     # in this function, the block specific setup logic is executed and the remaining
@@ -403,6 +462,13 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # And to skip a few more updates
     hide!(b)
     initialize_block!(b, args...; non_attribute_kwargs...)
+
+    for child in b.blocks
+        if child isa AbstractAxis
+            append!(b.plots, child.scene.plots)
+        end
+    end
+
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
         try
             getfield(b, fieldname)
@@ -416,7 +482,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         false
     end
     if !isempty(unassigned_fields)
-        error("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
+        @warn("The following fields of $T were not assigned after `initialize_block!`: $unassigned_fields")
     end
 
     # forward all layout attributes to the block's layoutobservables
@@ -473,7 +539,7 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
 end
 
 @inline function Base.setproperty!(x::T, key::Symbol, value) where {T <: Block}
-    return if hasfield(T, key)
+    if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
                 error("It is disallowed to set `$key`, an Observable field of the $T struct, to an Observable with dot notation (`setproperty!`), because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
@@ -483,10 +549,13 @@ end
         else
             setfield!(x, key, value)
         end
+    elseif haskey(getfield(x, :attributes), key)
+        update!(getfield(x, :attributes), key => value)
     else
         # this will throw correctly
         setfield!(x, key, value)
     end
+    return
 end
 
 # treat all blocks as scalars when broadcasting

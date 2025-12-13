@@ -311,6 +311,10 @@ function Observables.map(f, arg1::Computed, args...; kwargs...)
     return map(f, obsies...; kwargs...)
 end
 
+function Observables.connect!(target::Observables.AbstractObservable, source::Computed)
+    return Observables.connect!(target, get_observable!(source))
+end
+
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
