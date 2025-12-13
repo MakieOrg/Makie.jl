@@ -457,11 +457,11 @@ function initialize_block!(cb::Colorbar)
     notify(ComputePipeline.get_observable!(cb.vertical))
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
     if (cb.colormap[] isa ColorMapping)
-        on(x -> cb.limits = x, convert(Observable{Any}, limits), update = true)
-        on(x -> cb.colormap = x, convert(Observable{Any}, cmap.colormap), update = true)
-        on(x -> cb.highclip = x, convert(Observable{Any}, cmap.highclip), update = true)
-        on(x -> cb.lowclip = x, convert(Observable{Any}, cmap.lowclip), update = true)
-        on(x -> cb.scale = x, convert(Observable{Any}, cmap.scale), update = true)
+        on(x -> cb.limits = x, cb.blockscene, convert(Observable{Any}, limits), update = true)
+        on(x -> cb.colormap = x, cb.blockscene, convert(Observable{Any}, cmap.colormap), update = true)
+        on(x -> cb.highclip = x, cb.blockscene, convert(Observable{Any}, cmap.highclip), update = true)
+        on(x -> cb.lowclip = x, cb.blockscene, convert(Observable{Any}, cmap.lowclip), update = true)
+        on(x -> cb.scale = x, cb.blockscene, convert(Observable{Any}, cmap.scale), update = true)
     end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)
