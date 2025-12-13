@@ -347,8 +347,11 @@ function Base.getproperty(block::T, name::Symbol) where {T <: Block}
     end
 end
 
-function Base.propertynames(block::T) where {T <: Block}
+function Base.propertynames(::T) where {T <: Block}
     return (fieldnames(T)..., :blocks)
+end
+function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
+    return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
 end
 
 function flatten_layout_content(block::Block)
