@@ -342,7 +342,7 @@ function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::P
     isnothing(conversions) && return
     for i in 1:3
         key = Symbol("dim$(i)_conversion")
-        if hasfield(T, key)
+        if hasfield(T, key) || is_attribute(T, key)
             attributes[key] = conversions[i]
         end
     end
