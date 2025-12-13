@@ -254,6 +254,10 @@ function Base.getproperty(block::T, name::Symbol) where {T <: Block}
     end
 end
 
+function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
+    isdefined(b, :layout) || init_layout!(b)
+    return b.layout[i, j]
+end
 
 ################################################################################
 
@@ -339,6 +343,33 @@ function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
     return
 end
 
+function init_layout!(b)
+    # create the gridlayout and set its parent to blockscene so that
+    # one can create objects in the layout and scene more easily
+    b.layout = GridLayout()
+    b.layout.parent = b.blockscene
+
+    lobservables = b.layoutobservables
+
+    # the gridlayout needs to forward its autosize and protrusions to
+    # the block's layoutobservables so from the outside, it looks like
+    # the block has the same layout behavior as its internal encapsulated
+    # gridlayout
+    connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
+    connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
+    # this is needed so that the update mechanism works, because the gridlayout's
+    # suggestedbbox is not connected to anything
+    on(b.layout.layoutobservables.suggestedbbox) do _
+        notify(lobservables.suggestedbbox)
+    end
+    # disable the GridLayout's own computedbbox's effect
+    empty!(b.layout.layoutobservables.computedbbox.listeners)
+    # connect the block's layoutobservables.computedbbox to the align action that
+    # usually the GridLayout executes itself
+    onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -396,27 +427,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     b.blockscene = Scene(topscene, clear = false, camera = campixel!)
 
     if has_forwarded_layout(T)
-        # create the gridlayout and set its parent to blockscene so that
-        # one can create objects in the layout and scene more easily
-        b.layout = GridLayout()
-        b.layout.parent = blockscene
-
-        # the gridlayout needs to forward its autosize and protrusions to
-        # the block's layoutobservables so from the outside, it looks like
-        # the block has the same layout behavior as its internal encapsulated
-        # gridlayout
-        connect!(lobservables.autosize, b.layout.layoutobservables.autosize)
-        connect!(lobservables.protrusions, b.layout.layoutobservables.protrusions)
-        # this is needed so that the update mechanism works, because the gridlayout's
-        # suggestedbbox is not connected to anything
-        on(b.layout.layoutobservables.suggestedbbox) do _
-            notify(lobservables.suggestedbbox)
-        end
-        # disable the GridLayout's own computedbbox's effect
-        empty!(b.layout.layoutobservables.computedbbox.listeners)
-        # connect the block's layoutobservables.computedbbox to the align action that
-        # usually the GridLayout executes itself
-        onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
+        init_layout!(b)
     end
 
     # in this function, the block specific setup logic is executed and the remaining
