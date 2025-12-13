@@ -683,7 +683,10 @@ end
 free(::Block) = nothing
 
 function Base.delete!(block::Block)
+    foreach(delete!, block.blocks)
     free(block)
+    empty!(block.attributes)
+
     block.parent === nothing && return
     # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
