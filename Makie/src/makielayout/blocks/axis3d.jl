@@ -4,10 +4,9 @@ function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(blockscene, ax.protrusions) do prot
+    on(blockscene, ax.protrusions, update = true) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
-    notify(ax.protrusions)
 
     finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
@@ -243,7 +242,7 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
 
     # in case the user set limits already
-    notify(ax.limits)
+    notify(ComputePipeline.get_observable!(ax.limits))
 
     return
 end
@@ -694,7 +693,8 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     onany(
         topscene,
         topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
-        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign),
+        xreversed, yreversed, zreversed, update = true
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -767,7 +767,6 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
 
         return
     end
-    notify(attr(:labelalign))
 
     label = text!(
         topscene, label_position,

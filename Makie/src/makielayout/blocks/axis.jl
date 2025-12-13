@@ -242,17 +242,15 @@ function initialize_block!(ax::Axis; palette = nothing)
     # When the transform function (xscale, yscale) of a plot changes we
     # 1. communicate this change to plots (barplot needs this to make bars
     #    compatible with the new transform function/scale)
-    onany(blockscene, ax.xscale, ax.yscale) do xsc, ysc
+    onany(blockscene, ax.xscale, ax.yscale, update = true) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
         return
     end
 
     # 2. Update the limits of the plot
-    onany(blockscene, scene.transformation.transform_func, priority = -1) do _
+    onany(blockscene, scene.transformation.transform_func, priority = -1, update = true) do _
         reset_limits!(ax)
     end
-
-    notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
     onany(
@@ -546,7 +544,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet
     )
     # trigger first protrusions with one of the observables
-    notify(ax.title)
+    # notify(ax.title)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
@@ -574,7 +572,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     # their initial value as they need to be triggered at least once to correctly set up
     # projection matrices etc.
     fl = finallimits[]
-    notify(ax.limits)
+    notify(ComputePipeline.get_observable!(ax.limits))
     if fl == finallimits[]
         notify(finallimits)
     end

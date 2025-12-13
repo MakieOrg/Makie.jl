@@ -544,7 +544,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
-    notify(ticklabelsvisible)
+    # notify(ticklabelsvisible)
 
     return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end

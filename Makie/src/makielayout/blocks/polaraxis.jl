@@ -450,7 +450,7 @@ function setup_camera_matrices!(po::PolarAxis)
                 reset_limits!(po)
             end
             if po.reset_axis_orientation[]
-                notify(po.theta_0)
+                notify(ComputePipeline.get_observable!(po.theta_0))
             else
                 diff = 0.5 * sum(po.target_thetalims[] .- old_thetalims)
                 po.target_theta_0[] = mod(po.target_theta_0[] - diff, 0 .. 2pi)
@@ -944,10 +944,9 @@ function draw_axis!(po::PolarAxis)
     translate!.((outer_clip_plot, inner_clip_plot), 0, 0, 9000)
     translate!(spineplot, 0, 0, 9001)
     translate!.((rticklabelplot, thetaticklabelplot, rtickplot, thetatickplot, rminortickplot, thetaminortickplot), 0, 0, 9002)
-    on(po.blockscene, po.gridz) do depth
+    on(po.blockscene, po.gridz, update = true) do depth
         translate!.((rgridplot, thetagridplot, rminorgridplot, thetaminorgridplot), 0, 0, depth)
     end
-    notify(po.gridz)
 
     return rticklabelplot, thetaticklabelplot
 end

@@ -354,7 +354,7 @@ function initialize_block!(m::Menu; default = 1)
         end
         m.i_selected[] = i
     end
-    notify(m.is_open)
+    notify(ComputePipeline.get_observable!(m.is_open))
 
     # trigger bbox
     notify(m.layoutobservables.suggestedbbox)
