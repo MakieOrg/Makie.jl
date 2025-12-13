@@ -104,7 +104,7 @@ function extract_attributes(dictlike, key)
     return to_dict(dictlike)
 end
 
-function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
+function create_axis_for_plot(figure::Union{Figure, Scene}, plot::AbstractPlot, attributes::Dict)
     axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
