@@ -68,6 +68,22 @@ function resize_parent(parent, block)
     """
 end
 
+# TODO: work with compute nodes directly
+function create_synchronized_input_observable(computed::Makie.ComputePipeline.Computed)
+    @assert computed[] == computed[] "value of computed must implement equality to avoid infinite loops"
+    input = computed.parent::Makie.ComputePipeline.Input
+    obs = Observable{Any}(computed[])
+    # changes in computed (which may be user changes on Julia side) update obs
+    on(computed) do val
+        if val != obs[]
+            obs[] = val
+        end
+    end
+    # JavaScript changes update obs which updates computed
+    on(v -> input[] = v, obs)
+    return obs
+end
+
 function replace_widget!(slider::Makie.Slider)
     Makie.hide!(slider)
     initial_value = slider.value[]
@@ -82,6 +98,8 @@ function replace_widget!(slider::Makie.Slider)
     color_inactive = slider.color_inactive[]
     color_active = slider.color_active[]
     color_active_dimmed = slider.color_active_dimmed[]
+
+    value_obs = create_synchronized_input_observable(slider.value)
 
     # Common style pairs to avoid duplication
     base_input = [
@@ -159,7 +177,7 @@ function replace_widget!(slider::Makie.Slider)
     callback = js"""
         function(event) {
             const value = event.srcElement.valueAsNumber
-            $(slider.value).notify(value);
+            $(value_obs).notify(value);
         }
     """
     callback_kw = if slider.update_while_dragging[]
@@ -292,6 +310,8 @@ function replace_widget!(menu::Makie.Menu)
         )
     )
 
+    i_selected_obs = create_synchronized_input_observable(menu.i_selected)
+
     # JavaScript for dropdown functionality
     dropdown_js = js"""
     const dropdown = $(select_element);
@@ -324,7 +344,7 @@ function replace_widget!(menu::Makie.Menu)
     };
 
     function update_background() {
-        const selected_index = $(menu.i_selected).value;
+        const selected_index = $(i_selected_obs).value;
         items.forEach((item, index) => {
             if (index + 1 === selected_index) {
                 item.classList.add('selected');
@@ -338,7 +358,7 @@ function replace_widget!(menu::Makie.Menu)
     items.forEach(item => {
         item.onclick = function() {
             const selected_index = parseInt(this.dataset.value);
-            $(menu.i_selected).notify(selected_index);
+            $(i_selected_obs).notify(selected_index);
             display.textContent = this.textContent;
             list.style.display = 'none';
             // Update active styling
@@ -421,10 +441,13 @@ function replace_widget!(textbox::Makie.Textbox)
         input_attrs[:step] = "any"  # Allow any decimal precision
     end
 
+    stored_string_obs = create_synchronized_input_observable(textbox.stored_string)
+    displayed_string_obs = create_synchronized_input_observable(textbox.displayed_string)
+
     textbox_input = DOM.input(;
         input_attrs...,
         style = input_styles,
-        value = textbox.displayed_string,
+        value = displayed_string_obs,
         onchange = js"""
             function(event) {
                 let value = event.target.value;
@@ -432,19 +455,19 @@ function replace_widget!(textbox::Makie.Textbox)
                 if ($(input_type) === "number") {
                     const numValue = parseFloat(value);
                     if (!isNaN(numValue)) {
-                        $(textbox.displayed_string).notify(value);
-                        $(textbox.stored_string).notify(value);
+                        $(displayed_string_obs).notify(value);
+                        $(stored_string_obs).notify(value);
                     }
                 } else {
-                    $(textbox.displayed_string).notify(value);
-                    $(textbox.stored_string).notify(value);
+                    $(displayed_string_obs).notify(value);
+                    $(stored_string_obs).notify(value);
                 }
             }
         """,
         oninput = js"""
             function(event) {
                 const value = event.target.value;
-                $(textbox.displayed_string).notify(value);
+                $(displayed_string_obs).notify(value);
             }
         """
     )
@@ -475,6 +498,7 @@ function replace_widget!(button::Makie.Button)
     labelcolor_hover = button.labelcolor_hover[]
     labelcolor_active = button.labelcolor_active[]
 
+    clicks_obs = create_synchronized_input_observable(button.clicks)
     button_element = DOM.button(
         button_text,
         style = Styles(
@@ -506,7 +530,7 @@ function replace_widget!(button::Makie.Button)
         onclick = js"""
             function(event) {
                 console.log("Button clicked");
-                $(button.clicks).notify($(button.clicks).value + 1);
+                $(clicks_obs).notify($(clicks_obs).value + 1);
             }
         """
     )
@@ -530,6 +554,8 @@ function replace_widget!(checkbox::Makie.Checkbox)
     checkboxcolor_unchecked = checkbox.checkboxcolor_unchecked[]
     checkboxstrokecolor_checked = checkbox.checkboxstrokecolor_checked[]
     checkmarkcolor_checked = checkbox.checkmarkcolor_checked[]
+
+    checked_obs = create_synchronized_input_observable(checkbox.checked)
 
     checkbox_element = DOM.input(
         type = "checkbox",
@@ -578,7 +604,7 @@ function replace_widget!(checkbox::Makie.Checkbox)
         onchange = js"""
             function(event) {
                 const isChecked = event.target.checked;
-                $(checkbox.checked).notify(isChecked);
+                $(checked_obs).notify(isChecked);
             }
         """
     )
@@ -607,6 +633,8 @@ function replace_widget!(toggle::Makie.Toggle)
     track_width = length
     button_size = markersize * (1 - rimfraction)
     border_width = markersize * rimfraction / 2
+
+    active_obs = create_synchronized_input_observable(toggle.active)
 
     toggle_input = DOM.input(
         type = "checkbox",
@@ -655,7 +683,7 @@ function replace_widget!(toggle::Makie.Toggle)
         onchange = js"""
             function(event) {
                 const isActive = event.target.checked;
-                $(toggle.active).notify(isActive);
+                $(active_obs).notify(isActive);
             }
         """
     )
