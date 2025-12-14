@@ -293,11 +293,11 @@ function initialize_block!(m::Menu; default = 1)
         old_selection = m.selection[]
         old_selected_text = selected_text[]
         should_search = m.i_selected[] > 0
-        m.i_selected = 0
 
-        new_i = 0 # default to nothing selected
         # if there is a current selection, check if it still exists in the new options
         if should_search
+            new_i = 0 # default to nothing selected
+
             for (i, o) in enumerate(options)
                 # if one of the new options is equivalent to the old options, we choose it for continuity
                 if old_selection == optionvalue(o) && old_selected_text == optionlabel(o)
@@ -305,10 +305,10 @@ function initialize_block!(m::Menu; default = 1)
                     break
                 end
             end
-        end
 
-        # trigger eventual selection actions
-        m.i_selected[] = new_i
+            # trigger eventual selection actions
+            m.i_selected = new_i
+        end
     end
     symbol_pos = lift(blockscene, selectionarea, m.textpadding) do sa, tp
         return mean(rightline(sa)) - Point2f(tp[2], 0)
