@@ -209,11 +209,11 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits) do lims
+    on(scene, ax.limits, update = true) do lims
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    on(scene, ax.targetlimits, update = true) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -240,9 +240,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
-
-    # in case the user set limits already
-    notify(ComputePipeline.get_observable!(ax.limits))
 
     return
 end
