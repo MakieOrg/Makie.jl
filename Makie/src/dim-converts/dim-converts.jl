@@ -157,6 +157,10 @@ end
 =#
 needs_tick_update_observable(x) = nothing
 
+function needs_tick_update_observable(conversion::ComputePipeline.Computed)
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+end
+
 function needs_tick_update_observable(conversion::Observable)
     if isnothing(conversion[])
         # At any point, conversion may change from nothing to an actual AbstractDimConversion

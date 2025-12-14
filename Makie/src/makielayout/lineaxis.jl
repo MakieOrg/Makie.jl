@@ -442,7 +442,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
     # make sure we update tick calculation when needed
-    obs = needs_tick_update_observable(ComputePipeline.get_observable!(dim_convert))
+    obs = needs_tick_update_observable(dim_convert)
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
         attrs.scale
