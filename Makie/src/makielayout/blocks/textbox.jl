@@ -124,24 +124,36 @@ function initialize_block!(tbox::Textbox)
         markersize = cursorsize, inspectable = false
     )
 
-    on(cursorpoints) do cpts
+    # backspace triggers both cursorindex and displayed_charbbs, but cursorpoints
+    # may only change on the first update (cursorindex). Here we need to react to
+    # displayed_charbbs too though, for right-realignment
+    onany(cursorpoints, displayed_charbbs) do cpts, charbbs
         typeof(tbox.width[]) <: Number || return
-        isempty(displayed_charbbs[]) && return
+        isempty(charbbs) && return
 
-        # translate scene to keep cursor within box
-        rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]
-        offset = if rel_cursor_pos <= 0
-            -rel_cursor_pos
-        elseif rel_cursor_pos < tbox.width[]
-            0
-        else
-            tbox.width[] - rel_cursor_pos
+        current_translation = scene.transformation.translation[][1] # translates text + cursor
+        rel_cursor_pos = cpts[1][1] + current_translation # relative to text box origin
+        text_end_pos = right(charbbs[end]) # absolute / untranslated
+
+        cursor_outside_on_left = rel_cursor_pos < 0
+        cursor_outside_on_right = rel_cursor_pos > tbox.width[]
+        text_overflows_on_left = current_translation < 0
+        text_gap_on_right = text_end_pos + current_translation < tbox.width[]
+
+        if cursor_outside_on_left
+            # move cursor to left edge
+            translate!(Accum, scene, -rel_cursor_pos, 0, 0)
+
+        elseif cursor_outside_on_right
+            # move cursor to right edge
+            translate!(Accum, scene, tbox.width[] - rel_cursor_pos, 0, 0)
+
+        elseif text_overflows_on_left && text_gap_on_right
+            # move last character to right edge (without creating a gap on the left)
+            translate!(scene, min(0, tbox.width[] - text_end_pos), 0, 0)
         end
-        translate!(Accum, scene, offset, 0, 0)
 
-        # don't let right side of box be empty if length of text exceeds box width
-        offset = tbox.width[] - right(displayed_charbbs[][end])
-        scene.transformation.translation[][1] < offset < 0 && translate!(scene, offset, 0, 0)
+        return
     end
 
     tbox.cursoranimtask = nothing
