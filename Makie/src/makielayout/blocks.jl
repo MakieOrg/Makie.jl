@@ -19,7 +19,7 @@ itself, containing more blocks.
 ## Usage
 
 ```
-@Block TypeName <: OptionalParent begin
+@Block TypeName <: OptionalParent optional_args begin
     optional_field1::OptionalType
     optional_field2
     @attributes begin
@@ -74,15 +74,32 @@ All attributes are automatically collected and added to `attributes` ComputeGrap
 ## `initialize_block!(block::TypeName, args...; kwargs...)`
 
 The `initialize_block!` function should handle the non-generic parts of the
-block initialization. This includes initializing added fields and building the
-visual aspects of the block.
+block initialization. This includes initializing added fields, handling keyword
+arguments outside of attributes and building the visual aspects of the block.
 
-Self-contained blocks like `Label` or `Axis` typically add plots and sometimes
-child scenes to `block.blockscene` styled by the attributes in the block. They
-also often add interactivity.
+If `optional_args` are given in `@Block` as a tuple `(name1, name2, ...)` the
+default `initialize_block!(block, args...; kwargs...)` will handle attributes.
+This is handled more or less the same as with plots. Arguments are added as
+inputs `:arg1, :arg2, ...` to the compute graph. They then go through a few
+computations, triggering `expand_dimensions(...)` and `convert_arguments(...)`,
+before writing the converted arguments to `:name1, :name2, ...`. These can then
+be grabbed from the block as `block.name1` etc.
 
-Blocks representing layouts typically treat the `block` like a figure, adding
-other blocks to it. These may include axes with plots added to them.
+If `optional_args` are not given the Block can be constructed with no arguments.
+If arguments are given and should be handled without convert_arguments, a method
+of `initialize_block!()` needs to be defined to handle them.
+
+Other than that, the `initialize_block!()` function typically comes in one of
+two forms. One is used by self-contained blocks like `Label` or `Axis`. They
+don't have child blocks and instead directly define their visuals and
+functionality. This may include adding plots and scenes to `block.blockscene`
+and setting up interactivity. These kinds of blocks typically do not have
+arguments, or handle them explicitly.
+
+The other type defines its content through child blocks, which are added to the
+parent block as if it was a figure. Plots may also be added to the child blocks.
+For this, the conversion pipeline may be helpful. The blocks may also connect
+to each other, e.g. with a Slider controlling a plot.
 
 ```
 function Makie.initialize_block!(block::TypeName, x, y)
@@ -99,7 +116,14 @@ block is constructed further plots can be added to the axis by plotting to its
 layout slot `block[1, 1]`.
 """
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
+    return block_macro_internal(_name, nothing, body)
+end
 
+macro Block(_name::Union{Expr, Symbol}, args::Expr, body::Expr)
+    return block_macro_internal(_name, args, body)
+end
+
+function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Expr(:block))
     body.head === :block || error("A Block needs to be defined within a `begin end` block")
 
     type_expr = _name isa Expr ? _name : :($_name <: Makie.Block)
@@ -150,6 +174,24 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     end
 
     push!(fields_vector, constructor)
+
+    if isnothing(args)
+        # If no args are provided we don't define these methods and error when
+        # arguments are present and not handled explicitly
+        argument_names_expr = :()
+        # argument_types_expr = :()
+    else
+        if !Meta.isexpr(args, :tuple)
+            throw(ArgumentError("Arguments must be given as a tuple `@Block Name (arg1, ...) begin ... end"))
+        end
+        names = map(x -> x isa Symbol ? x : x.args[1], args.args)
+        types = map(x -> x isa Symbol ? :Any : x.args[2], args.args)
+        argument_names_expr = :($(Makie).argument_names(::Type{$name}) = $names)
+        # TODO: This is broken but also not used
+        # argument_types_expr = quote
+        #     $(Makie).block_argument_types(::Type{$name}) = tuple( $(esc.(types)...) )
+        # end
+    end
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
 
@@ -209,6 +251,8 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
         end
 
         $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+
+        $argument_names_expr
 
         docstring_modified = Makie.make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
@@ -600,6 +644,48 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     return b
 end
 
+# allow this to be overwritten for explicit argument handling (without args in @Block)
+function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
+    if !applicable(argument_names, T)
+        error("$T does not include arguments in the `@Block` macro or its `initialize_block!` method. \n Given: $args")
+    end
+
+    args = (arg, _args...)
+    attr = block.attributes
+    kw_dict = Dict{Symbol, Any}(kwargs)
+
+    # adds inputs :arg1, :arg2, ...
+    arg_names = _register_input_arguments!(attr, args)
+    # applies expand_dimensions and merges :arg1, ... into one :args tuple
+    _register_expand_arguments!(T, attr, arg_names)
+    # We probably don't want dim_converts here, so we don't use
+    # _register_argument_conversions!(T, attr, kw_dict)
+
+    # adds used_attributes as :convert_kwargs
+    add_convert_kwargs!(attr, kw_dict, T, args)
+
+    # apply convert_arguments
+    map!(attr, [:args, :convert_kwargs], :converted) do args, convert_kwargs
+        x = convert_arguments(T, args...; convert_kwargs...)
+        result_type = error_check_convert_arguments(T, args, convert_kwargs, x)
+        return result_type === :Tuple ? x : (x,)
+    end
+
+    converted_names = argument_names(T)
+
+    if length(converted_names) != length(attr.converted[])
+        error("""Failed to construct Block: Number of arguments returned by
+        `convert_arguments` ($(length(attr.converted[]))) does not match the
+        number of expected arguments ($(length(converted_names))).""")
+    end
+
+    # splat to defined names
+    map!(identity, attr, :converted, converted_names)
+
+    initialize_block!(block; kw_dict...)
+    return
+end
+
 """
 Get the scene which blocks need from their parent to plot stuff into
 """
@@ -690,6 +776,7 @@ function Base.delete!(block::Block)
     block.parent === nothing && return
     # detach plots, cameras, transformations, viewport
     empty!(block.blockscene)
+    empty!(block.attributes)
 
     disconnect!(block)
     block.parent = nothing
