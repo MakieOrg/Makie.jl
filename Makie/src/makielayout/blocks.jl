@@ -647,11 +647,12 @@ end
 
 # allow this to be overwritten for explicit argument handling (without args in @Block)
 function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
+    args = (arg, _args...)
+
     if !applicable(argument_names, T)
         error("$T does not include arguments in the `@Block` macro or its `initialize_block!` method. \n Given: $args")
     end
 
-    args = (arg, _args...)
     attr = block.attributes
     kw_dict = Dict{Symbol, Any}(kwargs)
 
