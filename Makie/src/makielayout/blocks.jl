@@ -453,9 +453,16 @@ function _block(
     return b
 end
 
-
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
     return _block(T, fig_or_scene, Any[args...], Dict{Symbol, Any}(kwargs), bbox)
+end
+
+function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
+    kw_dict = Dict{Symbol, Any}(kwargs)
+    figure_kw = extract_attributes(kw_dict, :figure)
+    figure = Figure(; figure_kw...)
+    b = figure[1, 1][] = _block(T, figure, Any[args...], kw_dict, bbox)
+    return FigureAxis(figure, b)
 end
 
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})

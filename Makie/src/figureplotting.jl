@@ -3,19 +3,18 @@ struct AxisPlot
     plot::AbstractPlot
 end
 
-struct FigureAxis
-    figure::Figure
-    axis::Any
-end
-
-
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
+Base.show(io::IO, fa::FigureAxis) = show(io, fa.figure)
+Base.show(io::IO, ::MIME"text/plain", fa::FigureAxis) = print(io, "FigureAxis()")
+
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(fa::FigureAxis, args...) = iterate((fa.figure, fa.axis), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
+get_scene(fa::FigureAxis) = get_scene(fa.figure.scene)
 get_figure(fa::FigureAxis) = fa.figure
 get_figure(fap::FigureAxisPlot) = fap.figure
 get_figure(fig::Figure) = fig

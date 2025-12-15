@@ -1,4 +1,12 @@
-Label(x, text; kwargs...) = Label(x; text = text, kwargs...)
+function initialize_block!(l::Label, text; kwargs...)
+    if text isa AbstractObservable
+        on(str -> l.text = str, text, update = true)
+    else
+        l.text = text
+    end
+    initialize_block!(l; kwargs...)
+    return
+end
 
 function initialize_block!(l::Label)
 
