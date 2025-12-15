@@ -256,6 +256,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
         docstring_modified = Makie.make_block_docstring($name, user_docstring)
         @doc docstring_modified $name
+        export $name
     end
 
     return esc(q)
