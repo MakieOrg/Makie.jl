@@ -848,8 +848,26 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     return
 end
 
+function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked = Set{Symbol}())
+    push!(tracked, computed.name)
+    for edge in computed.parent.dependents
+        for node in edge.outputs
+            collect_all_connected_nodes(node)
+        end
+    end
+    return tracked
+end
+
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-Base.notify(computed::ComputePipeline.Computed) = computed
+function Base.notify(computed::ComputePipeline.Computed)
+    nodes = collect_all_connected_nodes(computed)
+    graph = computed.parent.graph
+    to_notify = intersect(nodes, keys(graph.observables))
+    foreach(to_notify) do key
+        notify(graph.observables[key])
+    end
+    return
+end
 
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
