@@ -4,6 +4,7 @@
 
 function is_attribute end
 function default_attribute_values end
+function attribute_types end
 function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
@@ -154,18 +155,14 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
     if has_forwarded_layout
         popat!(body.args, i_forwarded_layout)
-        # splice!(body.args, i_forwarded_layout, [:(layout::GridLayout)])
     end
 
     # append remaining fields
     append!(fields_vector, body.args)
 
-    # if attrs !== nothing
-    #     attribute_fields = map(attrs) do a
-    #         :($(a.symbol)::Observable{$(a.type)})
-    #     end
-    #     append!(fields_vector, attribute_fields)
-    # end
+    attr_type_writes = Expr(:block, map(attrs) do a
+        :(types[$(QuoteNode(a.symbol))] = $(a.type))
+    end...)
 
     constructor = quote
         function $name($(basefields...))
@@ -226,6 +223,12 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
             sceneattrs = scene === nothing ? Attributes() : theme(scene)
             curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
             $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
+        end
+
+        function $(Makie).attribute_types(::Type{$(name)})
+            types = Dict{Symbol, Any}()
+            $attr_type_writes
+            return types
         end
 
         function $(Makie).attribute_default_expressions(::Type{$name})
@@ -569,8 +572,17 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     end
 
     graph = ComputeGraph()
+    typedict = attribute_types(T)
     for (key, attrib) in attributes
-        add_input!(to_recipe_attribute, graph, key, attrib)
+        type = get(typedict, key, Any)
+        add_input!(BlockAttributeConvert{type}(), graph, key, attrib)
+        converted = BlockAttributeConvert{type}()(nothing, attrib)
+        try
+            ComputePipeline.unsafe_init!(graph[key], Ref{type}(converted))
+        catch e
+            @info "Failed to initialize Attribute $key with converted value $converted (input $attrib) to a type $type."
+            rethrow(e)
+        end
     end
 
     # create basic layout observables and connect attribute observables further down
@@ -734,10 +746,17 @@ end
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
             if value isa Observable
-                error("It is disallowed to set `$key`, an Observable field of the $T struct, to an Observable with dot notation (`setproperty!`), because this would replace the existing Observable. If you really want to do this, use `setfield!` instead.")
+                if isdefined(x, key)
+                    error("""It is disallowed to set `$key`, an Observable field of
+                    the $T struct, to an Observable with dot notation (`setproperty!`),
+                    because this would replace the existing Observable. If you really
+                    want to do this, use `setfield!` instead.""")
+                else
+                    setfield!(x, key, value)
+                end
             end
-            obs = fieldtype(T, key)
-            getfield(x, key)[] = convert_for_attribute(observable_type(obs), value)
+            TargetType = observable_type(fieldtype(T, key))
+            getfield(x, key)[] = BlockAttributeConvert{TargetType}(nothing, value)
         else
             setfield!(x, key, value)
         end
@@ -853,32 +872,14 @@ end
 function remove_element(::Nothing)
 end
 
-# if a non-observable is passed, its value is converted and placed into an observable of
-# the correct type which is then used as the block field
-function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), @nospecialize(value))
-    o = convert_for_attribute(observable_type(OT), value)
-    setfield!(block, key, OT(o))
-    return block
-end
-
-# if an observable is passed, a converted type is lifted off of it, so it is
-# not used directly as a block field
-function init_observable!(@nospecialize(block), key::Symbol, @nospecialize(OT), @nospecialize(value::Observable))
-    obstype = observable_type(OT)
-    o = Observable{obstype}()
-    map!(block.blockscene, o, value) do v
-        convert_for_attribute(obstype, v)
-    end
-    setfield!(block, key, o)
-    return block
-end
-
 observable_type(x::Type{Observable{T}}) where {T} = T
 
-convert_for_attribute(t::Any, x) = x
-convert_for_attribute(t::Type{Float64}, x) = convert(Float64, x)
-convert_for_attribute(t::Type{RGBAf}, x) = to_color(x)::RGBAf
-convert_for_attribute(t::Type{Makie.FreeTypeAbstraction.FTFont}, x) = to_font(x)
+struct BlockAttributeConvert{Target} end
+
+(::BlockAttributeConvert{<:Any})(key, x) = x
+(::BlockAttributeConvert{T})(key, x) where {T <: Number} = T(x)
+(::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
+(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
 
 Base.@kwdef struct Example
     backend::Symbol = :CairoMakie # the backend that is used for rendering
