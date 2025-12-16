@@ -7,37 +7,55 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 !!! warning
     The WGLMakie documentation examples are not being built correctly as part of the move from Documenter to VitePress. For working examples of WGLMakie integration, see the [Bonito plotting documentation](https://simondanisch.github.io/Bonito.jl/stable/plotting.html) for Documenter integration, or [BonitoBook examples](https://bonitobook.org/website/examples/) where Bonito is used to generate a static site.
 
+## Notebook & IDE Environments
 
-#### Notebook & IDE Environments
+!!! tip
+    For the best WGLMakie notebook experience with full support for interactivity and static export, consider using [BonitoBook](https://bonitobook.org/) which is built on Bonito and provides seamless integration.
 
-##### IJulia
+### IJulia
 
-* Bonito now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
-* reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
+* Bonito now uses the IJulia connection, and therefore can be used even with complex proxy setups without any additional configuration.
+* Reloading the page isn't supported. If you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 
-##### JupyterHub / Jupyterlab / Binder
+### JupyterHub / JupyterLab / Binder
 
 
-* WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem. On hosted instances one will likely need to have [`jupyter-server-proxy`](https://jupyter-server-proxy.readthedocs.io/en/latest/arbitrary-ports-hosts.html#with-jupyterhub) installed, and then execute something like `Page(; listen_port=9091, proxy_url="<jhub-instance>.com/user/<username>/proxy/9091")`.
+* WGLMakie should mostly work with a WebSocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the Julia process. On local JupyterLab instances, this should work without problem. On hosted instances one will likely need to have [`jupyter-server-proxy`](https://jupyter-server-proxy.readthedocs.io/en/latest/arbitrary-ports-hosts.html#with-jupyterhub) installed, and then execute something like `Page(; listen_port=9091, proxy_url="<jhub-instance>.com/user/<username>/proxy/9091")`.
 
   Also see:
     * [issue #2464](https://github.com/MakieOrg/Makie.jl/issues/2464)
     * [issue #2405](https://github.com/MakieOrg/Makie.jl/issues/2405)
 
 
-#### Pluto
+### Pluto
 
-* still uses Bonito's Websocket connection, so needs extra setup for remote servers.
-* reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
-* static html export not fully working yet
+* Still uses Bonito's WebSocket connection, so needs extra setup for remote servers.
+* Reloading the page isn't supported. If you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
+* Static HTML export is not fully working yet. For static export, consider using [BonitoBook](https://bonitobook.org/).
 
-#### JuliaHub
+### JuliaHub
 
-* VSCode in the browser should work out of the box.
-* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the WebSocket connection. So, you will see a plot, but interaction doesn't work.
+* VS Code in the browser should work out of the box.
+* Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the WebSocket connection. You will see a plot, but interaction doesn't work.
 
 
-##### WebGL Compatibility
+### Remote Access
+
+Locally, WGLMakie should just work out of the box for Pluto/IJulia. However, if you're accessing the notebook from another PC, you must configure the server:
+
+```julia
+begin
+    using Bonito
+    some_forwarded_port = 8080
+    Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
+end
+````
+
+You can also specify a proxy URL if you have a more complex proxy setup.
+For more advanced setups, consult the `?Page` docs and `Bonito.configure_server!`.
+See the [headless](@ref "Using WGLMakie") documentation for more about setting up the Bonito server and port forwarding.
+
+### WebGL Compatibility
 
 Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on [mobile and desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
 Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL, though.
@@ -127,16 +145,16 @@ WGLMakie.activate!(; use_html_widgets = true)
 - HTML widgets are positioned absolutely over the canvas to match the layout position of the Makie widget
 - Bidirectional synchronization between the Makie widget and HTML elements
 - We tried to match most styling attributes, but exact look is not guaranteed. For now, it also doesn't support updating styling attributes.
-- We still create the whole Makie widget, but just dont plot and update it but instead update it
+- We still create the whole Makie widget, but don't render it; instead, we sync it with the HTML element
 
 **Pros:**
-- Native browser controls provide better performance (e.g. For Makie native widgets, just a hover takes quite a bit of data round tripping between the browser and Julia) and are independent of the Julia event loop
+- Native browser controls provide better performance (e.g., for Makie native widgets, just a hover takes quite a bit of data round-tripping between the browser and Julia) and are independent of the Julia event loop
 - Proper text input support (cursor positioning, text selection, copy/paste)
 
 **Cons:**
 - Screenshot/export functionality needs special handling to capture HTML elements
 - Some advanced Makie styling options may not translate to HTML
-- With the current implementation we still have the overhead of creating the plots for the native widgets (should be a minimal one time cost though)
+- With the current implementation, we still have the overhead of creating the plots for the native widgets (should be a minimal one-time cost though)
 
 **Example:**
 ```julia
@@ -168,7 +186,7 @@ This tutorial will run through the different modes and what kind of limitations 
 
 ### Page
 
-`Page()` can be used to reset the Bonito state needed for multipage output like it's the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
+`Page()` can be used to reset the Bonito state needed for multipage output, as is the case for `Documenter` or the various notebooks (IJulia/Pluto/etc).
 Previously, it was necessary to always insert and display the `Page` call in notebooks, but now the call to `Page()` is optional and doesn't need to be displayed.
 What it does is purely reset the state for a new multi-page output, which is usually the case for `Documenter`, which creates multiple pages in one Julia session, or you can use it to reset the state in notebooks, e.g. after a page reload.
 `Page(exportable=true, offline=true)` can be used to force inlining all data & js dependencies, so that everything can be loaded in a single HTML object without a running Julia process. The defaults should already be chosen this way for e.g. Documenter, so this should mostly be used for e.g. `Pluto` offline export (which is currently not fully supported, but should be soon).
@@ -184,7 +202,7 @@ Makie.inline!(true) # Make sure to inline plots into Documenter output!
 scatter(1:4, color=1:4)
 ```
 
-As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto.
+As you can see, the output is completely static, because we don't have a running Julia server, as would be the case with e.g. Pluto.
 To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort.
 As you can see, the interactivity already keeps working for 3D:
 
@@ -206,7 +224,7 @@ There are a couple of ways to keep interacting with Plots in a static export.
 
 ## Record a statemap
 
-Bonito allows to record a statemap for all widgets, that satisfy the following interface:
+Bonito allows recording a statemap for all widgets that satisfy the following interface:
 
 ```julia
 # must be true to be found inside the DOM
@@ -243,10 +261,10 @@ App() do session::Session
 end
 ```
 
-## Execute Javascript directly
+## Execute JavaScript directly
 
 Bonito makes it easy to build whole HTML and JS applications.
-You can for example directly register JavaScript function that get run on change.
+You can, for example, directly register JavaScript functions that get run on change.
 
 ```@example wglmakie
 using Bonito
@@ -267,11 +285,11 @@ end
 ```
 
 One can also interpolate plots into JS and update those via JS.
-The problem is, that there isn't an amazing interface yet.
-The returned object is directly a THREE object, with all plot attributes converted into Javascript types.
-The good news is, all attributes should be in either `three_scene.material.uniforms`, or `three_scene.geometry.attributes`.
-Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia: `plot.attribute = value`.
-But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
+The problem is that there isn't a great interface yet.
+The returned object is directly a THREE object, with all plot attributes converted into JavaScript types.
+The good news is that all attributes should be in either `three_scene.material.uniforms` or `three_scene.geometry.attributes`.
+Going forward, we should create an API in WGLMakie that makes it as easy as in Julia: `plot.attribute = value`.
+But while this isn't in place, logging the returned object makes it pretty easy to figure out what to do—the JS console + logging is amazing and makes it very easy to play around with the object once logged.
 
 ```@example wglmakie
 using Bonito: on_document_load
@@ -291,7 +309,7 @@ App() do session::Session
         $(splot).then(plots=>{
             // just one plot for atomics like scatter, but for recipes it can be multiple plots
             const scatter_plot = plots[0]
-            // open the console with ctr+shift+i, to inspect the values
+            // open the console with Ctrl+Shift+I to inspect the values
             // tip - you can right click on the log and store the actual variable as a global, and directly interact with it to change the plot.
             console.log(scatter_plot)
             console.log(scatter_plot.material.uniforms)
@@ -301,19 +319,19 @@ App() do session::Session
 
     # with the above, we can find out that the positions are stored in `offset`
     # (*sigh*, this is because threejs special cases `position` attributes so it can't be used)
-    # Now, lets go and change them when using the slider :)
+    # Now, let's go and change them when using the slider :)
     onjs(session, s1.value, js"""function on_update(new_value) {
         $(splot).then(plots=>{
             const scatter_plot = plots[0]
             // change first point x + y value
             scatter_plot.geometry.attributes.pos.array[0] = (new_value/100) * 4
             scatter_plot.geometry.attributes.pos.array[1] = (new_value/100) * 4
-            // this always needs to be set of geometry attributes after an update
+            // this always needs to be set on geometry attributes after an update
             scatter_plot.geometry.attributes.pos.needsUpdate = true
         })
     }
     """)
-    # and for got measures, add a slider to change the color:
+    # and for good measure, add a slider to change the color:
     color_slider = Slider(LinRange(0, 1, 100))
     onjs(session, color_slider.value, js"""function on_update(hue) {
         $(splot).then(plots=>{
@@ -345,7 +363,7 @@ This summarizes the current state of interactivity with WGLMakie inside static p
 
 `Makie.DataInspector` works just fine with WGLMakie, but it requires a running Julia process to show and update the tooltip.
 
-There is also a way to show a tooltip in Javascript directly, which needs to be inserted into the HTML dom.
+There is also a way to show a tooltip in JavaScript directly, which needs to be inserted into the HTML DOM.
 This means, we actually need to use `Bonito.App` to return a `DOM` object:
 
 ```@example wglmakie
@@ -374,26 +392,9 @@ App() do session
 end
 ```
 
-# Pluto/IJulia
-
-Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.
-Which brings us to setting up Pluto/IJulia sessions!
-Locally, WGLMakie should just work out of the box for Pluto/IJulia, but if you're accessing the notebook from another PC, you must set something like:
-
-```julia
-begin
-    using Bonito
-    some_forwarded_port = 8080
-    Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
-end
-```
-Or also specify a proxy URL, if you have a more complex proxy setup.
-For more advanced setups consult the `?Page` docs and `Bonito.configure_server!`.
-In the [headless](@ref "Using WGLMakie") documentation, you can also read more about setting up the Bonito server and port forwarding.
-
 ## Styling
 
-Bonito allows to load arbitrary css, and `DOM.xxx` wraps all existing HTML tags.
+Bonito allows loading arbitrary CSS, and `DOM.xxx` wraps all existing HTML tags.
 So any CSS file can be used, e.g. even libraries like [Tailwind](https://tailwindcss.com/) with `Asset`:
 
 ```julia
@@ -453,7 +454,7 @@ Hopefully, over time there will be helper libraries with lots of stylised elemen
 
 # Export
 
-Documenter just renders the plots + Page as html, so if you want to inline WGLMakie/Bonito objects into your own page,
+Documenter just renders the plots + Page as HTML, so if you want to inline WGLMakie/Bonito objects into your own page,
 one can just use something like this:
 
 ```julia
