@@ -578,7 +578,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     for (key, attrib) in attributes
         type = get(typedict, key, Any)
         add_input!(BlockAttributeConvert{type}(), graph, key, attrib)
-        converted = BlockAttributeConvert{type}()(nothing, attrib)
+        converted = BlockAttributeConvert{type}()(nothing, to_value(attrib))
         try
             ComputePipeline.unsafe_init!(graph[key], Ref{type}(converted))
         catch e
@@ -760,9 +760,10 @@ end
                 else
                     setfield!(x, key, value)
                 end
+            else
+                TargetType = observable_type(fieldtype(T, key))
+                getfield(x, key)[] = BlockAttributeConvert{TargetType}(nothing, value)
             end
-            TargetType = observable_type(fieldtype(T, key))
-            getfield(x, key)[] = BlockAttributeConvert{TargetType}(nothing, value)
         else
             setfield!(x, key, value)
         end
