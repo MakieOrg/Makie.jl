@@ -160,9 +160,11 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     # append remaining fields
     append!(fields_vector, body.args)
 
-    attr_type_writes = Expr(:block, map(attrs) do a
-        :(types[$(QuoteNode(a.symbol))] = $(a.type))
-    end...)
+    attr_type_writes = Expr(
+        :block, map(attrs) do a
+            :(types[$(QuoteNode(a.symbol))] = $(a.type))
+        end...
+    )
 
     constructor = quote
         function $name($(basefields...))
@@ -695,9 +697,11 @@ function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block
     converted_names = argument_names(T)
 
     if length(converted_names) != length(attr.converted[])
-        error("""Failed to construct Block: Number of arguments returned by
-        `convert_arguments` ($(length(attr.converted[]))) does not match the
-        number of expected arguments ($(length(converted_names))).""")
+        error(
+            """Failed to construct Block: Number of arguments returned by
+            `convert_arguments` ($(length(attr.converted[]))) does not match the
+            number of expected arguments ($(length(converted_names)))."""
+        )
     end
 
     # splat to defined names
@@ -747,10 +751,12 @@ end
         if fieldtype(T, key) <: Observable
             if value isa Observable
                 if isdefined(x, key)
-                    error("""It is disallowed to set `$key`, an Observable field of
-                    the $T struct, to an Observable with dot notation (`setproperty!`),
-                    because this would replace the existing Observable. If you really
-                    want to do this, use `setfield!` instead.""")
+                    error(
+                        """It is disallowed to set `$key`, an Observable field of
+                        the $T struct, to an Observable with dot notation (`setproperty!`),
+                        because this would replace the existing Observable. If you really
+                        want to do this, use `setfield!` instead."""
+                    )
                 else
                     setfield!(x, key, value)
                 end
