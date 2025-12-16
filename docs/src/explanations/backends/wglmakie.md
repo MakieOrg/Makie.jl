@@ -4,22 +4,18 @@
 WGLMakie uses [Bonito](https://github.com/SimonDanisch/Bonito.jl) to generate the HTML and JavaScript for displaying the plots. On the JavaScript side, we use [ThreeJS](https://threejs.org/) and [WebGL](https://en.wikipedia.org/wiki/WebGL) to render the plots.
 Moving more of the implementation to JavaScript is currently the goal and will give us a better JavaScript API, and more interaction without a running Julia server.
 
-
 !!! warning
-    WGLMakie can be considered experimental because the JavaScript API isn't stable yet and the notebook integration isn't perfect yet, but all plot types should work, and therefore all recipes, but there are certain caveats
+    The WGLMakie documentation examples are not being built correctly as part of the move from Documenter to VitePress. For working examples of WGLMakie integration, see the [Bonito plotting documentation](https://simondanisch.github.io/Bonito.jl/stable/plotting.html) for Documenter integration, or [BonitoBook examples](https://bonitobook.org/website/examples/) where Bonito is used to generate a static site.
 
 
-
-#### Browser Support
-
+#### Notebook & IDE Environments
 
 ##### IJulia
-
 
 * Bonito now uses the IJulia connection, and therefore can be used even with complex proxy setup without any additional setup
 * reload of the page isn't supported, if you reload, you need to re-execute all cells and make sure that `Page()` is executed first.
 
-#### JupyterHub / Jupyterlab / Binder
+##### JupyterHub / Jupyterlab / Binder
 
 
 * WGLMakie should mostly work with a websocket connection. Bonito tries to [infer the proxy setup](https://github.com/SimonDanisch/Bonito.jl/blob/master/src/server-defaults.jl) needed to connect to the julia process. On local jupyterlab instances, this should work without problem. On hosted instances one will likely need to have [`jupyter-server-proxy`](https://jupyter-server-proxy.readthedocs.io/en/latest/arbitrary-ports-hosts.html#with-jupyterhub) installed, and then execute something like `Page(; listen_port=9091, proxy_url="<jhub-instance>.com/user/<username>/proxy/9091")`.
@@ -41,12 +37,11 @@ Moving more of the implementation to JavaScript is currently the goal and will g
 * Pluto in JuliaHub still has a [problem](https://github.com/SimonDanisch/Bonito.jl/issues/140) with the WebSocket connection. So, you will see a plot, but interaction doesn't work.
 
 
-#### Browser Support
+##### WebGL Compatibility
 
 Some browsers may have only WebGL 1.0, or need extra steps to enable WebGL, but in general, all modern browsers on [mobile and desktop should support WebGL 2.0](https://www.lambdatest.com/web-technologies/webgl2).
 Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL, though.
 If you end up stuck on WebGL 1.0, the main missing feature will be `volume` & `contour(volume)`.
-
 
 
 ## Activation and screen config
@@ -55,6 +50,68 @@ Activate the backend by calling `WGLMakie.activate!()` with the following option
 ```@docs
 WGLMakie.activate!
 ```
+
+### Loading Spinner
+
+WGLMakie shows a loading spinner while the scene is being initialized. By default, a `CircleSpinner` is displayed, but you can customize or remove it.
+
+#### Removing the Spinner
+
+To remove the spinner entirely, pass `nothing`:
+
+```julia
+WGLMakie.activate!(; spinner=nothing)
+```
+
+#### Styling the Default Spinner
+
+The default `CircleSpinner` accepts several styling options:
+
+```julia
+using WGLMakie
+# Customize the spinner's appearance
+spinner = WGLMakie.CircleSpinner(;
+    size=100,                                    # diameter in pixels
+    stroke=10,                                   # border width in pixels
+    color="red",                       # color of the spinning part
+    background_color="rgba(1, 0, 0, 0.9)",      # color of the background circle
+    duration=1                                  # rotation speed in seconds
+)
+WGLMakie.activate!(; spinner=spinner)
+```
+
+#### Using a Custom Spinner
+
+You can provide any Bonito DOM element as a custom spinner. The spinner should have the CSS class `wglmakie-spinner` to be properly positioned and removed after loading:
+
+```julia
+using WGLMakie
+using Bonito
+
+# Create a custom spinner with your own HTML/CSS
+spinner_styles = Bonito.Styles(
+    "position" => "absolute",
+    "top" => "50%",
+    "left" => "50%",
+    "transform" => "translate(-50%, -50%)",
+    "background" => "rgba(0, 0, 0, 0.7)",
+    "padding" => "20px",
+    "border-radius" => "8px",
+    "z-index" => "1000",
+)
+text_styles = Bonito.Styles(
+    "color" => "white",
+    "font-size" => "14px",
+)
+custom_spinner = DOM.div(
+    spinner_styles,
+    DOM.span(text_styles, "Loading...");
+    class="wglmakie-spinner"
+)
+WGLMakie.activate!(; spinner=custom_spinner)
+```
+
+Note: The `wglmakie-spinner` class is required as WGLMakie uses it to find and remove the spinner once the scene is fully loaded.
 
 ### HTML Native Widgets
 
@@ -396,8 +453,7 @@ Hopefully, over time there will be helper libraries with lots of stylised elemen
 
 # Export
 
-Documenter just renders the plots + Page as html,
-so if you want to inline WGLMakie/Bonito objects into your own page,
+Documenter just renders the plots + Page as html, so if you want to inline WGLMakie/Bonito objects into your own page,
 one can just use something like this:
 
 ```julia
@@ -431,4 +487,10 @@ open("index.html", "w") do io
     </html>
     """)
 end
+```
+
+You can also simply export a plot into a self contained HTML file:
+```julia
+using Bonito
+export_static("plot.html", App(scatter(rand(Point2f, 100))))
 ```

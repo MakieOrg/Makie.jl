@@ -25007,16 +25007,16 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
             try {
                 create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
                 done_init.notify(true);
-                spinner.remove();
+                spinner?.remove();
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
                 done_init.notify(e);
-                spinner.remove();
+                spinner?.remove();
                 return;
             }
             return false;
         };
-        if (scene_serialized.value != null) {
+        if (scene_serialized.value) {
             init_scene(scene_serialized.value);
         } else {
             scene_serialized.on(init_scene);
@@ -25024,7 +25024,7 @@ function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit
     } catch (e) {
         Bonito.Connection.send_error("error setting up scene", e);
         done_init.notify(e);
-        spinner.remove();
+        spinner?.remove();
         return;
     }
 }

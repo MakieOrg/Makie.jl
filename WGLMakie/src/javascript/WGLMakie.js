@@ -624,17 +624,16 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
                 );
                 // Remove spinner after successful initialization
                 done_init.notify(true);
-                spinner.remove();
+                spinner?.remove();
             } catch (e) {
                 Bonito.Connection.send_error("error initializing scene", e);
                 done_init.notify(e);
-                spinner.remove();
+                spinner?.remove();
                 return;
             }
             return false; // Deregister callback after first successful run
         };
-
-        if (scene_serialized.value != null) {
+        if (scene_serialized.value) {
             // If scene is already serialized, initialize immediately
             init_scene(scene_serialized.value);
         } else {
@@ -644,7 +643,7 @@ export function setup_scene_init(wrapper, canvas, width, height, resize_to, px_p
     } catch (e) {
         Bonito.Connection.send_error("error setting up scene", e);
         done_init.notify(e);
-        spinner.remove();
+        spinner?.remove();
         return;
     }
 }

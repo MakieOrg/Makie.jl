@@ -121,33 +121,32 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # position: relative is needed for:
     # 1. absolute positioning of spinner on top of canvas
     # 2. absolute positioning of widgets (HTML widgets, etc.)
-    wrapper = DOM.div(canvas, spinner; style = "width: 100%; height: 100%; position: relative; background-color: gray")
+    wrapper = DOM.div(canvas, spinner; style = "width: 100%; height: 100%; position: relative;")
     comm = Observable(Dict{String, Any}())
 
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    evaljs(
-        session, js"""
-        $(WGL).then(WGL => {
-            WGL.execute_in_order($order, ()=> {
-                WGL.setup_scene_init(
-                    $wrapper,
-                    $canvas,
-                    $width,
-                    $height,
-                    $(config.resize_to),
-                    $(config.px_per_unit),
-                    $(config.scalefactor),
-                    $(real_size),
-                    $canvas_width,
-                    $(scene_serialized),
-                    $comm,
-                    $(config.framerate),
-                    $(done_init)
-                )
-            })
+    jss = js"""
+    $(WGL).then(WGL => {
+        WGL.execute_in_order($order, ()=> {
+            WGL.setup_scene_init(
+                $wrapper,
+                $canvas,
+                $width,
+                $height,
+                $(config.resize_to),
+                $(config.px_per_unit),
+                $(config.scalefactor),
+                $(real_size),
+                $canvas_width,
+                $(scene_serialized),
+                $comm,
+                $(config.framerate),
+                $(done_init)
+            )
         })
-        """
-    )
+    })
+    """
+    push!(Bonito.children(wrapper), jss)
     on(session, done_init) do val
         window_open[] = true
     end
