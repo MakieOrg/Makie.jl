@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+- Expanded `@Block` to be usable for defining sub-layouts consisting of other blocks, and to include argument conversions. With this one can define a higher level recipe which, for example, creates an `Axis` with plots and a `Colorbar` in an internal layout.
 
 ## [0.24.8] - 2025-12-04
 
