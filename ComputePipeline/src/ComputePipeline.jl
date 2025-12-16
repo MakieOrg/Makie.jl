@@ -61,6 +61,10 @@ end
 
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
+function Base.eltype(computed::Computed)
+    isdefined(computed, :value) || computed[]
+    return eltype(computed.value)
+end
 
 struct ResolveException{E <: Exception} <: Exception
     start::Computed

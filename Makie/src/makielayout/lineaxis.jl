@@ -5,6 +5,18 @@ const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+
+    # Attributes() maps all typed observables to Observable{Any}. This means
+    # any typed Observable that's passed to LineAxis will not actually arrive
+    # here. Instead we get a child of it with Any.
+    # For Computed that doesn't happen. If a Computed is passed we will get it
+    # as is. If we write to it, we adjust something in the parent compute graph.
+    # And if the type of the written value doesn't match we error
+    # This happens for:
+    if haskey(attrs, :ticklabelspace) && eltype(attrs[:ticklabelspace]) !== Any
+        attrs[:ticklabelspace] = ComputePipeline.get_observable!(attrs[:ticklabelspace])
+    end
+
     return LineAxis(parent, attrs)
 end
 
