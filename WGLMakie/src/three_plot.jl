@@ -77,23 +77,25 @@ function three_display(screen::Screen, session::Session, scene::Scene)
         # Since we cant do any round trip communication
         scene_serialized[] = serialize_scene(scene)
     else
-        scene_serialized_task = @async serialize_scene(scene)
+        scene_serialized_task = Makie.async_tracked(_ -> serialize_scene(scene))
         # Wait for real size to be determined, then resize scene and serialize
         on(real_size) do size_arr
-            @async try
-                size_tuple = (round.(Int, (size_arr))...,)
-                # Resize the scene to the actual canvas size before serialization
-                serialized = fetch(scene_serialized_task)
-                if size_tuple != initial_size
-                    # resize before sending - since all changes should be captured in the serialized observables
-                    # We dont need to serialize again!
-                    resize!(scene, size_tuple...)
+            Makie.async_tracked() do _
+                try
+                    size_tuple = (round.(Int, (size_arr))...,)
+                    # Resize the scene to the actual canvas size before serialization
+                    serialized = fetch(scene_serialized_task)
+                    if size_tuple != initial_size
+                        # resize before sending - since all changes should be captured in the serialized observables
+                        # We dont need to serialize again!
+                        resize!(scene, size_tuple...)
+                    end
+                    # Now serialize with the correct size
+                    scene_serialized[] = serialized
+                catch e
+                    @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
+                    done_init[] = e
                 end
-                # Now serialize with the correct size
-                scene_serialized[] = serialized
-            catch e
-                @warn "Error resizing/serializing scene" exception = (e, catch_backtrace())
-                done_init[] = e
             end
         end
     end
@@ -121,7 +123,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # position: relative is needed for:
     # 1. absolute positioning of spinner on top of canvas
     # 2. absolute positioning of widgets (HTML widgets, etc.)
-    wrapper = DOM.div(canvas, spinner; style = "width: 100%; height: 100%; position: relative;")
+    wrapper = DOM.div(canvas, nothing; style = "width: 100%; height: 100%; position: relative;")
     comm = Observable(Dict{String, Any}())
 
     # Keep texture atlas in parent session, so we don't need to send it over and over again
