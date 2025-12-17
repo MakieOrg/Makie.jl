@@ -9,6 +9,7 @@ const TRACKED_TASKS_LOCK = Base.ReentrantLock()
 const HAS_ATEXIT = Base.RefValue(false)
 
 Base.wait(t::TrackedTask) = wait(t.task)
+Base.fetch(t::TrackedTask) = fetch(t.task)
 
 function Base.close(t::TrackedTask)
     t.isrunning[] = false
@@ -43,7 +44,7 @@ function async_tracked(f)
 
     @lock TRACKED_TASKS_LOCK push!(TRACKED_TASKS, ttask)
 
-    if HAS_ATEXIT[]
+    if !HAS_ATEXIT[]
         atexit(cleanup_tasks)
         HAS_ATEXIT[] = true
     end

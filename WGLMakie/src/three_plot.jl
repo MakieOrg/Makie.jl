@@ -48,16 +48,10 @@ function Bonito.print_js_code(io::IO, scene::Scene, context::Bonito.JSSourceCont
 end
 
 
-const SCENE_ORDER_PER_SESSION = Dict{String, Int}()
-const ORDER_LOCK = Base.ReentrantLock()
-
 function get_order!(session::Session)
-    roots = Bonito.root_session(session)
-    return lock(ORDER_LOCK) do
-        order = get!(SCENE_ORDER_PER_SESSION, roots.id, 1)
-        SCENE_ORDER_PER_SESSION[roots.id] = order + 1
-        return order
-    end
+    order = Bonito.get_metadata(session, :wglmakie_scene_order, 1)
+    Bonito.set_metadata!(session, :wglmakie_scene_order, order + 1)
+    return order
 end
 
 function three_display(screen::Screen, session::Session, scene::Scene)
@@ -70,17 +64,21 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Observable to receive the actual canvas size from JS after resize_to calculation
     real_size = Observable{Any}(nothing)
     # Create observable for scene serialization that updates asynchronously
-    scene_serialized = Observable{Any}(nothing)
+    scene_serialized = Observable{Union{Nothing, Dict{Symbol,Any}}}(nothing)
     done_init = Observable{Any}(nothing)
     if is_offline
         # For offline connections, we have to serialize immediately
         # Since we cant do any round trip communication
         scene_serialized[] = serialize_scene(scene)
     else
-        scene_serialized_task = Makie.async_tracked(_ -> serialize_scene(scene))
+        scene_serialized_task = Makie.async_tracked() do alive
+            alive[] || return nothing
+            ser = serialize_scene(scene)
+            return ser
+        end
         # Wait for real size to be determined, then resize scene and serialize
-        on(real_size) do size_arr
-            Makie.async_tracked() do _
+        on(session, real_size) do size_arr
+            Makie.async_tracked() do should_close
                 try
                     size_tuple = (round.(Int, (size_arr))...,)
                     # Resize the scene to the actual canvas size before serialization
@@ -97,6 +95,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
                     done_init[] = e
                 end
             end
+            return
         end
     end
     width, height = initial_size
@@ -117,17 +116,15 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     )
 
     # Get spinner from config (will be constructed from theming)
-    spinner = config.spinner
-
     # Wrapper contains canvas and spinner as siblings, plus widgets will be added later
     # position: relative is needed for:
     # 1. absolute positioning of spinner on top of canvas
     # 2. absolute positioning of widgets (HTML widgets, etc.)
-    wrapper = DOM.div(canvas, nothing; style = "width: 100%; height: 100%; position: relative;")
+    wrapper = DOM.div(canvas, config.spinner; style = "width: 100%; height: 100%; position: relative;")
     comm = Observable(Dict{String, Any}())
 
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    jss = js"""
+    evaljs(session, js"""
     $(WGL).then(WGL => {
         WGL.execute_in_order($order, ()=> {
             WGL.setup_scene_init(
@@ -147,8 +144,8 @@ function three_display(screen::Screen, session::Session, scene::Scene)
             )
         })
     })
-    """
-    push!(Bonito.children(wrapper), jss)
+    """)
+    # push!(Bonito.children(wrapper), jss)
     on(session, done_init) do val
         window_open[] = true
     end

@@ -100,32 +100,40 @@ WGLMakie.activate!(; spinner=spinner)
 
 #### Using a Custom Spinner
 
-You can provide any Bonito DOM element as a custom spinner. The spinner should have the CSS class `wglmakie-spinner` to be properly positioned and removed after loading:
+To create a custom spinner, define a struct and implement `Bonito.jsrender`. This pattern ensures each scene gets its own spinner instance (avoiding shared DOM issues):
 
 ```julia
 using WGLMakie
 using Bonito
 
-# Create a custom spinner with your own HTML/CSS
-spinner_styles = Bonito.Styles(
-    "position" => "absolute",
-    "top" => "50%",
-    "left" => "50%",
-    "transform" => "translate(-50%, -50%)",
-    "background" => "rgba(0, 0, 0, 0.7)",
-    "padding" => "20px",
-    "border-radius" => "8px",
-    "z-index" => "1000",
-)
-text_styles = Bonito.Styles(
-    "color" => "white",
-    "font-size" => "14px",
-)
-custom_spinner = DOM.div(
-    spinner_styles,
-    DOM.span(text_styles, "Loading...");
-    class="wglmakie-spinner"
-)
+# Define a custom spinner struct
+struct TextSpinner
+    message::String
+    background::String
+end
+
+# Implement jsrender to create fresh DOM on each render
+function Bonito.jsrender(session::Bonito.Session, spinner::TextSpinner)
+    container_styles = Bonito.Styles(
+        Bonito.CSS(
+            ".wglmakie-spinner",
+            "position" => "absolute",
+            "top" => "50%",
+            "left" => "50%",
+            "transform" => "translate(-50%, -50%)",
+            "background" => spinner.background,
+            "padding" => "20px",
+            "border-radius" => "8px",
+            "z-index" => "1000",
+            "color" => "white",
+            "font-size" => "14px",
+        )
+    )
+    return Bonito.jsrender(session, Bonito.DOM.div(container_styles, spinner.message; class="wglmakie-spinner"))
+end
+
+# Use the custom spinner
+custom_spinner = TextSpinner("Loading visualization...", "rgba(0, 0, 0, 0.7)")
 WGLMakie.activate!(; spinner=custom_spinner)
 ```
 

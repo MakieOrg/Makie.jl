@@ -32,6 +32,7 @@ get_scene(gp::GridLayoutBase.GridSubposition) = get_scene(get_figure(gp))
 
 const CURRENT_FIGURE = Ref{Union{Nothing, Figure}}(nothing)
 const CURRENT_FIGURE_LOCK = Base.ReentrantLock()
+const HAS_FIGURE_ATEXIT = Base.RefValue(false)
 
 """
     current_figure()
@@ -46,7 +47,16 @@ current_figure() = lock(() -> CURRENT_FIGURE[], CURRENT_FIGURE_LOCK)
 
 Set `fig` as the current active figure.
 """
-current_figure!(fig) = lock(() -> (CURRENT_FIGURE[] = fig), CURRENT_FIGURE_LOCK)
+function current_figure!(fig)
+    lock(CURRENT_FIGURE_LOCK) do
+        CURRENT_FIGURE[] = fig
+        if !HAS_FIGURE_ATEXIT[]
+            atexit(() -> (CURRENT_FIGURE[] = nothing))
+            HAS_FIGURE_ATEXIT[] = true
+        end
+    end
+    return fig
+end
 
 """
     current_axis()

@@ -32,7 +32,7 @@ let
         empty!(FONT_CACHE)
         empty!(DEFAULT_FONT)
         empty!(ALTERNATIVE_FONTS)
-        Makie.CURRENT_FIGURE[] = nothing
+        # CURRENT_FIGURE cleanup is handled by atexit in current_figure!()
     end
     nothing
 end
