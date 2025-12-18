@@ -687,7 +687,7 @@ function Makie.plot!(p::HeatmapShader)
     events = scene.events
     add_axis_limits!(p)
     slow_limits = Observable(Rect2f())
-    onany(p, p.axis_limits, events.mousebutton, events.keyboardbutton) do lims, mbs, kbs
+    onany(p, p.axis_limits, events.mousebutton, events.keyboardbutton, update = true) do lims, mbs, kbs
         update_while_pressed = p.image[].update_while_button_pressed
         no_mbutton = isempty(events.mousebuttonstate)
         no_kbutton = isempty(events.keyboardstate)
