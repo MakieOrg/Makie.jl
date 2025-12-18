@@ -24,11 +24,15 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     return print(io, "\n  dirty = ", isdirty(computed))
 end
 
+_edge_callback_name(f::Function) = "$(nameof(f))"
+_edge_callback_name(f::InputFunctionWrapper) = "(::InputFunctionWrapper(:$(f.key), $(_edge_callback_name(f.user_func))))"
+_edge_callback_name(f::MapFunctionWrapper) = "(::MapFunctionWrapper($(_edge_callback_name(f.user_func))))"
+_edge_callback_name(functor) = "$(repr(functor))"
 
-edge_callback_name(f::Function, call = "(…)") = "$(repr(f))$call"
-edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(repr(f.user_func))))$call"
-edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "(::MapFunctionWrapper($(repr(f.user_func))))$call"
-edge_callback_name(functor, call = "(…)") = "$(repr(functor))$call"
+edge_callback_name(f::Function, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(functor, call = "(…)") = "$(_edge_callback_name(functor))$call"
 
 
 # This should mirror the inputs and outputs a ComputeEdge callback uses
