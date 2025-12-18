@@ -52,12 +52,12 @@ struct CircleSpinner
 end
 
 function CircleSpinner(;
-    size::Int=40,
-    stroke::Int=4,
-    color::String="currentColor",
-    background_color::String="rgba(0, 0, 0, 0.1)",
-    duration::Real=1
-)
+        size::Int = 40,
+        stroke::Int = 4,
+        color::String = "currentColor",
+        background_color::String = "rgba(0, 0, 0, 0.1)",
+        duration::Real = 1
+    )
     return CircleSpinner(size, stroke, color, background_color, Float64(duration))
 end
 
@@ -89,5 +89,5 @@ function Bonito.jsrender(session::Bonito.Session, spinner::CircleSpinner)
         keyframes,
     )
 
-    return Bonito.jsrender(session, DOM.div(styles; class="wglmakie-spinner"))
+    return Bonito.jsrender(session, DOM.div(styles; class = "wglmakie-spinner"))
 end

@@ -64,7 +64,7 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Observable to receive the actual canvas size from JS after resize_to calculation
     real_size = Observable{Any}(nothing)
     # Create observable for scene serialization that updates asynchronously
-    scene_serialized = Observable{Union{Nothing, Dict{Symbol,Any}}}(nothing)
+    scene_serialized = Observable{Union{Nothing, Dict{Symbol, Any}}}(nothing)
     done_init = Observable{Any}(nothing)
     if is_offline
         # For offline connections, we have to serialize immediately
@@ -102,11 +102,11 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     # Create canvas
     canvas = DOM.m(
         "canvas";
-        tabindex="0",
+        tabindex = "0",
         # Set with/height to have a good inital size - might not match the final size with scaling etc, but this
         # will be adjusted in JS - this helps with less re-layoting
-        width="$(width)px",
-        height="$(height)px",
+        width = "$(width)px",
+        height = "$(height)px",
         style = "display: block",
         # Pass JupyterLab specific attributes to prevent it from capturing keyboard shortcuts
         # and to suppress the JupyterLab context menu in Makie plots, see:
@@ -124,27 +124,29 @@ function three_display(screen::Screen, session::Session, scene::Scene)
     comm = Observable(Dict{String, Any}())
 
     # Keep texture atlas in parent session, so we don't need to send it over and over again
-    evaljs(session, js"""
-    $(WGL).then(WGL => {
-        WGL.execute_in_order($order, ()=> {
-            WGL.setup_scene_init(
-                $wrapper,
-                $canvas,
-                $width,
-                $height,
-                $(config.resize_to),
-                $(config.px_per_unit),
-                $(config.scalefactor),
-                $(real_size),
-                $canvas_width,
-                $(scene_serialized),
-                $comm,
-                $(config.framerate),
-                $(done_init)
-            )
+    evaljs(
+        session, js"""
+        $(WGL).then(WGL => {
+            WGL.execute_in_order($order, ()=> {
+                WGL.setup_scene_init(
+                    $wrapper,
+                    $canvas,
+                    $width,
+                    $height,
+                    $(config.resize_to),
+                    $(config.px_per_unit),
+                    $(config.scalefactor),
+                    $(real_size),
+                    $canvas_width,
+                    $(scene_serialized),
+                    $comm,
+                    $(config.framerate),
+                    $(done_init)
+                )
+            })
         })
-    })
-    """)
+        """
+    )
     # push!(Bonito.children(wrapper), jss)
     on(session, done_init) do val
         window_open[] = true
