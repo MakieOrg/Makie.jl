@@ -179,7 +179,8 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
     )
 
     map!(to_lines, plot, :polygon, [:outline, :increment_at])
-    map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
+    map!(to_color, plot, :strokecolor, :rgb_strokecolor)
+    map!(plot, [:outline, :increment_at, :rgb_strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
         if !(meshes isa Mesh) && meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
             mesh_idx = 1
             return map(eachindex(outline)) do point_idx
