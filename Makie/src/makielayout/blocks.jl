@@ -674,8 +674,24 @@ function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block
         error("$T does not include arguments in the `@Block` macro or its `initialize_block!` method. \n Given: $args")
     end
 
-    attr = block.attributes
     kw_dict = Dict{Symbol, Any}(kwargs)
+    initialize_block_arguments!(block, args, kw_dict)
+
+    initialize_block!(block; kw_dict...)
+    return
+end
+
+"""
+    initialize_block_arguments!(block::T, args::Tuple, kw_dict::Dict{Symbol, Any}, converted_names = argument_names(T))
+
+Adds argument inputs and computations to generate converted arguments. The names
+of the converted arguments may be passed as `converted_names`.
+"""
+function initialize_block_arguments!(
+        block::T, args, kw_dict::Dict{Symbol, Any}, converted_names = argument_names(T)
+    ) where {T <: Block}
+
+    attr = block.attributes
 
     # adds inputs :arg1, :arg2, ...
     arg_names = _register_input_arguments!(attr, args)
@@ -694,8 +710,6 @@ function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block
         return result_type === :Tuple ? x : (x,)
     end
 
-    converted_names = argument_names(T)
-
     if length(converted_names) != length(attr.converted[])
         error(
             """Failed to construct Block: Number of arguments returned by
@@ -707,7 +721,6 @@ function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block
     # splat to defined names
     map!(identity, attr, :converted, converted_names)
 
-    initialize_block!(block; kw_dict...)
     return
 end
 
