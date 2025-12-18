@@ -402,9 +402,9 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
-    @static if VERSION >= v"1.11"
-        atexit(cleanup_globals)
-    end
+    # Register atexit for runtime cleanup (when Julia exits normally)
+    # Note: This doesn't affect precompilation since __init__ doesn't run during precompile
+    atexit(cleanup_globals)
     return
 end
 

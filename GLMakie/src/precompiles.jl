@@ -51,11 +51,9 @@ let
             @assert isempty(SCREEN_REUSE_POOL)
             @assert isempty(ALL_SCREENS)
             @assert isempty(SINGLETON_SCREEN)
-            # On Julia 1.11+, cleanup is handled automatically via atexit (runs before serialization)
-            # On Julia 1.10, atexit runs after serialization, so we need to call cleanup manually
-            @static if VERSION < v"1.11"
-                Makie.cleanup_globals()
-            end
+            # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
+            # Note: __init__ doesn't run during precompilation, so we must always clean up here
+            Makie.cleanup_globals()
         end
     end
     nothing
