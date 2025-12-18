@@ -28,7 +28,6 @@ let
                 display(plot(x); visible = false)
             catch
             end
-            Makie.CURRENT_FIGURE[] = nothing
 
             screen = Screen(Scene())
             refresh_func = refreshwindowcb(screen)
@@ -52,6 +51,11 @@ let
             @assert isempty(SCREEN_REUSE_POOL)
             @assert isempty(ALL_SCREENS)
             @assert isempty(SINGLETON_SCREEN)
+            # On Julia 1.11+, cleanup is handled automatically via atexit (runs before serialization)
+            # On Julia 1.10, atexit runs after serialization, so we need to call cleanup manually
+            @static if VERSION < v"1.11"
+                Makie.cleanup_globals()
+            end
         end
     end
     nothing

@@ -29,10 +29,11 @@ let
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
-        empty!(FONT_CACHE)
-        empty!(DEFAULT_FONT)
-        empty!(ALTERNATIVE_FONTS)
-        # CURRENT_FIGURE cleanup is handled by atexit in current_figure!()
+        # On Julia 1.11+, cleanup is handled automatically via atexit (runs before serialization)
+        # On Julia 1.10, atexit runs after serialization, so we need to call cleanup manually
+        @static if VERSION < v"1.11"
+            cleanup_globals()
+        end
     end
     nothing
 end

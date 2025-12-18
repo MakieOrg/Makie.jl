@@ -26,11 +26,12 @@ let
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
-        # Cleanup is handled by:
-        # - Bonito.__init__ atexit (SERVER_CLEANUP_TASKS, CURRENT_SESSION, GLOBAL_SERVER)
-        # - Bonito session metadata (SCENE_ATLASES, SCENE_ORDER - cleaned up with session)
-        # - Makie.current_figure! atexit (CURRENT_FIGURE)
-        # - Makie.async_tracked atexit (TRACKED_TASKS)
+        # On Julia 1.11+, cleanup is handled automatically via atexit (runs before serialization)
+        # On Julia 1.10, atexit runs after serialization, so we need to call cleanup manually
+        @static if VERSION < v"1.11"
+            Bonito.cleanup_globals()
+            Makie.cleanup_globals()
+        end
         nothing
     end
 end
