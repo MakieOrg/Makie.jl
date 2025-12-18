@@ -789,6 +789,13 @@ end
     return
 end
 
+function update_state_before_display!(block::Block)
+    for child in block.blocks
+        update_state_before_display!(child)
+    end
+    return
+end
+
 # treat all blocks as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Block) = Ref(l)
 
