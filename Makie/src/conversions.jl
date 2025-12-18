@@ -704,11 +704,11 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
     return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
