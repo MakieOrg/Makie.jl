@@ -18,10 +18,10 @@ function Makie.initialize_block!(cr::AllBlocks)
     lines!(ax, Rect2f(1, 1, 9, 9), color = :black)
 
     ax3 = Axis3(cr[2, 2])
-    p2 = scatter!(ax3, cr.positions; color=cr.scatter_color)
+    p2 = scatter!(ax3, cr.positions; color = cr.scatter_color)
     po = PolarAxis(cr[3, 2])
     hidedecorations!(po, grid = false)
-    p3 = lines!(po, cr.positions, color=cr.line_color)
+    p3 = lines!(po, cr.positions, color = cr.line_color)
     Legend(cr[1, 1:2], [p1, p2, p3], ["heatmap", "scatter", "lines"], nbanks = 5, tellheight = true)
     Colorbar(cr[2:3, 3], p1)
 
@@ -99,7 +99,7 @@ end
                     elseif val isa Tuple
                         x = ifelse.(val[1] === :left, :center, :left)
                         y = ifelse.(val[2] === :top, :center, :top)
-                        Makie.update!(block, name => (x,y))
+                        Makie.update!(block, name => (x, y))
                     elseif val isa Symbol
                         Makie.update!(block, name => ifelse(val === :left, :center, :left))
                     elseif val isa Real
@@ -115,11 +115,11 @@ end
                     Makie.update!(block, name => ifelse(val === :bottom, :top, :bottom))
                 elseif name === :perspectiveness
                     Makie.update!(block, name => 0.7)
-                elseif val isa Union{AbstractFloat, VecTypes{N, <:Real} where N}
+                elseif val isa Union{AbstractFloat, VecTypes{N, <:Real} where {N}}
                     Makie.update!(block, name => 1.3 .* val .+ 1)
                 elseif val isa Bool
                     Makie.update!(block, name => !val)
-                elseif val isa Union{Integer, VecTypes{N, <:Integer} where N}
+                elseif val isa Union{Integer, VecTypes{N, <:Integer} where {N}}
                     Makie.update!(block, name => val .+ 1)
                 elseif is_color(val) || match(r".*(color)", namestr) !== nothing
                     Makie.update!(block, name => RNG.rand(RGBf, 1)[1]) # TODO: Fix error on RNG.rand(RGBf)
@@ -132,7 +132,7 @@ end
                 elseif val in (:regular, :bold, :italic)
                     Makie.update!(block, name => ifelse(val === :regular, :bold, :regular))
                 elseif match(r".*(rotation|angle)", namestr) !== nothing
-                    Makie.update!(block, name => pi/3)
+                    Makie.update!(block, name => pi / 3)
                 elseif match(r".*style", namestr) !== nothing
                     isnothing(val) && continue # can't update this
                     Makie.update!(block, name => ifelse(val === :dash, :dot, :dash))
