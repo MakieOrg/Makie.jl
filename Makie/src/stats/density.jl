@@ -17,9 +17,11 @@ function convert_arguments(P::Type{<:AbstractPlot}, d::KernelDensity.BivariateKD
 end
 
 """
-    density(values)
+Plots a kernel density estimate of values.
 
-Plot a kernel density estimate of `values`.
+## Arguments
+
+* `values` An `AbstractVector{<:Real}` of values to estimate the density distribution from.
 """
 @recipe Density begin
     mixin_colormap_attributes()...

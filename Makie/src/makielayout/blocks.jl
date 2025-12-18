@@ -184,7 +184,6 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
     end
 end
 
-
 function extract_attributes!(body)
     i = findfirst(
         (
@@ -623,6 +622,16 @@ Base.@kwdef struct Example
     caption::Union{Nothing, String} = nothing
 end
 
+function Base.show(io::IO, example::Example)
+    if !isnothing(example.caption) && !isempty(example.caption)
+        println(io, "**$(ex.caption)**\n")
+    end
+    println(io, "```julia")
+    println(io, example.code)
+    println(io, "```")
+    return nothing
+end
+
 function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}, examples::Vector{Example}, default_str)
     io = IOBuffer()
 
@@ -650,18 +659,12 @@ function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}
     return Markdown.parse(String(take!(io)))
 end
 
-# function example(type::Type{<:Block}, attr::Symbol, i::Int)
-#     examples = get(attribute_examples(type), attr, Example[])
-#     if !(1 <= i <= length(examples))
-#         error("Invalid example number for attribute $attr of type $type.")
-#     end
-#     display(eval(Meta.parseall(examples[i].code)))
-#     return
-# end
-
-function attribute_examples(b::Union{Type{<:Block}, Type{<:Plot}})
+# Fallback for Block types (not yet moved to markdown)
+function attribute_examples(::Type{BT}) where {BT <: Block}
     return Dict{Symbol, Vector{Example}}()
 end
+
+attribute_examples(::Type{T}, attr::Symbol) where {T <: Union{Block, Plot}} = get(attribute_examples(T), attr, Example[])
 
 # overrides `?Axis.xticks` and similar lookups in the REPL
 function REPL.fielddoc(t::Type{<:Block}, s::Symbol)

@@ -1,12 +1,6 @@
 """
-    contourf(xs, ys, zs; kwargs...)
-
-Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
-and vertical grid positions `ys`.
-
-`xs` and `ys` can be vectors for rectilinear grids
-or matrices for curvilinear grids,
-similar to how [`surface`](@ref) works.
+Plots a filled contour where each pixel in the grid defined by `xs` and `ys` is
+colored based on the level its `data` values map to.
 """
 @recipe Contourf (x, y, z) begin
     """
@@ -43,12 +37,6 @@ similar to how [`surface`](@ref) works.
     # TODO, Isoband doesn't seem to support nans?
     mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
 end
-
-# these attributes are computed dynamically and needed for colorbar e.g.
-# _computed_levels
-# _computed_colormap
-# _computed_extendlow
-# _computed_extendhigh
 
 _get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 

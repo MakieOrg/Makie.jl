@@ -1,12 +1,14 @@
 """
-    hspan(ys_low, ys_high; xmin = 0.0, xmax = 1.0, attrs...)
-    hspan(ys_lowhigh; xmin = 0.0, xmax = 1.0, attrs...)
+    hspan(ys_low, ys_high; xmin = 0.0, xmax = 1.0, attributes...)
+    hspan(ys_lowhigh; xmin = 0.0, xmax = 1.0, attributes...)
 
-Create horizontal bands spanning across a `Scene` with 2D projection.
-The bands will be placed from `ys_low` to `ys_high` in data coordinates and `xmin` to `xmax`
-in scene coordinates (0 to 1). All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-Both bounds can be passed together as an interval `ys_lowhigh`.
+Draws horizontal bands spanning across an `Axis`.
+
+## Arguments
+* `ys_low, ys_high` The y start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`).
+    These can also be combined as `ys_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
+* `xmin, xmax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe HSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the x dimension."
@@ -17,14 +19,16 @@ Both bounds can be passed together as an interval `ys_lowhigh`.
 end
 
 """
-    vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attrs...)
-    vspan(xs_lowhigh; ymin = 0.0, ymax = 1.0, attrs...)
+    vspan(xs_low, xs_high; ymin = 0.0, ymax = 1.0, attributes...)
+    vspan(xs_lowhigh; ymin = 0.0, ymax = 1.0, attributes...)
 
-Create vertical bands spanning across a `Scene` with 2D projection.
-The bands will be placed from `xs_low` to `xs_high` in data coordinates and `ymin` to `ymax`
-in scene coordinates (0 to 1). All four of these can have single or multiple values because
-they are broadcast to calculate the final spans.
-Both bounds can be passed together as an interval `xs_lowhigh`.
+Draws vertical bands spanning across an `Axis`.
+
+## Arguments
+* `xs_low, xs_high` The x start and end positions of bands (each a `Real` or `AbstractVector{<:Real}`).
+    These can also be combined as `xs_lowhigh` (an `Interval` or `AbstractVector{<:Interval}`).
+* `ymin, ymax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
+    Can be a `Real` or `AbstractVector{<:Real}`
 """
 @recipe VSpan (low, high) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."

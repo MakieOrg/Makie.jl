@@ -1,7 +1,5 @@
 """
-    scatterlines(xs, ys, [zs]; kwargs...)
-
-Plots `scatter` markers and `lines` between them.
+Plots `scatter` markers with `lines` between them.
 """
 @recipe ScatterLines (positions,) begin
     documented_attributes(Lines)...
@@ -25,6 +23,16 @@ Plots `scatter` markers and `lines` between them.
 end
 
 conversion_trait(::Type{<:ScatterLines}) = PointBased()
+
+function attribute_groups(::Type{<:ScatterLines})
+    groups = default_attribute_groups()
+    attr = uncategorized_attributes(Scatter)
+    filter!(!=(:color), attr) # is linecolor first
+    push!(attr, :markercolor, :markercolormap, :markercolorrange)
+    push!(groups, "Scatter Attributes" => attr)
+    push!(groups, "Line Attributes" => uncategorized_attributes(Lines))
+    return groups
+end
 
 function plot!(p::ScatterLines)
     # markercolor is the same as linecolor if left automatic

@@ -1,3 +1,66 @@
+"""
+# Makie
+
+A data visualization library for Julia.
+
+## Getting Help
+
+### Plot Documentation
+Get comprehensive documentation for any plot type:
+```julia
+?scatter  # Full documentation including arguments, attributes, and examples
+?lines    # Documentation for line plots
+```
+
+$(
+    if VERSION < v"1.12.2"
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        help(scatter, :color)      # Documentation and examples for the color attribute
+        help(lines, :linewidth)    # Documentation for the linewidth attribute
+        ```
+        """
+    else
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        ?scatter.color      # Documentation and examples for the color attribute
+        ?lines.linewidth    # Documentation for the linewidth attribute
+        ```
+        """
+    end
+)
+
+### Block Documentation (Axis, Colorbar, Legend, etc.)
+Get documentation for layout blocks:
+```julia
+?Axis        # Full Axis documentation
+?Colorbar    # Colorbar documentation
+?Legend      # Legend documentation
+```
+
+View specific block attributes:
+```julia
+?Axis.xlabel        # Documentation for xlabel attribute
+?Colorbar.colormap  # Documentation for colormap attribute
+```
+
+### Additional Information
+See available argument conversion methods:
+```julia
+Makie.conversion_docs(Scatter)  # Show all ways to create scatter plots
+```
+
+Get attribute examples:
+```julia
+Makie.attribute_examples(Scatter, :color)  # Examples for color attribute
+```
+
+For more information, visit: https://docs.makie.org
+"""
 module Makie
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
@@ -106,6 +169,7 @@ macro noconstprop(expr)
 end
 
 include("documentation/docstringextension.jl")
+
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("coretypes.jl")
@@ -113,6 +177,8 @@ include("attributes.jl")
 include("recipes.jl")
 include("basic_plots.jl")
 include("conversion.jl")
+include("documentation/argument_docs.jl")
+include("documentation/recipe_docs.jl")
 include("bezier.jl")
 include("types.jl")
 include("utilities/Plane.jl")
@@ -185,9 +251,6 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
-include("basic_recipes/makiecore_examples/scatter.jl")
-include("basic_recipes/makiecore_examples/lines.jl")
-
 # conversions: need to be after plot recipes
 include("conversions.jl")
 
@@ -243,7 +306,7 @@ include("backend-functionality.jl")
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
-export help, help_attributes, help_arguments
+export help
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, MakieScreen
@@ -414,6 +477,7 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+
 include("deprecated.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels

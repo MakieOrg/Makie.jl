@@ -3,16 +3,13 @@ S. Axen implementation from https://github.com/MakieOrg/StatsMakie.jl/blob/maste
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
 """
-    crossbar(x, y, ymin, ymax; kwargs...)
-
 Draw a crossbar. A crossbar represents a range with a (potentially notched) box.
 It is most commonly used as part of the `boxplot`.
 
 ## Arguments
-- `x`: position of the box
-- `y`: position of the midline within the box
-- `ymin`: lower limit of the box
-- `ymax`: upper limit of the box
+
+- `xs, ys, ymins, ymaxs` Defines the x positions of each box with `xs`, the midline height with `ys`,
+and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an `AbstractVector{<:Real}`.
 """
 @recipe CrossBar (x, y, ymin, ymax) begin
     "Sets the color of the drawn boxes. These can be values for colormapping."

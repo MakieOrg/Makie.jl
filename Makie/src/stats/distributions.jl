@@ -27,42 +27,53 @@ end
 # qqplots (M. K. Borregaard implementation from StatPlots)
 
 """
-    qqplot(x, y; kwargs...)
-    qqplot(y; distribution, kwargs...)
+Draw a Q-Q plot, comparing quantiles of two distributions.
 
-Draw a Q-Q plot, comparing quantiles of two distributions. `y` must be a list of
-samples, i.e., `AbstractVector{<:Real}`, whereas `x` can be
-- a list of samples,
-- an abstract distribution, e.g. `Normal(0, 1)`,
-- a distribution type, e.g. `Normal`.
-In the last case, the distribution type is fitted to the data `y`.
+## Arguments
 
-If only one positional argument is given, this must be a vector `y` and the distribution
-to use or distribution type to fit must be given as the keyword argument `distribution`.
-
-The attribute `qqline` (defaults to `:none`) determines how to compute a fit line for the Q-Q plot.
-Possible values are the following.
-- `:identity` draws the identity line.
-- `:fit` computes a least squares line fit of the quantile pairs.
-- `:fitrobust` computes the line that passes through the first and third quartiles of the distributions.
-- `:none` omits drawing the line.
-Broadly speaking, `qqline = :identity` is useful to see if `x` and `y` follow the same distribution,
-whereas `qqline = :fit` and `qqline = :fitrobust` are useful to see if the distribution of `y` can be
-obtained from the distribution of `x` via an affine transformation.
+* `x, y` are the two samples to compare, given as `AbstractVector{<:Real}`. The first argument can
+    also be an abstract distribution or distribution type, e.g. `Normal(0, 1)` or `Normal`. The
+    latter will be fit to the `y` sample.
 """
 @recipe QQPlot begin
     filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
+    """
+    The attribute `qqline` determines how to compute a fit line for the Q-Q plot.
+    Possible values are the following:
+    - `:identity` draws the identity line.
+    - `:fit` computes a least squares line fit of the quantile pairs.
+    - `:fitrobust` computes the line that passes through the first and third quartiles of the distributions.
+    - `:none` omits drawing the line.
+    Broadly speaking, `qqline = :identity` is useful to see if `x` and `y` follow the same distribution,
+    whereas `qqline = :fit` and `qqline = :fitrobust` are useful to see if the distribution of `y` can be
+    obtained from the distribution of `x` via an affine transformation.
+    """
+    qqline = :none
+end
+
+function attribute_groups(::Type{<:QQPlot})
+    groups = attribute_groups(ScatterLines)
+    idx = findfirst(entry -> entry[1] == "Line Attributes", groups)
+    group = groups[idx][2]
+    push!(group, :qqline)
+    return groups
 end
 
 """
-    qqnorm(y; kwargs...)
+Draw a Q-Q plot of data against the standard normal distribution.
 
-Shorthand for `qqplot(Normal(0,1), y)`, i.e., draw a Q-Q plot of `y` against the
-standard normal distribution. See `qqplot` for more details.
+Shorthand for `qqplot(Normal(0,1), y)`. This is useful to test if `y` is normally distributed.
+See [`qqplot`](@ref) for more details on the `qqline` attribute and other options.
+
+## Arguments
+
+* `y::AbstractVector{<:Real}` is a sample to compare against the standard normal distribution.
 """
 @recipe QQNorm begin
     documented_attributes(QQPlot)...
 end
+
+attribute_groups(::Type{<:QQNorm}) = attribute_groups(QQPlot)
 
 # Compute points and line for the qqplot
 function fit_qqplot(x, y; qqline = :none)

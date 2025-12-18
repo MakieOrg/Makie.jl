@@ -24,9 +24,11 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values)
+Plot a step histogram which shows the outline of the histogram.
 
-Plot a step histogram of `values`.
+## Arguments
+
+* `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
 @recipe StepHist (values,) begin
     documented_attributes(Stairs)...
@@ -79,9 +81,11 @@ function plot!(plot::StepHist)
 end
 
 """
-    hist(values)
+Plot a histogram which draws bars whose height corresponds to the number of values that fall into certain ranges.
 
-Plot a histogram of `values`.
+## Arguments
+
+* `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
 @recipe Hist (values,) begin
     """
@@ -124,6 +128,14 @@ Plot a histogram of `values`.
     over_background_color = automatic
     "Sets the color of labels that are drawn inside of/over bars. Defaults to `label_color`"
     over_bar_color = automatic
+end
+
+function attribute_groups(::Type{<:Hist})
+    groups = attribute_groups(BarPlot)
+    idx = findfirst(entry -> entry[1] == "Label Attributes", groups)
+    group = groups[idx][2]
+    push!(group, :over_background_color, :over_bar_color)
+    return groups
 end
 
 function pick_hist_edges(vals, bins)

@@ -1,20 +1,29 @@
 """
-    errorbars(x, y, error_both; kwargs...)
-    errorbars(x, y, error_low, error_high; kwargs...)
-    errorbars(x, y, error_low_high; kwargs...)
-
-    errorbars(xy, error_both; kwargs...)
-    errorbars(xy, error_low, error_high; kwargs...)
-    errorbars(xy, error_low_high; kwargs...)
-
-    errorbars(xy_error_both; kwargs...)
-    errorbars(xy_error_low_high; kwargs...)
-
-Plots errorbars at xy positions, extending by errors in the given `direction`.
+Plots errorbars at (x, y) positions, extending by errors in the given `direction`.
 
 If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
+
+## Arguments
+
+* `xs, ys, error_both` Plots errorbars where `xs` and `ys` are `Real` or `AbstractVector{<:Real}`
+    setting positions per dimension, and `error_both` is a `Real` or `AbstractVector{<:Real}`
+    setting symmetric (±) y errors. If `direction = :x` these are interpreted as symmetric x errors
+    instead.
+* `xs, ys, error_low, error_high` Plots errorbars with separate lower and upper errors, where
+    `error_low` and `error_high` are `Real` or `AbstractVector{<:Real}` setting the lower and upper
+    errors. These are still relative to the position and are affected by `direction`.
+* `xs, ys, error_low_high` Plots errorbars where `error_low_high` is a `VecTypes{2, <:Real}` or
+    `AbstractVector{<:VecTypes{2, <:Real}}` which sets `error_low` and `error_high` together.
+* `xys, error_both` Plots errorbars where `xys` is a `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`)
+    or `AbstractVector{<:VecTypes}` setting (x, y) positions, and `error_both` sets symmetric errors.
+* `xys, error_low, error_high` Plots errorbars with positions set by `xys` and separate lower and upper errors.
+* `xys, error_low_high` Plots errorbars with positions set by `xys` and combined lower/upper errors.
+* `xy_error_both` A `VecTypes{3, <:Real}` or `AbstractVector{<:VecTypes{3, <:Real}}` which sets the
+    position together with `error_both`.
+* `xy_error_low_high` A `VecTypes{4, <:Real}` or `AbstractVector{<:VecTypes{4, <:Real}}` which sets
+    the position together with `error_low` and `error_high`.
 """
-@recipe Errorbars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Errorbars (val_low_high::AbstractVector{<:Vec4},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -28,17 +37,23 @@ end
 const RealOrVec = Union{Real, RealVector}
 
 """
-    rangebars(val, low, high; kwargs...)
-    rangebars(val, low_high; kwargs...)
-    rangebars(val_low_high; kwargs...)
-
-Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
-given the chosen `direction`.
-The `low_high` argument can be a vector of tuples or intervals.
+Plots rangebars at `val` in one dimension, extending from `low` to `high` in the
+other dimension given the chosen `direction`.
 
 If you want to plot errors relative to a reference value, use `errorbars`.
+
+## Arguments
+
+* `vals, lows, highs` Plots rangebars where `vals` is a `Real` or `AbstractVector{<:Real}` setting x
+    positions of bars, and `lows`, `highs` are `Real` or `AbstractVector{<:Real}` setting lower and
+    upper y positions of bars. If `direction = :x` this sets the y position and x positions instead.
+* `vals, low_highs` Plots rangebars where `low_highs` is an
+    `AbstractVector{<:Union{VecTypes{2, <:Real}, Interval}}` which sets the lower and upper bar y
+    positions together. Sets x positions instead if `direction = :x`.
+* `val_low_highs` An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position, lower y position
+    and upper y position of bars together. The coordinate interpretation will be swapped if `direction = :x`.
 """
-@recipe Rangebars (val_low_high::AbstractVector{<:Union{Vec3, Vec4}},) begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Vec3},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."

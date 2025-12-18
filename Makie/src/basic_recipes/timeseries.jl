@@ -1,25 +1,11 @@
 """
-    timeseries(x::Observable{{Union{Number, Point2}}})
+Plot the recent history of a time-varying signal as a line plot. Updates
+automatically when the signal changes.
 
-Plots a sampled signal.
+## Arguments
 
-Usage:
-```julia
-signal = Observable(1.0)
-scene = timeseries(signal)
-display(scene)
-# @async is optional, but helps to continue evaluating more code
-@async while !Makie.isclosed(scene)
-    # acquire data from e.g. a sensor:
-    data = rand()
-    # update the signal
-    signal[] = data
-    # sleep/ wait for new data/ whatever...
-    # It's important to yield here though, otherwise nothing will be rendered
-    sleep(1/30)
-end
-
-```
+* `signal::Union{Real, Point2}` is the signal to track. Can be a scalar value (plotted against
+    time) or a `Point2` (plotted directly as x-y coordinates).
 """
 @recipe TimeSeries (signal,) begin
     "Number of tracked points."
@@ -35,8 +21,7 @@ signal2point(signal, start) = error(
     """
 )
 
-
-function Makie.plot!(plot::TimeSeries)
+function plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))

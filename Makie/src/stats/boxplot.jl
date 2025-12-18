@@ -6,17 +6,11 @@ The StatPlots.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2016: Thomas Breloff.
 =#
 """
-    boxplot(x, y; kwargs...)
-
-Draw a Tukey style boxplot.The boxplot has 3 components:
+Draw a Tukey style boxplot consisting of 3 components:
 - a `crossbar` spanning the interquartile (IQR) range (values from the 25th to
-the 75% percentile) with a midline marking the median
+  the 75th percentile) with a midline marking the median
 - an `errorbar` including values from the interquartile range extended by `range * iqr`
 - points marking outliers, that is, data outside the errorbar
-
-## Arguments
-- `x`: positions of the categories
-- `y`: variables within the boxes
 """
 @recipe BoxPlot (x, y) begin
     filtered_attributes(CrossBar, exclude = (:notchmin, :notchmax, :show_midline, :midlinecolor, :midlinewidth))...
@@ -62,6 +56,36 @@ the 75% percentile) with a midline marking the median
     "Sets the marker strokewidth for outliers."
     outlierstrokewidth = @inherit markerstrokewidth
 end
+
+function attribute_groups(::Type{<:BoxPlot})
+    groups = default_attribute_groups()
+    push!(
+        groups, "Crossbar Attributes" => sort!(
+            [
+                :mediancolor, :medianlinewidth, :notchwidth, :show_median, :show_notch,
+                :notchmin, :notchmax, # shouldn't these be settable?
+                :strokecolor, :strokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Outlier Attributes" => sort!(
+            [
+                :show_outliers, :marker, :markersize, :outliercolor, :outlierstrokecolor,
+                :outlierstrokewidth,
+            ]
+        )
+    )
+    push!(
+        groups, "Whisker Attributes" => sort!(
+            [
+                :range, :whiskercolor, :whiskerlinewidth, :whiskerwidth,
+            ]
+        )
+    )
+    return groups
+end
+
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
 
@@ -217,7 +241,8 @@ function Makie.plot!(plot::BoxPlot)
         plot, Attributes(plot),
         plot.centers, plot.medians, plot.boxmin, plot.boxmax,
         gap = 0, color = plot.boxcolor, width = plot.boxwidth,
-        show_midline = plot.show_median, midlinecolor = plot.mediancolor, midlinewidth = plot.medianlinewidth,
+        show_midline = plot.show_median, midlinecolor = plot.mediancolor,
+        midlinewidth = plot.medianlinewidth,
         # These should not be passed/defaulted
         n_dodge = automatic, dodge = automatic
     )

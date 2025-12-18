@@ -1,9 +1,13 @@
+# TODO: We should probably have this mirror text and deprecate passing strings...
 """
-    textlabel(positions, text; attributes...)
-    textlabel(position; text, attributes...)
-    textlabel(text_position; attributes...)
+Plots text with backgrounds at set positions.
 
-Plots the given text(s) with a background(s) at the given position(s).
+## Arguments
+
+* `positions` Sets the position of a text label with a `VecTypes` (`Point`, `Vec` or `Tuple`)
+    or multiple with an `AbstractVector{<:Vectypes}`
+* `x, y, [z]` Sets the position per dimension with a `Real`, `AbstractVector{<:Real}` or other
+    options compatible with `PointBased()` conversions.
 """
 @recipe TextLabel (positions,) begin
     # text-like args interface
@@ -42,8 +46,6 @@ Plots the given text(s) with a background(s) at the given position(s).
     miter_limit = @inherit miter_limit
     "Controls whether the background renders with fxaa (anti-aliasing, GLMakie only). This is set to `false` by default to prevent artifacts around text."
     fxaa = false
-    "Controls whether the background reacts to light."
-    shading = NoShading
     "Sets the alpha value (opaqueness) of the background outline."
     stroke_alpha = 1.0
     "Sets the alpha value (opaqueness) of the background."
@@ -153,6 +155,25 @@ convert_arguments(::Type{<:TextLabel}, p::VecTypes, str) = ([(str, p)],)
 convert_arguments(::Type{<:TextLabel}, ps::AbstractVector{<:VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
 convert_arguments(::Type{<:TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]),)
 convert_arguments(::Type{<:TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]),)
+
+function attribute_groups(::Type{<:TextLabel})
+    groups = default_attribute_groups()
+    attr = uncategorized_attributes(Poly)
+    push!(
+        attr, :background_color, :cornerradius, :cornervertices, :keep_aspect,
+        :padding, :shape, :shape_limits
+    )
+    push!(groups, "Background Attributes" => attr)
+    attr = uncategorized_attributes(Text)
+    push!(
+        attr, :stroke_alpha, :text_align, :text_alpha, :text_color, :text_fxaa,
+        :text_glowcolor, :text_glowwidth, :text_rotation, :text_strokecolor,
+        :text_strokewidth
+    )
+    filter!(x -> !in(x, (:position, :offset)), attr)
+    push!(groups, "Text Attributes" => attr)
+    return groups
+end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractString}})
     textlabel!(plot, Attributes(plot), plot.position; text = plot[1])
@@ -313,7 +334,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         linestyle = plot.linestyle,
         joinstyle = plot.joinstyle,
         miter_limit = plot.miter_limit,
-        shading = plot.shading,
+        shading = NoShading,
         # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
         alpha = plot.alpha,
         stroke_depth_shift = plot.depth_shift,
