@@ -971,10 +971,13 @@ end
 # "tuple or vector" so lets not return a KeySet
 Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
 
-function ComputePipeline.register_computation!(f, p::Block, inputs::Vector, outputs::Vector{Symbol})
-    return register_computation!(f, p.attributes, inputs, outputs)
+function ComputePipeline.register_computation!(f, b::Block, inputs::Vector, outputs::Vector{Symbol})
+    return register_computation!(f, b.attributes, inputs, outputs)
+end
+function ComputePipeline.update!(b::Block, args...; kwargs...)
+    return ComputePipeline.update!(b.attributes, args...; kwargs...)
 end
 
-function Base.map!(f, p::Block, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
-    return map!(f, p.attributes, inputs, outputs)
+function Base.map!(f, b::Block, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+    return map!(f, b.attributes, inputs, outputs)
 end
