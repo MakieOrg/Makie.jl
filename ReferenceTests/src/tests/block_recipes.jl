@@ -27,10 +27,10 @@ function Makie.initialize_block!(cr::AllBlocks)
 
     gl = GridLayout(cr[0, 1:3])
     Menu(gl[1, 1], options = ["one", "two", "three"])
-    Button(gl[1, 2], label = "Button")
-    Checkbox(gl[1, 3])
+    Makie.Button(gl[1, 2], label = "Button")
+    Makie.Checkbox(gl[1, 3])
     Box(gl[2, :], height = 20)
-    sl = Slider(gl[3, 1])
+    sl = Makie.Slider(gl[3, 1])
     Label(gl[3, 2], map(v -> "$v", sl.value))
     Toggle(gl[3, 3])
     IntervalSlider(gl[4, 1])
@@ -40,7 +40,7 @@ function Makie.initialize_block!(cr::AllBlocks)
 end
 
 @reference_test "Block Recipe + Primitive Block Updates" begin
-    # Step 1 - complex recipe with all primitive blocks + some theming tests
+    # Step 1 - complex recipe with all primitive blocks + some theming
 
     my_theme = Theme(linewidth = 6)
     fig, cr = with_theme(my_theme, linestyle = :dash) do
