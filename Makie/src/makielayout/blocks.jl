@@ -712,9 +712,9 @@ function initialize_block_arguments!(
 
     if length(converted_names) != length(attr.converted[])
         error(
-            """Failed to construct Block: Number of arguments returned by
-            `convert_arguments` ($(length(attr.converted[]))) does not match the
-            number of expected arguments ($(length(converted_names)))."""
+            "Failed to construct Block: Number of arguments returned by \
+            `convert_arguments` ($(length(attr.converted[]))) does not match the \
+            number of expected arguments ($(length(converted_names)))."
         )
     end
 
