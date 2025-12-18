@@ -25,10 +25,10 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
 end
 
 
-edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
-edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
-edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "(::MapFunctionWrapper($(nameof(f.user_func))))$call"
-edge_callback_name(functor, call = "(…)") = "(::$(repr(typeof(functor))))$call"
+edge_callback_name(f::Function, call = "(…)") = "$(repr(f))$call"
+edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(repr(f.user_func))))$call"
+edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "(::MapFunctionWrapper($(repr(f.user_func))))$call"
+edge_callback_name(functor, call = "(…)") = "$(repr(functor))$call"
 
 
 # This should mirror the inputs and outputs a ComputeEdge callback uses
