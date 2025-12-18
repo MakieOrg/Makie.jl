@@ -79,3 +79,6 @@ end
 @testset "generic_components" begin
     include("generic_components.jl")
 end
+@testset "complex_recipes" begin
+    include("complex_recipes.jl")
+end
