@@ -963,3 +963,11 @@ end
 # collect() doesn't seem to be necessary but the propertynames docstring says
 # "tuple or vector" so lets not return a KeySet
 Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
+
+function ComputePipeline.register_computation!(f, p::Block, inputs::Vector, outputs::Vector{Symbol})
+    return register_computation!(f, p.attributes, inputs, outputs)
+end
+
+function Base.map!(f, p::Block, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+    return map!(f, p.attributes, inputs, outputs)
+end
