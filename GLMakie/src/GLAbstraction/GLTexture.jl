@@ -4,6 +4,8 @@ struct TextureParameters{NDim}
     repeat::NTuple{NDim, Symbol}
     anisotropic::Float32
     swizzle_mask::Vector{GLenum}
+    mipmap::Bool
+    samples::GLsizei
 end
 
 abstract type OpenglTexture{T, NDIM} <: GPUArray{T, NDIM} end
@@ -86,32 +88,49 @@ end
 
 Makie.@noconstprop function Texture(
         context, data::Ptr{T}, dims::NTuple{NDim, Int};
+        samples::Integer = 1,
         internalformat::GLenum = default_internalcolorformat(T),
-        texturetype::GLenum = default_texturetype(NDim),
+        texturetype::GLenum = default_texturetype(NDim, samples > 1),
         format::GLenum = default_colorformat(T),
         mipmap = false,
         parameters... # rest should be texture parameters
     ) where {T, NDim}
-    texparams = TextureParameters(T, NDim; parameters...)
+    # ShaderAbstractions.switch_context!(context)
+    texparams = TextureParameters(T, NDim; mipmap, samples, parameters...)
     id = glGenTextures()
     glBindTexture(texturetype, id)
-    set_packing_alignment(data)
     numbertype = julia2glenum(eltype(T))
-    glTexImage(texturetype, 0, internalformat, dims..., 0, format, numbertype, data)
-    mipmap && glGenerateMipmap(texturetype)
-    texture = Texture{T, NDim}(
-        context, id, texturetype, numbertype, internalformat, format,
-        texparams,
-        dims
-    )
-    set_parameters(texture)
-    texture::Texture{T, NDim}
+    set_packing_alignment(data)
+
+    if texparams.samples > 1
+        glTexImage2DMultisample(texturetype, texparams.samples, internalformat, dims..., GL_TRUE)
+        texture = Texture{T, NDim}(
+            context, id, texturetype, numbertype, internalformat, format,
+            texparams,
+            dims
+        )
+    else
+        glTexImage(texturetype, 0, internalformat, dims..., 0, format, numbertype, data)
+        mipmap && glGenerateMipmap(texturetype)
+        texture = Texture{T, NDim}(
+            context, id, texturetype, numbertype, internalformat, format,
+            texparams,
+            dims
+        )
+        set_parameters(texture)
+    end
+
+    return texture::Texture{T, NDim}
 end
 export resize_nocopy!
 function resize_nocopy!(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim}
     gl_switch_context!(t.context)
     bind(t)
-    glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
+    if t.parameters.samples > 1
+        glTexImage2DMultisample(t.texturetype, t.parameters.samples, t.internalformat, newdims..., GL_TRUE)
+    else
+        glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)
+    end
     t.size = newdims
     bind(t, 0)
     return t
@@ -230,7 +249,7 @@ Creates a texture from an Image
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
 # https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589
 
-Base.show(io::IO, t::Texture) = show(IOContext(io), MIME"text/plain"(), t)
+Base.show(io::IO, t::Texture{T, D}) where {T, D} = print(io, "Texture{$T, $D}(ID: $(t.id), Size: $(size(t)))")
 
 function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T, D}) where {T, D}
     return if get(io, :compact, false)
@@ -492,11 +511,15 @@ end
 
 
 #Supported texture modes/dimensions
-function default_texturetype(ndim::Integer)
-    ndim == 1 && return GL_TEXTURE_1D
-    ndim == 2 && return GL_TEXTURE_2D
-    ndim == 3 && return GL_TEXTURE_3D
-    error("Dimensionality: $(ndim), not supported for OpenGL texture")
+function default_texturetype(ndim::Integer, multisampling::Bool = false)
+    if multisampling && ndim == 2
+        return GL_TEXTURE_2D_MULTISAMPLE
+    elseif !multisampling && (1 <= ndim <= 3)
+        return (GL_TEXTURE_1D, GL_TEXTURE_2D, GL_TEXTURE_3D)[ndim]
+    else
+        str = multisampling ? " with multisampling" : ""
+        error("Dimensionality: $(ndim), not supported for OpenGL texture" * str)
+    end
 end
 
 
@@ -525,7 +548,9 @@ function TextureParameters(
         x_repeat = :clamp_to_edge, #wrap_s
         y_repeat = x_repeat, #wrap_t
         z_repeat = x_repeat, #wrap_r
-        anisotropic = 1.0f0
+        anisotropic = 1.0f0,
+        mipmap = false,
+        samples = 1
     )
     T <: Integer && (minfilter === :linear || magfilter === :linear) && error("Wrong Texture Parameter: Integer texture can't interpolate. Try :nearest")
     repeat = (x_repeat, y_repeat, z_repeat)
@@ -538,7 +563,7 @@ function TextureParameters(
     end
     return TextureParameters(
         minfilter, magfilter, ntuple(i -> repeat[i], NDim),
-        anisotropic, swizzle_mask
+        anisotropic, swizzle_mask, mipmap, GLsizei(samples)
     )
 end
 function TextureParameters(t::Texture{T, NDim}; kw_args...) where {T, NDim}

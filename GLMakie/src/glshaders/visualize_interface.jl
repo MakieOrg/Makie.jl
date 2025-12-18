@@ -158,37 +158,25 @@ to_index_buffer(ctx, x) = error(
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
 
-function output_buffers(screen::Screen, transparency = false)
-    return if transparency
-        """
-        layout(location=2) out float coverage;
-        """
-    elseif screen.config.ssao
-        """
-        layout(location=2) out vec3 fragment_position;
-        layout(location=3) out vec3 fragment_normal_occlusion;
-        """
-    else
-        ""
-    end
-end
+function target_stage(screen, data)
+    idx = findfirst(stage -> renders_in_stage(data, stage), screen.render_pipeline.stages)
+    @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
 
-function output_buffer_writes(screen::Screen, transparency = false)
-    return if transparency
-        scale = screen.config.transparency_weight_scale
-        """
-        float weight = color.a * max(0.01, $scale * pow((1 - gl_FragCoord.z), 3));
-        coverage = 1.0 - clamp(color.a, 0.0, 1.0);
-        fragment_color.rgb = weight * color.rgb;
-        fragment_color.a = weight;
-        """
-    elseif screen.config.ssao
-        """
-        fragment_color = color;
-        fragment_position = o_view_pos;
-        fragment_normal_occlusion.xyz = o_view_normal;
-        """
+    # Activate the required outputs + code via `#define` and `#ifdef` blocks.
+    # For now we can just check the number of outputs to figure out what branch
+    # we need. If render stages get more complex this may need to be more generative.
+    fb = screen.render_pipeline.stages[idx].framebuffer
+    define = if fb.counter == 1
+        "#define MINIMAL_TARGET"
+    elseif fb.counter == 2
+        "#define DEFAULT_TARGET"
+    elseif fb.counter == 3
+        data[:oit_scale] = screen.config.transparency_weight_scale
+        "#define OIT_TARGET"
+    elseif fb.counter == 4
+        "#define SSAO_TARGET"
     else
-        "fragment_color = color;"
+        error("Number of colorbuffers in render framebuffer does not match any known configurations ($(fb.counter))")
     end
+    return define
 end
