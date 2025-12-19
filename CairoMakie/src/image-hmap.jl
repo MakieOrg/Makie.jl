@@ -166,7 +166,7 @@ end
 is_regularly_spaced(::AbstractRange) = true
 
 function is_regularly_spaced(arr)
-    isempty(arr) && return true
+    length(arr) < 2 && return true
     mindiff = Inf
     maxdiff = -Inf
     last = first(arr)
@@ -174,7 +174,7 @@ function is_regularly_spaced(arr)
         diff = arr[i] - last
         mindiff = min(mindiff, diff)
         maxdiff = max(maxdiff, diff)
-        last = diff
+        last = arr[i]
     end
     return maxdiff ≈ mindiff
 end
