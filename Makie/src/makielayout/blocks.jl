@@ -382,51 +382,6 @@ function extract_attributes!(body)
     return attrs
 end
 
-################################################################################
-### Utility functions (TODO: group with other utilities)
-################################################################################
-
-function Base.getproperty(block::T, name::Symbol) where {T <: Block}
-    if hasfield(T, name)
-        return getfield(block, name)
-    elseif name === :blocks
-        return flatten_layout_content(block)
-    else
-        return getindex(getfield(block, :attributes), name)
-    end
-end
-
-function Base.propertynames(::T) where {T <: Block}
-    return (fieldnames(T)..., :blocks)
-end
-function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
-    return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
-end
-
-function flatten_layout_content(block::Block)
-    if isdefined(block, :layout) && !isnothing(block.layout)
-        flatten_layout_content(block.layout)
-    else
-        return Block[]
-    end
-end
-flatten_layout_content(layout) = append_content_to_list!(Block[], layout)
-
-function append_content_to_list!(list, layout::GridLayout)
-    for content in layout.content
-        append_content_to_list!(list, content)
-    end
-    return list
-end
-function append_content_to_list!(list, content::GridLayoutBase.GridContent)
-    return append_content_to_list!(list, content.content)
-end
-append_content_to_list!(list, content) = push!(list, content)
-
-function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
-    isdefined(b, :layout) || init_layout!(b)
-    return b.layout[i, j]
-end
 
 ################################################################################
 ### Block Construction
@@ -547,6 +502,72 @@ function init_layout!(b)
     onany(GridLayoutBase.align_to_bbox!, b.layout, lobservables.computedbbox)
     return
 end
+
+"""
+Get the scene which blocks need from their parent to plot stuff into
+"""
+get_topscene(f::Union{GridPosition, GridSubposition}) = get_topscene(get_top_parent(f))
+get_topscene(f::Figure) = f.scene
+function get_topscene(s::Scene)
+    if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
+        error("Can only use scenes with PixelCamera as topscene")
+    end
+    return s
+end
+
+function register_in_figure!(fig::Figure, @nospecialize block::Block)
+    if block.parent !== fig
+        error("Can't register a block with a different parent in a figure.")
+    end
+    if !(block in fig.content)
+        push!(fig.content, block)
+    end
+    return nothing
+end
+
+function connect_block_layoutobservables!(@nospecialize(block), layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
+    connect!(layout_width, block.width)
+    connect!(layout_height, block.height)
+    connect!(layout_tellwidth, block.tellwidth)
+    connect!(layout_tellheight, block.tellheight)
+    connect!(layout_halign, block.halign)
+    connect!(layout_valign, block.valign)
+    connect!(layout_alignmode, block.alignmode)
+    return
+end
+
+"""
+    BlockAttributeConvert{TargetType}()
+
+When a block attribute has a type assigned this callable struct is used to
+convert the data of that attribute to the assigned type.
+
+For example:
+```julia
+@Block ... begin
+    @attributes begin
+        attrib1::RGBAf = :black
+    end
+end
+```
+will generate a `converter = BlockAttributeConvert{RGBAf}()` and use it as a
+callback for the compute graph input `add_input!(converter, :attrib1, :black)`.
+Updating the input will then call
+```julia
+(::BlockAttributeConvert{RGBAf})(key, x) = to_color(x)::RGBAf
+```
+before setting a compute node strictly typed to `RGBAf`.
+
+If no method exists for a specific target type, no conversions happen. This
+means the attribute only accepts values of the given type (and its subtypes).
+If no type is given `Any` is used.
+"""
+struct BlockAttributeConvert{Target} end
+
+(::BlockAttributeConvert{<:Any})(key, x) = x
+(::BlockAttributeConvert{T})(key, x) where {T <: Number} = T(x)
+(::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
+(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
@@ -674,6 +695,7 @@ function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block
     initialize_block_arguments!(block, args, kw_dict)
 
     initialize_block!(block; kw_dict...)
+
     return
 end
 
@@ -720,39 +742,52 @@ function initialize_block_arguments!(
     return
 end
 
-"""
-Get the scene which blocks need from their parent to plot stuff into
-"""
-get_topscene(f::Union{GridPosition, GridSubposition}) = get_topscene(get_top_parent(f))
-get_topscene(f::Figure) = f.scene
-function get_topscene(s::Scene)
-    if !(Makie.cameracontrols(s) isa Makie.PixelCamera)
-        error("Can only use scenes with PixelCamera as topscene")
+
+################################################################################
+### Utility functions
+################################################################################
+
+
+function Base.getproperty(block::T, name::Symbol) where {T <: Block}
+    if hasfield(T, name)
+        return getfield(block, name)
+    elseif name === :blocks
+        return flatten_layout_content(block)
+    else
+        return getindex(getfield(block, :attributes), name)
     end
-    return s
 end
 
-function register_in_figure!(fig::Figure, @nospecialize block::Block)
-    if block.parent !== fig
-        error("Can't register a block with a different parent in a figure.")
-    end
-    if !(block in fig.content)
-        push!(fig.content, block)
-    end
-    return nothing
+function Base.propertynames(::T) where {T <: Block}
+    return (fieldnames(T)..., :blocks, attribute_names(T)...)
+end
+function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
+    return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
 end
 
-zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
+function flatten_layout_content(block::Block)
+    if isdefined(block, :layout) && !isnothing(block.layout)
+        flatten_layout_content(block.layout)
+    else
+        return Block[]
+    end
+end
+flatten_layout_content(layout) = append_content_to_list!(Block[], layout)
 
-function connect_block_layoutobservables!(@nospecialize(block), layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
-    connect!(layout_width, block.width)
-    connect!(layout_height, block.height)
-    connect!(layout_tellwidth, block.tellwidth)
-    connect!(layout_tellheight, block.tellheight)
-    connect!(layout_halign, block.halign)
-    connect!(layout_valign, block.valign)
-    connect!(layout_alignmode, block.alignmode)
-    return
+function append_content_to_list!(list, layout::GridLayout)
+    for content in layout.content
+        append_content_to_list!(list, content)
+    end
+    return list
+end
+function append_content_to_list!(list, content::GridLayoutBase.GridContent)
+    return append_content_to_list!(list, content.content)
+end
+append_content_to_list!(list, content) = push!(list, content)
+
+function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
+    isdefined(b, :layout) || init_layout!(b)
+    return b.layout[i, j]
 end
 
 @inline function Base.setproperty!(x::T, key::Symbol, value) where {T <: Block}
@@ -784,6 +819,8 @@ end
     end
     return
 end
+
+zshift!(b::Block, z) = translate!(b.blockscene, 0, 0, z)
 
 function update_state_before_display!(block::Block)
     for child in block.blocks
@@ -880,6 +917,11 @@ end
 function delete_from_parent!(parent, block::Block)
 end
 
+function delete_from_parent!(parent::Block, block::Block)
+    filter!(x -> x !== block, parent.content)
+    return
+end
+
 function delete_from_parent!(figure::Figure, block::Block)
     filter!(x -> x !== block, figure.content)
     if current_axis(figure) === block
@@ -904,13 +946,6 @@ function remove_element(::Nothing)
 end
 
 observable_type(x::Type{Observable{T}}) where {T} = T
-
-struct BlockAttributeConvert{Target} end
-
-(::BlockAttributeConvert{<:Any})(key, x) = x
-(::BlockAttributeConvert{T})(key, x) where {T <: Number} = T(x)
-(::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
-(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
 
 Base.@kwdef struct Example
     backend::Symbol = :CairoMakie # the backend that is used for rendering
