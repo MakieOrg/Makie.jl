@@ -169,12 +169,10 @@ function is_regularly_spaced(arr)
     length(arr) < 2 && return true
     mindiff = Inf
     maxdiff = -Inf
-    last = first(arr)
     for i in 2:length(arr)
-        diff = arr[i] - last
+        diff = arr[i] - arr[i-1]
         mindiff = min(mindiff, diff)
         maxdiff = max(maxdiff, diff)
-        last = arr[i]
     end
     return maxdiff ≈ mindiff
 end
