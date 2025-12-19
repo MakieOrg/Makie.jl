@@ -141,7 +141,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     basefields = filter(x -> !(x isa LineNumberNode), fields_vector)
 
     push!(fields_vector, :(blockscene::Scene))
-    push!(fields_vector, :(layout::GridLayout))
+    push!(fields_vector, :(layout::Union{Nothing, GridLayout}))
 
     attrs = extract_attributes!(body)
 
@@ -404,7 +404,7 @@ function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
 end
 
 function flatten_layout_content(block::Block)
-    if isdefined(block, :layout)
+    if isdefined(block, :layout) && !isnothing(block.layout)
         flatten_layout_content(block.layout)
     else
         return Block[]
@@ -624,6 +624,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     hide!(b)
     initialize_block!(b, args...; non_attribute_kwargs...)
 
+    if !isdefined(b, :layout)
+        setfield!(b, :layout, nothing)
+    end
 
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
         try
@@ -794,6 +797,14 @@ Base.Broadcast.broadcastable(l::Block) = Ref(l)
 
 function Base.show(io::IO, ::T) where {T <: Block}
     return print(io, "$T()")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", b::Block)
+    show(io, b)
+    if !isnothing(b.layout) && !isempty(b.layout.content)
+        print(io, " containg ")
+        show(io, MIME"text/plain"(), b.layout)
+    end
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::AbstractAxis)
