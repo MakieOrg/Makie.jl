@@ -134,7 +134,6 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::Makie.LayoutObservables{GridLayout}
             attributes::Makie.ComputeGraph
-            plots::Vector{AbstractPlot}
         end
     end
 
@@ -610,7 +609,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     )
 
     # create base block with otherwise undefined fields
-    b = T(fig_or_scene, lobservables, graph, AbstractPlot[])
+    b = T(fig_or_scene, lobservables, graph)
 
     b.blockscene = Scene(topscene, clear = false, camera = campixel!)
 
@@ -625,14 +624,8 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     hide!(b)
     initialize_block!(b, args...; non_attribute_kwargs...)
 
-    for child in b.blocks
-        if child isa AbstractAxis
-            append!(b.plots, child.scene.plots)
-        end
-    end
 
     unassigned_fields = filter(collect(fieldnames(T))) do fieldname
-        fieldname === :layout && return false
         try
             getfield(b, fieldname)
         catch e
