@@ -29,6 +29,7 @@ end
     )
     @test svg_isnt_rasterized(scatter(1:3))
     @test svg_isnt_rasterized(lines(1:3))
+    @test svg_isnt_rasterized(arrows2d(Point(0, 0), Point(1, 1), taillength = 8))
     @test svg_isnt_rasterized(heatmap(rand(5, 5)))
     @test !svg_isnt_rasterized(image(rand(5, 5)))
     # issue 2510
