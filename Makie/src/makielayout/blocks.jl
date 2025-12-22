@@ -43,8 +43,6 @@ The content of the struct **always** includes:
     placement into the parent layout
 - `attributes::Makie.ComputeGraph` which contains the attributes and
     computations that use them
-- `plots::Vector{AbstractPlot}` which tracks plots added to axes inside the
-    blocks layout
 - `blockscene::Scene` which acts as a container for the inner layout and can be
     used for decoration plots
 - `layout::GridLayout` which represents an optional internal layout used when
