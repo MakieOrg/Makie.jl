@@ -365,6 +365,7 @@ function select_line(scene; blocking = false, priority = 2, kwargs...)
     return line_ret
 end
 
+
 """
     select_point(scene; kwargs...) -> point
 
@@ -377,19 +378,21 @@ around. When the button is not clicked any more, the plotted point disappears.
 The value of the returned point is updated **only** when the user un-clicks.
 
 The `kwargs...` are propagated into `scatter!` which plots the selected point.
+
+The point returned is always after applying the inverse transform of the current `scene.transformation.transform_func`.
 """
-function select_point(scene; blocking = false, priority = 2, kwargs...)
+function select_point(scene; blocking = false, priority=2, space = :data, kwargs...)
     key = Mouse.left
     waspressed = Observable(false)
-    point = Observable([Point2f(0, 0)])
-    point_ret = Observable(Point2f(0, 0))
+    point = Observable([Point2f(0,0)])
+    point_ret = Observable(Point2f(0,0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
-        scene, point; visible = false, marker = Circle, markersize = 20px,
+        scene, point; space = :data, transformation = Makie.Transformation(scene; transform_func = identity), visible = false, marker = Circle, markersize = 20px,
         color = RGBAf(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 
-    on(events(scene).mousebutton, priority = priority) do event
+    onany(events(scene).mousebutton, transform_func_obs(scene), priority=priority) do event, transform_func
         if event.button == key && is_mouseinside(scene)
             mp = mouseposition(scene)
             if event.action == Mouse.press
@@ -399,18 +402,22 @@ function select_point(scene; blocking = false, priority = 2, kwargs...)
                 point[] = point[]
                 return Consume(blocking)
             end
-        end
+          end
         if !(event.button == key && event.action == Mouse.press)
             if waspressed[] # User has selected the rectangle
                 waspressed[] = false
-                point_ret[] = copy(point[][1])
+                final_point = project(scene, :data, space, point[][1])
+                if space == :data
+                    final_point = apply_transform(inverse_transform(transform_func), final_point)
+                end
+                point_ret[] = final_point
             end
             plotted_point[:visible] = false
             return Consume(blocking)
         end
         return Consume(false)
     end
-    on(events(scene).mouseposition, priority = priority) do event
+    on(events(scene).mouseposition, priority=priority) do event
         if waspressed[]
             mp = mouseposition(scene)
             point[][1] = mp
