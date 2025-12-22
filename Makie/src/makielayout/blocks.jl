@@ -684,18 +684,20 @@ end
 # allow this to be overwritten for explicit argument handling (without args in @Block)
 function initialize_block!(block::T, arg, _args...; kwargs...) where {T <: Block}
     args = (arg, _args...)
-
-    if !applicable(argument_names, T)
-        error("$T does not include arguments in the `@Block` macro or its `initialize_block!` method. \n Given: $args")
-    end
-
     kw_dict = Dict{Symbol, Any}(kwargs)
-    initialize_block_arguments!(block, args, kw_dict)
 
-    initialize_block!(block; kw_dict...)
+    is_spec = initialize_block_arguments!(block, args, kw_dict)
+
+    if is_spec
+        initialize_specapi_block!(block, kw_dict)
+    else
+        initialize_block!(block; kw_dict...)
+    end
 
     return
 end
+
+argument_names(::Type{<:Block}) = tuple()
 
 """
     initialize_block_arguments!(block::T, args::Tuple, kw_dict::Dict{Symbol, Any}, converted_names = argument_names(T))
@@ -726,6 +728,12 @@ function initialize_block_arguments!(
         return result_type === :Tuple ? x : (x,)
     end
 
+    converted = attr.converted[]
+    if length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+        map!(only, attr, :converted, :spec)
+        return true
+    end
+
     if length(converted_names) != length(attr.converted[])
         error(
             "Failed to construct Block: Number of arguments returned by \
@@ -736,6 +744,27 @@ function initialize_block_arguments!(
 
     # splat to defined names
     map!(identity, attr, :converted, converted_names)
+
+    return false
+end
+
+
+function initialize_specapi_block!(block, kw_dict)
+    isempty(kw_dict) || @warn "Keyword Arguments are ignored with SpecApi Blocks. Skipped: $(keys(kw_dict))."
+
+    init_layout!(block)
+
+    # To keep things simple we wrap a BlockSpec in a GridLayoutSpec and handle
+    # both the same
+    if block.spec[] isa BlockSpec
+        spec_obs = map(SpecApi.GridLayoutSpec, block.spec)
+    elseif block.spec[] isa GridLayoutSpec
+        spec_obs = ComputePipeline.get_observable!(block.spec)
+    else
+        error("Got an unexpected `$(block.spec[]) when trying to initialize a SpecApi block.")
+    end
+
+    add_layout_updater!(block.blockscene, block.layout, spec_obs)
 
     return
 end

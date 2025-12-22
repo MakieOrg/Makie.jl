@@ -1065,6 +1065,11 @@ function update_gridlayout!(
 end
 
 function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_obs::Observable{GridLayoutSpec})
+    add_layout_updater!(get_topscene(fig), get_layout!(fig), layout_obs)
+    return fig
+end
+
+function add_layout_updater!(parent_scene::Scene, layout::GridLayout, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
     unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable, Observable{Vector{PlotSpec}}}}[]
@@ -1072,14 +1077,13 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     sizehint!(unused_layoutables, 50)
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
-    layout = get_layout!(fig)
-    on(get_topscene(fig), layout_obs; update = true) do layout_spec
+    on(parent_scene, layout_obs; update = true) do layout_spec
         lock(l) do
             update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
-    return fig
+    return nothing
 end
 
 args_preferred_axis(::GridLayoutSpec) = FigureOnly
