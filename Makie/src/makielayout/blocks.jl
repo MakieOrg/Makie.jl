@@ -722,16 +722,33 @@ function initialize_block_arguments!(
     add_convert_kwargs!(attr, kw_dict, T, args)
 
     # apply convert_arguments
-    map!(attr, [:args, :convert_kwargs], :converted) do args, convert_kwargs
-        x = convert_arguments(T, args...; convert_kwargs...)
-        result_type = error_check_convert_arguments(T, args, convert_kwargs, x)
-        return result_type === :Tuple ? x : (x,)
+    converted = convert_arguments(T, attr.args[]...; attr.convert_kwargs[]...)
+
+    # Special case SpecApi
+    if length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+        spec_init = Ref{Union{BlockSpec, GridLayoutSpec}}(converted[1])
+
+        map!(attr, [:args, :convert_kwargs], :spec, init = spec_init) do args, convert_kwargs
+            x = convert_arguments(T, args...; convert_kwargs...)
+            if x isa Union{BlockSpec, GridLayoutSpec}
+                return x
+            elseif x isa Tuple{Union{BlockSpec, GridLayoutSpec}}
+                return x[1]
+            else
+                error("`convert_arguments(::$T, ...) is not allow to switch from a BlockSpec or GridLayoutSpec to normal arguments.")
+            end
+        end
+
+        return true
     end
 
-    converted = attr.converted[]
-    if length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
-        map!(only, attr, :converted, :spec)
-        return true
+    # Normal case - arguments
+    map!(attr, [:args, :convert_kwargs], :converted) do args, convert_kwargs
+        x = convert_arguments(T, args...; convert_kwargs...)
+        if x isa Union{BlockSpec, GridLayoutSpec, Tuple{Union{BlockSpec, GridLayoutSpec}}}
+            error("`convert_arguments(::$T, ...) is not allow to switch from normal arguments to a BlockSpec or GridLayoutSpec.")
+        end
+        return x
     end
 
     if length(converted_names) != length(attr.converted[])
@@ -756,12 +773,8 @@ function initialize_specapi_block!(block, kw_dict)
 
     # To keep things simple we wrap a BlockSpec in a GridLayoutSpec and handle
     # both the same
-    if block.spec[] isa BlockSpec
-        spec_obs = map(SpecApi.GridLayoutSpec, block.spec)
-    elseif block.spec[] isa GridLayoutSpec
-        spec_obs = ComputePipeline.get_observable!(block.spec)
-    else
-        error("Got an unexpected `$(block.spec[]) when trying to initialize a SpecApi block.")
+    spec_obs = map(block.spec) do spec
+        return spec isa GridLayoutSpec ? spec : GridLayoutSpec(spec)
     end
 
     add_layout_updater!(block.blockscene, block.layout, spec_obs)
