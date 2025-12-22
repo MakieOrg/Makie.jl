@@ -232,3 +232,75 @@ end
     image!(s, large; space = :pixel)
     s
 end
+
+# This is the first test, repackaged in a Block
+# Currently Blocks just drop everything and handle the SpecApi input if they get
+# one. So any (argument-less) block works here
+@reference_test "Spec in a Block" begin
+    f, b1 = Box(S.GridLayout())
+    b2 = Box(f[1, 2], S.GridLayout())
+    st = Makie.Stepper(f)
+    sync_step!(st)
+    b1[1] = S.GridLayout(
+        [
+            S.Axis(; plots = [S.Lines(1:4; color = :black, linewidth = 5), S.Scatter(1:4; markersize = 20)])
+            S.Axis3(; plots = [S.Scatter(Rect3f(Vec3f(0), Vec3f(1)); color = :red, markersize = 50)])
+        ]
+    )
+    sync_step!(st)
+    b2[1] = begin
+        ax = S.Axis(; plots = [S.Scatter(1:4)])
+        ax2 = S.Axis3(; title = "Title 0", plots = [S.Scatter(1:4; color = 1:4, markersize = 20)])
+        c = S.Colorbar(; limits = (0, 1), colormap = :heat)
+        S.GridLayout([S.GridLayout([ax c]), ax2])
+    end
+    sync_step!(st)
+
+    b1[1] = begin
+        p1 = S.Scatter(1:4; markersize = 50)
+        ax = S.Axis(; plots = [p1], title = "Title 1")
+        p2 = S.Scatter(2:4; color = 1:3, markersize = 30)
+        ax2 = S.Axis3(; plots = [p2])
+        c = S.Colorbar(; limits = (2, 10), colormap = :viridis, width = 50)
+        S.GridLayout([S.GridLayout([ax c]), ax2])
+    end
+
+    ax1 = S.Axis(; plots = [S.Scatter(1:4; markersize = 20), S.Lines(1:4; color = :darkred, linewidth = 6)])
+    ax2 = S.Axis3(; plots = [S.Scatter(Rect3f(Vec3f(0), Vec3f(1)); color = (:red, 0.5), markersize = 30)])
+    b2[1] = S.GridLayout([ax1, ax2])
+    sync_step!(st)
+
+    elem_1 = [
+        LineElement(; color = :red, linestyle = nothing),
+        MarkerElement(;
+            color = :blue, marker = 'x', markersize = 15,
+            strokecolor = :black
+        ),
+    ]
+
+    elem_2 = [
+        PolyElement(; color = :red, strokecolor = :blue, strokewidth = 1),
+        LineElement(; color = :black, linestyle = :dash),
+    ]
+
+    elem_3 = LineElement(;
+        color = :green, linestyle = nothing,
+        points = Point2f[(0, 0), (0, 1), (1, 0), (1, 1)]
+    )
+
+    b1[1] = begin
+        S.GridLayout(S.Legend([elem_1, elem_2, elem_3], ["elem 1", "elem 2", "elem 3"], "Legend Title"))
+    end
+
+    b2[1] = begin
+        l = S.Legend([elem_1, elem_2], ["elem 1", "elem 2"], "New Title")
+        S.GridLayout(l)
+    end
+    sync_step!(st)
+
+    b1[1] = S.Box(color = :lightblue)
+    b2[1] = S.Box(color = :lightgreen)
+    sync_step!(st)
+
+    st
+end
