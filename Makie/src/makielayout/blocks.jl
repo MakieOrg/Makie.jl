@@ -893,6 +893,7 @@ function Base.show(io::IO, ::MIME"text/plain", b::Block)
         print(io, " containg ")
         show(io, MIME"text/plain"(), b.layout)
     end
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::AbstractAxis)

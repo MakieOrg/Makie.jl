@@ -170,7 +170,7 @@ function is_regularly_spaced(arr)
     mindiff = Inf
     maxdiff = -Inf
     for i in 2:length(arr)
-        diff = arr[i] - arr[i-1]
+        diff = arr[i] - arr[i - 1]
         mindiff = min(mindiff, diff)
         maxdiff = max(maxdiff, diff)
     end
