@@ -817,6 +817,17 @@ function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Uni
     return b.layout[i, j]
 end
 
+function Base.getindex(b::T, idx::Integer) where {T <: Block}
+    names = argument_names(T)
+    argname = isempty(names) ? :spec : names[idx]
+    return b.attributes[argname]
+end
+
+function Base.setindex!(b::Block, val, idx::Integer)
+    argname = Symbol(:arg, idx)
+    return update!(b.attributes, argname => val)
+end
+
 @inline function Base.setproperty!(x::T, key::Symbol, value) where {T <: Block}
     if hasfield(T, key)
         if fieldtype(T, key) <: Observable
