@@ -100,7 +100,7 @@
         menu.options[] = zip(labels, values)
         p = menu.blockscene.children[1].plots[2]
         # should not error
-        p.text_positions[]
+        p.positions_transformed_f32c[]
         p.quad_offset[]
         p.sdf_marker_shape[]
         p.sdf_uv[]
