@@ -53,7 +53,7 @@ block, outside the `@attributes begin ... end` block. Each line will be treated
 as a new field to add, with an optional type. You can have any number of fields.
 Note that you will need to initialize them yourself in `initialize_block!()`.
 
-The `@attributes begin ... end` block is necessary but can be empty. Each entry
+The `@attributes begin ... end` block is also optional. When given, each entry
 needs to have at least a name and value given as `name = value`. Optionally, the
 attribute can be typed by adding a type annotation `name::Type`. Also
 optionally, the attribute can be given a docstring by adding a string in the
@@ -72,15 +72,17 @@ All attributes are automatically collected and added to `attributes` ComputeGrap
 
 ## `initialize_block!(block::TypeName, args...; kwargs...)`
 
-The `initialize_block!` function should handle the non-generic parts of the
-block initialization. This includes initializing added fields, handling keyword
+The `initialize_block!` function is necessary unless the block is purely used
+as container for a `BlockSpec` or `GridLayoutSpec` (SpecApi). Otherwise the
+function is called to handle the non-generic parts of the block initialization.
+This includes initializing the fields declared in the macro, handling keyword
 arguments outside of attributes and building the visual aspects of the block.
 
 If `optional_args` are given in `@Block` as a tuple `(name1, name2, ...)` the
 default `initialize_block!(block, args...; kwargs...)` will handle attributes.
-This is handled more or less the same as with plots. Arguments are added as
+They are handled more or less the same as with plots. Arguments are added as
 inputs `:arg1, :arg2, ...` to the compute graph. They then go through a few
-computations, triggering `expand_dimensions(...)` and `convert_arguments(...)`,
+computations, calling `expand_dimensions(...)` and `convert_arguments(...)`,
 before writing the converted arguments to `:name1, :name2, ...`. These can then
 be grabbed from the block as `block.name1` etc.
 
@@ -336,12 +338,16 @@ function extract_attributes!(body)
         ),
         body.args
     )
+
     if i === nothing
-        return nothing
+        attrs = Vector{Any}()
+    else
+        macroexpr = splice!(body.args, i)
+        attrs_block = macroexpr.args[3]
+        args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
+        attrs::Vector{Any} = map(extract_attribute_metadata, args)
     end
 
-    macroexpr = splice!(body.args, i)
-    attrs_block = macroexpr.args[3]
 
     layout_related_attribute_block = quote
         "The horizontal alignment of the block in its suggested bounding box."
@@ -363,10 +369,6 @@ function extract_attributes!(body)
         x -> !(x isa LineNumberNode),
         layout_related_attribute_block.args
     )
-
-    args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
-
-    attrs::Vector{Any} = map(extract_attribute_metadata, args)
 
     lras = map(extract_attribute_metadata, layout_related_attributes)
 
