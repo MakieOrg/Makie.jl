@@ -727,8 +727,12 @@ function initialize_block_arguments!(
     converted = convert_arguments(T, attr.args[]...; attr.convert_kwargs[]...)
 
     # Special case SpecApi
-    if length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
-        spec_init = Ref{Union{BlockSpec, GridLayoutSpec}}(converted[1])
+    if converted isa Union{BlockSpec, GridLayoutSpec} ||
+        length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+
+        spec_init = Ref{Union{BlockSpec, GridLayoutSpec}}(
+            converted isa Union{BlockSpec, GridLayoutSpec} ? converted : converted[1]
+        )
 
         map!(attr, [:args, :convert_kwargs], :spec, init = spec_init) do args, convert_kwargs
             x = convert_arguments(T, args...; convert_kwargs...)
