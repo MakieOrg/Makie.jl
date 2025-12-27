@@ -3,19 +3,18 @@ struct AxisPlot
     plot::AbstractPlot
 end
 
-struct FigureAxis
-    figure::Figure
-    axis::Any
-end
-
-
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
+Base.show(io::IO, fa::FigureAxis) = show(io, fa.figure)
+Base.show(io::IO, ::MIME"text/plain", fa::FigureAxis) = print(io, "FigureAxis()")
+
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(fa::FigureAxis, args...) = iterate((fa.figure, fa.axis), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
+get_scene(fa::FigureAxis) = get_scene(fa.figure.scene)
 get_figure(fa::FigureAxis) = fa.figure
 get_figure(fap::FigureAxisPlot) = fap.figure
 get_figure(fig::Figure) = fig
@@ -104,7 +103,7 @@ function extract_attributes(dictlike, key)
     return to_dict(dictlike)
 end
 
-function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
+function create_axis_for_plot(figure::Union{Figure, Scene}, plot::AbstractPlot, attributes::Dict)
     axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
@@ -342,7 +341,7 @@ function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::P
     isnothing(conversions) && return
     for i in 1:3
         key = Symbol("dim$(i)_conversion")
-        if hasfield(T, key)
+        if hasfield(T, key) || is_attribute(T, key)
             attributes[key] = conversions[i]
         end
     end

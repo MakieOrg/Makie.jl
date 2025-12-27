@@ -195,12 +195,19 @@ end
 function Base.empty!(fig::Figure)
     empty!(fig.scene)
     empty!(fig.scene.events)
-    foreach(GridLayoutBase.remove_from_gridlayout!, reverse(fig.layout.content))
-    trim!(fig.layout)
+    empty!(fig.layout)
     empty!(fig.content)
     fig.current_axis[] = nothing
     return
 end
+
+function Base.empty!(layout::GridLayout)
+    foreach(delete!, reverse(layout.content))
+    trim!(layout)
+    return
+end
+Base.delete!(layout::GridLayout) = empty!(layout)
+Base.delete!(content::GridLayoutBase.GridContent) = delete!(content.content)
 
 # Allow figures to be directly resized by resizing their internal Scene.
 # Layouts are already hooked up to this, so it's very simple.

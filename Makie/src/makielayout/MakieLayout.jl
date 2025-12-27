@@ -35,23 +35,9 @@ include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
 
-export Axis
-export Axis3
-export PolarAxis
-export Slider
-export SliderGrid
-export IntervalSlider
-export Button
-export Checkbox
-export Colorbar
-export Label
-export Box
-export Toggle
-export Legend, axislegend
+export @Block
+export axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
-export LScene
-export Menu
-export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
