@@ -34,6 +34,7 @@ include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
+include("blocks/container.jl")
 
 export @Block
 export axislegend

@@ -2368,3 +2368,17 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container
