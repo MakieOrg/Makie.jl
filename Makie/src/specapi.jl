@@ -435,18 +435,19 @@ Base.show(io::IO, ::GridLayoutSpec) = print(io, "S.GridLayout()")
 function grid_layout_spec_print(io, spec::GridLayoutSpec, tab = 0)
     print(io, "S.GridLayout()")
     grid_layout_spec_print(io, spec.content, tab)
+    return
 end
 
-function grid_layout_spec_print(io, content_list::Vector, tab=0)
+function grid_layout_spec_print(io, content_list::Vector, tab = 0)
     N = length(content_list)
     for (i, (pos, content)) in enumerate(content_list)
         print(io, "\n", "  "^tab, (i == N ? " ┗━ " : " ┣━ "), pos, " => ")
         grid_layout_spec_print(io, content, tab + 1)
     end
+    return
 end
 
 grid_layout_spec_print(io, content, tab) = print(io, content)
-
 
 
 """

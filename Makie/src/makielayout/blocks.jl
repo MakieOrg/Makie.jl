@@ -728,7 +728,7 @@ function initialize_block_arguments!(
 
     # Special case SpecApi
     if converted isa Union{BlockSpec, GridLayoutSpec} ||
-        length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
+            length(converted) == 1 && converted[1] isa Union{BlockSpec, GridLayoutSpec}
 
         spec_init = Ref{Union{BlockSpec, GridLayoutSpec}}(
             converted isa Union{BlockSpec, GridLayoutSpec} ? converted : converted[1]

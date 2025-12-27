@@ -483,7 +483,7 @@ on(dataset; priority=-1) do x
     foreach(autolimits!, block.blocks)
 end
 
-record(f, "interactive_block_spec.mp4", framerate=1) do io
+record(fig, "interactive_block_spec.mp4", framerate=1) do io
     pause = 0.1
     m1.i_selected[] = 1
     m2.i_selected[] = 1
