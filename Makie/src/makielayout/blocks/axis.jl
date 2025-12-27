@@ -900,7 +900,10 @@ Reset manually specified limits of `la` to an automatically determined rectangle
 The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
-    ax.limits[] = (nothing, nothing)
+    ax.limits = (nothing, nothing)
+    # The compute graph will throw away same value updates, so we need to force
+    # the underlying observable to trigger with this:
+    notify(ax.limits)
     return
 end
 function autolimits!()
