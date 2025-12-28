@@ -304,3 +304,94 @@ end
 
     st
 end
+
+struct MultiData
+    plottype::Symbol
+    show_dim_distributions::Bool
+    dim_distribution_plot_type::Symbol
+    sets::Vector{Vector{<:Makie.VecTypes{2}}}
+end
+
+function Makie.convert_arguments(::Type{<:Makie.Block}, multidata::MultiData)
+    colors = Makie.wong_colors()
+    plots = map(enumerate(multidata.sets)) do (i, data)
+        return PlotSpec(multidata.plottype, data, color = colors[mod1(i, end)])
+    end
+    main_axis = S.Axis(; plots = plots)
+
+    if multidata.show_dim_distributions
+        no_decorations = (
+            xgridvisible = false, ygridvisible = false,
+            xticksvisible = false, yticksvisible = false,
+            xticklabelsvisible = false, yticklabelsvisible = false,
+            xlabelvisible = false, ylabelvisible = false
+        )
+        plotsym = multidata.dim_distribution_plot_type
+
+        column_axes = map(enumerate(multidata.sets)) do (i, data)
+            color = colors[mod1(i, end)]
+            plt = PlotSpec(plotsym, first.(data), color = color)
+            return S.Axis(; plots = [plt], yreversed = true, height = 50, no_decorations...)
+        end
+        column = S.GridLayout(column_axes)
+
+        row_axes = map(enumerate(multidata.sets)) do (i, data)
+            color = colors[mod1(i, end)]
+            dir = ifelse(plotsym === :Density, :y, :x)
+            plt = PlotSpec(plotsym, last.(data), direction = dir, color = color)
+            return S.Axis(; plots = [plt], width = 50, no_decorations...)
+        end
+        row = S.GridLayout(reshape(row_axes, (1, length(row_axes))))
+
+        return S.GridLayout(
+            [main_axis row; column S.GridLayout()],
+            xaxislinks = [main_axis, column_axes...],
+            yaxislinks = [main_axis, row_axes...]
+        )
+    else
+        return main_axis
+    end
+end
+
+@reference_test "Block SpecApi Conversion" begin
+    fig = Figure()
+
+    # Static parts of the figure
+    Label(fig[1, 1], "Main plot type", tellwidth = false)
+    m1 = Menu(fig[2, 1], options = [:Scatter, :Lines])
+    Label(fig[1, 2][1, 1], "Distribution plot type", tellwidth = false)
+    t = Toggle(fig[1, 2][1, 2])
+    m2 = Menu(fig[2, 2], options = [:Hist, :Density])
+
+    # Dynamic description of the axis layout
+    data1 = [Point2f(cos(x), sin(x)) / (1 + 0.1x) for x in range(0, 30, 300)]
+    data2 = [Point2f(x/10 - 1, cos(x)) for x in range(0, 20, 120)]
+    dataset = map(m1.selection, t.active, m2.selection) do mainplot, showdist, distplot
+        return MultiData(mainplot, showdist, distplot, [data1, data2])
+    end
+
+    # block containing the GridLayoutSpec/BlockSpec produced by the `MultiData`
+    # conversion.
+    block = Makie.Block(fig[3, 1:2], dataset)
+
+    # Limits don't re-compute automatically, so we need to trigger them manually
+    # lower priority to make sure the call back is always called last
+    on(dataset; priority=-1) do x
+        foreach(autolimits!, block.blocks)
+    end
+
+    st = Makie.Stepper(fig)
+    step!(st)
+
+    t.active[] = true
+    step!(st)
+
+    m2.i_selected[] = 2
+    step!(st)
+
+    m1.i_selected[] = 2
+    step!(st)
+
+    t.active[] = false
+    step!(st)
+end
