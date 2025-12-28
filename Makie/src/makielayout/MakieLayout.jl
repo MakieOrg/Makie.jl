@@ -36,7 +36,7 @@ include("blocks/menu.jl")
 include("blocks/textbox.jl")
 include("blocks/container.jl")
 
-export @Block
+export @Block, Block
 export axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export linkxaxes!, linkyaxes!, linkaxes!
