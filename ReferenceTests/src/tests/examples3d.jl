@@ -880,3 +880,55 @@ end
 
     f
 end
+
+@reference_test "Stage Camera" begin
+    fig = Figure(size = (1200, 800))
+
+    function testscene(gridpos; kwargs...)
+        lscene = LScene(gridpos, show_axis = false, scenekw = (; camera = stage_cam!))
+
+        # Add a floor plane
+        floor_mesh = mesh!(lscene,
+            Rect3f(Vec3f(-5, -5, 0), Vec3f(10, 10, 0.1)),
+            color = :lightgray,
+            alpha = 0.8
+        )
+
+        # Add several boxes of different sizes and colors
+        boxes = [
+            (pos = Vec3f(-0.5, -0.5, 0), size = Vec3f(1, 1, 1), color = :red),
+            (pos = Vec3f(2, 1, 0), size = Vec3f(0.5, 0.5, 1.5), color = :blue),
+            (pos = Vec3f(-2, 1, 0), size = Vec3f(1.5, 1, 2), color = :green),
+            (pos = Vec3f(1, -2, 0), size = Vec3f(0.6, 0.6, 0.6), color = :yellow),
+            (pos = Vec3f(-2, -2.5, 0), size = Vec3f(1, 1.5, 2.4), color = :purple),
+        ]
+
+        for box in boxes
+            mesh!(lscene,
+                Rect3f(box.pos, box.size),
+                color = box.color,
+            )
+        end
+
+        text!(lscene, 0, 1, text = join(["$k = $v" for (k, v) in pairs(kwargs)], "\n"),
+            space = :relative, align = (:left, :top), offset = (5, -5))
+
+        # Set up StageCamera with initial parameters
+        scene = lscene.scene
+        Makie.stage_cam!(scene; azimuth = 45.0,
+            elevation = 30.0,
+            stage_width = 8.0,  # Width that should fit in view
+            lookat = (0, 0, 1),
+            mm = 50.0,  # Normal lens
+            zoom = 1.0, kwargs...)
+        return
+    end
+    
+    testscene(fig[1, 1])
+    testscene(fig[1, 2], azimuth = 90, elevation = 45)
+    testscene(fig[2, 1], stage_width = 12)
+    testscene(fig[2, 2], stage_width = 4)
+    testscene(fig[3, 1], mm = 16)
+    testscene(fig[3, 2], mm = 100)
+    fig
+end
