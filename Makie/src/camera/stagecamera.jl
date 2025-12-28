@@ -253,7 +253,7 @@ function update_cam!(scene::Scene, cam::StageCamera)
     
     # Calculate camera distance based on stage_width fitting horizontally
     cam_distance = stage_width / (2 * tand(fov / zoom / 2))
-    farclip = 2 * cam_distance
+    farclip = 10 * cam_distance
     nearclip_val::Float64 = nearclip === Makie.automatic ? 0.01 * cam_distance : nearclip
     
     # Calculate camera position and orientation
