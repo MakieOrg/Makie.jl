@@ -173,7 +173,7 @@ function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient,
     return RGBAf(new_c..., c.alpha)
 end
 
-function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, viewdir, lightdir, light_color, shininess, diffuse, ambient, specular)
     cnt = 0
     flusheach = MAX_PATCHES_PER_PATTERN[]
     pattern = Cairo.CairoPatternMesh()
@@ -218,10 +218,7 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
             # is facing towards the camera
             # (which is encoded in vs = vertex_position - eyeposition)
             mean_normal = sum(i -> ns[i], f) / length(f)
-            frontfacing = mapreduce(+, f) do vertex_idx
-                N = normalize(ns[vertex_idx] + 1.0e-20 * mean_normal)
-                return dot(vs[vertex_idx], -N)
-            end > 0.0
+            frontfacing = dot(viewdir, mean_normal) > 0.0
 
             # if the current pattern is facing a different direction we close
             # it and open a new one so that front and backfacing parts of the
@@ -368,10 +365,17 @@ function draw_mesh3D(
         end
     end
 
+    viewdir = scene.camera.view_direction[]
     if isnothing(meshnormals)
         ns = nothing
     else
         ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
+
+        # cull faces with backfacing normals (as defined by faceculling)
+        filter!(zorder) do face_index
+            face = meshfaces[face_index]
+            return any(vertex_index -> dot(-ns[vertex_index], viewdir) > faceculling, face)
+        end
     end
 
     # If per_face_col is a CairoPattern the plot is using an AbstractPattern
@@ -388,16 +392,8 @@ function draw_mesh3D(
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(to_ndim(Point3f, v, 0) - eyeposition), world_points)
 
-    if !isnothing(ns)
-        # cull faces with backfacing normals (as defined by faceculling)
-        filter!(zorder) do face_index
-            face = meshfaces[face_index]
-            return any(vertex_index -> dot(-ns[vertex_index], vs[vertex_index]) > faceculling, face)
-        end
-    end
-
     draw_pattern(
-        ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
+        ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs, viewdir,
         light_direction, light_color, shininess, diffuse, ambient, specular
     )
 
