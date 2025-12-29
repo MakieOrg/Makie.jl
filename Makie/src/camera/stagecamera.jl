@@ -9,7 +9,7 @@ struct StageCamera <: AbstractCamera3D
     # Camera parameters as observables
     azimuth::Observable{Float64}
     elevation::Observable{Float64}
-    stage_width::Observable{Float64}
+    stage_size::Observable{Float64}
     lookat::Observable{Vec3f}
     fov::Observable{Union{Nothing, Float64}}
     mm::Observable{Union{Nothing, Float64}}
@@ -34,8 +34,8 @@ field of view, to find a pleasing camera angle without clipping into the subject
 Perspective is often an afterthought and field of view is simply used as a "cropping" tool after camera position is fixed.
 
 The idea of the stage camera is that one usually wants to show an object of a certain size and position.
-These parameters correspond to the `lookat` and the `stage_width` (the stage width being
-the amount of space that should be in frame around the object of interest).
+These parameters correspond to the `lookat` and the `stage_size` which is the amount of space that should be in frame around
+the object of interest.
 
 The next parameters that determine the look are the two camera angles, `azimuth` and `elevation`.
 With `azimuth` you move the camera around the object and with `elevation` you decide from how far up
@@ -59,7 +59,7 @@ The StageCamera supports keyboard navigation:
 # Arguments
 - `azimuth::Float64`: Azimuth angle in degrees (rotation around z-axis)
 - `elevation::Float64`: Elevation angle in degrees (rotation from xy-plane)
-- `stage_width::Float64`: How large an object parallel to the camera plane should fit in view
+- `stage_size::Float64`: The size of a sphere at the lookat point that should always fit in view
 - `lookat::Union{Vec3f, Tuple, Vector}`: Point the camera is looking at
 - `fov::Union{Nothing, Float64} = nothing`: Field of view in degrees (mutually exclusive with mm). 
   Wide angles (e.g., 80°) create stronger perspective with more background visible and position 
@@ -99,7 +99,7 @@ Either `fov` or `mm` must be specified, but not both.
 cam = StageCamera(scene, 
     azimuth = 45.0,
     elevation = 30.0,
-    stage_width = 10.0,
+    stage_size = 10.0,
     lookat = (0, 0, 0),
     mm = 50.0
 )
@@ -114,7 +114,7 @@ cam.zoom[] = 2.0
 function StageCamera(scene::Scene; 
     azimuth = 0.0,
     elevation = 0.0,
-    stage_width = 1.0,
+    stage_size = 1.0,
     lookat = Vec3d(0, 0, 0),
     fov = nothing,
     mm = fov === nothing ? 50.0 : nothing,
@@ -169,7 +169,7 @@ function StageCamera(scene::Scene;
     cam = StageCamera(
         Observable(azimuth),
         Observable(elevation),
-        Observable(stage_width),
+        Observable(stage_size),
         Observable(lookat_vec),
         Observable(fov),
         Observable(mm),
@@ -208,7 +208,7 @@ function StageCamera(scene::Scene;
     
     # Set up automatic updates when observables change
     onany(camera(scene),
-        cam.azimuth, cam.elevation, cam.stage_width, cam.lookat,
+        cam.azimuth, cam.elevation, cam.stage_size, cam.lookat,
         cam.fov, cam.mm, cam.nearclip, cam.zoom, cam.upvector
     ) do args...
         update_cam!(scene, cam)
@@ -234,7 +234,7 @@ function update_cam!(scene::Scene, cam::StageCamera)
     # Extract current values from observables
     azimuth = cam.azimuth[]
     elevation = cam.elevation[]
-    stage_width = cam.stage_width[]
+    stage_size = cam.stage_size[]
     lookat = cam.lookat[]
     fov_val = cam.fov[]
     mm_val = cam.mm[]
@@ -251,8 +251,18 @@ function update_cam!(scene::Scene, cam::StageCamera)
         error("Either mm or fov must be set")
     end
     
-    # Calculate camera distance based on stage_width fitting horizontally
-    cam_distance = stage_width / (2 * tand(fov / zoom / 2))
+    # Calculate camera distance based on stage dimension fitting in view
+    viewport = scene.viewport[]
+    aspect = Float64(viewport.widths[1] / viewport.widths[2])
+    
+    cam_distance = stage_size / (2 * tand(fov / zoom / 2))
+    y_fov = if aspect <= 1
+        # stage_size fits horizontally
+        fov  / zoom / aspect
+    else
+        fov / zoom
+    end
+
     farclip = 10 * cam_distance
     nearclip_val::Float64 = nearclip === Makie.automatic ? 0.01 * cam_distance : nearclip
     
@@ -264,9 +274,7 @@ function update_cam!(scene::Scene, cam::StageCamera)
     
     # Update camera view and projection
     view_mat = Makie.lookat(eyeposition, Vec3d(lookat), upvector)
-    viewport = scene.viewport[]
-    aspect = Float64(viewport.widths[1] / viewport.widths[2])
-    proj_mat = perspectiveprojection(fov / zoom, aspect, nearclip_val, farclip)
+    proj_mat = perspectiveprojection(y_fov, aspect, nearclip_val, farclip)
     
     camera(scene).view[] = view_mat
     camera(scene).projection[] = proj_mat
@@ -338,8 +346,9 @@ function on_pulse(scene, cam::StageCamera, timestep)
         # Right direction (perpendicular to both forward and upvector)
         cam_right = normalize(cross(cam_forward, upvector))
         
-        # Calculate translation based on stage_width
-        speed = keyboard_translationspeed * timestep * cam.stage_width[]
+        # Calculate translation based on stage dimension
+        stage_size = cam.stage_size[] !== nothing ? cam.stage_size[] : cam.stage_height[]
+        speed = keyboard_translationspeed * timestep * stage_size
         
         translation = speed * (
             (backward - forward) * cam_forward +
