@@ -29,6 +29,14 @@ get_space(::StageCamera) = :data
     StageCamera(scene; kwargs...)
 
 A 3D camera that allows for more "photographic" tweaking of camera parameters.
+The questions the user should ask themselves for the different settings are, in order:
+    - what should be in view? -> `lookat`
+    - how much should be in view? -> `stage_size`
+    - from what angle should it be shown? -> `azimuth` and `elevation`
+    - should the perspective be compressed or more exaggerated? -> `fov` or `mm`
+
+## Explanation
+
 Adjusting a typical 3D camera often involves repeatedly changing camera position and
 field of view, to find a pleasing camera angle without clipping into the subject or having it be too small in frame.
 Perspective is often an afterthought and field of view is simply used as a "cropping" tool after camera position is fixed.
@@ -46,7 +54,7 @@ want to have in view, the camera angle does not primarily change the size of the
 called "zooming" in photography) but it decides how close or far the camera has to be from the subject and
 therefore how strong the perspective look is and how much the background is emphasized.
 
-# Keyboard Controls
+## Keyboard Controls
 
 The StageCamera supports keyboard navigation:
 - `W/S`: Move lookat forward/backward in the camera's facing direction (projected onto the plane perpendicular to the world up vector)
@@ -58,21 +66,21 @@ The StageCamera supports keyboard navigation:
 - `V/C`: Increase/decrease stage size (zoom the view in/out)
 
 # Arguments
-- `azimuth::Float64`: Azimuth angle in degrees (rotation around z-axis)
-- `elevation::Float64`: Elevation angle in degrees (rotation from xy-plane)
-- `stage_size::Float64`: The size of a sphere at the lookat point that should always fit in view
+- `azimuth::Real`: Azimuth angle in degrees (rotation around z-axis)
+- `elevation::Real`: Elevation angle in degrees (rotation from xy-plane)
+- `stage_size::Real`: The size of a sphere at the lookat point that should always fit in view
 - `lookat::Union{Vec3f, Tuple, Vector}`: Point the camera is looking at
-- `fov::Union{Nothing, Float64} = nothing`: Field of view in degrees (mutually exclusive with mm). 
+- `fov::Union{Nothing, Real} = nothing`: Field of view in degrees (mutually exclusive with mm). 
   Wide angles (e.g., 80°) create stronger perspective with more background visible and position 
   the camera closer to the lookat point. Narrow angles (e.g., 20°) reduce perspective distortion, 
   show less background, and position the camera further from the lookat point.
-- `mm::Union{Nothing, Float64} = nothing`: Focal length in mm relative to a classic full-frame 
+- `mm::Union{Nothing, Real} = nothing`: Focal length in mm relative to a classic full-frame 
   35mm sensor (mutually exclusive with fov). Common values: 24mm (wide angle), 50mm (normal/standard), 
   100mm (telephoto). Shorter focal lengths create wider fields of view with stronger perspective.
-- `nearclip::Union{Makie.Automatic, Float64} = Makie.automatic`: Near clipping plane distance
-- `zoom::Float64 = 1.0`: Zoom factor, should only be changed if the image is as desired but
+- `nearclip::Union{Makie.Automatic, Real} = Makie.automatic`: Near clipping plane distance
+- `zoom::Real = 1.0`: Zoom factor, should only be changed if the image is as desired but
    should be cropped in our out a little.
-- `upvector::Union{Vec3f, Tuple, Vector} = Vec3f(0, 0, 1)`: World up direction vector
+- `upvector::Vec3 = Vec3f(0, 0, 1)`: World up direction vector
 
 # Keyboard Control Settings
 - `keyboard_translationspeed = 0.5`: Speed multiplier for keyboard translations
