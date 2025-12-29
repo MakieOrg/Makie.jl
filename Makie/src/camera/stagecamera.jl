@@ -55,6 +55,7 @@ The StageCamera supports keyboard navigation:
 - `Left/Right Arrow`: Rotate azimuth (orbit around the subject)
 - `Up/Down Arrow`: Change elevation (look up/down)
 - `X/Z`: Increase/decrease field of view (or adjust mm focal length)
+- `V/C`: Increase/decrease stage size (zoom the view in/out)
 
 # Arguments
 - `azimuth::Float64`: Azimuth angle in degrees (rotation around z-axis)
@@ -77,6 +78,7 @@ The StageCamera supports keyboard navigation:
 - `keyboard_translationspeed = 0.5`: Speed multiplier for keyboard translations
 - `keyboard_rotationspeed = 1.0`: Speed multiplier for keyboard rotations
 - `keyboard_zoomspeed = 1.0`: Speed multiplier for FOV/mm adjustments
+- `keyboard_stagesizespeed = 1.0`: Speed multiplier for stage size adjustments
 
 # Key Bindings (customizable)
 - `forward_key = Keyboard.w`: Move lookat forward
@@ -91,6 +93,8 @@ The StageCamera supports keyboard navigation:
 - `elevation_down_key = Keyboard.down`: Decrease elevation
 - `increase_fov_key = Keyboard.x`: Increase field of view
 - `decrease_fov_key = Keyboard.z`: Decrease field of view
+- `increase_stage_size_key = Keyboard.v`: Increase stage size
+- `decrease_stage_size_key = Keyboard.c`: Decrease stage size
 
 Either `fov` or `mm` must be specified, but not both.
 
@@ -153,6 +157,9 @@ function StageCamera(scene::Scene;
         # FOV/mm keys
         increase_fov_key = Keyboard.x,
         decrease_fov_key = Keyboard.z,
+        # Stage size keys
+        increase_stage_size_key = Keyboard.v,
+        decrease_stage_size_key = Keyboard.c,
     )
     
     replace!(controls, :StageCamera, scene, overwrites)
@@ -161,6 +168,7 @@ function StageCamera(scene::Scene;
         keyboard_translationspeed = 0.5,
         keyboard_rotationspeed = 1.0,
         keyboard_zoomspeed = 1.0,
+        keyboard_stagesizespeed = 1.0,
     )
     
     replace!(settings, :StageCamera, scene, overwrites)
@@ -310,19 +318,22 @@ function on_pulse(scene, cam::StageCamera, timestep)
         forward_key, backward_key, left_key, right_key, up_key, down_key,
         azimuth_left_key, azimuth_right_key, elevation_up_key, elevation_down_key,
         increase_fov_key, decrease_fov_key,
+        increase_stage_size_key, decrease_stage_size_key,
     )
 
     # Check if any keys are pressed
     if !ispressed(
             scene, forward_key | backward_key | left_key | right_key | up_key | down_key |
                 azimuth_left_key | azimuth_right_key | elevation_up_key | elevation_down_key |
-                increase_fov_key | decrease_fov_key
+                increase_fov_key | decrease_fov_key |
+                increase_stage_size_key | decrease_stage_size_key
         )
         return
     end
 
     @extractvalue cam.settings (
         keyboard_translationspeed, keyboard_rotationspeed, keyboard_zoomspeed,
+        keyboard_stagesizespeed,
     )
 
     # Translation - move lookat
@@ -346,9 +357,8 @@ function on_pulse(scene, cam::StageCamera, timestep)
         # Right direction (perpendicular to both forward and upvector)
         cam_right = normalize(cross(cam_forward, upvector))
         
-        # Calculate translation based on stage dimension
-        stage_size = cam.stage_size[] !== nothing ? cam.stage_size[] : cam.stage_height[]
-        speed = keyboard_translationspeed * timestep * stage_size
+        # Calculate translation based on stage size
+        speed = keyboard_translationspeed * timestep * cam.stage_size[]
         
         translation = speed * (
             (backward - forward) * cam_forward +
@@ -392,6 +402,16 @@ function on_pulse(scene, cam::StageCamera, timestep)
         end
     end
 
+    # Stage size adjustment
+    stage_inc = ispressed(scene, increase_stage_size_key)
+    stage_dec = ispressed(scene, decrease_stage_size_key)
+    stage_adjustment = stage_inc || stage_dec
+
+    if stage_adjustment
+        step = (1 + keyboard_stagesizespeed * timestep)^(stage_inc - stage_dec)
+        cam.stage_size[] = cam.stage_size[] * step
+    end
+
     # Return true if we should keep processing
-    return translating || rotating || fov_adjustment
+    return translating || rotating || fov_adjustment || stage_adjustment
 end
