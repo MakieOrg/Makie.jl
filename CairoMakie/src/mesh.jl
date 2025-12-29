@@ -341,29 +341,23 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i])) # see issue #3702
 
-    if Makie.is_data_space(space) && !isempty(clip_planes)
-        valid = Bool[is_visible(clip_planes, p) for p in world_points]
-    else
-        valid = Bool[]
-    end
-
     # Approximate zorder
     average_zs = map(f -> average_z(screen_points, f), meshfaces)
     zorder = sortperm(average_zs)
+
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        # cull faces that contain clipped vertices
+        valid = Bool[is_visible(clip_planes, p) for p in world_points]
+        filter!(zorder) do face_index
+            face = meshfaces[face_index]
+            return all(vertex_index -> valid[vertex_index], face)
+        end
+    end
 
     if isnothing(meshnormals)
         ns = nothing
     else
         ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
-    end
-
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
     end
 
     # If per_face_col is a CairoPattern the plot is using an AbstractPattern
@@ -379,6 +373,14 @@ function draw_mesh3D(
 
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(to_ndim(Point3f, v, 0) - eyeposition), world_points)
+
+    if !isnothing(ns)
+        # cull faces with backfacing normals (as defined by faceculling)
+        filter!(zorder) do face_index
+            face = meshfaces[face_index]
+            return any(vertex_index -> dot(-ns[vertex_index], vs[vertex_index]) > faceculling, face)
+        end
+    end
 
     draw_pattern(
         ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
