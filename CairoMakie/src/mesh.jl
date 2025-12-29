@@ -62,6 +62,22 @@ end
 function draw_mesh2D(screen, color, vs::Vector{<:Point2}, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
 end
+
+function flush_pattern(ctx, pattern, reopen = true)
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    Cairo.destroy(pattern)
+    # Reset any lingering pattern state
+    Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+    if reopen
+        pattern = Cairo.CairoPatternMesh()
+    end
+
+    return pattern
+end
+
 const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
 
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace}, indices)
@@ -95,25 +111,12 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         Cairo.mesh_pattern_end_patch(pattern)
 
         if cnt % flusheach == 0
-            Cairo.set_source(ctx, pattern)
-            Cairo.close_path(ctx)
-            Cairo.paint(ctx)
-            Cairo.destroy(pattern)
-            # Reset any lingering pattern state
-            Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
-
-            # reopen
-            pattern = Cairo.CairoPatternMesh()
+            pattern = flush_pattern(ctx, pattern)
         end
     end
 
     if cnt % flusheach != 0
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
-        Cairo.destroy(pattern)
-        # Reset any lingering pattern state
-        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+        flush_pattern(ctx, pattern, false)
     end
     return nothing
 end
@@ -228,25 +231,12 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         Cairo.mesh_pattern_end_patch(pattern)
 
         if cnt % flusheach == 0
-            Cairo.set_source(ctx, pattern)
-            Cairo.close_path(ctx)
-            Cairo.paint(ctx)
-            Cairo.destroy(pattern)
-            # Reset any lingering pattern state
-            Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
-
-            # reopen
-            pattern = Cairo.CairoPatternMesh()
+            pattern = flush_pattern(ctx, pattern)
         end
     end
 
     if cnt % flusheach != 0
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
-        Cairo.destroy(pattern)
-        # Reset any lingering pattern state
-        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+        flush_pattern(ctx, pattern, false)
     end
 
     return
