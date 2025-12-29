@@ -178,6 +178,8 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
     flusheach = MAX_PATCHES_PER_PATTERN[]
     pattern = Cairo.CairoPatternMesh()
 
+    was_frontfacing = false
+
     for k in reverse(zorder)
 
         f = meshfaces[k]
@@ -209,6 +211,28 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
             end
         else
             c1, c2, c3 = facecolors
+        end
+
+        if !isnothing(ns)
+            # check if this face is front facing by checking if each vertex normal
+            # is facing towards the camera
+            # (which is encoded in vs = vertex_position - eyeposition)
+            mean_normal = sum(i -> ns[i], f) / length(f)
+            frontfacing = mapreduce(+, f) do vertex_idx
+                N = normalize(ns[vertex_idx] + 1.0e-20 * mean_normal)
+                return dot(vs[vertex_idx], -N)
+            end > 0.0
+
+            # if the current pattern is facing a different direction we close
+            # it and open a new one so that front and backfacing parts of the
+            # mesh can overlap
+            if frontfacing != was_frontfacing
+                was_frontfacing = frontfacing
+                if cnt % flusheach != 0
+                    cnt = 0
+                    pattern = flush_pattern(ctx, pattern)
+                end
+            end
         end
 
         # debug normal coloring
