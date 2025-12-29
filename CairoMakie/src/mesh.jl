@@ -62,13 +62,14 @@ end
 function draw_mesh2D(screen, color, vs::Vector{<:Point2}, fs::Vector{GLTriangleFace})
     return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
 end
+const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
 
 function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace}, indices)
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
     cnt = 0
-    flusheach = 16384  # TODO: tune
+    flusheach = MAX_PATCHES_PER_PATTERN[]
     pattern = Cairo.CairoPatternMesh()
 
     for i in indices
@@ -171,7 +172,7 @@ end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
     cnt = 0
-    flusheach = 16384  # TODO: tune
+    flusheach = MAX_PATCHES_PER_PATTERN[]
     pattern = Cairo.CairoPatternMesh()
 
     for k in reverse(zorder)
