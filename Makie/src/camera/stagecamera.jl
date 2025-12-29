@@ -367,8 +367,7 @@ function on_pulse(scene, cam::StageCamera, timestep)
     rotating = az_left || az_right || el_up || el_down
 
     if rotating
-        # Rotation speed in degrees per second
-        rotation_speed = keyboard_rotationspeed * timestep * 90.0
+        rotation_speed = keyboard_rotationspeed * timestep * 60.0
         
         cam.azimuth[] = cam.azimuth[] + (az_right - az_left) * rotation_speed
         cam.elevation[] = clamp(
