@@ -81,20 +81,20 @@ The StageCamera supports keyboard navigation:
 - `keyboard_stagesizespeed = 1.0`: Speed multiplier for stage size adjustments
 
 # Key Bindings (customizable)
-- `forward_key = Keyboard.w`: Move lookat forward
-- `backward_key = Keyboard.s`: Move lookat backward
-- `left_key = Keyboard.a`: Move lookat left
-- `right_key = Keyboard.d`: Move lookat right
-- `up_key = Keyboard.e`: Move lookat up
-- `down_key = Keyboard.q`: Move lookat down
+- `forward_key = Keyboard.w`: Move lookat and camera forward
+- `backward_key = Keyboard.s`: Move lookat and camera backward
+- `left_key = Keyboard.a`: Move lookat and camera left
+- `right_key = Keyboard.d`: Move lookat and camera right
+- `up_key = Keyboard.e`: Move lookat and camera up
+- `down_key = Keyboard.q`: Move lookat and camera down
 - `azimuth_left_key = Keyboard.left`: Rotate azimuth left
 - `azimuth_right_key = Keyboard.right`: Rotate azimuth right
 - `elevation_up_key = Keyboard.up`: Increase elevation
 - `elevation_down_key = Keyboard.down`: Decrease elevation
-- `increase_fov_key = Keyboard.x`: Increase field of view
-- `decrease_fov_key = Keyboard.z`: Decrease field of view
-- `increase_stage_size_key = Keyboard.v`: Increase stage size
-- `decrease_stage_size_key = Keyboard.c`: Decrease stage size
+- `increase_fov_key = Keyboard.x`: Increase field of view while moving closer (stronger perspective)
+- `decrease_fov_key = Keyboard.z`: Decrease field of view while moving further away (more compressed perspective)
+- `increase_stage_size_key = Keyboard.c`: Increase stage size (move further away)
+- `decrease_stage_size_key = Keyboard.v`: Decrease stage size (move closer)
 
 Either `fov` or `mm` must be specified, but not both.
 
@@ -158,8 +158,8 @@ function StageCamera(scene::Scene;
         increase_fov_key = Keyboard.x,
         decrease_fov_key = Keyboard.z,
         # Stage size keys
-        increase_stage_size_key = Keyboard.v,
-        decrease_stage_size_key = Keyboard.c,
+        increase_stage_size_key = Keyboard.c,
+        decrease_stage_size_key = Keyboard.v,
     )
     
     replace!(controls, :StageCamera, scene, overwrites)
