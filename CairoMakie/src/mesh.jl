@@ -174,11 +174,21 @@ function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient,
 end
 
 function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, viewdir, lightdir, light_color, shininess, diffuse, ambient, specular)
-    cnt = 0
-    flusheach = 1 # MAX_PATCHES_PER_PATTERN[]
-    pattern = Cairo.CairoPatternMesh()
+    #=
+    TODO:
+    Rendering just a few Cairo patterns containing many faces/patches (like the
+    2D version) is much faster than rendering one pattern per face, but it also
+    causes those faces to no longer drawn over each other. A transparent mesh
+    therefore doesn't render correctly (doesn't render front *and* backside or
+    self-overlap).
 
-    was_frontfacing = false
+    Flushing the pattern whenever we switch between front and back facing
+    triangles fixes the rendering issue, but often creates performance issues.
+    It seems like Cairo can handle large patterns and lots of single element
+    pattern decently well, but not many patterns of varying size (which you get
+    for more or less everything that's not a sphere). So we just keep it at 1
+    face per pattern here.
+    =#
 
     for k in reverse(zorder)
 
@@ -213,32 +223,14 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
             c1, c2, c3 = facecolors
         end
 
-        if false # !isnothing(ns)
-            # check if this face is front facing by checking if each vertex normal
-            # is facing towards the camera
-            # (which is encoded in vs = vertex_position - eyeposition)
-            mean_normal = sum(i -> ns[i], f) / length(f)
-            frontfacing = dot(viewdir, mean_normal) > 0.0
-
-            # if the current pattern is facing a different direction we close
-            # it and open a new one so that front and backfacing parts of the
-            # mesh can overlap
-            if frontfacing != was_frontfacing
-                was_frontfacing = frontfacing
-                if cnt % flusheach != 0
-                    cnt = 0
-                    pattern = flush_pattern(ctx, pattern)
-                end
-            end
-        end
-
         # debug normal coloring
         # n1, n2, n3 = Vec3f(0.5) .+ 0.5ns[f]
         # c1 = RGB(n1...)
         # c2 = RGB(n2...)
         # c3 = RGB(n3...)
 
-        cnt += 1
+        pattern = Cairo.CairoPatternMesh()
+
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -251,12 +243,6 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
 
         Cairo.mesh_pattern_end_patch(pattern)
 
-        if cnt % flusheach == 0
-            pattern = flush_pattern(ctx, pattern)
-        end
-    end
-
-    if cnt % flusheach != 0
         flush_pattern(ctx, pattern, false)
     end
 
