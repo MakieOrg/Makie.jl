@@ -723,12 +723,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-struct FigureAxis
+struct FigureBlock
     figure::Figure
-    axis::Any
+    block::Block
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureAxis}
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)

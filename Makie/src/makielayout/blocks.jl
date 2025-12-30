@@ -421,7 +421,7 @@ function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
     figure_kw = extract_attributes(kw_dict, :figure)
     figure = Figure(; figure_kw...)
     b = figure[1, 1][] = _block(T, figure, Any[args...], kw_dict, bbox)
-    return FigureAxis(figure, b)
+    return FigureBlock(figure, b)
 end
 
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
