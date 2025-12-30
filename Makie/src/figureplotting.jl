@@ -284,6 +284,7 @@ figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
 figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+update_state_before_display!(f::FigureAxis) = update_state_before_display!(f.figure)
 
 function update_state_before_display!(f::Figure)
     for c in f.content
