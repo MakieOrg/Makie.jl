@@ -882,7 +882,7 @@ end
 end
 
 @reference_test "Stage Camera" begin
-    fig = Figure(size = (1200, 800))
+    fig = Figure()
 
     function testscene(gridpos; kwargs...)
         lscene = LScene(gridpos, show_axis = false, scenekw = (; camera = stage_cam!))
@@ -917,18 +917,23 @@ end
         scene = lscene.scene
         Makie.stage_cam!(scene; azimuth = 45.0,
             elevation = 30.0,
-            stage_width = 8.0,  # Width that should fit in view
+            stage_size = 8.0,
             lookat = (0, 0, 1),
-            mm = 50.0,  # Normal lens
+            mm = haskey(kwargs, :fov) ? nothing : 50.0,  # Normal lens
             zoom = 1.0, kwargs...)
         return
     end
     
     testscene(fig[1, 1])
     testscene(fig[1, 2], azimuth = 90, elevation = 45)
-    testscene(fig[2, 1], stage_width = 12)
-    testscene(fig[2, 2], stage_width = 4)
-    testscene(fig[3, 1], mm = 16)
+    testscene(fig[2, 1], stage_size = 12)
+    testscene(fig[2, 2], stage_size = 4)
+    testscene(fig[3, 1], mm = 24)
     testscene(fig[3, 2], mm = 100)
+    testscene(fig[4, 1], fov = 30)
+    testscene(fig[4, 2], fov = 90)
+
+    # check that aspect ratio changes of scenes are correctly picked up
+    resize!(fig.scene, 800, 700)
     fig
 end
