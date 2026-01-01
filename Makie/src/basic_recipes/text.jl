@@ -870,13 +870,12 @@ end
 
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
+function Base.print(io::IO, r::RichText)
+     foreach(child -> print(io, child), r.children)
+end
 
 function Base.String(r::RichText)
-    fn(io, x::RichText) = foreach(x -> fn(io, x), x.children)
-    fn(io, s::String) = print(io, s)
-    return sprint() do io
-        fn(io, r)
-    end
+    return sprint(print, r)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", r::RichText)
