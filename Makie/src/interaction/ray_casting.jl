@@ -399,9 +399,9 @@ end
             A = surface_pos(xs, ys, zs, i, j)
             B = surface_pos(xs, ys, zs, i - 1, j)
             C = surface_pos(xs, ys, zs, i, j + 1)
-            A = _transform_point(A, tf)
-            B = _transform_point(B, tf)
-            C = _transform_point(C, tf)
+            A = _ray_transform_point(A, tf)
+            B = _ray_transform_point(B, tf)
+            C = _ray_transform_point(C, tf)
             pos = ray_triangle_intersection(A, B, C, ray)
         end
 
@@ -409,9 +409,9 @@ end
             A = surface_pos(xs, ys, zs, i, j)
             B = surface_pos(xs, ys, zs, i, j + 1)
             C = surface_pos(xs, ys, zs, i + 1, j + 1)
-            A = _transform_point(A, tf)
-            B = _transform_point(B, tf)
-            C = _transform_point(C, tf)
+            A = _ray_transform_point(A, tf)
+            B = _ray_transform_point(B, tf)
+            C = _ray_transform_point(C, tf)
             pos = ray_triangle_intersection(A, B, C, ray)
         end
 
