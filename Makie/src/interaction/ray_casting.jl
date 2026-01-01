@@ -375,7 +375,7 @@ function surface_pos(xs, ys, zs, i, j)
     return Point3d(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
 end
 
-function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
+    function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     xs = plot[1][]
     ys = plot[2][]
     zs = plot[3][]
@@ -420,7 +420,7 @@ function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
         p4d = plot.model[] * to_ndim(Point4d, pos, 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
-        xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos))
+        local xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos))
         return Point3d(xy[1], xy[2], pos[3])
     end
 end
