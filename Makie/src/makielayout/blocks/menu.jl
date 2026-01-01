@@ -178,8 +178,8 @@ function initialize_block!(m::Menu; default = 1)
         )
     end
 
-    was_inside_options = false
-    was_inside_button = false
+    was_inside_options = Ref(false)
+    was_inside_button = Ref(false)
 
     e = menuscene.events
 
@@ -215,11 +215,10 @@ function initialize_block!(m::Menu; default = 1)
             # selectable area and are in pixel space relative to menuscene)
             if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
-                was_inside_options = true
+                was_inside_options[] = true
                 # we either clicked on an item or hover it
                 if mouse_up(butt, was_pressed_options) # PRESSED
-                    i = pick_entry(mp[2])
-                    m.i_selected[] = i
+                    m.i_selected[] = pick_entry(mp[2])
                     m.is_open[] = false
                 else # HOVER
                     idx_hovered = pick_entry(mp[2])
@@ -236,7 +235,7 @@ function initialize_block!(m::Menu; default = 1)
             if position in selectionpoly.converted[][1]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
-                was_inside_button = true
+                was_inside_button[] = true
                 if mouse_up(butt, was_pressed_button) # PRESSED
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
@@ -260,12 +259,12 @@ function initialize_block!(m::Menu; default = 1)
         end
 
         # clean up hovers if we're outside
-        if !is_over_options && was_inside_options # going from being inside to outside
-            was_inside_options = false
+        if !is_over_options && was_inside_options[] # going from being inside to outside
+            was_inside_options[] = false
             update_option_colors!(0)
         end
-        if !is_over_button && was_inside_button
-            was_inside_button = false
+        if !is_over_button && was_inside_button[]
+            was_inside_button[] = false
             selectionpoly.color = m.selection_cell_color_inactive[]
         end
         # if mouse got over anything else, we close the menu
