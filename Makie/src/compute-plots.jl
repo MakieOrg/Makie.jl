@@ -523,7 +523,7 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
         val = convert_arguments(P, dim_converted...; convert_kwargs...)
-        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
+        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
         return rtype === :Tuple ? val : (val,)
     end
 
