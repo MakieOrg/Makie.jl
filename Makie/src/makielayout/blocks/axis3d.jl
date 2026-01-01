@@ -668,7 +668,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
         return Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
-    align = lift(topscene, miv, min1, min2) do mv, m1, m2
+    tick_align = lift(topscene, miv, min1, min2) do mv, m1, m2
         if dim == 1
             (mv ⊻ m1 ? :right : :left, m2 ? :top : :bottom)
         elseif dim == 2
@@ -679,7 +679,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     end
 
     ticklabels_text = text!(
-        topscene, labels_positions, align = align,
+        topscene, labels_positions, align = tick_align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
         space = :pixel, inspectable = false
