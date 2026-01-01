@@ -28,17 +28,18 @@ end
 function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
     isempty(glyphs) && return Rect3d(Point3d(0), Vec3d(0))
     glyphbbs = gl_bboxes(glyphs, scales, extents)
-    bb = Rect3d()
+    bb_ref = Ref(Rect3d())
     broadcast_foreach(origins, glyphbbs, rotation) do charo, glyphbb, rotation
         glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
         charbb = rotate_bbox(glyphbb3, rotation) + charo
-        bb = if !isfinite_rect(bb)
+        current_bb = bb_ref[]
+        bb_ref[] = if !isfinite_rect(current_bb)
             charbb
         else
-            union(bb, charbb)
+            union(current_bb, charbb)
         end
     end
-    return bb
+    return bb_ref[]
 end
 
 function gl_bboxes(glyphs, scales, extents)
