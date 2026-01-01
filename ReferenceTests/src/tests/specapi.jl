@@ -324,7 +324,7 @@ function Makie.convert_arguments(::Type{<:Makie.Block}, multidata::MultiData)
             xgridvisible = false, ygridvisible = false,
             xticksvisible = false, yticksvisible = false,
             xticklabelsvisible = false, yticklabelsvisible = false,
-            xlabelvisible = false, ylabelvisible = false
+            xlabelvisible = false, ylabelvisible = false,
         )
         plotsym = multidata.dim_distribution_plot_type
 
@@ -365,7 +365,7 @@ end
 
     # Dynamic description of the axis layout
     data1 = [Point2f(cos(x), sin(x)) / (1 + 0.1x) for x in range(0, 30, 300)]
-    data2 = [Point2f(x/10 - 1, cos(x)) for x in range(0, 20, 120)]
+    data2 = [Point2f(x / 10 - 1, cos(x)) for x in range(0, 20, 120)]
     dataset = map(m1.selection, t.active, m2.selection) do mainplot, showdist, distplot
         return MultiData(mainplot, showdist, distplot, [data1, data2])
     end
@@ -376,7 +376,7 @@ end
 
     # Limits don't re-compute automatically, so we need to trigger them manually
     # lower priority to make sure the call back is always called last
-    on(dataset; priority=-1) do x
+    on(dataset; priority = -1) do x
         foreach(autolimits!, block.blocks)
     end
 

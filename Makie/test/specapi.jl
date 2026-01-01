@@ -318,11 +318,13 @@ end
     # this should not error
     @test begin
         obs = Observable(
-            S.GridLayout([
+            S.GridLayout(
+                [
                 S.Box(color = :red) S.GridLayout([S.Box(color = :blue)])
-            ])
+                ]
+            )
         )
-        f,a,p = plot(obs)
+        f, a, p = plot(obs)
         obs[] = S.GridLayout([S.Box(color = :lightgray)])
         true
     end
