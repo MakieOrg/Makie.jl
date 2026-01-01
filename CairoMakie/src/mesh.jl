@@ -404,8 +404,10 @@ function draw_scattered_mesh(
         element_uv_transform = Makie.sv_getindex(uv_transform, i)
         element_translation = to_ndim(Point4d, positions[i], 0)
         element_rotation = Makie.rotationmatrix4(Makie.sv_getindex(rotations, i))
-        element_scale = Makie.scalematrix(Makie.sv_getindex(scales, i))
-        element_transform = element_rotation * element_scale # different order from transformationmatrix()
+        element_scale = Makie.sv_getindex(scales, i)
+        element_scale_matrix = Makie.scalematrix(element_scale)
+        # different order from transformationmatrix()
+        element_transform = f32c_model * element_rotation * element_scale_matrix
 
         # Note: These are not part of the compute graph because the number of
         # vertices of the mesh * number of positions in meshscatter could become
@@ -418,16 +420,20 @@ function draw_scattered_mesh(
         # =        f32c_model          * element_transform * vertices  +       element_translation
         element_world_pos = map(meshpoints) do p
             p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
-            p4d = f32c_model * element_transform * p4d + element_translation
+            p4d = element_transform * p4d + element_translation
             return Point3f(p4d) / p4d[4]
         end
 
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
 
+        # only used for normals
+        finite_element_scale = @. ifelse(element_scale >= 0, +1, -1) * max(abs(element_scale), 1e-6)
+        model = f32c_model * element_rotation * Makie.scalematrix(finite_element_scale)
+
         draw_mesh3D(
             scene, screen, plot,
             element_world_pos, element_screen_pos, meshfaces, meshnormals, meshuvs,
-            element_uv_transform, element_color, clip_planes, f32c_model * element_transform
+            element_uv_transform, element_color, clip_planes, model
         )
     end
 
