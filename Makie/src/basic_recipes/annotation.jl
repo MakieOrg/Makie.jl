@@ -934,8 +934,8 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
 
     # Helper function to find intersection of two line segments
     function segment_intersection(p1::Point2, p2::Point2, q1::Point2, q2::Point2)
-        x1, y1 = p1
-        x2, y2 = p2
+        local x1, y1 = p1
+        local x2, y2 = p2
         x3, y3 = q1
         x4, y4 = q2
 
