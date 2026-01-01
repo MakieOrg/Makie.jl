@@ -1012,59 +1012,63 @@ function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = n
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots = filter(get_plots(ax)) do plot
+    lplots_init = filter(get_plots(ax)) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
-    labels = map(lplots) do l
+    
+    labels_init = map(lplots_init) do l
         l.label[]
     end
 
-    if any(x -> x isa AbstractVector, labels)
-        _lplots = []
-        _labels = []
-        for (lplot, label) in zip(lplots, labels)
-            if label isa AbstractVector
-                for lab in label
+    lplots_flat, labels_flat = if any(x -> x isa AbstractVector, labels_init)
+            _lplots = []
+            _labels = []
+            for (lplot, label) in zip(lplots_init, labels_init)
+                if label isa AbstractVector
+                    for lab in label
+                        push!(_lplots, lplot)
+                        push!(_labels, lab)
+                    end
+                else
                     push!(_lplots, lplot)
-                    push!(_labels, lab)
+                    push!(_labels, label)
                 end
-            else
-                push!(_lplots, lplot)
-                push!(_labels, label)
             end
+            _lplots, _labels
+        else
+            lplots_init, labels_init
         end
-        lplots = _lplots
-        labels = _labels
-    end
 
     # filter out plots with same plot type and label
-    if unique
-        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
-        lplots = first.(plots_labels)
-        labels = last.(plots_labels)
-    end
+    lplots_unique, labels_unique = if unique
+            plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots_flat, labels_flat))
+            first.(plots_labels), last.(plots_labels)
+        else
+            lplots_flat, labels_flat
+        end
 
-    if merge
-        ulabels = Base.unique(labels)
-        mergedplots = [
-            [lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
-                for ul in ulabels
-        ]
+    lplots_merged, labels_merged = if merge
+            ulabels = Base.unique(labels_unique)
+            mergedplots = [
+                [lp for (i, lp) in enumerate(lplots_unique) if labels_unique[i] == ul]
+                    for ul in ulabels
+            ]
+            mergedplots, ulabels
+        else
+            lplots_unique, labels_unique
+        end
 
-        lplots, labels = mergedplots, ulabels
-    end
-
-    lplots_with_overrides = map(lplots, labels) do plots, label
+    lplots_with_overrides = map(lplots_merged, labels_merged) do plots, label
         if label isa Pair
             plots => LegendOverride(label[2])
         else
             plots
         end
     end
-    labels = [label isa Pair ? label[1] : label for label in labels]
+    final_labels = [label isa Pair ? label[1] : label for label in labels_merged]
 
-    return lplots_with_overrides, labels
+    return lplots_with_overrides, final_labels
 end
 
 get_plots(p::AbstractPlot) = [p]
