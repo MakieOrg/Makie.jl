@@ -27,27 +27,32 @@ function on_latest(f, to_track, observable::Observable; update = false, spawn = 
     task_lock = Threads.ReentrantLock()
     last_task_ref = Ref{Union{Nothing, Task}}(nothing)
     has_changed = Threads.Atomic{Bool}(false)
-    function run_f(new_value)
-        t1 = time()
-        try
-            f(new_value)
-            tdiff = time() - t1
-            if throttle > 0.0 && tdiff < throttle
-                sleep(throttle - tdiff)
+    function run_f(current_value)
+        while true
+            t1 = time()
+            try
+                f(current_value)
+                tdiff = time() - t1
+                if throttle > 0.0 && tdiff < throttle
+                    sleep(throttle - tdiff)
+                end
+            catch e
+                @warn "Error in f" exception = (e, Base.catch_backtrace())
             end
-        catch e
-            @warn "Error in f" exception = (e, Base.catch_backtrace())
+            # Since we skip updates completely while executing the above `f`
+            # We need to check after finishing, if the value has changed!
+            # `==` can be pretty expensive or ill defined, so we use a flag `has_changed`
+            # But `==` would be better, considering, that one could arrive at an old value.
+            # This should be configurable, but since async_latest is needed for working on big data as input
+            # we assume for now that `==` is prohibitive as the default
+            if has_changed[]
+                has_changed[] = false
+                current_value = observable[] # needs to be recursive
+            else
+                break
+            end
         end
-        # Since we skip updates completely while executing the above `f`
-        # We need to check after finishing, if the value has changed!
-        # `==` can be pretty expensive or ill defined, so we use a flag `has_changed`
-        # But `==` would be better, considering, that one could arrive at an old value.
-        # This should be configurable, but since async_latest is needed for working on big data as input
-        # we assume for now that `==` is prohibitive as the default
-        return if has_changed[]
-            has_changed[] = false
-            run_f(observable[]) # needs to be recursive
-        end
+    nothing
     end
 
     function on_callback(new_value)
