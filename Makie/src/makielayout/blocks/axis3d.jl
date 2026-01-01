@@ -359,9 +359,9 @@ function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protru
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4d, points, 1)
 
             # convert to effective viewport
-            w = w / width; h = h / height
-            maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
-            maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
+            w_eff = w / width; h_eff = h / height
+            maxx = maximum(x -> abs(x[1] / (w_eff * x[4])), projpoints)
+            maxy = maximum(x -> abs(x[2] / (h_eff * x[4])), projpoints)
 
             # normalization to map max x/y to 1 in effective viewport
             ratio_x = 1.0 / maxx
