@@ -32,8 +32,8 @@ function initialize_block!(ax::Axis3)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
-    cam = Axis3Camera()
-    cameracontrols!(scene, cam)
+    axis_cam = Axis3Camera()
+    cameracontrols!(scene, axis_cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits, ax.clip) do model, lims, clip
         if clip
             _planes = planes(lims)
@@ -95,25 +95,25 @@ function initialize_block!(ax::Axis3)
     end
 
     onany(scene, viewport_scaling, matrices) do viewport, (model, view, proj, lookat, eyepos)
-        cam = camera(scene)
-        Makie.set_proj_view!(cam, proj, view)
+        cam1 = camera(scene)
+        Makie.set_proj_view!(cam1, proj, view)
         scene.transformation.model[] = model
 
         viewdir = normalize(lookat - eyepos)
         up = Vec3d(0, 0, 1)
         u_z = -viewdir
         u_x = normalize(cross(up, u_z))
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam1.eyeposition[] = eyepos
+        cam1.upvector[] = cross(u_z, u_x)
+        cam1.view_direction[] = viewdir
 
         # We mirror the camera to the blockscene with adjusted viewport scaling
-        cam = camera(blockscene)
-        Makie.set_proj_view!(cam, viewport * proj, view)
+        cam2 = camera(blockscene)
+        Makie.set_proj_view!(cam2, viewport * proj, view)
         blockscene.transformation.model[] = model
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam2.eyeposition[] = eyepos
+        cam2.upvector[] = cross(u_z, u_x)
+        cam2.view_direction[] = viewdir
 
         return
     end
