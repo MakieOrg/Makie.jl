@@ -32,10 +32,10 @@ function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
     broadcast_foreach(origins, glyphbbs, rotation) do charo, glyphbb, rotation
         glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
         charbb = rotate_bbox(glyphbb3, rotation) + charo
-        if !isfinite_rect(bb)
-            bb = charbb
+        bb = if !isfinite_rect(bb)
+            charbb
         else
-            bb = union(bb, charbb)
+            union(bb, charbb)
         end
     end
     return bb
