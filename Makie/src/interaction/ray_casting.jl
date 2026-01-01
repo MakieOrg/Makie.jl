@@ -369,6 +369,10 @@ surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
 surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j - 1) / (N - 1)
 surface_y(ys, i, j, N) = ys[j]
 surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
+function _ray_transform_point(p, tf)
+    xy = Makie.apply_transform(tf, Point2d(p))
+    return Point3d(xy[1], xy[2], p[3])
+end
 
 function surface_pos(xs, ys, zs, i, j)
     N, M = size(zs)
@@ -395,10 +399,9 @@ end
             A = surface_pos(xs, ys, zs, i, j)
             B = surface_pos(xs, ys, zs, i - 1, j)
             C = surface_pos(xs, ys, zs, i, j + 1)
-            A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2d(p))
-                Point3d(xy[1], xy[2], p[3])
-            end
+            A = _transform_point(A, tf)
+            B = _transform_point(B, tf)
+            C = _transform_point(C, tf)
             pos = ray_triangle_intersection(A, B, C, ray)
         end
 
@@ -406,10 +409,9 @@ end
             A = surface_pos(xs, ys, zs, i, j)
             B = surface_pos(xs, ys, zs, i, j + 1)
             C = surface_pos(xs, ys, zs, i + 1, j + 1)
-            A, B, C = map((A, B, C)) do p
-                xy = Makie.apply_transform(tf, Point2d(p))
-                Point3d(xy[1], xy[2], p[3])
-            end
+            A = _transform_point(A, tf)
+            B = _transform_point(B, tf)
+            C = _transform_point(C, tf)
             pos = ray_triangle_intersection(A, B, C, ray)
         end
 
@@ -420,7 +422,7 @@ end
         p4d = plot.model[] * to_ndim(Point4d, pos, 1)
         return p4d[Vec(1, 2, 3)] / p4d[4]
     else
-        local xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos))
+        xy = Makie.apply_transform(inverse_transform(tf), Point2d(pos))
         return Point3d(xy[1], xy[2], pos[3])
     end
 end
