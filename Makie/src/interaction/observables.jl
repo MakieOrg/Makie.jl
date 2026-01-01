@@ -25,7 +25,7 @@ end
 
 function on_latest(f, to_track, observable::Observable; update = false, spawn = false, throttle = 0.0)
     task_lock = Threads.ReentrantLock()
-    last_task = nothing
+    last_task_ref = Ref{Union{Nothing, Task}}(nothing)
     has_changed = Threads.Atomic{Bool}(false)
     function run_f(new_value)
         t1 = time()
@@ -52,11 +52,11 @@ function on_latest(f, to_track, observable::Observable; update = false, spawn = 
 
     function on_callback(new_value)
         return lock(task_lock) do
-            if isnothing(last_task) || istaskdone(last_task)
+            if isnothing(last_task_ref[]) || istaskdone(last_task_ref[])
                 if spawn
-                    last_task = Threads.@spawn run_f(new_value)
+                    last_task_ref[] = Threads.@spawn run_f(new_value)
                 else
-                    last_task = Threads.@async run_f(new_value)
+                    last_task_ref[] = Threads.@async run_f(new_value)
                 end
             else
                 has_changed[] = true
