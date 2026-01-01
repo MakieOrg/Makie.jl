@@ -81,25 +81,7 @@ function initialize_block!(leg::Legend; entrygroups)
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
-
-    on(blockscene, leg.padding) do p
-        grid.alignmode = Outside(p...)
-        relayout()
-        return
-    end
-
     update_grid = Observable(true)
-    onany(blockscene, update_grid, leg.margin) do _, margin
-        if manipulating_grid[]
-            return
-        end
-        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
-        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
-        if !any(isnothing.((w, h)))
-            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
-        end
-        return
-    end
 
     # these arrays store all the plot objects that the legend entries need
     titletexts = Optional{Label}[]
@@ -109,7 +91,7 @@ function initialize_block!(leg::Legend; entrygroups)
     entryshades = [Box[]]
     entryhalfshades = [Box[]]
 
-    function relayout()
+    relayout = () -> begin
         manipulating_grid[] = true
 
         rowcol(n) = ((n - 1) ÷ leg.nbanks[] + 1, (n - 1) % leg.nbanks[] + 1)
@@ -203,6 +185,25 @@ function initialize_block!(leg::Legend; entrygroups)
         translate!(scene, (0, 0, 10))
         return
     end
+
+    on(blockscene, leg.padding) do p
+        grid.alignmode = Outside(p...)
+        relayout()
+        return
+    end
+
+    onany(blockscene, update_grid, leg.margin) do _, margin
+        if manipulating_grid[]
+            return
+        end
+        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
+        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
+        if !any(isnothing.((w, h)))
+            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
+        end
+        return
+    end
+
 
     onany(
         blockscene, leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap,
