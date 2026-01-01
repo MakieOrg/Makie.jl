@@ -274,10 +274,10 @@ function register_projected_rotations_2d!(
     ) do proj_matrix, model, f32c, transform_func, positions, directions
 
         pvmf32 = if f32c !== nothing
-                proj_matrix * model * f32_convert_matrix(f32c)
-            else 
-                proj_matrix * model
-            end
+            proj_matrix * model * f32_convert_matrix(f32c)
+        else
+            proj_matrix * model
+        end
 
         delta = relative_delta * norm(widths(Rect3d(positions)))
 

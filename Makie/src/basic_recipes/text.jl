@@ -871,7 +871,7 @@ end
 iswhitespace(l::LaTeXString) = iswhitespace(replace(l.s, '$' => ""))
 
 function Base.print(io::IO, r::RichText)
-     foreach(child -> print(io, child), r.children)
+    return foreach(child -> print(io, child), r.children)
 end
 
 function Base.String(r::RichText)

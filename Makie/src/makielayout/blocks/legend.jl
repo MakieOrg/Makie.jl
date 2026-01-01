@@ -1017,48 +1017,48 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
-    
+
     labels_init = map(lplots_init) do l
         l.label[]
     end
 
     lplots_flat, labels_flat = if any(x -> x isa AbstractVector, labels_init)
-            _lplots = []
-            _labels = []
-            for (lplot, label) in zip(lplots_init, labels_init)
-                if label isa AbstractVector
-                    for lab in label
-                        push!(_lplots, lplot)
-                        push!(_labels, lab)
-                    end
-                else
+        _lplots = []
+        _labels = []
+        for (lplot, label) in zip(lplots_init, labels_init)
+            if label isa AbstractVector
+                for lab in label
                     push!(_lplots, lplot)
-                    push!(_labels, label)
+                    push!(_labels, lab)
                 end
+            else
+                push!(_lplots, lplot)
+                push!(_labels, label)
             end
-            _lplots, _labels
-        else
-            lplots_init, labels_init
         end
+        _lplots, _labels
+    else
+        lplots_init, labels_init
+    end
 
     # filter out plots with same plot type and label
     lplots_unique, labels_unique = if unique
-            plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots_flat, labels_flat))
-            first.(plots_labels), last.(plots_labels)
-        else
-            lplots_flat, labels_flat
-        end
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots_flat, labels_flat))
+        first.(plots_labels), last.(plots_labels)
+    else
+        lplots_flat, labels_flat
+    end
 
     lplots_merged, labels_merged = if merge
-            ulabels = Base.unique(labels_unique)
-            mergedplots = [
-                [lp for (i, lp) in enumerate(lplots_unique) if labels_unique[i] == ul]
-                    for ul in ulabels
-            ]
-            mergedplots, ulabels
-        else
-            lplots_unique, labels_unique
-        end
+        ulabels = Base.unique(labels_unique)
+        mergedplots = [
+            [lp for (i, lp) in enumerate(lplots_unique) if labels_unique[i] == ul]
+                for ul in ulabels
+        ]
+        mergedplots, ulabels
+    else
+        lplots_unique, labels_unique
+    end
 
     lplots_with_overrides = map(lplots_merged, labels_merged) do plots, label
         if label isa Pair

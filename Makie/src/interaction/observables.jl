@@ -52,7 +52,7 @@ function on_latest(f, to_track, observable::Observable; update = false, spawn = 
                 break
             end
         end
-    nothing
+        return nothing
     end
 
     function on_callback(new_value)

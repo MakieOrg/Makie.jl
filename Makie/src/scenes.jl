@@ -267,7 +267,7 @@ function Scene(;
             m_theme.size[]
         end
         Observable(Recti(0, 0, sz); ignore_equal_values = true)
-    else 
+    else
         viewport
     end
 

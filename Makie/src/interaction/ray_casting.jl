@@ -379,7 +379,7 @@ function surface_pos(xs, ys, zs, i, j)
     return Point3d(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
 end
 
-    function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
+function position_on_plot(plot::Surface, idx, ray::Ray; apply_transform = true)
     xs = plot[1][]
     ys = plot[2][]
     zs = plot[3][]
