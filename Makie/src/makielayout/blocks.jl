@@ -831,9 +831,14 @@ function append_content_to_list!(list, content::GridLayoutBase.GridContent)
 end
 append_content_to_list!(list, content) = push!(list, content)
 
-function Base.getindex(b::Block, i::Union{Integer, Colon, AbstractRange}, j::Union{Integer, Colon, AbstractRange})
+function Base.getindex(
+        b::Block,
+        i::Union{Integer, Colon, AbstractRange},
+        j::Union{Integer, Colon, AbstractRange},
+        side = GridLayoutBase.Inner()
+    )
     isdefined(b, :layout) || init_layout!(b)
-    return b.layout[i, j]
+    return b.layout[i, j, side]
 end
 
 function Base.getindex(b::T, idx::Integer) where {T <: Block}
