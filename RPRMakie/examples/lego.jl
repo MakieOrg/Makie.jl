@@ -34,7 +34,7 @@ function plot_part!(scene, parent, name::String)
     origin = get(origins, name, nothing)
     if !isnothing(origin)
         centered = m.position .- origin
-        m = GeometryBasics.Mesh(meta(centered; normals = m.normals), faces(m))
+        m = GeometryBasics.mesh(centered, faces(m); normal = m.normal)
         translate!(trans, origin)
     else
         translate!(trans, -ptrans.translation[])
@@ -63,11 +63,11 @@ function plot_lego_figure(s, floor = true)
     return figure
 end
 
-RPRMakie.activate!(iterations = 200, plugin = RPR.Northstar)
+RPRMakie.activate!(iterations = 10, plugin = RPR.Tahoe, resource = RPR.CPU)
 radiance = 50000
 lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
-    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance * 1.1)),
+    PointLight(RGBf(radiance, radiance, radiance * 1.1), Vec3f(50, 0, 200)),
 ]
 s = Scene(size = (500, 500), lights = lights)
 

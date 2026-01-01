@@ -149,6 +149,13 @@ const MAKIE_DEFAULT_THEME = Attributes(
         resource = automatic,
         plugin = automatic,
         max_recursion = 10
+    ),
+
+    TraceMakie = Attributes(
+        integrator = automatic,  # Whitted() by default, or SPPM()
+        exposure = 1.0f0,
+        tonemap = :aces,
+        gamma = 2.2f0
     )
 )
 
