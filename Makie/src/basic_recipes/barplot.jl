@@ -264,22 +264,24 @@ function barplot_labels(
         color_over_background, color_over_bar, label_formatter, label_offset, label_rotation,
         label_align, label_position, fillto
     )
-    if bar_labels isa Symbol && bar_labels in (:x, :y)
-        bar_labels = map(xpositions, ypositions) do x, y
+    computed_labels = if bar_labels isa Symbol && bar_labels in (:x, :y)
+        map(xpositions, ypositions) do x, y
             if bar_labels === :x
                 x
             else
                 y
             end
         end
+    else
+        bar_labels
     end
-    return if bar_labels isa AbstractVector
-        if length(bar_labels) == length(xpositions)
+    return if computed_labels isa AbstractVector
+        if length(computed_labels) == length(xpositions)
             attributes = text_attributes(
                 ypositions, in_y_direction, flip_labels_at, color_over_background,
                 color_over_bar, label_offset, label_rotation, label_align, label_position
             )
-            label_pos = broadcast(xpositions, ypositions, offset, bar_labels, label_position, fillto) do x, y, off, l, lpos, fto
+            label_pos = broadcast(xpositions, ypositions, offset, computed_labels, label_position, fillto) do x, y, off, l, lpos, fto
                 str = string(label_formatter(l))
                 p = if in_y_direction
                     if lpos == :end
@@ -298,10 +300,10 @@ function barplot_labels(
             end
             return (label_pos, attributes...)
         else
-            error("Labels and bars need to have same length. Found: $(length(xpositions)) bars with these labels: $(bar_labels)")
+            error("Labels and bars need to have same length. Found: $(length(xpositions)) bars with these labels: $(computed_labels)")
         end
     else
-        error("Unsupported label type: $(typeof(bar_labels)). Use: :x, :y, or a vector of values that can be converted to strings.")
+        error("Unsupported label type: $(typeof(computed_labels)). Use: :x, :y, or a vector of values that can be converted to strings.")
     end
 end
 
