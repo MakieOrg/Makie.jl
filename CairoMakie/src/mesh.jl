@@ -427,7 +427,7 @@ function draw_scattered_mesh(
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
 
         # only used for normals
-        finite_element_scale = @. ifelse(element_scale >= 0, +1, -1) * max(abs(element_scale), 1e-6)
+        finite_element_scale = @. ifelse(element_scale >= 0, +1, -1) * max(abs(element_scale), 1.0e-6)
         model = f32c_model * element_rotation * Makie.scalematrix(finite_element_scale)
 
         draw_mesh3D(
