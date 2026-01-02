@@ -421,7 +421,7 @@ function per_face_colors(_color, matcap, faces, normals, uv)
     if !isnothing(matcap)
         wsize = reverse(size(matcap))
         wh = wsize .- 1
-        cvec = let wh = wh, wsize = wsize
+        cvec = let wh = wh
             map(normals) do n
                 muv = 0.5n[Vec(1, 2)] .+ Vec2f(0.5)
                 x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
