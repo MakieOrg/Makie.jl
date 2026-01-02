@@ -623,8 +623,8 @@ function Base.delete!(screen::Screen, scene::Scene)
                     key, max_id = p
                 end
             end
-
-            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
+            current_max_id = max_id
+            i = findfirst(id_scene -> id_scene[1] == current_max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
