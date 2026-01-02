@@ -396,6 +396,95 @@ end
 
 abstract type AbstractComputeGraph end
 
+struct NestedSearchTree
+    keytables::Vector{Dict{Symbol, Int}}
+end
+
+NestedSearchTree() = NestedSearchTree([Dict{Symbol, Int}()])
+
+has_root_key(tree::NestedSearchTree, key::Symbol) = has_key_in_level(tree, 1, key)
+function has_key_in_level(tree::NestedSearchTree, level::Int, key::Symbol)
+    if length(tree.keytables) >= level
+        return haskey(tree.keytables[level], key)
+    else
+        return false
+    end
+end
+
+add_key!(tree::NestedSearchTree, args...) = add_key!(tree, args)
+add_key!(tree::NestedSearchTree, args::Tuple) = add_key!(tree, 1, args)
+function add_key!(tree::NestedSearchTree, level, args::Tuple)
+    key_to_insert = first(args)
+    tail = Base.tail(args)
+    if has_key_in_level(tree, level, key_to_insert)
+
+        next_level = tree.keytables[level][key_to_insert]
+        if next_level == -1 && !isempty(tail)
+            error("Cannot inset (...).$key_to_insert.(...) - $key_to_insert is already marked as a final key.")
+        elseif next_level != -1 && isempty(tail)
+            error("Cannot inset (...).$key_to_insert - $key_to_insert is already marked as a non-final key.")
+        else
+            add_key!(tree, next_level, tail)
+        end
+
+    else
+
+        @assert length(tree.keytables) >= level - 1
+        if length(tree.keytables) == level - 1
+            push!(tree.keytables, Dict{Symbol, Int}())
+        end
+
+        if isempty(tail)
+            tree.keytables[level][key_to_insert] = -1
+            return
+        else
+            next_index = length(tree.keytables) + 1
+            tree.keytables[level][key_to_insert] = next_index
+            add_key!(tree, next_index, tail)
+            return
+        end
+    end
+end
+
+struct TemporarySearchResult
+    parent::NestedSearchTree
+    keys::Vector{Symbol}
+    next_index::Int
+end
+
+function Base.getindex(tree::NestedSearchTree, key::Symbol)
+    if has_key_in_level(tree, 1, key)
+        next = tree.keytables[1][key]
+        return TemporarySearchResult(tree, [key], next)
+    else
+        throw(KeyError(key))
+    end
+end
+
+function Base.getindex(temp::TemporarySearchResult, key::Symbol)
+    push!(temp.keys, key)
+    if has_key_in_level(temp.parent, temp.next_index, key)
+        next = temp.parent.keytables[temp.next_index][key]
+        return TemporarySearchResult(temp.parent, temp.keys, next)
+    else
+        merged = merged_key(temp)
+        throw(KeyError(merged))
+    end
+end
+
+isfinal(temp::TemporarySearchResult) = temp.next_index == -1
+
+merged_key(temp::TemporarySearchResult) = merged_key(temp.keys)
+merged_key(keys::Tuple{Symbol}) = keys[1]
+merged_key(keys::Tuple{Symbol, Vararg{Symbol}}) = reduce((a, b) -> Symbol(a, :(.), b), keys)
+function merged_key(keys::Vector{Symbol})
+    if length(keys) == 1
+        return keys[1]
+    else
+        reduce((a, b) -> Symbol(a, :(.), b), keys)
+    end
+end
+
 """
     ComputeGraph()
 
@@ -424,7 +513,9 @@ graph[:derived_node][]
 struct ComputeGraph <: AbstractComputeGraph
     inputs::Dict{Symbol, Input}
     outputs::Dict{Symbol, Computed}
+    lock::ReentrantLock
     nesting::NestedSearchTree
+
     onchange::Observable{Set{Symbol}}
     obs_to_notify::Set{Symbol}
     observables::Dict{Symbol, Observable}
@@ -504,10 +595,9 @@ end
 
 function ComputeGraph()
     graph = ComputeGraph(
-        Dict{Symbol, Input}(), Dict{Symbol, Computed}(),
+        Dict{Symbol, ComputeEdge}(), Dict{Symbol, Computed}(), Base.ReentrantLock(),
         NestedSearchTree(),
-        Observable(Set{Symbol}()), Set{Symbol}(),
-        Dict{Symbol, Observable}(), Set{Symbol}(),
+        Observable(Set{Symbol}()), Dict{Symbol, Observable}(), Set{Symbol}(),
         Observables.ObserverFunction[], Observable[]
     )
 
@@ -790,62 +880,12 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     return attr[key]
 end
 
-"""
-    struct ComputeGraphView
-
-A `ComputeGraphView` represents a nested ComputedGraph. It is returned when
-accessing the parent of a nested node within a ComputeGraph.
-"""
-struct ComputeGraphView <: AbstractComputeGraph
+struct ComputeGraphView
     parent::ComputeGraph
     nested_trace::TemporarySearchResult
 end
 
-"""
-    ComputeGraphView(parent, key::Symbol)
-
-Manually creates a view into a ComputeGraph.
-"""
-function ComputeGraphView(parent::ComputeGraph, key::Symbol)
-    if !haskey(parent, key)
-        add_path!(parent.nesting, key)
-    end
-    return parent[key]
-end
-
-function ComputeGraphView(view::ComputeGraphView, key::Symbol)
-    if !haskey(view, key)
-        add_key!(
-            root(view).nesting,
-            view.nested_trace.next_index,
-            (key,), false
-        )
-    end
-    return view[key]
-end
-
-root(g::ComputeGraph) = g
-root(v::ComputeGraphView) = v.parent
-
 function Base.show(io::IO, view::ComputeGraphView)
-    trace = view.nested_trace
-    level_dict = trace.parent.keytables[trace.next_index]
-    _show_view_from_table(io, level_dict)
-    return
-end
-
-function _show_view_from_table(io::IO, level_dict::Dict)
-    ks = collect(keys(level_dict))
-    kstr = if length(ks) > 5
-        ":$(ks[1]), :$(ks[2]), :$(ks[3]),..."
-    else
-        join(Ref(':') .* string.(ks), ", ")
-    end
-    print(io, "ComputeGraphView($kstr)")
-    return
-end
-
-function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
     attr = view.parent
     trace = view.nested_trace
 
@@ -856,56 +896,16 @@ function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
     print(io, "Nested view of ComputeGraph at graph.$base_key containing:")
     for (key, val) in level_dict
         full_key = Symbol(base_key, :(.), key)
-        if is_final_level(val)
+        if val == -1
             node = get(attr.inputs, full_key, attr.outputs[full_key])
             print(io, "\n  ", key, " => ", node)
         else
-            next_level_dict = trace.parent.keytables[val]
-            print(io, "\n  ", key, " => ")
-            _show_view_from_table(io, next_level_dict)
+            print(io, "\n  ", key, " => nested nodes...")
         end
     end
 
     return
 end
-
-Base.keys(view::ComputeGraphView) = keys(view.nested_trace)
-recursive_keys(view::ComputeGraphView) = recursive_keys(view.nested_trace)
-merged_key(view::ComputeGraphView) = merged_key(view.nested_trace)
-
-Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
-Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
-
-has_leaf_key(view::ComputeGraphView, key::Symbol) = isfinal(view.nested_trace[key])
-
-# Generates pairs for `foo(; kwargs...)`
-function Base.iterate(view::ComputeGraphView)
-    ks = keys(view)
-    return iterate(view, (ks, iterate(ks)))
-end
-
-function Base.iterate(view::ComputeGraphView, state)
-    ks, substate = state
-    if isnothing(substate)
-        return nothing
-    else
-        key, key_state = substate
-        return key => view[key], (ks, iterate(ks, key_state))
-    end
-end
-
-function Base.length(view::ComputeGraphView)
-    trace = view.nested_trace
-    level = trace.next_index
-    return length(trace.parent.keytables[level])
-end
-
-Base.eltype(::Type{ComputeGraphView}) = Union{Pair{Symbol, ComputeGraphView}, Pair{Symbol, Computed}}
-
-# only collects outputs as those are useful to create a child graph
-# TODO: these don't really fit together
-# Base.pairs(graph::ComputeGraph) = graph.outputs # not nested
-Base.pairs(view::ComputeGraphView) = (p for p in view) # nested
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
     if haskey(attr.outputs, key)
@@ -916,20 +916,9 @@ function Base.getindex(attr::ComputeGraph, key::Symbol)
     end
 end
 
-function Base.propertynames(attr::ComputeGraphView)
-    return collect(keys(attr.parent.nesting.keytables[attr.nested_trace.next_index]))
-end
 function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     hasfield(ComputeGraphView, key) && return getfield(attr, key)
     return getindex(attr, key)
-end
-
-function Base.getindex(attr::AbstractComputeGraph, keys::Tuple{Vararg{Symbol}})
-    return getindex(attr, keys...)
-end
-
-function Base.getindex(attr::AbstractComputeGraph, key1::Symbol, key2::Symbol, keys::Symbol...)
-    return getindex(getindex(attr, key1), key2, keys...)
 end
 
 function Base.getindex(attr::ComputeGraphView, key::Symbol)
@@ -941,46 +930,6 @@ function Base.getindex(attr::ComputeGraphView, key::Symbol)
         return ComputeGraphView(attr.parent, temp_result)
     end
 end
-# Compat for (graph.attributes[]::Attributes)[:entry]/.entry
-Base.getindex(attr::ComputeGraphView) = attr
-
-function Base.setproperty!(attr::ComputeGraphView, key::Symbol, value)
-    temp_result = attr.nested_trace[key]
-    merged = merged_key(temp_result)
-    if isfinal(temp_result)
-        setproperty!(attr.parent, merged, value)
-    else
-        error("Can't set $merged as it is an incomplete path to a compute node.")
-    end
-    return
-end
-
-function Base.setindex!(attr::ComputeGraphView, value, key1::Symbol, key2::Symbol, keys::Symbol...)
-    return setindex!(getindex(attr, key1), value, key2, keys...)
-end
-
-function Base.setindex!(attr::ComputeGraphView, value, key::Symbol)
-    temp_result = attr.nested_trace[key]
-    if isfinal(temp_result)
-        merged = merged_key(temp_result)
-        return setindex!(attr.parent[merged], value)
-    else
-        error("Can't set $merged as it is an incomplete path to a compute node.")
-    end
-end
-
-function _update!(view::ComputeGraphView, values)
-    root = merged_key(view.nested_trace.keys)
-    new_values = [Pair(merged_key(root, k), v) for (k, v) in values]
-    return _update!(view.parent, new_values)
-end
-
-# function Base.setindex!(attr::AbstractComputeGraph, g::ComputeGraph, key::Symbol)
-#     if !(isempty(g.inputs) && isempty(g.outputs))
-#         error("graph[key] = ComputeGraph() is only allowed with empty ComputeGraphs")
-#     end
-#     return ComputeGraphView(attr, key)
-# end
 
 isdirty(input::Input) = input.dirty
 
@@ -1195,53 +1144,41 @@ add_input!(graph, (:outer, :inner), 1)
 add_input!(graph.outer, :middle, :inner, 1)
 ```
 """
-add_input!
-
-# add_input!([func, ], attr, args...) handles multi-key -> tuple of keys
-# add_input!([func, ], attr, tuple, val) handles nesting, creates single key
-# add_input!([func, ], attr, key, val) handles value based processing
-# _add_input!(func, attr, key, val) handles node insertion
-
-# Since attr.input return the Computed node after the Input it's convenient to
-# have this work with Computed
-"""
-    enable_forced_updates!(input)
-
-Sets `input.forced_update = true` which makes the `Input` propagate same value
-updates to the `Computed` node they connect to. To further propagate same
-value updates through `ComputeEdge`s, wrap the values to propagate in
-`ExplicitUpdate(value, :force)`.
-"""
-function enable_forced_updates!(node::Computed)
-    input = node.parent
-    input isa Input || error("Forced updates are only implemented for Inputs. Use ExplicitUpdate(data, :force) otherwise.")
-    enable_forced_updates!(input)
-    return
-end
-function enable_forced_updates!(input::Input)
-    input.force_update = true
-    return
+function add_input!(attr::ComputeGraph, args...)
+    key, value = check_and_merge_input_args(attr, args)
+    return _add_input!(identity, attr, key, value)
 end
 
-function add_input!(attr::ComputeGraph, args...; force_update = false)
-    add_input!(attr, Base.front(args), last(args))
-    if force_update
-        enable_forced_updates!(getindex(attr, Base.front(args)...).parent)
+function check_and_merge_input_args(attr::ComputeGraph, args::Tuple)
+    if length(args) < 2
+        throw(
+            ArgumentError(
+                "`add_input!([callback], attr, names..., value)` requires at least one name and one value."
+            )
+        )
     end
-    return attr
-end
 
-function add_input!(attr::ComputeGraphView, args...)
-    combined = (attr.nested_trace.keys..., Base.front(args)...)
-    return add_input!(attr.parent, combined, last(args))
-end
+    names = Base.front(args)
+    value = last(args)
 
-function add_input!(attr::ComputeGraph, keys::Tuple, value)
-    key = handle_nested_keys(attr, keys)
-    return add_input!(attr, key, value)
-end
+    if !all(name -> name isa Symbol, names)
+        first_bad = findfirst(name -> !isa(name, Symbol), names)
+        throw(
+            ArgumentError(
+                "`add_input!([callback], attr, names..., value) requires all names to be Symbols, " *
+                "but name $(first_bad) is a $(typeof(names[first_bad]))."
+            )
+        )
+    end
 
-add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
+    if length(names) == 1
+        return only(names), value
+    else
+        add_key!(attr.nesting, names)
+        merged_name = reduce((a, b) -> Symbol(a, :(.), b), names)
+        return merged_name, value
+    end
+end
 
 function add_input!(conversion_func, attr::ComputeGraph, args...; force_update = false)
     add_input!(conversion_func, attr, Base.front(args), last(args))
@@ -1261,41 +1198,9 @@ function add_input!(conversion_func, attr::ComputeGraph, keys::Tuple, value)
     return add_input!(conversion_func, attr, key, value)
 end
 
-function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
-    return _add_input!(conversion_func, attr, key, value)
-end
-
-function handle_nested_keys(attr::ComputeGraph, names::Tuple)
-    if isempty(names)
-        throw(
-            ArgumentError(
-                "`add_input!([callback], attr, names..., value)` requires at least one name and one value."
-            )
-        )
-    end
-
-    if !all(name -> name isa Symbol, names)
-        first_bad = findfirst(name -> !isa(name, Symbol), names)
-        throw(
-            ArgumentError(
-                "`add_input!([callback], attr, names..., value) requires all names to be Symbols, " *
-                    "but name $(first_bad) is a $(typeof(names[first_bad]))."
-            )
-        )
-    end
-
-    if length(names) == 1
-        return only(names)
-    else
-        add_key!(attr.nesting, names)
-        return merged_key(names)
-    end
-end
-
-function cleanup_nested_key!(attr::ComputeGraph, key::Symbol)
-    names = Symbol.(split(string(key), '.'))
-    delete_key!(attr.nesting, names)
-    return
+function add_input!(conversion_func, attr::ComputeGraph, args...)
+    key, value = check_and_merge_input_args(attr, args)
+    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
 end
 
 function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
