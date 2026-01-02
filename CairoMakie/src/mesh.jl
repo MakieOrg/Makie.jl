@@ -304,20 +304,20 @@ function draw_mesh3D(
     i = Vec(1, 2, 3)
     normalmatrix = transpose(inv(model[i, i])) # see issue #3702
 
-    if Makie.is_data_space(space) && !isempty(clip_planes)
-        valid = Bool[is_visible(clip_planes, p) for p in world_points]
+    valid = if Makie.is_data_space(space) && !isempty(clip_planes)
+        Bool[is_visible(clip_planes, p) for p in world_points]
     else
-        valid = Bool[]
+        Bool[]
     end
 
     # Approximate zorder
     average_zs = map(f -> average_z(screen_points, f), meshfaces)
     zorder = sortperm(average_zs)
 
-    if isnothing(meshnormals)
-        ns = nothing
+    ns = if isnothing(meshnormals)
+        nothing
     else
-        ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
+        map(n -> zero_normalize(normalmatrix * n), meshnormals)
     end
 
     # Face culling
@@ -416,10 +416,12 @@ function draw_scattered_mesh(
         # - only scaling from float32convert applies to vertices
         #   f32c_scale * (maybe model) *  rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
         # =        f32c_model          * element_transform * vertices  +       element_translation
-        element_world_pos = map(meshpoints) do p
-            p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
-            p4d = f32c_model * element_transform * p4d + element_translation
-            return Point3f(p4d) / p4d[4]
+        element_world_pos = let f32c_model = f32c_model
+            map(meshpoints) do p
+                p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+                p4d = f32c_model * element_transform * p4d + element_translation
+                return Point3f(p4d) / p4d[4]
+            end
         end
 
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
