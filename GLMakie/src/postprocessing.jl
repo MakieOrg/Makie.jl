@@ -210,15 +210,15 @@ function fxaa_postprocessor(framebuffer, shader_cache)
     require_context(shader_cache.context) # for framebuffer, uniform textures
 
     # Add missing buffers
-    luma_id = if !haskey(framebuffer, :color_luma)
+    if !haskey(framebuffer, :color_luma)
         if !haskey(framebuffer, :HDR_color)
             glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
             color_luma_buffer = Texture(
                 shader_cache.context, RGBA{N0f8}, size(framebuffer), minfilter = :linear, x_repeat = :clamp_to_edge
             )
-            attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
+            luma_id = attach_colorbuffer!(framebuffer, :color_luma, color_luma_buffer)
         else
-            framebuffer[:HDR_color][1]
+            luma_id = framebuffer[:HDR_color][1]
         end
     end
 
