@@ -17,11 +17,15 @@ function attribute_per_char(string, attribute)
             n_words = length(split(string, r"\s+"))
             if length(attribute) == n_words
                 i = 1
-                return map(collect(string)) do char
-                    f = attribute[i]
-                    char == "\n" && (i += 1)
-                    return f
+                result = Vector{eltype(attribute)}(undef, length(string))
+                for (k, char) in enumerate(string)
+                    idx = min(i, length(attribute))
+                    result[k] = attribute[idx]
+                    if isspace(char) && i < n_words
+                        i += 1
+                    end
                 end
+                return result
             end
         end
     else
