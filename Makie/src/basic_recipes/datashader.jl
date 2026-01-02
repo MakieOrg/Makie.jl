@@ -175,18 +175,17 @@ module Aggregation
                 out[i, j] = update(op, out[i, j], z)
             end
         end
+        mini, maxi = Inf, -Inf
 
-        r_mini = Ref(Inf)
-        r_maxi = Ref(-Inf)
-        map!(pixelbuffer, aggbuffer) do x
-            final_value = value(op, x)
+        for i in eachindex(pixelbuffer, aggbuffer)
+            final_value = value(op, aggbuffer[i])
             if isfinite(final_value)
-                r_mini[] = min(final_value, r_mini[])
-                r_maxi[] = max(final_value, r_maxi[])
+                mini = min(final_value, mini)
+                maxi = max(final_value, maxi)
             end
-            return final_value
+            pixelbuffer[i] = final_value
         end
-        c.data_extrema = (r_mini[], r_maxi[])
+        c.data_extrema = (mini, maxi)
         return c
     end
 
