@@ -831,6 +831,9 @@ function append_content_to_list!(list, content::GridLayoutBase.GridContent)
 end
 append_content_to_list!(list, content) = push!(list, content)
 
+Base.firstindex(b::Block, dim) = firstindex(b.layout, dim)
+Base.lastindex(b::Block, dim) = lastindex(b.layout, dim)
+
 function Base.getindex(
         b::Block,
         i::Union{Integer, Colon, AbstractRange},
