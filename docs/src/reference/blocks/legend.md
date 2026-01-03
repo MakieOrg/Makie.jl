@@ -1,6 +1,6 @@
 
 
-# Legend
+# [Legend](@id Legend_page)
 
 ## Creating A Legend From Elements
 
