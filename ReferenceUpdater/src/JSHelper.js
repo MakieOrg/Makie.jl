@@ -225,6 +225,8 @@ export function toggleFiles(grid) {
         }
     });
 
+    updateSelectionCounts();
+
     return;
 }
 
