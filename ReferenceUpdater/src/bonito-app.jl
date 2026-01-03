@@ -950,6 +950,7 @@ function create_app_content(session::Session, root_path::String)
     )
 
     missing_recordings_section = DOM.div(
+        # The header string is used to identify which refimages should be deleted
         DOM.h2("Old reference images without recordings", class = "section-header"),
         DOM.div(
             "The selected CI run did not produce an image, but a reference image exists. This implies that a reference test was deleted or renamed. Selected images will be deleted from the reference images.",

@@ -201,7 +201,7 @@ export function collectCheckedFiles() {
             const filepath = card.dataset.filepath;
             if (filepath) {
                 // Check if this is from the missing files section (for deletion)
-                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Missing');
+                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Old reference images without recordings');
                 if (isMissingSection) {
                     deleteFiles.push(filepath);
                 } else {

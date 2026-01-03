@@ -127,7 +127,7 @@ function collectCheckedFiles() {
         if (checkbox && checkbox.checked) {
             const filepath = card.dataset.filepath;
             if (filepath) {
-                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Missing');
+                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Old reference images without recordings');
                 if (isMissingSection) {
                     deleteFiles.push(filepath);
                 } else {
@@ -149,6 +149,7 @@ function toggleFiles(grid) {
             checkbox.checked = !checkbox.checked;
         }
     });
+    updateSelectionCounts();
     return;
 }
 function updateSelectionCounts() {
