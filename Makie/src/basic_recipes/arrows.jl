@@ -350,7 +350,6 @@ function Makie.plot!(plot::Arrows2D)
         [:startpoints, :endpoints]
     )
 
-    # TODO: Doesn't dropping the third dimension here break z order?
     register_projected_positions!(
         plot, Point3f, input_name = :startpoints, output_name = :pixel_startpoints, output_space = :pixel
     )
@@ -360,6 +359,9 @@ function Makie.plot!(plot::Arrows2D)
 
     map!(plot, [:pixel_startpoints, :pixel_endpoints], :pixel_directions) do startpoints, endpoints
         return Point2f.(endpoints) .- Point2f.(startpoints)
+    end
+    map!(plot, [:pixel_startpoints], :sortperm_startpoints) do ps
+        return sortperm(ps, by = v -> v[3])
     end
 
     map!(
@@ -402,14 +404,14 @@ function Makie.plot!(plot::Arrows2D)
     map!(
         plot,
         [
-            :pixel_startpoints, :pixel_directions, :arrow_metrics, :strokemask,
+            :pixel_startpoints, :pixel_directions, :sortperm_startpoints, :arrow_metrics, :strokemask,
             :should_component_render, :tail, :shaft, :tip,
         ],
         :meshes
-    ) do ps, dirs, metrics, mask, should_render, shapes...
+    ) do ps, dirs, order, metrics, mask, should_render, shapes...
         meshes = GeometryBasics.Mesh[]
 
-        for i in eachindex(metrics)
+        for i in order
             # rotate + translate
             startpoint = ps[i]
             direction = dirs[i]
@@ -435,14 +437,14 @@ function Makie.plot!(plot::Arrows2D)
 
     for key in [:tailcolor, :shaftcolor, :tipcolor]
         map!(
-            plot, [key, :color, :colorscale, :alpha], Symbol(:scaled_, key)
-        ) do maybe_color, default, colorscale, alpha
+            plot, [key, :color, :colorscale, :alpha, :sortperm_startpoints], Symbol(:scaled_, key)
+        ) do maybe_color, default, colorscale, alpha, order
 
             color = to_color(default_automatic(maybe_color, default))
             return if color isa Union{Real, AbstractArray{<:Real}}
-                clamp.(el32convert(apply_scale(colorscale, color)), -floatmax(Float32), floatmax(Float32))
+                clamp.(el32convert(apply_scale(colorscale, color[order])), -floatmax(Float32), floatmax(Float32))
             elseif color isa AbstractArray
-                add_alpha.(color, alpha)
+                add_alpha.(color[order], alpha)
             else
                 add_alpha(color, alpha)
             end

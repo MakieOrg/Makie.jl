@@ -697,6 +697,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
     inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
+
     delete!(inputs, :cycle)
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(
@@ -739,6 +740,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             end
         end
     end
+
+    # this is handled through plot.kw, not plot.attributes. Keeping it in the
+    # compute graph may cause double application of user set transformations,
+    # e.g. #4789
+    delete!(inputs, :transformation)
+
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
         if !haskey(attr.outputs, k)
@@ -819,6 +826,7 @@ end
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
         # This should keep user_args[1] unchanged, in case they get reused.

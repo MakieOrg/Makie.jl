@@ -201,15 +201,24 @@ end
 end
 
 @reference_test "Basic Shading" begin
-    f = Figure(size = (500, 300))
+    f = Figure(size = (500, 500))
 
     # see PR #3722
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(f[1, 1], pts; markersize, rotation, color = :white, diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2))
+    meshscatter(
+        f[1, 1], pts; markersize, rotation, color = :white,
+        diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2)
+    )
 
     mesh(f[1, 2], Sphere(Point3f(0), 1.0f0), color = :orange, shading = NoShading)
+
+    markersize = Vec3f[[0.5, 0.0, 0.5], [0.5, 0.2, 0.0]]
+    meshscatter(
+        f[2, 1], pts; markersize, rotation, color = :white,
+        diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2), backlight = 1
+    )
 
     f
 end
