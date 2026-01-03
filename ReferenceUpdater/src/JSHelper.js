@@ -26,6 +26,8 @@ export function filterByScore(threshold) {
  */
 export function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, mediaGlmakie) {
     const button = buttonContainer.querySelector('button');
+    const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
+
     if (!button) return;
 
     button.addEventListener('click', () => {
@@ -39,7 +41,12 @@ export function setupImageCycleButton(buttonContainer, mediaRecorded, mediaRefer
             mediaReference.style.zIndex = '3';
             mediaGlmakie.style.zIndex = '2';
             button.textContent = 'Showing: reference';
-        } else if (getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
+        } else if (
+                cycle_checkbox.checked &&
+                getZ(mediaReference) > getZ(mediaRecorded) &&
+                getZ(mediaReference) > getZ(mediaGlmakie)
+            )
+        {
             // Currently showing reference, switch to glmakie
             mediaRecorded.style.zIndex = '2';
             mediaReference.style.zIndex = '1';

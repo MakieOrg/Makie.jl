@@ -256,6 +256,12 @@ const REFIMG_STYLES = Styles(
         "border-radius" => "8px",
         "margin-bottom" => "16px"
     ),
+        CSS(
+        ".cycle-checkbox",
+        "transform" => "scale(1.2)",
+        "margin" => "4px 8px 4px 0",
+        "cursor" => "pointer"
+    ),
     # Text field styles
     CSS(
         ".textfield",
@@ -861,6 +867,12 @@ function create_app_content(session::Session, root_path::String)
         }"""
     )
 
+    cycle_controls = DOM.div(
+        DOM.input(type = "checkbox", class = "cycle-checkbox"),
+        " include GLMakie refimage in cycle",
+        class = "checkbox-label"
+    )
+
     sort_button_html = map(x -> DOM.div(x; class = "sort-cell"), sort_buttons[1:3])
     sort_controls = DOM.div(
         DOM.div(
@@ -955,6 +967,7 @@ function create_app_content(session::Session, root_path::String)
             class = "section-description"
         ),
         filter_label,
+        cycle_controls,
         sort_controls,
         main_grid,
         class = "section"
