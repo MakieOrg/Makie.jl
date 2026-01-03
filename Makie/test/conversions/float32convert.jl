@@ -319,4 +319,65 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         end
     end
 
+    @testset "register_projected_positions! with float32convert changes" begin
+        # Test that projecting from relative space to data space correctly
+        # applies inverse float32convert and updates when f32c changes.
+        # This is important for features like pyramids that place markers
+        # at relative screen positions but need data-space coordinates.
+
+        f, a, p = lines(1:10 .* 1_000_000, 1:10 .* 1_000_000)
+
+        # Add input positions in relative space (0-1 range representing screen corners)
+        input_positions = [Point2f(0, 0), Point2f(1, 1)]
+        Makie.add_input!(p.attributes, :test_input_positions, input_positions)
+        Makie.register_projected_positions!(
+            p;
+            input_space = :relative,
+            output_space = :space,
+            input_name = :test_input_positions,
+            output_name = :test_dataspace_positions,
+            apply_transform = false,  # input is already in relative space
+        )
+        Makie.update_state_before_display!(f)
+
+        # Initially, float32convert should be identity (data range fits in Float32)
+        @test is_identity_transform(a.scene.float32convert)
+
+        # Get initial output positions - should map relative corners to data limits
+        initial_positions = p.test_dataspace_positions[]
+        initial_limits = a.finallimits[]
+
+        # Positions should approximately match the axis limits
+        # (relative (0,0) -> min of limits, relative (1,1) -> max of limits)
+        @test initial_positions[1][1] ≈ initial_limits.origin[1] rtol = 0.1
+        @test initial_positions[1][2] ≈ initial_limits.origin[2] rtol = 0.1
+        @test initial_positions[2][1] ≈ initial_limits.origin[1] + initial_limits.widths[1] rtol = 0.1
+        @test initial_positions[2][2] ≈ initial_limits.origin[2] + initial_limits.widths[2] rtol = 0.1
+
+        # Now zoom into a very small region to trigger float32convert
+        limits!(a, (500_000, 500_100), (500_000, 500_100))
+        Makie.update_state_before_display!(f)
+
+        # float32convert should now be non-identity due to precision requirements
+        @test !is_identity_transform(a.scene.float32convert)
+
+        # Get updated output positions
+        updated_positions = p.test_dataspace_positions[]
+        updated_limits = a.finallimits[]
+
+        # After zooming, the relative positions should now map to the new limits
+        # relative (0,0) -> new min, relative (1,1) -> new max
+        @test updated_positions[1][1] ≈ updated_limits.origin[1] rtol = 0.01
+        @test updated_positions[1][2] ≈ updated_limits.origin[2] rtol = 0.01
+        @test updated_positions[2][1] ≈ updated_limits.origin[1] + updated_limits.widths[1] rtol = 0.01
+        @test updated_positions[2][2] ≈ updated_limits.origin[2] + updated_limits.widths[2] rtol = 0.01
+
+        # The key test: positions should be in actual data coordinates, not f32c-scaled
+        # After zoom, updated_limits should be around (500_000, 500_000) to (500_100, 500_100)
+        @test 499_000 < updated_positions[1][1] < 501_000
+        @test 499_000 < updated_positions[1][2] < 501_000
+        @test 499_000 < updated_positions[2][1] < 501_000
+        @test 499_000 < updated_positions[2][2] < 501_000
+    end
+
 end
