@@ -1,5 +1,3 @@
-ENV["JULIA_DEBUG"] = "Documenter"
-
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
@@ -164,7 +162,7 @@ pages = [
         "explanations/fonts.md",
         "explanations/layouting.md",
         "explanations/headless.md",
-        "explanations/inspector.md",
+        "explanations/DataInspector.md",
         "explanations/latex.md",
         "explanations/observables.md",
         "explanations/plot_method_signatures.md",
