@@ -490,6 +490,7 @@ struct FakePlot <: AbstractPlot{Poly}
 end
 Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key)
 
+# This allows datashader to create multiple legend entries, one for each category
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
         return FakePlot(Attributes(; plot = plot, label = name, color = color))
@@ -497,7 +498,7 @@ function get_plots(plot::DataShader)
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; plots = plot.attributes.plot[], color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
+    return [PolyElement(; color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,
@@ -723,21 +724,19 @@ function Makie.plot!(p::HeatmapShader)
         return x, y, _img, cr
     end
 
-    register_computation!(p.attributes, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+    ComputePipeline.map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
+        init = (p.x[], p.x[], fill(0.0f0, 2, 2), false)
+    ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        if isnothing(xe_ye_oimg)
-            if isnothing(last) # first downsample
-                return (x, x, fill(0.0f0, 2, 2), false)
-            else
-                return (nothing, nothing, nothing, false) # simply dont update!
-            end
-        end
+        isnothing(xe_ye_oimg) && return nothing
         return (xe_ye_oimg..., true)
     end
 
     gpa = generic_plot_attributes(p)
     cpa = colormap_attributes(p)
-
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer

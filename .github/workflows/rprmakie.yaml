@@ -6,6 +6,7 @@ on:
       - '*.md'
     branches:
       - master
+      - ff/breaking-0.25
   push:
     tags:
       - '*'
@@ -51,7 +52,7 @@ jobs:
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("RPRMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
           path: ./RPRMakie/test/recorded

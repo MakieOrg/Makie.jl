@@ -1,7 +1,7 @@
 function get_n_visible(entry::LegendEntry)
     n_visible = Ref(0)
     n_total = Ref(0)
-    foreach_plot(entry) do p
+    foreach_plot_with_visible(entry) do p
         n_visible[] += Int64(p.visible[])
         n_total[] += 1
     end
@@ -631,6 +631,44 @@ function LegendEntry(label, content, legend; kwargs...)
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
+    function get_plots(x)
+        plots = AbstractPlot[]
+        get_plots!(plots, x)
+        return plots
+    end
+
+    get_plots!(plots, a::AbstractArray) = get_plots!.(Ref(plots), a)
+    get_plots!(plots, t::Tuple) = get_plots!(plots, t[1])
+    get_plots!(plots, p::Pair) = get_plots!(plots, p[1])
+
+    get_plots!(plots, p::AbstractPlot) = push!(plots, p)
+    get_plots!(plots, elem::LegendElement) = get_plots!(plots, elem.attributes)
+    function get_plots!(plots, attr::Union{Dict, Attributes})
+        if haskey(attr, :plots)
+            get_plots!(plots, to_value(pop!(attr, :plots)))
+        end
+        return
+    end
+    function get_plots!(plots, attr::NamedTuple)
+        if haskey(attr, :plots)
+            get_plots!(plots, to_value(attr[:plots]))
+        end
+        return
+    end
+
+    plots = get_plots(content)
+
+    PlotTypes = Union{AbstractPlot, AbstractArray{<:AbstractPlot}}
+    LegendElementTypes = Union{LegendElement, AbstractArray{<:LegendElement}}
+
+    # Allow `plots => LegendElement(...)` and `(plots, LegendElement(...))`
+    if content isa Union{
+            Tuple{<:PlotTypes, <:LegendElementTypes},
+            Pair{<:PlotTypes, <:LegendElementTypes},
+        }
+        content = content[2]
+    end
+
     if content isa AbstractArray
         elems = vcat(legendelements.(content, Ref(legend))...)
     elseif content isa Pair
@@ -642,32 +680,28 @@ function LegendEntry(label, content, legend; kwargs...)
     else
         elems = legendelements(content, legend)
     end
-    return LegendEntry(elems, attrs)
-end
 
-function LineElement(; plots = Plot[], kwargs...)
-    return _legendelement(LineElement, plots, Attributes(kwargs))
-end
-
-function MarkerElement(; plots = Plot[], kwargs...)
-    return _legendelement(MarkerElement, plots, Attributes(kwargs))
-end
-
-function PolyElement(; plots = Plot[], kwargs...)
-    return _legendelement(PolyElement, plots, Attributes(kwargs))
-end
-
-ImageElement(; plots = Plot[], kwargs...) = _legendelement(ImageElement, plots, Attributes(kwargs))
-MeshScatterElement(; plots = Plot[], kwargs...) = _legendelement(MeshScatterElement, plots, Attributes(kwargs))
-MeshElement(; plots = Plot[], kwargs...) = _legendelement(MeshElement, plots, Attributes(kwargs))
-
-function _legendelement(T::Type{<:LegendElement}, plot, a::Attributes)
-    if !(plot isa AbstractVector{Plot} || plot isa Plot)
-        error("plot needs to be a Plot or a Vector of Plots. `Plot[]` is allowed as well. Found: $(typeof(plot))")
+    for elem in elems
+        if haskey(elem.attributes, :plots)
+            @warn "`legendelements()` should no longer construct a LegendElement \
+            with `plots = ...`. This is now handled earlier, using either the \
+            root plot creating the label, or user given plots."
+        end
     end
-    ps = plot isa AbstractVector ? plot : [plot]
-    _rename_attributes!(T, a)
-    return T(ps, a)
+
+    return LegendEntry(plots, elems, attrs)
+end
+
+LineElement(; kwargs...) = _legendelement(LineElement, Attributes(kwargs))
+MarkerElement(; kwargs...) = _legendelement(MarkerElement, Attributes(kwargs))
+PolyElement(; kwargs...) = _legendelement(PolyElement, Attributes(kwargs))
+ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
+MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(kwargs))
+MeshElement(; kwargs...) = _legendelement(MeshElement, Attributes(kwargs))
+
+function _legendelement(T::Type{<:LegendElement}, attr::Attributes)
+    _rename_attributes!(T, attr)
+    return T(attr)
 end
 
 _renaming_mapping(::Type{LineElement}) = Dict(
@@ -722,7 +756,6 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
     ls = plot.linestyle[]
     return LegendElement[
         LineElement(
-            plots = plot,
             color = extract_color(plot, legend[:linecolor]),
             linestyle = choose_scalar(ls isa Vector ? Linestyle(ls) : ls, legend[:linestyle]),
             linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
@@ -736,7 +769,6 @@ end
 function legendelements(plot::Scatter, legend)
     return LegendElement[
         MarkerElement(
-            plots = plot,
             color = extract_color(plot, legend[:markercolor]),
             marker = choose_scalar(plot.marker, legend[:marker]),
             markersize = choose_scalar(plot.markersize, legend[:markersize]),
@@ -753,7 +785,6 @@ function legendelements(plot::Union{Violin, BoxPlot, CrossBar}, legend)
     color = extract_color(plot, legend[:polycolor])
     return LegendElement[
         PolyElement(
-            plots = plot,
             color = color,
             strokecolor = choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
             strokewidth = choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
@@ -768,7 +799,6 @@ function legendelements(plot::Band, legend)
     # there seems to be no stroke for Band, so we set it invisible
     return LegendElement[
         PolyElement(;
-            plots = plot,
             polycolor = choose_scalar(
                 plot.color,
                 legend[:polystrokecolor]
@@ -786,7 +816,6 @@ function legendelements(plot::Union{Poly, Density}, legend)
     color = Makie.extract_color(plot, legend[:polycolor])
     return LegendElement[
         Makie.PolyElement(
-            plots = plot,
             color = color,
             strokecolor = Makie.choose_scalar(plot.strokecolor, legend[:polystrokecolor]),
             strokewidth = Makie.choose_scalar(plot.strokewidth, legend[:polystrokewidth]),
@@ -801,7 +830,6 @@ end
 function legendelements(plot::Mesh, legend)
     return LegendElement[
         MeshElement(
-            plots = plot,
             mesh = legend[:mesh],
             color = legend[:meshcolor],
             alpha = plot.alpha,
@@ -823,7 +851,6 @@ function legendelements(plot::Surface, legend)
     color = vals === automatic ? xyzs[end] : vals
     return LegendElement[
         MeshElement(
-            plots = plot,
             mesh = mesh,
             color = color,
             colormap = plot.colormap,
@@ -838,7 +865,6 @@ end
 function legendelements(plot::Image, legend)
     return LegendElement[
         ImageElement(
-            plots = plot,
             limits = legend[:imagelimits],
             data = legend[:imagevalues],
             colormap = plot.colormap,
@@ -851,7 +877,6 @@ end
 function legendelements(plot::Heatmap, legend)
     return LegendElement[
         ImageElement(
-            plots = plot,
             limits = legend[:heatmaplimits],
             data = legend[:heatmapvalues],
             colormap = plot.colormap,
@@ -864,7 +889,6 @@ end
 function legendelements(plot::MeshScatter, legend)
     return LegendElement[
         MeshScatterElement(
-            plots = plot,
             position = legend.meshscatterpoints,
             color = extract_color(plot, legend[:meshscattercolor]),
             marker = legend[:meshscattermarker],
@@ -1144,27 +1168,25 @@ function legend_position_to_aligns(t::Tuple{Any, Any})
     return (halign = t[1], valign = t[2])
 end
 
-function foreach_plot(f, entry::LegendEntry)
-    for element in entry.elements
-        if !isnothing(element)
-            for p in get_plots(element)
-                f(p)
-            end
+function foreach_plot_with_visible(f, entry::LegendEntry)
+    for p in entry.plots
+        if haskey(p, :visible)
+            f(p)
         end
     end
     return
 end
 
 function toggle_visibility!(entry::LegendEntry, sync = false)
-    foreach_plot(entry) do p
-        p.visible = sync ? true : !p.visible[]
+    foreach_plot_with_visible(entry) do p
+        update!(p, visible = sync ? true : !p.visible[])
     end
     return
 end
 
 function get_plot_visibilities(entry::LegendEntry)
     visibilities = Observable{Bool}[]
-    foreach_plot(entry) do p
+    foreach_plot_with_visible(entry) do p
         obs = ComputePipeline.get_observable!(p.visible)
         push!(visibilities, obs)
         return

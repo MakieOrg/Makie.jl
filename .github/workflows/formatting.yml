@@ -4,6 +4,7 @@ on:
     branches:
       - 'master'
       - 'release-'
+      - ff/breaking-0.25
     tags:
       - '*'
   pull_request:
