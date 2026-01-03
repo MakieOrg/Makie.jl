@@ -7,11 +7,12 @@
  * @param {number} threshold - Minimum score to show
  */
 export function filterByScore(threshold) {
-    const t = parseFloat(threshold) || 0;
+    const t = parseFloat(threshold) || -1;
     const cards = document.querySelectorAll('.ref-card');
     cards.forEach(card => {
-        const score = parseFloat(card.dataset.score) || 0;
-        card.dataset.hidden = score >= t ? 'false' : 'true';
+        // 0 maps to false, but should be hidden if it's smaller than t
+        const score = (parseFloat(card.dataset.score) + 1) || Infinity;
+        card.dataset.hidden = score - 1 >= t ? 'false' : 'true';
     });
 }
 
