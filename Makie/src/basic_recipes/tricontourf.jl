@@ -8,7 +8,7 @@ Plots a filled tricontour of the height information in `zs` at the horizontal po
 vertical positions `ys`. A `Triangulation` from DelaunayTriangulation.jl can also be provided instead of `xs` and `ys`
 for specifying the triangles, otherwise an unconstrained triangulation of `xs` and `ys` is computed.
 """
-@recipe Tricontourf begin
+@recipe Tricontourf (tri::DelTri.Triangulation, zs::RealVector) begin
     """
     Can be either an `Int` which results in n bands delimited by n+1 equally spaced
     levels, or it can be an `AbstractVector{<:Real}` that lists n consecutive edges
@@ -59,6 +59,9 @@ for specifying the triangles, otherwise an unconstrained triangulation of `xs` a
     mixin_generic_plot_attributes()...
 end
 
+argument_dims(::Type{<:Tricontourf}, x, y, z) = (1, 2)
+argument_dims(::Type{<:Tricontourf}, triangulation, z) = nothing
+
 function Makie.used_attributes(::Type{<:Tricontourf}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:Real})
     return (:triangulation,)
 end
@@ -90,7 +93,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
     graph = c.attributes
 
     # prepare levels, colormap related nodes
-    register_contourf_computations!(graph, :converted_2)
+    register_contourf_computations!(graph, :zs)
 
     function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         levels = copy(levels)
@@ -130,7 +133,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
 
     register_computation!(
         graph,
-        [:converted_1, :converted_2, :computed_levels, :computed_lowcolor, :computed_highcolor],
+        [:tri, :zs, :computed_levels, :computed_lowcolor, :computed_highcolor],
         [:polys, :computed_colors]
     ) do (tri, zs, levels, low, high), changed, cached
         is_extended_low = !isnothing(low)

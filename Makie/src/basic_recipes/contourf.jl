@@ -44,12 +44,6 @@ similar to how [`surface`](@ref) works.
     mixin_colormap_attributes(allow = (:colormap, :colorscale, :nan_color))...
 end
 
-# these attributes are computed dynamically and needed for colorbar e.g.
-# _computed_levels
-# _computed_colormap
-# _computed_extendlow
-# _computed_extendhigh
-
 _get_isoband_levels(levels::Int, mi, ma) = collect(range(Float32(mi), nextfloat(Float32(ma)), length = levels + 1))
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)

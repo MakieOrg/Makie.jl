@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
@@ -369,7 +368,7 @@ Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
 function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
-    return convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
 function convert_arguments(
@@ -378,6 +377,9 @@ function convert_arguments(
     )
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
+
+# for dim_converts
+to_endpoints(x::Tuple{<:Any, <:Any}) = x
 
 function to_endpoints(x::Tuple{<:Real, <:Real})
     T = float_type(x...)
@@ -438,6 +440,7 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
+# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}}
@@ -652,9 +655,9 @@ accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::AbstractArray,
+        vertices::AbstractArray{<:Union{VecTypes{N, <:Real}, <:Real}},
         indices::AbstractArray
-    )
+    ) where {N}
     vs = to_vertices(vertices)
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
@@ -734,6 +737,7 @@ end
 ################################################################################
 
 to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x::AbstractVector, N) = x
 to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """

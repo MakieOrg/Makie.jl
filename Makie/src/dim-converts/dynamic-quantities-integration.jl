@@ -24,9 +24,6 @@ scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion
 """
 struct DQConversion <: AbstractDimConversion
     quantity::Observable{Any}
-    units_in_label::Observable{Bool}
 end
 
-function DQConversion(quantity = automatic; units_in_label = true)
-    return DQConversion(quantity, units_in_label)
-end
+DQConversion() = DQConversion(automatic)

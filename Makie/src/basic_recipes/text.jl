@@ -1,17 +1,3 @@
-struct RichText
-    type::Symbol
-    children::Vector{Union{RichText, String}}
-    attributes::Dict{Symbol, Any}
-    function RichText(type::Symbol, children...; kwargs...)
-        cs = Union{RichText, String}[children...]
-        return new(type, cs, Dict(kwargs))
-    end
-end
-
-Base.:(==)(a::RichText, b::RichText) = a.type == b.type && a.children == b.children && a.attributes == b.attributes
-
-Base.hash(a::RichText, b::UInt) = hash(a.type, hash(a.children, hash(a.attributes, b)))
-
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
@@ -936,7 +922,7 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32

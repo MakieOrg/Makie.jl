@@ -3,6 +3,7 @@ const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, Ve
 convert_arguments(::Type{<:Poly}, v::AbstractVector{<:PolyElements}) = (v,)
 convert_arguments(::Type{<:Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
+argument_dims(::Type{<:Poly}, vertices::VecTypesVector{N}, indices) where {N} = (1:N,)
 
 function convert_pointlike(args...)
     return convert_arguments(PointBased(), args...)
@@ -24,7 +25,11 @@ function convert_arguments(::Type{<:Poly}, path::AbstractMatrix{<:Number})
     return convert_pointlike(path)
 end
 
-function convert_arguments(::Type{<:Poly}, vertices::AbstractArray, indices::AbstractArray)
+function convert_arguments(::Type{<:Poly}, vertices::RealArray, indices::AbstractArray)
+    return convert_arguments(Mesh, vertices, indices)
+end
+
+function convert_arguments(::Type{<:Poly}, vertices::AbstractArray{<:VecTypes}, indices::AbstractArray)
     return convert_arguments(Mesh, vertices, indices)
 end
 

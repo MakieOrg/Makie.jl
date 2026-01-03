@@ -167,11 +167,18 @@ function closest_point_on_rectangle(r::Rect2, p)
     return argmin(c -> norm(c - p), candidates)
 end
 
+argument_dims(::Type{<:Annotation}, x, y) = (1, 2)
+argument_dims(::Type{<:Annotation}, ::VecTypes{2}) = ((1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}) = ((1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypes{2}, ::VecTypes{2}) = ((1, 2), (1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}, ::VecTypesVector{2}) = ((1, 2), (1, 2),)
+argument_dims(::Type{<:Annotation}, x, y, x2, y2) = (1, 2, 1, 2)
+
 function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
     return [Vec2d(NaN)], [Vec2d(x, y)]
 end
 
-function convert_arguments(::Type{<:Annotation}, p::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p::VecTypes{2, <:Real})
     return [Vec2d(NaN)], [Point2d(p...)]
 end
 
@@ -179,16 +186,16 @@ function convert_arguments(::Type{<:Annotation}, x::Real, y::Real, x2::Real, y2:
     return [Vec2d(x, y)], [Point2d(x2, y2)]
 end
 
-function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2}, p2::VecTypes{2})
+function convert_arguments(::Type{<:Annotation}, p1::VecTypes{2, <:Real}, p2::VecTypes{2, <:Real})
     return [Vec2d(p1...)], [Point2d(p2...)]
 end
 
-function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v::AbstractVector{<:VecTypes{2, <:Real}})
     N = length(v)
     return fill(Vec2d(NaN), N), Point2d.(getindex.(v, 1), getindex.(v, 2))
 end
 
-function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2}}, v2::AbstractVector{<:VecTypes{2}})
+function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:VecTypes{2, <:Real}}, v2::AbstractVector{<:VecTypes{2, <:Real}})
     return Vec2d.(getindex.(v1, 1), getindex.(v1, 2)), Point2d.(getindex.(v2, 1), getindex.(v2, 2))
 end
 

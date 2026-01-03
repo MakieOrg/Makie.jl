@@ -8,6 +8,8 @@ You can pass one or multiple intercepts or slopes.
     documented_attributes(LineSegments)...
 end
 
+argument_dims(::Type{<:ABLines}, args...) = nothing
+
 function Makie.plot!(p::ABLines)
     scene = Makie.parent_scene(p)
     transf = transform_func(scene)

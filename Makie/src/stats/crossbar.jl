@@ -14,7 +14,7 @@ It is most commonly used as part of the `boxplot`.
 - `ymin`: lower limit of the box
 - `ymax`: upper limit of the box
 """
-@recipe CrossBar (x, y, ymin, ymax) begin
+@recipe CrossBar (x::RealVector, y::RealVector, ymin::RealVector, ymax::RealVector) begin
     "Sets the color of the drawn boxes. These can be values for colormapping."
     color = @inherit patchcolor
 
@@ -76,6 +76,11 @@ It is most commonly used as part of the `boxplot`.
 
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
+end
+
+argument_dim_kwargs(::Type{<:CrossBar}) = (:orientation,)
+function argument_dims(::Type{<:CrossBar}, x, y, ymin, ymax; orientation)
+    return ifelse(orientation === :vertical, (1, 2, 2, 2), (2, 1, 1, 1))
 end
 
 function Makie.plot!(plot::CrossBar)

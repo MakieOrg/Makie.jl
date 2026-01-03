@@ -4,7 +4,12 @@
 
 Creates a tooltip pointing at `position` displaying the given `string
 """
-@recipe Tooltip begin
+@recipe Tooltip (
+    position::Union{
+        VecTypes{N, <:Real} where {N},
+        Tuple{<:VecTypes{N, <:Real} where {N}, <:AbstractString},
+    },
+) begin
     # General
     text = ""
     "Sets the offset between the given `position` and the tip of the triangle pointing at that position."
@@ -55,14 +60,18 @@ Creates a tooltip pointing at `position` displaying the given `string
 end
 
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real, str::AbstractString)
-    return (Point2{float_type(x, y)}(x, y), str)
+    return ((Point2{float_type(x, y)}(x, y), str),)
 end
 function convert_arguments(::Type{<:Tooltip}, x::Real, y::Real)
     return (Point2{float_type(x, y)}(x, y),)
 end
+function convert_arguments(::Type{<:Tooltip}, xy::VecTypes, s::AbstractString)
+    return ((xy, s),)
+end
 
-function plot!(plot::Tooltip{<:Tuple{<:VecTypes, <:AbstractString}})
-    tooltip!(plot, Attributes(plot), plot[1]; text = plot[2])
+function plot!(plot::Tooltip{<:Tuple{<:Tuple{<:VecTypes, <:AbstractString}}})
+    map!(identity, plot, :position, [:extracted_position, :extracted_text])
+    tooltip!(plot, Attributes(plot), plot.extracted_position; text = plot.extracted_text)
     return plot
 end
 
@@ -164,7 +173,7 @@ function plot!(p::Tooltip{<:Tuple{<:VecTypes}})
     end
 
     p = textlabel!(
-        p, p[1], p.text, shape = p.shape,
+        p, p[1], text = p.text, shape = p.shape,
 
         padding = p.text_padding, justification = p.justification, text_align = p.text_align,
         offset = p.text_offset, fontsize = p.fontsize, font = p.font,

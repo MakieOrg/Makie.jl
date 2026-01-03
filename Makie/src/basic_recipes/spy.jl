@@ -14,7 +14,7 @@ spy(x)
 spy(0..1, 0..1, x)
 ```
 """
-@recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
+@recipe Spy (x::EndPoints{<:Real}, y::EndPoints{<:Real}, z::RealMatrix) begin
     """
     Can be any of the markers supported by `scatter!`.
     Note, for huge sparse arrays, one should use `FastPixel`, which is a very fast, but can only render square markers.
@@ -65,6 +65,8 @@ end
 function boundingbox(p::Spy, space::Symbol = :data)
     return apply_transform_and_model(p, data_limits(p))
 end
+
+argument_dims(::Type{<:Spy}, x, y, mat) = (1, 2)
 
 function convert_arguments(::Type{<:Spy}, matrix::AbstractMatrix{T}) where {T}
     Tr = Makie.float_type(T)
