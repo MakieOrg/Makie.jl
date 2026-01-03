@@ -3,15 +3,16 @@
 // This code was bundled using `deno bundle` and it's not recommended to edit it manually
 
 function filterByScore(threshold) {
-    const t = parseFloat(threshold) || 0;
+    const t = parseFloat(threshold) || -1;
     const cards = document.querySelectorAll('.ref-card');
     cards.forEach((card)=>{
-        const score = parseFloat(card.dataset.score) || 0;
-        card.dataset.hidden = score >= t ? 'false' : 'true';
+        const score = parseFloat(card.dataset.score) + 1 || Infinity;
+        card.dataset.hidden = score - 1 >= t ? 'false' : 'true';
     });
 }
 function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, mediaGlmakie) {
     const button = buttonContainer.querySelector('button');
+    const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
     if (!button) return;
     button.addEventListener('click', ()=>{
         const getZ = (el)=>parseInt(el.style.zIndex || window.getComputedStyle(el).zIndex || '0');
@@ -20,7 +21,7 @@ function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, m
             mediaReference.style.zIndex = '3';
             mediaGlmakie.style.zIndex = '2';
             button.textContent = 'Showing: reference';
-        } else if (getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
+        } else if (cycle_checkbox.checked && getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
             mediaRecorded.style.zIndex = '2';
             mediaReference.style.zIndex = '1';
             mediaGlmakie.style.zIndex = '3';
@@ -140,6 +141,16 @@ function collectCheckedFiles() {
         deleteFiles
     };
 }
+function toggleFiles(grid) {
+    const cards = Array.from(grid.children).filter((c)=>c.classList.contains('ref-card'));
+    cards.forEach((card)=>{
+        const checkbox = card.querySelector('.checkbox-input');
+        if (checkbox && card.dataset.hidden == 'false') {
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+    return;
+}
 function updateSelectionCounts() {
     const { uploadFiles , deleteFiles  } = collectCheckedFiles();
     const uploadCountHeader = document.getElementById('upload-count-header');
@@ -184,6 +195,7 @@ export { setupImageCycleButton as setupImageCycleButton };
 export { sortByBackend as sortByBackend };
 export { compareToGLMakie as compareToGLMakie };
 export { collectCheckedFiles as collectCheckedFiles };
+export { toggleFiles as toggleFiles };
 export { updateSelectionCounts as updateSelectionCounts };
 export { setupSelectionCountUpdates as setupSelectionCountUpdates };
 
