@@ -126,6 +126,14 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
+# Note: This file could easily be moved out into a mini-package.
+include("RenderPipeline/BufferFormat.jl")
+include("RenderPipeline/RenderPipeline.jl")
+include("RenderPipeline/LoweredPipeline.jl")
+include("RenderPipeline/io.jl")
+include("RenderPipeline/defaults.jl")
+include("RenderPipeline/gui.jl")
+
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")

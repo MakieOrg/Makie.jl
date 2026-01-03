@@ -60,9 +60,7 @@ mutable struct ScreenConfig
     scalefactor::Union{Nothing, Float32}
 
     # Render Constants & Postprocessor
-    oit::Bool
-    fxaa::Bool
-    ssao::Bool
+    render_pipeline::Makie.RenderPipeline
     transparency_weight_scale::Float32
     max_lights::Int
     max_light_parameters::Int
@@ -87,9 +85,7 @@ mutable struct ScreenConfig
             scalefactor::Union{Makie.Automatic, Number},
 
             # Preprocessor
-            oit::Bool,
-            fxaa::Bool,
-            ssao::Bool,
+            render_pipeline::Makie.RenderPipeline,
             transparency_weight_scale::Number,
             max_lights::Int,
             max_light_parameters::Int
@@ -112,11 +108,7 @@ mutable struct ScreenConfig
             monitor,
             visible,
             scalefactor isa Makie.Automatic ? nothing : Float32(scalefactor),
-            # Preproccessor
-            # Preprocessor
-            oit,
-            fxaa,
-            ssao,
+            render_pipeline,
             transparency_weight_scale,
             max_lights,
             max_light_parameters
@@ -166,7 +158,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     owns_glscreen::Bool
 
     shader_cache::GLAbstraction.ShaderCache
-    framebuffer::GLFramebuffer
+    framebuffer_manager::FramebufferManager
     config::Union{Nothing, ScreenConfig}
     stop_renderloop::Threads.Atomic{Bool}
     rendertask::Union{Task, Nothing}
@@ -177,7 +169,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
-    postprocessors::Vector{PostProcessor}
+    render_pipeline::GLRenderPipeline
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt32, Plot}
     framecache::Matrix{RGB{N0f8}}
@@ -195,7 +187,7 @@ mutable struct Screen{GLWindow} <: MakieScreen
             glscreen::GLWindow,
             owns_glscreen::Bool,
             shader_cache::GLAbstraction.ShaderCache,
-            framebuffer::GLFramebuffer,
+            framebuffer_manager::FramebufferManager,
             config::Union{Nothing, ScreenConfig},
             stop_renderloop::Bool,
             rendertask::Union{Nothing, Task},
@@ -203,18 +195,17 @@ mutable struct Screen{GLWindow} <: MakieScreen
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
-            postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt32, Plot},
             reuse::Bool
         ) where {GLWindow}
 
-        s = size(framebuffer)
+        s = size(framebuffer_manager)
         screen = new{GLWindow}(
-            glscreen, (10, 10), owns_glscreen, shader_cache, framebuffer,
+            glscreen, (10, 10), owns_glscreen, shader_cache, framebuffer_manager,
             config, Threads.Atomic{Bool}(stop_renderloop), rendertask, BudgetedTimer(1.0 / 30.0),
             Observable(0.0f0), screen2scene,
-            screens, renderlist, postprocessors, cache, cache2plot,
+            screens, renderlist, GLRenderPipeline(), cache, cache2plot,
             Matrix{RGB{N0f8}}(undef, s), Observable(Makie.UnknownTickState),
             Observable(true), Observable(0.0f0), nothing, reuse, true, false
         )
@@ -224,7 +215,8 @@ mutable struct Screen{GLWindow} <: MakieScreen
 end
 
 # The exact size in pixel of the render targert (the actual matrix of pixels)
-framebuffer_size(screen::Screen) = screen.framebuffer.resolution[]
+framebuffer_size(screen::Screen) = size(screen.framebuffer_manager)
+display_framebuffer(screen::Screen) = display_framebuffer(screen.framebuffer_manager)
 
 # The size of the window in Makie's own units
 makie_window_size(screen::Screen) = round.(Int, scene_size(screen) .* screen.scalefactor[])
@@ -310,13 +302,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     gl_switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(window, initial_resolution)
-    postprocessors = [
-        empty_postprocessor(),
-        empty_postprocessor(),
-        empty_postprocessor(),
-        to_screen_postprocessor(fb, shader_cache),
-    ]
+    fb = FramebufferManager(window, initial_resolution)
 
     screen = Screen(
         window, owns_glscreen, shader_cache, fb,
@@ -325,7 +311,6 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
-        postprocessors,
         Dict{UInt64, RenderObject}(),
         Dict{UInt32, Plot}(),
         reuse,
@@ -403,6 +388,7 @@ end
 
 function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::Bool = true)
     @debug("Applying screen config! to existing screen")
+
     glw = screen.glscreen
 
     if screen.owns_glscreen
@@ -420,20 +406,8 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
 
     screen.scalefactor[] = !isnothing(config.scalefactor) ? config.scalefactor : scale_factor(glw)
     screen.px_per_unit[] = !isnothing(config.px_per_unit) ? config.px_per_unit : screen.scalefactor[]
-    function replace_processor!(postprocessor, idx)
-        fb = screen.framebuffer
-        shader_cache = screen.shader_cache
-        post = screen.postprocessors[idx]
-        if post.constructor !== postprocessor
-            destroy!(screen.postprocessors[idx])
-            screen.postprocessors[idx] = postprocessor(fb, shader_cache)
-        end
-        return
-    end
 
-    replace_processor!(config.ssao ? ssao_postprocessor : empty_postprocessor, 1)
-    replace_processor!(config.oit ? OIT_postprocessor : empty_postprocessor, 2)
-    replace_processor!(config.fxaa ? fxaa_postprocessor : empty_postprocessor, 3)
+    gl_render_pipeline!(screen, config.render_pipeline)
 
     # TODO: replace shader programs with lighting to update N_lights & N_light_parameters
 
@@ -448,6 +422,9 @@ function apply_config!(screen::Screen, config::ScreenConfig; start_renderloop::B
         resize!(screen, size(screen.scene)...)
     end
     set_screen_visibility!(screen, config.visible)
+
+    screen.requires_update = true
+
     return screen
 end
 
@@ -567,7 +544,7 @@ Base.wait(scene::Scene) = wait(Makie.getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-Base.size(x::Screen) = size(x.framebuffer)
+Base.size(x::Screen) = size(x.framebuffer_manager)
 
 function add_scene!(screen::Screen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
@@ -639,7 +616,8 @@ function Base.delete!(screen::Screen, scene::Scene)
     return
 end
 
-function destroy!(rob::RenderObject)
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
+function destroy!(rob::RenderObject, keep_alive = UInt32[])
     # These need explicit clean up because (some of) the source observables
     # remain when the plot is deleted.
     with_context(rob.context) do
@@ -648,7 +626,7 @@ function destroy!(rob::RenderObject)
         for (k, v) in rob.uniforms
             if v isa Observable
                 Observables.clear(v)
-            elseif v isa GPUArray && v !== tex
+            elseif (v isa GPUArray) && (v !== tex) && (!(v isa Texture) || !in(v.id, keep_alive))
                 # We usually don't share gpu data and it should be hard for users to share buffers..
                 # but we do share the texture atlas, so we check v !== tex, since we can't just free shared resources
                 # TODO, refcounting, or leaving freeing to GC...
@@ -668,7 +646,7 @@ function destroy!(rob::RenderObject)
     return GLAbstraction.free(rob.vertexarray)
 end
 
-# Note: called from scene finalizer, must not error
+# Note: can be called from scene finalizer, must not error or print unless to Core.stdout
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     # this plot consists of children, so we flatten it and delete the children instead
     for cplot in Makie.collect_atomic_plots(plot)
@@ -745,12 +723,14 @@ function destroy!(screen::Screen)
         empty!(SINGLETON_SCREEN)
     end
 
-    foreach(destroy!, screen.postprocessors) # before texture atlas, otherwise it regenerates
-    destroy!(screen.framebuffer)
+    # before texture atlas, otherwise it regenerates
+    destroy!(screen.render_pipeline)
+    destroy!(screen.framebuffer_manager)
     with_context(window) do
         cleanup_texture_atlas!(window)
         GLAbstraction.free(screen.shader_cache)
     end
+
     destroy!(window)
     return
 end
@@ -830,7 +810,8 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     # w/h are in device independent Makie units (scene size)
     ppu = screen.px_per_unit[]
     fbw, fbh = round.(Int, ppu .* (w, h))
-    resize!(screen.framebuffer, fbw, fbh)
+    resize!(screen.framebuffer_manager, fbw, fbh)
+    resize!(screen.render_pipeline, fbw, fbh)
 
     if screen.owns_glscreen
         # Resize the window which appears on the user desktop (if necessary).
@@ -856,6 +837,17 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     return
 end
 
+function Makie.colorbuffer(screen::Screen, source::Texture{T, 2}) where {T}
+    gl_switch_context!(screen.glscreen)
+    # render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    img = Matrix{eltype(source)}(undef, size(source))
+    GLAbstraction.bind(source)
+    GLAbstraction.glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, img)
+    GLAbstraction.bind(source, 0)
+    return img
+end
+
 """
     depthbuffer(screen::Screen)
 
@@ -872,11 +864,11 @@ depth_color = GLMakie.depthbuffer(screen)
 heatmap(depth_color, colormap=:grays)
 ```
 """
-function depthbuffer(screen::Screen)
+function depthbuffer(screen::Screen, framebuffer = display_framebuffer(screen))
     gl_switch_context!(screen.glscreen)
     render_frame(screen, resize_buffers = false) # let it render
     glFinish() # block until opengl is done rendering
-    source = screen.framebuffer.buffers[:depth]
+    source = get_depth_buffer(framebuffer)
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -884,12 +876,15 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
+function Makie.colorbuffer(
+        screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative;
+        figure = nothing, framebuffer = display_framebuffer(screen), buffername = :color
+    )
     if !isopen(screen)
         error("Screen not open!")
     end
     gl_switch_context!(screen.glscreen)
-    ctex = screen.framebuffer.buffers[:color]
+    ctex = get_buffer(framebuffer, buffername)
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     pollevents(screen, Makie.BackendTick)
@@ -970,7 +965,7 @@ function stop_renderloop!(screen::Screen; close_after_renderloop = screen.close_
         try
             wait(screen)  # isnothing(rendertask) handled in wait(screen)
         catch e
-            @warn "Error while waiting for render task to finish. Cleanup will continue" excetion = (e, Base.catch_backtrace())
+            @warn "Error while waiting for render task to finish. Cleanup will continue" exception = (e, Base.catch_backtrace())
         end
     end
     # after done, we can set the task to nothing
