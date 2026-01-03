@@ -3,9 +3,11 @@ Shorthand for `isnothing(optional) ? fallback : optional`
 """
 @inline ifnothing(optional, fallback) = isnothing(optional) ? fallback : optional
 
+make_finite(v, fallback = 0) = ifelse.(isfinite.(v), v, fallback)
+
 function round_to_IRect2D(r::Rect{2})
-    newori = round.(Int, minimum(r))
-    othercorner = round.(Int, maximum(r))
+    newori = round.(Int, make_finite(minimum(r)))
+    othercorner = round.(Int, make_finite(maximum(r)))
     newwidth = othercorner .- newori
     return Rect{2, Int}(newori, newwidth)
 end

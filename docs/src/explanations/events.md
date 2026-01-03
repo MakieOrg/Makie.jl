@@ -1,4 +1,4 @@
-# Events
+# [Events](@id Events_page)
 
 Interactive backends such as `GLMakie` and `WGLMakie` pass events to Observables collected in an `Events` struct. By reacting to these one can build up custom interactions.
 
@@ -246,7 +246,7 @@ Every other plot is build from these somewhere down the line. For example `fig, 
 The index returned by `pick()` relates to the main input of the respective primitive plot.
 - For `scatter` and `meshscatter` it is an index into the positions given to the plot.
 - For `text` it is an index into the merged character array.
-- For `lines` and `linesegments` it is the end position of the selected line segment. 
+- For `lines` and `linesegments` it is the end position of the selected line segment.
 - For `image`, `heatmap` and `surface` it is the linear index into the matrix argument of the plot (i.e. the given image, value or z-value matrix) that is closest to the selected position.
 - For `voxels` it is the linear index into the given 3D Array.
 - For `mesh` it is the largest vertex index of the picked triangle face.
@@ -411,8 +411,8 @@ end
 
 ## Tick Events
 
-Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `Makie.save` and `Makie.record` for all backends. 
-They allow you to synchronize tasks such as animations with rendering. 
+Tick events are produced by the renderloop in GLMakie and WGLMakie, as well as `Makie.save` and `Makie.record` for all backends.
+They allow you to synchronize tasks such as animations with rendering.
 A Tick contains the following information:
 
 - `state::Makie.TickState`: Describes the situation in which the tick was produced. These include:
@@ -425,7 +425,7 @@ A Tick contains the following information:
 - `time::Float64`: The time that has passed since the first tick in seconds. During `record` this is relative to the first recorded frame and increments based on the `framerate` set in record.
 - `delta_time::Float64`: The time that has passed since the last tick in seconds. During `record` this is `1 / framerate`.
 
-For an animation you will generally not need to worry about tick state. 
+For an animation you will generally not need to worry about tick state.
 You can simply update the relevant data as needed.
 ```julia
 on(events(fig).tick) do tick
@@ -440,8 +440,8 @@ on(events(fig).tick) do tick
 end
 ```
 
-For an interactive figure this will produce an animation synchronized with real time. 
-Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time. 
+For an interactive figure this will produce an animation synchronized with real time.
+Within `record` the tick times match up the set `framerate` such that the animation in the produced video matches up with real time.
 
 Note that the underlying `VideoStream` filters tick events other than `state = OneTimeRenderTick`.
 This is done to prevent jumping (wrong count, time) or acceleration (extra ticks) of animations in videos due to extra ticks.
@@ -449,5 +449,5 @@ This is done to prevent jumping (wrong count, time) or acceleration (extra ticks
 Ticks will no longer be filtered once the `VideoStream` object is deleted or the video is saved.
 The behavior can also be turned off by setting `filter_ticks = false`.
 
-For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn. 
+For reference, a `tick` generally happens after other events have been processed and before the next frame will be drawn.
 The exception is WGLMakie which runs an independent timer to avoid excessive message passing between Javascript and Julia.
