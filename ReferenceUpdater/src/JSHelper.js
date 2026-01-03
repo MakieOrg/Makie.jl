@@ -207,6 +207,20 @@ export function collectCheckedFiles() {
     return { uploadFiles, deleteFiles };
 }
 
+export function toggleFiles(grid) {
+    const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
+
+    cards.forEach(card => {
+        const checkbox = card.querySelector('.checkbox-input');
+        if (checkbox && card.dataset.hidden == 'false')
+        {
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+
+    return;
+}
+
 /**
  * Update selection counts in the UI
  * Updates the count headers and file lists based on checked items
