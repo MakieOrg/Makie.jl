@@ -356,7 +356,7 @@ end
 end
 
 @reference_test "resize_to body baseline" begin
-    app = App() do
+    app = Bonito.App() do
         fig = create_test_figure()
         DOM.div(
             WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :body);

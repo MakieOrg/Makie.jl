@@ -44,7 +44,7 @@ jobs:
 
       - name: Download ReferenceImages artifact
         if: steps.pr_number.outputs.pr != ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ReferenceImages
           path: ./reference_images_data
