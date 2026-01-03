@@ -1,5 +1,8 @@
 # Changelog
 
+- Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
+  - **Breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
+
 ## Unreleased
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
