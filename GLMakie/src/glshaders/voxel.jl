@@ -20,20 +20,19 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::Voxels, param)
+function default_shader(screen::Screen, robj::RenderObject, plot::Voxels, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     debug = to_value(get(plot.attributes, :debug, ""))
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+    view["DEBUG_FLAG_DEFINE"] = debug
+
     shader = GLVisualizeShader(
         screen,
         "voxel.vert",
         "fragment_output.frag", "voxel.frag", "lighting.frag",
-        view = Dict(
-            "shading" => light_calc(shading),
-            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            "DEBUG_FLAG_DEFINE" => debug,
-            param...
-        )
+        view = view
     )
     return shader
 end

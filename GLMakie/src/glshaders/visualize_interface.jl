@@ -118,20 +118,27 @@ end
 function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
     renders_in_stage(plot, stage) || return
     name = stage.target
+    view = Dict{String, String}()
     if name === :forward_render_objectid
-        kwargs = ("TARGET_STAGE" => "#define DEFAULT_TARGET",)
+        view["TARGET_STAGE"] = "#define DEFAULT_TARGET"
     elseif name === :forward_render_objectid_geom
-        kwargs = ("TARGET_STAGE" => "#define SSAO_TARGET",)
+        view["TARGET_STAGE"] = "#define SSAO_TARGET"
     elseif name === :forward_render_objectid_oit
-        kwargs = ("TARGET_STAGE" => "#define OIT_TARGET",)
+        view["TARGET_STAGE"] = "#define OIT_TARGET"
     else
         error("Could not define render outputs.")
     end
-    default_setup!(screen, robj, plot, name, kwargs)
+    lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
+    pre = get_prerender(plot, name)
+    post = get_postrender(plot, name)
+    add_instructions!(robj, name, lazy_shader, pre = pre, post = post)
     return
 end
 
-function get_default_prerender(plot, name::Symbol)
+# TODO: consider splitting RenderPlots stages and dispatch this on them instead
+# of using the runtime name?
+get_prerender(plot::Plot, name::Symbol) = get_default_prerender(plot, name)
+function get_default_prerender(plot::Plot, name::Symbol)
     if name === :forward_render_objectid_oit
         return OITPrerender(plot)
     else
@@ -139,12 +146,7 @@ function get_default_prerender(plot, name::Symbol)
     end
 end
 
-function default_setup!(screen, robj, plot, name, kwargs)
-    program_like = default_shader(screen, robj, plot, kwargs)
-    pre = get_default_prerender(plot, name)
-    add_instructions!(robj, name, program_like, pre = pre)
-    return
-end
+get_postrender(::Plot, ::Symbol) = GLAbstraction.EmptyPostrender()
 
 function reinitialize_renderobjects!(screen::Screen)
     for (_, _, robj) in screen.renderlist

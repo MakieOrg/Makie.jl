@@ -25,11 +25,11 @@ function draw_heatmap(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, ::Heatmap, param)
+function default_shader(screen::Screen, robj::RenderObject, ::Heatmap, view::Dict{String, String})
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "heatmap.vert", "heatmap.frag",
-        view = Dict(param...)
+        view = view
     )
     return shader
 end
@@ -55,25 +55,23 @@ function draw_volume(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_setup!(screen, robj, plot::Volume, name, param)
+get_prerender(plot::Volume, name::Symbol) = VolumePrerender(get_default_prerender(plot, name))
+get_postrender(::Volume, ::Symbol) = () -> glDisable(GL_CULL_FACE)
+
+function default_shader(screen::Screen, robj::RenderObject, plot::Volume, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+    view["ENABLE_DEPTH"] = Bool(robj.uniforms[:enable_depth]) ? "#define ENABLE_DEPTH" : ""
+
     shader = GLVisualizeShader(
         screen,
         "volume.vert",
         "fragment_output.frag", "lighting.frag", "volume.frag",
-        view = Dict(
-            "shading" => light_calc(shading),
-            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            "ENABLE_DEPTH" => Bool(robj.uniforms[:enable_depth]) ? "#define ENABLE_DEPTH" : "",
-            param...
-        )
+        view = view
     )
-    prerender = VolumePrerender(get_default_prerender(plot, name))
-    # TODO: make a struct for this to clean it up?
-    postrender = () -> glDisable(GL_CULL_FACE)
-
-    add_instructions!(robj, name, shader, pre = prerender, post = postrender)
-    return
+    return shader
 end
+
 @specialize

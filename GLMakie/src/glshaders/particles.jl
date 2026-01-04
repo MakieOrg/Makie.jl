@@ -86,20 +86,19 @@ function draw_mesh_particle(screen, data)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::MeshScatter, param)
+function default_shader(screen::Screen, robj::RenderObject, plot::MeshScatter, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     position = plot.positions_transformed_f32c[]
+    view["position_calc"] = position_calc(position, TextureBuffer)
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+
     shader = GLVisualizeShader(
         screen,
         "util.vert", "particles.vert",
         "fragment_output.frag", "lighting.frag", "mesh.frag",
-        view = Dict(
-            "position_calc" => position_calc(position, TextureBuffer),
-            "shading" => light_calc(shading),
-            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            param...
-        )
+        view = view
     )
     return shader
 end
@@ -167,51 +166,47 @@ function draw_scatter(screen, position, data)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_setup!(screen, robj, plot::Scatter, name, param)
+function get_prerender(plot::Scatter, name::Symbol)
+    _prerender = get_default_prerender(plot, name)
     if plot.marker[] isa FastPixel
-
-        _prerender = get_default_prerender(plot, name)
         prerender = () -> begin
             _prerender()
             glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
             return
         end
-        shader = GLVisualizeShader(
+        return prerender
+    else
+        return _prerender
+    end
+end
+
+function default_shader(screen::Screen, robj::RenderObject, plot::Scatter, view::Dict{String, String})
+    if plot.marker[] isa FastPixel
+        return GLVisualizeShader(
             screen,
             "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict(param...)
+            view = view
         )
-        add_instructions!(robj, name, shader, pre = prerender)
-
     else
-
         position = plot.positions_transformed_f32c[]
-        shader = GLVisualizeShader(
+        view["position_calc"] = position_calc(position, GLBuffer)
+        return GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, GLBuffer),
-                param...
-            )
+            view = view
         )
-        prerender = get_default_prerender(plot, name)
-        add_instructions!(robj, name, shader, pre = prerender)
-
     end
-    return
 end
 
-function default_shader(screen, robj, plot::Text, param)
+function default_shader(screen::Screen, robj::RenderObject, plot::Text, view::Dict{String, String})
     position = plot.positions_transformed_f32c[]
+    view["position_calc"] = position_calc(position, GLBuffer)
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "util.vert", "sprites.geom",
         "sprites.vert", "distance_shape.frag",
-        view = Dict(
-            "position_calc" => position_calc(position, GLBuffer),
-            param...
-        )
+        view = view
     )
     return shader
 end

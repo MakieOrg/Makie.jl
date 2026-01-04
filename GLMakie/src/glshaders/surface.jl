@@ -46,19 +46,18 @@ function draw_surface(screen, main, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen, robj, plot::Surface, param)
+function default_shader(screen::Screen, robj::RenderObject, plot::Surface, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
+    view["shading"] = light_calc(shading)
+    view["picking_mode"] = "#define PICKING_INDEX_FROM_UV"
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+
     shader = GLVisualizeShader(
         screen,
         "util.vert", "surface.vert",
         "fragment_output.frag", "lighting.frag", "mesh.frag",
-        view = Dict(
-            "shading" => light_calc(shading),
-            "picking_mode" => "#define PICKING_INDEX_FROM_UV",
-            "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-            "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-            param...
-        )
+        view = view
     )
     return shader
 end
