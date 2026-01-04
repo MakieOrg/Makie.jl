@@ -479,28 +479,40 @@ function replace_widget!(button::Makie.Button)
         button_text,
         style = Styles(
             CSS(
+                # CSS variables for reactive color updates
+                "--btn-bg" => buttoncolor,
+                "--btn-bg-hover" => buttoncolor_hover,
+                "--btn-bg-active" => buttoncolor_active,
+                "--btn-color" => labelcolor,
+                "--btn-color-hover" => labelcolor_hover,
+                "--btn-color-active" => labelcolor_active,
+                # Static styles
                 "width" => "100%",
                 "height" => "100%",
+                "box-sizing" => "border-box",
+                "display" => "flex",
+                "align-items" => "center",
+                "justify-content" => "center",
                 "font-family" => "inherit",
                 "font-size" => "calc(var(--winscale) * $(fontsize) * 1px)",
-                "padding" => "calc(var(--winscale) * $(padding[1]) * 1px) calc(var(--winscale) * $(padding[2]) * 1px) calc(var(--winscale) * $(padding[3]) * 1px) calc(var(--winscale) * $(padding[4]) * 1px)",
+                "padding" => "0",
                 "border" => "calc(var(--winscale) * $(strokewidth) * 1px) solid $(strokecolor)",
                 "border-radius" => "calc(var(--winscale) * $(cornerradius) * 1px)",
-                "background-color" => buttoncolor,
-                "color" => labelcolor,
+                "background-color" => "var(--btn-bg)",
+                "color" => "var(--btn-color)",
                 "cursor" => "pointer",
                 "outline" => "none",
                 "transition" => "background-color 0.2s, color 0.2s",
             ),
             CSS(
                 ":hover",
-                "background-color" => buttoncolor_hover,
-                "color" => labelcolor_hover,
+                "background-color" => "var(--btn-bg-hover)",
+                "color" => "var(--btn-color-hover)",
             ),
             CSS(
                 ":active",
-                "background-color" => buttoncolor_active,
-                "color" => labelcolor_active,
+                "background-color" => "var(--btn-bg-active)",
+                "color" => "var(--btn-color-active)",
             ),
         ),
         onclick = js"""
@@ -510,12 +522,39 @@ function replace_widget!(button::Makie.Button)
             }
         """
     )
+
+    # Merged observable with colors pre-converted to CSS strings
+    colors_css = lift(
+        button.buttoncolor, button.buttoncolor_hover, button.buttoncolor_active,
+        button.labelcolor, button.labelcolor_hover, button.labelcolor_active
+    ) do bc, bch, bca, lc, lch, lca
+        return Dict{String, String}(
+            "--btn-bg" => Bonito.convert_css_attribute(bc),
+            "--btn-bg-hover" => Bonito.convert_css_attribute(bch),
+            "--btn-bg-active" => Bonito.convert_css_attribute(bca),
+            "--btn-color" => Bonito.convert_css_attribute(lc),
+            "--btn-color-hover" => Bonito.convert_css_attribute(lch),
+            "--btn-color-active" => Bonito.convert_css_attribute(lca),
+        )
+    end
+
+    # Update CSS variables when colors change
+    color_update_js = js"""
+        const btn = $(button_element);
+        const colorsObs = $(colors_css);
+        colorsObs.on(colors => {
+            for (const [prop, value] of Object.entries(colors)) {
+                btn.style.setProperty(prop, value);
+            }
+        });
+    """
+
     button_div = DOM.div(
         button_element,
         style = WIDGET_CONTAINER_STYLES
     )
     jss = resize_parent(button_div, button)
-    return DOM.div(FONT_STYLE, button_div, jss)
+    return DOM.div(FONT_STYLE, button_div, jss, color_update_js)
 end
 
 function replace_widget!(checkbox::Makie.Checkbox)
