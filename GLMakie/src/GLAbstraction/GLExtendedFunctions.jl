@@ -77,7 +77,8 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
     actualLength[1] <= 0 &&  error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
+    # replace array brackets. This is not really a good solution.
+    uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], uniformSize[1])
 end
 
@@ -93,7 +94,8 @@ function glGetActiveAttrib(programID::GLuint, index::Integer)
     actualLength[1] <= 0 && error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
+    # replace array brackets. This is not really a good solution.
+    uname = cached_Symbol(replace(uname, r"\[\d*\]" => ""))
     return (uname, typ[1], attributeSize[1])
 end
 

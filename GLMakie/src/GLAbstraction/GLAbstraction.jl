@@ -68,6 +68,21 @@ end
 
 export require_context, with_context, gl_switch_context!
 
+# ~45µs saved in mustache2replacement() in display(scatter(rand(10)))
+# ~10µs in glGetActiveAttrib() in the same
+const _STRING_TO_SYMBOL_CACHE = Dict{String, Symbol}()
+
+cached_Symbol(str::SubString) = cached_Symbol(String(str))
+function cached_Symbol(str::String)
+    if !haskey(_STRING_TO_SYMBOL_CACHE, str)
+        s = Symbol(str)
+        _STRING_TO_SYMBOL_CACHE[str] = s
+        return s
+    else
+        return _STRING_TO_SYMBOL_CACHE[str]
+    end
+end
+
 include("AbstractGPUArray.jl")
 
 #Methods which get overloaded by GLExtendedFunctions.jl:

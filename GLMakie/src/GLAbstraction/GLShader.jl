@@ -304,7 +304,7 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
 end
 
 # 90ns replace("texturecoordinates_type", "_type) vs 24ns with this
-# mustache replacements are pretty common so this is worth a few percent in `display(fig)`
+# ~25µs in display(scatter(rand(10)))
 function maybe_remove_postfix(name::AbstractString, postfix::AbstractString)
     if endswith(name, postfix)
         return name[1 : end-length(postfix)]
@@ -316,7 +316,7 @@ function mustache2replacement(mustache_key, view, attributes)
     haskey(view, mustache_key) && return view[mustache_key]
     for postfix in ("_type", "_calculation")
         keystring = maybe_remove_postfix(mustache_key, postfix)
-        keysym = Symbol(keystring)
+        keysym = cached_Symbol(keystring)
         if haskey(attributes, keysym)
             val = attributes[keysym]
             if !isa(val, AbstractString)
