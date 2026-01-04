@@ -43,7 +43,7 @@ function GLVertexArray(bufferdict::Dict{Symbol, GLBuffer}, program::GLProgram, i
         bind(buffer)
         attribLocation = get_attribute_location(program.id, attribute)
         if attribLocation != -1
-            glVertexAttribPointer(attribLocation, cardinality(buffer), julia2glenum(eltype(buffer)), GL_FALSE, 0, C_NULL)
+            glVertexAttribPointer(attribLocation, cardinality(buffer), gleltype(buffer), GL_FALSE, 0, C_NULL)
             glEnableVertexAttribArray(attribLocation)
         else
             # This shouldn't be reachable... If it is, maybe there is something
