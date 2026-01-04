@@ -402,6 +402,9 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+    # Register atexit for runtime cleanup (when Julia exits normally)
+    # Note: This doesn't affect precompilation since __init__ doesn't run during precompile
+    atexit(cleanup_globals)
     return
 end
 
@@ -429,6 +432,24 @@ export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, 
 export FastPixel
 export update!
 export Ann
+
+"""
+    cleanup_globals()
+
+Cleans up global state (figures, tasks, caches) for precompilation compatibility.
+On Julia 1.11+, this is called automatically via atexit (which runs before serialization).
+On Julia 1.10, this must be called manually after precompilation workloads.
+"""
+function cleanup_globals()
+    cleanup_current_figure()
+    cleanup_tasks()
+    empty!(FONT_CACHE)
+    empty!(DEFAULT_FONT)
+    empty!(ALTERNATIVE_FONTS)
+    return
+end
+
+export cleanup_globals
 
 include("precompiles.jl")
 

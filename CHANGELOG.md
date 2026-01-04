@@ -3,8 +3,12 @@
 ## Unreleased
 
 - Added `HoverMenu` block and automatic legend/colorbar creation via `Figure(; gui=true, legend=..., colorbar=...)`. Added `Legend(ax; position=:rt)` and `Colorbar(ax, plot; position=:rt)` convenience constructors for overlay positioning, and `margin` attribute for Colorbar [#3491](https://github.com/MakieOrg/Makie.jl/pull/3491).
+- Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
 - Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
+- Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed plotting order of multi-arrow `arrows2d[!]` to respect z-coordinates. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed `meshscatter` objects rendering with incorrect color when scaled to 0 [#5478](https://github.com/MakieOrg/Makie.jl/pull/5478)
 
 ## [0.24.8] - 2025-12-04
 
