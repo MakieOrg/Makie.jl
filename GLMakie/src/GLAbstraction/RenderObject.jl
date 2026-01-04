@@ -270,8 +270,7 @@ function RenderInstructions(
         pre = EmptyPrerender(), post = EmptyPostrender()
     )
     # "compile" lazyshader
-    data = merge(robj.uniforms, robj.buffers) # TODO: avoid this?
-    program = gl_convert(robj.context, to_value(maybe_program), data)
+    program = gl_convert(robj.context, to_value(maybe_program), robj.uniforms, robj.buffers)
     vertexarray = GLVertexArray(robj.buffers, program, robj.indices)
 
     if DEBUG[]

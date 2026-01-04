@@ -155,9 +155,9 @@ function get_shader!(cache::ShaderCache, src::ShaderSource, template_replacement
     end::Shader
 end
 
-function get_template!(cache::ShaderCache, src::ShaderSource, view, attributes)
+function get_template!(cache::ShaderCache, src::ShaderSource, view, uniforms, buffers)
     return get!(cache.template_cache, src.name) do
-        templated_source, replacements = template2source(src.source, view, attributes)
+        templated_source, replacements = template2source(src.source, view, uniforms, buffers)
         shader = compile_shader(cache.context, src, templated_source)
         template_keys = collect(keys(replacements))
         template_replacements = collect(values(replacements))
@@ -204,12 +204,12 @@ function get_view(kw_dict)
     return _view
 end
 
-gl_convert(::GLContext, lazyshader::AbstractLazyShader, data) = error("gl_convert shader")
-function gl_convert(ctx::GLContext, lazyshader::LazyShader, data)
-    return gl_convert(ctx, lazyshader.shader_cache, lazyshader, data)
+gl_convert(::GLContext, lazyshader::AbstractLazyShader, uniforms, buffers) = error("gl_convert shader")
+function gl_convert(ctx::GLContext, lazyshader::LazyShader, uniforms, buffers)
+    return gl_convert(ctx, lazyshader.shader_cache, lazyshader, uniforms, buffers)
 end
 
-function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, data)
+function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazyShader, uniforms, buffers)
     require_context(cache.context, ctx)
     kw_dict = lazyshader.kw_args
     paths = lazyshader.paths
@@ -221,9 +221,9 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
     replacements = Vector{Vector{String}}(undef, length(paths))
 
     for (i, shader_source) in enumerate(paths)
-        template = get_template!(cache, shader_source, v, data)
+        template = get_template!(cache, shader_source, v, uniforms, buffers)
         template_keys[i] = template
-        replacements[i] = String[mustache2replacement(t, v, data) for t in template]
+        replacements[i] = String[mustache2replacement(t, v, uniforms, buffers) for t in template]
     end
 
     program = get!(cache.program_cache, (paths, replacements)) do
@@ -312,32 +312,35 @@ function maybe_remove_postfix(name::AbstractString, postfix::AbstractString)
     return name
 end
 
-function mustache2replacement(mustache_key, view, attributes)
+function mustache2replacement(mustache_key, view, uniforms, buffers::Dict{Symbol, GLBuffer})
     haskey(view, mustache_key) && return view[mustache_key]
     for postfix in ("_type", "_calculation")
         keystring = maybe_remove_postfix(mustache_key, postfix)
         keysym = cached_Symbol(keystring)
-        if haskey(attributes, keysym)
-            val = attributes[keysym]
-            if !isa(val, AbstractString)
-                if postfix == "_type"
-                    return toglsltype_string(val)::String
-                else
-                    postfix == "_calculation"
-                    return glsl_variable_access(keystring, val)::String
-                end
-            end
+        if haskey(buffers, keysym)
+            return mustache2replacement_inner(keystring, postfix, buffers[keysym])
+        elseif haskey(uniforms, keysym)
+            return mustache2replacement_inner(keystring, postfix, uniforms[keysym])
         end
     end
     return ""
     # error("No match found: $(mustache_key)")
 end
 
+mustache2replacement_inner(keystring, postfix, val::AbstractString) = ""
+function mustache2replacement_inner(keystring, postfix, val)
+    if postfix == "_type"
+        return toglsltype_string(val)::String
+    else
+        return glsl_variable_access(keystring, val)::String
+    end
+end
+
 # Takes a shader template and renders the template and returns shader source
-function template2source(source::AbstractString, view, attributes::Dict{Symbol, Any})
+function template2source(source::AbstractString, view, uniforms::Dict{Symbol, Any}, buffers)
     replacements = Dict{String, String}()
     source = mustache_replace(source) do mustache_key
-        r = mustache2replacement(mustache_key, view, attributes)
+        r = mustache2replacement(mustache_key, view, uniforms, buffers)
         replacements[mustache_key] = r
         return r
     end

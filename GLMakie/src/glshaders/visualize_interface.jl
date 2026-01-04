@@ -95,8 +95,8 @@ function GLVisualizeShader(screen::Screen, path1, paths...; kw_args...)
     return GLVisualizeShader(screen, [path1, paths...]; kw_args...)
 end
 
-function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, data)
-    return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
+function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, uniforms, buffers)
+    return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, uniforms, buffers)
 end
 
 function initialize_renderobject!(screen::Screen, robj::RenderObject, plot::Plot)
