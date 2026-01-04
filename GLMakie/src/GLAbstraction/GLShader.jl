@@ -197,7 +197,7 @@ function compile_program(shaders::Vector{Shader}, fragdatalocation)
 end
 
 function get_view(kw_dict)
-    _view = kw_dict[:view]
+    _view = kw_dict[:view]::Dict{String, String}
     extension = Sys.isapple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
     _view["GLSL_EXTENSION"] = extension * get(_view, "GLSL_EXTENSIONS", "")
     _view["GLSL_VERSION"] = glsl_version_string()
@@ -215,7 +215,7 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
     paths = lazyshader.paths
 
     v = get_view(kw_dict)
-    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
+    fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])::Vector{Tuple{Int, String}}
 
     template_keys = Vector{Vector{String}}(undef, length(paths))
     replacements = Vector{Vector{String}}(undef, length(paths))
@@ -226,7 +226,7 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
         replacements[i] = String[mustache2replacement(t, v, data) for t in template]
     end
 
-    return get!(cache.program_cache, (paths, replacements)) do
+    program = get!(cache.program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program
         shaders = Vector{Shader}(undef, length(paths))
@@ -237,6 +237,8 @@ function gl_convert(ctx::GLContext, cache::ShaderCache, lazyshader::AbstractLazy
         gl_switch_context!(cache.context)
         return compile_program(shaders, fragdatalocation)
     end
+
+    return program
 end
 
 function insert_from_view(io, replace_view::Function, keyword::AbstractString)

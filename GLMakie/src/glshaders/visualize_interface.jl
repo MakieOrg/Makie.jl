@@ -74,10 +74,10 @@ end
 
 struct GLVisualizeShader <: AbstractLazyShader
     screen::Screen
-    paths::Tuple
+    paths::Vector{ShaderSource}
     kw_args::Dict{Symbol, Any}
     function GLVisualizeShader(
-            screen::Screen, paths::String...;
+            screen::Screen, paths::Vector{String};
             view = Dict{String, String}(), kw_args...
         )
         # TODO properly check what extensions are available
@@ -90,6 +90,9 @@ struct GLVisualizeShader <: AbstractLazyShader
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
         return new(screen, map(x -> loadshader(x), paths), args)
     end
+end
+function GLVisualizeShader(screen::Screen, path1, paths...; kw_args...)
+    return GLVisualizeShader(screen, [path1, paths...]; kw_args...)
 end
 
 function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, data)
