@@ -110,9 +110,13 @@ initialize_renderobject!(screen, stage, robj, plot) = nothing
 
 renders_in_stage(robj, ::GLRenderStage) = false
 function renders_in_stage(plot::Plot, stage::RenderPlots)
-    return compare(to_value(get(plot.attributes, :ssao, false)), stage.ssao) &&
-        compare(to_value(get(plot.attributes, :transparency, false)), stage.transparency) &&
-        compare(to_value(get(plot.attributes, :fxaa, false)), stage.fxaa)
+    ssao = to_value(get(plot.attributes, :ssao, false))::Bool
+    transparency = to_value(get(plot.attributes, :transparency, false))::Bool
+    fxaa = to_value(get(plot.attributes, :fxaa, false))::Bool
+
+    return compare(ssao, stage.ssao) &&
+           compare(transparency, stage.transparency) &&
+           compare(fxaa, stage.fxaa)
 end
 
 function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
