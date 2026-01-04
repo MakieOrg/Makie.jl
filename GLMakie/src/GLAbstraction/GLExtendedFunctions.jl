@@ -247,13 +247,17 @@ Makie.@noconstprop function glTexImage(
     glTexImage1D(ttype, level, internalFormat, w, border, format, datatype, data)
 end
 
+const GLSL_VERSION_NUMBER = Ref{VersionNumber}()
 function glsl_version_number()
-    glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
-    if length(glsl) >= 2
-        return VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
-    else
-        error("could not parse GLSL version: $glsl")
+    if !isassigned(GLSL_VERSION_NUMBER)
+        glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
+        if length(glsl) >= 2
+            GLSL_VERSION_NUMBER[] = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
+        else
+            error("could not parse GLSL version: $glsl")
+        end
     end
+    return GLSL_VERSION_NUMBER[]
 end
 
 function opengl_version_number()
