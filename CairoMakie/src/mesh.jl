@@ -274,7 +274,10 @@ function draw_mesh3D(scene, screen, plot::ComputeGraph)
     uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
 
     # per-element in meshscatter
-    world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])::Union{Vector{Point3f}, Vector{Point2f}}
+    world_points = Makie.apply_model(
+        plot.model_f32c[]::Mat4f,
+        plot.positions_transformed_f32c[]::Union{Vector{Point3f}, Vector{Point2f}}
+    )
     screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
     meshfaces = plot.faces[]::Vector{GLTriangleFace}
     meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
@@ -392,14 +395,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(plot::Makie.Mes
     # We combine vertices and positions in world space.
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
-    transformed_pos = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
+    transformed_pos = Makie.apply_model(
+        plot.model_f32c[]::Mat4f,
+        plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}})
     colors = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]
 
     return draw_scattered_mesh(
         scene, screen, plot.attributes, plot.marker[],
         transformed_pos, plot.markersize[], plot.rotation[], colors,
-        plot.clip_planes[], plot.transform_marker[], uv_transform
+        plot.clip_planes[], plot.transform_marker[]::Bool, uv_transform
     )
 end
 
@@ -417,14 +422,14 @@ function draw_scattered_mesh(
     meshuvs = texturecoordinates(mesh)
 
     # transformation matrix to mesh into world space, see loop
-    f32c_model = ifelse(transform_marker, strip_translation(plot.model[]), Mat4d(I))
+    f32c_model = ifelse(transform_marker, strip_translation(plot.model[]::Mat4d), Mat4d(I))
     if !isnothing(scene.float32convert) && Makie.is_data_space(space)
         f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
     end
 
     # Z sorting based on meshscatter arguments
     # For correct z-ordering we need to be in view/camera or screen space
-    view = plot.view[]
+    view = plot.view[]::Mat4f
     zorder = sortperm(
         positions, by = p -> begin
             p4d = to_ndim(Vec4d, p, 1)
@@ -492,8 +497,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     transformed_pos = _transform_to_world(scene, primitive, pos)
 
     # clip full voxel instead of faces
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
-        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+    clip_planes = primitive.clip_planes[]::Vector{Plane3f}
+    if !isempty(clip_planes) && Makie.is_data_space(primitive)
+        valid = [is_visible(clip_planes, p) for p in transformed_pos]
         transformed_pos = transformed_pos[valid]
         colors = colors[valid]
     end
