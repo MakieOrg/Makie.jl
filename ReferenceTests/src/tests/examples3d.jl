@@ -207,7 +207,7 @@ end
     pts = Point3f[[0, 0, 0], [1, 0, 0]]
     markersize = Vec3f[[0.5, 0.2, 0.5], [0.5, 0.2, 0.5]]
     rotation = [qrotation(Vec3f(1, 0, 0), 0), qrotation(Vec3f(1, 1, 0), π / 4)]
-    meshscatter(f[1, 1], pts; markersize, rotation, color = :white, diffuse = Vec3f(-2, 0, 4), specular = Vec3f(4, 0, -2))
+    meshscatter(f[1, 1], pts; markersize, rotation, color = :white, diffuse = Vec3i(-2, 0, 4), specular = Vec3d(4, 0, -2))
 
     mesh(f[1, 2], Sphere(Point3f(0), 1.0f0), color = :orange, shading = NoShading)
 
