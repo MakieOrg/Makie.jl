@@ -31,8 +31,6 @@ gl_color_type_annotation(::Makie.RGBA) = "vec4"
 
 @nospecialize
 function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where {T <: Point}
-    color_type = gl_color_type_annotation(data[:color])
-
     @gen_defaults! data begin
         vertex = Point3f[] => GLBuffer
         color = nothing => GLBuffer
@@ -40,22 +38,11 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         color_norm = nothing
         thickness = 2.0f0 => GLBuffer
         pattern = nothing => Texture
-        fxaa = false
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
         indices = Cuint[] => to_index_buffer
-        transparency = false
         fast = false
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
-            view = Dict(
-                "TARGET_STAGE" => target_stage(screen, data),
-                "define_fast_path" => to_value(fast) ? "#define FAST_PATH" : "",
-                "stripped_color_type" => color_type
-            )
-        )
         gl_primitive = GL_LINE_STRIP_ADJACENCY
         valid_vertex = Float32[] => GLBuffer
         lastlen = Float32[] => GLBuffer
@@ -63,12 +50,10 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
         debug = false
         px_per_unit = 1.0f0
     end
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
 
 function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where {T <: Point}
-    color_type = gl_color_type_annotation(data[:color])
-
     @gen_defaults! data begin
         vertex = Point3f[] => GLBuffer
         color = nothing => GLBuffer
@@ -77,24 +62,36 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
         thickness = 2.0f0 => GLBuffer
         shape = RECTANGLE
         pattern = nothing => Texture
-        fxaa = false
         indices = 0 => to_index_buffer
-        transparency = false
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "line_segment.vert", "line_segment.geom",
-            "lines.frag",
-            view = Dict(
-                "TARGET_STAGE" => target_stage(screen, data),
-                "stripped_color_type" => color_type
-            )
-        )
         gl_primitive = GL_LINES
         pattern_length = 1.0f0
         debug = false
         px_per_unit = 1.0f0
     end
-    robj = assemble_shader(data)
+    robj = RenderObject(screen.glscreen, data)
     return robj
 end
+
 @specialize
+
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Lines, view::Dict{String, String})
+    view["define_fast_path"] = Bool(robj[:fast]) ? "#define FAST_PATH" : ""
+    view["stripped_color_type"] = gl_color_type_annotation(plot[:scaled_color][])::String
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
+        view = view
+    )
+    return shader
+end
+
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::LineSegments, view::Dict{String, String})
+    view["stripped_color_type"] = gl_color_type_annotation(plot[:scaled_color][])::String
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "line_segment.vert", "line_segment.geom",
+        "lines.frag",
+        view = view
+    )
+    return shader
+end

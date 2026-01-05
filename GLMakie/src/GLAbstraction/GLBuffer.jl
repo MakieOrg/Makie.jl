@@ -7,6 +7,10 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
     # TODO maybe also delay upload to when render happens?
     observers::Vector{Observables.ObserverFunction}
 
+    cardinality::Int64
+    gleltype::GLenum
+    glsl_typename::String
+
     function GLBuffer{T}(context, ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where {T}
         gl_switch_context!(context)
         id = glGenBuffers()
@@ -19,12 +23,19 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
 
         obj = new(
             id, (buff_length,), buffertype, usage, context,
-            Observables.ObserverFunction[]
+            Observables.ObserverFunction[],
+            cardinality(T), julia2glenum(T)
         )
+        if !(T <: Union{OffsetInteger, GeometryBasics.AbstractFace})
+            setfield!(obj, :glsl_typename, glsl_typename(T))
+        end
         DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
 end
+
+# these don't need the eltype of GLBuffer which often needs runtime inference
+@nospecialize
 
 function bind(buffer::GLBuffer)
     if buffer.id == 0
@@ -34,13 +45,18 @@ function bind(buffer::GLBuffer)
 end
 
 #used to reset buffer target
-bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
+bind(buffer::GLBuffer, other_target::Integer) = glBindBuffer(buffer.buffertype, other_target)
+
+cardinality(buffer::GLBuffer) = buffer.cardinality
+gleltype(buffer::GLBuffer) = buffer.gleltype
+size(buffer::GLBuffer) = buffer.size
+glsl_typename(buffer::GLBuffer) = buffer.glsl_typename
+@specialize
+
 
 function similar(x::GLBuffer{T}, buff_length::Int) where {T}
     return GLBuffer{T}(x.context, Ptr{T}(C_NULL), buff_length, x.buffertype, x.usage)
 end
-
-cardinality(::GLBuffer{T}) where {T} = cardinality(T)
 
 #Function to deal with any Immutable type with Real as Subtype
 function GLBuffer(

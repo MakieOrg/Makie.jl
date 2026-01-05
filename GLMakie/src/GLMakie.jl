@@ -48,6 +48,7 @@ struct ShaderSource
     typ::GLenum
     source::String
     name::String
+    last_modified::Float64
 end
 
 """
@@ -60,8 +61,13 @@ function ShaderSource(path::String)
     typ = GLAbstraction.shadertype(splitext(path)[2])
     source = read(path, String)
     name = String(path)
-    return ShaderSource(typ, source, name)
+    last_modified = mtime(path)
+    return ShaderSource(typ, source, name, last_modified)
 end
+
+# To speed up hashing shader compilation, look at mtime(file) (last modified)
+# instead of hashing the entire content.
+Base.hash(x::ShaderSource, h::UInt) = hash(x.name, hash(x.last_modified, h))
 
 const shader_counter = Ref(0)
 function next_shader_num()
@@ -79,7 +85,7 @@ Use `loadshader(filename)` to load a cached shader from GLMakie's assets folder.
 """
 function ShaderSource(source::String, type::Symbol, name = "inline_shader$(next_shader_num())")
     type2gltype = (comp = GL_COMPUTE_SHADER, vert = GL_VERTEX_SHADER, frag = GL_FRAGMENT_SHADER, geom = GL_GEOMETRY_SHADER)
-    return ShaderSource(type2gltype[type], source, name)
+    return ShaderSource(type2gltype[type], source, name, 0.0)
 end
 
 const SHADER_DIR = normpath(joinpath(@__DIR__, "..", "assets", "shader"))
