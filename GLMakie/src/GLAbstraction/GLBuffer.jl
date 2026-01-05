@@ -9,6 +9,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
 
     cardinality::Int64
     gleltype::GLenum
+    glsl_typename::String
 
     function GLBuffer{T}(context, ptr::Ptr{T}, buff_length::Int, buffertype::GLenum, usage::GLenum) where {T}
         gl_switch_context!(context)
@@ -25,6 +26,9 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
             Observables.ObserverFunction[],
             cardinality(T), julia2glenum(T)
         )
+        if !(T <: Union{OffsetInteger, GeometryBasics.AbstractFace})
+            setfield!(obj, :glsl_typename, glsl_typename(T))
+        end
         DEBUG[] && finalizer(verify_free, obj)
         return obj
     end
@@ -46,7 +50,7 @@ bind(buffer::GLBuffer, other_target::Integer) = glBindBuffer(buffer.buffertype, 
 cardinality(buffer::GLBuffer) = buffer.cardinality
 gleltype(buffer::GLBuffer) = buffer.gleltype
 size(buffer::GLBuffer) = buffer.size
-
+glsl_typename(buffer::GLBuffer) = buffer.glsl_typename
 @specialize
 
 

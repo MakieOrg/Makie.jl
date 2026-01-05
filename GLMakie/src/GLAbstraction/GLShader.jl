@@ -314,21 +314,25 @@ end
 
 function mustache2replacement(mustache_key, view, uniforms, buffers::Dict{Symbol, GLBuffer})
     haskey(view, mustache_key) && return view[mustache_key]
-    for postfix in ("_type", "_calculation")
-        keystring = maybe_remove_postfix(mustache_key, postfix)
-        keysym = cached_Symbol(keystring)
-        if haskey(buffers, keysym)
-            return mustache2replacement_inner(keystring, postfix, buffers[keysym])
-        elseif haskey(uniforms, keysym)
-            return mustache2replacement_inner(keystring, postfix, uniforms[keysym])
-        end
+    postfix = ""
+    if endswith(mustache_key, "_type")
+        postfix = "_type"
+    elseif endswith(mustache_key, "_calculation")
+        postfix = "_calculation"
+    end
+    keystring = maybe_remove_postfix(mustache_key, postfix)
+    keysym = cached_Symbol(keystring)
+    if haskey(buffers, keysym)
+        return mustache2replacement_inner(keystring, postfix, buffers[keysym])
+    elseif haskey(uniforms, keysym)
+        return mustache2replacement_inner(keystring, postfix, uniforms[keysym])
     end
     return ""
     # error("No match found: $(mustache_key)")
 end
 
 mustache2replacement_inner(keystring, postfix, val::AbstractString) = ""
-function mustache2replacement_inner(keystring, postfix, val)
+function mustache2replacement_inner(keystring, postfix, @nospecialize(val))
     if postfix == "_type"
         return toglsltype_string(val)::String
     else
