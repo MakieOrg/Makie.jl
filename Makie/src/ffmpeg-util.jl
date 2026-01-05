@@ -24,6 +24,10 @@
   you have issues playing a video, try `profile = "high"` or `profile = "main"`.
 - `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
   applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+- `preset = "medium"`: Encoding speed/quality tradeoff for `mp4` and `webm`. Options from
+  fastest to slowest: `"ultrafast"`, `"superfast"`, `"veryfast"`, `"faster"`, `"fast"`,
+  `"medium"`, `"slow"`, `"slower"`, `"veryslow"`. Faster presets produce larger files but
+  encode much faster. For real-time or interactive recording, use `"ultrafast"` or `"veryfast"`.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
@@ -39,6 +43,7 @@ struct VideoStreamOptions
     compression::Union{Nothing, Int}
     profile::Union{Nothing, String}
     pixel_format::Union{Nothing, String}
+    preset::Union{Nothing, String}
     loop::Union{Nothing, Int}
 
     loglevel::String
@@ -47,7 +52,7 @@ struct VideoStreamOptions
 
     function VideoStreamOptions(
             format::AbstractString, framerate::Real, compression, profile,
-            pixel_format, loop, loglevel::String, input::String, rawvideo::Bool = true
+            pixel_format, preset, loop, loglevel::String, input::String, rawvideo::Bool = true
         )
 
         if !isa(framerate, Integer)
@@ -62,6 +67,7 @@ struct VideoStreamOptions
 
         if format in ("mp4", "webm")
             (compression === nothing) && (compression = 20)
+            (preset === nothing) && (preset = "medium")
         end
 
         (loop === nothing) && (loop = 0)
@@ -71,6 +77,7 @@ struct VideoStreamOptions
             ("compression", compression, ("mp4", "webm")),
             ("profile", profile, ("mp4",)),
             ("pixel_format", pixel_format, ("mp4",)),
+            ("preset", preset, ("mp4", "webm")),
         ]
 
         for (name, value, allowed_formats) in allowed_kwargs
@@ -106,12 +113,12 @@ struct VideoStreamOptions
         if !(loglevel in loglevels)
             error("loglevel needs to be one of $(loglevels)")
         end
-        return new(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+        return new(format, framerate, compression, profile, pixel_format, preset, loop, loglevel, input, rawvideo)
     end
 end
 
-function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
-    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, input, rawvideo)
+function VideoStreamOptions(; format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, preset = nothing, loop = nothing, loglevel = "quiet", input = "pipe:0", rawvideo = true)
+    return VideoStreamOptions(format, framerate, compression, profile, pixel_format, preset, loop, loglevel, input, rawvideo)
 end
 
 function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer = 0)
@@ -132,7 +139,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
     # -profile:v: (mp4 only) the output video profile
     # -an: no audio in output
     # -loop: (gif only) number of times to loop
-    (format, framerate, compression, profile, pixel_format, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.loop)
+    (format, framerate, compression, profile, pixel_format, preset, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.preset, vso.loop)
 
     cpu_cores = length(Sys.cpu_info())
     ffmpeg_prefix = `
@@ -158,7 +165,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
     elseif format == "mp4"
         `-profile:v $(profile)
          -crf $(compression)
-         -preset slow
+         -preset $(preset)
          -c:v libx264
          -pix_fmt $(pixel_format)
          -an
@@ -167,6 +174,7 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         # this may need improvement, see here: https://trac.ffmpeg.org/wiki/Encode/VP9
         `-crf $(compression)
          -c:v libvpx-vp9
+         -cpu-used $(preset == "ultrafast" ? 8 : preset == "superfast" ? 6 : preset == "veryfast" ? 5 : preset == "faster" ? 4 : preset == "fast" ? 3 : preset == "medium" ? 2 : 1)
          -b:v 0
          -an
         `
@@ -257,7 +265,7 @@ $(Base.doc(VideoStreamOptions))
 """
 function VideoStream(
         fig::FigureLike;
-        format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, loop = nothing,
+        format = "mp4", framerate = 24, compression = nothing, profile = nothing, pixel_format = nothing, preset = nothing, loop = nothing,
         loglevel = "quiet", visible = false, update = true, filter_ticks = true,
         backend = current_backend(), screen_config...
     )
@@ -279,7 +287,7 @@ function VideoStream(
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     buffer = Matrix{RGB{N0f8}}(undef, xdim, ydim)
-    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, loop, loglevel, "pipe:0", true)
+    vso = VideoStreamOptions(format, framerate, compression, profile, pixel_format, preset, loop, loglevel, "pipe:0", true)
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
     # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
