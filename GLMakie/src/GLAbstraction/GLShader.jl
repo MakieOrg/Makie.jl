@@ -307,7 +307,7 @@ end
 # ~25µs in display(scatter(rand(10)))
 function maybe_remove_postfix(name::AbstractString, postfix::AbstractString)
     if endswith(name, postfix)
-        return name[1 : end-length(postfix)]
+        return name[1:(end - length(postfix))]
     end
     return name
 end

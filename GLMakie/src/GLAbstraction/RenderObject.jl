@@ -1,4 +1,3 @@
-
 # Things that influence how data from a renderobject can be rendered
 struct RenderInstructions{Pre, Post}
     vertexarray::GLVertexArray # just the vertexarray
@@ -169,8 +168,8 @@ function RenderObject(context, data::Dict{Symbol, Any})
     end
 
     buffers, indices = process_buffers(
-       context,
-       filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
+        context,
+        filter(((key, value),) -> isa(value, GLBuffer) || key === :indices, data)
     )
     require_context(context)
 

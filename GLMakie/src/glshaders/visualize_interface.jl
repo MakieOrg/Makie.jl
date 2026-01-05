@@ -103,6 +103,7 @@ function initialize_renderobject!(screen::Screen, robj::RenderObject, plot::Plot
     for stage in screen.render_pipeline
         initialize_renderobject!(screen, stage, robj, plot)
     end
+    return
 end
 
 initialize_renderobject!(screen, stage, robj, plot) = nothing
@@ -115,8 +116,8 @@ function renders_in_stage(plot::Plot, stage::RenderPlots)
     fxaa = to_value(get(plot.attributes, :fxaa, false))::Bool
 
     return compare(ssao, stage.ssao) &&
-           compare(transparency, stage.transparency) &&
-           compare(fxaa, stage.fxaa)
+        compare(transparency, stage.transparency) &&
+        compare(fxaa, stage.fxaa)
 end
 
 function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
