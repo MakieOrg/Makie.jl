@@ -155,7 +155,8 @@ const MAKIE_DEFAULT_THEME = Attributes(
         integrator = automatic,  # Whitted() by default, or SPPM()
         exposure = 1.0f0,
         tonemap = :aces,
-        gamma = 2.2f0
+        gamma = 2.2f0,
+        backend = Array  # Array for CPU, ROCArray for AMD GPU, CuArray for NVIDIA GPU
     )
 )
 

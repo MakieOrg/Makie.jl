@@ -139,6 +139,45 @@ struct EnvironmentLight <: AbstractLight
 end
 
 """
+    SunSkyLight(direction; intensity=1.0, turbidity=2.5, ground_albedo=RGBf(0.3), ground_enabled=true)
+
+A physically-based sun and sky lighting system using atmospheric scattering.
+Provides both directional sun illumination and a procedural sky background.
+
+# Arguments
+- `direction`: Direction TO the sun (Vec3f, will be normalized)
+- `intensity`: Sun intensity multiplier (default: 1.0)
+- `turbidity`: Atmospheric turbidity, 2.0=clear to 10.0=hazy (default: 2.5)
+- `ground_albedo`: Color of ground below horizon (default: RGBf(0.3))
+- `ground_enabled`: Whether to show ground plane below horizon (default: true)
+
+Availability:
+- TraceMakie
+"""
+struct SunSkyLight <: AbstractLight
+    direction::Vec3f       # Direction TO the sun (normalized)
+    intensity::Float32     # Sun intensity multiplier
+    turbidity::Float32     # Atmospheric turbidity (2=clear, 10=hazy)
+    ground_albedo::RGBf    # Ground color below horizon
+    ground_enabled::Bool   # Whether to show ground plane below horizon
+end
+
+function SunSkyLight(direction::VecTypes{3};
+    intensity::Real = 1.0,
+    turbidity::Real = 2.5,
+    ground_albedo::Colorant = RGBf(0.3, 0.3, 0.3),
+    ground_enabled::Bool = true,
+)
+    SunSkyLight(
+        normalize(Vec3f(direction)),
+        Float32(intensity),
+        Float32(turbidity),
+        RGBf(ground_albedo),
+        ground_enabled,
+    )
+end
+
+"""
     RectLight(color, r::Rect2[, direction = -normal])
     RectLight(color, center::Point3f, b1::Vec3f, b2::Vec3f[, direction = -normal])
 

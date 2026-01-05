@@ -424,7 +424,7 @@ export arrows, arrows!
 
 export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
 export set_shading_algorithm!, set_directional_light!
-export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, SunSkyLight, RectLight, SSAO
 export FastPixel
 export update!
 export Ann
