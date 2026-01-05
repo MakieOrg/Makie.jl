@@ -271,9 +271,13 @@ function opengl_version_number()
     end
 end
 
+const GLSL_VERSION_STRING = Ref{String}()
 function glsl_version_string()
-    glsl = glsl_version_number()
-    glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
-    glsl_version = string(glsl.major) * rpad(string(glsl.minor), 2, "0")
-    return "#version $(glsl_version)\n"
+    if !isassigned(GLSL_VERSION_STRING)
+        glsl = glsl_version_number()
+        glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
+        glsl_version = string(glsl.major) * rpad(string(glsl.minor), 2, "0")
+        GLSL_VERSION_STRING[] = "#version $(glsl_version)\n"
+    end
+    return GLSL_VERSION_STRING[]
 end
