@@ -418,12 +418,10 @@ function draw_scattered_mesh(
         # - only scaling from float32convert applies to vertices
         #   f32c_scale * (maybe model) *  rotation * scale * vertices  +  f32c * model * transform_func(plot[1])
         # =        f32c_model          * element_transform * vertices  +       element_translation
-        element_world_pos = let f32c_model = f32c_model
-            map(meshpoints) do p
-                p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
-                p4d = f32c_model * element_transform * p4d + element_translation
-                return Point3f(p4d) / p4d[4]
-            end
+        element_world_pos = map(meshpoints) do p
+            p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+            p4d = element_transform * p4d + element_translation
+            return Point3f(p4d) / p4d[4]
         end
 
         element_screen_pos = project_position(Point3f, proj_mat, element_world_pos, eachindex(element_world_pos))
