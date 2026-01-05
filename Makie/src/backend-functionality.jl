@@ -363,5 +363,5 @@ end
 
 function compute_colors(attributes, color_name = :scaled_color)
     compute_colors!(attributes, color_name)
-    return attributes.computed_color[]::Union{RGBAf, Vector{RGBAf}, Matrix{RGBAf}, ShaderAbstractions.Sampler, AbstractPattern}
+    return attributes.computed_color[]
 end
