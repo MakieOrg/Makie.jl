@@ -2,9 +2,16 @@
 
 ## Unreleased
 
+- Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
+- Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+- Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
+- Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed plotting order of multi-arrow `arrows2d[!]` to respect z-coordinates. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
+- Fixed `meshscatter` objects rendering with incorrect color when scaled to 0 [#5478](https://github.com/MakieOrg/Makie.jl/pull/5478)
+
+## [0.24.8] - 2025-12-04
+
 - Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph and add init kw for map! and map_latest! [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
-- Fixes for is_same to work with missing [#5327](https://github.com/MakieOrg/Makie.jl/pull/5327).
-- Fixes for WGLMakie `resize_to` [#5374](https://github.com/MakieOrg/Makie.jl/pull/5374).
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
 - Reexport `Protrusion` from GridLayoutBase for use with the `Mixed` alignment mode [#5416](https://github.com/MakieOrg/Makie.jl/pull/5416).
@@ -977,7 +984,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...HEAD
+[0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8
 [0.24.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...v0.24.7
 [0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6
 [0.24.5]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.4...v0.24.5
