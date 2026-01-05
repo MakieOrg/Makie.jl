@@ -168,17 +168,11 @@ function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Mes
     return shader
 end
 
-function get_prerender(plot::Scatter, name::Symbol)
-    _prerender = get_default_prerender(plot, name)
+function get_prerender(plot::Scatter)
     if plot.marker[] isa FastPixel
-        prerender = () -> begin
-            _prerender()
-            glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
-            return
-        end
-        return prerender
+        return () -> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
     else
-        return _prerender
+        return EmptyPrerender()
     end
 end
 

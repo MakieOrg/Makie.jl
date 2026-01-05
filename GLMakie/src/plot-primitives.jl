@@ -211,6 +211,7 @@ end
 function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
         :fxaa => attr[:fxaa][],
+        :overdraw => attr[:overdraw][],
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
         # TODO: integrate this into the OIT Render Stage
         :oit_scale => screen.config.transparency_weight_scale,

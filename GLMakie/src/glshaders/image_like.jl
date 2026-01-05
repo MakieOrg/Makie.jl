@@ -1,9 +1,7 @@
-struct VolumePrerender{T}
-    pre::T
+struct VolumePrerender
 end
 
 function (x::VolumePrerender)()
-    x.pre()
     glEnable(GL_CULL_FACE)
     glCullFace(GL_FRONT)
     return
@@ -57,8 +55,8 @@ function default_shader(screen::Screen, @nospecialize(::RenderObject), ::Heatmap
     return shader
 end
 
-get_prerender(plot::Volume, name::Symbol) = VolumePrerender(get_default_prerender(plot, name))
-get_postrender(::Volume, ::Symbol) = () -> glDisable(GL_CULL_FACE)
+get_prerender(::Volume) = VolumePrerender()
+get_postrender(::Volume) = () -> glDisable(GL_CULL_FACE)
 
 function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Volume, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)

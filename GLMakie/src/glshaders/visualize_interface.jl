@@ -134,24 +134,16 @@ function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
         error("Could not define render outputs.")
     end
     lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
-    pre = get_prerender(plot, name)
-    post = get_postrender(plot, name)
+    pre = get_prerender(plot)
+    post = get_postrender(plot)
     add_instructions!(robj, name, lazy_shader, pre = pre, post = post)
     return
 end
 
 # TODO: consider splitting RenderPlots stages and dispatch this on them instead
 # of using the runtime name?
-get_prerender(plot::Plot, name::Symbol) = get_default_prerender(plot, name)
-function get_default_prerender(plot::Plot, name::Symbol)
-    if name === :forward_render_objectid_oit
-        return OITPrerender(plot)
-    else
-        return StandardPrerender(plot)
-    end
-end
-
-get_postrender(::Plot, ::Symbol) = GLAbstraction.EmptyPostrender()
+get_prerender(::Plot) = GLAbstraction.EmptyPrerender()
+get_postrender(::Plot) = GLAbstraction.EmptyPostrender()
 
 function reinitialize_renderobjects!(screen::Screen)
     for (_, _, robj) in screen.renderlist
@@ -190,87 +182,3 @@ to_index_buffer(ctx, x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
-
-# TODO: What's a good place for these?
-
-"""
-Represents standard sets of function applied before rendering
-"""
-struct StandardPrerender
-    overdraw::Bool
-end
-
-function StandardPrerender(plot::Plot)
-    return StandardPrerender(to_value(get(plot.attributes, :overdraw, false)))
-end
-
-function enabletransparency()
-    glDisable(GL_BLEND)
-    glEnablei(GL_BLEND, 0)
-    # This does:
-    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
-    # target.a = 0 * source.a + 1 * target.a
-    # the latter is required to keep target.a = 1 for the OIT pass
-    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
-    return
-end
-
-function handle_overdraw(overdraw)
-    if overdraw
-        # Disable depth testing if overdrawing
-        glDisable(GL_DEPTH_TEST)
-    else
-        glEnable(GL_DEPTH_TEST)
-        glDepthFunc(GL_LEQUAL)
-    end
-    return
-end
-
-function (sp::StandardPrerender)()
-    glDepthMask(GL_TRUE)
-    enabletransparency()
-
-    handle_overdraw(sp.overdraw)
-
-    # Disable cullface for now, until all rendering code is corrected!
-    glDisable(GL_CULL_FACE)
-    # glCullFace(GL_BACK)
-
-    return
-end
-
-struct OITPrerender
-    overdraw::Bool
-end
-
-function OITPrerender(plot::Plot)
-    return OITPrerender(to_value(get(plot.attributes, :overdraw, false)))
-end
-
-function (pre::OITPrerender)()
-    # disable depth buffer writing
-    glDepthMask(GL_FALSE)
-
-    # Blending
-    glEnable(GL_BLEND)
-    glBlendEquation(GL_FUNC_ADD)
-
-    # buffer 0 contains weight * color.rgba, should do sum
-    # destination <- 1 * source + 1 * destination
-    glBlendFunci(0, GL_ONE, GL_ONE)
-
-    # buffer 1 is objectid, do nothing
-    glDisablei(GL_BLEND, 1)
-
-    # buffer 2 is color.a, should do product
-    # destination <- 0 * source + (source) * destination
-    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
-
-    handle_overdraw(pre.overdraw)
-
-    # Disable cullface for now, until all rendering code is corrected!
-    glDisable(GL_CULL_FACE)
-    # glCullFace(GL_BACK)
-
-    return
-end

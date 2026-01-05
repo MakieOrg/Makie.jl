@@ -167,7 +167,7 @@ compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == 
 A render pipeline stage which renders plots. This includes filtering options to
 distribute plots into, e.g. a pass for OIT.
 """
-struct RenderPlots <: GLRenderStage
+struct RenderPlots{Pre} <: GLRenderStage
     framebuffer::GLFramebuffer
     clear::Vector{Pair{Int, Vec4f}} # target index -> color
 
@@ -176,6 +176,79 @@ struct RenderPlots <: GLRenderStage
     fxaa::FilterOptions
 
     target::Symbol
+    prerender::Pre
+end
+
+
+# TODO: What's a good place for these?
+
+struct StandardPrerender
+end
+
+function enabletransparency()
+    glDisable(GL_BLEND)
+    glEnablei(GL_BLEND, 0)
+    # This does:
+    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
+    # target.a = 0 * source.a + 1 * target.a
+    # the latter is required to keep target.a = 1 for the OIT pass
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    return
+end
+
+function handle_overdraw(overdraw)
+    if Bool(overdraw)
+        # Disable depth testing if overdrawing
+        glDisable(GL_DEPTH_TEST)
+    else
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+    end
+    return
+end
+
+function (sp::StandardPrerender)(overdraw::UInt8)
+    glDepthMask(GL_TRUE)
+    enabletransparency()
+
+    handle_overdraw(overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end
+
+struct OITPrerender
+end
+
+function (pre::OITPrerender)(overdraw::UInt8)
+    # disable depth buffer writing
+    glDepthMask(GL_FALSE)
+
+    # Blending
+    glEnable(GL_BLEND)
+    glBlendEquation(GL_FUNC_ADD)
+
+    # buffer 0 contains weight * color.rgba, should do sum
+    # destination <- 1 * source + 1 * destination
+    glBlendFunci(0, GL_ONE, GL_ONE)
+
+    # buffer 1 is objectid, do nothing
+    glDisablei(GL_BLEND, 1)
+
+    # buffer 2 is color.a, should do product
+    # destination <- 0 * source + (source) * destination
+    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+    handle_overdraw(overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
 end
 
 function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target = :forward_render_objectid)
@@ -183,7 +256,10 @@ function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target =
     ssao = FilterOptions(get(parent.attributes, :ssao, 2))
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
     transparency = FilterOptions(get(parent.attributes, :transparency, 2))
-    return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, target)
+    return RenderPlots(
+        framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa,
+        target, StandardPrerender()
+    )
 end
 
 function construct(::Val{Symbol("SSAO Render")}, screen, framebuffer, inputs, parent)
@@ -194,7 +270,10 @@ function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, par
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
     clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, :forward_render_objectid_oit)
+    return RenderPlots(
+        framebuffer, clear, FilterAny, FilterTrue, FilterAny,
+        :forward_render_objectid_oit, OITPrerender()
+    )
 end
 
 function id2scene(screen, id1)
@@ -234,6 +313,8 @@ function run_stage(screen, glscene, stage::RenderPlots)
             require_context(screen.glscreen)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             elem[:px_per_unit] = ppu
+
+            stage.prerender(elem[:overdraw]::UInt8)
 
             render(elem, elem.variants[stage.target])
         end
