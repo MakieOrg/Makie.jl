@@ -53,18 +53,6 @@ function draw_lines(screen, position::Union{VectorTypes{T}, MatTypes{T}}, data::
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Lines, view::Dict{String, String})
-    color_type = gl_color_type_annotation(plot[:scaled_color][])
-    view["define_fast_path"] = Bool(robj[:fast]) ? "#define FAST_PATH" : ""
-    view["stripped_color_type"] = color_type
-    shader = GLVisualizeShader(
-        screen,
-        "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
-        view = view
-    )
-    return shader
-end
-
 function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where {T <: Point}
     @gen_defaults! data begin
         vertex = Point3f[] => GLBuffer
@@ -84,8 +72,21 @@ function draw_linesegments(screen, positions::VectorTypes{T}, data::Dict) where 
     return robj
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::LineSegments, view::Dict{String, String})
-    view["stripped_color_type"] = gl_color_type_annotation(plot[:scaled_color][])
+@specialize
+
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Lines, view::Dict{String, String})
+    view["define_fast_path"] = Bool(robj[:fast]) ? "#define FAST_PATH" : ""
+    view["stripped_color_type"] = gl_color_type_annotation(plot[:scaled_color][])::String
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "lines.vert", "lines.geom", "lines.frag",
+        view = view
+    )
+    return shader
+end
+
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::LineSegments, view::Dict{String, String})
+    view["stripped_color_type"] = gl_color_type_annotation(plot[:scaled_color][])::String
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "line_segment.vert", "line_segment.geom",
@@ -94,5 +95,3 @@ function default_shader(screen::Screen, robj::RenderObject, plot::LineSegments, 
     )
     return shader
 end
-
-@specialize

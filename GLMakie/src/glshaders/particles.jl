@@ -86,23 +86,6 @@ function draw_mesh_particle(screen, data)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::MeshScatter, view::Dict{String, String})
-    shading = Makie.get_shading_mode(plot)
-    position = plot.positions_transformed_f32c[]
-    view["position_calc"] = position_calc(position, TextureBuffer)
-    view["shading"] = light_calc(shading)
-    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
-    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
-
-    shader = GLVisualizeShader(
-        screen,
-        "util.vert", "particles.vert",
-        "fragment_output.frag", "lighting.frag", "mesh.frag",
-        view = view
-    )
-    return shader
-end
-
 """
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
@@ -166,6 +149,25 @@ function draw_scatter(screen, position, data)
     return RenderObject(screen.glscreen, data)
 end
 
+@specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::MeshScatter, view::Dict{String, String})
+    shading = Makie.get_shading_mode(plot)
+    position = plot.positions_transformed_f32c[]
+    view["position_calc"] = position_calc(position, TextureBuffer)
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+
+    shader = GLVisualizeShader(
+        screen,
+        "util.vert", "particles.vert",
+        "fragment_output.frag", "lighting.frag", "mesh.frag",
+        view = view
+    )
+    return shader
+end
+
 function get_prerender(plot::Scatter, name::Symbol)
     _prerender = get_default_prerender(plot, name)
     if plot.marker[] isa FastPixel
@@ -180,7 +182,7 @@ function get_prerender(plot::Scatter, name::Symbol)
     end
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Scatter, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Scatter, view::Dict{String, String})
     if plot.marker[] isa FastPixel
         return GLVisualizeShader(
             screen,
@@ -189,7 +191,7 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Scatter, view:
         )
     else
         position = plot.positions_transformed_f32c[]
-        view["position_calc"] = position_calc(position, GLBuffer)
+        view["position_calc"] = position_calc(position, GLBuffer)::String
         return GLVisualizeShader(
             screen,
             "fragment_output.frag", "util.vert", "sprites.geom",
@@ -199,9 +201,9 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Scatter, view:
     end
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Text, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Text, view::Dict{String, String})
     position = plot.positions_transformed_f32c[]
-    view["position_calc"] = position_calc(position, GLBuffer)
+    view["position_calc"] = position_calc(position, GLBuffer)::String
     shader = GLVisualizeShader(
         screen,
         "fragment_output.frag", "util.vert", "sprites.geom",
@@ -210,5 +212,3 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Text, view::Di
     )
     return shader
 end
-
-@specialize

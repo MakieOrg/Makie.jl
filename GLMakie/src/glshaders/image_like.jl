@@ -25,15 +25,6 @@ function draw_heatmap(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, ::Heatmap, view::Dict{String, String})
-    shader = GLVisualizeShader(
-        screen,
-        "fragment_output.frag", "heatmap.vert", "heatmap.frag",
-        view = view
-    )
-    return shader
-end
-
 function draw_volume(screen, data::Dict)
     geom = Rect3f(Vec3f(0), Vec3f(1))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
@@ -55,12 +46,23 @@ function draw_volume(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
+@specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), ::Heatmap, view::Dict{String, String})
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "heatmap.vert", "heatmap.frag",
+        view = view
+    )
+    return shader
+end
+
 get_prerender(plot::Volume, name::Symbol) = VolumePrerender(get_default_prerender(plot, name))
 get_postrender(::Volume, ::Symbol) = () -> glDisable(GL_CULL_FACE)
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Volume, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Volume, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
-    view["shading"] = light_calc(shading)
+    view["shading"] = light_calc(shading)::String
     view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
     view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
     view["ENABLE_DEPTH"] = Bool(robj.uniforms[:enable_depth]) ? "#define ENABLE_DEPTH" : ""
@@ -73,5 +75,3 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Volume, view::
     )
     return shader
 end
-
-@specialize

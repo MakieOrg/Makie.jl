@@ -46,7 +46,9 @@ function draw_surface(screen, main, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Surface, view::Dict{String, String})
+@specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Surface, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     view["shading"] = light_calc(shading)
     view["picking_mode"] = "#define PICKING_INDEX_FROM_UV"
@@ -61,5 +63,3 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Surface, view:
     )
     return shader
 end
-
-@specialize

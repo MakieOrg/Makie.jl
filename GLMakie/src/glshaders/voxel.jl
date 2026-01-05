@@ -20,7 +20,9 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Voxels, view::Dict{String, String})
+@specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Voxels, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     debug = to_value(get(plot.attributes, :debug, ""))
     view["shading"] = light_calc(shading)
@@ -36,5 +38,3 @@ function default_shader(screen::Screen, robj::RenderObject, plot::Voxels, view::
     )
     return shader
 end
-
-@specialize

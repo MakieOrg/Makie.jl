@@ -91,8 +91,8 @@ struct GLVisualizeShader <: AbstractLazyShader
         return new(screen, map(x -> loadshader(x), paths), args)
     end
 end
-function GLVisualizeShader(screen::Screen, path1, paths...; kw_args...)
-    return GLVisualizeShader(screen, [path1, paths...]; kw_args...)
+function GLVisualizeShader(screen::Screen, path1::String, paths::String...; kw_args...)
+    return GLVisualizeShader(screen, String[path1, paths...]; kw_args...)
 end
 
 function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, uniforms, buffers)

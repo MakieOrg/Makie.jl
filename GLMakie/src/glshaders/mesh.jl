@@ -56,7 +56,7 @@ function draw_mesh(screen, data::Dict)
     return RenderObject(screen.glscreen, data)
 end
 
-function default_shader(screen::Screen, robj::RenderObject, plot::Union{Mesh, Image}, view::Dict{String, String})
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Union{Mesh, Image}, view::Dict{String, String})
     shading = Makie.get_shading_mode(plot)
     view["shading"] = light_calc(shading)
     view["picking_mode"] = to_value(get(robj.uniforms, :picking_mode, ""))
