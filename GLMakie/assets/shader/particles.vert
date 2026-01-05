@@ -116,13 +116,30 @@ vec3 get_uv(int index, vec3 uv) {
     return uv;
 }
 
+vec3 finite_sign(vec3 v)
+{
+    return vec3(
+        2 * float(v[0] >= 0) - 1,
+        2 * float(v[1] >= 0) - 1,
+        2 * float(v[2] >= 0) - 1
+    );
+}
+
+vec3 finite_div(vec3 v, vec3 d)
+{
+    // sign(0) = 0
+    vec3 df = finite_sign(d) * max(abs(d), 0.0000001);
+    return v / df;
+}
 
 void main(){
     int index = gl_InstanceID;
     o_id = uvec2(objectid, index+1);
     vec3 s = _scale(scale, index);
     vec3 V = s * vertices;
-    vec3 N = normals / s; // see issue #3702
+    // needed if scale distorts the shape, see issue #3702
+    // can't allow zero division, see #5477
+    vec3 N = finite_div(normals, s);
     vec3 pos;
     {{position_calc}}
     o_color = get_particle_color(color, intensity, color_map, color_norm, index, len);
