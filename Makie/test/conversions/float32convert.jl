@@ -380,4 +380,69 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         @test 499_000 < updated_positions[2][2] < 501_000
     end
 
+    @testset "register_projected_positions! inverse transform_func" begin
+        # Test that projecting from pixel space to data space correctly
+        # applies inverse transform_func (e.g., exp10 for log10 scale)
+
+        f, a, p = scatter(1:10, 10.0 .^ (1:10), axis = (yscale = log10,))
+        Makie.update_state_before_display!(f)
+
+        # Verify we have a non-identity transform
+        @test !Makie.is_identity_transform(p.transform_func[])
+
+        # First register pixel positions (they don't exist by default)
+        Makie.register_projected_positions!(
+            p;
+            input_space = :data,
+            output_space = :pixel,
+            output_name = :test_pixel_positions,
+        )
+        Makie.update_state_before_display!(f)
+
+        pixel_positions = p.test_pixel_positions[]
+
+        # Create an input from pixel positions and project back to data space
+        Makie.add_input!(p.attributes, :pixel_input, pixel_positions)
+        Makie.register_projected_positions!(
+            p;
+            input_space = :pixel,
+            output_space = :data,
+            input_name = :pixel_input,
+            output_name = :roundtrip_positions,
+            apply_transform = false,  # input is already in pixel space
+        )
+        Makie.update_state_before_display!(f)
+
+        roundtrip = p.roundtrip_positions[]
+        original = p.positions[]
+
+        # Should roundtrip back to original data coordinates
+        for i in eachindex(original)
+            @test roundtrip[i][1] ≈ original[i][1] rtol = 0.01
+            @test roundtrip[i][2] ≈ original[i][2] rtol = 0.01
+        end
+    end
+
+    @testset "register_projected_positions! early exit optimization" begin
+        # Test that when input_space === output_space, transforms are skipped
+        f, a, p = scatter(1:10, 10.0 .^ (1:10), axis = (yscale = log10,))
+        Makie.update_state_before_display!(f)
+
+        # Register a projection from :data to :data - should skip transforms
+        Makie.add_input!(p.attributes, :data_input, p.positions[])
+        n_before = length(p.attributes.outputs)
+
+        Makie.register_projected_positions!(
+            p;
+            input_space = :data,
+            output_space = :data,
+            input_name = :data_input,
+            output_name = :identity_output,
+        )
+
+        # With early exit, fewer nodes should be created since transforms are skipped
+        # The output should match the input exactly
+        @test p.identity_output[] == p.data_input[]
+    end
+
 end

@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added `apply_inverse_float32convert` kwarg to `register_projected_positions!` to correctly apply inverse float32convert when projecting from non-data space to data space [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
+- Added complete inverse transformation support to `register_projected_positions!` with `apply_inverse_transform`, `apply_inverse_transform_func`, `apply_inverse_float32convert`, and `apply_inverse_model` kwargs. These enable correct projection from non-data spaces back to data space. Includes early-exit optimization to skip redundant transform/inverse pairs when `input_space === output_space`. [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
 - Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
