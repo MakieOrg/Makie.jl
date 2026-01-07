@@ -351,9 +351,12 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
     ) do (lights, iview), changed, cached
 
+        # Filter out unsupported light types (EnvironmentLight, SunSkyLight are backend-specific)
+        supported_lights = filter(l -> !(l isa EnvironmentLight || l isa SunSkyLight), lights)
+
         n_lights = 0
         n_params = 0
-        for light in lights
+        for light in supported_lights
             n = light_parameter_count(light)
             if n_lights + 1 > MAX_LIGHTS
                 @warn "Exceeded the maximum number of lights ($(n_lights + 1) > $MAX_LIGHTS). Skipping lights beyond number $n_lights."
