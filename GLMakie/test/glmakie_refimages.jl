@@ -147,17 +147,28 @@ end
 end
 
 @reference_test "Signed Distance Field - FXAA interaction" begin
-    scene = Scene(size = (300, 200), camera = campixel!)
+    scene = Scene(size = (300, 280), camera = campixel!)
 
     # scatter/text shader
     xs = 20:20:280
-    ys = fill(170, length(xs))
+    ys = fill(250, length(xs))
     zs = range(3, 1, length = length(xs))
     scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = false)
-    ys = fill(130, length(xs))
+    ys = fill(210, length(xs))
     scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, fxaa = true)
-    ys = fill(90, length(xs))
+    ys = fill(170, length(xs))
     scatter!(scene, xs, ys, zs, color = :blue, markersize = 40, depthsorting = true)
+    subscene = Scene(scene, viewport = Rect2i(0, 70, 300, 80))
+    ys = fill(0.45, length(xs))
+    scatter!(
+        subscene, range(-0.85, 0.85, length(xs)), ys, -zs ./ 3,
+        color = :blue, markersize = 40
+    )
+    ys = fill(-0.45, length(xs))
+    scatter!(
+        subscene, range(-0.85, 0.85, length(xs)), ys, -zs ./ 3,
+        color = :blue, markersize = 40, depthsorting = true
+    )
 
     # lines/linesegments shader
     xs = 20:10:270
@@ -167,8 +178,12 @@ end
     ys = [20 + shift for _ in 1:13 for shift in (-10, 10)]
     lines!(scene, xs, ys, zs, color = :blue, linewidth = 4, fxaa = true)
 
+    # generate a screen/renderlist before mesh so mesh ends up as the last
+    # renderobject. (This is should probably be considered a bug)
+    colorbuffer(scene)
+
     # create some harder contrasts
-    mesh!(scene, Rect2f(0, 0, 300, 200), color = :red)
+    mesh!(scene, Rect2f(0, 0, 300, 280), color = :red)
 
     scene
 end

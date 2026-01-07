@@ -363,31 +363,92 @@ function _to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
-function _project(matrix::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+
+"""
+    _project([TargetType], matrix::Mat4, positions[, dim4 = 1])
+
+Projects one or multiple `positions` using the given `matrix`.
+
+`dim4` controls the fill value for 4th component of each positions (if they are
+not 4D positions). `TargetType` controls the final output type. If the target
+type is not 4 dimensional, each output position will be divided by `p[4]`.
+"""
+@inline _project(::Type{OT}, M::Mat4, p) where {OT} = _project(OT, M, p, 1)
+@inline _project(M::Mat4, p) = _project(M, p, 1)
+@inline function _project(M::Mat4{T1}, p::VecTypes{N, T2}, dim4::Real) where {N, T1, T2}
     T = promote_type(Float32, T1, T2)
-    matrix == Mat4{T1}(I) && return to_ndim.(Point3{T}, ps, 0)
-    ps4 = to_ndim.(Point4{T}, to_ndim.(Point3{T}, ps, 0.0), dim4)
-    ps4 = [matrix * p for p in ps4]
-    return Point3{T}[Point3{T}(p) / p[4] for p in ps4]
+    return _project(Point{3, T}, M, p, dim4, T)
+end
+@inline function _project(M::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real) where {N, T1, T2}
+    T = promote_type(Float32, T1, T2)
+    return _project(Point{3, T}, M, ps, dim4, T)
 end
 
-function _project(matrix::Mat4{T1}, p::VecTypes{N, T2}, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real}
+@inline function _project(
+        ::Type{OT}, matrix::Mat4{T1}, p::VecTypes{N, T2}, dim4::Real
+    ) where {OT <: VecTypes, N, T1 <: Real, T2 <: Real}
+
     T = promote_type(Float32, T1, T2)
-    matrix == Mat4{T1}(I) && return to_ndim(Point3{T}, p, 0)
-    p4 = to_ndim(Point4{T}, to_ndim(Point3{T}, p, 0.0), dim4)
+    return _project(OT, matrix, p, dim4, T)
+end
+
+@inline function _project(::Type{OT}, matrix::Mat4, p::VecTypes, dim4::Real, ::Type{ET}) where {OT, ET}
+    p4 = to_ndim(Point4{ET}, to_ndim(Point3{ET}, p, 0.0), dim4)
     p4 = matrix * p4
-    return Point3{T}(p4[Vec(1, 2, 3)] / p4[4])
+    return to_ndim(OT, p4[Vec(1, 2, 3)] / p4[4], 0)
 end
 
-function _project(matrix::Mat4{T1}, r::Rect3{T2}, dim4::Real = 1.0) where {T1 <: Real, T2 <: Real}
+@inline function _project(::Type{OT}, matrix::Mat4, p::VecTypes, dim4::Real, ::Type{ET}) where {OT <: VecTypes{4}, ET}
+    p4 = to_ndim(Point4{ET}, to_ndim(Point3{ET}, p, 0.0), dim4)
+    p4 = matrix * p4
+    return to_ndim(OT, p4, 0)
+end
+
+function _project(
+        ::Type{OT}, matrix::Mat4{T1}, ps::AbstractArray{<:VecTypes{N, T2}}, dim4::Real
+    ) where {OT <: VecTypes, N, T1 <: Real, T2 <: Real}
+
     T = promote_type(Float32, T1, T2)
-    if matrix == Mat4{T1}(I)
-        return Rect3{T}(r)
+    return _project(OT, matrix, ps, dim4, T)
+end
+
+function _project(::Type{OT}, matrix::Mat4, ps::AbstractArray{<:VecTypes}, dim4::Real, ::Type{ET}) where {OT <: VecTypes, ET}
+    matrix == I && return to_ndim.(OT, ps, 0)
+
+    output = similar(ps, OT)
+    @inbounds for i in eachindex(ps)
+        output[i] = _project(OT, matrix, ps[i], dim4, ET)
+    end
+    return output
+end
+
+@inline function _project(matrix::Mat4{T1}, r::Rect{N, T2}, dim4::Real) where {N, T1, T2}
+    T = promote_type(Float32, T1, T2)
+    if matrix == I
+        return Rect{N, T}(origin(r), widths(r))
     else
-        return Rect3{T}(_project(matrix, coordinates(r), dim4))
+        ps = _project(Point{N, T}, matrix, coordinates(r), dim4)
+        return Rect{N, T}(ps)
     end
 end
 
+function _project(matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f}, space::Symbol = :data, dim4::Real = 1)
+    return _project(Point3f, matrix, pos::Vector{<:VecTypes}, clip_planes, space, dim4)
+end
+function _project(
+        ::Type{OT}, matrix::Mat4, pos::Vector{<:VecTypes}, clip_planes::Vector{Plane3f},
+        space::Symbol = :data, dim4::Real = 1
+    ) where {OT}
+    projected = _project(OT, matrix, pos)
+    if is_data_space(space)
+        @assert projected !== pos "Input data should not be overwritten"
+        nan_point = OT(NaN)
+        @inbounds for i in eachindex(projected)
+            projected[i] = ifelse(is_clipped(clip_planes, pos[i]), nan_point, projected[i])
+        end
+    end
+    return projected
+end
 
 # TODO: consider warning here to discourage risky functions
 function project(matrix::Mat4{T1}, p::VT, dim4::Real = 1.0) where {N, T1 <: Real, T2 <: Real, VT <: VecTypes{N, T2}}

@@ -52,9 +52,9 @@ function backend_colors!(attr, color_name = :scaled_color)
         end
     end
 
-    register_computation!(attr, [color_name], [:vertex_color]) do (color,), changed, last
-        color isa Real && return (color,)
-        return color isa AbstractVector ? (color,) : (false,)
+    map!(attr, color_name, :vertex_color) do color
+        color isa Real && return color
+        return color isa AbstractVector ? color : false
     end
 
     return register_computation!(attr, [:alpha_colormap, :scaled_colorrange, :color_mapping_type], [:uniform_colormap, :uniform_colorrange]) do (cmap, crange, ctype), changed, last
@@ -99,7 +99,13 @@ function plot_updates(args, changed)
             _val = if value isa Sampler
                 [Int32[size(value.data)...], serialize_three(value.data)]
             else
-                serialize_three(value)
+                # Check if value is an array with all identical elements
+                if Makie.is_vector_attribute(value) && length(value) > 1 && all(x -> x == value[1], value)
+                    # Use compressed format for arrays with identical elements
+                    Dict("value" => serialize_three(value[1]), "length" => length(value))
+                else
+                    serialize_three(value)
+                end
             end
             push!(new_values, [name, _val])
         end
@@ -167,7 +173,8 @@ function handle_color_getter!(uniform_dict)
 end
 
 function assemble_particle_robj!(attr, data)
-    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
+    pos_key = haskey(attr, :wgl_positions) ? :wgl_positions : :positions_transformed_f32c
+    data[pos_key] = getproperty(attr, pos_key)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
@@ -184,7 +191,7 @@ function assemble_particle_robj!(attr, data)
     data[:transform_marker] = attr.transform_marker
     per_instance_keys = Set(
         [
-            :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
+            pos_key, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
             :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize,
         ]
     )
@@ -271,11 +278,12 @@ function create_shader(scene::Scene, plot::Scatter)
 
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :positions_transformed_f32c, :wgl_positions)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :scatter_color)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap,
         :uniform_colorrange, :nan_color, :highclip_color,
@@ -292,30 +300,21 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
-const SCENE_ATLAS_LOCK = ReentrantLock()
-
 function get_atlas_tracker(f, scene::Scene)
-    return lock(SCENE_ATLAS_LOCK) do
-        for (s, _) in SCENE_ATLASES
-            Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
-        end
-        screen = Makie.getscreen(scene, WGLMakie)
-        if isnothing(screen) || isnothing(screen.session)
-            @warn "No session found, returning empty atlas tracker"
-            # TODO, it's not entirely clear in which case this can happen,
-            # which is why we don't just error, but just assume there isn't anything tracked
-            return f(Set{UInt32}())
-        end
-        session = Bonito.root_session(screen.session)
-        if haskey(SCENE_ATLASES, session)
-            return f(SCENE_ATLASES[session])
-        else
-            atlas = Set{UInt32}()
-            SCENE_ATLASES[session] = atlas
-            return f(atlas)
-        end
+    screen = Makie.getscreen(scene, WGLMakie)
+    if isnothing(screen) || isnothing(screen.session)
+        @warn "No session found, returning empty atlas tracker"
+        # TODO, it's not entirely clear in which case this can happen,
+        # which is why we don't just error, but just assume there isn't anything tracked
+        return f(Set{UInt32}())
     end
+    session = screen.session
+    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
+    if isnothing(atlas)
+        atlas = Set{UInt32}()
+        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    end
+    return f(atlas)
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)
@@ -359,8 +358,9 @@ function create_shader(scene::Scene, plot::Makie.Text)
 
     ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :per_char_positions_transformed_f32c, :wgl_positions)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange,
         :nan_color, :highclip_color, :lowclip_color, :pattern,
@@ -384,7 +384,7 @@ to_3x3(xs::Vector{Vec2f}) = Sampler(xs) # already has appropriate format
 
 function meshscatter_program(args)
     instance = Dict(
-        :position => args.position,
+        :vertex_position => args.vertex_position,
         :faces => args.faces,
         :normal => args.normal,
     )
@@ -416,20 +416,10 @@ function meshscatter_program(args)
 end
 
 
-function disassemble_mesh!(attr, mesh_sym = :marker)
-    return map!(attr, [mesh_sym], [:position, :faces, :normal, :uv]) do mesh
-        faces = decompose(GLTriangleFace, mesh)
-        normals = decompose_normals(mesh)
-        texturecoordinates = decompose_uv(mesh)
-        positions = decompose(Point3f, mesh)
-        return (positions, faces, normals, texturecoordinates)
-    end
-end
-
 function create_shader(scene::Scene, plot::MeshScatter)
     attr = plot.attributes
 
-    disassemble_mesh!(attr)
+    Makie.add_computation!(attr, Val(:disassemble_mesh), :marker)
     Makie.add_computation!(attr, scene, Val(:uv_transform_packing))
     map!(to_3x3, attr, :packed_uv_transform, :wgl_uv_transform)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
@@ -440,7 +430,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     ComputePipeline.alias!(attr, :rotation, :converted_rotation)
 
     inputs = [
-        :position, :faces, :normal, :uv, # marker mesh
+        :vertex_position, :faces, :normal, :uv, # marker mesh
         :uniform_colormap, :uniform_color, :uniform_colorrange, :vertex_color,
         :wgl_uv_transform, :pattern,
         :positions_transformed_f32c, :markersize, :converted_rotation, :f32c_scale,
@@ -486,7 +476,7 @@ function add_uv_mesh!(attr)
                 return (faces, uv, grid_ps)
             end
         end
-        Makie.register_position_transforms!(attr, :wgl_positions)
+        Makie.register_position_transforms!(attr, input_name = :wgl_positions, transformed_name = :positions_transformed)
     else
         _rect = Rect2f(0, 0, 1, 1)
         add_constant!(attr, :faces, decompose(GLTriangleFace, _rect))
@@ -739,8 +729,6 @@ using Makie.ComputePipeline
 function serialize_three(scene::Scene, plot::Union{Lines, LineSegments})
     attr = plot.attributes
 
-    # TODO: This always sets a pattern, so we are rendering solid lines as a
-    # gapless pattern... We probably shouldn't so we don't require lastlength
     Makie.add_computation!(attr, :uniform_pattern, :uniform_pattern_length)
     backend_colors!(attr)
 

@@ -10,7 +10,7 @@ yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
 function plot!(plot::Wireframe{<:Tuple{<:Any, <:Any, <:AbstractMatrix}})
-    points_faces = lift(plot, plot[1:3]...) do x, y, z
+    map!(plot, [:converted_1, :converted_2, :converted_3], :points_faces) do x, y, z
         M, N = size(z)
         points = vec(Point3f.(xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
@@ -18,11 +18,11 @@ function plot!(plot::Wireframe{<:Tuple{<:Any, <:Any, <:AbstractMatrix}})
         faces = decompose(LineFace{GLIndex}, Tessellation(Rect2(0, 0, 1, 1), (M, N)))
         connect(points, faces)
     end
-    return linesegments!(plot, Attributes(plot), points_faces)
+    return linesegments!(plot, Attributes(plot), plot.points_faces)
 end
 
 function plot!(plot::Wireframe{Tuple{T}}) where {T}
-    points = lift(plot, plot[1]) do g
+    map!(plot, [:converted_1], :points) do g
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
         points = decompose(Point, g)
@@ -34,5 +34,5 @@ function plot!(plot::Wireframe{Tuple{T}}) where {T}
             return x
         end
     end
-    return linesegments!(plot, Attributes(plot), points)
+    return linesegments!(plot, Attributes(plot), plot.points)
 end

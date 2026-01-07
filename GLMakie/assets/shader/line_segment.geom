@@ -50,8 +50,8 @@ bool process_clip_planes(inout vec4 p1, inout vec4 p2)
     float d1, d2;
     for (int i = 0; i < _num_clip_planes; i++) {
         // distance from clip planes with negative clipped
-        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w;
-        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w;
+        d1 = dot(p1.xyz, clip_planes[i].xyz) - clip_planes[i].w * p1.w;
+        d2 = dot(p2.xyz, clip_planes[i].xyz) - clip_planes[i].w * p2.w;
 
         // both outside - clip everything
         if (d1 < 0.0 && d2 < 0.0) {
@@ -103,11 +103,6 @@ void main(void)
     {
         vec4 _p1 = gl_in[0].gl_Position, _p2 = gl_in[1].gl_Position;
 
-        // Shorten segments to fit clip planes
-        // returns true if segments are fully clipped
-        if (process_clip_planes(_p1, _p2))
-            return;
-
         // remaining world -> clip projection
         _p1 = projectionview * _p1;
         _p2 = projectionview * _p2;
@@ -126,6 +121,11 @@ void main(void)
             _p2      = _p2      + (-_p2.w - _p2.z) / (v1.z + v1.w) * v1;
             f_color2 = f_color2 + (-_p2.w - _p2.z) / (v1.z + v1.w) * (f_color2 - f_color1);
         }
+
+        // Shorten segments to fit clip planes
+        // returns true if segments are fully clipped
+        if (process_clip_planes(_p1, _p2))
+            return;
 
         // clip -> pixel/screen projection
         p1 = screen_space(_p1);

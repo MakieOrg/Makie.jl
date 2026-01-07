@@ -2,6 +2,8 @@
 * `framerate = 30`: Set framerate (frames per second) to a higher number for smoother animations, or to a lower to use less resources.
 * `resize_to = nothing`: Resize the canvas to the parent element with `resize_to=:parent`, or to the body if `resize_to = :body`. The default `nothing`, will resize nothing.
     A tuple is allowed too, with the same values just for width/height.
+* `use_html_widgets = false`: Whether to replace the Makie Block widgets with HTML native widgets.
+* `spinner = automatic`: The spinner to display while the scene is loading. Use `automatic` for the default CircleSpinner, or provide a custom spinner component.
 """
 struct ScreenConfig
     framerate::Float64 # =30.0
@@ -10,16 +12,23 @@ struct ScreenConfig
     # For the theming, we need to use Automatic though, since that's the Makie meaning for gets calculated somewhere else
     px_per_unit::Union{Nothing, Float64} # nothing, a.k.a the browser px_per_unit (devicePixelRatio)
     scalefactor::Union{Nothing, Float64}
-    resize_to_body::Bool
+    resize_to_body::Bool # deprecated, but needs to be here in the struct to correctly iterate over all screen config names
+    use_html_widgets::Bool
+    spinner::Any # The spinner component to show while loading
     function ScreenConfig(
             framerate::Number, resize_to::Any, px_per_unit::Union{Number, Automatic, Nothing},
-            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool}
+            scalefactor::Union{Number, Automatic, Nothing}, resize_to_body::Union{Nothing, Bool},
+            use_html_widgets::Bool, spinner::Any
         )
         if px_per_unit isa Automatic
             px_per_unit = nothing
         end
         if scalefactor isa Automatic
             scalefactor = nothing
+        end
+        # Construct default spinner if automatic
+        if spinner isa Automatic
+            spinner = CircleSpinner()
         end
         if resize_to_body isa Bool
             @warn("`resize_to_body` is deprecated, use `resize_to = :body` instead")
@@ -33,7 +42,7 @@ struct ScreenConfig
         if !(resize_to isa Union{ResizeType, Tuple{ResizeType, ResizeType}})
             error("Only nothing, :parent, or :body allowed, or a tuple of those for width/height.")
         end
-        return new(framerate, resize_to, px_per_unit, scalefactor)
+        return new(framerate, resize_to, px_per_unit, scalefactor, false, use_html_widgets, spinner)
     end
 end
 """
@@ -66,6 +75,12 @@ function Makie.px_per_unit(s::Screen)::Float64
     return something(s.config.px_per_unit, 1.0)
 end
 
+Bonito.needs_post_notify(x::Makie.FigureLike) = true
+function Bonito.post_notify_callback(x::Makie.FigureLike)
+    scene = Makie.get_scene(x)
+    return () -> poll_all_plots(scene)
+end
+
 function Screen(; config...)
     config = Makie.merge_screen_config(ScreenConfig, Dict{Symbol, Any}(config))
     return Screen(nothing, config)
@@ -84,7 +99,7 @@ end
 function poll_all_plots(scene)
     return Makie.for_each_atomic_plot(scene) do p
         pp = Makie.parent_scene(p)
-        pp.visible[] || return # Skip invisible scenes
+        pp.visible[] || return nothing # Skip invisible scenes
         if haskey(p, :wgl_renderobject)
             try
                 # Skip updating invisible renderobjects
@@ -124,15 +139,19 @@ function start_polling_loop!(screen, scene)
     end
 end
 
-function render_with_init(screen::Screen, session::Session, scene::Scene)
+function render_with_init(screen::Screen, session::Session, scene::Scene, figure = nothing)
     # Reference to three object which gets set once we serve this to a browser
     # Make sure it's a new Channel, since we may reuse the screen.
     screen.plot_initialized = Channel{Any}(1)
     screen.session = session
     Makie.push_screen!(scene, screen)
     try
-        canvas, on_init = three_display(screen, session, scene)
-        screen.canvas = canvas
+        wrapper, on_init = three_display(screen, session, scene)
+        screen.canvas = wrapper
+        if !isnothing(figure) && screen.config.use_html_widgets
+            widgets = WGLMakie.replace_widget!(figure)
+            push!(Bonito.children(wrapper), widgets)
+        end
         on(session, on_init) do initialized
             if isready(screen.plot_initialized)
                 # plot_initialized contains already an item
@@ -156,7 +175,7 @@ function render_with_init(screen::Screen, session::Session, scene::Scene)
             end
             return
         end
-        return canvas
+        return wrapper
     catch e
         put!(screen.plot_initialized, e)
         rethrow(e)
@@ -166,12 +185,15 @@ end
 function Bonito.jsrender(session::Session, scene::Scene)
     screen = Screen()
     screen.scene = scene
-    return render_with_init(screen, session, scene)
+    return Bonito.jsrender(session, render_with_init(screen, session, scene, nothing))
 end
 
 function Bonito.jsrender(session::Session, fig::Makie.FigureLike)
     Makie.update_state_before_display!(fig)
-    return Bonito.jsrender(session, Makie.get_scene(fig))
+    scene = Makie.get_scene(fig)
+    screen = Screen()
+    screen.scene = scene
+    return Bonito.jsrender(session, render_with_init(screen, session, scene, Makie.get_figure(fig)))
 end
 
 
@@ -206,7 +228,7 @@ function Bonito.jsrender(session::Session, wconfig::WithConfig)
     Makie.update_state_before_display!(fig)
     scene = Makie.get_scene(fig)
     screen = Screen(scene, wconfig.config)
-    return render_with_init(screen, session, scene)
+    return Bonito.jsrender(session, render_with_init(screen, session, scene, Makie.get_figure(fig)))
 end
 
 
@@ -249,9 +271,9 @@ end
 
 for M in Makie.WEB_MIMES
     @eval begin
-        function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene)
+        function Makie.backend_show(screen::Screen, io::IO, m::$M, scene::Scene, figure = nothing)
             inline_display = App(title = "WGLMakie") do session::Session
-                return render_with_init(screen, session, scene)
+                return render_with_init(screen, session, scene, figure)
             end
             Base.show(io, m, inline_display)
             return screen
@@ -382,13 +404,13 @@ end
 
 Makie.wait_for_display(screen::Screen) = get_screen_session(screen)
 
-function Base.display(screen::Screen, scene::Scene; unused...)
+function Base.display(screen::Screen, scene::Scene; figure = nothing, unused...)
     # already displayed!
     if scene_already_displayed(screen, scene)
         return screen
     end
     app = App(title = "WGLMakie") do session
-        return render_with_init(screen, session, scene)
+        return render_with_init(screen, session, scene, figure)
     end
     display(app)
     Bonito.wait_for(() -> !isnothing(screen.session))
@@ -414,9 +436,9 @@ function session2image(session::Session, scene::Scene)
     return PNGFiles.load(IOBuffer(bytes))
 end
 
-function Makie.colorbuffer(screen::Screen)
+function Makie.colorbuffer(screen::Screen; figure = nothing)
     if isnothing(screen.session)
-        Base.display(screen, screen.scene)
+        Base.display(screen, screen.scene; figure = figure)
     end
     session = get_screen_session(screen; error = "Not able to show scene in a browser")
     poll_all_plots(screen.scene)

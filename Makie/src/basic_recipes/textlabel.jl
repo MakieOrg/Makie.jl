@@ -5,7 +5,7 @@
 
 Plots the given text(s) with a background(s) at the given position(s).
 """
-@recipe TextLabel begin
+@recipe TextLabel (positions,) begin
     # text-like args interface
     "Specifies one piece of text or a vector of texts to show, where the number has to match the number of positions given. Makie supports `String` which is used for all normal text and `LaTeXString` which layouts mathematical expressions using `MathTeXEngine.jl`."
     text = ""
@@ -165,7 +165,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:AbstractString}}})
 end
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractArray{<:Tuple{<:Any, <:VecTypes}}}})
-    register_computation!(plot.attributes, [:converted_1], [:real_text, :real_position]) do (str_pos,), changed, cached
+    map!(plot.attributes, :positions, [:real_text, :real_position]) do str_pos
         text = first.(str_pos)
         pos = last.(str_pos)
         return (text, pos)
@@ -195,10 +195,28 @@ end
 
 
 function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
-    # @assert length(plot[1][]) < 2 || allequal(p -> p.markerspace[], plot[1][]) "All text plots must have the same markerspace."
+    # Transforming to pixel space so we can use translate!() for z ordering. If
+    # CairoMakie would consider clip space w/ depth_shift for z ordering we could
+    # rely on that instead.
+    register_projected_positions!(
+        plot,
+        input_name = :positions, output_name = :raw_pixel_positions,
+        output_space = :pixel
+    )
 
-    # Coerce poly to generate the correct mesh type
-    transformed_shape = Observable(PolyElements[Point3f[]])
+    map!(plot, [:draw_on_top, :raw_pixel_positions], [:pixel_positions, :pixel_z]) do draw_on_top, px_pos
+        if draw_on_top
+            N = length(px_pos)
+            pixel_pos = [Point3f(p[1], p[2], (i - N) * 0.02) for (i, p) in enumerate(px_pos)]
+            pixel_z = 10_000
+        else
+            # help CairoMakie a bit by moving the minimum z to translate
+            mini = minimum(last, px_pos)
+            pixel_pos = [Point3f(p[1], p[2], p[3] - mini) for p in px_pos]
+            pixel_z = mini # See <1>
+        end
+        return pixel_pos, pixel_z
+    end
 
     # FXAA generates artifacts if:
     # mesh has fxaa = true and text/lines has false
@@ -207,67 +225,8 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
     # The defaults use fxaa = false to remove artifacting and use an opaque
     # stroke to hide the pixelated border.
 
-    pp = poly!(
-        plot, transformed_shape,
-        color = plot.background_color,
-        # hide pixelated mesh behind outline of the same color by default
-        strokecolor = plot.strokecolor,
-        strokewidth = plot.strokewidth,
-        linestyle = plot.linestyle,
-        joinstyle = plot.joinstyle,
-        miter_limit = plot.miter_limit,
-        shading = plot.shading,
-        # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
-        alpha = plot.alpha,
-        stroke_depth_shift = plot.depth_shift,
-        # move poly slightly behind - this is unnecessary atm because we also
-        # translate!(). Maybe useful when generalizing to 3D though
-        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
-        fxaa = plot.fxaa,
-        visible = plot.visible,
-        transparency = plot.transparency,
-        overdraw = plot.overdraw,
-        inspectable = plot.inspectable,
-        space = :pixel, # TODO: variable markerspace
-        inspector_label = plot.inspector_label,
-        inspector_clear = plot.inspector_clear,
-        inspector_hover = plot.inspector_hover,
-        clip_planes = plot.clip_planes,
-        transformation = :nothing, # already processed in bbox calculation
-    )
-
-    # Transforming to pixel space so we can use translate!() for z ordering. If
-    # CairoMakie would consider clip space w/ depth_shift for z ordering we could
-    # rely on that instead.
-    scene = Makie.parent_scene(plot)
-    pixel_pos = Observable(Point3f[])
-    pixel_z = Observable(0.0)
-    onany(
-        plot, plot[1],
-        camera(scene).projectionview, viewport(scene),
-        plot.model, plot.transformation.transform_func,
-        plot.space, plot.draw_on_top, #, native_tp.markerspace,
-        update = true
-    ) do positions, pv, vp, m, tf, s, draw_on_top #, ms
-        cam = Ref(camera(parent_scene(plot)))
-        transformed = apply_transform_and_model(plot, positions)
-        # Makie.project.(cam, plot.space[], plot.markerspace[], transformed)
-        px_pos = Makie.project.(cam, plot.space[], :pixel, transformed)
-        if draw_on_top
-            N = length(px_pos)
-            pixel_pos[] = [Point3f(p[1], p[2], (i - N) * 0.02) for (i, p) in enumerate(px_pos)]
-            pixel_z[] = 10_000
-        else
-            # help CairoMakie a bit by moving the minimum z to translate
-            mini = minimum(last, px_pos)
-            pixel_pos[] = [Point3f(p[1], p[2], p[3] - mini) for p in px_pos]
-            pixel_z[] = mini # See <1>
-        end
-        return Consume(false)
-    end
-
     tp = text!(
-        plot, pixel_pos, text = plot.text,
+        plot, plot.pixel_positions, text = plot.text,
         color = plot.text_color,
         strokecolor = plot.text_strokecolor,
         strokewidth = plot.text_strokewidth,
@@ -300,22 +259,15 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         transformation = :nothing, # already processed in pos calculation
     )
 
-    # since CairoMakie consider translation/model in render order we should use
-    # translate!() to order these plots. (This does not work in 3D with
-    # space = :data)
-    onany(plot, plot.draw_on_top, pixel_z, update = true) do draw_on_top, z
-        translate!(tp, 0, 0, z)
-        translate!(pp, 0, 0, z - 0.01)
-        return Consume(false)
-    end
+    register_fast_string_boundingboxes!(tp)
+    add_input!(plot.attributes, :fast_string_boundingboxes, tp.fast_string_boundingboxes)
 
-    translation_scale_z = map(
+    map!(
         plot,
-        plot.shape_limits, plot.padding, plot.keep_aspect,
-        pixel_pos, fast_string_boundingboxes_obs(tp),
-        # these are difficult because they are not in markerspace but always pixel space...
-        tp.strokewidth, tp.glowwidth
+        [:shape_limits, :padding, :keep_aspect, :pixel_positions, :fast_string_boundingboxes, :text_strokewidth, :text_glowwidth],
+        :translation_scale_z
     ) do limits, padding, keep_aspect, positions, bbs, sw, gw
+        # stroke & glowwidth are difficult because they are not in markerspace but always pixel space...
 
         # fast_string_boundingboxes() skips positions which we add here manually
         # without the z translation so that we can translate!() the plot instead
@@ -325,8 +277,9 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
     end
 
     map!(
-        plot, transformed_shape,
-        plot.shape, plot.cornerradius, plot.cornervertices, translation_scale_z
+        plot,
+        [:shape, :cornerradius, :cornervertices, :translation_scale_z],
+        :transformed_shape
     ) do shape, cornerradius, cornervertices, transformations
 
         elements = Vector{PolyElements}(undef, length(transformations))
@@ -351,10 +304,44 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         return elements
     end
 
+    pp = poly!(
+        plot, plot.transformed_shape,
+        color = plot.background_color,
+        # hide pixelated mesh behind outline of the same color by default
+        strokecolor = plot.strokecolor,
+        strokewidth = plot.strokewidth,
+        linestyle = plot.linestyle,
+        joinstyle = plot.joinstyle,
+        miter_limit = plot.miter_limit,
+        shading = plot.shading,
+        # stroke_alpha = plot.stroke_alpha, # TODO: doesn't exist in poly
+        alpha = plot.alpha,
+        stroke_depth_shift = plot.depth_shift,
+        # move poly slightly behind - this is unnecessary atm because we also
+        # translate!(). Maybe useful when generalizing to 3D though
+        depth_shift = map(x -> x + 2.0f-7, plot, plot.depth_shift),
+        fxaa = plot.fxaa,
+        visible = plot.visible,
+        transparency = plot.transparency,
+        overdraw = plot.overdraw,
+        inspectable = plot.inspectable,
+        space = :pixel, # TODO: variable markerspace
+        inspector_label = plot.inspector_label,
+        inspector_clear = plot.inspector_clear,
+        inspector_hover = plot.inspector_hover,
+        transformation = :nothing, # already processed in bbox calculation
+    )
+
+    on(plot, plot.pixel_z, update = true) do z
+        translate!(tp, 0, 0, z)
+        translate!(pp, 0, 0, z - 0.01)
+        return Consume(false)
+    end
+
     return plot
 end
 
 # TODO: maybe back-transform?
-data_limits(p::TextLabel) = data_limits(p.plots[end])
+data_limits(p::TextLabel) = data_limits(p.plots[1])
 data_limits(p::TextLabel{<:Tuple{<:AbstractVector{<:Point}}}) = Rect3d(p[1][])
 boundingbox(p::TextLabel, space::Symbol) = apply_transform_and_model(p, data_limits(p))

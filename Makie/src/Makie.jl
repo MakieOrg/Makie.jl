@@ -17,6 +17,7 @@ using Base64
 # It invalidates half of Makie. Simplest fix is to load it early on in Makie
 # So that the bulk of Makie gets compiled after FilePaths invalidadet Base code
 import FilePaths
+using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
@@ -85,7 +86,6 @@ export @L_str, @colorant_str
 export ConversionTrait, NoConversion, PointBased, GridBased, VertexGrid, CellGrid, ImageLike, VolumeLike
 export Pixel, px, Unit, plotkey, attributes, used_attributes
 export Linestyle
-using Pkg.Artifacts
 assetpath(files...) = normpath(joinpath(artifact"MakieAssets", files...))
 loadasset(files...) = FileIO.load(assetpath(files...))
 
@@ -128,6 +128,7 @@ include("lighting.jl")
 
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
+include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
 include("dim-converts/dates-integration.jl")
 
@@ -145,6 +146,8 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 include("camera/old_camera3d.jl")
+
+include("utilities/projection_utils.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
@@ -271,10 +274,16 @@ export Observable, Observable, lift, to_value, on, onany, @lift, off, connect!
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 export broadcast_foreach, to_vector, replace_automatic!
+export register_projected_positions!, register_projected_rotations_2d!
+export register_position_transforms!, register_positions_transformed!, register_positions_transformed_f32c!
+
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_fontsize, categorical_colors, resample_cmap
 export to_ndim, Reverse
+
+# Ticks
+export DateTimeTicks
 
 # Transformations
 export translated, translate!, scale!, rotate!, origin!, Accum, Absolute
@@ -393,6 +402,9 @@ function __init__()
         @warn "The global configuration file is no longer supported." *
             "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
+    # Register atexit for runtime cleanup (when Julia exits normally)
+    # Note: This doesn't affect precompilation since __init__ doesn't run during precompile
+    atexit(cleanup_globals)
     return
 end
 
@@ -419,6 +431,24 @@ export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, 
 export FastPixel
 export update!
 export Ann
+
+"""
+    cleanup_globals()
+
+Cleans up global state (figures, tasks, caches) for precompilation compatibility.
+On Julia 1.11+, this is called automatically via atexit (which runs before serialization).
+On Julia 1.10, this must be called manually after precompilation workloads.
+"""
+function cleanup_globals()
+    cleanup_current_figure()
+    cleanup_tasks()
+    empty!(FONT_CACHE)
+    empty!(DEFAULT_FONT)
+    empty!(ALTERNATIVE_FONTS)
+    return
+end
+
+export cleanup_globals
 
 include("precompiles.jl")
 

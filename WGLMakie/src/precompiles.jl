@@ -11,9 +11,10 @@ macro compile(block)
             session = Session()
             app = App(() -> DOM.div(figlike))
             dom = Bonito.session_dom(session, app)
-            show(IOBuffer(), Bonito.Hyperscript.Pretty(dom))
+            show(IOBuffer(), dom)
             Makie.second_resolve(figlike, :wgl_renderobject)
             close(session)
+            yield()
             return nothing
         end
     end
@@ -25,18 +26,10 @@ let
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
-        empty!(SCENE_ATLASES)
-        Makie.CURRENT_FIGURE[] = nothing
-        # This should happen in atexit in Bonito, but on Julia versions below v1.11
-        # atexit isn't called
-        for (task, (task, close_ref)) in Bonito.SERVER_CLEANUP_TASKS
-            close_ref[] = false
-        end
-        Bonito.CURRENT_SESSION[] = nothing
-        if !isnothing(Bonito.GLOBAL_SERVER[])
-            close(Bonito.GLOBAL_SERVER[])
-        end
-        Bonito.GLOBAL_SERVER[] = nothing
+        # Cleanup globals to avoid serializing stale state (servers, sessions, fonts, figures, tasks)
+        # Note: __init__ doesn't run during precompilation, so we must always clean up here
+        Bonito.cleanup_globals()
+        Makie.cleanup_globals()
         nothing
     end
 end

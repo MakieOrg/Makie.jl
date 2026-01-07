@@ -82,4 +82,28 @@
             @test p3.color[] == palette_colors[3]
         end
     end
+
+    @testset "`default_attribute` with Attributes containing Attributes" begin
+        foo = Attributes(; bar = 1)
+        @test propertynames(foo) == (:bar,)
+        @test Dict(Makie.default_attribute(Attributes(; foo), (:foo, Attributes()))) == Dict(foo)
+
+        pl = Scatter((1:4,), Dict{Symbol, Any}())
+        @test Set(propertynames(pl)) == keys(pl.attributes.outputs)
+    end
+
+    @testset "Menu option resize before display" begin
+        fig = Figure()
+        menu = Menu(fig[1, 1]; options = zip(["no options"], [nothing]))
+        labels = ["A", "B", "C", "D", "E", "F", "G", "H"]
+        values = collect(1:8)
+        menu.options[] = zip(labels, values)
+        p = menu.blockscene.children[1].plots[2]
+        # should not error
+        p.positions_transformed_f32c[]
+        p.quad_offset[]
+        p.sdf_marker_shape[]
+        p.sdf_uv[]
+        @test true
+    end
 end

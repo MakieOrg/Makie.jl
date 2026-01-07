@@ -76,6 +76,44 @@ ctr = contour!(ax, xs, ys, zs; color = :orange, levels = levels, labels = true, 
 fig
 ```
 
+### 3D contours
+
+3D contour plots exist in two variants.
+`contour` implements a variant showing multiple isosurfaces, i.e. surfaces that sample the same value from a 3D array.
+[contour3d](@ref) computes the same isolines as a 2D `contour` plot but renders them in 3D at z values equal to their level.
+
+```@figure backend=GLMakie
+r = range(-pi, pi, length = 21)
+data2d = [cos(x) + cos(y) for x in r, y in r]
+data3d = [cos(x) + cos(y) + cos(z) for x in r, y in r, z in r]
+
+f = Figure(size = (700, 400))
+a1 = Axis3(f[1, 1], title = "3D contour()")
+contour!(a1, -pi .. pi, -pi .. pi, -pi .. pi, data3d)
+
+a2 = Axis3(f[1, 2], title = "contour3d()")
+contour3d!(a2, r, r, data2d, linewidth = 3, levels = 10)
+f
+```
+
+```@figure backend=GLMakie
+r = range(-pi, pi, length = 21)
+data3d = [cos(x) + cos(y) + cos(z) for x in r, y in r, z in r]
+
+f = Figure(size = (700, 300))
+
+# isorange controls the thickness of isosurfaces
+# Note that artifacts may appear if isorange becomes too small (< 0.03 here)
+a1 = Axis3(f[1, 1])
+contour!(a1, -pi .. pi, -pi .. pi, -pi .. pi, data3d, isorange = 0.04)
+
+# small alpha can be used to see into the contour plot
+a2 = Axis3(f[1, 2])
+contour!(a2, -pi .. pi, -pi .. pi, -pi .. pi, data3d, alpha = 0.05)
+f
+```
+
+
 ## Attributes
 
 ```@attrdocs

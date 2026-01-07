@@ -23052,6 +23052,23 @@ function delete_three_scene(scene) {
         delete_plot(scene.children[0]);
     }
 }
+function expand_compressed(new_data) {
+    if (new_data && typeof new_data === "object" && "value" in new_data && "length" in new_data) {
+        const value = new_data.value;
+        if (value instanceof Float32Array || Array.isArray(value)) {
+            const element_size = value.length;
+            const total_size = new_data.length * element_size;
+            const expanded_array = new Float32Array(total_size);
+            for(let i = 0; i < new_data.length; i++){
+                expanded_array.set(value, i * element_size);
+            }
+            return expanded_array;
+        } else {
+            return new Float32Array(new_data.length).fill(value);
+        }
+    }
+    return new_data;
+}
 class Plot {
     mesh = undefined;
     parent = undefined;
@@ -23132,7 +23149,8 @@ class Plot {
         }
         update_uniform(uniform, new_data);
     }
-    update_buffer(name, new_data) {
+    update_buffer(name, input_data) {
+        const new_data = expand_compressed(input_data);
         const { geometry  } = this.mesh;
         let buffer = geometry.attributes[name];
         if (!buffer) {
@@ -24246,8 +24264,8 @@ function unpack_array(array) {
     }
     return array;
 }
-function compute_lastlen(points, point_ndim, pvm, res, is_lines) {
-    if (!is_lines) return new Float32Array(points.length / point_ndim).fill(0);
+function compute_lastlen(points, point_ndim, pvm, res, is_lines_with_linestyle) {
+    if (!is_lines_with_linestyle) return new Float32Array(points.length / point_ndim).fill(0);
     if (points.length === 0) return new Float32Array(0);
     const num_points = points.length / point_ndim;
     const output = new Float32Array(num_points);
@@ -24302,7 +24320,7 @@ function get_projectionview(cam, plot) {
 }
 function get_last_len(plot, points) {
     const cam = plot.scene.wgl_camera;
-    const is_lines = !plot.is_segments;
+    const is_lines_with_linestyle = !plot.is_segments && plot.plot_data.pattern != false;
     const pvm = get_projectionview(cam, plot);
     const res = cam.resolution;
     const point_ndim = plot.ndims["positions_transformed_f32c"] || 2;
@@ -24313,11 +24331,10 @@ function get_last_len(plot, points) {
             const geom = plot.mesh.geometry;
             const ia = geom.interleaved_attributes;
             const new_points = ia.positions_transformed_f32c.array;
-            const lastlen = compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines);
-            plot.update_buffer("lastlen", lastlen);
+            compute_lastlen(new_points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
         };
     }
-    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines);
+    return compute_lastlen(points, point_ndim, pvm.value, res.value, is_lines_with_linestyle);
 }
 function add_line_attributes(plot, attributes) {
     const new_data = {};
@@ -24386,7 +24403,10 @@ class Lines extends Plot {
         this.init_mesh();
     }
     update(data_key_value_array) {
-        const dict = Object.fromEntries(data_key_value_array);
+        const dict = Object.fromEntries(data_key_value_array.map(([k, v])=>[
+                k,
+                expand_compressed(v)
+            ]));
         const line_attr = Object.entries(add_line_attributes(this, dict));
         super.update(line_attr);
     }
@@ -24541,6 +24561,7 @@ function approx_equal(a, b) {
     return Math.abs(a - b) < Number.EPSILON;
 }
 const mod1 = {
+    expand_compressed: expand_compressed,
     Plot: Plot,
     Lines: Lines,
     Mesh: Mesh,
@@ -24599,6 +24620,10 @@ function dispose_screen(screen) {
     }
     if (picking_target) {
         picking_target.dispose();
+    }
+    if (screen.resizeObserver) {
+        screen.resizeObserver.disconnect();
+        screen.resizeObserver = undefined;
     }
     Object.keys(screen).forEach((key)=>delete screen[key]);
     return;
@@ -24669,23 +24694,88 @@ function start_renderloop(three_scene) {
     _check_screen();
     renderloop();
 }
-function get_body_size() {
-    const bodyStyle = window.getComputedStyle(document.body);
-    const width_padding = parseInt(bodyStyle.paddingLeft, 10) + parseInt(bodyStyle.paddingRight, 10) + parseInt(bodyStyle.marginLeft, 10) + parseInt(bodyStyle.marginRight, 10);
-    const height_padding = parseInt(bodyStyle.paddingTop, 10) + parseInt(bodyStyle.paddingBottom, 10) + parseInt(bodyStyle.marginTop, 10) + parseInt(bodyStyle.marginBottom, 10);
-    const width = window.innerWidth - width_padding;
-    const height = window.innerHeight - height_padding;
+function get_element_size(element) {
+    if (!element) {
+        throw new Error("Element is null or undefined");
+    }
+    const style = window.getComputedStyle(element);
+    const paddingLeft = parseFloat(style.paddingLeft) || 0;
+    const paddingRight = parseFloat(style.paddingRight) || 0;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const paddingBottom = parseFloat(style.paddingBottom) || 0;
+    let width, height;
+    if (element === document.body) {
+        const marginLeft = parseFloat(style.marginLeft) || 0;
+        const marginRight = parseFloat(style.marginRight) || 0;
+        const marginTop = parseFloat(style.marginTop) || 0;
+        const marginBottom = parseFloat(style.marginBottom) || 0;
+        width = window.innerWidth - paddingLeft - paddingRight - marginLeft - marginRight;
+        height = window.innerHeight - paddingTop - paddingBottom - marginTop - marginBottom;
+    } else {
+        const rect = element.getBoundingClientRect();
+        width = rect.width - paddingLeft - paddingRight;
+        height = rect.height - paddingTop - paddingBottom;
+    }
     return [
         width,
         height
     ];
 }
-function get_parent_size(canvas) {
-    const rect = canvas.parentElement.getBoundingClientRect();
+function get_resize_element(canvas, resize_to) {
+    if (!resize_to) {
+        return null;
+    }
+    if (resize_to == "body") {
+        return document.body;
+    } else if (resize_to == "parent" || Array.isArray(resize_to) && resize_to.length == 2) {
+        const wrapper = canvas.parentElement;
+        if (!wrapper) {
+            console.error("Canvas has no parent wrapper");
+            return null;
+        }
+        const real_parent = wrapper.parentElement;
+        if (!real_parent) {
+            console.error("Canvas wrapper has no parent");
+            return null;
+        }
+        return real_parent;
+    }
+    return null;
+}
+function convert_to_makie_size(element_width, element_height, fixed_width, fixed_height, resize_to, winscale) {
+    let makie_width = fixed_width;
+    let makie_height = fixed_height;
+    if (resize_to == "body" || resize_to == "parent") {
+        makie_width = element_width;
+        makie_height = element_height;
+    } else if (Array.isArray(resize_to) && resize_to.length == 2) {
+        const [width_mode, height_mode] = resize_to;
+        makie_width = width_mode == "parent" ? element_width : fixed_width;
+        makie_height = height_mode == "parent" ? element_height : fixed_height;
+    }
     return [
-        rect.width,
-        rect.height
+        makie_width / winscale,
+        makie_height / winscale
     ];
+}
+function get_parent_size(canvas) {
+    const wrapper = canvas.parentElement;
+    if (!wrapper) {
+        console.error("Canvas has no parent wrapper - this should not happen!");
+        return [
+            canvas.width,
+            canvas.height
+        ];
+    }
+    const real_parent = wrapper.parentElement;
+    if (!real_parent) {
+        console.error("Canvas wrapper has no parent - this should not happen!");
+        return [
+            canvas.width,
+            canvas.height
+        ];
+    }
+    return get_element_size(real_parent);
 }
 function wglerror(gl, error) {
     switch(error){
@@ -24798,40 +24888,34 @@ function add_canvas_events(screen, comm, resize_to) {
     }
     canvas.addEventListener("contextmenu", (e)=>e.preventDefault());
     canvas.addEventListener("focusout", contextmenu);
-    function resize_callback() {
-        let width, height;
-        if (resize_to == "body") {
-            [width, height] = get_body_size();
-        } else if (resize_to == "parent") {
-            [width, height] = get_parent_size(canvas);
-        } else if (resize_to.length == 2) {
-            [width, height] = get_parent_size(canvas);
-            const [_width, _height] = resize_to;
-            const [f_width, f_height] = [
-                screen.renderer._width,
-                screen.renderer._height
-            ];
-            console.log(`rwidht: ${_width}, rheight: ${_height}`);
-            width = _width == "parent" ? width : f_width;
-            height = _height == "parent" ? height : f_height;
-            console.log(`widht: ${width}, height: ${height}`);
-        } else {
-            console.warn("Invalid resize_to option");
-            return;
-        }
-        if (height > 0 && width > 0) {
-            comm.notify({
-                resize: [
-                    width / winscale,
-                    height / winscale
-                ]
-            });
-        }
-    }
     if (resize_to) {
-        const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
-        window.addEventListener("resize", (event)=>resize_callback_throttled());
-        setTimeout(resize_callback, 50);
+        const resize_element = get_resize_element(canvas, resize_to);
+        if (resize_element) {
+            function resize_callback() {
+                const [element_width, element_height] = get_element_size(resize_element);
+                const [f_width, f_height] = [
+                    screen.renderer._width,
+                    screen.renderer._height
+                ];
+                const [width, height] = convert_to_makie_size(element_width, element_height, f_width, f_height, resize_to, winscale);
+                if (height > 0 && width > 0) {
+                    comm.notify({
+                        resize: [
+                            width,
+                            height
+                        ]
+                    });
+                }
+            }
+            const resize_callback_throttled = Bonito.throttle_function(resize_callback, 100);
+            const resizeObserver = new ResizeObserver((entries)=>{
+                resize_callback_throttled();
+            });
+            resizeObserver.observe(resize_element);
+            screen.resizeObserver = resizeObserver;
+        } else {
+            console.warn("Could not find element to observe for resize_to:", resize_to);
+        }
     }
 }
 function threejs_module(canvas) {
@@ -24877,6 +24961,72 @@ function set_render_size(screen, width, height) {
     renderer.setViewport(0, 0, real_pixel_width, real_pixel_height);
     add_picking_target(screen);
     return;
+}
+function initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor) {
+    if (!scalefactor) {
+        scalefactor = window.devicePixelRatio || 1.0;
+    }
+    if (!px_per_unit) {
+        px_per_unit = scalefactor;
+    }
+    const pixel_ratio = window.devicePixelRatio || 1.0;
+    const winscale = scalefactor / pixel_ratio;
+    let initial_width = width;
+    let initial_height = height;
+    if (resize_to) {
+        const resize_element = get_resize_element(canvas, resize_to);
+        if (resize_element) {
+            const [element_width, element_height] = get_element_size(resize_element);
+            [initial_width, initial_height] = convert_to_makie_size(element_width, element_height, width, height, resize_to, 1.0);
+        }
+    }
+    const swidth = winscale * initial_width;
+    const sheight = winscale * initial_height;
+    canvas.style.width = swidth + "px";
+    canvas.style.height = sheight + "px";
+    return [
+        initial_width,
+        initial_height
+    ];
+}
+function setup_scene_init(wrapper, canvas, width, height, resize_to, px_per_unit, scalefactor, real_size, canvas_width, scene_serialized, comm, framerate, done_init) {
+    const spinner = wrapper.querySelector('.wglmakie-spinner');
+    try {
+        let final_width = width;
+        let final_height = height;
+        if (resize_to) {
+            const sizes = initialize_canvas_size(canvas, resize_to, width, height, px_per_unit, scalefactor);
+            final_width = sizes[0];
+            final_height = sizes[1];
+        }
+        real_size.notify([
+            final_width,
+            final_height
+        ]);
+        const init_scene = (scene_data)=>{
+            try {
+                create_scene(wrapper, canvas, canvas_width, scene_data, comm, final_width, final_height, framerate, resize_to, px_per_unit, scalefactor);
+                done_init.notify(true);
+                spinner?.remove();
+            } catch (e) {
+                Bonito.Connection.send_error("error initializing scene", e);
+                done_init.notify(e);
+                spinner?.remove();
+                return;
+            }
+            return false;
+        };
+        if (scene_serialized.value) {
+            init_scene(scene_serialized.value);
+        } else {
+            scene_serialized.on(init_scene);
+        }
+    } catch (e) {
+        Bonito.Connection.send_error("error setting up scene", e);
+        done_init.notify(e);
+        spinner?.remove();
+        return;
+    }
 }
 function add_picking_target(screen) {
     const { picking_target , canvas  } = screen;
@@ -24935,6 +25085,11 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     canvas_width.on((w_h)=>{
         set_render_size(screen, ...w_h);
     });
+    const gl = renderer.getContext();
+    const err = gl.getError();
+    if (err != gl.NO_ERROR) {
+        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+    }
     return renderer;
 }
 function set_picking_uniforms(scene, last_id, picking, picked_plots, plots, id_to_plot) {
@@ -25236,13 +25391,22 @@ window.WGL = {
     on_next_insert,
     register_popup,
     render_scene,
-    get_texture_atlas
+    get_texture_atlas,
+    get_parent_size,
+    get_element_size,
+    get_resize_element,
+    convert_to_makie_size,
+    initialize_canvas_size,
+    setup_scene_init,
+    execute_in_order
 };
-export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas };
+export { deserialize_scene as deserialize_scene, threejs_module as threejs_module, start_renderloop as start_renderloop, delete_plots as delete_plots, insert_plot as insert_plot, find_plots as find_plots, delete_scene as delete_scene, find_scene as find_scene, scene_cache as scene_cache, plot_cache as plot_cache, delete_scenes as delete_scenes, create_scene as create_scene, events2unitless as events2unitless, on_next_insert as on_next_insert, get_texture_atlas as get_texture_atlas, get_parent_size as get_parent_size, get_element_size as get_element_size, get_resize_element as get_resize_element, convert_to_makie_size as convert_to_makie_size };
 export { execute_in_order as execute_in_order };
 export { dispose_screen as dispose_screen };
 export { render_scene as render_scene };
 export { wglerror as wglerror };
+export { initialize_canvas_size as initialize_canvas_size };
+export { setup_scene_init as setup_scene_init };
 export { pick_native as pick_native };
 export { get_picking_buffer as get_picking_buffer };
 export { pick_closest as pick_closest };

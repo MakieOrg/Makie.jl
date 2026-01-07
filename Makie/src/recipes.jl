@@ -225,6 +225,18 @@ struct DocumentedAttributes
     d::Dict{Symbol, AttributeMetadata}
 end
 
+Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
+Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
+
+function filter_attributes(attr::DocumentedAttributes; kwargs...)
+    return filter_attributes!(copy(attr); kwargs...)
+end
+function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
+    !isempty(allow) && filter!(p -> p[1] in allow, attr.d)
+    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr.d)
+    return attr
+end
+
 struct Inherit
     key::Symbol
     fallback::Any
@@ -274,6 +286,7 @@ macro DocumentedAttributes(expr::Expr)
     closure_exprs = []
     mixin_exprs = Expr[]
 
+    mixin_idx = 0
     for arg in expr.args
         arg isa LineNumberNode && continue
 
@@ -314,15 +327,13 @@ macro DocumentedAttributes(expr::Expr)
             end
             push!(metadata_exprs, metadata)
         elseif is_mixin_line
-            # this intermediate variable is needed to evaluate each mixin only once
-            # and is inserted at the start of the final code block
-            gsym = gensym("mixin")
+            mixin_idx += 1
             mixin = only(attr.args)
             push!(
                 mixin_exprs, quote
-                    $gsym = $(esc(mixin))
-                    if !($gsym isa DocumentedAttributes)
-                        error("Mixin was not a DocumentedAttributes but $($gsym)")
+                    mixins[$mixin_idx] = $(esc(mixin))
+                    if !(mixins[$mixin_idx] isa DocumentedAttributes)
+                        error("Mixin was not a DocumentedAttributes but $(mixins[$mixin_idx])")
                     end
                 end
             )
@@ -330,7 +341,7 @@ macro DocumentedAttributes(expr::Expr)
             # docstrings and default expressions of the mixed in
             # DocumentedAttributes are inserted
             metadata_exp = quote
-                for (key, value) in $gsym.d
+                for (key, value) in mixins[$mixin_idx].d
                     if haskey(d, key)
                         error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
                     end
@@ -344,6 +355,7 @@ macro DocumentedAttributes(expr::Expr)
     end
 
     return quote
+        mixins = Dict{Int, DocumentedAttributes}()
         $(mixin_exprs...)
         d = Dict{Symbol, AttributeMetadata}()
         $(metadata_exprs...)
@@ -404,6 +416,7 @@ end
 function types_for_plot_arguments end
 
 documented_attributes(_) = nothing
+filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
 
 function attribute_names(T::Type{<:Plot})
     attr = documented_attributes(T)
@@ -472,14 +485,14 @@ function create_recipe_expr(Tsym, args, attrblock)
     # attrblock = expand_mixins(attrblock)
     # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
-    docs_placeholder = gensym()
-    attr_placeholder = gensym()
+    docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
+    attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
         # recipe, so that we can offer the convenience of automatic augmented docstrings
         # but combine them with the simplicity of using a normal docstring.
-        # The trick is to mark some variable (in this case a gensymmed placeholder) with the
+        # The trick is to mark some variable with the
         # Core.@__doc__ macro, which causes this variable to get assigned the docstring on top
         # of the @recipe invocation. From there, it can then be retrieved, modified, and later
         # attached to plotting function by using @doc again. We also delete the binding to the

@@ -8,26 +8,31 @@ The pipeline can be broadly be summarized in 3 parts each with a few steps:
 
 ```@raw html
 <ol>
-    <li>Conversions which mainly normalize types
-        <ol>
-            <li>`expand_dimensions()` adds defaulted/generated data (e.g. x, y in `image()`)</li>
-            <li>`dim_convert` processes special types like Units</li>
-            <li>`convert_arguments()` normalizes numeric types & data formats</li>
-        </ol>
-    </li>
-    <li>Transformations which transform data on a per-plot basis
-        <ol>
-            <li>`transform_func` is a function applied to data</li>
-            <li>`model` matrix applies linear transformations</li>
-        </ol>
-    </li>
-    <li>Projections which project data from one coordinate system to another
-        <ol>
-            <li>`view` matrix moves data from "world" space to a camera "view/eye" space</li>
-            <li>`projection` matrix moves from the camera space to "clip" space</li>
-            <li>`viewport` moves "clip" space to "pixel/screen" space</li>
-        </ol>
-    </li>
+<li>
+```
+Conversions which mainly normalize types
+1. `expand_dimensions()` adds defaulted/generated data (e.g. x, y in `image()`)
+2. `dim_convert` processes special types like Units
+3. `convert_arguments()` normalizes numeric types & data formats
+```@raw html
+</li>
+
+<li>
+```
+Transformations which transform data on a per-plot basis
+1. `transform_func` is a function applied to data
+2. `model` matrix applies linear transformations
+```@raw html
+</li>
+
+<li>
+```
+Projections which project data from one coordinate system to another
+1. `view` matrix moves data from "world" space to a camera "view/eye" space
+2. `projection` matrix moves from the camera space to "clip" space
+3. `viewport` moves "clip" space to "pixel/screen" space
+```@raw html
+</li>
 </ol>
 ```
 
@@ -39,7 +44,7 @@ However it usually inherited and controlled by the `Axis`.
 
 As a **developer**, i.e. someone who wants to extend Makie, you can interact with most these steps.
 Most likely you will extend with `convert_arguments()` to allow special types to be plotted.
-But you can also implement more dim_converts, add methods for `expand_dimensions()`, implement more transform functions or add a camera which produces its own `view` and `projection` matrix.
+But you can also implement more `dim_converts`, add methods for `expand_dimensions()`, implement more transform functions or add a camera which produces its own `view` and `projection` matrix.
 Only `model` and `viewport` handling as well as the interpretation of `space` are set.
 
 ## Argument Conversions
@@ -111,9 +116,9 @@ Makie.apply_transform(transform_func, arg::VecTypes{N, T}) where {N, T}
 ```
 where the transform function can be represented by any type, not just a `Function`.
 That way it can carry auxiliary information that may be important to the transformation.
-Additionally methods with other `arg` types such as numbers of `Vector`s thereof may also be implemented to more efficiently apply the transform_func.
+Additionally methods with other `arg` types such as numbers of `Vector`s thereof may also be implemented to more efficiently apply the `transform_func`.
 
-Typically a transform_func also implements
+Typically a `transform_func` also implements
 ```julia
 Makie.inverse_transform(transform_func)
 Makie.apply_transform(transform_func, arg::Rect3)
@@ -179,3 +184,35 @@ The result gets passed to the `Float32Convert`, which updates its linear transfo
 The projection matrices are then derived from the safe limits.
 At this point the linear transformation of the Float32Convert exists just before `view`.
 If possible, it is permuted with `model` so that the model matrix can processed by the graphics API, i.e. on the GPU.
+
+
+## [Projecting in Recipes](@id pipeline_recipe_projections)
+
+As of Makie 0.24.3 the function `register_projected_positions!()` can be used to project point-like data that exists in a plot.
+
+```@docs
+register_projected_positions!
+```
+
+The most common cases are that you either want to project positions to pixel space, e.g. to mix in attributes that apply in pixel space, or apply the `transform_func` as it is a potentially non-linear transform.
+
+To project to pixel space you can simply call `register_projected_positions!(plot, input_name = ...)`.
+For this positions need to exist as a compute node and their name needs to be passed as `input_name`.
+If your positions are an observable you can add them to the compute graph with `Makie.add_input!(plot.attributes, name, observable)`.
+The function will then step through the whole transformation-projection pipeline, applying `transform_func`, `float32convert`, `model` and a `plot.space -> :pixel` projection matrix.
+The final output is written to a node with the name `Symbol(:pixel_, input_name)`, which can be addressed in `map!()` afterwards.
+The node is also returned.
+
+If you just want to apply `transform_func` you can turn off all the other steps by setting the appropriate keyword arguments.
+
+```julia
+register_projected_positions!(
+    plot, input_name = ...,
+    apply_transform = false, # turn off model, transform_func, float32convert
+    apply_transform_func = true, # turn transform_func back on
+    output_space = :space # turn off projections
+)
+```
+
+Alternatively you can also call `Makie.register_positions_transformed!(plot, input_name = ..., output_name = ...)`.
+

@@ -507,6 +507,12 @@ GLMakie.activate!() # hide
 <video autoplay loop muted playsinline controls src="./stockchart_animation.mp4" />
 ```
 
+## [Projecting in Recipes](@id recipe_projections)
+
+In a complex recipe you may need to apply transformation or projections to plot data.
+For this, Makie has the `register_projected_positions!()` helper function.
+See [Projecting in Recipes](@ref pipeline_recipe_projections) for more information.
+
 ## Makie Package Extension
 
 For a simple example of a package extension for Makie,

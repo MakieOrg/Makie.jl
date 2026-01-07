@@ -25,12 +25,26 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     - an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
     """
     levels = 5
+    "Sets the width of contour lines."
     linewidth = 1.0
+    "Sets the dash pattern of contour lines. See `?lines`."
     linestyle = nothing
+    """
+    Sets the type of line cap used for contour lines. Options are `:butt` (flat without extrusion),
+    `:square` (flat with half a linewidth extrusion) or `:round`.
+    """
     linecap = @inherit linecap
+    """
+    Controls the rendering at line corners. Options are `:miter` for sharp corners,
+    `:bevel` for cut-off corners, and `:round` for rounded corners. If the corner angle
+    is below `miter_limit`, `:miter` is equivalent to `:bevel` to avoid long spikes.
+    """
     joinstyle = @inherit joinstyle
+    """"
+    Sets the minimum inner line join angle below which miter joins truncate. See
+    also `Makie.miter_distance_to_angle`.
+    """
     miter_limit = @inherit miter_limit
-    enable_depth = true
     """
     If `true`, adds text labels to the contour lines.
     """
@@ -45,6 +59,12 @@ If only `z::Matrix` is supplied, the indices of the elements in `z` will be used
     labelformatter = contour_label_formatter
     "Font size of the contour labels"
     labelsize = 10 # arbitrary
+    """
+    Sets the tolerance for sampling of a `level` in 3D contour plots.
+    """
+    isorange = automatic
+    "Controls whether 3D contours consider depth. Turning this off may improve performance."
+    enable_depth = true
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
@@ -59,50 +79,43 @@ with z-elevation for each level.
     documented_attributes(Contour)...
 end
 
-# result in [-π, π]
-angle(p1::VecTypes{2}, p2::VecTypes{2}) = Float32(atan(p2[2] - p1[2], p2[1] - p1[1]))
-
 function label_info(lev, vertices, col)
     mid = ceil(Int, 0.5f0 * length(vertices))
     # take 3 pts around half segment
     pts = (vertices[max(firstindex(vertices), mid - 1)], vertices[mid], vertices[min(mid + 1, lastindex(vertices))])
-    return (
-        lev,
-        map(p -> to_ndim(Point3f, p, lev), Tuple(pts)),
-        col,
-    )
+    return to_ndim.(Point3f, pts, lev)..., col
 end
 
-function contourlines(::Type{<:Contour}, contours, cols, labels)
-    points = Point2f[]
-    colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32, NTuple{3, Point2f}, RGBA{Float32}}[]
-    for (color, c) in zip(cols, Contours.levels(contours))
-        for elem in Contours.lines(c)
-            append!(points, elem.vertices)
-            push!(points, Point2f(NaN32))
-            append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
-        end
-    end
-    return points, colors, lev_pos_col
-end
+function contourlines(::Type{<:T}, contours, cols, labels) where {T <: Union{Contour3d, Contour}}
+    PT = T <: Contour3d ? Point3f : Point2f
 
-function contourlines(::Type{<:Contour3d}, contours, cols, labels)
-    points = Point3f[]
+    points = PT[]
     colors = RGBA{Float32}[]
-    lev_pos_col = Tuple{Float32, NTuple{3, Point3f}, RGBA{Float32}}[]
+    levels = Float32[]
+    lbl_pos_low = PT[]
+    lbl_pos_center = PT[]
+    lbl_pos_high = PT[]
+    lbl_color = RGBAf[]
+
     for (color, c) in zip(cols, Contours.levels(contours))
         for elem in Contours.lines(c)
             for p in elem.vertices
-                push!(points, to_ndim(Point3f, p, c.level))
+                push!(points, to_ndim(PT, p, c.level))
             end
-            push!(points, Point3f(NaN32))
+            push!(points, PT(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
-            labels && push!(lev_pos_col, label_info(c.level, elem.vertices, color))
+
+            if labels
+                p1, p2, p3, col = label_info(c.level, elem.vertices, color)
+                push!(levels, c.level)
+                push!(lbl_pos_low, p1)
+                push!(lbl_pos_center, p2)
+                push!(lbl_pos_high, p3)
+                push!(lbl_color, col)
+            end
         end
     end
-    return points, colors, lev_pos_col
+    return points, colors, levels, lbl_pos_low, lbl_pos_center, lbl_pos_high, lbl_color
 end
 
 to_levels(x::AbstractVector{<:Number}, cnorm) = x
@@ -118,40 +131,82 @@ conversion_trait(::Type{<:Contour}) = VertexGrid()
 conversion_trait(::Type{<:Contour}, x, y, z, ::Union{Function, AbstractArray{<:Number, 3}}) = VolumeLike()
 conversion_trait(::Type{<:Contour}, ::AbstractArray{<:Number, 3}) = VolumeLike()
 
-function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
-    x, y, z, volume = plot[1:4]
-    @extract plot (colormap, levels, linewidth, alpha)
-    valuerange = lift(nan_extrema, plot, volume)
-    cliprange = map((v, default) -> ifelse(v === automatic, default, v), plot, plot.colorrange, valuerange)
-    cmap = lift(plot, colormap, levels, alpha, cliprange, valuerange) do _cmap, l, alpha, cliprange, vrange
-        levels = to_levels(l, vrange)
-        nlevels = length(levels)
-        N = 50 * nlevels
+# 3D Contour
 
-        iso_eps = if haskey(plot, :isorange)
-            plot.isorange[]
-        else
-            nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
-        end
-        cmap = to_colormap(_cmap)
-        v_interval = cliprange[1] .. cliprange[2]
-        # resample colormap and make the empty area between iso surfaces transparent
-        map(1:N) do i
-            i01 = (i - 1) / (N - 1)
-            c = Makie.interpolated_getindex(cmap, i01)
-            isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
-            line = reduce(levels, init = false) do v0, level
-                isoval in v_interval || return false
-                v0 || abs(level - isoval) <= iso_eps
+function plot!(plot::Contour{<:Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+    map!(nan_extrema, plot, :converted_4, :value_range)
+    map!(default_automatic, plot, [:colorrange, :value_range], :tight_colorrange)
+
+    map!(to_levels, plot, [:levels, :value_range], :value_levels)
+
+    # the default isorange should be smaller than the gap between levels, but not
+    # so small that surfaces disappear/get skipped
+    map!(plot, [:isorange, :value_levels, :value_range], :computed_isorange) do isorange, value_levels, (min, max)
+        if isorange === automatic
+            if length(value_levels) > 1
+                minstep = minimum(value_levels[2:end] .- value_levels[1:(end - 1)])
+                return 0.1 * minstep
+            else
+                return 0.1 * (max - min)
             end
-            RGBAf(Colors.color(c), line ? alpha : 0.0)
+        else
+            return isorange
         end
     end
 
-    return volume!(
-        plot, Attributes(plot), x, y, z, volume, alpha = 1.0, # don't apply alpha 2 times
-        algorithm = 7, colorrange = cliprange, colormap = cmap
+    # The colorrange and colormap needs to be padded with RGBAf(..., 0) so that
+    # samples outside the colorrange are not drawn
+    map!(plot, [:tight_colorrange, :computed_isorange], :padded_colorrange) do (min, max), isorange
+        return (min - 2isorange, max + 2isorange)
+    end
+
+    map!(plot, [:value_levels, :tight_colorrange], :clamped_levels) do levels, (min, max)
+        return filter(lvl -> min <= lvl <= max, levels)
+    end
+
+    map!(to_colormap, plot, :colormap, :input_colormap)
+
+    map!(
+        plot,
+        [:clamped_levels, :tight_colorrange, :padded_colorrange, :computed_isorange, :alpha, :input_colormap],
+        :computed_colormap
+    ) do levels, tight_colorrange, (min, max), isorange, alpha, cmap
+        # We need colormap values for the full color range (with padding)
+        # We also need enough color values to have samples in
+        # `level - isorange .. level + isorange`, otherwise we might skip over
+        # isosurfaces
+        # GLMakie texture size is typically limited 8192+
+        # WGLMakie texture size may be limited to 4096+
+        N = ceil(Int, 2.5 * (max - min) / isorange)
+        if N > 4096
+            min_isorange = (max - min) / 4096
+            @warn "Isorange maybe too small to resolve iso surfaces. Try `isorange > $min_isorange`"
+        end
+        N = clamp(N, 100, 4096)
+
+        clip_range = tight_colorrange[1] - isorange .. tight_colorrange[2] + isorange
+        return map(1:N) do i
+            isoval = min + (i - 1) / (N - 1) * (max - min)
+            c = Colors.color(interpolated_getindex(cmap, isoval, tight_colorrange))
+            if isoval in clip_range && any(lvl -> lvl - isorange < isoval < lvl + isorange, levels)
+                return RGBAf(c, alpha)
+            else
+                return RGBAf(c, 0.0)
+            end
+        end
+    end
+
+    volume!(
+        plot, Attributes(plot),
+        plot.converted_1, plot.converted_2, plot.converted_3, plot.converted_4,
+        alpha = 1.0, # don't apply alpha 2 times
+        algorithm = 7, # contour algorithm
+        colorrange = plot.padded_colorrange,
+        colormap = plot.computed_colormap,
+        isorange = 0.0 # unused, but needs to be a float
     )
+
+    return plot
 end
 
 color_per_level(color, args...) = color_per_level(to_color(color), args...)
@@ -200,9 +255,8 @@ function has_changed(old_args, new_args)
 end
 
 function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
-    x, y, z = plot[1:3]
-    zrange = lift(nan_extrema, plot, z)
-    levels = lift(plot, plot.levels, zrange) do levels, zrange
+    map!(nan_extrema, plot, :converted_3, :zrange)
+    map!(plot, [:levels, :zrange], :zlevels) do levels, zrange
         if levels isa AbstractVector{<:Number}
             return levels
         elseif levels isa Integer
@@ -211,91 +265,82 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
             error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
         end
     end
-    colorrange = lift(plot.colorrange, zrange) do crange, zrange
-        if crange === automatic
-            return zrange
-        else
-            return crange
-        end
+    map!(default_automatic, plot, [:colorrange, :zrange], :computed_colorrange)
+
+    map!(
+        color_per_level, plot,
+        [:color, :colormap, :colorscale, :computed_colorrange, :alpha, :zlevels],
+        :level_colors
+    )
+
+    map!(
+        plot,
+        [:converted_1, :converted_2, :converted_3, :zlevels, :level_colors, :labels],
+        [:contour_points, :contour_colors, :computed_levels, :lbl_pos1, :lbl_pos2, :lbl_pos3, :computed_lbl_colors]
+    ) do args...
+        return contourlines(args..., T)
     end
 
-    @extract plot (labels, labelsize, labelfont, labelcolor, labelformatter)
-    args = @extract plot (color, colormap, colorscale)
-    level_colors = lift(color_per_level, plot, args..., colorrange, plot.alpha, levels)
+    # TODO:
+    # Should we make yes/no labels a constructor-time decisions so we can avoid
+    # all the extra work for it entirely?
+    # (i.e. no text plot, no boundingboxes, no projections?)
 
-    args = (x, y, z, levels, level_colors, labels)
-    arg_values = map(to_value, args)
-
-    old_values = map(copy, arg_values)
-    points, colors, lev_pos_col = Observable.(contourlines(arg_values..., T); ignore_equal_values = true)
-    onany(plot, args...) do args...
-        # contourlines is expensive enough, that it's worth to copy & check against old values
-        # We need to copy, since the values may get mutated in place
-        if has_changed(old_values, args)
-            old_values = map(copy, args)
-            points[], colors[], lev_pos_col[] = contourlines(args..., T)
-            return
+    map!(plot, [:lbl_pos1, :lbl_pos2, :lbl_pos3], [:text_positions, :raw_lbl_directions]) do ps1, ps2, ps3
+        # TODO: Is this necessary?
+        pos = map(ps1, ps2, ps3) do p1, p2, p3
+            p = ifelse(isnan(p2), p1, p2)
+            return ifelse(isnan(p), p3, p)
         end
+        return pos, ps3 .- ps1
     end
 
-    P = T <: Contour ? Point2f : Point3f
-    scene = parent_scene(plot)
+    map!(plot, [:computed_levels, :labelformatter], :text_strings) do levels, formatter
+        return formatter.(levels)
+    end
 
-    lab_pos, lab_rot, lab_col, lab_str = P[], Float32[], RGBA{Float32}[], String[]
+    map!(plot, [:labelcolor, :computed_lbl_colors], :text_color) do user_color, computed_color
+        return ifelse(user_color === nothing, computed_color, to_color(user_color))
+    end
+
+    # transform directions to pixel-space angles
+    register_projected_rotations_2d!(
+        plot,
+        position_name = :text_positions, direction_name = :raw_lbl_directions,
+        output_name = :text_rotation,
+        rotation_transform = to_upright_angle
+    )
 
     texts = text!(
         plot,
-        P[];
-        color = RGBA{Float32}[],
-        rotation = Float32[],
-        text = String[],
+        plot.text_positions;
+        color = plot.text_color,
+        rotation = plot.text_rotation,
+        text = plot.text_strings,
         align = (:center, :center),
-        fontsize = labelsize,
-        font = labelfont,
+        fontsize = plot.labelsize,
+        font = plot.labelfont,
         transform_marker = false
     )
 
-    lift(
-        plot, scene.camera.projectionview, transformationmatrix(plot), scene.viewport,
-        labels, labelcolor, labelformatter, lev_pos_col
-    ) do _, _, _, labels, labelcolor, labelformatter, lev_pos_col
-        labels || return
-        pos = P[]
-        rot = Quaternionf[]
-        col = RGBAf[]
-        lbl = String[]
+    register_string_boundingboxes!(texts)
+    add_input!(plot.attributes, :string_boundingboxes, texts.string_boundingboxes)
 
-        for (lev, (p1, p2, p3), color) in lev_pos_col
-            px_pos1 = project(scene, apply_transform(transform_func(plot), p1))
-            px_pos3 = project(scene, apply_transform(transform_func(plot), p3))
-            rot_from_horz::Float32 = angle(px_pos1, px_pos3)
-            # transition from an angle from horizontal axis in [-π; π]
-            # to a readable text with a rotation from vertical axis in [-π / 2; π / 2]
-            rot_from_vert::Float32 = if abs(rot_from_horz) > 0.5f0 * π
-                rot_from_horz - copysign(Float32(π), rot_from_horz)
-            else
-                rot_from_horz
-            end
-            push!(col, labelcolor === nothing ? color : to_color(labelcolor))
-            push!(rot, to_rotation(rot_from_vert))
-            push!(lbl, labelformatter(lev))
+    P = T <: Contour ? Point2f : Point3f
 
-            p = p2  # try to position label around center
-            isnan(p) && (p = p1)
-            isnan(p) && (p = p3)
-            push!(pos, p)
+    pixel_pos_node = register_projected_positions!(plot, Point2f, input_name = :contour_points, output_space = :pixel)
 
-        end
-        update!(texts, arg1 = pos, rotation = rot, color = col, text = lbl)
-        return
-    end
+    map!(plot, [:labels, :string_boundingboxes, :contour_points], :masked_lines) do use_labels, bboxes, segments
+        use_labels || return segments
 
-    bboxes = string_boundingboxes_obs(texts)
-
-    masked_lines = lift(plot, labels, bboxes, points) do labels, bboxes, segments
-        labels || return segments
         # simple heuristic to turn off masking segments (≈ less than 10 pts per contour)
         count(isnan, segments) > length(segments) / 10 && return segments
+
+        # To avoid always projecting, pull these in indirectly.
+        # string boundingboxes will already update on everything that could trigger
+        # pixel_contour_points, so this should be fine
+        pixel_pos = pixel_pos_node[]
+
         n = 1
         bb = Rect2(bboxes[n])
         nlab = length(bboxes)
@@ -304,25 +349,27 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
         for (i, p) in enumerate(segments)
             if isnan(p) && n < nlab
                 bb = Rect2(bboxes[n += 1])  # next segment is materialized by a NaN, thus consider next label
-            elseif project(scene, apply_transform(transform_func(plot), p)) in bb
+            elseif pixel_pos[i] in bb
                 masked[i] = nan
                 for dir in (-1, +1)
                     j = i
                     while true
                         j += dir
                         checkbounds(Bool, segments, j) || break
-                        project(scene, apply_transform(transform_func(plot), segments[j])) in bb || break
+                        pixel_pos[j] in bb || break
                         masked[j] = nan
                     end
                 end
             end
         end
-        masked
+
+        return masked
     end
 
+
     lines!(
-        plot, masked_lines;
-        color = colors,
+        plot, plot.masked_lines;
+        color = plot.contour_colors,
         linewidth = plot.linewidth,
         linestyle = plot.linestyle,
         linecap = plot.linecap,
@@ -337,7 +384,8 @@ function plot!(plot::T) where {T <: Union{Contour, Contour3d}}
     )
 
     # toggle to debug labels
-    # wireframe!(plot, map(bbs -> merge(map(GeometryBasics.mesh, bbs)), bboxes), space = :pixel)
+    # map!(bbs -> merge(map(GeometryBasics.mesh, bbs)), plot, texts.string_boundingboxes, :bbs2d)
+    # wireframe!(plot, plot.bbs2d, space = :pixel)
 
     return plot
 end

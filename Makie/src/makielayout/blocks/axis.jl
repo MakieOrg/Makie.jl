@@ -580,6 +580,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, finallimits)
+    map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
     return ax
 end
 
@@ -588,7 +589,9 @@ function add_axis_limits!(plot)
     if !haskey(scene.compute, :axis_limits)
         error("add_axis_limits! can only be used with `Axis`, not with any other Axis type or a pure scene!")
     end
-    return add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
+    add_input!(plot.attributes, :axis_limits, scene.compute.axis_limits)
+    add_input!(plot.attributes, :axis_limits_transformed, scene.compute.axis_limits_transformed)
+    return
 end
 
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)
@@ -829,7 +832,6 @@ function getlimits(la::Axis, dim)
         try
             bb = apply_transform(itf, bb)
         catch e
-            # TODO: Is this necessary?
             @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
             bb = data_limits(la.scene, exclude)
         end
@@ -1220,21 +1222,6 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     return
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
-    nplots = length(ax.scene.plots)
-    println(io, "Axis with $nplots plots:")
-
-    for (i, p) in enumerate(ax.scene.plots)
-        println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
-    end
-    return
-end
-
-function Base.show(io::IO, ax::Axis)
-    nplots = length(ax.scene.plots)
-    return print(io, "Axis ($nplots plots)")
-end
-
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
 Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
 
@@ -1253,6 +1240,13 @@ function Makie.xlims!(ax::Axis, xlims)
 
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (xlims, mlims[2])
+
+    # update xlims for linked axes
+    for xlink in ax.xaxislinks
+        xlink_mlims = convert_limit_attribute(xlink.limits[])
+        xlink.limits.val = (xlims, xlink_mlims[2])
+    end
+
     reset_limits!(ax, yauto = false)
     return nothing
 end
@@ -1271,6 +1265,13 @@ function Makie.ylims!(ax::Axis, ylims)
     end
     mlims = convert_limit_attribute(ax.limits[])
     ax.limits.val = (mlims[1], ylims)
+
+    # update ylims for linked axes
+    for ylink in ax.yaxislinks
+        ylink_mlims = convert_limit_attribute(ylink.limits[])
+        ylink.limits.val = (ylink_mlims[1], ylims)
+    end
+
     reset_limits!(ax, xauto = false)
     return nothing
 end
@@ -1826,7 +1827,13 @@ function attribute_examples(::Type{Axis})
                     yticks = [-100, -10, 0, 10, 100]
                 )
 
-                for ax in [ax1, ax2]
+                ax3 = Axis(f[1, 1],
+                    yscale = Makie.pseudolog10,
+                    title = "Pseudolog scale with LogTicks",
+                    yticks = LogTicks(-2:2)
+                )
+
+                for ax in [ax1, ax2, ax3]
                     lines!(ax, -100:0.1:100)
                 end
 

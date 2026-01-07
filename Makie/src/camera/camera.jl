@@ -139,6 +139,13 @@ function add_camera_computation!(graph::ComputeGraph, scene)
         add_input!(graph, key, getproperty(scene.camera, key))
     end
 
+    # Since (marker)space can change, the matrices a plot needs may change and
+    # thus they need to react to all matrix updates. We add a trigger node here
+    # to simplify this (i.e. avoid the need to listen to 25 matrices or some
+    # subset of the inputs)
+    # Note: The value needs to change so that the update doesn't get discarded
+    map!((a, b, c) -> time(), graph, [:view, :projection, :viewport], :camera_trigger)
+
     map!(graph, :viewport, [:scene_origin, :resolution]) do viewport
         return (Vec2d(origin(viewport)), Vec2d(widths(viewport)))
     end
@@ -221,10 +228,18 @@ world ------>   eye   -----------> clip
                pixel  -----------> clip
              relative -----------> clip
 =#
+#
+const CAMERA_MATRIX_NAMES = let
+    # dynamic Symbol(a, b) is fairly expensive...
+    spaces = [:world, :eye, :clip, :relative, :pixel, :space, :markerspace]
+    Dict{Tuple{Symbol, Symbol}, Symbol}(
+        [(a, b) => Symbol(a, :_to_, b) for a in spaces for b in spaces]
+    )
+end
+
+_data_to_world(x) = ifelse(x === :data, :world, x)
 function get_camera_matrix_name(input_space::Symbol, output_space::Symbol)
-    key1 = ifelse(input_space === :data, :world, input_space)
-    key2 = ifelse(output_space === :data, :world, output_space)
-    return Symbol(key1, :_to_, key2)
+    return CAMERA_MATRIX_NAMES[(_data_to_world(input_space), _data_to_world(output_space))]
 end
 
 function get_projectionview_name(space::Symbol)
@@ -304,42 +319,12 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-
-function _has_camera_changed(changed, space, markerspace = space)
-    is_data = is_data_space(space) || is_data_space(markerspace)
-    is_pixel = is_pixel_space(space) || is_pixel_space(markerspace)
-    result = (is_data && (changed.view || changed.projection)) || (is_pixel && (changed.viewport))
-    return result
-end
-
-function camera_trigger(inputs, changed, cached)
-    isnothing(cached) && return (true,)
-    view, projection, viewport, spaces... = inputs
-    has_changed = _has_camera_changed(changed, spaces...)
-    # Same values get ignored
-    return has_changed ? (!cached[1],) : nothing
-end
-
 struct CameraMatrixCallback <: Function
     graph::ComputeGraph
 end
+(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
 
-function (cb::CameraMatrixCallback)(inputs, changed, cached)
-    graph = cb.graph
-    return map(name -> Mat4f(graph[name][]::Mat4d), inputs.camera_matrix_names)
-end
-
-function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
-    # This should connect Computed's from the parent graph to a new Computed in the child graph
-    inputs = [scene_graph.view, scene_graph.projection, scene_graph.viewport, plot_graph.space]
-    haskey(plot_graph, :markerspace) && push!(inputs, plot_graph.markerspace)
-    @assert inputs isa Vector{ComputePipeline.Computed}
-
-    # Only propagate update from camera matrices if its relevant to space
-    register_computation!(camera_trigger, plot_graph, inputs, [:camera_trigger])
-
-
-    input_keys = [:camera_trigger, :camera_matrix_names]
+function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
 
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
@@ -355,9 +340,17 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
         end
     end
 
+    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
+
     # Update camera matrices in plot if space changed or a relevant camera update happened
     callback = CameraMatrixCallback(scene_graph)
-    register_computation!(callback, plot_graph, input_keys, output_keys)
+    map!(callback, plot_graph, input_keys, output_keys)
+
+    return
+end
+
+function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
+    _register_common_camera_matrices!(plot_graph, scene_graph)
 
     # Do we need those? Maybe also viewport?
     # type assert for safety
@@ -373,16 +366,82 @@ function register_camera!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     return
 end
 
-#=
-Design Notes:
+"""
+    register_camera_matrix!(plot, input_space, output_space)
 
-add_camera_computation!(scene.graph, scene)
-- creates inputs for camera controller, scene.viewport
-- calculates all space-to-space matrices
-- calculates some utilities, e.g. resolution, scene_origin (no ppu)
+Adds the matrix projecting from `input_space` to `output_space` to the given
+plot. For this the spaces can also be `:space` or `:markerspace`. The name of
+the added projectionmatrix is returned
 
-register_camera!(plot_graph, scene_graph)
-- creates a trigger which filters space-relevant camera updates from scene_graph in plot_graph
-- pull view etc appropriate for the plots (marker)space via get_view(scene_graph, space)
-- connects some more utilities, e.g. resolution
-=#
+The registered matrix will usually be named `Symbol(input_space, :_to_, :output_space)`,
+e.g. `:data_to_pixel` or `:space_to_pixel`. `:space_to_clip`, `:space_to_markerspace`
+and `:markerspace_to_clip` will be renamed to `projectionview`, `preprojection` and
+`projectionview` respectively, to avoid duplicating nodes.
+"""
+function register_camera_matrix!(plot, input::Union{Symbol, Computed}, output::Union{Symbol, Computed})
+    scene = parent_scene(plot)
+
+    getname(x::Computed) = x.name::Symbol
+    getname(x::Symbol) = x
+
+    return register_camera_matrix!(scene.compute, plot.attributes, getname(input), getname(output))
+end
+function register_camera_matrix!(
+        scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
+        input::Symbol, output::Symbol
+    )
+
+    # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
+    matrix_name = get_camera_matrix_name(input, output)
+
+    haskey(plot_graph, matrix_name) && return matrix_name
+
+    if input === output # catch space -> space here
+        if !haskey(plot_graph, :identity_matrix)
+            ComputePipeline.add_constant!(plot_graph, :identity_matrix, Mat4f(I))
+        end
+        return :identity_matrix
+    end
+
+    # These already exist
+    if haskey(plot_graph, :markerspace) && matrix_name === :space_to_markerspace
+        haskey(plot_graph, :preprojection) || _register_common_camera_matrices!(plot_graph, scene_graph)
+        return :preprojection
+    elseif haskey(plot_graph, :markerspace) && matrix_name === :markerspace_to_clip
+        haskey(plot_graph, :projectionview) || _register_common_camera_matrices!(plot_graph, scene_graph)
+        return :projectionview
+    elseif !haskey(plot_graph, :markerspace) && matrix_name === :space_to_clip
+        haskey(plot_graph, :projectionview) || _register_common_camera_matrices!(plot_graph, scene_graph)
+        return :projectionview
+    end
+
+    _input = input in (:markerspace, :space) ? getindex(plot_graph, input) : input
+    _output = output in (:markerspace, :space) ? getindex(plot_graph, output) : output
+
+    isconst(x::Symbol) = true
+    isconst(x::Computed) = false
+
+    if isconst(_input) && isconst(_output)
+        # both spaces are constant so we don't need to be able to switch to a
+        # different camera.
+        add_input!(plot_graph, matrix_name, scene_graph[matrix_name])
+        return matrix_name
+    end
+
+    # dynamic case (space and/or markerspace used)
+    # Need to build name of the matrix dynamically before fetching it
+    name_name = Symbol(matrix_name, :_name)
+
+    if !isconst(_input) && isconst(_output)
+        map!(a -> get_camera_matrix_name(a, output), plot_graph, _input, name_name)
+    elseif isconst(_input) && !isconst(_output)
+        map!(b -> get_camera_matrix_name(input, b), plot_graph, _output, name_name)
+    else
+        map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
+    end
+
+    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
+    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
+
+    return matrix_name
+end

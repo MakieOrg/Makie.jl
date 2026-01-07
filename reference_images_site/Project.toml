@@ -1,0 +1,8 @@
+[deps]
+Bonito = "824d6782-a2ef-11e9-3a09-e5662e0c26f8"
+BonitoSites = "8b3cd1a5-63d9-421b-9fde-46b64b830918"
+ReferenceUpdater = "0b7a0440-c633-4ac4-9779-d1266ef64952"
+
+[sources]
+ReferenceUpdater = {path = "../ReferenceUpdater"}
+BonitoSites = {url = "https://github.com/SimonDanisch/BonitoSites.jl"}

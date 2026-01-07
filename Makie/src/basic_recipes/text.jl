@@ -8,6 +8,10 @@ struct RichText
     end
 end
 
+Base.:(==)(a::RichText, b::RichText) = a.type == b.type && a.children == b.children && a.attributes == b.attributes
+
+Base.hash(a::RichText, b::UInt) = hash(a.type, hash(a.children, hash(a.attributes, b)))
+
 function check_textsize_deprecation(@nospecialize(dictlike))
     return if haskey(dictlike, :textsize)
         throw(ArgumentError("`textsize` has been renamed to `fontsize` in Makie v0.19. Please change all occurrences of `textsize` to `fontsize` or revert back to an earlier version."))
@@ -25,7 +29,8 @@ convert_attribute(align, ::key"align", ::key"text") = Ref{Any}(align)
 
 # Positions are always vectors so text should be too
 convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
-convert_attribute(x::AbstractVector, ::key"text", ::key"text") = vec(x)
+convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
+convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
 
 to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
@@ -69,7 +74,6 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
 
     return
 end
-
 
 function per_glyph_getindex(x, text_blocks::Vector{UnitRange{Int}}, gi::Int, bi::Int)
     if isscalar(x)
@@ -330,28 +334,23 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :linesegments, :linewidths, :linecolors, :lineindices,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
-        if isnothing(cached)
-            _outputs = (
-                glyphcollections = GlyphCollection[],
-                glyphindices = UInt64[],
-                font_per_char = NativeFont[],
-                glyph_origins = Point3f[],
-                glyph_extents = GlyphExtent[],
-                text_blocks = UnitRange{Int64}[],
-                text_color = RGBAf[],
-                text_rotation = Quaternionf[],
-                text_scales = Vec2f[],
-                text_strokewidth = Float32[],
-                text_strokecolor = RGBAf[],
-                linesegments = Point3f[],
-                linewidths = Float32[],
-                linecolors = RGBAf[],
-                lineindices = Pair{Int, Int}[],
-            )
-        else
-            foreach(empty!, values(cached))
-            _outputs = cached
-        end
+        _outputs = (
+            glyphcollections = GlyphCollection[],
+            glyphindices = UInt64[],
+            font_per_char = NativeFont[],
+            glyph_origins = Point3f[],
+            glyph_extents = GlyphExtent[],
+            text_blocks = UnitRange{Int64}[],
+            text_color = RGBAf[],
+            text_rotation = Quaternionf[],
+            text_scales = Vec2f[],
+            text_strokewidth = Float32[],
+            text_strokecolor = RGBAf[],
+            linesegments = Point3f[],
+            linewidths = Float32[],
+            linecolors = RGBAf[],
+            lineindices = Pair{Int, Int}[],
+        )
         # strokewidth = Float32[] # TODO: Skipped?
 
         N = length(input_texts)
@@ -367,9 +366,7 @@ end
 function register_text_computations!(attr::ComputeGraph)
     add_constant!(attr, :atlas, get_texture_atlas())
 
-    register_computation!(attr, [:fonts, :font], [:selected_font]) do (fs, f), changed, cached
-        return (to_font(fs, f),)
-    end
+    map!(to_font, attr, [:fonts, :font], :selected_font)
 
     # Resolve colormapping to colors early. This allows rich text which returns
     # its own colors to be mixed with other text types which dont.
@@ -379,25 +376,18 @@ function register_text_computations!(attr::ComputeGraph)
     # And :glyphcollection if applicable
     compute_glyph_collections!(attr)
 
-    register_computation!(attr, [:text_blocks, :positions], [:text_positions]) do (blocks, pos), changed, cached
-        if length(blocks) != length(pos)
-            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
-        end
-        return ([p for (b, p) in zip(blocks, pos) for i in b],)
+    map!(attr, [:atlas, :glyphindices, :font_per_char], :sdf_uv) do atlas, gi, fonts
+        return glyph_uv_width!.((atlas,), gi, fonts)
     end
 
-    register_computation!(attr, [:atlas, :glyphindices, :font_per_char], [:sdf_uv]) do (atlas, gi, fonts), changed, cached
-        return (glyph_uv_width!.((atlas,), gi, fonts),)
+    map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
+        return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
 
-    register_computation!(attr, [:glyph_origins, :offset, :text_blocks], [:marker_offset]) do (origins, offset, blocks), changed, cached
-        return (Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r],)
-    end
-
-    register_computation!(
+    map!(
         attr, [:atlas, :glyphindices, :text_blocks, :font_per_char, :text_scales],
         [:quad_offset, :quad_scale]
-    ) do (atlas, gi, text_blocks, fonts, fontsize), changed, cached
+    ) do atlas, gi, text_blocks, fonts, fontsize
 
         quad_offsets = Vec2f[]
         quad_scales = Vec2f[]
@@ -415,7 +405,15 @@ function register_text_computations!(attr::ComputeGraph)
     end
     # TODO: remapping positions to be per glyph first generates quite a few
     # redundant transform applications and projections in CairoMakie
-    register_position_transforms!(attr, :text_positions)
+    register_position_transforms!(attr, input_name = :positions, transformed_name = :positions_transformed)
+
+    map!(attr, [:text_blocks, :positions_transformed_f32c], :per_char_positions_transformed_f32c) do blocks, pos
+        if length(blocks) != length(pos)
+            error("Text blocks and positions have different lengths: $(length(blocks)) != $(length(pos)). Please use `update!(plot_object; arg1/arg2/text/position/color/etc...) to update multiple attributes together.")
+        end
+        return [p for (b, p) in zip(blocks, pos) for i in b]
+    end
+
     return
 end
 
@@ -438,28 +436,21 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     return tex_linesegments!(plot)
 end
 
-function project_text_positions_to_markerspace(preprojection, model, positions, clip_planes)
-    planes = to_model_space(model, clip_planes)
-    projected_pos = _project(preprojection * model, positions)
-    nan_point = eltype(projected_pos)(NaN)
-    for i in eachindex(projected_pos)
-        projected_pos[i] = ifelse(is_clipped(planes, positions[i]), nan_point, projected_pos[i])
-    end
-    return projected_pos
-end
-
 function tex_linesegments!(plot)
-    # Don't user register_markerspace_position() here so we skip calculating them
+    register_model_clip_planes!(plot.attributes)
+
+    # Don't user register_markerspace_positions() here so we skip calculating them
     # if no linesegments are needed
     map!(
-        plot.attributes, [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
+        plot.attributes,
+        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
         :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes
+    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
-        markerspace_positions = project_text_positions_to_markerspace(preprojection, model_f32c, positions, clip_planes)
+        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
         # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
-            return seg + markerspace_positions[glyph_idx]
+            return seg + markerspace_positions[block_idx]
         end
     end
 
@@ -482,18 +473,48 @@ end
 # - offset always applies in markerspace w/o rotation. Excluding it when positions
 #   are included makes little sense
 
-# TODO: anything per-string should include lines?
-
-function register_markerspace_position!(plot)
-    if !haskey(plot.attributes, :markerspace_positions)
-        map!(
-            project_text_positions_to_markerspace, plot.attributes,
-            [:preprojection, :model_f32c, :positions_transformed_f32c, :clip_planes],
-            :markerspace_positions
-        )
-    end
-    return plot.markerspace_positions
+function register_markerspace_positions!(plot::Text, ::Type{OT} = Point3f; kwargs...) where {OT}
+    # Careful, text uses :text_positions as the input to the transformation pipeline
+    # We can also skip that part:
+    return register_positions_projected!(
+        plot, OT; kwargs...,
+        input_name = :positions_transformed_f32c, output_name = :markerspace_positions,
+        input_space = :space, output_space = :markerspace,
+        apply_model = true, apply_clip_planes = true
+    )
 end
+
+struct PerCharIterator{T}
+    blocks::Vector{UnitRange{Int64}}
+    data::Vector{T}
+    is_per_block::Bool
+end
+function PerCharIterator(blocks, data)
+    return PerCharIterator(blocks, data, length(blocks) == length(data))
+end
+
+function Base.iterate(iter::PerCharIterator, state = (1, 1))
+    char_idx, block_idx = state
+    if block_idx > length(iter.blocks) || char_idx > last(last(iter.blocks))
+        return nothing
+    end
+
+    if iter.is_per_block
+
+        if char_idx in iter.blocks[block_idx]
+            return iter.data[block_idx], (char_idx + 1, block_idx)
+        else
+            return iterate(iter, (char_idx, block_idx + 1))
+        end
+    else
+        return iter.data[char_idx], (char_idx + 1, 0)
+    end
+end
+
+Base.length(iter::PerCharIterator) = last(last(iter.blocks))
+
+
+# TODO: anything per-string should include lines?
 
 function register_raw_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :raw_glyph_boundingboxes)
@@ -546,14 +567,14 @@ fast_glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_fa
 function register_glyph_boundingboxes!(plot)
     if !haskey(plot.attributes, :glyph_boundingboxes)
         register_raw_glyph_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         map!(
             plot.attributes,
-            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :markerspace_positions],
+            [:raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_blocks, :markerspace_positions],
             :glyph_boundingboxes
-        ) do bbs, origins, rotations, positions
+        ) do bbs, origins, rotations, blocks, positions
 
-            return map(bbs, origins, rotations, positions) do bb, o, rotation, position
+            return map(bbs, origins, rotations, PerCharIterator(blocks, positions)) do bb, o, rotation, position
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
                 return rotate_bbox(glyphbb3, rotation) + o + position
             end
@@ -575,6 +596,47 @@ which need to be transformed to `markerspace`.
 glyph_boundingboxes(plot) = register_glyph_boundingboxes!(plot)[]::Vector{Rect3d}
 glyph_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_glyph_boundingboxes!(plot))
 
+# target: rotation aware layouting, e.g. Axis ticks, Menu, ...
+function register_raw_string_boundingboxes!(plot)
+    if !haskey(plot.attributes, :raw_string_boundingboxes)
+        register_raw_glyph_boundingboxes!(plot)
+        # To consider newlines (and word_wrap_width) we need to include origins.
+        # To not include rotation we need to strip it from origins
+        map!(
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices],
+            :raw_string_boundingboxes
+        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+
+            text_bbs = map(blocks) do idxs
+                output = Rect3d()
+                for i in idxs
+                    glyphbb = bbs[i]
+                    glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
+                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    output = update_boundingbox(output, ms_bb)
+                end
+                return output
+            end
+
+            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
+                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            return text_bbs
+        end
+    end
+    return plot.raw_string_boundingboxes
+end
+
+"""
+    raw_string_boundingboxes(plot::Text)
+
+Returns the markerspace string boundingboxes without including `positions` and `offset`.
+Rotation is included. Lines from LaTeXStrings are included.
+"""
+raw_string_boundingboxes(plot) = register_raw_string_boundingboxes!(plot)[]::Vector{Rect3d}
+raw_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_raw_string_boundingboxes!(plot))
 
 # target: rotation aware layouting, e.g. Axis ticks, Menu, ...
 function register_fast_string_boundingboxes!(plot)
@@ -588,7 +650,7 @@ function register_fast_string_boundingboxes!(plot)
         ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
 
             text_bbs = map(blocks) do idxs
-                output = Rect3d()
+                output = Rect3d(Point3d(NaN), Vec3d(0))
                 for i in idxs
                     glyphbb = bbs[i]
                     glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
@@ -623,19 +685,20 @@ fast_string_boundingboxes_obs(plot) = ComputePipeline.get_observable!(register_f
 function register_string_boundingboxes!(plot)
     if !haskey(plot.attributes, :string_boundingboxes)
         register_fast_string_boundingboxes!(plot)
-        register_markerspace_position!(plot)
+        register_markerspace_positions!(plot)
         # project positions to markerspace, add them
         map!(
             plot.attributes,
-            [:text_blocks, :fast_string_boundingboxes, :markerspace_positions],
+            [:fast_string_boundingboxes, :markerspace_positions],
             :string_boundingboxes
-        ) do text_blocks, bbs, positions
+        ) do bbs, positions
 
-            return map(enumerate(text_blocks)) do (i, idxs)
-                if isempty(idxs)
-                    return Rect3d(Point3d(NaN), Vec3d(0))
-                else
-                    return bbs[i] + positions[first(idxs)]
+            return map(bbs, positions) do bb, pos
+                mini = minimum(bb)
+                if isfinite(mini)
+                    return bb + pos
+                else # empty bboxes end up as Rect3d(Point3d(Inf), Vec3d(-Inf))
+                    return Rect3d(pos, Vec3d(0))
                 end
             end
         end
@@ -853,9 +916,11 @@ where both scripts are right-aligned against the following text.
 """
 left_subsup(args...; kwargs...) = RichText(:leftsubsup, args...; kwargs...)
 
-export rich, subscript, superscript, subsup, left_subsup
+Base.:*(x::RichText, y::AbstractString) = rich(x, y)
+Base.:*(x::AbstractString, y::RichText) = rich(x, y)
+Base.:*(x::RichText, y::RichText) = rich(x, y)
 
-convert_attribute(rt::RichText, ::key"text", ::key"text") = [rt]
+export rich, subscript, superscript, subsup, left_subsup
 
 struct GlyphState
     x::Float32

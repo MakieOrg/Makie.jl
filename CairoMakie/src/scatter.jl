@@ -4,7 +4,11 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Scatter)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     cairo_unclipped_indices!(attr)
     Makie.compute_colors!(attr)
-    project_to_markerspace!(attr)
+    Makie.register_positions_projected!(
+        scene.compute, attr, Point3d;
+        input_name = :positions_transformed_f32c, output_name = :positions_in_markerspace,
+        input_space = :space, output_space = :markerspace, apply_clip_planes = false
+    )
     map!(cairo_scatter_marker, attr, :marker, :cairo_marker)
     size_model!(attr)
     if !haskey(attr, :eye_to_clip)
@@ -28,8 +32,12 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     attr = plot.attributes
     # input -> markerspace
     # TODO: We're doing per-string/glyphcollection work per glyph here
-    cairo_unclipped_indices!(attr)
-    project_to_markerspace!(attr)
+    cairo_unclipped_indices!(attr, :per_char_positions_transformed_f32c)
+    Makie.register_positions_projected!(
+        scene.compute, attr, Point3d;
+        input_name = :positions_transformed_f32c, output_name = :positions_in_markerspace,
+        input_space = :space, output_space = :markerspace, apply_clip_planes = false
+    )
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     size_model!(attr)
     if !haskey(attr, :eye_to_clip)
@@ -129,6 +137,8 @@ function draw_text(ctx, attr::NamedTuple)
     for (block_idx, glyph_indices) in enumerate(text_blocks)
         Cairo.save(ctx)  # Block save
 
+        glyph_pos = positions[block_idx]
+
         for glyph_idx in glyph_indices
             glyph_idx in valid_indices || continue
 
@@ -140,8 +150,6 @@ function draw_text(ctx, attr::NamedTuple)
             strokewidth = Makie.sv_getindex(text_strokewidth, glyph_idx)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
             scale = Makie.sv_getindex(text_scales, glyph_idx)
-
-            glyph_pos = positions[glyph_idx]
 
             # Not renderable by font (e.g. '\n')
             glyph == 0 && continue
@@ -185,10 +193,10 @@ function draw_text(ctx, attr::NamedTuple)
     return
 end
 
-function cairo_unclipped_indices!(attr::Makie.ComputeGraph)
+function cairo_unclipped_indices!(attr::Makie.ComputeGraph, position_name = :positions_transformed_f32c)
     return Makie.register_computation!(
         attr,
-        [:positions_transformed_f32c, :model_f32c, :space, :clip_planes],
+        [position_name, :model_f32c, :space, :clip_planes],
         [:unclipped_indices]
     ) do (transformed, model, space, clip_planes), changed, outputs
         return (unclipped_indices(to_model_space(model, clip_planes), transformed, space),)
@@ -249,13 +257,6 @@ function project_flipped(trans::Mat4, res, point::Union{Point3, Vec3}, yflip::Bo
     p_0_to_1 = (p_yflip .+ 1.0) ./ 2.0
     # multiply with scene resolution for final position
     return p_0_to_1 .* res
-end
-
-function project_to_markerspace!(attr)
-    return map!(attr, [:preprojection, :model_f32c, :positions_transformed_f32c], :positions_in_markerspace) do prepro, model, positions
-        mat = prepro * model
-        return project_position(Point3d, mat, positions, eachindex(positions))
-    end
 end
 
 function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)

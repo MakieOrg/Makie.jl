@@ -75,11 +75,29 @@ vec4 to_color(vec4 c) {
     return c;
 }
 
+vec3 finite_sign(vec3 v)
+{
+    return vec3(
+        2.0 * float(v[0] >= 0.0) - 1.0,
+        2.0 * float(v[1] >= 0.0) - 1.0,
+        2.0 * float(v[2] >= 0.0) - 1.0
+    );
+}
+
+vec3 finite_div(vec3 v, vec3 d)
+{
+    // sign(0) = 0
+    vec3 df = finite_sign(d) * max(abs(d), 0.0000001);
+    return v / df;
+}
+
 void main(){
     // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = get_markersize() * to_vec3(get_position());
-    vec3 N = get_normal() / get_markersize(); // see issue #3702
+    vec3 vertex_position = get_markersize() * to_vec3(get_vertex_position());
+    // needed for uneven scales, see issue #3702
+    // can't divide by zero though
+    vec3 N = finite_div(get_normal(), get_markersize());
     rotate(get_converted_rotation(), vertex_position, N);
     vertex_position = get_f32c_scale() * vertex_position;
     N = N / get_f32c_scale();

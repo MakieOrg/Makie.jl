@@ -119,6 +119,8 @@ plottype(::Polygon) = Poly
 plottype(::GeometryBasics.AbstractPolygon) = Poly
 plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
+plottype(::AbstractVector{<:MultiPoint}) = Scatter
+plottype(::MultiPoint) = Scatter
 
 
 clip_planes_obs(parent::AbstractPlot) = attributes(parent).clip_planes
