@@ -1083,7 +1083,7 @@ end
 function calculated_attributes!(::Type{Lines}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr)
-    map!(identity, attr, :linewidth, :uniform_linewidth)
+    ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
     return calculated_attributes!(PointBased(), plot)
 end
 

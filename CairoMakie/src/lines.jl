@@ -78,7 +78,7 @@ function add_projected_line_points!(attr)
         end
     end
     Makie.add_computation!(attr, Val(:uniform_clip_planes), :clip)
-    inputs = [:clipspace_points, :computed_color, :linewidth, :is_lines_plot, :uniform_clip_planes, :resolution]
+    inputs = [:clipspace_points, :computed_color, :uniform_linewidth, :is_lines_plot, :uniform_clip_planes, :resolution]
     outputs = [:clipped_points, :clipped_colors, :clipped_linewidths]
     return register_computation!(attr, inputs, outputs) do (clip_points, colors, linewidths, is_lines_plot, clip_planes, res), _, _
         return clip_line_points(clip_points, colors, linewidths, is_lines_plot, clip_planes, res)
