@@ -61,7 +61,6 @@ function ComputePipeline.add_input!(
         keys::Tuple, values::Attributes
     )
     for (child_key, child_value) in values
-        @info "$keys + $child_key -> $child_value"
         add_input!(conversion_func, attr, (keys..., child_key), child_value)
     end
     return attr[first(keys)]
