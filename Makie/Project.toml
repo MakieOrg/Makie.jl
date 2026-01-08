@@ -72,6 +72,7 @@ DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
+Agents = "1, 2, 3, 4, 5, 6"  # Allow all Agents versions to work around transitive dependency constraints
 Animations = "0.4"
 Base64 = "1.0, 1.6"
 CRC32c = "1.0, 1.6"
