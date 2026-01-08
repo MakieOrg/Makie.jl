@@ -23,8 +23,50 @@ function ComputePipeline.add_input!(
     return x
 end
 
-ComputePipeline.add_input!(f, p::Plot, args...; kwargs...) = add_input!(f, p.attributes, args...; kwargs...)
-ComputePipeline.add_input!(p::Plot, args...; kwargs...) = add_input!(p.attributes, args...; kwargs...)
+function ComputePipeline.add_input!(
+        attr::ComputePipeline.ComputeGraph, key::Symbol, values::Attributes
+    )
+    if key === :fonts
+        return ComputePipeline._add_input!(identity, attr, key, values)
+    else
+        return add_input!(attr, (key,), values)
+    end
+end
+
+function ComputePipeline.add_input!(
+        attr::ComputePipeline.ComputeGraph, keys::Tuple, values::Attributes
+    )
+    for (child_key, child_value) in values
+        add_input!(attr, (keys..., child_key), child_value)
+    end
+    return attr[first(keys)]
+end
+
+function ComputePipeline.add_input!(
+        conversion_func, attr::ComputePipeline.ComputeGraph,
+        key::Symbol, values::Attributes
+    )
+    if key === :fonts
+        return ComputePipeline._add_input!(
+            ComputePipeline.InputFunctionWrapper(key, conversion_func),
+            attr, key, values
+        )
+    else
+        return add_input!(conversion_func, attr, (key,), values)
+    end
+end
+
+function ComputePipeline.add_input!(
+        conversion_func, attr::ComputePipeline.ComputeGraph,
+        keys::Tuple, values::Attributes
+    )
+    for (child_key, child_value) in values
+        @info "$keys + $child_key -> $child_value"
+        add_input!(conversion_func, attr, (keys..., child_key), child_value)
+    end
+    return attr[first(keys)]
+end
+
 
 Base.haskey(x::Plot, key) = haskey(x.attributes, key)
 Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
@@ -736,49 +778,58 @@ function (cc::CycleConvert)(value)
     end
 end
 
-function get_next_cycle_index(scene, name)
-    lookup = scene.compute[:cycle_counters][]::Dict{Symbol, Int}
-    cycle_index = get(lookup, name, 0) + 1
-    lookup[name] = cycle_index
-    return cycle_index
-end
-
-function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
-    # So far we have set attributes based on the plot defaults and keyword
-    # arguments. In this function we now resolve `@inherit`ed attributes and
-    # apply `theme[plotsym(T)]` if it exists.
-
-    attr = documented_attributes(T)
-    name = plotsym(T)
-
-    # Handle cycling
-    if has_flat_key(attr, :cycle)
-        # This will increment the scenes cycle counter for this plot type (plotsym)
-        # when the first CycleConvert uses it. After that it will just grab the
-        # cached cycle index.
-        map!(() -> get_next_cycle_index(scene, name), graph, Symbol[], :cycle_index)
-
-        if !haskey(user_kw, :cycle)
-            _cycle = to_value(lookup_default(attr, scene, name, NamedTuple(), :cycle))
-            graph.cycle = _cycle
-        end
-    else
-        add_constant!(graph, :cycle_index, 0)
-        graph.cycle = Cycle([])
+function add_theme_inner!(updates, key, attr::Attributes, kw, gattr, plot_scene_theme, scene_theme)
+    if key === :fonts
+        push!(updates, Pair{Symbol, Any}(key, attr))
+        return
     end
 
-    cycle = graph.cycle[]::Cycle
+    for (k, v) in attr
+        merged = Symbol(key, :(.), k)
+        add_theme_inner!(updates, merged, v, kw, gattr, plot_scene_theme, scene_theme)
+    end
+    return
+end
 
-    # Because we only adjust the callbacks of inputs that are in Cycle at this
-    # point in time, adding more attributes to cycle after creating the plot does
-    # not work. Adjusting which palettes are used for each attribute works though
-    for name in attrsyms(cycle)
-        # Should passthroughs be able to cycle?
-        # (i.e. should we change graph[name].parent instead?)
-        if haskey(graph.inputs, name)
-            input = graph.inputs[name]
-            input.f = CycleConvert(input.f, scene.theme.palette, graph, name)
+function add_theme_inner!(updates, key, v, kw, gattr, plot_scene_theme, scene_theme)
+    # attributes from user (kw), are already set
+    if !haskey(kw, key)
+        # dont set theme values for cycled attributes
+        if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], key)
+            return
         end
+        val = if haskey(plot_scene_theme, key)
+            to_value(plot_scene_theme[key])
+        elseif v isa Observable
+            v[]
+        elseif v isa Attributes
+            v
+        elseif v.default_value isa Inherit
+            default = v.default_value
+            if haskey(scene_theme, default.key)
+                to_value(scene_theme[default.key])
+            elseif !isnothing(default.fallback)
+                default.fallback
+            else
+                error("No fallback + theme for $(key)")
+            end
+        else
+            return
+            #  v.default_value  is not a Inherit, so the value should already be set
+        end
+        push!(updates, Pair{Symbol, Any}(key, val))
+    end
+    return
+end
+
+function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
+    plot_attr = plot_attributes(scene, T)
+    scene_theme = theme(scene)
+    plot_scene_theme = get(scene_theme, plotsym(T), (;))
+
+    updates = Pair{Symbol, Any}[]
+    for (k, v) in plot_attr
+        add_theme_inner!(updates, k, v, kw, gattr, plot_scene_theme, scene_theme)
     end
 
     exclude = Set{Symbol}([:transformation, :model, :transform_func])
@@ -953,7 +1004,11 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     # Used to add things like `label` for Legend
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)
-            add_input!(plot.attributes, k, v)
+            if haskey(documented_attr, k)
+                error("User Attribute $k did not get registered.")
+            else
+                add_input!(plot.attributes, k, v)
+            end
         end
     end
 
