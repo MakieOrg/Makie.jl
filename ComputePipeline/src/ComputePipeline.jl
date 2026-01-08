@@ -697,6 +697,10 @@ function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     return getindex(attr, key)
 end
 
+function Base.getindex(attr::ComputeGraphView, key1::Symbol, key2::Symbol, keys::Symbol...)
+    return getindex(getindex(attr, key1), key2, keys...)
+end
+
 function Base.getindex(attr::ComputeGraphView, key::Symbol)
     temp_result = attr.nested_trace[key]
     if isfinal(temp_result)
@@ -704,6 +708,31 @@ function Base.getindex(attr::ComputeGraphView, key::Symbol)
         return attr.parent.outputs[merged]
     else
         return ComputeGraphView(attr.parent, temp_result)
+    end
+end
+
+function Base.setproperty!(attr::ComputeGraphView, key::Symbol, value)
+    temp_result = attr.nested_trace[key]
+    merged = merged_key(temp_result)
+    if isfinal(temp_result)
+        setproperty!(attr.parent, merged, value)
+    else
+        error("Can't set $merged as it is an incomplete path to a compute node.")
+    end
+    return
+end
+
+function Base.setindex!(attr::ComputeGraphView, value, key1::Symbol, key2::Symbol, keys::Symbol...)
+    return setindex!(getindex(attr, key1), value, key2, keys...)
+end
+
+function Base.setindex!(attr::ComputeGraphView, value, key::Symbol)
+    temp_result = attr.nested_trace[key]
+    if isfinal(temp_result)
+        merged = merged_key(temp_result)
+        return setindex!(attr.parent[merged], value)
+    else
+        error("Can't set $merged as it is an incomplete path to a compute node.")
     end
 end
 
