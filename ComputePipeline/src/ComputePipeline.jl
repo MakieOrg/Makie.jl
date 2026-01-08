@@ -833,41 +833,15 @@ add_input!(graph, :first_node, 1)
 add_input!((k, v) -> Float32(v), graph, :second_node, 2)
 ```
 """
-function add_input!(attr::ComputeGraph, args...)
-    key, value = check_and_merge_input_args(attr, args)
-    return _add_input!(identity, attr, key, value)
+add_input!(attr::ComputeGraph, args...) = add_input!(attr, Base.front(args), last(args))
+
+# overwrite for values that generate further nesting
+function add_input!(attr::ComputeGraph, keys::Tuple, value)
+    key = handle_nested_keys(attr, keys)
+    return add_input!(attr, key, value)
 end
 
-function check_and_merge_input_args(attr::ComputeGraph, args::Tuple)
-    if length(args) < 2
-        throw(
-            ArgumentError(
-                "`add_input!([callback], attr, names..., value)` requires at least one name and one value."
-            )
-        )
-    end
-
-    names = Base.front(args)
-    value = last(args)
-
-    if !all(name -> name isa Symbol, names)
-        first_bad = findfirst(name -> !isa(name, Symbol), names)
-        throw(
-            ArgumentError(
-                "`add_input!([callback], attr, names..., value) requires all names to be Symbols, " *
-                "but name $(first_bad) is a $(typeof(names[first_bad]))."
-            )
-        )
-    end
-
-    if length(names) == 1
-        return only(names), value
-    else
-        add_key!(attr.nesting, names)
-        merged_name = reduce((a, b) -> Symbol(a, :(.), b), names)
-        return merged_name, value
-    end
-end
+add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
 
 # For cleaner printing and error tracking we do not use an anonymous function
 #   value -> conversion_function(key, value)
@@ -882,8 +856,45 @@ end
 (x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1]),)
 
 function add_input!(conversion_func, attr::ComputeGraph, args...)
-    key, value = check_and_merge_input_args(attr, args)
-    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+    return add_input!(conversion_func, attr, Base.front(args), last(args))
+end
+
+function add_input!(conversion_func, attr::ComputeGraph, keys::Tuple, value)
+    key = handle_nested_keys(attr, keys)
+    return add_input!(conversion_func, attr, key, value)
+end
+
+function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
+    return _add_input!(
+        InputFunctionWrapper(key, conversion_func), attr, key, value
+    )
+end
+
+function handle_nested_keys(attr::ComputeGraph, names::Tuple)
+    if isempty(names)
+        throw(
+            ArgumentError(
+                "`add_input!([callback], attr, names..., value)` requires at least one name and one value."
+            )
+        )
+    end
+
+    if !all(name -> name isa Symbol, names)
+        first_bad = findfirst(name -> !isa(name, Symbol), names)
+        throw(
+            ArgumentError(
+                "`add_input!([callback], attr, names..., value) requires all names to be Symbols, " *
+                "but name $(first_bad) is a $(typeof(names[first_bad]))."
+            )
+        )
+    end
+
+    if length(names) == 1
+        return only(names)
+    else
+        add_key!(attr.nesting, names)
+        return merged_key(names)
+    end
 end
 
 function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
