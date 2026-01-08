@@ -269,6 +269,7 @@ end
 isfinal(temp::TemporarySearchResult) = temp.next_index == -1
 
 merged_key(temp::TemporarySearchResult) = merged_key(temp.keys)
+merged_key(keys::Symbol...) = merged_key(keys)
 merged_key(keys::Tuple{Symbol}) = keys[1]
 merged_key(keys::Tuple{Symbol, Vararg{Symbol}}) = reduce((a, b) -> Symbol(a, :(.), b), keys)
 function merged_key(keys::Vector{Symbol})
@@ -630,7 +631,9 @@ function _update!(attr::ComputeGraph, values)
     end
 end
 
-Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key)
+function Base.haskey(attr::ComputeGraph, key::Symbol)
+    return haskey(attr.outputs, key) || haskey(attr.nesting.keytables[1], key)
+end
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
@@ -672,6 +675,12 @@ function Base.show(io::IO, view::ComputeGraphView)
     end
 
     return
+end
+
+function Base.keys(view::ComputeGraphView)
+    trace = view.nested_trace
+    level = trace.next_index
+    return keys(trace.parent.keytables[level])
 end
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
