@@ -241,10 +241,10 @@ function draw_axis3d(plot)
     end
 
     map!(attr, [:padded_limits, attr.ticks.fontsize], :tickfontsize) do lims, fontsize
-        return 0.01 * widths(lims) .* fontsize
+        return 0.01 * minimum(widths(lims)) .* fontsize
     end
     map!(attr, [:padded_limits, attr.names.fontsize], :axisnames_fontsize) do lims, fontsize
-        return 0.01 * widths(lims) .* fontsize
+        return 0.01 * minimum(widths(lims)) .* fontsize
     end
 
     N = 3
