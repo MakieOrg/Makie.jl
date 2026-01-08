@@ -256,12 +256,12 @@ function Base.getindex(tree::NestedSearchTree, key::Symbol)
 end
 
 function Base.getindex(temp::TemporarySearchResult, key::Symbol)
-    push!(temp.keys, key)
+    new_keys = [temp.keys..., key]
     if has_key_in_level(temp.parent, temp.next_index, key)
         next = temp.parent.keytables[temp.next_index][key]
-        return TemporarySearchResult(temp.parent, temp.keys, next)
+        return TemporarySearchResult(temp.parent, new_keys, next)
     else
-        merged = merged_key(temp)
+        merged = merged_key(new_keys)
         throw(KeyError(merged))
     end
 end
