@@ -196,13 +196,14 @@ a_length(x::AbstractVector) = length(x)
 a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<:Axis3D}, plot)
-    ticks = plot.ticks[]
-    args = (plot[1], ticks.ranges, ticks.labels, ticks.formatter)
-    ticks[:ranges_labels] = lift(args...) do lims, ranges, labels, formatter
+    ticks = plot.ticks
+    # TODO: Should this look at ranges_labels? Or should those be removed?
+    args = [plot[1], ticks.ranges, ticks.labels, ticks.formatter]
+    map!(plot.attributes, args, [:ranges, :labels]) do lims, ranges, labels, formatter
         num_ticks = labels === automatic ? automatic : a_length.(labels)
         ranges = default_ticks(ranges, lims, num_ticks)
         labels = default_labels(labels, ranges, formatter)
-        (ranges, labels)
+        return ranges, labels
     end
     return
 end
@@ -223,129 +224,184 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i -> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts, args...)
-    # make sure we extend all args to 3D
-    ranges, ticklabels = ranges_labels
-    args3d = to3tuple.(args)
-    (
-        showaxis, showticks, showgrid,
-        axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
-        axisnames_font, titlegap,
-        gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, tfontsize, talign, tfont, tgap,
-        padding,
-    ) = args3d # splat to names
+function draw_axis3d(plot)
+    attr = plot.attributes::ComputeGraph
+    ComputePipeline.alias!(attr, :converted_1, :limits)
+
+    map!(attr, [:limits, :padding], :padded_widths) do lim, padding
+        return padding .* (last.(lim) .- first.(lim))
+    end
+    map!(attr, [:limits, :ranges, :padding], :padded_limits) do lim, ranges, padding
+        mini = first.(lim)
+        maxi = last.(lim)
+        pad = padding .* (maxi .- mini)
+        mini = min.(mini .- pad, first.(ranges))
+        maxi = max.(maxi .+ pad, last.(ranges))
+        return Rect3f(mini, maxi .- mini)
+    end
+
+    map!(attr, [:padded_limits, attr.ticks.fontsize], :tickfontsize) do lims, fontsize
+        return 0.01 * widths(lims) .* fontsize
+    end
+    map!(attr, [:padded_limits, attr.names.fontsize], :axisnames_fontsize) do lims, fontsize
+        return 0.01 * widths(lims) .* fontsize
+    end
 
     N = 3
-    start!(textbuffer)
-    start!(linebuffer)
-
-    limit_widths = map(x -> x[2] - x[1], limits)
-    # pad the drawn limits and use them as the ranges
-    limits = map((lim, p) -> (lim[1] - p, lim[2] + p), limits, limit_widths .* padding)
-
-    mini, maxi = first.(limits), last.(limits)
-
-    origin = Point{N, Float32}(min.(mini, first.(ranges)))
-    limit_widths = max.(last.(ranges), maxi) .- origin
-    % = minimum(limit_widths) / 100 # percentage
-    tfontsize = (%) .* tfontsize
-    axisnames_size = (%) .* axisnames_size
+    offset_indices = Vec(ntuple(i -> ifelse(i != 2, mod1(i + 1, N), 1), N))
 
     # index of the direction in which ticks and labels are drawn
-    offset_indices = Vec(ntuple(i -> ifelse(i != 2, mod1(i + 1, N), 1), N))
     # These need the real limits, not (%), to be scale-aware
-    titlegap = 0.01limit_widths[offset_indices] .* titlegap
-    tgap = 0.01limit_widths[offset_indices] .* tgap
+    map!(attr, [:padded_limits, attr.names.gap], :titlegap) do lims, gap
+        return 0.01 * widths(lims)[offset_indices] .* gap
+    end
+    map!(attr, [:padded_limits, attr.ticks.gap], :tickgap) do lims, gap
+        return 0.01 * widths(lims)[offset_indices] .* gap
+    end
 
-    for i in 1:N
-        axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
-        width = Float32(limit_widths[i])
-        stop = origin .+ (width .* axis_vec)
-        if showaxis[i]
-            append!(linebuffer, [origin, stop], color = axiscolors[i], linewidth = axislinewidth[i])
+    add_input!(attr, :scene_scale, scale(parent_scene(plot)))
+
+    map!(
+        attr,
+        [
+            :padded_limits, :showticks, :ranges, :tickgap, :labels, attr.names.axisnames,
+            :fonts, attr.ticks.font, :tickfontsize, :titlegap, attr.ticks.textcolor,
+            attr.ticks.rotation, attr.ticks.align,
+            :axisnames_fontsize, attr.names.textcolor, attr.names.rotation,
+            attr.names.align, attr.names.font, :scene_scale
+        ],
+        [:text_positions, :text_strings, :text_color, :text_rotation, :text_fontsize, :text_align, :text_font]
+    ) do lims, showticks, ranges, tgap, ticklabels, axisnames, fonts, tfont,
+        tfontsize, titlegap, ttextcolor, trotation, talign,
+        axisnames_size, axisnames_color, axisrotation, axisalign, axisnames_font, scale
+
+        positionbuffer = Point3f[]
+        textbuffer = String[]
+        color = RGBAf[]
+        rotation = Quaternionf[]
+        fontsize = Float32[]
+        align = Tuple{Symbol, Symbol}[]
+        font_buffer = FTFont[]
+
+        origin = minimum(lims)
+        limit_widths = widths(lims)
+
+        for i in 1:N
+            axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
+            width = Float32(limit_widths[i])
+            if showticks[i]
+                range = ranges[i]
+                j = offset_indices[i]
+                tickdir = GeometryBasics.unit(Vec{N, Float32}, j)
+                offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
+                for (j, tick) in enumerate(range)
+                    labels = ticklabels[i]
+                    if length(labels) >= j
+                        str = labels[j]
+                        if !isempty(str)
+                            startpos = (origin .+ ((Float32(tick - origin[i]) * axis_vec)) .+ offset2)
+                            push!(textbuffer, str)
+                            push!(positionbuffer, startpos)
+                            push!(color, to_color(ttextcolor[i]))
+                            push!(rotation, trotation[i])
+                            push!(fontsize, tfontsize[i])
+                            push!(align, talign[i])
+                            push!(font_buffer, to_font(fonts, tfont[i]))
+                        end
+                    end
+                end
+
+                if !isempty(axisnames[i])
+                    font = to_font(fonts, tfont[i])
+                    tick_widths = maximum(ticklabels[i]) do label
+                        widths(text_bb(label, font, tfontsize[i]))[1]
+                    end / scale[j]
+                    pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
+                    push!(textbuffer, UnicodeFun.to_latex(axisnames[i]))
+                    push!(positionbuffer, pos)
+                    push!(fontsize, axisnames_size[i])
+                    push!(color, to_color(axisnames_color[i]))
+                    push!(rotation, axisrotation[i])
+                    push!(align, axisalign[i])
+                    push!(font_buffer, to_font(fonts, axisnames_font[i]))
+                end
+            end
         end
-        if showticks[i]
-            range = ranges[i]
-            j = offset_indices[i]
-            tickdir = GeometryBasics.unit(Vec{N, Float32}, j)
-            offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
-            for (j, tick) in enumerate(range)
-                labels = ticklabels[i]
-                if length(labels) >= j
-                    str = labels[j]
-                    if !isempty(str)
-                        startpos = (origin .+ ((Float32(tick - origin[i]) * axis_vec)) .+ offset2)
-                        push!(
-                            textbuffer, str, startpos,
-                            color = ttextcolor[i], rotation = trotation[i],
-                            fontsize = tfontsize[i], align = talign[i], font = tfont[i]
-                        )
+
+        return positionbuffer, textbuffer, color, rotation, fontsize, align, font_buffer
+    end
+
+    text!(
+        plot, plot.text_positions, text = plot.text_strings, color = plot.text_color,
+        rotation = plot.text_rotation, fontsize = plot.text_fontsize,
+        align = plot.text_align, font = plot.text_font,
+        transparency = true, markerspace = :data, inspectable = plot.inspectable,
+        visible = plot.visible
+    )
+
+    # TODO: linesegments
+    map!(
+        attr,
+        [
+            :padded_limits, :showaxis, :showgrid, :ranges,
+            attr.frame.axiscolor, attr.frame.axislinewidth,
+            attr.frame.linecolor, attr.frame.linewidth
+        ],
+        [:line_positions, :line_colors, :line_widths]
+    ) do lims, showaxis, showgrid, ranges, axiscolors, axislinewidth, gridcolors, gridthickness
+
+        limit_widths = widths(lims)
+        origin = minimum(lims)
+
+        position_buffer = Point3f[]
+        color = RGBAf[]
+        linewidth = Float32[]
+
+        for i in 1:N
+            axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
+            width = Float32(limit_widths[i])
+            stop = origin .+ (width .* axis_vec)
+
+            if showaxis[i]
+                push!(position_buffer, origin, stop)
+                push!(color, to_color(axiscolors[i]))
+                push!(linewidth, axislinewidth[i])
+            end
+
+            if showgrid[i]
+                c = gridcolors[i]
+                thickness = gridthickness[i]
+                for _j in (i + 1):(i + N - 1)
+                    j = mod1(_j, N)
+                    dir = GeometryBasics.unit(Point{N, Float32}, j)
+                    range = ranges[j]
+                    for tick in range
+                        offset = Float32(tick - origin[j]) * dir
+                        push!(position_buffer, origin .+ offset, stop .+ offset)
+                        push!(color, to_color(c))
+                        push!(linewidth, thickness)
                     end
                 end
             end
-            if !isempty(axisnames[i])
-                font = to_font(fonts[], tfont[i])
-                tick_widths = maximum(ticklabels[i]) do label
-                    widths(text_bb(label, font, tfontsize[i]))[1]
-                end / scale[j]
-                pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
-                push!(
-                    textbuffer, UnicodeFun.to_latex(axisnames[i]), pos;
-                    fontsize = axisnames_size[i], color = axisnames_color[i],
-                    rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
-                )
-            end
         end
-        if showgrid[i]
-            c = gridcolors[i]
-            thickness = gridthickness[i]
-            for _j in (i + 1):(i + N - 1)
-                j = mod1(_j, N)
-                dir = GeometryBasics.unit(Point{N, Float32}, j)
-                range = ranges[j]
-                for tick in range
-                    offset = Float32(tick - origin[j]) * dir
-                    append!(
-                        linebuffer, [origin .+ offset, stop .+ offset],
-                        color = c, linewidth = thickness
-                    )
-                end
-            end
-        end
-        finish!(textbuffer); finish!(linebuffer)
+
+        return position_buffer, color, linewidth
     end
+
+    linesegments!(
+        plot, plot.line_positions, color = plot.line_colors, linewidth = plot.line_widths,
+        transparency = true, inspectable = plot.inspectable, visible = plot.visible
+    )
     return
 end
 
 function plot!(axis::Axis3D)
-    scene = get_scene(axis)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(
-        axis, Point3, transparency = true, markerspace = :data,
-        inspectable = axis.inspectable, visible = axis.visible
-    )
-    linebuffer = LinesegmentBuffer(
-        axis, Point3, transparency = true, inspectable = axis.inspectable,
-        visible = axis.visible
-    )
-
-    tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
-    titlevals = getindex.(tstyle, (:axisnames, :textcolor, :fontsize, :rotation, :align, :font, :gap))
-    framevals = getindex.(frame, (:linecolor, :linewidth, :axislinewidth, :axiscolor))
-    tvals = getindex.((ticks,), (:textcolor, :rotation, :fontsize, :align, :font, :gap))
-    args = (
-        getindex.(axis, (:showaxis, :showticks, :showgrid))...,
-        titlevals..., framevals..., tvals..., axis.padding,
-    )
-    onany(
-        draw_axis3d,
-        Observable(textbuffer), Observable(linebuffer), scale(scene),
-        axis[1], axis.ticks[].ranges_labels, Observable(axis.fonts), args...; update = true
-    )
+    draw_axis3d(axis)
     return axis
 end
+
 
 function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
     return axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
