@@ -224,6 +224,14 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i -> x, Val(3))
 
+"""
+    svtuple_getindex(x, idx)
+
+Like `sv_getindex(x, idx)` but treats tuples as an indexable collection.
+"""
+svtuple_getindex(x::Tuple, idx) = x[idx]
+svtuple_getindex(x, idx) = sv_getindex(x, idx)
+
 function draw_axis3d(plot)
     attr = plot.attributes::ComputeGraph
     ComputePipeline.alias!(attr, :converted_1, :limits)
@@ -241,10 +249,10 @@ function draw_axis3d(plot)
     end
 
     map!(attr, [:padded_limits, attr.ticks.fontsize], :tickfontsize) do lims, fontsize
-        return 0.01 * minimum(widths(lims)) .* fontsize
+        return to3tuple(0.01 * minimum(widths(lims)) .* fontsize)
     end
     map!(attr, [:padded_limits, attr.names.fontsize], :axisnames_fontsize) do lims, fontsize
-        return 0.01 * minimum(widths(lims)) .* fontsize
+        return to3tuple(0.01 * minimum(widths(lims)) .* fontsize)
     end
 
     N = 3
@@ -302,11 +310,11 @@ function draw_axis3d(plot)
                             startpos = (origin .+ ((Float32(tick - origin[i]) * axis_vec)) .+ offset2)
                             push!(textbuffer, str)
                             push!(positionbuffer, startpos)
-                            push!(color, to_color(ttextcolor[i]))
-                            push!(rotation, trotation[i])
-                            push!(fontsize, tfontsize[i])
-                            push!(align, talign[i])
-                            push!(font_buffer, to_font(fonts, tfont[i]))
+                            push!(color, to_color(svtuple_getindex(ttextcolor, i)))
+                            push!(rotation, svtuple_getindex(trotation, i))
+                            push!(fontsize, svtuple_getindex(tfontsize, i))
+                            push!(align, svtuple_getindex(talign, i))
+                            push!(font_buffer, to_font(fonts, svtuple_getindex(tfont, i)))
                         end
                     end
                 end
@@ -319,11 +327,11 @@ function draw_axis3d(plot)
                     pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                     push!(textbuffer, UnicodeFun.to_latex(axisnames[i]))
                     push!(positionbuffer, pos)
-                    push!(fontsize, axisnames_size[i])
-                    push!(color, to_color(axisnames_color[i]))
-                    push!(rotation, axisrotation[i])
-                    push!(align, axisalign[i])
-                    push!(font_buffer, to_font(fonts, axisnames_font[i]))
+                    push!(fontsize, svtuple_getindex(axisnames_size, i))
+                    push!(color, to_color(svtuple_getindex(axisnames_color, i)))
+                    push!(rotation, svtuple_getindex(axisrotation, i))
+                    push!(align, svtuple_getindex(axisalign, i))
+                    push!(font_buffer, to_font(fonts, svtuple_getindex(axisnames_font, i)))
                 end
             end
         end
@@ -364,8 +372,8 @@ function draw_axis3d(plot)
 
             if showaxis[i]
                 push!(position_buffer, origin, stop)
-                push!(color, to_color(axiscolors[i]))
-                push!(linewidth, axislinewidth[i])
+                push!(color, to_color(svtuple_getindex(axiscolors, i)))
+                push!(linewidth, svtuple_getindex(axislinewidth, i))
             end
 
             if showgrid[i]
