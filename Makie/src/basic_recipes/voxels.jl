@@ -276,7 +276,7 @@ end
 
 function voxel_positions(p::Voxels)
     mini, maxi = extrema(data_limits(p))
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
@@ -287,7 +287,7 @@ function voxel_positions(p::Voxels)
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     uv_map = p.uvmap[]
     if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"
