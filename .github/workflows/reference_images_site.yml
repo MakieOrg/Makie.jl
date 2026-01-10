@@ -44,7 +44,7 @@ jobs:
 
       - name: Download ReferenceImages artifact
         if: steps.pr_number.outputs.pr != ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ReferenceImages
           path: ./reference_images_data
@@ -52,7 +52,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Install Julia dependencies
-        shell: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
       - name: Build static site
         if: steps.pr_number.outputs.pr != ''
         env:

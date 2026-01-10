@@ -2337,6 +2337,27 @@ end
     st
 end
 
+@reference_test "arrows2d z-order" begin
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+
+    # arrow 1 (column 1) should be plotted semi-transparently over arrow 2, but will be
+    # rendered first if z-order is not used; arrow 3 for comparison of intended outcome
+    x = [0.0, +0.5, 0.0]; u = [1.0, 0.0, 1.0]
+    y = [0.0, -0.5, 0.3]; v = [0.0, 1.0, 0.0]
+    z = [0.0, -1.0, 1.0]; w = [0.0, 0.0, 2.0]
+    colors = [(:red, 0.5), :blue, (:red, 0.5)]
+    tipclr = [:green, :yellow, :violet]
+    pl = arrows2d!(
+        ax, x, y, z, u, v, w;
+        color = colors, tipcolor = tipclr, tailcolor = :black,
+        strokemask = 0, shaftwidth = 20,
+        tipwidth = 56, tailwidth = 56,
+        tiplength = 32, taillength = 32,
+    )
+    fig
+end
+
 # Adjusted from 2d version
 @reference_test "arrows3d updates" begin
     grad_func(p) = 0.2 * p .- 0.01 * p .^ 3
