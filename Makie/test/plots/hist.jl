@@ -13,6 +13,9 @@
     @test_nowarn hist(v)
     # change to unequal vector
     @test_nowarn v[] = unequal_vec
+
+    f,a,p = hist(1:10, bins = [0.5, 2.5, 10.5])
+    @test p.plots[1].width[] == [2.0, 8.0]
 end
 
 @testset "Empty histogram" begin

@@ -248,7 +248,7 @@ function plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     barplot!(
-        plot, Attributes(plot), plot.points;
+        plot, Attributes(plot), plot.points; width = plot.widths,
         bar_labels = plot.computed_bar_labels, color = plot.computed_colors,
         stack = plot.bar_stack, dodge = plot.bar_dodge
     )
