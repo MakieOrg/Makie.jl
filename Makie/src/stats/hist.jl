@@ -237,8 +237,8 @@ function plot!(plot::Hist)
         # each group is equally sized, so each group uses the same widths/edges
         N = first(grouplengths)
         resize!(widths, length(grouplengths) * N)
-        for i in 1:length(grouplengths)-1
-            @views copyto!(widths[N * i + 1 : N * (i + 1)], widths[1:N])
+        for i in 1:(length(grouplengths) - 1)
+            @views copyto!(widths[(N * i + 1):(N * (i + 1))], widths[1:N])
         end
         return widths
 
