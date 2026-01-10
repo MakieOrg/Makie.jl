@@ -134,8 +134,8 @@ Plot a histogram of `values`.
 end
 
 function pick_hist_edges(vals, bins)
-    isempty(vals) && return 1.0:0.0
     if bins isa Int
+        isempty(vals) && return 1.0:0.0
         mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
@@ -224,7 +224,25 @@ function plot!(plot::Hist)
         end
     end
 
-    map!(diff, plot, :edges, :widths)
+    map!(plot, [:grouplengths, :edges], :widths) do grouplengths, edges
+        widths = diff(edges)
+
+        # empty input compat || no stacking/dodging
+        if isempty(widths) || isnothing(grouplengths)
+            return widths
+        end
+
+        # Without filtering each group is the same size, with one element/position
+        # per bin. To allow widths to work with stack/dodge groups, we just need
+        # to copy the widths for each group.
+        # With filtering we'd need to match the correct widths and positions
+        N = first(grouplengths)
+        resize!(widths, length(grouplengths) * N)
+        for i in 1:(length(grouplengths) - 1)
+            @views copyto!(widths[(N * i + 1):(N * (i + 1))], widths[1:N])
+        end
+        return widths
+    end
 
     map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
         if color === :values
@@ -248,7 +266,7 @@ function plot!(plot::Hist)
 
     # plot the values, not the observables, to be in control of updating
     barplot!(
-        plot, Attributes(plot), plot.points;
+        plot, Attributes(plot), plot.points; width = plot.widths,
         bar_labels = plot.computed_bar_labels, color = plot.computed_colors,
         stack = plot.bar_stack, dodge = plot.bar_dodge
     )
