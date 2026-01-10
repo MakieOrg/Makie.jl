@@ -134,8 +134,8 @@ Plot a histogram of `values`.
 end
 
 function pick_hist_edges(vals, bins)
-    isempty(vals) && return 1.0:0.0
     if bins isa Int
+        isempty(vals) && return 1.0:0.0
         mi, ma = float.(extrema(Iterators.flatten(vals)))
         if mi == ma
             return (mi - 0.5):(ma + 0.5)
@@ -224,7 +224,57 @@ function plot!(plot::Hist)
         end
     end
 
-    map!(diff, plot, :edges, :widths)
+    # map!(plot, [:grouplengths, :edges, :points], :widths) do grouplengths, edges, ps
+    map!(plot, [:grouplengths, :edges], :widths) do grouplengths, edges
+        widths = diff(edges)
+
+        # empty input compat || no stacking/dodging
+        if isempty(widths) || isnothing(grouplengths)
+            return widths
+        end
+
+        # if allequal(grouplengths)
+        # each group is equally sized, so each group uses the same widths/edges
+        N = first(grouplengths)
+        resize!(widths, length(grouplengths) * N)
+        for i in 1:length(grouplengths)-1
+            @views copyto!(widths[N * i + 1 : N * (i + 1)], widths[1:N])
+        end
+        return widths
+
+        # Currently group sizes are always equal. If this changes in the future,
+        # maybe this will be useful?
+        # elseif edges isa AbstractRange || all(w -> w ≈ width, widths)
+        #     # groups are not equally sized but widths are, so everything just
+        #     # has the same width
+        #     width = first(widths)
+        #     N = sum(grouplengths)
+        #     return fill(width, N)
+
+        # else
+        #     # groups are not equally sized and neither are widths, so we need
+        #     # to figure out which width belongs to which point
+        #     Ns = cumsum(grouplengths)
+        #     output = similar(widths, last(Ns))
+        #     # we don't want to find the last index because it's not in widths
+        #     edge_view = view(edges, 1 : (length(edges) - 1))
+        #     start = 1
+        #     for group_index in eachindex(grouplengths)
+        #         stop = Ns[group_index]
+        #         if grouplengths[group_index] == length(widths)
+        #             @views copyto!(output[start : stop], widths)
+        #         else
+        #             for j in start:stop
+        #                 p = ps[j]
+        #                 # search for left edge of the cell containing p (index matches width)
+        #                 idx = findlast(edge -> edge <= p[1], edge_view)::Int64
+        #                 output[j] = widths[idx]
+        #             end
+        #         end
+        #         start = stop + 1
+        #     end
+        # end
+    end
 
     map!(plot, [:points, :color, :groupmap, :grouplengths], :computed_colors) do points, color, groupmap, lengths
         if color === :values
