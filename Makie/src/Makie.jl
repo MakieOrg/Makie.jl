@@ -151,6 +151,7 @@ include("utilities/projection_utils.jl")
 
 # basic recipes
 include("basic_recipes/convenience_functions.jl")
+include("basic_recipes/shadertoy.jl")
 include("basic_recipes/ablines.jl")
 include("basic_recipes/annotation.jl")
 include("basic_recipes/arc.jl")
@@ -419,6 +420,7 @@ include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
+export ShaderToy, shadertoy, shadertoy!
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
 export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, wireframe, voxels
 export heatmap!, image!, lines!, linesegments!, mesh!, meshscatter!, poly!, scatter!, surface!, text!, volume!, wireframe!, voxels!
