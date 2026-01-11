@@ -34,7 +34,7 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
         push!(sg.labels, l)
     end
 
-    on(sg.value_column_width) do value_column_width
+    on(sg.value_column_width, update = true) do value_column_width
         if value_column_width === automatic
             maxwidth = 0.0
             for (slider, valuelabel) in zip(sg.sliders, sg.valuelabels)
@@ -54,6 +54,5 @@ function initialize_block!(sg::SliderGrid, nts::NamedTuple...)
             colsize!(sg.layout, 3, value_column_width)
         end
     end
-    notify(sg.value_column_width)
     return
 end

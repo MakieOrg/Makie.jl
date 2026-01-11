@@ -114,6 +114,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -157,6 +158,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
@@ -340,7 +350,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -348,7 +358,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,
@@ -713,7 +723,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+struct FigureBlock
+    figure::Figure
+    block::Block
+end
+
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)

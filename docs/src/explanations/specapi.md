@@ -377,3 +377,138 @@ for ax1 in axes_1
     end
 end
 ```
+
+## `BlockSpec` and `GridLayoutSpec` in Blocks
+
+As of Makie 0.25 blocks support a similar interface to recipes.
+They can accept attributes and arguments, process them with `convert_arguments` and create multiple blocks (potentially with multiple plots) in an inner layout.
+(See [Blocks as Complex Recipes](@ref).)
+
+This also extends to SpecApi.
+Just like how plot recipes can have a `PlotSpec` as a conversion target, blocks can have a `BlockSpec` as the target.
+Since blocks exist in a layout you can not just return a `Vector{BlockSpec}` though.
+Instead, the `Vector{PlotSpec}` generalizes to a `GridLayoutSpec` which includes the layouting information.
+
+### Block Example
+
+
+```@example
+using GLMakie
+import Makie.SpecApi as S
+GLMakie.activate!() # hide
+
+struct MultiData
+    plottype::Symbol
+    show_dim_distributions::Bool
+    dim_distribution_plot_type::Symbol
+    sets::Vector{Vector{<:Makie.VecTypes{2}}}
+end
+
+function Makie.convert_arguments(::Type{<:Makie.Block}, multidata::MultiData)
+    # Main Axis showing each data set
+    colors = Makie.wong_colors()
+    plots = map(enumerate(multidata.sets)) do (i, data)
+        return PlotSpec(multidata.plottype, data, color = colors[mod1(i, end)])
+    end
+    main_axis = S.Axis(; plots = plots)
+
+    # Optional Axes below and to the right, showing the point distribution in
+    # the x and y dimension
+    if multidata.show_dim_distributions
+        no_decorations = (
+            xgridvisible = false, ygridvisible = false,
+            xticksvisible = false, yticksvisible = false,
+            xticklabelsvisible = false, yticklabelsvisible = false,
+            xlabelvisible = false, ylabelvisible = false
+        )
+        plotsym = multidata.dim_distribution_plot_type
+
+        # We place the distibution axes in a 1 wide/tall GridLayout of fixed
+        # height/width, each with on plot
+        column_axes = map(enumerate(multidata.sets)) do (i, data)
+            color = colors[mod1(i, end)]
+            plt = PlotSpec(plotsym, first.(data), color = color)
+            return S.Axis(; plots = [plt], yreversed = true, height = 50, no_decorations...)
+        end
+        column = S.GridLayout(column_axes)
+
+        row_axes = map(enumerate(multidata.sets)) do (i, data)
+            color = colors[mod1(i, end)]
+            dir = ifelse(plotsym === :Density, :y, :x)
+            plt = PlotSpec(plotsym, last.(data), direction = dir, color = color)
+            return S.Axis(; plots = [plt], width = 50, no_decorations...)
+        end
+        row = S.GridLayout(reshape(row_axes, (1, length(row_axes))))
+
+        # Then we create a 2x2 GridLayout with
+        #   main axis   | row_axes
+        #   ------------|----------
+        #   column_axes | empty grid
+        # and link the x/y limits so the distributions use the same limits
+        return S.GridLayout(
+            [main_axis row; column S.GridLayout()],
+            xaxislinks = [main_axis, column_axes...],
+            yaxislinks = [main_axis, row_axes...]
+        )
+    else
+        # if we don't have extra axes we just return the main axis (BlockSpec) as is
+        return main_axis
+    end
+end
+
+
+fig = Figure()
+
+# Static parts of the figure
+Label(fig[1, 1], "Main plot type", tellwidth = false)
+m1 = Menu(fig[2, 1], options = [:Scatter, :Lines])
+Label(fig[1, 2][1, 1], "Distribution plot type", tellwidth = false)
+t = Toggle(fig[1, 2][1, 2])
+m2 = Menu(fig[2, 2], options = [:Hist, :Density])
+
+# Dynamic description of the axis layout
+data1 = [Point2f(cos(x), sin(x)) / (1 + 0.1x) for x in range(0, 30, 300)]
+data2 = [Point2f(x/10 - 1, cos(x)) for x in range(0, 20, 120)]
+dataset = map(m1.selection, t.active, m2.selection) do mainplot, showdist, distplot
+    return MultiData(mainplot, showdist, distplot, [data1, data2])
+end
+
+# block containing the GridLayoutSpec/BlockSpec produced by the `MultiData`
+# conversion.
+block = Makie.Block(fig[3, 1:2], dataset)
+
+# Limits don't re-compute automatically, so we need to trigger them manually
+# lower priority to make sure the call back is always called last
+on(dataset; priority=-1) do x
+    foreach(autolimits!, block.blocks)
+end
+
+record(fig, "interactive_block_spec.mp4", framerate=1) do io
+    pause = 0.1
+    m1.i_selected[] = 1
+    m2.i_selected[] = 1
+    sleep(pause)
+    recordframe!(io)
+
+    t.active[] = true
+    sleep(pause)
+    recordframe!(io)
+
+    m2.i_selected[] = 2
+    sleep(pause)
+    recordframe!(io)
+
+    m1.i_selected[] = 2
+    sleep(pause)
+    recordframe!(io)
+
+    t.active[] = false
+    sleep(pause)
+    recordframe!(io)
+end
+nothing # hide
+```
+
+```@raw html
+<video autoplay loop muted playsinline controls src="./interactive_block_spec.mp4" />
+```

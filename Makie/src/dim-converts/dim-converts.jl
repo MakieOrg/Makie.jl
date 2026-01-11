@@ -124,14 +124,14 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
         if hasproperty(ax, dim_sym)
             # merge
             ax_conversion = getproperty(ax, dim_sym)
-            new_conversions[i] = ax_conversion
+            new_conversions[i] = ComputePipeline.get_observable!(ax_conversion, use_deepcopy = false)
             # update in case new_conversions has a new conversion
-            getproperty(ax, dim_sym)[] = new_conversions[i]
+            setproperty!(ax, dim_sym, new_conversions[i])
             deregister = nothing
             # if the conversion changes, update the axis as well.
             # This should only ever happen once, since conversions are mutable after setting it to a new value
             deregister = on(dim_observable(new_conversions, i)) do val
-                getproperty(ax, dim_sym)[] = val
+                setproperty!(ax, dim_sym, val)
                 off(deregister)
             end
         end
@@ -156,6 +156,10 @@ end
     end
 =#
 needs_tick_update_observable(x) = nothing
+
+function needs_tick_update_observable(conversion::ComputePipeline.Computed)
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+end
 
 function needs_tick_update_observable(conversion::Observable)
     if isnothing(conversion[])

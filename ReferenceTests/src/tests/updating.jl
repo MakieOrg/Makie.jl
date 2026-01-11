@@ -35,7 +35,6 @@ end
             arg1 = map(p -> Makie.normal_mesh(Sphere(p, 0.2)), points[]),
             color = map(p -> RGBf(normalize(p)...), points[])
         )
-        notify(pl[1])
     end
 
     append!(points[], Point3f[(0, 1, 1), (1, 0, 1), (1, 1, 0)])

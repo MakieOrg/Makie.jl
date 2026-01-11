@@ -5,6 +5,18 @@ const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+
+    # Attributes() maps all typed observables to Observable{Any}. This means
+    # any typed Observable that's passed to LineAxis will not actually arrive
+    # here. Instead we get a child of it with Any.
+    # For Computed that doesn't happen. If a Computed is passed we will get it
+    # as is. If we write to it, we adjust something in the parent compute graph.
+    # And if the type of the written value doesn't match we error
+    # This happens for:
+    if haskey(attrs, :ticklabelspace) && eltype(attrs[:ticklabelspace]) !== Any
+        attrs[:ticklabelspace] = ComputePipeline.get_observable!(attrs[:ticklabelspace])
+    end
+
     return LineAxis(parent, attrs)
 end
 
@@ -441,7 +453,8 @@ function LineAxis(parent::Scene, attrs::Attributes)
     tickvalues = Observable(Float64[]; ignore_equal_values = true)
 
     tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
-    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
+    # make sure we update tick calculation when needed
+    obs = needs_tick_update_observable(dim_convert)
     map!(
         parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
         attrs.scale
@@ -544,7 +557,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
 
     # trigger calculation of ticklabel width once, now that it's not nothing anymore
-    notify(ticklabelsvisible)
+    # notify(ticklabelsvisible)
 
     return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end

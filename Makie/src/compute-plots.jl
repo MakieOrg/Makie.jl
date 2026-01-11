@@ -377,13 +377,13 @@ end
 
 # Split for text compat
 function register_arguments!(::Type{P}, attr::ComputeGraph, user_kw, input_args) where {P}
-    inputs = _register_input_arguments!(P, attr, input_args)
+    inputs = _register_input_arguments!(attr, input_args)
     _register_expand_arguments!(P, attr, inputs)
     _register_argument_conversions!(P, attr, user_kw)
     return
 end
 
-function _register_input_arguments!(::Type{P}, attr::ComputeGraph, input_args::Tuple) where {P}
+function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
     inputs = map(enumerate(input_args)) do (i, arg)
         sym = Symbol(:arg, i)
         add_input!(attr, sym, arg)
@@ -648,7 +648,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                         if is_primitive
                             return convert_attribute(value, Key{key}(), Key{name}())
                         else
-                            return value
+                            return to_recipe_attribute(nothing, value)
                         end
                     end
                     pos = attr.cycle_index[]
@@ -856,8 +856,26 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     return
 end
 
+function collect_all_connected_nodes(computed::ComputePipeline.Computed, tracked = Set{Symbol}())
+    push!(tracked, computed.name)
+    for edge in computed.parent.dependents
+        for node in edge.outputs
+            collect_all_connected_nodes(node)
+        end
+    end
+    return tracked
+end
+
 Observables.to_value(computed::ComputePipeline.Computed) = computed[]
-Base.notify(computed::ComputePipeline.Computed) = computed
+function Base.notify(computed::ComputePipeline.Computed)
+    nodes = collect_all_connected_nodes(computed)
+    graph = computed.parent.graph
+    to_notify = intersect(nodes, keys(graph.observables))
+    foreach(to_notify) do key
+        notify(graph.observables[key])
+    end
+    return
+end
 
 
 function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)

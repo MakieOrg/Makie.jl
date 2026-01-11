@@ -31,7 +31,7 @@ function initialize_block!(t::Toggle)
     end
 
     # trigger bbox
-    notify(t.length)
+    notify(ComputePipeline.get_observable!(t.length))
     notify(t.layoutobservables.suggestedbbox)
 
     framecolor = Observable{Any}(t.active[] ? t.framecolor_active[] : t.framecolor_inactive[])
