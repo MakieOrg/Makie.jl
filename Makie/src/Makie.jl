@@ -418,6 +418,7 @@ include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
+include("interaction/zoom_inset.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels
 export heatmap, image, lines, linesegments, mesh, meshscatter, poly, scatter, surface, text, volume, wireframe, voxels
