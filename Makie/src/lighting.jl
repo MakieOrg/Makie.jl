@@ -125,17 +125,31 @@ light_color(l::SpotLight) = l.color
 
 
 """
-    EnvironmentLight(intensity, image)
+    EnvironmentLight(intensity, image; rotation_angle=0f0, rotation_axis=Vec3f(0,1,0))
 
 An environment light that uses a spherical environment map to provide lighting.
 See: https://en.wikipedia.org/wiki/Reflection_mapping
 
+Rotation is specified as axis-angle (like pbrt's Rotate command):
+- `rotation_angle`: rotation angle in degrees
+- `rotation_axis`: axis to rotate around (default Y axis)
+
+Example: `EnvironmentLight(1.0, img; rotation_angle=10f0, rotation_axis=Vec3f(1,0,0))`
+rotates 10° around X axis (matching pbrt's "Rotate 10 1 0 0").
+
 Availability:
 - RPRMakie
+- TraceMakie
 """
 struct EnvironmentLight <: AbstractLight
     intensity::Float32
     image::Matrix{RGBf}
+    rotation_angle::Float32
+    rotation_axis::Vec3f
+end
+
+function EnvironmentLight(intensity, image; rotation_angle=0f0, rotation_axis=Vec3f(0f0, 1f0, 0f0))
+    EnvironmentLight(Float32(intensity), Matrix{RGBf}(image), Float32(rotation_angle), Vec3f(rotation_axis))
 end
 
 """
