@@ -282,12 +282,14 @@ end
 function voxel_colors(p::Voxels)
     voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     uv_map = p.uvmap[]
-    if !isnothing(uv_map)
+    color = if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"
+        # for safety and type stability
+        p.voxel_color[]
     elseif haskey(p, :voxel_colormap)
-        color = p.voxel_colormap[]
+        p.voxel_colormap[]
     else
-        color = p.voxel_color[]
+        p.voxel_color[]
     end
 
     return [color[id] for id in voxel_id if id !== 0x00]

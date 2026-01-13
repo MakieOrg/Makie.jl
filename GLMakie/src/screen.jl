@@ -623,8 +623,8 @@ function Base.delete!(screen::Screen, scene::Scene)
                     key, max_id = p
                 end
             end
-
-            i = findfirst(id_scene -> id_scene[1] == max_id, screen.screens)::Int
+            current_max_id = max_id
+            i = findfirst(id_scene -> id_scene[1] == current_max_id, screen.screens)::Int
             screen.screens[i] = (deleted_id, screen.screens[i][2])
 
             screen.screen2scene[key] = deleted_id
@@ -1085,19 +1085,19 @@ function poll_updates(screen)
 end
 
 function on_demand_renderloop(screen::Screen)
-    tick_state = Makie.UnknownTickState
+    tick_state = Ref(Makie.UnknownTickState)
     # last_time = time_ns()
     reset!(screen.timer, 1.0 / screen.config.framerate)
     while isopen(screen) && !screen.stop_renderloop[]
         with_context(screen.glscreen) do
-            pollevents(screen, tick_state) # GLFW poll
+            pollevents(screen, tick_state[]) # GLFW poll
             poll_updates(screen)
             if !screen.config.pause_renderloop && requires_update(screen)
-                tick_state = Makie.RegularRenderTick
+                tick_state[] = Makie.RegularRenderTick
                 render_frame(screen)
                 GLFW.SwapBuffers(to_native(screen))
             else
-                tick_state = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
+                tick_state[] = ifelse(screen.config.pause_renderloop, Makie.PausedRenderTick, Makie.SkippedRenderTick)
             end
             GC.safepoint()
             sleep(screen.timer)

@@ -259,17 +259,19 @@ function Scene(;
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
 
     wasnothing = isnothing(viewport)
-    if wasnothing
+    scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
             m_theme.resolution[]
         else
             m_theme.size[]
         end
-        viewport = Observable(Recti(0, 0, sz); ignore_equal_values = true)
+        Observable(Recti(0, 0, sz); ignore_equal_values = true)
+    else
+        viewport
     end
 
-    cam = camera isa Camera ? camera : Camera(viewport)
+    cam = camera isa Camera ? camera : Camera(scene_viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     if lights isa Automatic
@@ -303,7 +305,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, viewport, clear, cam, camera_controls,
+        parent, events, scene_viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
@@ -312,8 +314,8 @@ function Scene(;
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && viewport[] != w_area
-                viewport[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && scene_viewport[] != w_area
+                scene_viewport[] = w_area
             end
             return Consume(false)
         end

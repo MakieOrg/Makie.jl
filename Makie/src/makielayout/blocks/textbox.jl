@@ -88,7 +88,7 @@ function initialize_block!(tbox::Textbox)
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values = true) do ci, bbs
         isempty(bbs) && return Point2f(0)
-        textplot = t.blockscene.plots[1]
+        local textplot = t.blockscene.plots[1]
 
         hadvances = Float32[]
         broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
@@ -169,10 +169,10 @@ function initialize_block!(tbox::Textbox)
             return Consume(true)
         end
 
-        if typeof(tbox.width[]) <: Number
-            pos = state.data .- scene.transformation.translation[][1:2]
+        pos = if typeof(tbox.width[]) <: Number
+            state.data .- scene.transformation.translation[][1:2]
         else
-            pos = state.data
+            state.data
         end
         closest_charindex = argmin(
             [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
@@ -195,6 +195,15 @@ function initialize_block!(tbox::Textbox)
     onmouseout(mouseevents) do state
         hovering[] = false
         return Consume(false)
+    end
+
+    function reset_to_stored()
+        cursorindex[] = 0
+        return if isnothing(tbox.stored_string[])
+            tbox.displayed_string[] = tbox.placeholder[]
+        else
+            tbox.displayed_string[] = tbox.stored_string[]
+        end
     end
 
     onmousedownoutside(mouseevents) do state
@@ -241,14 +250,6 @@ function initialize_block!(tbox::Textbox)
         return Consume(false)
     end
 
-    function reset_to_stored()
-        cursorindex[] = 0
-        return if isnothing(tbox.stored_string[])
-            tbox.displayed_string[] = tbox.placeholder[]
-        else
-            tbox.displayed_string[] = tbox.stored_string[]
-        end
-    end
 
     function cursor_forward()
         return if tbox.displayed_string[] != " "
