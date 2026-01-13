@@ -49,7 +49,7 @@ begin
     some_forwarded_port = 8080
     Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
 end
-````
+```
 
 You can also specify a proxy URL if you have a more complex proxy setup.
 For more advanced setups, consult the `?Page` docs and `Bonito.configure_server!`.
