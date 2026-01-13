@@ -87,6 +87,29 @@ end
 f
 ```
 
+Mulitple axes can also be used to create a Legend. The keywords `merge` and `unique` behave the same as when passing a single axis.
+
+```@figure
+f = Figure()
+ax1 = Axis(f[1,1])
+ax2 = Axis(f[1,2])
+
+ps = [0.1, 0.2, 0.3, 0.4]
+xs = range(0, 5, 100)
+f1(x, p) = p * x^2
+f2(x, p) = p * sin(x)
+
+for p in ps
+    lines!(ax1, xs, f1.(xs, p), label=string(p))
+    lines!(ax2, xs, f2.(xs, p), label=string(p))
+end
+
+scatter!(ax1, xs[1:5:end], f1.(xs[1:5:end], ps[1]), label=string(ps[1]))
+
+Legend(f[2,:], [ax1, ax2], orientation=:horizontal, merge=true, unique=false)
+
+f
+```
 
 ## Legend Inside An Axis
 
