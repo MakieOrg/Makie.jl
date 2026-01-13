@@ -47,40 +47,24 @@ function register_voxel_conversions!(attr)
         return (mini, maxi)
     end
 
-    return register_computation!(
-        attr, [:value_limits, :is_air, :colorscale, :chunk, :updated_indices],
-        [:chunk_u8]
-    ) do (lims, is_air, scale, chunk, (is, js, ks)), changed, last
+    if attr.chunk[] isa Array{UInt8, 3}
+        # no need to convert to native type
+        ComputePipeline.alias!(attr, :chunk, :chunk_u8)
 
-        # No conversions necessary so no new array necessary. Should still
-        # propagate updates though
-        if chunk isa Array{UInt8, 3}
-            output = isnothing(last) ? ShaderAbstractions.Sampler(chunk, minfilter = :nearest) : last.chunk_u8
+    elseif attr.chunk[] isa ShaderAbstractions.Sampler
+        # user managed sampler
+        ComputePipeline.alias!(attr, :chunk, :chunk_u8)
+        ComputePipeline.alias!(attr, :chunk_u8, :chunk_sampler)
+        return
 
-            # notify sampler
-            if chunk === ShaderAbstractions.data(output)
-                # in place update so we just need to tell the Sampler which
-                # indices it needs to forward to Textures
-                data = if is == axes(chunk, 1) && js == axes(chunk, 2) && ks == axes(chunk, 3)
-                    chunk
-                else
-                    view(chunk, is, js, ks)
-                end
-                ShaderAbstractions.updater(output).update[] = (setindex!, (data, is, js, ks))
-            else
-                # array got replaced
-                # ShaderAbstractions.update!(output, chunk) # errors :)
-                ShaderAbstractions.setfield!(output, :data, chunk)
-                Nx, Ny, Nz = size(chunk)
-                ShaderAbstractions.updater(output).update[] = (setindex!, (chunk, 1:Nx, 1:Ny, 1:Nz))
-            end
+    else
+        register_computation!(
+            attr, [:value_limits, :is_air, :colorscale, :chunk, :updated_indices],
+            [:chunk_u8]
+        ) do (lims, is_air, scale, chunk, (is, js, ks)), changed, last
 
-            return (output,)
-        elseif chunk isa Sampler
-            return (chunk,)
-        else
-            output = if isnothing(last)
-                ShaderAbstractions.Sampler(Array{UInt8, 3}(undef, size(chunk)), minfilter = :nearest)
+            output = if isnothing(last) || size(last.chunk_u8) != size(chunk)
+                Array{UInt8, 3}(undef, size(chunk))
             else
                 last.chunk_u8
             end
@@ -89,16 +73,39 @@ function register_voxel_conversions!(attr)
             maxi = max(mini + 10eps(float(mini)), maxi)
             norm = 252.99998 / (maxi - mini)
             @inbounds for k in ks, j in js, i in is
-                _update_voxel_data!(ShaderAbstractions.data(output), chunk, CartesianIndex(i, j, k), is_air, scale, mini, norm)
+                _update_voxel_data!(output, chunk, CartesianIndex(i, j, k), is_air, scale, mini, norm)
             end
-
-            # notify sampler
-            x = view(ShaderAbstractions.data(output), is, js, ks)
-            ShaderAbstractions.updater(output).update[] = (setindex!, (x, is, js, ks))
 
             return (output,)
         end
     end
+
+    register_computation!(
+        attr, [:chunk_u8, :updated_indices], [:chunk_sampler]
+    ) do (chunk, (is, js, ks)), changed, last
+
+        if isnothing(last)
+            return (ShaderAbstractions.Sampler(chunk, minfilter = :nearest),)
+        else
+            output = last.chunk_sampler
+
+            if ShaderAbstractions.data(output) !== chunk
+                # resize or full replace
+                # ShaderAbstractions.update!(output, chunk) # errors :)
+                ShaderAbstractions.setfield!(output, :data, chunk)
+                ShaderAbstractions.updater(output).update[] = (update!, (chunk,))
+            else
+                # edit
+                # notify sampler
+                x = view(ShaderAbstractions.data(output), is, js, ks)
+                ShaderAbstractions.updater(output).update[] = (setindex!, (x, is, js, ks))
+            end
+
+            return (output,)
+        end
+    end
+
+    return
 end
 
 # TODO: Does have some overlap with the normal version...
@@ -269,7 +276,7 @@ end
 
 function voxel_positions(p::Voxels)
     mini, maxi = extrema(data_limits(p))
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     _size = size(voxel_id)
     step = (maxi .- mini) ./ _size
     return [
@@ -280,7 +287,7 @@ function voxel_positions(p::Voxels)
 end
 
 function voxel_colors(p::Voxels)
-    voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
+    voxel_id = p.chunk_u8[]::Array{UInt8, 3}
     uv_map = p.uvmap[]
     if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"

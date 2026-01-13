@@ -80,7 +80,7 @@ function create_shader(scene::Scene, plot::Voxels)
         :dummy_data,
 
         :depth_shift, :world_normalmatrix,
-        :gap, :chunk_u8, :voxel_model,
+        :gap, :chunk_sampler, :voxel_model,
         :wgl_colormap, :wgl_uv_transform, :wgl_color,
 
         :diffuse, :specular, :shininess, # :backlight,
@@ -106,7 +106,7 @@ function voxel_program(attr)
         :world_normalmatrix => attr.world_normalmatrix,
         :shading => attr.primitive_shading,
         :gap => attr.gap,
-        :chunk_u8 => attr.chunk_u8,
+        :chunk_sampler => attr.chunk_sampler,
         :voxel_model => attr.voxel_model,
         :wgl_colormap => attr.wgl_colormap,
         :wgl_uv_transform => attr.wgl_uv_transform,
