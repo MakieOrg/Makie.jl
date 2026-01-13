@@ -23,6 +23,49 @@ function ComputePipeline.add_input!(
     return x
 end
 
+function ComputePipeline.add_input!(
+        attr::ComputePipeline.ComputeGraph, key::Symbol, values::Attributes
+    )
+    if key === :fonts
+        return ComputePipeline._add_input!(identity, attr, key, values)
+    else
+        return add_input!(attr, (key,), values)
+    end
+end
+
+function ComputePipeline.add_input!(
+        attr::ComputePipeline.ComputeGraph, keys::Tuple, values::Attributes
+    )
+    for (child_key, child_value) in values
+        add_input!(attr, (keys..., child_key), child_value)
+    end
+    return attr[first(keys)]
+end
+
+function ComputePipeline.add_input!(
+        conversion_func, attr::ComputePipeline.ComputeGraph,
+        key::Symbol, values::Attributes
+    )
+    if key === :fonts
+        return ComputePipeline._add_input!(
+            ComputePipeline.InputFunctionWrapper(key, conversion_func),
+            attr, key, values
+        )
+    else
+        return add_input!(conversion_func, attr, (key,), values)
+    end
+end
+
+function ComputePipeline.add_input!(
+        conversion_func, attr::ComputePipeline.ComputeGraph,
+        keys::Tuple, values::Attributes
+    )
+    for (child_key, child_value) in values
+        add_input!(conversion_func, attr, (keys..., child_key), child_value)
+    end
+    return attr[first(keys)]
+end
+
 
 Base.haskey(x::Plot, key) = haskey(x.attributes, key)
 Base.get(f::Function, x::Plot, key::Symbol) = haskey(x.attributes, key) ? x.attributes[key] : f()
@@ -681,6 +724,50 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     return
 end
 
+function add_theme_inner!(updates, key, attr::Attributes, kw, gattr, plot_scene_theme, scene_theme)
+    if key === :fonts
+        push!(updates, Pair{Symbol, Any}(key, attr))
+        return
+    end
+
+    for (k, v) in attr
+        merged = Symbol(key, :(.), k)
+        add_theme_inner!(updates, merged, v, kw, gattr, plot_scene_theme, scene_theme)
+    end
+    return
+end
+
+function add_theme_inner!(updates, key, v, kw, gattr, plot_scene_theme, scene_theme)
+    # attributes from user (kw), are already set
+    if !haskey(kw, key)
+        # dont set theme values for cycled attributes
+        if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], key)
+            return
+        end
+        val = if haskey(plot_scene_theme, key)
+            to_value(plot_scene_theme[key])
+        elseif v isa Observable
+            v[]
+        elseif v isa Attributes
+            v
+        elseif v.default_value isa Inherit
+            default = v.default_value
+            if haskey(scene_theme, default.key)
+                to_value(scene_theme[default.key])
+            elseif !isnothing(default.fallback)
+                default.fallback
+            else
+                error("No fallback + theme for $(key)")
+            end
+        else
+            return
+            #  v.default_value  is not a Inherit, so the value should already be set
+        end
+        push!(updates, Pair{Symbol, Any}(key, val))
+    end
+    return
+end
+
 function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <: Plot}
     plot_attr = plot_attributes(scene, T)
     scene_theme = theme(scene)
@@ -688,33 +775,7 @@ function add_theme!(::Type{T}, kw, gattr::ComputeGraph, scene::Scene) where {T <
 
     updates = Pair{Symbol, Any}[]
     for (k, v) in plot_attr
-        # attributes from user (kw), are already set
-        if !haskey(kw, k)
-            # dont set theme values for cycled attributes
-            if haskey(gattr.inputs, :palette_lookup) && haskey(gattr.palette_lookup[], k)
-                continue
-            end
-            val = if haskey(plot_scene_theme, k)
-                to_value(plot_scene_theme[k])
-            elseif v isa Observable
-                v[]
-            elseif v isa Attributes
-                v
-            elseif v.default_value isa Inherit
-                default = v.default_value
-                if haskey(scene_theme, default.key)
-                    to_value(scene_theme[default.key])
-                elseif !isnothing(default.fallback)
-                    default.fallback
-                else
-                    error("No fallback + theme for $(k)")
-                end
-            else
-                continue
-                #  v.default_value  is not a Inherit, so the value should already be set
-            end
-            push!(updates, Pair{Symbol, Any}(k, val))
-        end
+        add_theme_inner!(updates, k, v, kw, gattr, plot_scene_theme, scene_theme)
     end
     update!(gattr, updates)
     return
@@ -844,7 +905,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
-        if !haskey(plot.attributes.outputs, k)
+        if !haskey(plot.attributes, k)
             if haskey(documented_attr, k)
                 error("User Attribute $k did not get registered.")
             else
@@ -1022,7 +1083,7 @@ end
 function calculated_attributes!(::Type{Lines}, plot::Plot)
     attr = plot.attributes
     register_colormapping!(attr)
-    map!(identity, attr, :linewidth, :uniform_linewidth)
+    ComputePipeline.alias!(attr, :linewidth, :uniform_linewidth)
     return calculated_attributes!(PointBased(), plot)
 end
 
