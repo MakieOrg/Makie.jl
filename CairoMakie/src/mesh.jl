@@ -59,15 +59,36 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
 end
 
 
-function draw_mesh2D(screen, color, vs::Vector{<:Point2}, fs::Vector{GLTriangleFace})
-    return draw_mesh2D(screen.context, color, vs, fs, eachindex(fs))
+function draw_mesh2D(screen, color, vs::Vector, fs::Vector{GLTriangleFace})
+    return draw_mesh2D(screen.context, color, vs, fs)
 end
 
-function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace}, indices)
+function flush_pattern(ctx, pattern, reopen = true)
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    Cairo.destroy(pattern)
+    # Reset any lingering pattern state
+    Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+    if reopen
+        pattern = Cairo.CairoPatternMesh()
+    end
+
+    return pattern
+end
+
+const MAX_PATCHES_PER_PATTERN = Ref{Int64}(16384)  # TODO: tune
+
+function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
 
-    for i in indices
+    cnt = 0
+    flusheach = MAX_PATCHES_PER_PATTERN[]
+    pattern = Cairo.CairoPatternMesh()
+
+    for i in eachindex(fs)
         c1, c2, c3 = per_face_cols[i]
         t1, t2, t3 = vs[fs[i]] #triangle points
 
@@ -76,8 +97,7 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
             continue
         end
 
-        pattern = Cairo.CairoPatternMesh()
-
+        cnt += 1
         Cairo.mesh_pattern_begin_patch(pattern)
 
         Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
@@ -89,22 +109,24 @@ function draw_mesh2D(ctx::Cairo.CairoContext, per_face_cols, vs::Vector, fs::Vec
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
-        Cairo.destroy(pattern)
-        # Reset any lingering pattern state
-        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+        if cnt % flusheach == 0
+            pattern = flush_pattern(ctx, pattern)
+        end
+    end
+
+    if cnt % flusheach != 0
+        flush_pattern(ctx, pattern, false)
     end
     return nothing
 end
 
-function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::Vector, fs::Vector{GLTriangleFace}, indices)
+function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::Vector, fs::Vector{GLTriangleFace})
     # Prioritize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     Cairo.set_source(ctx, pattern)
 
-    for i in indices
+    for i in eachindex(fs)
         t1, t2, t3 = vs[fs[i]] # triangle points
 
         # don't draw any mesh faces with NaN components.
@@ -151,7 +173,23 @@ function _calculate_shaded_vertexcolors(N, v, c, lightdir, light_color, ambient,
     return RGBAf(new_c..., c.alpha)
 end
 
-function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, lightdir, light_color, shininess, diffuse, ambient, specular)
+function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs, viewdir, lightdir, light_color, shininess, diffuse, ambient, specular)
+    #=
+    TODO:
+    Rendering just a few Cairo patterns containing many faces/patches (like the
+    2D version) is much faster than rendering one pattern per face, but it also
+    causes those faces to no longer drawn over each other. A transparent mesh
+    therefore doesn't render correctly (doesn't render front *and* backside or
+    self-overlap).
+
+    Flushing the pattern whenever we switch between front and back facing
+    triangles fixes the rendering issue, but often creates performance issues.
+    It seems like Cairo can handle large patterns and lots of single element
+    pattern decently well, but not many patterns of varying size (which you get
+    for more or less everything that's not a sphere). So we just keep it at 1
+    face per pattern here.
+    =#
+
     for k in reverse(zorder)
 
         f = meshfaces[k]
@@ -204,12 +242,8 @@ function draw_pattern(ctx, zorder, shading, meshfaces, ts, per_face_col, ns, vs,
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
-        Cairo.destroy(pattern)
-        # Reset any lingering pattern state
-        Cairo.set_source_rgba(ctx, 0, 0, 0, 1)
+
+        flush_pattern(ctx, pattern, false)
     end
 
     return
@@ -236,14 +270,17 @@ end
 
 # Mesh + surface entry point
 function draw_mesh3D(scene, screen, plot::ComputeGraph)
-    clip_planes = plot.clip_planes[]
-    uv_transform = plot.pattern_uv_transform[]
+    clip_planes = plot.clip_planes[]::Vector{Plane3f}
+    uv_transform = plot.pattern_uv_transform[]::Union{Nothing, Mat{2, 3, Float32, 6}}
 
     # per-element in meshscatter
-    world_points = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
-    screen_points = cairo_project_to_screen(plot, output_type = Point3f)
-    meshfaces = plot.faces[]
-    meshnormals = plot.normals[]
+    world_points = Makie.apply_model(
+        plot.model_f32c[]::Mat4f,
+        plot.positions_transformed_f32c[]::Union{Vector{Point3f}, Vector{Point2f}}
+    )
+    screen_points = cairo_project_to_screen(plot, output_type = Point3f)::Vector{Point3f}
+    meshfaces = plot.faces[]::Vector{GLTriangleFace}
+    meshnormals = plot.normals[]::Union{Nothing, Vector{Vec3f}}
     _meshuvs = plot.texturecoordinates[]
 
     if (_meshuvs isa AbstractVector{<:Vec3})
@@ -268,31 +305,43 @@ function draw_mesh3D(
 
     local shading::Bool = plot.shading[] && (scene.compute.shading[] != NoShading)
 
-    if meshuvs isa Vector{Vec2f} && to_value(uv_transform) !== nothing
-        meshuvs = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), meshuvs)
+    if meshuvs isa Vector{Vec2f} && uv_transform !== nothing
+        uvt = uv_transform::Mat{2, 3, Float32, 6}
+        meshuvs = map(uv -> uvt * to_ndim(Vec3f, uv, 1), meshuvs)
     end
 
-    matcap = to_value(get(plot, :matcap, nothing))
-    per_face_col = per_face_colors(color, matcap, meshfaces, meshnormals, meshuvs)
-
+    matcap::Union{Nothing, Matrix{RGBAf}} = to_value(get(plot, :matcap, nothing))
     space = plot.space[]::Symbol
-    if per_face_col isa Cairo.CairoPattern
+
+    # Fall back onto mesh2D for meshes with a Makie.AbstractPattern
+    if isnothing(matcap) && plot.fetch_pixel[]::Bool
+        pattern = per_face_colors(color, nothing, meshfaces, meshnormals, meshuvs)::Cairo.CairoPattern
         # plot.model_f32c[] is f32c corrected, not f32c * model
-        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * plot.model[]
-        align_pattern(per_face_col, scene, f32c_model)
+        f32c_model = Makie.f32_convert_matrix(scene.float32convert, space) * (plot.model[]::Mat4d)
+        align_pattern(pattern, scene, f32c_model)
+        return draw_mesh2D(screen.context, pattern, screen_points, meshfaces)
     end
+
+    per_face_col = per_face_colors(
+        color::Union{RGBAf, Vector{RGBAf}, Matrix{RGBAf}},
+        matcap, meshfaces, meshnormals, meshuvs
+    )
 
     local faceculling::Int = to_value(get(plot, :faceculling, -10))
 
     return draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
-        model, shading[], plot.diffuse[]::Vec3f,
+        model, shading, plot.diffuse[]::Vec3f,
         plot.specular[]::Vec3f, plot.shininess[]::Float32, faceculling,
-        clip_planes, plot.eyeposition[]
+        clip_planes, plot.eyeposition[]::Vec3f
     )
 end
 
 to_vec(c::Colorant) = Vec3f(red(c), green(c), blue(c))
+prepare_normals(normalmatrix::Mat3f, normals::Nothing) = nothing
+function prepare_normals(normalmatrix::Mat3f, normals::Vector{Vec3f})
+    return [zero_normalize(normalmatrix * normal) for normal in normals]
+end
 
 function draw_mesh3D(
         scene, screen, space, world_points, screen_points, meshfaces, meshnormals, per_face_col,
@@ -302,49 +351,40 @@ function draw_mesh3D(
 
     # local_model applies rotation and markersize from meshscatter to vertices
     i = Vec(1, 2, 3)
-    normalmatrix = transpose(inv(model[i, i])) # see issue #3702
-
-    if Makie.is_data_space(space) && !isempty(clip_planes)
-        valid = Bool[is_visible(clip_planes, p) for p in world_points]
-    else
-        valid = Bool[]
-    end
+    normalmatrix = transpose(inv(Mat3f(model[i, i]))) # see issue #3702
+    ns = prepare_normals(normalmatrix, meshnormals)
 
     # Approximate zorder
     average_zs = map(f -> average_z(screen_points, f), meshfaces)
     zorder = sortperm(average_zs)
 
-    if isnothing(meshnormals)
-        ns = nothing
-    else
-        ns = map(n -> zero_normalize(normalmatrix * n), meshnormals)
+    # cull faces that contain clipped vertices
+    if Makie.is_data_space(space) && !isempty(clip_planes)
+        valid = Bool[is_visible(clip_planes, p) for p in world_points]
+        filter!(zorder) do face_index
+            face = meshfaces[face_index]
+            return all(vertex_index -> valid[vertex_index], face)
+        end
     end
 
-    # Face culling
-    if isempty(valid) && !isnothing(ns)
-        zorder = filter(i -> any(last.(ns[meshfaces[i]]) .> faceculling), zorder)
-    elseif !isempty(valid)
-        zorder = filter(i -> all(valid[meshfaces[i]]), zorder)
-    else
-        # no clipped faces, no normals to rely on for culling -> do nothing
-    end
-
-    # If per_face_col is a CairoPattern the plot is using an AbstractPattern
-    # as a color. In this case we don't do shading and fall back to mesh2D
-    # rendering
-    if per_face_col isa Cairo.CairoPattern
-        return draw_mesh2D(ctx, per_face_col, screen_points, meshfaces, reverse(zorder))
+    # cull faces with backfacing normals (as defined by faceculling)
+    viewdir = scene.camera.view_direction[]::Vec3f
+    if !isnothing(ns)
+        filter!(zorder) do face_index
+            face = meshfaces[face_index]
+            return any(vertex_index -> dot(-ns[vertex_index], viewdir) > faceculling, face)
+        end
     end
 
     ambient = to_vec(scene.compute[:ambient_color][])
     light_color = to_vec(scene.compute[:dirlight_color][])
-    light_direction = scene.compute[:dirlight_final_direction][]
+    light_direction = scene.compute[:dirlight_final_direction][]::Vec3f
 
     # vs are used as camdir (camera to vertex) for light calculation (in world space)
     vs = map(v -> normalize(to_ndim(Point3f, v, 0) - eyeposition), world_points)
 
     draw_pattern(
-        ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs,
+        ctx, zorder, shading, meshfaces, screen_points, per_face_col, ns, vs, viewdir,
         light_direction, light_color, shininess, diffuse, ambient, specular
     )
 
@@ -355,14 +395,16 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(plot::Makie.Mes
     # We combine vertices and positions in world space.
     # Here we do the transformation to world space of meshscatter args
     # The rest happens in draw_scattered_mesh()
-    transformed_pos = Makie.apply_model(plot.model_f32c[], plot.positions_transformed_f32c[])
+    transformed_pos = Makie.apply_model(
+        plot.model_f32c[]::Mat4f,
+        plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}})
     colors = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]
 
     return draw_scattered_mesh(
         scene, screen, plot.attributes, plot.marker[],
         transformed_pos, plot.markersize[], plot.rotation[], colors,
-        plot.clip_planes[], plot.transform_marker[], uv_transform
+        plot.clip_planes[], plot.transform_marker[]::Bool, uv_transform
     )
 end
 
@@ -380,14 +422,14 @@ function draw_scattered_mesh(
     meshuvs = texturecoordinates(mesh)
 
     # transformation matrix to mesh into world space, see loop
-    f32c_model = ifelse(transform_marker, strip_translation(plot.model[]), Mat4d(I))
+    f32c_model = ifelse(transform_marker, strip_translation(plot.model[]::Mat4d), Mat4d(I))
     if !isnothing(scene.float32convert) && Makie.is_data_space(space)
         f32c_model = Makie.scalematrix(scene.float32convert.scaling[].scale::Vec3d) * f32c_model
     end
 
     # Z sorting based on meshscatter arguments
     # For correct z-ordering we need to be in view/camera or screen space
-    view = plot.view[]
+    view = plot.view[]::Mat4f
     zorder = sortperm(
         positions, by = p -> begin
             p4d = to_ndim(Vec4d, p, 1)
@@ -461,8 +503,9 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(primitive::Maki
     transformed_pos = _transform_to_world(scene, primitive, pos)
 
     # clip full voxel instead of faces
-    if !isempty(primitive.clip_planes[]) && Makie.is_data_space(primitive)
-        valid = [is_visible(primitive.clip_planes[], p) for p in transformed_pos]
+    clip_planes = primitive.clip_planes[]::Vector{Plane3f}
+    if !isempty(clip_planes) && Makie.is_data_space(primitive)
+        valid = [is_visible(clip_planes, p) for p in transformed_pos]
         transformed_pos = transformed_pos[valid]
         colors = colors[valid]
     end
