@@ -319,6 +319,13 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
 @noinline function _create_plot(F, attributes::Dict, args...)
     figarg, pargs = plot_args(args...)
     figkws = fig_keywords!(attributes)
+
+    # Check if this is a complex recipe - they handle their own axis creation
+    PlotFunc = default_plot_func(F, pargs)
+    if is_complex_recipe(Plot{PlotFunc})
+        return _create_complex_plot(PlotFunc, figkws, attributes, figarg, pargs)
+    end
+
     if haskey(figkws, :axis)
         ax_kw = figkws[:axis]
         _validate_nt_like_keyword(ax_kw, :axis)
@@ -331,10 +338,48 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
             end
         end
     end
-    plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
+    plot = Plot{PlotFunc}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
     return figurelike_return(ax, plot)
+end
+
+"""
+    _create_complex_plot(Func, figkws, attributes, figarg, pargs)
+
+Internal function to create a ComplexRecipe. Complex recipes manage their own
+axes and layout, so they bypass the normal axis creation path.
+"""
+@noinline function _create_complex_plot(Func, figkws::Dict, attributes::Dict, figarg, pargs::Tuple)
+    figure_kw = extract_attributes(figkws, :figure)
+
+    # Determine the parent for the ComplexRecipe
+    parent = if isnothing(figarg)
+        # No figure argument - create a new figure
+        fig = Figure(; figure_kw...)
+        fig[1, 1]  # ComplexRecipe goes at [1,1] of new figure
+    elseif figarg isa Figure
+        figarg[1, 1]
+    elseif figarg isa Union{GridPosition, GridSubposition}
+        figarg
+    else
+        error("Complex recipes require a Figure, GridPosition, or no figure argument. Got: $(typeof(figarg))")
+    end
+
+    # Create the ComplexRecipe
+    cr = _create_complex_recipe(Func, parent, pargs, attributes)
+
+    # Return appropriate type based on input
+    if isnothing(figarg)
+        fig = get_top_parent(parent)
+        first_axis = isempty(cr.blocks) ? nothing : first(cr.blocks)
+        return FigureAxisPlot(fig, first_axis, cr)
+    elseif figarg isa Figure
+        first_axis = isempty(cr.blocks) ? nothing : first(cr.blocks)
+        return FigureAxisPlot(figarg, first_axis, cr)
+    else
+        return cr
+    end
 end
 
 function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::Plot)
