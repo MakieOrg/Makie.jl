@@ -130,6 +130,22 @@ ggplot_theme = Theme(
 with_theme(example_plot, ggplot_theme)
 ```
 
+LScene blocks can be themed through an Axis3D block theme. 
+
+Here is how to define new default axisnames:
+
+    Default_name_theme = Axis3D = (; 
+            names = 
+                (; axisnames = ("lon", "lat", "alt")
+            )
+        )
+    )
+    
+An exhaustive collection of the axis attribute can be found with :
+
+    LScene(Figure()).scene[OldAxis].attributes
+
+
 ## Cycles
 
 Makie supports a variety of options for cycling plot attributes automatically.
