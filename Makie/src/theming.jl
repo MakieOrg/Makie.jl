@@ -64,6 +64,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     visible = true,
     Axis = Attributes(),
     Axis3 = Attributes(),
+    Figure = Attributes(),
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
@@ -150,7 +151,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         resource = automatic,
         plugin = automatic,
         max_recursion = 10
-    )
+    ),
 )
 
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
