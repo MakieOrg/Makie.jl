@@ -62,20 +62,3 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         return tex
     end
 end
-
-include("glwindow.jl")
-include("postprocessing.jl")
-include("screen.jl")
-include("glshaders/visualize_interface.jl")
-include("glshaders/lines.jl")
-include("glshaders/image_like.jl")
-include("glshaders/mesh.jl")
-include("glshaders/particles.jl")
-include("glshaders/surface.jl")
-include("glshaders/voxel.jl")
-
-include("picking.jl")
-include("rendering.jl")
-include("events.jl")
-include("plot-primitives.jl")
-include("display.jl")

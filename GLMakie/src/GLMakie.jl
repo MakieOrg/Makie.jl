@@ -89,6 +89,24 @@ gl_texture_atlas() = Makie.get_texture_atlas(2048, 64)
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
 
+include("glwindow.jl")
+include("postprocessing.jl")
+include("screen.jl")
+include("glshaders/visualize_interface.jl")
+include("glshaders/lines.jl")
+include("glshaders/image_like.jl")
+include("glshaders/mesh.jl")
+include("glshaders/particles.jl")
+include("glshaders/surface.jl")
+include("glshaders/voxel.jl")
+include("glshaders/raymarch.jl")
+
+include("picking.jl")
+include("rendering.jl")
+include("events.jl")
+include("plot-primitives.jl")
+include("display.jl")
+
 # We load all shaders to compile them into the package Image
 # Making them relocatable
 load_all_shaders(SHADER_DIR)
