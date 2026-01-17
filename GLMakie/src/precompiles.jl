@@ -30,8 +30,6 @@ let
             end
 
             screen = Screen(Scene())
-            refresh_func = refreshwindowcb(screen)
-            refresh_func(to_native(screen))
             close(screen)
             screen = empty_screen(false)
             close(screen)

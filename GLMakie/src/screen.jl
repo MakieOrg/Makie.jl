@@ -332,7 +332,6 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     )
 
     if owns_glscreen
-        GLFW.SetWindowRefreshCallback(window, refreshwindowcb(screen))
         GLFW.SetWindowContentScaleCallback(window, scalechangecb(screen))
     end
 
@@ -728,7 +727,6 @@ function destroy!(screen::Screen)
     if GLAbstraction.context_alive(window)
         close(screen; reuse = false)
         if screen.owns_glscreen
-            GLFW.SetWindowRefreshCallback(window, nothing)
             GLFW.SetWindowContentScaleCallback(window, nothing)
         end
     else
@@ -983,15 +981,6 @@ end
 function set_framerate!(screen::Screen, fps = 30)
     return screen.config.framerate = fps
 end
-
-function refreshwindowcb(screen, window)
-    screen.render_tick[] = Makie.BackendTick
-    poll_updates(screen)
-    render_frame(screen)
-    GLFW.SwapBuffers(window)
-    return
-end
-refreshwindowcb(screen) = window -> refreshwindowcb(screen, window)
 
 function scalechangecb(screen, window, xscale, yscale)
     sf = min(xscale, yscale)
