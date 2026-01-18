@@ -293,13 +293,201 @@ vec4 read_vec4()
     return data;
 }
 
-struct SampleData
+void apply_prefix(inout vec3 sample_pos, in uint operation, in vec3 ray_pos)
 {
-    float sdf;
-    vec4 color;
-};
+    if (operation == op_revolution)
+        // TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
+        // float moves the 2d object away from th center of rotation
+        // TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
+        sample_pos = vec3(length(sample_pos.xy) - read_float(), sample_pos.z, 0.0);
+    else if (operation == op_elongate)
+    {
+        vec3 dir = read_vec3();
+        sample_pos = sample_pos - clamp(sample_pos, -dir, dir);
+    }
+    else if (operation == op_rotation)
+        sample_pos = qmul(read_vec4(), sample_pos);
+    else if (operation == op_mirror)
+        // vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
+        sample_pos = mix(sample_pos, abs(sample_pos), read_vec3());
+    else if (operation == op_infinite_repetition)
+    {
+        vec3 rep_dist = read_vec3();
+        sample_pos = sample_pos - rep_dist * round(sample_pos / rep_dist);
+    }
+    else if (operation == op_limited_repetition)
+    {
+        vec3 rep_dist = read_vec3();
+        vec3 limit = read_vec3();
+        sample_pos = sample_pos - rep_dist * clamp(round(sample_pos / rep_dist), -limit, limit);
+    }
+    else if (operation == op_twist)
+    {
+        float k = read_float();
+        float c = cos(k * sample_pos.z);
+        float s = sin(k * sample_pos.z);
+        mat2 T = mat2(c, -s, s, c);
+        sample_pos = vec3(T * sample_pos.xy, sample_pos.z); // Quilez has this reorder (T*xz, y)
+    }
+    else if (operation == op_bend)
+    {
+        float k = read_float();
+        float c = cos(k * sample_pos.z);
+        float s = sin(k * sample_pos.z);
+        mat2 T = mat2(c, -s, s, c);
+        sample_pos = vec3(T * sample_pos.xz, sample_pos.y).xzy; // Quilez has this not reorder (T*xy, z)
+    }
+    else if (operation == op_translation)
+        sample_pos -= read_vec3();
+    else if (operation == _reset)
+        sample_pos = ray_pos;
+}
 
-SampleData sample_at(in vec3 ray_pos)
+float sample_sdf(in vec3 sample_pos, in uint operation)
+{
+    switch (operation)
+    {
+        // case shape2D_vesica:
+        // case shape2D_plane:
+        // case shape2D_rhombus:
+        // case shape2D_hexagonal_prism:
+        // case shape2D_triangular_prism:
+        case shape3D_sphere:
+            return sphere_dist(sample_pos, read_float());
+        case shape3D_octahedron:
+            return octahedron_dist(sample_pos, read_float());
+        case shape3D_pyramid:
+            return pyramid_dist(sample_pos, read_float(), read_float());
+        case shape3D_torus:
+            return torus_dist(sample_pos, read_float(), read_float());
+        case shape3D_capsule:
+            return capsule_dist(sample_pos, read_float(), read_float());
+        case shape3D_cylinder: // TODO: rename?
+            return cylinder_dist(sample_pos, read_float(), read_float());
+        case shape3D_ellipsoid:
+            return ellipsoid_dist(sample_pos, read_vec3());
+        case shape3D_rect:
+            return rect_dist(sample_pos, read_vec3());
+        case shape3D_link:
+            return link_dist(sample_pos, read_float(), read_float(), read_float());
+        case shape3D_cone:
+            return cone_dist(sample_pos, read_float(), read_float());
+        case shape3D_capped_cone:
+            return capped_cone_dist(sample_pos, read_float(), read_float(), read_float());
+        // case shape3D_solid_angle:
+            // TODO
+        case shape3D_box_frame:
+            return rect_frame_dist(sample_pos, read_vec3(), read_float());
+        case shape3D_capped_torus:
+            return capped_torus_dist(sample_pos, read_float(), read_float(), read_float());
+        default:
+            return 10000.0;
+    }
+}
+
+void merge(inout float sdf1, inout vec4 color1, in float sdf2, in vec4 color2, in uint operation)
+{
+    if (operation < op_smooth_union) // not smoothed
+    {
+        bool use_left; // 0 = use left value
+
+        if (operation == op_union)
+            use_left = sdf1 < sdf2;
+        else if (operation == op_subtraction)
+            use_left = -sdf1 > sdf2;
+        else if (operation == op_intersection)
+            use_left = sdf1 > sdf2;
+        else if (operation == op_xor)
+            use_left = min(sdf1, sdf2) > -max(sdf1, sdf2);
+
+        // equivalent to ifelse(mixing == 0.0, sdf1, sdf2)
+        sdf1 = use_left ? sdf1 : sdf2;
+        color1 = use_left ? color1 : color2;
+    }
+    else // smoothed
+    {
+        // quadratic smoothing
+        float smoothing = read_float();
+        float _sign = -1.0;
+
+        if (operation == op_smooth_union)
+            _sign = 1.0;
+        else if (operation == op_smooth_subtraction)
+            sdf2 = -sdf2;
+        else if (operation == op_smooth_intersection){
+            sdf1 = -sdf1;
+            sdf2 = -sdf2;
+        } else if (operation == op_smooth_xor) {
+            float temp = min(sdf1, sdf2);
+            sdf2 = -max(sdf1, sdf2);
+            sdf1 = temp;
+        }
+
+        // color
+        float h = 1.0 - min(0.25 * abs(sdf1 - sdf2) / smoothing, 1.0);
+        float w = h * h;
+        float m = 0.5 * w;
+        float s = w * smoothing;
+        vec2 factors = (sdf1 < sdf2) ? vec2(sdf1 - s, m) : vec2(sdf2 - s, 1.0 - m);
+        sdf1 = _sign * factors.x;
+        color1 = mix(color1, color2, factors.y);
+    }
+}
+
+void merge(inout float sdf1, in float sdf2, in uint operation)
+{
+    if (operation < op_smooth_union) // not smoothed
+    {
+        bool use_left; // 0 = use left value
+
+        if (operation == op_union)
+            sdf1 = min(sdf1, sdf2);
+        else if (operation == op_subtraction)
+            sdf1 = max(-sdf1, sdf2);
+        else if (operation == op_intersection)
+            sdf1 = max(sdf1, sdf2);
+        else if (operation == op_xor)
+            sdf1 = max(min(sdf1, sdf2), -max(sdf1, sdf2));
+    }
+    else // smoothed
+    {
+        // quadratic smoothing
+        float smoothing = read_float();
+        float _sign = -1.0;
+
+        if (operation == op_smooth_union)
+            _sign = 1.0;
+        else if (operation == op_smooth_subtraction)
+            sdf2 = -sdf2;
+        else if (operation == op_smooth_intersection){
+            sdf1 = -sdf1;
+            sdf2 = -sdf2;
+        } else if (operation == op_smooth_xor) {
+            float temp = min(sdf1, sdf2);
+            sdf2 = -max(sdf1, sdf2);
+            sdf1 = temp;
+        }
+
+        float h = max(smoothing - 0.25 * abs(sdf1 - sdf2), 0.0 ) / smoothing;
+        sdf1 = _sign * (min(sdf1, sdf2) - h * h * smoothing);
+    }
+}
+
+void apply_postfix(inout vec3 sample_pos, in float sdf, in uint operation)
+{
+    if (operation == op_extrusion)
+    {
+        vec3 dir = read_vec3();
+        vec2 vec = vec2(sdf, length(abs(sample_pos) - dir));
+        sdf = min(max(vec.x, vec.y), 0.0) + length(max(vec, 0.0));
+    }
+    else if (operation == op_rounding)
+        sdf = sdf - read_float();
+    else if (operation == op_onion)
+        sdf = abs(sdf) - read_float();
+}
+
+vec4 sample_color_at(in vec3 ray_pos)
 {
     int N_objects = textureSize(id_buffer, 0);
 
@@ -311,208 +499,95 @@ SampleData sample_at(in vec3 ray_pos)
     vec4 color_stack[MAX_STACK_SIZE];
 
     vec3 sample_pos = ray_pos;
+    uint operation;
 
     for (int i = 0; i < N_objects; i++)
     {
-        uint operation = texelFetch(id_buffer, i, 0).x;
+        operation = texelFetch(id_buffer, i, 0).x;
 
         if (operation < _start_of_shapes) // prefix
-        {
-            if (operation == op_revolution)
-                // TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
-                // float moves the 2d object away from th center of rotation
-                // TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
-                sample_pos = vec3(length(sample_pos.xy) - read_float(), sample_pos.z, 0.0);
-            else if (operation == op_elongate)
-            {
-                vec3 dir = read_vec3();
-                sample_pos = sample_pos - clamp(sample_pos, -dir, dir);
-            }
-            else if (operation == op_rotation)
-                sample_pos = qmul(read_vec4(), sample_pos);
-            else if (operation == op_mirror)
-                // vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
-                sample_pos = mix(sample_pos, abs(sample_pos), read_vec3());
-            else if (operation == op_infinite_repetition)
-            {
-                vec3 rep_dist = read_vec3();
-                sample_pos = sample_pos - rep_dist * round(sample_pos / rep_dist);
-            }
-            else if (operation == op_limited_repetition)
-            {
-                vec3 rep_dist = read_vec3();
-                vec3 limit = read_vec3();
-                sample_pos = sample_pos - rep_dist * clamp(round(sample_pos / rep_dist), -limit, limit);
-            }
-            else if (operation == op_twist)
-            {
-                float k = read_float();
-                float c = cos(k * sample_pos.z);
-                float s = sin(k * sample_pos.z);
-                mat2 T = mat2(c, -s, s, c);
-                sample_pos = vec3(T * sample_pos.xy, sample_pos.z); // Quilez has this reorder (T*xz, y)
-            }
-            else if (operation == op_bend)
-            {
-                float k = read_float();
-                float c = cos(k * sample_pos.z);
-                float s = sin(k * sample_pos.z);
-                mat2 T = mat2(c, -s, s, c);
-                sample_pos = vec3(T * sample_pos.xz, sample_pos.y).xzy; // Quilez has this not reorder (T*xy, z)
-            }
-            else if (operation == op_translation)
-                sample_pos -= read_vec3();
-            else if (operation == _reset)
-                sample_pos = ray_pos;
-        }
+            apply_prefix(sample_pos, operation, ray_pos);
+
         else if (operation < _start_of_merge) // sdf
         {
-            float sdf = 1000000.0;
-            vec4 color = read_vec4();
-
-            switch (operation)
-            {
-                // case shape2D_vesica:
-                // case shape2D_plane:
-                // case shape2D_rhombus:
-                // case shape2D_hexagonal_prism:
-                // case shape2D_triangular_prism:
-                case shape3D_sphere:
-                    sdf = sphere_dist(sample_pos, read_float());
-                    break;
-                case shape3D_octahedron:
-                    sdf = octahedron_dist(sample_pos, read_float());
-                    break;
-                case shape3D_pyramid:
-                    sdf = pyramid_dist(sample_pos, read_float(), read_float());
-                    break;
-                case shape3D_torus:
-                    sdf = torus_dist(sample_pos, read_float(), read_float());
-                    break;
-                case shape3D_capsule:
-                    sdf = capsule_dist(sample_pos, read_float(), read_float());
-                    break;
-                case shape3D_cylinder: // TODO: rename?
-                    sdf = cylinder_dist(sample_pos, read_float(), read_float());
-                    break;
-                case shape3D_ellipsoid:
-                    sdf = ellipsoid_dist(sample_pos, read_vec3());
-                    break;
-                case shape3D_rect:
-                    sdf = rect_dist(sample_pos, read_vec3());
-                    break;
-                case shape3D_link:
-                    sdf = link_dist(sample_pos, read_float(), read_float(), read_float());
-                    break;
-                case shape3D_cone:
-                    sdf = cone_dist(sample_pos, read_float(), read_float());
-                    break;
-                case shape3D_capped_cone:
-                    sdf = capped_cone_dist(sample_pos, read_float(), read_float(), read_float());
-                    break;
-                case shape3D_solid_angle:
-                    // TODO
-                    break;
-                case shape3D_box_frame:
-                    sdf = rect_frame_dist(sample_pos, read_vec3(), read_float());
-                    break;
-                case shape3D_capped_torus:
-                    sdf = capped_torus_dist(sample_pos, read_float(), read_float(), read_float());
-                    break;
-            }
-
-            sdf_stack[stack_idx] = sdf;
-            color_stack[stack_idx] = color;
+            color_stack[stack_idx] = read_vec4();
+            sdf_stack[stack_idx] = sample_sdf(sample_pos, operation);
             stack_idx++;
         }
         else if (operation < _start_of_postfix) // merge operation
         {
-            float sdf1 = sdf_stack[stack_idx - 2];
-            float sdf2 = sdf_stack[stack_idx - 1];
-            vec4 color1 = color_stack[stack_idx - 2];
-            vec4 color2 = color_stack[stack_idx - 1];
+            merge(
+                sdf_stack[stack_idx - 2],
+                color_stack[stack_idx - 2],
+                sdf_stack[stack_idx - 1],
+                color_stack[stack_idx - 1],
+                operation
+            );
 
             stack_idx--;
+        }
+        else // postfix
+            apply_postfix(sample_pos, sdf_stack[stack_idx - 1], operation);
+    }
 
-            if (operation < op_smooth_union) // not smoothed
-            {
-                float mixing; // 0 = use left value
+    // stack_idx should always be 0 here
+    return color_stack[0];
+}
 
-                if (operation == op_union)
-                    mixing = float(sdf1 > sdf2);
-                else if (operation == op_subtraction)
-                    mixing = float(-sdf1 < sdf2);
-                else if (operation == op_intersection)
-                    mixing = float(sdf1 < sdf2);
-                else if (operation == op_xor)
-                    mixing = float(min(sdf1, sdf2) < -max(sdf1, sdf2));
+float sample_sdf_at(in vec3 ray_pos)
+{
+    int N_objects = textureSize(id_buffer, 0);
 
-                // equivalent to ifelse(mixing == 0.0, sdf1, sdf2)
-                sdf_stack[stack_idx - 1] = mix(sdf1, sdf2, mixing);
-                color_stack[stack_idx - 1] = mix(color1, color2, mixing);
-            }
-            else // smoothed
-            {
-                // quadratic smoothing
-                float smoothing = read_float();
-                float _sign = -1.0;
+    data_idx = 0; // reset global
+    int stack_idx = 0;
 
-                if (operation == op_smooth_union)
-                    _sign = 1.0;
-                else if (operation == op_smooth_subtraction)
-                    sdf2 = -sdf2;
-                else if (operation == op_smooth_intersection){
-                    sdf1 = -sdf1;
-                    sdf2 = -sdf2;
-                } else if (operation == op_smooth_xor) {
-                    float temp = min(sdf1, sdf2);
-                    sdf2 = -max(sdf1, sdf2);
-                    sdf1 = temp;
-                }
+    const int MAX_STACK_SIZE = 16;
+    float sdf_stack[MAX_STACK_SIZE];
 
-                // TODO: optimize? reuse calculatations, eliminate branches
+    vec3 sample_pos = ray_pos;
+    uint operation;
 
-                // sdf
-                float h = max(4.0 * smoothing - abs(sdf1 - sdf2), 0.0);
-                sdf_stack[stack_idx - 1] = min(sdf1, sdf2) - h * h * 0.0625 / smoothing;
+    for (int i = 0; i < N_objects; i++)
+    {
+        operation = texelFetch(id_buffer, i, 0).x;
 
-                // color
-                h = 1.0 - min(0.25 * abs(sdf1 - sdf2) / smoothing, 1.0);
-                float w = h * h;
-                float m = 0.5 * w;
-                // float s = w * smoothing;
-                // vec2 factors = (sdf1 < sdf2) ? vec2(sdf1 - s, m) : vec2(sdf2 - s, 1.0 - m);
-                float mixing = (sdf1 < sdf2) ? m : 1.0 - m;
-                color_stack[stack_idx - 1] = mix(color1, color2, mixing);
-            }
+        if (operation < _start_of_shapes) // prefix
+            apply_prefix(sample_pos, operation, ray_pos);
+
+        else if (operation < _start_of_merge) // sdf
+        {
+            data_idx += 4; // skip over color;
+            sdf_stack[stack_idx] = sample_sdf(sample_pos, operation);
+            stack_idx++;
+        }
+        else if (operation < _start_of_postfix) // merge operation
+        {
+            merge(
+                sdf_stack[stack_idx - 2],
+                sdf_stack[stack_idx - 1],
+                operation
+            );
+
+            stack_idx--;
         }
         else // postfix
         {
-            if (operation == op_extrusion)
-            {
-                vec3 dir = read_vec3();
-                vec2 vec = vec2(sdf_stack[stack_idx - 1], length(abs(sample_pos) - dir));
-                sdf_stack[stack_idx - 1] = min(max(vec.x, vec.y), 0.0) + length(max(vec, 0.0));
-            }
-            else if (operation == op_rounding)
-                sdf_stack[stack_idx - 1] = sdf_stack[stack_idx - 1] - read_float();
-            else if (operation == op_onion)
-                sdf_stack[stack_idx - 1] = abs(sdf_stack[stack_idx - 1]) - read_float();
+            apply_postfix(sample_pos, sdf_stack[stack_idx - 1], operation);
         }
     }
+
     // stack_idx should always be 0 here
-    return SampleData(sdf_stack[0], color_stack[0]);
+    return sdf_stack[0];
 }
 
 vec3 generate_normal(vec3 sample_pos, float eps)
 {
     const vec2 k = vec2(1, -1) * 0.5773;
-    return normalize(
-        k.xyy * sample_at(sample_pos + k.xyy * eps).sdf +
-        k.yyx * sample_at(sample_pos + k.yyx * eps).sdf +
-        k.yxy * sample_at(sample_pos + k.yxy * eps).sdf +
-        k.xxx * sample_at(sample_pos + k.xxx * eps).sdf
-    );
+    float sdf1 = sample_sdf_at(sample_pos + k.xyy * eps);
+    float sdf2 = sample_sdf_at(sample_pos + k.yyx * eps);
+    float sdf3 = sample_sdf_at(sample_pos + k.yxy * eps);
+    float sdf4 = sample_sdf_at(sample_pos + k.xxx * eps);
+    return normalize(k.xyy * sdf1 + k.yyx * sdf2 + k.yxy * sdf3 + k.xxx * sdf4);
 }
 
 vec4 raymarch(vec3 start, vec3 dir)
@@ -520,28 +595,27 @@ vec4 raymarch(vec3 start, vec3 dir)
     vec3 ray_pos = start;
     vec3 ray_dir = normalize(dir);
     float max_dist = length(dir);
-    float min_step = 0.1 * max_dist / float(num_samples);
+    float min_step = 0.01 * max_dist / float(num_samples);
 
     float picked_distance = 0.0;
     float total_distance = 0.0;
-    vec4 base_color = vec4(0);
 
     for (int iter = 0; iter < num_samples; iter++)
     {
-        SampleData result = sample_at(ray_pos);
+        picked_distance = sample_sdf_at(ray_pos);
 
-        float move_by = clamp(result.sdf, min_step, 10 * min_step);
+        float move_by = max(picked_distance, min_step);
 
-        if (result.sdf < 0.0)
+        if (picked_distance < 0.0)
         {
-            picked_distance = result.sdf;
-            base_color = result.color;
+            ray_pos += picked_distance * ray_dir;
             break;
         }
         else if (total_distance + move_by > max_dist)
         {
             discard;
-            return vec4(0);
+            // return vec4(float(iter) / float(num_samples), 0, 0, 1);
+            return vec4(float(iter) / float(num_samples), 1, 0, 1);
         }
         else
         {
@@ -550,6 +624,7 @@ vec4 raymarch(vec3 start, vec3 dir)
         }
     }
 
+    vec4 base_color = sample_color_at(ray_pos);
     vec3 normal = generate_normal(ray_pos, 0.1 * min_step);
     vec3 color = illuminate(ray_pos, ray_dir, normal, base_color.rgb);
 
