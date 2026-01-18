@@ -21,9 +21,9 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 in vec3 frag_vert;
 
-{{color_map_type}} color_map;
-{{color_type}} color;
-{{color_norm_type}} color_norm;
+// {{color_map_type}} color_map;
+// {{color_type}} color;
+// {{color_norm_type}} color_norm;
 
 uniform vec3 eyeposition;
 uniform mat4 modelinv;
@@ -33,12 +33,8 @@ uniform int _num_clip_planes;
 uniform vec4 clip_planes[8];
 uniform float depth_shift;
 
-uniform sampler1D marker_mode; // 1 UInt8
-// probably worth squashing into one 2D texture?
-uniform sampler1D position; // float vec3
-uniform sampler1D markersize; // float vec3
-uniform sampler1D rotation; // float vec4
-uniform sampler1D smudge_range; // float
+uniform usampler1D id_buffer;
+uniform sampler1D data_buffer;
 
 const float max_distance = 1.3;
 
@@ -48,31 +44,6 @@ const float step_size = max_distance / float(num_samples);
 uniform uint objectid;
 
 void write2framebuffer(vec4 color, uvec2 id);
-
-float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
-
-vec4 color_lookup(float intensity, Nothing color_map, Nothing norm, vec4 color) {
-    return color;
-}
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, vec2 norm, Nothing color) {
-    return texelFetch(color_ramp, int(_normalize(intensity, norm.x, norm.y)*textureSize(color_ramp)));
-}
-vec4 color_lookup(float intensity, samplerBuffer color_ramp, Nothing norm, Nothing color) {
-    return vec4(0);  // stub method
-}
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm, Nothing color) {
-    return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
-}
-vec4 color_lookup(vec4 data_color, Nothing color_ramp, Nothing norm, Nothing color) {
-    return data_color;  // stub method
-}
-vec4 color_lookup(float intensity, Nothing color_ramp, Nothing norm, Nothing color) {
-    return vec4(0);  // stub method
-}
-
-vec4 color_lookup(samplerBuffer colormap, int index) { return texelFetch(colormap, index); }
-vec4 color_lookup(sampler1D colormap, int index) { return texelFetch(colormap, index, 0); }
-vec4 color_lookup(Nothing colormap, int index) { return vec4(0); }
 
 #ifndef NO_SHADING
 vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color);
@@ -86,11 +57,27 @@ vec3 illuminate(vec3 world_pos, vec3 camdir, vec3 normal, vec3 base_color) {
 
 const float typemax = 100000000000000000000000000000000000000.0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// Operations
-////////////////////////////////////////////////////////////////////////////////
-
-
+vec3 qmul(vec4 quat, vec3 vec)
+{
+    // using inverse of quat, which means -xyz, instead of xyz
+    float num = -quat.x * 2.0;
+    float num2 = -quat.y * 2.0;
+    float num3 = -quat.z * 2.0;
+    float num4 = -quat.x * num;
+    float num5 = -quat.y * num2;
+    float num6 = -quat.z * num3;
+    float num7 = -quat.x * num2;
+    float num8 = -quat.x * num3;
+    float num9 = -quat.y * num3;
+    float num10 = quat.w * num;
+    float num11 = quat.w * num2;
+    float num12 = quat.w * num3;
+    return vec3(
+        (1.0 - (num5 + num6)) * vec.x + (num7 - num12) * vec.y + (num8 + num11) * vec.z,
+        (num7 + num12) * vec.x + (1.0 - (num4 + num6)) * vec.y + (num9 - num10) * vec.z,
+        (num8 - num11) * vec.x + (num9 + num10) * vec.y + (1.0 - (num4 + num5)) * vec.z
+    );
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Distance Functions
@@ -99,7 +86,7 @@ const float typemax = 100000000000000000000000000000000000000.0;
 // These are all assumed to be centered around 0. `ray_pos` may be translated
 // externally to translate the sdf.
 
-float sphere_dist(vec3 ray_pos, vec3 scale) { return length(ray_pos) - scale.x; }
+float sphere_dist(vec3 ray_pos, float radius) { return length(ray_pos) - radius; }
 
 float ellipsoid_dist(vec3 ray_pos, vec3 scale)
 {
@@ -150,7 +137,10 @@ float link_dist(vec3 ray_pos, float len, float r_outer, float r_inner)
 
 float cylinder_dist(vec3 ray_pos, float radius, float height)
 {
-    // homebrew, probably incorrect inside?
+    // TODO: underestimates distance when we're diagonally below/above the cylinder
+    //  |    |
+    //..|____|.. OK
+    //  : OK : wrong
     return max(length(ray_pos.xy) - radius, abs(ray_pos.z) - height);
 }
 
@@ -256,343 +246,302 @@ float pyramid_dist(vec3 ray_pos, float radius, float height)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Normals
-////////////////////////////////////////////////////////////////////////////////
-
-// TODO:
-// These are not going to work with sdf transformations
-// getting normals from the sdf is actually necessary there...
-
-vec3 sphere_normal(vec3 ray_pos, vec3 scale) { return normalize(ray_pos); }
-vec3 ellipsoid_normal(vec3 ray_pos, vec3 scale) { return normalize(ray_pos / scale); }
-
-vec3 rect_normal(vec3 ray_pos, vec3 scale)
-{
-    vec3 face_dist = abs(abs(ray_pos) - scale);
-    vec3 is_point_on_face = vec3(
-        face_dist.x < face_dist.y && face_dist.x < face_dist.z,
-        face_dist.y < face_dist.z && face_dist.y < face_dist.x,
-        face_dist.z < face_dist.x && face_dist.z < face_dist.y
-    );
-    vec3 normal = is_point_on_face * sign(ray_pos);
-    return normal;
-}
-
-vec3 rect_frame_normal(vec3 ray_pos, vec3 scale, float width)
-{
-    const float h = 0.0001;
-    const vec2 k = vec2(1, -1);
-    return normalize(
-        k.xyy * rect_frame_dist(ray_pos + k.xyy * h, scale, width) +
-        k.yyx * rect_frame_dist(ray_pos + k.yyx * h, scale, width) +
-        k.yxy * rect_frame_dist(ray_pos + k.yxy * h, scale, width) +
-        k.xxx * rect_frame_dist(ray_pos + k.xxx * h, scale, width)
-    );
-}
-
-vec3 torus_normal(vec3 ray_pos, float r_outer, float r_inner)
-{
-    vec2 ring_pos = r_outer * normalize(ray_pos.xy);
-    vec3 normal = normalize(ray_pos - vec3(ring_pos, 0.0));
-    return normal;
-}
-
-vec3 capped_torus_normal(vec3 ray_pos, float opening_angle, float r_outer, float r_inner)
-{
-    vec2 ring_pos = normalize(ray_pos.xy);
-    ring_pos.y = max(ring_pos.y, cos(opening_angle));
-    ring_pos = r_outer * normalize(ring_pos);
-    vec3 normal = normalize(ray_pos - vec3(ring_pos, 0.0));
-    return normal;
-}
-
-vec3 link_normal(vec3 ray_pos, float len, float r_outer, float r_inner)
-{
-    vec2 link_pos;
-    if (abs(ray_pos.y) < len)
-        link_pos = vec2(sign(ray_pos.x) * r_outer, ray_pos.y);
-    else
-    {
-        // compute position on link with len = r_inner = 0
-        float s = sign(ray_pos.y);
-        float ring_y = s * (abs(ray_pos.y) - len);
-        vec2 ring_pos = r_outer * normalize(vec2(ray_pos.x, ring_y));
-        // then add length back
-        link_pos = ring_pos + s * vec2(0, len);
-    }
-
-    vec3 normal = normalize(ray_pos - vec3(link_pos, 0.0));
-    return normal;
-}
-
-vec3 cylinder_normal(vec3 ray_pos, float radius, float height) {
-    float norm = length(ray_pos.xy);
-    if (abs(ray_pos.z) - height < norm - radius)
-        return vec3(ray_pos.xy / norm, 0.0);
-    else
-        return vec3(0, 0, sign(ray_pos.z));
-}
-
-vec3 capsule_normal(vec3 ray_pos, float radius, float height) {
-    float norm = length(ray_pos.xy);
-    if (abs(ray_pos.z) - height < norm - radius)
-        return vec3(ray_pos.xy / norm, 0.0);
-    else
-        return normalize(ray_pos - vec3(0, 0, sign(ray_pos.z) * height));
-}
-
-vec3 cone_normal(vec3 ray_pos, float radius, float height) {
-    float norm = length(ray_pos.xy);
-    float mantle_radius = radius * (height - ray_pos.z) / (2.0 * height);
-    if (abs(ray_pos.z + height) > abs(norm - mantle_radius))
-        return vec3(ray_pos.xy / norm, 0.0);
-    else
-        return vec3(0.0, 0.0, -1.0);
-}
-
-vec3 capped_cone_normal(vec3 ray_pos, float height, float radius1, float radius2) {
-    float norm = length(ray_pos.xy);
-    float mantle_radius = mix(radius1, radius2, (ray_pos.z + height) / (2.0 * height));
-    if (height - abs(ray_pos.z) > abs(norm - mantle_radius))
-        return vec3(ray_pos.xy / norm, 0.0);
-    else
-        return vec3(0.0, 0.0, sign(ray_pos.z));
-}
-
-vec3 octahedron_normal(vec3 ray_pos, float size) {
-    return normalize(vec3(sign(ray_pos)));
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// ray marching
 ////////////////////////////////////////////////////////////////////////////////
 
-vec4 raymarch(vec3 start, vec3 dir)
+{{operation_enum}}
+
+int data_idx = 0;
+
+float read_float()
 {
-    int N_objects = textureSize(marker_mode, 0).x;
-    vec3 ray_pos = start;
-    vec3 ray_dir = normalize(dir);
-    float max_dist = length(dir);
-    float min_step = 0.1 * max_dist / float(num_samples);
-
-    int picked_index = -1;
-    float picked_distance = 0.0;
-    float total_distance = 0.0;
-    int iter_counter = 0;
-
-    for (int iter = 0; iter < 10 * num_samples; iter++)
-    {
-        iter_counter = iter;
-        float min_dist = 1000000.0;
-        int min_idx = 0;
-        for (int i = 0; i < N_objects; i++)
-        {
-            // TODO: extract sdf from marker_mode
-            vec3 sdf_pos = texelFetch(position, i, 0).xyz;
-            vec3 scale = texelFetch(markersize, i, 0).xyz;
-            // vec3 rot = texelFetch(rotation, i, 0);
-
-            // float dist = ellipsoid_dist(ray_pos, sdf_pos, scale);
-            // float dist = rect_frame_dist(ray_pos - sdf_pos, scale, 0.05);
-            // float dist = torus_dist(ray_pos - sdf_pos, scale.x, scale.y);
-            // float dist = capped_torus_dist(ray_pos - sdf_pos, 1.5708, 0.5, 0.2);
-            // float dist = link_dist(ray_pos - sdf_pos, 0.5, 0.3, 0.1);
-            // float dist = cylinder_dist(ray_pos - sdf_pos, 0.2, 0.5);
-            // float dist = capsule_dist(ray_pos - sdf_pos, 0.2, 0.5);
-            // float dist = cone_dist(ray_pos - sdf_pos, 0.2, 0.5);
-            // float dist = octahedron_dist(ray_pos - sdf_pos, 0.5);
-            float dist = pyramid_dist(ray_pos - sdf_pos, 0.3, 0.5);
-
-            if (dist < min_dist)
-            {
-                min_dist = dist;
-                min_idx = i;
-            }
-        }
-
-        float move_by = clamp(min_dist, 0.1 * min_step, 10 * min_step);
-
-        if (min_dist < 0.0)
-        {
-            picked_index = min_idx;
-            picked_distance = min_dist;
-            break;
-        }
-        else if (total_distance + move_by > max_dist)
-        {
-            break;
-        }
-        else
-        {
-            ray_pos += move_by * ray_dir;
-            total_distance += move_by;
-        }
-    }
-
-    if (picked_index != -1)
-    {
-        vec3 sdf_pos = texelFetch(position, picked_index, 0).xyz;
-        vec3 base_color = texelFetch(color, picked_index, 0).xyz; // TODO: cases
-        vec3 scale = texelFetch(markersize, picked_index, 0).xyz;
-
-        // vec3 normal = ellipsoid_normal(ray_pos, sdf_pos, scale);
-        // vec3 normal = rect_normal(ray_pos - sdf_pos, scale);
-        // vec3 normal = rect_frame_normal(ray_pos - sdf_pos, scale, 0.05);
-        // vec3 normal = capped_torus_normal(ray_pos - sdf_pos, 1.5708, 0.5, 0.2);
-        // vec3 normal = link_normal(ray_pos - sdf_pos, 0.5, 0.3, 0.1);
-        // vec3 normal = cylinder_normal(ray_pos - sdf_pos, 0.2, 0.5);
-        // vec3 normal = capsule_normal(ray_pos - sdf_pos, 0.2, 0.5);
-        // vec3 normal = cone_normal(ray_pos - sdf_pos, 0.2, 0.5);
-        // vec3 normal = octahedron_normal(ray_pos - sdf_pos, 0.5);
-
-        vec3 normal;
-        {
-            const float h = 0.01 * min_step;
-            const vec2 k = vec2(1, -1) * 0.5773;
-            normal = normalize(
-                k.xyy * (pyramid_dist(ray_pos + k.xyy * h, 0.3, 0.5)) +
-                k.yyx * (pyramid_dist(ray_pos + k.yyx * h, 0.3, 0.5)) +
-                k.yxy * (pyramid_dist(ray_pos + k.yxy * h, 0.3, 0.5)) +
-                k.xxx * (pyramid_dist(ray_pos + k.xxx * h, 0.3, 0.5))
-            );
-        }
-
-        vec3 color = illuminate(ray_pos, ray_dir, normal, base_color);
-
-        // // if we're inside the shape we hit a solid part, if we're outside we
-        // // probably scratched an edge?
-        // float alpha = 1.0 - max(0.0, 2.0 * dist / min_step);
-
-        // OK, no, but specifically spheres can check normals...
-        // float alpha = 10 * abs(dot(normal, ray_dir));
-
-        return vec4(color, 1);
-    }
-    else
-    {
-        discard;
-        return vec4(0, 0, 0, 0);
-    }
+    float data = texelFetch(data_buffer, data_idx, 0).x;
+    data_idx++;
+    return data;
 }
 
-// prefix Operations
-const uint op_revolution = 0;
-const uint op_elongate = 1;
-const uint op_rotation = 2;
-const uint op_mirror = 3; // enable dims in data
-const uint op_infinite_repetition = 4;
-const uint op_limited_repetition = 5;
-const uint op_twist = 6;
-const uint op_bend = 7;
-const uint op_translation = 10;
+vec2 read_vec2()
+{
+    vec2 data = vec2(
+        texelFetch(data_buffer, data_idx + 0, 0).x,
+        texelFetch(data_buffer, data_idx + 1, 0).x
+    );
+    data_idx += 2;
+    return data;
+}
 
-// include this with sdf
-// maybe also include position
-// both of them seem practically guaranteed to be set
-// const uint op_scale = 49; // special, needs to apply before and after sdf...
+vec3 read_vec3()
+{
+    vec3 data = vec3(
+        texelFetch(data_buffer, data_idx + 0, 0).x,
+        texelFetch(data_buffer, data_idx + 1, 0).x,
+        texelFetch(data_buffer, data_idx + 2, 0).x
+    );
+    data_idx += 3;
+    return data;
+}
 
-// Shapes 2D (for extrusion, revolution)
-const uint shape_Vesica = 50;
-const uint shape_Plane = 51;
-const uint shape_Rhombus = 52; // extrusion
-const uint shape_Hexagonal_prism = 53; // extrusion
-const uint shape_Triangular_prism = 54; // extrusion
-
-// Shapes 3D
-const uint shape_Sphere = 100;              // check
-const uint shape_Octahedron = 101;          // check
-const uint shape_Pyramid = 102;             // check
-const uint shape_Torus = 103;               // check
-const uint shape_Capsule = 104;             // check
-const uint shape_Capped_Cylinder = 105;     // check
-const uint shape_Ellipsoid = 106;           // check
-const uint shape_Rect = 107;                // check
-const uint shape_Link = 108;                // check
-const uint shape_Capped_Cone = 109;         // check
-const uint shape_Solid_Angle = 110;         //
-const uint shape_BoxFrame = 111;            // check
-const uint shape_Capped_Torus = 112;        // check
-
-// probably not
-// infinite Cone
-// Hollow Sphere // subtraction
-// Death Star // subtraction
-// Cut Sphere // subtraction
-
-const uint op_extrusion = 150;
-const uint op_rounding = 151;
-const uint op_onion = 152;
-
-const uint op_union = 200;
-const uint op_subtraction = 201;
-const uint op_intersection = 202;
-const uint op_xor = 203;
-const uint op_smooth_union = 204;
-const uint op_smooth_subtraction = 205;
-const uint op_smooth_intersection = 206;
-const uint op_smooth_xor = 207;
-
+vec4 read_vec4()
+{
+    vec4 data = vec4(
+        texelFetch(data_buffer, data_idx + 0, 0).x,
+        texelFetch(data_buffer, data_idx + 1, 0).x,
+        texelFetch(data_buffer, data_idx + 2, 0).x,
+        texelFetch(data_buffer, data_idx + 3, 0).x
+    );
+    data_idx += 4;
+    return data;
+}
 
 struct SampleData
 {
-    float dist;
-    int index;
+    float sdf;
+    vec4 color;
 };
 
-SampleData sample_at(vec3 ray_pos)
+SampleData sample_at(in vec3 ray_pos)
 {
-    int N_objects = textureSize(marker_mode, 0).x;
+    int N_objects = textureSize(id_buffer, 0);
 
-    float min_dist = 1000000.0;
-    int min_idx = 0;
+    data_idx = 0; // reset global
+    int stack_idx = 0;
+
+    const int MAX_STACK_SIZE = 16;
+    float sdf_stack[MAX_STACK_SIZE];
+    vec4 color_stack[MAX_STACK_SIZE];
+
+    vec3 sample_pos = ray_pos;
 
     for (int i = 0; i < N_objects; i++)
     {
-        // uint operation = texelFetch(operation_buffer, i).x;
+        uint operation = texelFetch(id_buffer, i, 0).x;
 
-        // if (operation == )
-        float dist = 0.0;
-
-        if (dist < min_dist)
+        if (operation < _start_of_shapes) // prefix
         {
-            min_dist = dist;
-            min_idx = i;
+            if (operation == op_revolution)
+                // TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
+                // float moves the 2d object away from th center of rotation
+                // TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
+                sample_pos = vec3(length(sample_pos.xy) - read_float(), sample_pos.z, 0.0);
+            else if (operation == op_elongate)
+            {
+                vec3 dir = read_vec3();
+                sample_pos = sample_pos - clamp(sample_pos, -dir, dir);
+            }
+            else if (operation == op_rotation)
+                sample_pos = qmul(read_vec4(), sample_pos);
+            else if (operation == op_mirror)
+                // vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
+                sample_pos = mix(sample_pos, abs(sample_pos), read_vec3());
+            else if (operation == op_infinite_repetition)
+            {
+                vec3 rep_dist = read_vec3();
+                sample_pos = sample_pos - rep_dist * round(sample_pos / rep_dist);
+            }
+            else if (operation == op_limited_repetition)
+            {
+                vec3 rep_dist = read_vec3();
+                vec3 limit = read_vec3();
+                sample_pos = sample_pos - rep_dist * clamp(round(sample_pos / rep_dist), -limit, limit);
+            }
+            else if (operation == op_twist)
+            {
+                float k = read_float();
+                float c = cos(k * sample_pos.z);
+                float s = sin(k * sample_pos.z);
+                mat2 T = mat2(c, -s, s, c);
+                sample_pos = vec3(T * sample_pos.xy, sample_pos.z); // Quilez has this reorder (T*xz, y)
+            }
+            else if (operation == op_bend)
+            {
+                float k = read_float();
+                float c = cos(k * sample_pos.z);
+                float s = sin(k * sample_pos.z);
+                mat2 T = mat2(c, -s, s, c);
+                sample_pos = vec3(T * sample_pos.xz, sample_pos.y).xzy; // Quilez has this not reorder (T*xy, z)
+            }
+            else if (operation == op_translation)
+                sample_pos -= read_vec3();
+            else if (operation == _reset)
+                sample_pos = ray_pos;
+        }
+        else if (operation < _start_of_merge) // sdf
+        {
+            float sdf = 1000000.0;
+            vec4 color = read_vec4();
+
+            switch (operation)
+            {
+                // case shape2D_vesica:
+                // case shape2D_plane:
+                // case shape2D_rhombus:
+                // case shape2D_hexagonal_prism:
+                // case shape2D_triangular_prism:
+                case shape3D_sphere:
+                    sdf = sphere_dist(sample_pos, read_float());
+                    break;
+                case shape3D_octahedron:
+                    sdf = octahedron_dist(sample_pos, read_float());
+                    break;
+                case shape3D_pyramid:
+                    sdf = pyramid_dist(sample_pos, read_float(), read_float());
+                    break;
+                case shape3D_torus:
+                    sdf = torus_dist(sample_pos, read_float(), read_float());
+                    break;
+                case shape3D_capsule:
+                    sdf = capsule_dist(sample_pos, read_float(), read_float());
+                    break;
+                case shape3D_cylinder: // TODO: rename?
+                    sdf = cylinder_dist(sample_pos, read_float(), read_float());
+                    break;
+                case shape3D_ellipsoid:
+                    sdf = ellipsoid_dist(sample_pos, read_vec3());
+                    break;
+                case shape3D_rect:
+                    sdf = rect_dist(sample_pos, read_vec3());
+                    break;
+                case shape3D_link:
+                    sdf = link_dist(sample_pos, read_float(), read_float(), read_float());
+                    break;
+                case shape3D_cone:
+                    sdf = cone_dist(sample_pos, read_float(), read_float());
+                    break;
+                case shape3D_capped_cone:
+                    sdf = capped_cone_dist(sample_pos, read_float(), read_float(), read_float());
+                    break;
+                case shape3D_solid_angle:
+                    // TODO
+                    break;
+                case shape3D_box_frame:
+                    sdf = rect_frame_dist(sample_pos, read_vec3(), read_float());
+                    break;
+                case shape3D_capped_torus:
+                    sdf = capped_torus_dist(sample_pos, read_float(), read_float(), read_float());
+                    break;
+            }
+
+            sdf_stack[stack_idx] = sdf;
+            color_stack[stack_idx] = color;
+            stack_idx++;
+        }
+        else if (operation < _start_of_postfix) // merge operation
+        {
+            float sdf1 = sdf_stack[stack_idx - 2];
+            float sdf2 = sdf_stack[stack_idx - 1];
+            vec4 color1 = color_stack[stack_idx - 2];
+            vec4 color2 = color_stack[stack_idx - 1];
+
+            stack_idx--;
+
+            if (operation < op_smooth_union) // not smoothed
+            {
+                float mixing; // 0 = use left value
+
+                if (operation == op_union)
+                    mixing = float(sdf1 > sdf2);
+                else if (operation == op_subtraction)
+                    mixing = float(-sdf1 < sdf2);
+                else if (operation == op_intersection)
+                    mixing = float(sdf1 < sdf2);
+                else if (operation == op_xor)
+                    mixing = float(min(sdf1, sdf2) < -max(sdf1, sdf2));
+
+                // equivalent to ifelse(mixing == 0.0, sdf1, sdf2)
+                sdf_stack[stack_idx - 1] = mix(sdf1, sdf2, mixing);
+                color_stack[stack_idx - 1] = mix(color1, color2, mixing);
+            }
+            else // smoothed
+            {
+                // quadratic smoothing
+                float smoothing = read_float();
+                float _sign = -1.0;
+
+                if (operation == op_smooth_union)
+                    _sign = 1.0;
+                else if (operation == op_smooth_subtraction)
+                    sdf2 = -sdf2;
+                else if (operation == op_smooth_intersection){
+                    sdf1 = -sdf1;
+                    sdf2 = -sdf2;
+                } else if (operation == op_smooth_xor) {
+                    float temp = min(sdf1, sdf2);
+                    sdf2 = -max(sdf1, sdf2);
+                    sdf1 = temp;
+                }
+
+                // TODO: optimize? reuse calculatations, eliminate branches
+
+                // sdf
+                float h = max(4.0 * smoothing - abs(sdf1 - sdf2), 0.0);
+                sdf_stack[stack_idx - 1] = min(sdf1, sdf2) - h * h * 0.0625 / smoothing;
+
+                // color
+                h = 1.0 - min(0.25 * abs(sdf1 - sdf2) / smoothing, 1.0);
+                float w = h * h;
+                float m = 0.5 * w;
+                // float s = w * smoothing;
+                // vec2 factors = (sdf1 < sdf2) ? vec2(sdf1 - s, m) : vec2(sdf2 - s, 1.0 - m);
+                float mixing = (sdf1 < sdf2) ? m : 1.0 - m;
+                color_stack[stack_idx - 1] = mix(color1, color2, mixing);
+            }
+        }
+        else // postfix
+        {
+            if (operation == op_extrusion)
+            {
+                vec3 dir = read_vec3();
+                vec2 vec = vec2(sdf_stack[stack_idx - 1], length(abs(sample_pos) - dir));
+                sdf_stack[stack_idx - 1] = min(max(vec.x, vec.y), 0.0) + length(max(vec, 0.0));
+            }
+            else if (operation == op_rounding)
+                sdf_stack[stack_idx - 1] = sdf_stack[stack_idx - 1] - read_float();
+            else if (operation == op_onion)
+                sdf_stack[stack_idx - 1] = abs(sdf_stack[stack_idx - 1]) - read_float();
         }
     }
-    return SampleData(min_dist, min_idx);
+    // stack_idx should always be 0 here
+    return SampleData(sdf_stack[0], color_stack[0]);
 }
 
-vec4 raymarch2(vec3 start, vec3 dir)
+vec3 generate_normal(vec3 sample_pos, float eps)
+{
+    const vec2 k = vec2(1, -1) * 0.5773;
+    return normalize(
+        k.xyy * sample_at(sample_pos + k.xyy * eps).sdf +
+        k.yyx * sample_at(sample_pos + k.yyx * eps).sdf +
+        k.yxy * sample_at(sample_pos + k.yxy * eps).sdf +
+        k.xxx * sample_at(sample_pos + k.xxx * eps).sdf
+    );
+}
+
+vec4 raymarch(vec3 start, vec3 dir)
 {
     vec3 ray_pos = start;
     vec3 ray_dir = normalize(dir);
     float max_dist = length(dir);
     float min_step = 0.1 * max_dist / float(num_samples);
 
-    int picked_index = -1;
     float picked_distance = 0.0;
     float total_distance = 0.0;
-    int iter_counter = 0;
+    vec4 base_color = vec4(0);
 
-    for (int iter = 0; iter < 10 * num_samples; iter++)
+    for (int iter = 0; iter < num_samples; iter++)
     {
-        iter_counter = iter;
-        float min_dist = 1000000.0;
-        int min_idx = 0;
-        SampleData _sample = sample_at(ray_pos);
+        SampleData result = sample_at(ray_pos);
 
-        float move_by = clamp(min_dist, min_step, 10 * min_step);
+        float move_by = clamp(result.sdf, min_step, 10 * min_step);
 
-        if (min_dist < 0.0)
+        if (result.sdf < 0.0)
         {
-            picked_index = min_idx;
-            picked_distance = min_dist;
+            picked_distance = result.sdf;
+            base_color = result.color;
             break;
         }
         else if (total_distance + move_by > max_dist)
         {
-            break;
+            discard;
+            return vec4(0);
         }
         else
         {
@@ -601,35 +550,10 @@ vec4 raymarch2(vec3 start, vec3 dir)
         }
     }
 
-    if (picked_index != -1)
-    {
-        vec3 sdf_pos = texelFetch(position, picked_index, 0).xyz;
-        vec3 base_color = texelFetch(color, picked_index, 0).xyz; // TODO: cases
-        vec3 scale = texelFetch(markersize, picked_index, 0).xyz;
+    vec3 normal = generate_normal(ray_pos, 0.1 * min_step);
+    vec3 color = illuminate(ray_pos, ray_dir, normal, base_color.rgb);
 
-        // vec3 normal = ellipsoid_normal(ray_pos, sdf_pos, scale);
-        // vec3 normal = rect_normal(ray_pos - sdf_pos, scale);
-        // vec3 normal = rect_frame_normal(ray_pos - sdf_pos, scale, 0.05);
-        // vec3 normal = capped_torus_normal(ray_pos - sdf_pos, 1.5708, 0.5, 0.2);
-        // vec3 normal = link_normal(ray_pos - sdf_pos, 0.5, 0.3, 0.1);
-        vec3 normal = cylinder_normal(ray_pos - sdf_pos, 0.2, 0.5);
-
-        vec3 color = illuminate(ray_pos, ray_dir, normal, base_color);
-
-        // // if we're inside the shape we hit a solid part, if we're outside we
-        // // probably scratched an edge?
-        // float alpha = 1.0 - max(0.0, 2.0 * dist / min_step);
-
-        // OK, no, but specifically spheres can check normals...
-        // float alpha = 10 * abs(dot(normal, ray_dir));
-
-        return vec4(color, 1);
-    }
-    else
-    {
-        discard;
-        return vec4(0, 0, 0, 0);
-    }
+    return vec4(color, 1);
 }
 
 

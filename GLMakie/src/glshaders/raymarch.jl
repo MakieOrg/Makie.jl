@@ -8,24 +8,17 @@ function assemble_raymarched_robj!(data, screen::Screen, attr, args, input2glnam
 
     shading = pop!(data, :shading)
 
-    add_color_attributes!(
-        screen, attr, data,
-        args.scaled_color, args.alpha_colormap, args.scaled_colorrange
-    )
+    # add_color_attributes!(
+    #     screen, attr, data,
+    #     args.scaled_color, args.alpha_colormap, args.scaled_colorrange
+    # )
 
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
 
-        marker_mode = nothing => Texture
-        position = nothing => Texture
-        markersize = nothing => Texture
-        rotation = nothing => Texture
-        smudge_range = nothing => Texture
-
-        color = nothing => Texture
-        color_map = nothing => Texture
-        color_norm = nothing
+        id_buffer = nothing => Texture
+        data_buffer = nothing => Texture
 
         transparency = false
         overdraw = false
@@ -40,7 +33,8 @@ function assemble_raymarched_robj!(data, screen::Screen, attr, args, input2glnam
                 "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
                 "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
                 "buffers" => output_buffers(screen, to_value(transparency)),
-                "buffer_writes" => output_buffer_writes(screen, to_value(transparency))
+                "buffer_writes" => output_buffer_writes(screen, to_value(transparency)),
+                "operation_enum" => Makie.SDF.Commands.glsl_enum(),
             )
         )
         prerender = VolumePrerender(data[:transparency], data[:overdraw])
@@ -61,36 +55,38 @@ end
 function draw_atomic(screen::Screen, scene::Scene, plot::SDFScatter)
     attr = plot.attributes
 
-    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model)
-    Makie.register_world_normalmatrix!(attr)
-    Makie.register_view_normalmatrix!(attr)
+    Makie.add_computation!(attr, Val(:uniform_clip_planes), :model, :model)
+    Makie.register_world_normalmatrix!(attr, :model)
+    Makie.register_view_normalmatrix!(attr, :model)
     register_opengl_mesh!(attr, :boundingbox)
 
-    map!(attr, [:marker, :mode, :N_elements], :marker_mode) do marker, mode, N
-        # marker probably won't have that many options
-        # mode is just additive or subtractive, so one bit
-        return fill(0x00, N)
-    end
+    # map!(attr, [:marker, :mode, :N_elements], :marker_mode) do marker, mode, N
+    #     # marker probably won't have that many options
+    #     # mode is just additive or subtractive, so one bit
+    #     return fill(0x00, N)
+    # end
 
     # TODO: reuse in clip planes
-    map!(attr, :model_f32c, :modelinv) do model
+    map!(attr, :model, :modelinv) do model
         return Mat4f(inv(model))
     end
 
     inputs = Symbol[
     ]
     uniforms = Symbol[
-        :marker_mode, :positions_transformed_f32c, :markersize, :rotation, :smudge_range,
-        :alpha_colormap, :scaled_colorrange, :scaled_color,
+        # :marker_mode, :positions_transformed_f32c, :markersize, :rotation, :smudge_range,
+        # :alpha_colormap, :scaled_colorrange, :scaled_color,
         # :lowclip_color, :highclip_color, :nan_color,
+        :id_buffer, :data_buffer,
+
         :diffuse, :specular, :shininess, :backlight,
-        :vertices, :faces, :model_f32c, :modelinv,
+        :vertices, :faces, :model, :modelinv,
     ]
 
     input2glname = Dict{Symbol, Symbol}(
-        :positions_transformed_f32c => :position,
-        :scaled_color => :color, :model_f32c => :model,
-        :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
+        # :positions_transformed_f32c => :position,
+        # :scaled_color => :color,
+        # :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :uniform_num_clip_planes => :_num_clip_planes
     )
 
