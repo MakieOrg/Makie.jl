@@ -256,6 +256,12 @@ const REFIMG_STYLES = Styles(
         "border-radius" => "8px",
         "margin-bottom" => "16px"
     ),
+        CSS(
+        ".cycle-checkbox",
+        "transform" => "scale(1.2)",
+        "margin" => "4px 8px 4px 0",
+        "cursor" => "pointer"
+    ),
     # Text field styles
     CSS(
         ".textfield",
@@ -695,10 +701,12 @@ function create_app_content(session::Session, root_path::String)
 
     # Filter controls
     filter_textfield = Bonito.TextField("0", class = "textfield")
+    toggle_all_main = Bonito.Button("Toggle all shown", style = BUTTON_STYLE)
     filter_label = DOM.div(
         DOM.span("Filter by Score ≥ ", class = "filter-label-text"),
         filter_textfield,
         DOM.span(" (0 = show all)", class = "filter-help-text"),
+        toggle_all_main,
         class = "filter-label"
     )
 
@@ -803,6 +811,35 @@ function create_app_content(session::Session, root_path::String)
         """
     )
 
+    # toggle all
+    onjs(
+        session, toggle_all_main.value, js"""
+        function(click) {
+            $(JSHelper).then(mod => mod.toggleFiles($(main_grid)));
+        }
+        """
+    )
+
+    toggle_all_new = Bonito.Button("Toggle all", style = BUTTON_STYLE)
+    new_grid = Grid(new_cards, columns = "1fr 1fr 1fr")
+    onjs(
+        session, toggle_all_new.value, js"""
+        function(click) {
+            $(JSHelper).then(mod => mod.toggleFiles($(new_grid)));
+        }
+        """
+    )
+
+    toggle_all_missing = Bonito.Button("Toggle all", style = BUTTON_STYLE)
+    missing_grid = Grid(missing_cards, columns = "1fr 1fr 1fr")
+    onjs(
+        session, toggle_all_missing.value, js"""
+        function(click) {
+            $(JSHelper).then(mod => mod.toggleFiles($(missing_grid)));
+        }
+        """
+    )
+
     # Sort controls with unified observable
     sort_backend = Observable("")  # Empty string = reset, otherwise backend name
     sort_buttons = map(["GLMakie", "CairoMakie", "WGLMakie", "Reset"]) do backend
@@ -828,6 +865,12 @@ function create_app_content(session::Session, root_path::String)
             const grid = $(main_grid);
             $(JSHelper).then(mod => mod.compareToGLMakie(grid, backend));
         }"""
+    )
+
+    cycle_controls = DOM.div(
+        DOM.input(type = "checkbox", class = "cycle-checkbox"),
+        " include GLMakie refimage in cycle",
+        class = "checkbox-label"
     )
 
     sort_button_html = map(x -> DOM.div(x; class = "sort-cell"), sort_buttons[1:3])
@@ -901,17 +944,20 @@ function create_app_content(session::Session, root_path::String)
             "The selected CI run produced an image for which no reference image exists. Selected images will be added as new reference images.",
             class = "section-description"
         ),
-        Grid(new_cards, columns = "1fr 1fr 1fr"),
+        toggle_all_new,
+        new_grid,
         class = "section"
     )
 
     missing_recordings_section = DOM.div(
+        # The header string is used to identify which refimages should be deleted
         DOM.h2("Old reference images without recordings", class = "section-header"),
         DOM.div(
             "The selected CI run did not produce an image, but a reference image exists. This implies that a reference test was deleted or renamed. Selected images will be deleted from the reference images.",
             class = "section-description"
         ),
-        Grid(missing_cards, columns = "1fr 1fr 1fr"),
+        toggle_all_missing,
+        missing_grid,
         class = "section"
     )
 
@@ -922,6 +968,7 @@ function create_app_content(session::Session, root_path::String)
             class = "section-description"
         ),
         filter_label,
+        cycle_controls,
         sort_controls,
         main_grid,
         class = "section"
