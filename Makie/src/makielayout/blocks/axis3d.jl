@@ -4,10 +4,9 @@ function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(blockscene, ax.protrusions) do prot
+    on(blockscene, ax.protrusions, update = true) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
-    notify(ax.protrusions)
 
     finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
@@ -210,11 +209,11 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits) do lims
+    on(scene, ax.limits, update = true) do lims
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    on(scene, ax.targetlimits, update = true) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -241,9 +240,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
-
-    # in case the user set limits already
-    notify(ax.limits)
 
     return
 end
@@ -694,7 +690,8 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     onany(
         topscene,
         topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
-        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign),
+        xreversed, yreversed, zreversed, update = true
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -767,7 +764,6 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
 
         return
     end
-    notify(attr(:labelalign))
 
     label = text!(
         topscene, label_position,
@@ -1040,7 +1036,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, mlims[2], mlims[3])
+    ax.limits = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     return nothing
 end
@@ -1058,7 +1054,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], ylims, mlims[3])
+    ax.limits = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     return nothing
 end
@@ -1076,7 +1072,7 @@ function Makie.zlims!(ax::Axis3, zlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], mlims[2], zlims)
+    ax.limits = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     return nothing
 end

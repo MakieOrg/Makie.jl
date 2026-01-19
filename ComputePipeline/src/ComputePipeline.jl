@@ -61,6 +61,10 @@ end
 
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
+function Base.eltype(computed::Computed)
+    isdefined(computed, :value) || computed[]
+    return eltype(computed.value)
+end
 
 struct ResolveException{E <: Exception} <: Exception
     start::Computed
@@ -309,6 +313,10 @@ end
 function Observables.map(f, arg1::Computed, args...; kwargs...)
     obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
     return map(f, obsies...; kwargs...)
+end
+
+function Observables.connect!(target::Observables.AbstractObservable, source::Computed)
+    return Observables.connect!(target, get_observable!(source))
 end
 
 
@@ -1365,7 +1373,12 @@ function unsafe_init!(node::Computed, value)
         node.value = value isa RefValue ? value : RefValue(value)
     end
 
-    edge = node.parent
+    return unsafe_init!(node.parent)
+end
+
+function unsafe_init!(edge::ComputeEdge)
+    # We can only mark the edge as initialized if all the outputs have been
+    # initialized
     if !all(is_initialized, edge.outputs)
         return false
     end
@@ -1382,6 +1395,16 @@ function unsafe_init!(node::Computed, value)
         foreach(comp -> comp.dirty = false, edge.outputs)
         return true
     end
+end
+
+function unsafe_init!(input::Input)
+    input.dirty = false
+    input.output.dirty = true
+    for edge in input.dependents
+        mark_input_dirty!(input, edge)
+    end
+    input.output.dirty = false
+    return true
 end
 
 function TypedEdge_no_call(edge::ComputeEdge)

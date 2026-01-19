@@ -178,19 +178,15 @@ end
 
 plottype(p::PlotSpec) = symbol_to_plot(p.type)
 
-function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
-    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
-    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
-    return
-end
+Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec) = show(io, spec)
 
 function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
+    print(io, "S.", spec.type, "($args; $kws)")
     return
 end
+
 ####################
 #### BlockSpec
 
@@ -232,6 +228,17 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], k
         end
         return BlockSpec(typ, attr, plots)
     end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", spec::BlockSpec)
+    kws = join([string(k, "::", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    print(io, "S.", spec.type, "(; $kws)")
+    return
+end
+
+function Base.show(io::IO, spec::BlockSpec)
+    print(io, "S.", spec.type, "(…)")
+    return
 end
 
 ######################
@@ -421,6 +428,26 @@ to_gridposition(rows_cols_side::Tuple{Any, Any, Any}, rowspan, colspan) = (to_sp
 rangeunion(r1, r2::UnitRange) = min(r1.start, r2.start):max(r1.stop, r2.stop)
 rangeunion(r1, r2::Int) = min(r1.start, r2):max(r1.stop, r2)
 rangeunion(r1, ::Colon) = r1
+
+Base.show(io::IO, ::MIME"text/plain", spec::GridLayoutSpec) = grid_layout_spec_print(io, spec)
+Base.show(io::IO, ::GridLayoutSpec) = print(io, "S.GridLayout()")
+
+function grid_layout_spec_print(io, spec::GridLayoutSpec, tab = 0)
+    print(io, "S.GridLayout()")
+    grid_layout_spec_print(io, spec.content, tab)
+    return
+end
+
+function grid_layout_spec_print(io, content_list::Vector, tab = 0)
+    N = length(content_list)
+    for (i, (pos, content)) in enumerate(content_list)
+        print(io, "\n", "  "^tab, (i == N ? " ┗━ " : " ┣━ "), pos, " => ")
+        grid_layout_spec_print(io, content, tab + 1)
+    end
+    return
+end
+
+grid_layout_spec_print(io, content, tab) = print(io, content)
 
 
 """
@@ -1033,9 +1060,14 @@ function update_gridlayout!(
         # disconnect! all unused layoutables, so they dont show up anymore
         if block isa Block
             disconnect!(block)
+        elseif block isa GridLayout
+            i = findfirst(x -> x.content === block, block.parent.content)
+            @assert !isnothing(i) "Could not find GridLayout() in its parent"
+            GridLayoutBase.remove_from_gridlayout!(block.parent.content[i])
         end
         return
     end
+
     layouts_to_update = Set{GridLayout}([target_layout])
     for (_, (content, _)) in new_layoutables
         if content isa GridLayout
@@ -1045,6 +1077,7 @@ function update_gridlayout!(
             push!(layouts_to_update, gc.parent)
         end
     end
+
     for l in layouts_to_update
         l.block_updates = false
         GridLayoutBase.update!(l)
@@ -1065,6 +1098,11 @@ function update_gridlayout!(
 end
 
 function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_obs::Observable{GridLayoutSpec})
+    add_layout_updater!(get_topscene(fig), get_layout!(fig), layout_obs)
+    return fig
+end
+
+function add_layout_updater!(parent_scene::Scene, layout::GridLayout, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
     unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable, Observable{Vector{PlotSpec}}}}[]
@@ -1072,14 +1110,13 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     sizehint!(unused_layoutables, 50)
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
-    layout = get_layout!(fig)
-    on(get_topscene(fig), layout_obs; update = true) do layout_spec
+    on(parent_scene, layout_obs; update = true) do layout_spec
         lock(l) do
             update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
-    return fig
+    return nothing
 end
 
 args_preferred_axis(::GridLayoutSpec) = FigureOnly

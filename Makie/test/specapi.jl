@@ -313,3 +313,36 @@ end
         end
     end
 end
+
+@testset "GridLayout deletion" begin
+    # this should not error
+    @test begin
+        obs = Observable(
+            S.GridLayout(
+                [
+                S.Box(color = :red) S.GridLayout([S.Box(color = :blue)])
+                ]
+            )
+        )
+        f, a, p = plot(obs)
+        obs[] = S.GridLayout([S.Box(color = :lightgray)])
+        true
+    end
+end
+
+@testset "SpecApi in Blocks" begin
+    obs = Observable{Any}(S.Box())
+    fig, block = Block(obs)
+    @test !isnothing(block.layout)
+    @test length(block.layout.content) == 1
+    box = block.layout.content[1].content
+    @test box isa Box
+    @test block.blocks == [box]
+
+    obs[] = S.GridLayout([S.Label(text = "a") S.Label(text = "b")])
+    @test length(block.layout.content) == 2
+    lbl1, lbl2 = map(x -> x.content, block.layout.content)
+    @test lbl1 isa Label
+    @test lbl2 isa Label
+    @test block.blocks == [lbl1, lbl2]
+end
