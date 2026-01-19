@@ -60,6 +60,8 @@ With the keywords `merge` and `unique` you can control how plot objects with the
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
+
 ```@figure
 
 f = Figure()

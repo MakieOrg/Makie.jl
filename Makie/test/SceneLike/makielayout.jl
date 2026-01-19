@@ -534,6 +534,28 @@ end
     @test make_fig(linesegments!, rand(8)) isa Figure
 end
 
+@testset "Joint legend data gathering" begin
+    function make_fig_joint(plot_func, args...)
+        f = Figure()
+        ax1 = Axis(f[1, 1])
+        plot_func(ax1, args..., label = "test")
+        ax2 = Axis(f[1, 2])
+        plot_func(ax2, args..., label = "test")
+        Legend(f[1, 3], [ax1, ax2], merge=true)
+        return f
+    end
+
+    @test make_fig_joint(density!, rand(100)) isa Figure
+    @test make_fig_joint(poly!, Rect2f(0, 0, 1, 1)) isa Figure
+    @test make_fig_joint(band!, rand(3), rand(3), rand(3)) isa Figure
+    @test make_fig_joint(violin!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig_joint(boxplot!, rand(1:3, 10), rand(10)) isa Figure
+    @test make_fig_joint(crossbar!, rand(3), rand(3), rand(3) .- 1, rand(3) .+ 1) isa Figure
+    @test make_fig_joint(scatter!, rand(3)) isa Figure
+    @test make_fig_joint(lines!, rand(3)) isa Figure
+    @test make_fig_joint(linesegments!, rand(8)) isa Figure
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
