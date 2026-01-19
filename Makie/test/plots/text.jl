@@ -225,3 +225,45 @@ end
         @test length(unique([a, b, c])) == 2
     end
 end
+
+@testset "attribute_per_char (issue #5480)" begin
+
+    @testset "Newline Separation (Bug Fix)" begin
+        # Previously, '\n' was compared to string "\n", causing index to never increment.
+        # "A" -> 1, "\n" -> 1 (switch after), "B" -> 2
+        str = "A\nB"
+        attrs = [1, 2]
+        @test Makie.attribute_per_char(str, attrs) == [1, 1, 2]
+    end
+
+    @testset "Space Separation" begin
+        # Standard case: split by whitespace
+        str = "Hi World"
+        attrs = [:red, :blue]
+        # "Hi" -> :red, " " -> :red, "World" -> :blue
+        expected = [:red, :red, :red, :blue, :blue, :blue, :blue, :blue]
+        @test Makie.attribute_per_char(str, attrs) == expected
+    end
+
+    @testset "Multiple Spaces" begin
+        # Ensure we don't index out of bounds with multiple spaces
+        str = "A  B"
+        attrs = [10, 20]
+        # "A"->10, " "->10, " "->20, "B"->20
+        @test Makie.attribute_per_char(str, attrs) == [10, 10, 20, 20]
+    end
+
+    @testset "1 Attribute per Char" begin
+        # Fallback when lengths match exactly
+        str = "abc"
+        attrs = [1, 2, 3]
+        @test Makie.attribute_per_char(str, attrs) == [1, 2, 3]
+    end
+
+    @testset "Mismatch Error" begin
+        # Length fits neither char count nor word count
+        str = "A B"
+        attrs = [1]
+        @test_throws ErrorException Makie.attribute_per_char(str, attrs)
+    end
+end
