@@ -729,6 +729,169 @@ function generate_distance_field(bb::Rect3f, root::SDF.Node, N = 512)
     return field
 end
 
+# function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
+#     ep_x = to_endpoints(x, "x", VolumeLike)
+#     ep_y = to_endpoints(y, "y", VolumeLike)
+#     ep_z = to_endpoints(z, "z", VolumeLike)
+#     bb = Rect3f(
+#         ep_x[1], ep_y[1], ep_z[1],
+#         ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
+#     )
+#     field = generate_distance_field(bb, node, 128)
+#     return (ep_x, ep_y, ep_z, field)
+# end
+
+
+################################################################################
+### Brickmaps for compression + performance
+################################################################################
+
+
+function Brickmap{T}(bricksize, _size) where {T}
+    return Brickmap{T}(Makie.to3tuple(bricksize), Makie.to3tuple(_size))
+end
+
+function Brickmap{T}(bricksize::NTuple{3, Int}, _size::NTuple{3, Int}) where {T}
+    bricks = Array{T, 3}[]
+    idx_size = cld.(_size .- 1, bricksize)
+    indices = fill(UInt32(0), idx_size)
+
+    return Brickmap{T}(indices, bricks, _size, bricksize)
+end
+
+get_brick_index(bm::Brickmap, i, j, k) = bm.indexmap[i, j, k]
+is_empty_brick(brick_idx) = brick_idx == 0
+is_empty_brick(bm::Brickmap, i, j, k) = is_empty_brick(get_brick_index(bm, i, j, k))
+get_brick(bm::Brickmap, brick_idx::Integer) = bm.bricks[brick_idx]
+get_brick(bm::Brickmap, i, j, k) = get_brick(bm, get_brick_index(bm, i, j, k))
+
+function get_value(bm::Brickmap, i, j, k)
+    brick = get_brick(bm, cld.((i, j, k), bm.bricksize)...)
+    bi, bj, bk = mod1.((i, j, k), bm.bricksize)
+    return brick[bi, bj, bk]
+end
+
+function delete_brick!(bm::Brickmap, i, j, k)
+    # TODO: this should probably be smarter to avoid moving data downstream...
+    brick_idx = get_brick_index(bm, i, j, k)
+    if !is_empty_brick(brick_idx)
+        bm.indexmap[i, j, k] = UInt32(0)
+        deleteat!(bm.bricks, brick_idx)
+    end
+    return
+end
+
+function insert_brick!(bm::Brickmap{T}, i, j, k, value::Array{T, 3}) where {T}
+    if is_empty_brick(bm, i, j, k)
+        unchecked_add_brick!(bm, i, j, k, value)
+    else
+        idx = get_brick_index(bm, i, j, k)
+        bm.bricks[idx] = value
+    end
+    return
+end
+
+function unchecked_add_brick!(bm::Brickmap{T}, i, j, k, value::Array{T, 3}) where {T}
+    idx = UInt32(length(bm.bricks) + 1)
+    bm.indexmap[i, j, k] = idx
+    push!(bm.bricks, value)
+    return
+end
+
+function get_modifiable_brick(bm::Brickmap{T}, i, j, k) where {T}
+    brick_idx = get_brick_index(bm, i, j, k)
+    if is_empty_brick(brick_idx)
+        A = Array{3, T}(undef, bm.bricksize)
+        unchecked_add_brick!(bm, i, j, k, A)
+        return A
+    else
+        return get_brick(bm, brick_idx)
+    end
+end
+
+
+function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
+    if !allequal(widths(bb))
+        error("Bounding box must be a cube, i.e. equal widths, but has $(widths(bb))")
+    end
+
+    # left and right edge of the brickmap map to extrema of bb
+    # each brick is a cell in the brickmap, so we need N-1 bricks to create N edges
+    N_blocks = cld(N - 1, bricksize)
+    N = N_blocks * bricksize + 1
+
+    brickmap = Brickmap{N0f8}(bricksize, N)
+    @assert all(==(N), brickmap.size)
+    @assert all(==(N_blocks), size(brickmap.indexmap))
+
+    box_scale = norm(widths(bb))
+    normalization = Float32(1.0 / box_scale)
+    brickdiameter = sqrt(3.0) / (N_blocks - 1)
+    celldiameter = brickdiameter / bricksize
+
+    # step through coarse grid (N_blocks is the number of bricks/cells)
+    delta = widths(bb) ./ N_blocks
+    mini = minimum(bb)
+    # step through brick grid (delta is the width of the brick, bricksize is edge-like)
+    brick_delta = delta / (bricksize - 1)
+
+    uint8_scale = 255f0 / (2f0 * celldiameter)
+    @info brickdiameter
+    @info celldiameter
+
+    for k in 1:N_blocks
+        z = mini[3] + delta[3] * (k - 0.5)
+        for j in 1:N_blocks
+            y = mini[2] + delta[2] * (j - 0.5)
+            for i in 1:N_blocks
+                x = mini[1] + delta[1] * (i - 0.5)
+
+                # check if brick could contain edge based on center
+                dist = normalization * compute_signed_distance_at(root, Point3f(x, y, z))
+                if abs(dist) < 0.5 * brickdiameter
+                    brick = Array{N0f8, 3}(undef, bricksize, bricksize, bricksize)
+                    origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+
+                    # check if edge is contained
+                    # otherwise we can throw this away
+                    contains_positive = false
+                    contains_negative = false
+
+                    for bk in 1:bricksize
+                        z = origin[3] + brick_delta[3] * (bk - 1)
+                        for bj in 1:bricksize
+                            y = origin[2] + brick_delta[2] * (bj - 1)
+                            for bi in 1:bricksize
+                                x = origin[1] + brick_delta[1] * (bi - 1)
+                                dist = compute_signed_distance_at(root, Point3f(x, y, z))
+                                dist = normalization * dist
+                                # -celldiameter .. celldiameter -> 0..255
+                                f255 = clamp((dist + celldiameter) * uint8_scale, 0, 255)
+                                brick[bi, bj, bk] = N0f8(round(UInt8, f255), nothing)
+                                contains_negative |= dist < 0
+                                contains_positive |= dist > 0
+                            end
+                        end
+                    end
+
+                    # Hmm...
+                    # Can we skip a brick that remains more than cellsize away?
+                    # if !all(==(0xff), brick)
+                    #     insert_brick!(brickmap, i, j, k, brick)
+                    # end
+
+                    if contains_negative && contains_positive # contains edge
+                        insert_brick!(brickmap, i, j, k, brick)
+                    end
+                end
+
+            end
+        end
+    end
+
+    return brickmap
+end
+
 function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
     ep_x = to_endpoints(x, "x", VolumeLike)
     ep_y = to_endpoints(y, "y", VolumeLike)
@@ -737,7 +900,6 @@ function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
         ep_x[1], ep_y[1], ep_z[1],
         ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
     )
-    field = generate_distance_field(bb, node, 128)
-    return (ep_x, ep_y, ep_z, field)
+    brickmap = sdf_brickmap(bb, node, 256)
+    return (ep_x, ep_y, ep_z, brickmap)
 end
-

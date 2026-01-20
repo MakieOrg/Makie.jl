@@ -1174,17 +1174,28 @@ end
 
 
 function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
-    interp = attr[:interpolate][] ? :linear : :nearest
-
-    data[:volumedata] = Texture(screen.glscreen, args.scaled_color, minfilter = interp)
     data[:enable_depth] = attr[:enable_depth][]
 
-    if args.scaled_color isa AbstractArray{<:Real}
-        data[:color_map] = args.alpha_colormap
-        data[:color_norm] = args.scaled_colorrange
+    if attr.scaled_color[] isa AbstractArray{<:Real}
+        data[:color_map] = attr.alpha_colormap[]
+        data[:color_norm] = attr.scaled_colorrange[]
     end
 
     return draw_volume(screen, data)
+end
+
+function pack_bricks(brickmap::Makie.Brickmap)
+    N = ceil(Int, cbrt(length(brickmap.bricks)))
+    packed = Array{N0f8, 3}(undef, (N, N, N) .* brickmap.bricksize)
+    cart = CartesianIndices((N, N, N))
+    for (idx, brick) in enumerate(brickmap.bricks)
+        i, j, k = Tuple(cart[idx]) .- 1
+        is = i * brickmap.bricksize[1] + 1 : (i + 1) * brickmap.bricksize[1]
+        js = j * brickmap.bricksize[2] + 1 : (j + 1) * brickmap.bricksize[2]
+        ks = k * brickmap.bricksize[3] + 1 : (k + 1) * brickmap.bricksize[3]
+        copyto!(view(packed, is, js, ks), brick)
+    end
+    return packed
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
@@ -1200,16 +1211,45 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
         return (Mat4f(inv(model)),)
     end
+
+    register_computation!(
+        attr, [:scaled_color], [:volumedata, :indexmap, :bricks, :bricksize]
+    ) do (data,), changed, cached
+        if data isa Makie.Brickmap
+            packed = pack_bricks(data)
+            if isnothing(cached)
+                indexmap = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
+                bricks = ShaderAbstractions.Sampler(packed, minfilter = :linear)
+                return nothing, indexmap, bricks, data.bricksize[1]
+            else
+                # TODO: I don't this works
+                ShaderAbstractions.update!(cached.indexmap, data.indexmap)
+                ShaderAbstractions.update!(cached.bricks, packed)
+                return nothing, cached.indexmap, cached.bricks, data.bricksize[1]
+            end
+        else
+            if isnothing(cached)
+                volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)
+                return volumedata, nothing, nothing, 0
+            else
+                ShaderAbstractions.update!(cached.volumedata, data)
+                return volumedata, nothing, nothing, 0
+            end
+        end
+    end
+
     add_constant!(attr, :is_orthographic, Makie.is_orthographic(cameracontrols(scene)))
 
     inputs = [
         # Special
         :space,
         # Needs explicit handling
-        :alpha_colormap, :scaled_colorrange,
+        # :alpha_colormap, :scaled_colorrange,
     ]
     uniforms = [
-        :scaled_color, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
+        :volumedata, :indexmap, :bricks, :bricksize,
+        # :scaled_color,
+        :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
         # :lowclip_color, :highclip_color, :nan_color,
         :uniform_model,
@@ -1217,7 +1257,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     ]
 
     input2glname = Dict{Symbol, Symbol}(
-        :scaled_color => :volumedata, :uniform_model => :model,
+        # :scaled_color => :volumedata,
+        :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :uniform_num_clip_planes => :_num_clip_planes
     )

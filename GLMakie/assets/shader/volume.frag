@@ -22,6 +22,8 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 in vec3 frag_vert;
 
 {{volumedata_type}} volumedata;
+{{indexmap_type}} indexmap;
+{{bricks_type}} bricks;
 
 {{color_map_type}} color_map;
 {{color_type}} color;
@@ -35,6 +37,7 @@ uniform mat4 modelinv;
 uniform int algorithm;
 uniform float isovalue;
 uniform float isorange;
+uniform int bricksize;
 
 uniform mat4 model, projectionview;
 uniform int _num_clip_planes;
@@ -43,7 +46,8 @@ uniform float depth_shift;
 
 const float max_distance = 1.3;
 
-const int num_samples = 200;
+// const int num_samples = 200;
+const int num_samples = 1000;
 const float step_size = max_distance / float(num_samples);
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
@@ -70,6 +74,135 @@ vec4 color_lookup(float intensity, Nothing color_ramp, Nothing norm, Nothing col
 vec4 color_lookup(samplerBuffer colormap, int index) { return texelFetch(colormap, index); }
 vec4 color_lookup(sampler1D colormap, int index) { return texelFetch(colormap, index, 0); }
 vec4 color_lookup(Nothing colormap, int index) { return vec4(0); }
+
+vec4 get_volume_sample(sampler3D volumedata, Nothing indexmap, Nothing bricks, vec3 uvw)
+{
+    return texture(volumedata, uvw);
+}
+
+int tracker = 0;
+vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks, vec3 uvw)
+{
+    // no half bins on the edges
+    // | 0 | 1 | 2 |  index
+    // 0  1/3 2/3  1  uv
+    // 0   1   2   3  uv * size
+    uvec3 isize = textureSize(indexmap, 0);
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - 1);
+    uint index = texelFetch(indexmap, indexmap_ijk, 0).x; // check
+    // uint index = texture(indexmap, uvw).x;
+
+    vec3 istep = 1 / vec3(isize - 1); // uvw distance to next brick
+
+    // no brick here, move to next spot (half a cellsize is allowed)
+    if (index == 0)
+    {
+        // when debug-drawing index we need to use smaller steps here so ray
+        // marching can actually find the start of a brick here
+        tracker = -1;
+        // return vec4(0.5 * length(istep), 0, 0, 0); // too large
+        return vec4(0.5 * istep.x, 0, 0, 0); // this seems fine
+        // return vec4(0.05 * length(istep), 0, 0, 0);
+        // return vec4(0.002, 0, 0, 0);
+    }
+    tracker = 1;
+
+    index--; // index = 0 is implied, not part of bricks
+
+    // test index
+    // return vec4(
+    //     float((index) % 7) / float(7),
+    //     float((index) % 17) / float(17),
+    //     float((index) % 23) / float(23),
+    //     1.0
+    // );
+
+    ivec3 size = ivec3(textureSize(bricks, 0)) / bricksize;
+
+    uint size_xy = size.x * size.y;
+    uint k = index / size_xy;
+    index = index - size_xy * k;
+    uint j = index / size.x;
+    uint i = index - size.x * j;
+
+    // meh, not much to learn from that
+    // return vec4(
+    //     float(i) / float(size.x - 1),
+    //     float(j) / float(size.y - 1),
+    //     float(k) / float(size.z - 1),
+    //     1
+    // );
+
+    // index.dim < size.dim
+    // return vec4(size.x - i, size.y - j, size.z - k, 1);
+
+    //////////////////////////////////////////////////////////////////////////// ^check
+
+    // index of brick -> uvw in brickmap
+    vec3 brickmap_uvw_origin = (vec3(i, j, k) + 0.5 / bricksize) / vec3(size);
+
+    // effective size of the volume data
+    // for each index in indexmap, we have a brick
+    // each brick shares its shell with neighboring bricks -> (bricksize - 1)
+    uvec3 world_size = isize * (bricksize - 1);
+
+    // how far from the origin of the brick are we?
+    vec3 offset_index = uvw * vec3(world_size) - indexmap_ijk * (bricksize - 1);
+
+    // how far are we from the brick origin in the brickmaps uvw space?
+    vec3 brickmap_uvw_offset = offset_index / vec3(textureSize(bricks, 0));
+
+    // what's the full uvw position in the brickmap?
+    vec3 brickmap_uvw = brickmap_uvw_origin + brickmap_uvw_offset;
+
+    // in-brick offset
+    // return vec4(offset_index / vec3(bricksize-1), 1);
+
+    // origin of brick in brickmap
+    // return vec4(brickmap_uvw_origin, 1);
+
+    // offset in brickmap
+    // return vec4(brickmap_uvw_offset * size, 1);
+
+    // convert UInt8 to a float
+    float cellsize = length(istep / bricksize); // distance to next point within a brick
+    float compressed_sample = texture(bricks, brickmap_uvw).x;
+    return vec4(
+        compressed_sample * 2.0 * cellsize - cellsize,
+        0, 0, 0
+    );
+}
+
+float get_eps(sampler3D volumedata, Nothing indexmap)
+{
+    vec3 step = 1.0 / vec3(textureSize(volumedata, 0));
+    return max(max(step.x, step.y), step.z);
+}
+float get_eps(Nothing volumedata, usampler3D indexmap)
+{
+    vec3 step = 1.0 / vec3(textureSize(indexmap, 0) * (bricksize - 1));
+    return max(max(step.x, step.y), step.z);
+}
+float get_eps() { return get_eps(volumedata, indexmap); }
+
+vec4 get_volume_sample(vec3 uvw)
+{
+    return get_volume_sample(volumedata, indexmap, bricks, uvw);
+}
+
+uvec3 get_volume_size(sampler3D volumedata, Nothing indexmap)
+{
+    return textureSize(volumedata, 0);
+}
+uvec3 get_volume_size(Nothing volumedata, usampler3D indexmap)
+{
+    return textureSize(indexmap, 0) * 8; // TODO: pass bricksize
+}
+uvec3 get_volume_size()
+{
+    return get_volume_size(volumedata, indexmap);
+}
+
 
 vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
@@ -103,14 +236,14 @@ vec3 gennormal(vec3 uvw, float d, vec3 o)
         return vec3(0, 0, -1);
     }
 
-    a.x = texture(volumedata, uvw - vec3(o.x, 0.0, 0.0)).r;
-    b.x = texture(volumedata, uvw + vec3(o.x, 0.0, 0.0)).r;
+    a.x = get_volume_sample(uvw - vec3(o.x, 0.0, 0.0)).r;
+    b.x = get_volume_sample(uvw + vec3(o.x, 0.0, 0.0)).r;
 
-    a.y = texture(volumedata, uvw - vec3(0.0, o.y, 0.0)).r;
-    b.y = texture(volumedata, uvw + vec3(0.0, o.y, 0.0)).r;
+    a.y = get_volume_sample(uvw - vec3(0.0, o.y, 0.0)).r;
+    b.y = get_volume_sample(uvw + vec3(0.0, o.y, 0.0)).r;
 
-    a.z = texture(volumedata, uvw - vec3(0.0, 0.0, o.z)).r;
-    b.z = texture(volumedata, uvw + vec3(0.0, 0.0, o.z)).r;
+    a.z = get_volume_sample(uvw - vec3(0.0, 0.0, o.z)).r;
+    b.z = get_volume_sample(uvw + vec3(0.0, 0.0, o.z)).r;
 
     vec3 diff = a - b;
     float n = length(diff);
@@ -146,7 +279,7 @@ vec4 volume(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
+        float intensity = get_volume_sample(pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
@@ -165,7 +298,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = get_volume_sample(pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
     }
@@ -179,7 +312,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = get_volume_sample(pos);
         float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
         if (T <= 0.01)
@@ -198,7 +331,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        int index = int(texture(volumedata, pos).x) - 1;
+        int index = int(get_volume_sample(pos).x) - 1;
         vec4 density = color_lookup(color_map, index);
         float opacity = step_size*density.a * absorption;
         Lo += (T*opacity)*density.rgb;
@@ -217,12 +350,12 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
-    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
+    vec3 edge_gap = 0.5 / get_volume_size(); // see gennormal
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
+        float intensity = get_volume_sample(pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = density.a;
         if(opacity > 0.0)
@@ -262,12 +395,12 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
     vec3 camdir = normalize(dir);
-    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
+    vec3 edge_gap = 0.5 / get_volume_size(); // see gennormal
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
     for (i; i < num_samples; ++i){
-        float density = texture(volumedata, pos).x;
+        float density = get_volume_sample(pos).x;
         if(abs(density - isovalue) < isorange)
         {
 
@@ -301,11 +434,11 @@ vec4 isosurface(vec3 front, vec3 dir)
 vec3 generate_sdf_normal(vec3 uvw)
 {
     const vec2 k = vec2(1, -1) * 0.5773;
-    const float eps = 0.0001;
-    float sdf1 = texture(volumedata, uvw + k.xyy * eps).x;
-    float sdf2 = texture(volumedata, uvw + k.yyx * eps).x;
-    float sdf3 = texture(volumedata, uvw + k.yxy * eps).x;
-    float sdf4 = texture(volumedata, uvw + k.xxx * eps).x;
+    const float eps = get_eps();
+    float sdf1 = get_volume_sample(uvw + k.xyy * eps).x;
+    float sdf2 = get_volume_sample(uvw + k.yyx * eps).x;
+    float sdf3 = get_volume_sample(uvw + k.yxy * eps).x;
+    float sdf4 = get_volume_sample(uvw + k.xxx * eps).x;
     return normalize(k.xyy * sdf1 + k.yyx * sdf2 + k.yxy * sdf3 + k.xxx * sdf4);
 }
 
@@ -322,7 +455,7 @@ vec4 raymarch_sdf(vec3 front, vec3 dir)
 
     for (i; i < num_samples; ++i)
     {
-        vec4 temp = texture(volumedata, pos);
+        vec4 temp = get_volume_sample(pos);
         float signed_distance = temp.x;
 
         // if (tracker == 1)
@@ -368,9 +501,9 @@ vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
     int i = 1;
-    float maximum = texture(volumedata, front).x;
+    float maximum = get_volume_sample(front).x;
     for (i; i < num_samples; ++i, pos += dir){
-        float density = texture(volumedata, pos).x;
+        float density = get_volume_sample(pos).x;
         if(maximum < density)
             maximum = density;
     }
