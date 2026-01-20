@@ -1075,7 +1075,7 @@ get_plots(p::PlotList) = haskey(p.attributes, :label) && p.attributes[:label] is
 
 get_plots(ax::Union{Axis, Axis3}) = get_plots(ax.scene)
 get_plots(lscene::LScene) = get_plots(lscene.scene)
-get_plots(axes::AbstractVector) =  collect(Iterators.flatmap(get_plots, axes))
+get_plots(axes::AbstractVector) = collect(Iterators.flatmap(get_plots, axes))
 function get_plots(scene::Scene)
     plots = AbstractPlot[]
     for p in scene.plots

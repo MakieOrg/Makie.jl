@@ -541,7 +541,7 @@ end
         plot_func(ax1, args..., label = "test")
         ax2 = Axis(f[1, 2])
         plot_func(ax2, args..., label = "test")
-        Legend(f[1, 3], [ax1, ax2], merge=true)
+        Legend(f[1, 3], [ax1, ax2], merge = true)
         return f
     end
 
