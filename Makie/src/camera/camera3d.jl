@@ -281,6 +281,8 @@ function deselect_all_cameras!(scene)
     return nothing
 end
 
+is_orthographic(cam::Camera3D) = to_value(cam.settings[:projectiontype]) == Makie.Orthographic
+
 
 ################################################################################
 ### Interactivity init

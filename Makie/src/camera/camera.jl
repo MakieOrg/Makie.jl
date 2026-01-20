@@ -126,6 +126,16 @@ function is_mouseinside(scene::Scene)
     # end
 end
 
+is_orthographic(::AbstractCamera) = true
+function is_orthographic(cam::AbstractCamera3D)
+    if hasproperty(cam, :projectiontype)
+        return to_value(cam.projectiontype) == Orthographic
+    else
+        return false
+    end
+end
+
+
 
 function add_camera_computation!(graph::ComputeGraph, scene)
     # This includes all combinations of:

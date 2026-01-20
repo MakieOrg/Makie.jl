@@ -1200,6 +1200,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     register_computation!(attr, [:uniform_model], [:modelinv]) do (model,), changed, cached
         return (Mat4f(inv(model)),)
     end
+    add_constant!(attr, :is_orthographic, Makie.is_orthographic(cameracontrols(scene)))
 
     inputs = [
         # Special
@@ -1212,6 +1213,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         :diffuse, :specular, :shininess, :backlight,
         # :lowclip_color, :highclip_color, :nan_color,
         :uniform_model,
+        :is_orthographic
     ]
 
     input2glname = Dict{Symbol, Symbol}(

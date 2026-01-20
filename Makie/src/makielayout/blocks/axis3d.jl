@@ -1,4 +1,5 @@
 struct Axis3Camera <: AbstractCamera end
+is_orthographic(cam::Axis3Camera) = false # but technically true at perspectiveness = 0
 
 function initialize_block!(ax::Axis3)
 

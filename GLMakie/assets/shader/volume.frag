@@ -28,7 +28,8 @@ in vec3 frag_vert;
 {{color_norm_type}} color_norm;
 
 uniform float absorption = 1.0;
-uniform vec3 eyeposition;
+uniform vec3 eyeposition, view_direction;
+uniform bool is_orthographic;
 
 uniform mat4 modelinv;
 uniform int algorithm;
@@ -300,7 +301,7 @@ vec4 isosurface(vec3 front, vec3 dir)
 vec3 generate_sdf_normal(vec3 uvw)
 {
     const vec2 k = vec2(1, -1) * 0.5773;
-    const float eps = get_eps();
+    const float eps = 0.0001;
     float sdf1 = texture(volumedata, uvw + k.xyy * eps).x;
     float sdf2 = texture(volumedata, uvw + k.yyx * eps).x;
     float sdf3 = texture(volumedata, uvw + k.yxy * eps).x;
@@ -445,7 +446,11 @@ void main()
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 dir;
+    if (is_orthographic)
+        dir = mat3(modelinv) * -view_direction; // is this correct for a direction?
+    else
+        dir = normalize(eye_unit - back_position);
 
     // In model space (pre model application) the volume is defined in a const
     // 0..1 box. If the camera is inside the box we start our rays from the
