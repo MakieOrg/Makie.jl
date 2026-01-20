@@ -13,6 +13,7 @@ get_space(::EmptyCamera) = :clip
     AbsorptionRGBA # 3
     AdditiveRGBA # 4
     IndexedAbsorptionRGBA # 5
+    RayMarchSDF # 6
 end
 
 const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}

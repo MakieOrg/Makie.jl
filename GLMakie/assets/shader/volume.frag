@@ -297,6 +297,72 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
+vec3 generate_sdf_normal(vec3 uvw)
+{
+    const vec2 k = vec2(1, -1) * 0.5773;
+    const float eps = get_eps();
+    float sdf1 = texture(volumedata, uvw + k.xyy * eps).x;
+    float sdf2 = texture(volumedata, uvw + k.yyx * eps).x;
+    float sdf3 = texture(volumedata, uvw + k.yxy * eps).x;
+    float sdf4 = texture(volumedata, uvw + k.xxx * eps).x;
+    return normalize(k.xyy * sdf1 + k.yyx * sdf2 + k.yxy * sdf3 + k.xxx * sdf4);
+}
+
+vec4 raymarch_sdf(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 c = vec4(0.0);
+    float max_distance = length(dir);
+    vec3 camdir = dir / max_distance;
+
+    float min_step = isorange;
+    float cumulative_distance = 0.0;
+    int i = 0;
+
+    for (i; i < num_samples; ++i)
+    {
+        vec4 temp = texture(volumedata, pos);
+        float signed_distance = temp.x;
+
+        // if (tracker == 1)
+        //     return temp;
+            // return vec4(signed_distance / 0.007, -signed_distance / 0.007, 0, 1);
+
+        // we still want to trigger this when we get into min_step range to
+        // make one last improvement
+        // if we get a negative distance (inside the shape) we want to be able
+        // to move back outside
+        pos = pos + sign(signed_distance) * max(abs(signed_distance), min_step) * camdir;
+        cumulative_distance += signed_distance;
+
+        if (abs(signed_distance) < min_step)
+            break;
+        else if (cumulative_distance > max_distance)
+        {
+            discard;
+            return vec4(0, 0, 0, 0);
+        }
+    }
+
+    vec4 world_pos = model * vec4(pos, 1);
+
+#ifdef ENABLE_DEPTH
+    vec4 frag_coord = projectionview * world_pos;
+    clip_depth = frag_coord.z / frag_coord.w;
+#endif
+
+    float cost = i / num_samples;
+    // vec3 color = vec3(cost * cost, (1 - cost) * (1 - cost), 0.1);
+    vec3 color = vec3(3 * cost - 2, 1 - 3 * cost, 1 - abs(3 * cost - 1.5));
+    // return vec4(color, 1);
+
+    vec3 normal = generate_sdf_normal(pos);
+    vec4 shaded_color = vec4(
+        illuminate(world_pos.xyz / world_pos.w, camdir, normal, color), 1.0
+    );
+    return shaded_color;
+}
+
 vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
@@ -416,7 +482,8 @@ void main()
     if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (stop - start) / num_samples;
+    vec3 full_dir = (stop - start);
+    vec3 step_in_dir = full_dir / num_samples;
 
     // the algorithm numbers correspond to the order in the
     // RaymarchAlgorithm enum defined in Makie types.jl
@@ -432,6 +499,8 @@ void main()
         color = additivergba(start, step_in_dir);
     else if(algorithm == 5)
         color = volumeindexedrgba(start, step_in_dir);
+    else if(algorithm == 6)
+        color = raymarch_sdf(start, full_dir);
     else
         color = contours(start, step_in_dir);
 

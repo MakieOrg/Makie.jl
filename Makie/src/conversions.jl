@@ -1665,7 +1665,7 @@ to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
-    elseif isa(value, Integer) && value in 0:5
+    elseif isa(value, Integer) && value in 0:6
         return Int32(value)
     elseif value == 7
         return Int32(value) # makie internal contour implementation
@@ -1683,6 +1683,7 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         :absorptionrgba => AbsorptionRGBA,
         :indexedabsorption => IndexedAbsorptionRGBA,
         :additive => AdditiveRGBA,
+        :sdf => RayMarchSDF
     )
     return convert_attribute(
         get(vals, Symbol(value)) do

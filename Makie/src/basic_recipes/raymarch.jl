@@ -318,6 +318,12 @@ module SDF
 
 end
 
+
+################################################################################
+### Plot that evaluates SDF functions in shader
+################################################################################
+
+
 @recipe SDFScatter (commands::Vector{SDF.Command},) begin
     # bounding box settings:
     # - auto: derived from commands
@@ -379,3 +385,359 @@ function plot!(plot::SDFScatter)
     register_camera!(parent_scene(plot), plot)
     return
 end
+
+
+################################################################################
+### CPU Version for volume plots
+################################################################################
+
+
+module SD
+    using LinearAlgebra
+    using GeometryBasics
+    using GeometryBasics: VecTypes
+
+    xy_norm(p) = norm(p[Vec(1, 2)])
+
+    sphere(ray_pos, radius::Real) = norm(ray_pos) - radius
+
+    function ellipsoid(ray_pos, scale::VecTypes{3})
+        # See Inigo Quilez https://iquilezles.org/articles/ellipsoids/
+        k0 = norm(ray_pos ./ scale);
+        k1 = norm(ray_pos ./ (scale .* scale));
+        return k0 * (k0 - 1f0) / max(0.000001f0, k1);
+    end
+
+    function rect(ray_pos, scale::VecTypes{3})
+        q = abs.(ray_pos) - scale;
+        # outside and inside distance?
+        return norm(max.(q, 0f0)) + min(maximum(q), 0f0);
+    end
+
+    box_frame(ray_pos, scale, width) = rect_frame(ray_pos, scale, width)
+    function rect_frame(ray_pos, scale::VecTypes{3}, width::Real)
+        p = abs.(ray_pos) - scale;
+        q = abs.(p .+ width) .- width;
+        # signed distance for x/y/z frame rects
+        a = norm(max.(Vec3f(p[1], q[2], q[3]), 0f0)) + min(max(p[1], q[2], q[3]), 0f0);
+        b = norm(max.(Vec3f(q[1], p[2], q[3]), 0f0)) + min(max(q[1], p[2], q[3]), 0f0);
+        c = norm(max.(Vec3f(q[1], q[2], p[3]), 0f0)) + min(max(q[1], q[2], p[3]), 0f0);
+        return min(a, b, c);
+    end
+
+    function torus(ray_pos, r_outer::Real, r_inner::Real)
+        q = Vec2f(xy_norm(ray_pos) - r_outer, ray_pos[3]);
+        return norm(q) - r_inner;
+    end
+
+    # opening angle extending in both directions from 0
+    function capped_torus(ray_pos, opening_angle::Real, r_outer::Real, r_inner::Real)
+        s, c = sincos(opening_angle)
+        p = Vec3f(abs(ray_pos[1]), ray_pos[2], ray_pos[3]);
+        k = (c * p[1] > s * p[2]) ? p[1] * s + p[2] * c : xy_norm(p);
+        return sqrt(dot(p, p) + r_outer * r_outer - 2f0 * r_outer * k) - r_inner;
+    end
+
+    function link(ray_pos, len::Real, r_outer::Real, r_inner::Real)
+        q = Vec3f(ray_pos[1], max(abs(ray_pos[2]) - len, 0f0), ray_pos[3]);
+        return norm(Vec2f(xy_norm(q) - r_outer, q[3])) - r_inner;
+    end
+
+    function cylinder(ray_pos, radius::Real, height::Real)
+        # TODO: underestimates distance when we're diagonally below/above the cylinder
+        #  |    |
+        #..|____|.. OK
+        #  : OK : wrong
+        return max(xy_norm(ray_pos) - radius, abs(ray_pos[3]) - height);
+    end
+
+    # or rounded cylinder
+    function capsule(ray_pos, radius::Real, height::Real)
+        pos = Vec3f(ray_pos[1], ray_pos[2], max(0f0, abs(ray_pos[3]) - height));
+        return norm(pos) - radius;
+    end
+
+    function cone(ray_pos, radius::Real, height::Real)
+        # Quilez cone
+        q = Vec2f(radius, -2.0 * height)
+        w = Vec2f(xy_norm(ray_pos), ray_pos[3] - height)
+        a = w - q * clamp(dot(w, q) / dot(q, q), 0f0, 1f0 )
+        b = w - q .* Vec2f(clamp(w[1] / q[1], 0f0, 1f0), 1f0)
+        k = sign(q[2])
+        d = min(dot(a, a), dot(b,b))
+        s = max(k * (w[1] * q[2] - w[2] * q[1]), k * (w[2] - q[2]))
+        return sqrt(d) * sign(s);
+    end
+
+    function capped_cone(ray_pos, height::Real, radius1::Real, radius2::Real)
+        ray_rh = Vec2f(xy_norm(ray_pos), ray_pos[3]);
+        limits = Vec2f(radius2, height);
+        delta = Vec2f(radius2 - radius1, 2f0 * height);
+        ca = Vec2f(
+            ray_rh[1] - min(ray_rh[1], ray_rh[2] < 0f0 ? radius1 : radius2),
+            abs(ray_rh[2]) - height
+        );
+        cb = ray_rh - limits + delta * clamp(dot(limits - ray_rh, delta) / dot(delta, delta), 0f0, 1f0);
+        s = (cb[1] < 0f0 && ca[2] < 0f0) ? -1f0 : 1f0;
+        return s * sqrt(min(dot(ca, ca), dot(cb, cb)));
+    end
+
+    function octahedron(ray_pos, size::Real)
+        p = abs.(ray_pos);
+        boundary = sum(p) - size; # unnormalized
+
+        q = p;
+        if (3f0 * p[1] < boundary)
+            # q = p.xyz;
+        elseif (3f0 * p[2] < boundary)
+            q = Vec3f(p[2], p[3], p[1])
+        elseif (3f0 * p[3] < boundary)
+            q = Vec3f(p[3], p[1], p[2])
+        else
+            return boundary * 0.57735027f0; # normalized
+        end
+
+        k = clamp(0.5f0 * (q[3] - q[2] + size), 0f0, size);
+        return norm(Vec3f(q[1], q[2] - size + k, q[3] - k));
+    end
+
+    function pyramid(ray_pos, radius::Real, height::Real)
+        # use xy symmetry
+        pos = Vec3f(abs(ray_pos[1]), abs(ray_pos[2]), height - ray_pos[3]);
+
+        # project ray_pos onto the side surfaces where side_dir is the vector going
+        # from the tip of the pyramid down one of the sides
+        side_dir = Vec2f(radius, 2f0 * height);
+        side_length2 = dot(side_dir, side_dir);
+
+        # and also the edge between side surfaces
+        edge_dir = Vec3f(radius, radius, 2f0 * height);
+        edge_length2 = dot(edge_dir, edge_dir);
+
+        # use projection ray_pos = a * side_dir + b * some_vec
+        x_proj = side_dir * clamp(dot(pos[Vec(1, 3)], side_dir), 0f0, side_length2) / side_length2;
+        y_proj = side_dir * clamp(dot(pos[Vec(2, 3)], side_dir), 0f0, side_length2) / side_length2;
+        xy_proj = edge_dir * clamp(dot(pos, edge_dir), 0f0, edge_length2) / edge_length2;
+
+        # We can further disassemble some_vec = c * side_normal + d * perp_vec
+        # where perp_vec = u_y for the x surface. If d < width of the surface
+        # at x_proj, c is the closest distance. Check if this is the case:
+        # If it's not the case for the x or y surface, the edge must be closer(1)
+        in_x_range = Float32(pos[2] * height < 0.5 * radius * x_proj[2]);
+        in_y_range = Float32(pos[1] * height < 0.5 * radius * y_proj[2]);
+
+        mantle_dist = norm(
+            in_x_range * Vec3f(pos[1] - x_proj[1], pos[3] - x_proj[2], 0) +
+            in_y_range * Vec3f(pos[2] - y_proj[1], pos[3] - y_proj[2], 0) +
+            (1f0 - in_x_range) * (1f0 - in_y_range) * (pos - xy_proj)
+        );
+
+        # (1) ... except if the bottom face is closer
+        # directly calculate the distance here, treating anything from -radius .. radius
+        # as zero distance (or 0 .. radius with symmetry)
+        base_dist = norm(Vec3f(
+            max(pos[1] - radius, 0f0),
+            max(pos[2] - radius, 0f0),
+            pos[3] - 2f0 * height
+        ))
+
+        # figure out if we're inside tbe pyramid by checking if x, y < the width
+        # of the pyramid at the closest point, and if we're not below the pyramid
+        local_radius = in_x_range * x_proj[1] + in_y_range * y_proj[1] +
+            (1f0 - in_x_range) * (1f0 - in_y_range) * xy_proj[1];
+        is_inside = (pos[1] < local_radius) && (pos[2] < local_radius) && (abs(ray_pos[3]) < height);
+        _sign = ifelse(is_inside, -1f0, 1f0)
+
+        return _sign * min(mantle_dist, base_dist);
+    end
+
+end
+
+function evaluate_merge_command(command, sdfs)
+    SDF.Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
+
+    if command.id == SDF.Commands.op_union
+        return minimum(sdfs)
+    elseif command.id == SDF.Commands.op_subtraction
+        return max(-first(sdfs), minimum(view(sdfs, 2:length(sdfs))))
+    elseif command.id == SDF.Commands.op_intersection
+        return maximum(sdfs)
+    elseif command.id == SDF.Commands.op_xor
+        return reduce(sdfs, init = Inf32) do sdf1, sdf2
+            return max(min(sdf1, sdf2), -max(sdf1, sdf2))
+        end
+    else # smooth cases
+        smoothing = command.data[1]
+        inv_smoothing = 1f0 / smoothing
+        return reduce(sdfs) do sdf1, sdf2
+            final_sign = -1f0
+            if command.id == SDF.Commands.op_smooth_union
+                final_sign = 1f0
+            elseif command.id == SDF.Commands.op_smooth_subtraction
+                sdf2 = -sdf2
+            elseif command.id == SDF.Commands.op_smooth_intersection
+                sdf1 = -sdf1
+                sdf2 = -sdf2
+            else
+                temp = min(sdf1, sdf2)
+                sdf2 = -max(sdf1, sdf2)
+                sdf1 = temp
+            end
+
+            h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
+            w = h * h
+            # m = 0.5 * w
+            s = w * smoothing
+            return _sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
+        end::Float32
+    end
+end
+
+function evaluate_prefix_command(command, pos)
+    if command.id == SDF.Commands.op_revolution
+        # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
+        # float moves the 2d object away from th center of rotation
+        # TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
+        return Point3f(SD.xy_norm(pos) - command.data[1], pos.z, 0f0);
+    elseif command.id == SDF.Commands.op_elongate
+        return pos - clamp.(pos, -command.data, command.data);
+    elseif command.id == SDF.Commands.op_rotation
+        return reinterpret(Quaternionf, command.data) * pos
+    elseif command.id == SDF.Commands.op_mirror
+        # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
+        return Makie.lerp.(pos, abs.(pos), command.data);
+    elseif command.id == SDF.Commands.op_infinite_repetition
+        return pos - command.data .* round(pos ./ command.data);
+    elseif command.id == SDF.Commands.op_limited_repetition
+        rep_dist = Vec3f(command.data[1:3])
+        limit = Vec3f(command.data[4:6])
+        return pos - rep_dist * clamp(round(pos ./ rep_dist), -limit, limit);
+    elseif command.id == SDF.Commands.op_twist
+        k = command.data[1];
+        c = cos(k * pos.z);
+        s = sin(k * pos.z);
+        T = Makie.Mat2f(c, -s, s, c);
+        return Point3f((T * pos[Vec(1, 2)])..., pos.z); # Quilez has this reorder (T*xz, y)
+    elseif command.id == SDF.Commands.op_bend
+        k = command.data[1];
+        c = cos(k * pos.z);
+        s = sin(k * pos.z);
+        T = Makie.Mat2f(c, -s, s, c);
+        p2 = T * Point2f(pos[1], pos[3])
+        return Point3f(p2[1], pos[2], p2[2]) # Quilez has this not reorder (T*xy, z)
+    elseif command.id == SDF.Commands.op_translation
+        return pos .- command.data;
+    end
+    return pos
+end
+
+function evaluate_shape_command(command, pos)
+    data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+
+    if command.id == SDF.Commands.shape3D_sphere
+        return SD.sphere(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_octahedron
+        return SD.octahedron(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_pyramid
+        return SD.pyramid(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_torus
+        return SD.torus(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_capsule
+        return SD.capsule(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_cylinder
+        return SD.cylinder(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_ellipsoid
+        return SD.ellipsoid(pos, Vec3f(data...))::Float32
+    elseif command.id == SDF.Commands.shape3D_rect
+        return SD.rect(pos, Vec3f(data...))::Float32
+    elseif command.id == SDF.Commands.shape3D_link
+        return SD.link(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_cone
+        return SD.cone(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_capped_cone
+        return SD.capped_cone(pos, data...)::Float32
+    elseif command.id == SDF.Commands.shape3D_box_frame
+        return SD.box_frame(pos, Vec3f(data[1:3]), data[4])::Float32
+    elseif command.id == SDF.Commands.shape3D_capped_torus
+        return SD.capped_torus(pos, data...)::Float32
+    else
+        return 10_000f0
+    end
+end
+
+function evaluate_postfix_command(command, pos, sdf)
+    if command.id == SDF.Comamnds.op_extrusion
+        vec = Vec2f(sdf, length(abs.(pos) .- command.data));
+        sdf = min(max(vec[1], vec[2]), 0f0) + norm(max(vec, 0f0));
+    elseif command.id == SDF.Comamnds.op_rounding
+        sdf = sdf - command.data[1]
+    elseif command.id == SDF.Comamnds.op_onion
+        sdf = abs(sdf) - command.data[1]
+    else
+        return sdf
+    end
+end
+
+function evaluate_command(command, pos::Point3f, sdf::Float32)
+    if SDF.Commands.is_prefix(command.id)
+        return evaluate_prefix_command(command, pos)::Point3f, sdf
+    elseif SDF.Commands.is_shape(command.id)
+        return pos, evaluate_shape_command(command, pos)::Float32
+    elseif SDF.Commands.is_postfix(command.id)
+        return pos, evaluate_postfix_command(command, pos, sdf)::Float32
+    else
+        error("Could not process $command")
+    end
+end
+
+function compute_signed_distance_at(node::SDF.Node, pos)
+    sdf = NaN32
+
+    commands = if isempty(node.children)
+        view(node.commands, 1:length(node.commands))
+    else
+        sdfs = Float32[compute_signed_distance_at(child, pos) for child in node.children]
+        sdf = evaluate_merge_command(first(node.commands), sdfs)
+        view(node.commands, 2:length(node.commands))
+    end
+
+    for command in commands
+        pos, sdf = evaluate_command(command, pos, sdf)
+    end
+
+    return sdf
+end
+
+function generate_distance_field(bb::Rect3f, root::SDF.Node, N = 512)
+    if !allequal(widths(bb))
+        error("Bounding box must be a cube, i.e. equal widths, but has $(widths(bb))")
+    end
+
+    field = Array{Float16, 3}(undef, N, N, N)
+    ranges = range.(minimum(bb), maximum(bb), length = N)
+    normalization = Float32(1.0 / norm(widths(bb))) # TODO: 1.0 or 2.0?
+
+    for (k, z) in enumerate(ranges[3])
+        for (j, y) in enumerate(ranges[2])
+            for (i, x) in enumerate(ranges[1])
+                dist = compute_signed_distance_at(root, Point3f(x, y, z))
+                field[i, j, k] = dist * normalization
+            end
+        end
+    end
+
+    return field
+end
+
+function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
+    ep_x = to_endpoints(x, "x", VolumeLike)
+    ep_y = to_endpoints(y, "y", VolumeLike)
+    ep_z = to_endpoints(z, "z", VolumeLike)
+    bb = Rect3f(
+        ep_x[1], ep_y[1], ep_z[1],
+        ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
+    )
+    field = generate_distance_field(bb, node, 128)
+    return (ep_x, ep_y, ep_z, field)
+end
+
