@@ -59,6 +59,7 @@ function draw_volume(screen, data::Dict)
         enable_depth = true
         transparency = false
         px_per_unit = 1.0f0
+        depth_buffer = screen.framebuffer[:depth][2]
         shader = GLVisualizeShader(
             screen,
             "volume.vert",
