@@ -254,13 +254,12 @@ end
 # gets removed in destroy!(screen)
 const ALL_SCREENS = Set{Screen}()
 
-Makie.@noconstprop function empty_screen(debugging::Bool; reuse = true, window = nothing)
-    return empty_screen(debugging, reuse, window)
+Makie.@noconstprop function empty_screen(debugging::Bool; reuse = true, window = nothing, resolution = (600, 450))
+    return empty_screen(debugging, reuse, window; resolution)
 end
 
-Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
+Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window; resolution = (600, 450))
     owns_glscreen = isnothing(window)
-    initial_resolution = (10, 10)
 
     if owns_glscreen
         windowhints = [
@@ -282,7 +281,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
         ]
         window = try
             GLFW.Window(
-                resolution = initial_resolution,
+                resolution = resolution,
                 windowhints = windowhints,
                 visible = false,
                 focus = false,
@@ -310,7 +309,7 @@ Makie.@noconstprop function empty_screen(debugging::Bool, reuse::Bool, window)
     # This is important for resource tracking, and only needed for the first context
     gl_switch_context!(window)
     shader_cache = GLAbstraction.ShaderCache(window)
-    fb = GLFramebuffer(window, initial_resolution)
+    fb = GLFramebuffer(window, resolution)
     postprocessors = [
         empty_postprocessor(),
         empty_postprocessor(),
@@ -377,7 +376,7 @@ end
 
 const SINGLETON_SCREEN = Screen[]
 
-function singleton_screen(debugging::Bool)
+function singleton_screen(debugging::Bool; resolution=(600, 450))
     if !isempty(SINGLETON_SCREEN)
         if GLAbstraction.context_alive(SINGLETON_SCREEN[1].glscreen)
             @debug("reusing singleton screen")
@@ -392,7 +391,7 @@ function singleton_screen(debugging::Bool)
 
     @debug("new singleton screen")
     # reuse=false, because we "manually" reuse the singleton screen!
-    screen = empty_screen(debugging; reuse = false)
+    screen = empty_screen(debugging; reuse=false, resolution)
     push!(SINGLETON_SCREEN, screen)
     return reopen!(screen)
 end
@@ -523,7 +522,8 @@ Makie.@noconstprop function Screen(
         scene::Scene, config::ScreenConfig; visible = nothing,
         start_renderloop = true
     )
-    screen = singleton_screen(config.debugging)
+    resolution = size(scene)
+    screen = singleton_screen(config.debugging; resolution=resolution)
     !isnothing(visible) && (config.visible = visible)
     apply_config!(screen, config; start_renderloop = start_renderloop)
     display_scene!(screen, scene)
