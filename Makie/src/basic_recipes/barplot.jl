@@ -3,38 +3,6 @@ bar_label_formatter(label::String) = label
 bar_label_formatter(label::LaTeXString) = label
 
 """
-    bar_default_fillto(tf, ys, offset)::(ys, offset)
-
-Returns the default y-positions and offset positions for the given transform `tf`.
-
-In order to customize this for your own transformation type, you can dispatch on
-`tf`.
-
-Returns a Tuple of new y positions and offset arrays.
-
-## Arguments
-- `tf`: `plot.transformation.transform_func[]`.
-- `ys`: The y-values passed to `barplot`.
-- `offset`: The `offset` parameter passed to `barplot`.
-"""
-function bar_default_fillto(tf, ys, offset, in_y_direction)
-    return ys, offset
-end
-
-# `fillto` is related to `y-axis` transformation only, thus we expect `tf::Tuple`
-function bar_default_fillto(tf::Tuple, ys, offset, in_y_direction)
-    _logT = Union{typeof(log), typeof(log2), typeof(log10), Base.Fix1{typeof(log), <:Real}}
-    if in_y_direction && tf[2] isa _logT || (!in_y_direction && tf[1] isa _logT)
-        # x-scale log and !(in_y_direction) is equiavlent to y-scale log in_y_direction
-        # use the minimal non-zero y divided by 2 as lower bound for log scale
-        smart_fillto = minimum(y -> y <= 0 ? oftype(y, Inf) : y, ys) / 2
-        return clamp.(ys, smart_fillto, Inf), smart_fillto
-    else
-        return ys, offset
-    end
-end
-
-"""
     barplot(positions, heights; kwargs...)
 
 Plots bars of the given `heights` at the given (scalar) `positions`.
@@ -130,13 +98,58 @@ end
 
 conversion_trait(::Type{<:BarPlot}) = PointBased()
 
-function bar_rectangle(x, y, width, fillto, in_y_direction)
+"""
+    add_slow_limits!(plot)
+
+Adds `slow_limits_transformed` to the plot.
+
+These limits update when the real axis limits are no longer inside the slow
+limits, or if the slow limits become more than 20000 times larger.
+"""
+function add_slow_limits!(plot::Plot)
+    scene = parent_scene(plot)
+    add_axis_limits!(plot)
+    register_computation!(
+        scene.compute, [:axis_limits_transformed], [:slow_limits_transformed]
+    ) do (lims,), changed, cached
+        ws = widths(lims)
+        if isnothing(cached) || !(lims in cached[1]) || any(widths(cached[1]) .> 20000 .* ws)
+            mini = minimum(lims)
+            return (Rect2d(mini - 100ws, 201ws),)
+        else
+            return nothing
+        end
+    end
+    add_input!(plot.attributes, :slow_limits_transformed, scene.compute.slow_limits_transformed)
+    return
+end
+
+function bar_rectangle(tf, x, y, offset, width, fillto, in_y_direction, lims)
     # y could be smaller than fillto...
+    y += offset
     ymin = min(fillto, y)
     ymax = max(fillto, y)
-    w = abs(width)
-    rect = Rectd(x - (w / 2.0f0), ymin, w, ymax - ymin)
-    return in_y_direction ? rect : flip(rect)
+    w = 0.5 * abs(width)
+
+    # To deal with log transforms we apply the transform_func here and clamp
+    # the result to a renderable range of values. Edge case problems:
+    # - clamping to e.g. -floatmax(Float32) .. floatmax(Float32) breaks down
+    #   when the visible area <<< than that range (maybe float issues in
+    #   projectionview * position?)
+    # - `Rect` can't deal with transformations that curve space (e.g. Polar)
+    #    because it only stores the origin and widths
+    # - `Rect` also has float precision issues due to calculating origin + widths
+    # - to avoid running this excessively `lims` should update slowly (but always
+    #   be larger than the real axis limits)
+    minlim = minimum(lims)
+    maxlim = maximum(lims)
+    points = Point2d[(x - w, ymin), (x - w, ymax), (x + w, ymax), (x + w, ymin)]
+    points = map(points) do point
+        point = ifelse(in_y_direction, point, reverse(point))
+        return clamp.(apply_transform(tf, point), minlim, maxlim)
+    end
+
+    return Polygon(points)
 end
 
 flip(r::Rect2) = Rect2(reverse(origin(r)), reverse(widths(r)))
@@ -305,46 +318,44 @@ function barplot_labels(
     end
 end
 
-function Makie.plot!(p::BarPlot)
-    bar_points = p[1]
-    if !(eltype(bar_points[]) <: Point2)
-        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(bar_points[])")
+function plot!(p::BarPlot)
+    if !(eltype(p.positions[]) <: Point2)
+        error("barplot only accepts x/y coordinates. Use `barplot(x, y)` or `barplot(xy::Vector{<:Point2})`. Found: $(p.positions[])")
     end
-    labels = Observable(Tuple{Union{String, LaTeXStrings.LaTeXString}, Point2d}[])
-    label_aligns = Observable(Vec2d[])
-    label_offsets = Observable(Vec2d[])
-    label_colors = Observable(RGBAf[])
-    function calculate_bars(
-            xy, fillto, offset, transformation, width, dodge, n_dodge, gap, dodge_gap, stack,
-            dir, bar_labels, flip_labels_at, label_color, color_over_background,
-            color_over_bar, label_formatter, label_offset, label_rotation, label_align, label_position
-        )
 
-        in_y_direction = get((y = true, x = false), dir) do
+    map!(p, :direction, :in_y_direction) do dir
+        return get((y = true, x = false), dir) do
             error("Invalid direction $dir. Options are :x and :y.")
         end
+    end
 
-        x = first.(xy)
-        y = last.(xy)
+    map!(p, :positions, [:raw_x, :raw_y]) do xy
+        return first.(xy), last.(xy)
+    end
 
+    # Bar width + dodge
+    map!(
+        p, [:raw_x, :width, :gap, :dodge, :n_dodge, :dodge_gap], [:x, :barwidth]
+    ) do x, userwidth, gap, dodge, n_dodge, dodge_gap
         # by default, `width` is `minimum(diff(sort(unique(x)))`
-        if width === automatic
+        if userwidth === automatic
             x_unique = unique(filter(isfinite, x))
             x_diffs = diff(sort(x_unique))
             width = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+        else
+            width = userwidth
         end
 
         # compute width of bars and x̂ (horizontal position after dodging)
-        x̂, barwidth = compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+        return compute_x_and_width(x, width, gap, dodge, n_dodge, dodge_gap)
+    end
 
-        # --------------------------------
-        # ----------- Stacking -----------
-        # --------------------------------
-
+    # stack
+    map!(
+        p, [:stack, :fillto, :x, :raw_y, :offset], [:y, :computed_fillto]
+    ) do stack, fillto, x, y, offset
         if stack === automatic
-            if fillto === automatic
-                y, fillto = bar_default_fillto(transformation, y, offset, in_y_direction)
-            end
+            return y, ifelse(fillto === automatic, offset, fillto)
         elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             if !iszero(offset)
@@ -353,43 +364,136 @@ function Makie.plot!(p::BarPlot)
             end
             i_stack = stack
 
-            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
-            y, fillto = to, from
+            from, to = stack_grouped_from_to(i_stack, y, (x = x,))
+            return to, from
         else
-            ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
+            throw(ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`"))
         end
+    end
 
-        # --------------------------------
-        # ----------- Labels -------------
-        # --------------------------------
+    try
+        add_slow_limits!(p)
+    catch e
+        # allow PolarAxis to not error
+        add_input!(p.attributes, :slow_limits_transformed, Rect2d(-Inf, -Inf, Inf, Inf))
+    end
+
+    map!(
+        p,
+        [:x, :y, :offset, :barwidth, :computed_fillto, :in_y_direction, :transform_func, :slow_limits_transformed],
+        :bar_rectangles
+    ) do x, y, offset, barwidth, fillto, in_y_direction, transform_func, lims
+        return bar_rectangle.(
+            Ref(transform_func), x, y, offset, barwidth, fillto, in_y_direction, Ref(lims)
+        )
+    end
+
+    # bar Labels
+    map!(
+        p,
+        [
+            :label_color, :color_over_background, :color_over_bar,
+            :x, :y, :offset, :bar_labels, :in_y_direction, :flip_labels_at,
+            :label_formatter, :label_offset, :label_rotation, :label_align,
+            :label_position, :computed_fillto,
+        ],
+        [:labels, :label_aligns, :label_offsets, :label_colors]
+    ) do label_color, color_over_background, color_over_bar,
+            x, y, offset, bar_labels, in_y_direction, flip_labels_at,
+            label_formatter, label_offset, label_rotation, label_align,
+            label_position, fillto
 
         if !isnothing(bar_labels)
-            oback = color_over_background === automatic ? label_color : color_over_background
-            obar = color_over_bar === automatic ? label_color : color_over_bar
-            label_args = barplot_labels(
-                x̂, y, offset, bar_labels, in_y_direction,
+            oback = default_automatic(color_over_background, label_color)
+            obar = default_automatic(color_over_bar, label_color)
+            return barplot_labels(
+                x, y, offset, bar_labels, in_y_direction,
                 flip_labels_at, to_color(oback), to_color(obar),
                 label_formatter, label_offset, label_rotation, label_align, label_position, fillto
             )
-            labels[], label_aligns[], label_offsets[], label_colors[] = label_args
         end
-
-        return bar_rectangle.(x̂, y .+ offset, barwidth, fillto, in_y_direction)
     end
 
-    bars = lift(
-        calculate_bars, p, p[1], p.fillto, p.offset, p.transformation.transform_func, p.width, p.dodge, p.n_dodge, p.gap,
-        p.dodge_gap, p.stack, p.direction, p.bar_labels, p.flip_labels_at,
-        p.label_color, p.color_over_background, p.color_over_bar, p.label_formatter, p.label_offset, p.label_rotation, p.label_align, p.label_position; priority = 1
-    )
-    poly!(
-        p, bars, color = p.color, colormap = p.colormap, colorscale = p.colorscale, colorrange = p.colorrange,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
-        inspectable = p.inspectable, transparency = p.transparency, space = p.space,
-        highclip = p.highclip, lowclip = p.lowclip, nan_color = p.nan_color, alpha = p.alpha,
-    )
 
-    return if !isnothing(p.bar_labels[])
-        text!(p, labels; align = label_aligns, offset = label_offsets, color = label_colors, font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation)
+    poly!(p, p.attributes, p.bar_rectangles, transformation = :inherit_model)
+
+    if !isnothing(p.bar_labels[])
+        text!(
+            p, p.labels;
+            align = p.label_aligns, offset = p.label_offsets, color = p.label_colors,
+            font = p.label_font, fontsize = p.label_size, rotation = p.label_rotation,
+        )
     end
+
+    return p
+end
+
+is_log_transform(tf) = false
+is_log_transform(t::Tuple) = any(is_log_transform, t)
+is_log_transform(::LogFunctions) = true
+is_log_transform(::Base.Fix1{<:LogFunctions}) = true
+
+function boundingbox(p::BarPlot, space::Symbol = :data)
+    if isempty(p.x[])
+        # no data should result in empty limits
+        bb = Rect2d()
+
+    elseif is_identity_transform(p.transform_func[])
+        # bit of a fast path for untransformed data
+        x0 = minimum(p.x[] .- 0.5 .* p.barwidth[])
+        x1 = maximum(p.x[] .+ 0.5 .* p.barwidth[])
+        y0 = minimum(min.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        y1 = maximum(max.(p.y[] .+ p.offset[], p.computed_fillto[]))
+        bb = Rect2d(x0, y0, x1 - x0, y1 - y0)
+        bb = ifelse(p.in_y_direction[], bb, flip(bb))
+
+    elseif is_log_transform(p.transform_func[])
+        # log transformed data needs to dodge log(0).
+        # Find the minimum y value > 0 instead, and take log(0.5 * ymin_greater_0)
+        # as the transformed minimum
+        maxi = Point2d(-Inf)
+        mini = Point2d(Inf)
+        tf = p.transform_func[]
+        maybe_flip = p.in_y_direction[] ? identity : reverse
+        broadcast_foreach(p.x[], p.barwidth[], p.y[], p.offset[], p.computed_fillto[]) do x, width, y, offset, fillto
+            w = 0.5width
+            ymax = max(y + offset, fillto)
+            ymin = ifelse(fillto <= 0, 0.5 * ymax, fillto)
+            p0 = apply_transform(tf, maybe_flip(Point2d(x - w, ymin)))
+            p1 = apply_transform(tf, maybe_flip(Point2d(x + w, ymax)))
+            mini = ifelse.(isfinite.(p0) .&& (mini .> p0), p0, mini)
+            maxi = ifelse.(isfinite.(p1) .&& (maxi .< p1), p1, maxi)
+        end
+        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+
+    else
+        # In the general transformed case all the (un-clamped) poly vertices need
+        # to be transformed
+        maxi = Point2d(-Inf)
+        mini = Point2d(Inf)
+        tf = p.transform_func[]
+        maybe_flip = p.in_y_direction[] ? identity : reverse
+        broadcast_foreach(p.x[], p.barwidth[], p.y[], p.offset[], p.computed_fillto[]) do x, width, y, offset, fillto
+            w = 0.5width
+            ymin = min(y + offset, fillto)
+            ymax = max(y + offset, fillto)
+            p00 = apply_transform(tf, maybe_flip(Point2d(x - w, ymin)))
+            p01 = apply_transform(tf, maybe_flip(Point2d(x - w, ymax)))
+            p11 = apply_transform(tf, maybe_flip(Point2d(x + w, ymax)))
+            p10 = apply_transform(tf, maybe_flip(Point2d(x + w, ymin)))
+            mini = min.(mini, p00, p01, p11, p10)
+            maxi = max.(maxi, p00, p01, p11, p10)
+        end
+        bb = isfinite(mini) && isfinite(maxi) ? Rect2d(mini, maxi .- mini) : Rect2d()
+    end
+
+    bb3 = apply_model(transformationmatrix(p)[], Rect3d(bb))
+
+    # add optional text subplot
+    if length(p.plots) > 1
+        tbb = boundingbox(p.plots[2])
+        bb3 = update_boundingbox(bb3, tbb)
+    end
+
+    return bb3
 end
