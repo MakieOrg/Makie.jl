@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Added ability to create `Legend` from a vector of axes [#4984](https://github.com/MakieOrg/Makie.jl/pull/4984)
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
@@ -13,6 +14,7 @@
 
 ## [0.24.8] - 2025-12-04
 
+- Added `zoom_inset!(ax, rect)` for creating interactive zoom insets with draggable inset positioning, resizable zoom regions, and automatic plot copying from the main axis [#5456](https://github.com/MakieOrg/Makie.jl/pull/5456).
 - Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph and add init kw for map! and map_latest! [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
 - Added support for RichText concatenation using the `*` operator, e.g., `"text" * rich("bold", font=:bold)` [#5221](https://github.com/MakieOrg/Makie.jl/pull/5221)
