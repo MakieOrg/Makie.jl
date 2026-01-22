@@ -75,6 +75,22 @@ dendrogram!(a, leaves, merges, linewidth = 3, color = :black, linestyle = :dash,
 f
 ```
 
+### Using with Clustering.jl
+
+When `Clustering.jl` is loaded, dendrograms can be plotted directly from `Hclust` objects:
+
+```@figure
+using CairoMakie
+using Clustering, Distances
+
+# Generate sample data and compute hierarchical clustering
+data = randn(5, 50)
+dist = pairwise(Euclidean(), data, dims=2)
+hcl = hclust(dist; linkage=:average)
+
+dendrogram(hcl)
+```
+
 ## Attributes
 
 ```@attrdocs

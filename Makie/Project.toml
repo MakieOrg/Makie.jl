@@ -66,15 +66,18 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
 [extensions]
+MakieClusteringExt = "Clustering"
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 Animations = "0.4"
 Base64 = "1.0, 1.6"
 CRC32c = "1.0, 1.6"
+Clustering = "0.15"
 ColorBrewer = "0.4"
 ColorSchemes = "3.5"
 ColorTypes = "0.8, 0.9, 0.10, 0.11, 0.12"
