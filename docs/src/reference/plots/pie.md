@@ -17,8 +17,10 @@ f, ax, plt = pie(data,
                  inner_radius = 2,
                  strokecolor = :white,
                  strokewidth = 5,
-                 axis = (autolimitaspect = 1, )
+                 axis = (autolimitaspect = 1, ),
+                 label = [string(c) => (; color = c) for c in colors]
                 )
+Legend(f[1,2], ax)
 
 f
 ```
