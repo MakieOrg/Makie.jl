@@ -535,25 +535,22 @@ end
 end
 
 @testset "Joint legend data gathering" begin
-    function make_fig_joint(plot_func, args...)
-        f = Figure()
-        ax1 = Axis(f[1, 1])
-        plot_func(ax1, args..., label = "test")
-        ax2 = Axis(f[1, 2])
-        plot_func(ax2, args..., label = "test")
-        Legend(f[1, 3], [ax1, ax2], merge = true)
-        return f
-    end
+    f = Figure()
+    ax1 = Axis(f[1, 1])
+    l1a = lines!(ax1, rand(10), label = "test a")
+    l1b = lines!(ax1, rand(10), label = "test b")
+    ax2 = Axis(f[1, 2])
+    l2a = lines!(ax2, rand(10), label = "test a")
+    leg = Legend(f[1, 3], [ax1, ax2], merge = true)
 
-    @test make_fig_joint(density!, rand(100)) isa Figure
-    @test make_fig_joint(poly!, Rect2f(0, 0, 1, 1)) isa Figure
-    @test make_fig_joint(band!, rand(3), rand(3), rand(3)) isa Figure
-    @test make_fig_joint(violin!, rand(1:3, 10), rand(10)) isa Figure
-    @test make_fig_joint(boxplot!, rand(1:3, 10), rand(10)) isa Figure
-    @test make_fig_joint(crossbar!, rand(3), rand(3), rand(3) .- 1, rand(3) .+ 1) isa Figure
-    @test make_fig_joint(scatter!, rand(3)) isa Figure
-    @test make_fig_joint(lines!, rand(3)) isa Figure
-    @test make_fig_joint(linesegments!, rand(8)) isa Figure
+    @test f isa Figure
+    # The joint legend has two entries
+    @test length(leg.entrygroups[][][2]) == 2
+    # The first entry has two linked plots
+    @test length(leg.entrygroups[][][2][1].elements) == 2
+    # The two linked plots are the plots from two different axes
+    @test leg.entrygroups[][][2][1].elements[1].plots[] == l1a
+    @test leg.entrygroups[][][2][1].elements[2].plots[] == l2a
 end
 
 @testset "ReversibleScale" begin
