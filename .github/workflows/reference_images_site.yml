@@ -52,7 +52,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
 
       - name: Install Julia dependencies
-        shell: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
+        run: julia --project=reference_images_site -e 'using Pkg; Pkg.instantiate()'
       - name: Build static site
         if: steps.pr_number.outputs.pr != ''
         env:

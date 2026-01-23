@@ -1363,6 +1363,42 @@ end
     current_figure()
 end
 
+@reference_test "MultiHist" begin
+    data1 = RNG.rand(100) .* 2.0 .- 1.0
+    data2 = RNG.randn(150)
+    data = vcat(data1, data2)
+    groups = vcat(fill(1, 100), fill(2, 150))
+
+    fig = Figure(size = (400, 600))
+    hist(
+        fig[1, 1], data; stack = groups,
+        color = :stack, colormap = :Set3_10,
+    )
+    hist(
+        fig[1, 2], [data1, data2]; dodge = [1, 2],
+        color = :dodge, colormap = :Set3_10,
+    )
+    hist(
+        fig[2, 1], data; dodge = groups,
+        color = [:red, :lightgreen], strokewidth = 2, strokecolor = :blue
+    )
+    hist(
+        fig[2, 2], [data1, data2]; stack = [1, 2],
+        color = :values, strokewidth = 2, strokecolor = :red
+    )
+    hist(
+        fig[3, 1], [data1, data2]; stack = [1, 2],
+        weights = [abs.(data1), abs.(data2)],
+        color = :stack,
+    )
+    hist(
+        fig[3, 2], [data1, data2]; dodge = [1, 2],
+        weights = [abs.(data1), abs.(data2)], bins = 15,
+        color = vcat(1:15, 36:50), colormap = :RdBu
+    )
+    fig
+end
+
 @reference_test "LaTeXStrings linesegment offsets" begin
     s = Scene(camera = campixel!, size = (600, 600))
     for (i, (offx, offy)) in enumerate(zip([0, 20, 50], [0, 10, 30]))
