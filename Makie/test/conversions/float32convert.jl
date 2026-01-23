@@ -325,7 +325,7 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
         # This is important for features like pyramids that place markers
         # at relative screen positions but need data-space coordinates.
 
-        f, a, p = lines(1:(10 .* 1_000_000), 1:(10 .* 1_000_000))
+        f, a, p = lines((1:10) .* 1_000_000, (1:10) .* 1_000_000)
 
         # Add input positions in relative space (0-1 range representing screen corners)
         input_positions = [Point2f(0, 0), Point2f(1, 1)]
