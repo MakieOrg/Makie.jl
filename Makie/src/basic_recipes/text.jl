@@ -546,7 +546,7 @@ function register_fast_glyph_boundingboxes!(plot)
 
             return map(bbs, origins, rotations) do bb, o, rot
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
-                return rotate_bbox(glyphbb3, rot) + o
+                return rotate_bbox(rot, glyphbb3) + o
             end
         end
     end
@@ -576,7 +576,7 @@ function register_glyph_boundingboxes!(plot)
 
             return map(bbs, origins, rotations, PerCharIterator(blocks, positions)) do bb, o, rotation, position
                 glyphbb3 = Rect3d(to_ndim(Point3d, origin(bb), 0), to_ndim(Point3d, widths(bb), 0))
-                return rotate_bbox(glyphbb3, rotation) + o + position
+                return rotate_bbox(rotation, glyphbb3) + o + position
             end
         end
     end
@@ -612,7 +612,7 @@ function register_raw_string_boundingboxes!(plot)
                 for i in idxs
                     glyphbb = bbs[i]
                     glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
-                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    ms_bb = rotate_bbox(rotation[i], glyphbb3) + origins[i]
                     output = update_boundingbox(output, ms_bb)
                 end
                 return output
@@ -654,7 +654,7 @@ function register_fast_string_boundingboxes!(plot)
                 for i in idxs
                     glyphbb = bbs[i]
                     glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
-                    ms_bb = rotate_bbox(glyphbb3, rotation[i]) + origins[i]
+                    ms_bb = rotate_bbox(rotation[i], glyphbb3) + origins[i]
                     output = update_boundingbox(output, ms_bb)
                 end
                 return output
