@@ -20,7 +20,7 @@ f, ax, plt = pie(data,
                  axis = (autolimitaspect = 1, ),
                  label = [string(c) => (; color = c) for c in colors]
                 )
-Legend(f[1,2], ax)
+leg = Legend(f[1,2], ax)
 
 f
 ```
