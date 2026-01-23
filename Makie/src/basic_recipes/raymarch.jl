@@ -362,8 +362,8 @@ module SDF
             elseif command.id == Commands.op_infinite_repetition
                 return pos - command.data .* round(pos ./ command.data);
             elseif command.id == Commands.op_limited_repetition
-                rep_dist = Vec3f(command.data[1:3])
-                limit = Vec3f(command.data[4:6])
+                rep_dist = Vec3f(view(command.data, 1:3))
+                limit = Vec3f(view(command.data, 4:6))
                 return pos - rep_dist * clamp(round(pos ./ rep_dist), -limit, limit);
             elseif command.id == Commands.op_twist
                 k = command.data[1];
@@ -379,52 +379,53 @@ module SDF
                 p2 = T * Point2f(pos[1], pos[3])
                 return Point3f(p2[1], pos[2], p2[2]) # Quilez has this not reorder (T*xy, z)
             elseif command.id == Commands.op_translation
-                return pos .- command.data;
+                return pos .- Vec3f(command.data);
             end
             return pos
         end
 
         function evaluate_shape_command(command, pos)
-            data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+            # data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+            data = command.data
 
             if command.id == Commands.shape3D_sphere
-                return sphere(pos, data...)::Float32
+                return sphere(pos, data[5])::Float32
             elseif command.id == Commands.shape3D_octahedron
-                return octahedron(pos, data...)::Float32
+                return octahedron(pos, data[5])::Float32
             elseif command.id == Commands.shape3D_pyramid
-                return pyramid(pos, data...)::Float32
+                return pyramid(pos, data[5], data[6])::Float32
             elseif command.id == Commands.shape3D_torus
-                return torus(pos, data...)::Float32
+                return torus(pos, data[5], data[6])::Float32
             elseif command.id == Commands.shape3D_capsule
-                return capsule(pos, data...)::Float32
+                return capsule(pos, data[5], data[6])::Float32
             elseif command.id == Commands.shape3D_cylinder
-                return cylinder(pos, data...)::Float32
+                return cylinder(pos, data[5], data[6])::Float32
             elseif command.id == Commands.shape3D_ellipsoid
-                return ellipsoid(pos, Vec3f(data...))::Float32
+                return ellipsoid(pos, Vec3f(data[5], data[6], data[7]))::Float32
             elseif command.id == Commands.shape3D_rect
-                return rect(pos, Vec3f(data...))::Float32
+                return rect(pos, Vec3f(data[5], data[6], data[7]))::Float32
             elseif command.id == Commands.shape3D_link
-                return link(pos, data...)::Float32
+                return link(pos, data[5], data[6], data[7])::Float32
             elseif command.id == Commands.shape3D_cone
-                return cone(pos, data...)::Float32
+                return cone(pos, data[5], data[6])::Float32
             elseif command.id == Commands.shape3D_capped_cone
-                return capped_cone(pos, data...)::Float32
+                return capped_cone(pos, data[5], data[6], data[7])::Float32
             elseif command.id == Commands.shape3D_box_frame
-                return box_frame(pos, Vec3f(data[1:3]), data[4])::Float32
+                return box_frame(pos, Vec3f(data[5], data[6], data[7]), data[8])::Float32
             elseif command.id == Commands.shape3D_capped_torus
-                return capped_torus(pos, data...)::Float32
+                return capped_torus(pos, data[5], data[6], data[7])::Float32
             else
                 return 10_000f0
             end
         end
 
         function evaluate_postfix_command(command, pos, sdf)
-            if command.id == Comamnds.op_extrusion
+            if command.id == Commands.op_extrusion
                 vec = Vec2f(sdf, length(abs.(pos) .- command.data));
                 sdf = min(max(vec[1], vec[2]), 0f0) + norm(max(vec, 0f0));
-            elseif command.id == Comamnds.op_rounding
+            elseif command.id == Commands.op_rounding
                 sdf = sdf - command.data[1]
-            elseif command.id == Comamnds.op_onion
+            elseif command.id == Commands.op_onion
                 sdf = abs(sdf) - command.data[1]
             else
                 return sdf
@@ -442,12 +443,148 @@ module SDF
                 error("Could not process $command")
             end
         end
+
+        # ::Command resolution for Rect3f
+        function bbox_from_shape(command)
+            # strip color
+            data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+
+            # every bbox here is scaled from -1..1
+            if command.id in (Commands.shape3D_sphere, Commands.shape3D_octahedron)
+                return Rect3f(-Point3f(data[1]), Vec3f(2data[1]))
+            elseif command.id in (Commands.shape3D_pyramid, Commands.shape3D_cylinder, Commands.shape3D_cone)
+                r, h = data
+                return Rect3f(-r, -r, -h, 2r, 2r, 2h)
+            elseif command.id == Commands.shape3D_torus
+                R, r = data
+                return Rect3f(-R-r, -R-r, -r, 2*(R+r), 2*(R+r), 2r)
+            elseif command.id == Commands.shape3D_capsule
+                r, h = data
+                return Rect3f(-r, -r, -(h+r), 2r, 2r, 2*(h+r))
+            elseif command.id in (Commands.shape3D_ellipsoid, Commands.shape3D_rect)
+                ws = Vec3f(data...)
+                return Rect3f(-ws, 2.0 .* ws)
+            elseif command.id == Commands.shape3D_link
+                l, R, r = data
+                return Rect3f(-(R+r), -(l+R+r), -r, 2*(R+r), 2*(l+R+r), 2r)
+            elseif command.id == Commands.shape3D_capped_cone
+                h, r1, r2 = data
+                R = max(r1, r2)
+                return Rect3f(-R, -R, -h, 2R, 2R, 2h)
+            elseif command.id == Commands.shape3D_box_frame
+                ws = data[Vec(1, 2, 3)]
+                # w = data[4]
+                # return Rect3f(.-(ws .+ 0.5 * w), 2 .* ws .+ w)
+                return Rect3f(.-ws, 2 .* ws)
+            elseif command.id == Commands.shape3D_capped_torus
+                angle, R, r = data
+                ymin = R * cos(min(angle, pi))
+                dx = R * sin(min(angle, 0.5pi))
+                return Rect3f(-dx-r, ymin-r, -r, 2*(dx+r), (R - ymin) + 2r, 2r)
+            else
+                return Rect3f()
+            end
+        end
+
+        function apply_prefix(command, bb::Rect3f)
+            mini = minimum(bb)
+            maxi = maximum(bb)
+            ws = widths(bb)
+            if command.id == Commands.op_revolution
+                # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
+                # float moves the 2d object away from th center of rotation
+                # TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
+                # TODO: test
+                r = xy_norm(max(abs(mini), abs(maxi)))
+                return Rect3f(-r, -r, mini[3], 2r, 2r, widths(bb)[3])
+            elseif command.id == Commands.op_elongate
+                return Rect3f(mini .- command.data, ws .+ 2 .* commanda.data)
+            elseif command.id == Commands.op_rotation
+                return rotate_bbox(reinterpret(Quaternionf, command.data), bb)
+            elseif command.id == Commands.op_mirror
+                # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
+                sym_ws = max.(abs(mini), abs(maxi))
+                mini = lerp.(mini, -sym_ws, command.data)
+                maxi = lerp.(maxi, sym_ws, command.data)
+                return Rect3f(mini, maxi .- mini)
+            elseif command.id == Commands.op_infinite_repetition
+                return Rect3f(Point3f(-Inf), Vec3f(Inf))
+            elseif command.id == Commands.op_limited_repetition
+                rep_dist = Vec3f(command.data[1:3])
+                limit = Vec3f(command.data[4:6])
+                mini = (limit .- 1) * rep_dist + max.(mini, -0.5 * rep_dist)
+                maxi = (limit .- 1) * rep_dist + min.(maxi, 0.5 * rep_dist)
+                return Rect3f(mini, maxi .- mini)
+            elseif command.id == Commands.op_twist
+                r = xy_norm(max.(abs(mini), abs(maxi)))
+                return Rect3f(-r, -r, mini[3], 2r, 2r, ws[3])
+            elseif command.id == Commands.op_bend
+                # TODO: more precise
+                r = norm(max.(abs(mini[Vec(1, 3)]), abs(maxi[Vec(1, 3)])))
+                return Rect3f(-r, mini[2], -r, 2r, ws[2], 2r)
+            elseif command.id == Commands.op_translation
+                return bb + Point3f(command.data)
+            end
+            return bb
+        end
+
+        function apply_postfix(command, bb::Rect3f)
+            mini = minimum(bb)
+            ws = widths(bb)
+            if command.id == Commands.op_extrusion
+                e = command.data
+                return Rect3f(mini .- Vec3f(0,0, e), ws .+ Vec3f(0, 0, 2e))
+            elseif command.id in (Commands.op_rounding, Commands.op_onion)
+                r = command.data[1]
+                return Rect3f(mini .- r, ws .+ 2r)
+            else
+                return bb
+            end
+        end
+
+        function apply_merge(command, bbs::Vector{Rect3f})
+            Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
+
+            if length(bbs) == 0
+                error("Can't merge nothing")
+            elseif length(bbs) == 1
+                return only(bbs)
+            elseif command.id in (Commands.op_union, Commands.op_smooth_union)
+                mini = mapreduce(minimum, (a, b) -> min.(a, b), bbs)
+                maxi = mapreduce(maximum, (a, b) -> max.(a, b), bbs)
+                return Rect3f(mini, maxi .- mini)
+            elseif command.id in (Commands.op_subtraction, Commands.op_smooth_subtraction)
+                # TODO:
+                return first(bbs)
+            elseif command.id in (Commands.op_intersection, Commands.op_smooth_intersection)
+                return reduce(intersect, bbs)
+            elseif command.id in (Commands.op_xor, Commands.op_smooth_xor)
+                # TODO:
+                mini = mapreduce(minimum, min, bbs)
+                maxi = mapreduce(maximum, max, bbs)
+                return Rect3f(mini, maxi .- mini)
+            end
+            return Rect3f()
+        end
+
+        function get_shape_bbox(commands)
+            idx = findfirst(cmd -> Commands.is_shape(cmd.id), commands)::Int
+            bb = bbox_from_shape(commands[idx])
+            for i in idx-1:-1:1
+                bb = apply_prefix(commands[i], bb)
+            end
+            for i in idx+1:length(commands)
+                bb = apply_postfix(commands[i], bb)
+            end
+            return bb
+        end
+
     end
 
 
-    struct Command{N}
+    struct Command
         id::Commands.ID
-        data::Vec{N, Float32}
+        data::Vector{Float32}
 
         function Command(id::Commands.ID, args...)
             data = mapreduce((a, b) -> Vec(a..., b...), args, init = Vec{0, Float32}()) do arg
@@ -460,7 +597,7 @@ module SDF
                 throw(ArgumentError("$op_name requires $expected arguments, but $(length(data)) were given."))
             end
 
-            return new{expected}(id, data)
+            return new(id, collect(data))
         end
     end
 
@@ -472,6 +609,7 @@ module SDF
         # prefixes | shape or merge | postfixes
         commands::Vector{Command}
         children::Vector{Node}
+        bbox::Rect3f
     end
 
     function Shape(op::Symbol, args...; color = :orange, kwargs...)
@@ -487,7 +625,9 @@ module SDF
         # This assumes kwargs are ordered
         commands = process_commands(main, kwargs)
 
-        return Node(commands, Node[])
+        bb = SDF.get_shape_bbox(commands)
+
+        return Node(commands, Node[], bb)
     end
 
     function process_commands(main, ops, reset = true)
@@ -543,7 +683,13 @@ module SDF
             push!(commands, Command(id, data))
         end
 
-        return Node(commands, children)
+        bbs = map(child -> child.bbox, children)
+        bb = apply_merge(commands[1], bbs)
+        for i in 2:length(commands)
+            bb = apply_postfix(commands[i], bb)
+        end
+
+        return Node(commands, children, bb)
     end
 
     union(children::Node...; kwargs...) = Merge(Commands.op_union, children; kwargs...)
@@ -617,22 +763,62 @@ module SDF
         return id_buffer, data_buffer
     end
 
-    function compute_signed_distance_at(node::SDF.Node, pos)
-        sdf = NaN32
-
-        commands = if isempty(node.children)
-            view(node.commands, 1:length(node.commands))
+    # TODO: correct merging
+    function is_inside_sdf(node::SDF.Node, pos)
+        if pos in node.bbox
+            if isempty(node.children)
+                return true
+            else
+                for child in node.children
+                    if is_inside_sdf(child, pos)
+                        return true
+                    end
+                end
+                return false
+            end
         else
-            sdfs = Float32[compute_signed_distance_at(child, pos) for child in node.children]
-            sdf = evaluate_merge_command(first(node.commands), sdfs)
-            view(node.commands, 2:length(node.commands))
+            return false
         end
+    end
 
-        for command in commands
-            pos, sdf = evaluate_command(command, pos, sdf)
+    function is_inside_sdf(node::SDF.Node, pos, range)
+        ws = 0.5 .* widths(node.bbox)
+        dist = rect(pos .- minimum(node.bbox) .- ws, ws)
+        if dist < range
+            if isempty(node.children)
+                return true
+            else
+                for child in node.children
+                    if is_inside_sdf(child, pos, range)
+                        return true
+                    end
+                end
+                return false
+            end
+        else
+            return false
         end
+    end
 
-        return sdf
+    const SDF_buffer = Float32[]
+    function compute_signed_distance_at(node::SDF.Node, pos)
+        if isempty(node.children)
+            sdf = NaN32
+            for command in node.commands
+                pos, sdf = evaluate_command(command, pos, sdf)
+            end
+            return sdf
+        else
+            resize!(SDF_buffer, length(node.children))
+            for i in eachindex(node.children)
+                SDF_buffer[i] = compute_signed_distance_at(node.children[i], pos)
+            end
+            sdf = evaluate_merge_command(first(node.commands), SDF_buffer)
+            for i in 2:length(node.commands)
+                pos, sdf = evaluate_command(node.commands[i], pos, sdf)
+            end
+            return sdf
+        end
     end
 
 end
@@ -841,6 +1027,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     uint8_scale = 255f0 / (2f0 * celldiameter)
     @info brickdiameter
     @info celldiameter
+    content_count = 0
+    content_count2 = 0
 
     for k in 1:N_blocks
         z = mini[3] + delta[3] * (k - 0.5)
@@ -849,48 +1037,57 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
             for i in 1:N_blocks
                 x = mini[1] + delta[1] * (i - 0.5)
 
-                # check if brick could contain edge based on center
-                dist = normalization * SDF.compute_signed_distance_at(root, Point3f(x, y, z))
-                if abs(dist) < 0.5 * brickdiameter
-                    brick = Array{N0f8, 3}(undef, bricksize, bricksize, bricksize)
-                    origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+                pos = Point3f(x, y, z)
+                if SDF.is_inside_sdf(root, pos, 0.5 * box_scale * brickdiameter)
+                    content_count += 1
 
-                    # check if edge is contained
-                    # otherwise we can throw this away
-                    contains_positive = false
-                    contains_negative = false
+                    # check if brick could contain edge based on center
+                    dist = normalization * SDF.compute_signed_distance_at(root, pos)
+                    if abs(dist) < 0.5 * brickdiameter
+                        content_count2 += 1
+                        brick = Array{N0f8, 3}(undef, bricksize, bricksize, bricksize)
+                        origin = Point3f(mini + delta .* ((i, j, k) .- 1))
 
-                    for bk in 1:bricksize
-                        z = origin[3] + brick_delta[3] * (bk - 1)
-                        for bj in 1:bricksize
-                            y = origin[2] + brick_delta[2] * (bj - 1)
-                            for bi in 1:bricksize
-                                x = origin[1] + brick_delta[1] * (bi - 1)
-                                dist = SDF.compute_signed_distance_at(root, Point3f(x, y, z))
-                                dist = normalization * dist
-                                # -celldiameter .. celldiameter -> 0..255
-                                f255 = clamp((dist + celldiameter) * uint8_scale, 0, 255)
-                                brick[bi, bj, bk] = N0f8(round(UInt8, f255), nothing)
-                                contains_negative |= dist < 0
-                                contains_positive |= dist > 0
+                        # check if edge is contained
+                        # otherwise we can throw this away
+                        contains_positive = false
+                        contains_negative = false
+
+                        for bk in 1:bricksize
+                            z = origin[3] + brick_delta[3] * (bk - 1)
+                            for bj in 1:bricksize
+                                y = origin[2] + brick_delta[2] * (bj - 1)
+                                for bi in 1:bricksize
+                                    x = origin[1] + brick_delta[1] * (bi - 1)
+                                    dist = SDF.compute_signed_distance_at(root, Point3f(x, y, z))
+                                    dist = normalization * dist
+                                    # -celldiameter .. celldiameter -> 0..255
+                                    f255 = clamp((dist + celldiameter) * uint8_scale, 0, 255)
+                                    brick[bi, bj, bk] = N0f8(round(UInt8, f255), nothing)
+                                    contains_negative |= dist < 0
+                                    contains_positive |= dist > 0
+                                end
                             end
+                        end
+
+                        # Hmm...
+                        # Can we skip a brick that remains more than cellsize away?
+                        # if !all(==(0xff), brick)
+                        #     insert_brick!(brickmap, i, j, k, brick)
+                        # end
+
+                        if contains_negative && contains_positive # contains edge
+                            insert_brick!(brickmap, i, j, k, brick)
                         end
                     end
 
-                    # Hmm...
-                    # Can we skip a brick that remains more than cellsize away?
-                    # if !all(==(0xff), brick)
-                    #     insert_brick!(brickmap, i, j, k, brick)
-                    # end
-
-                    if contains_negative && contains_positive # contains edge
-                        insert_brick!(brickmap, i, j, k, brick)
-                    end
                 end
-
             end
         end
     end
+
+    @info "Rect Skipped $(1 - content_count / (N_blocks^3))%"
+    @info "SDF  Skipped $(1 - content_count2 / (N_blocks^3))%"
 
     return brickmap
 end
@@ -903,6 +1100,8 @@ function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
         ep_x[1], ep_y[1], ep_z[1],
         ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
     )
-    brickmap = sdf_brickmap(bb, node, 256)
+    N = 512 # 1024
+    @time brickmap = sdf_brickmap(bb, node, N)
+    @info "$(N^3 * 4 / 1024^2)MB ->"
     return (ep_x, ep_y, ep_z, brickmap)
 end

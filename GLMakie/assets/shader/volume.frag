@@ -180,7 +180,10 @@ float get_eps(sampler3D volumedata, Nothing indexmap)
 }
 float get_eps(Nothing volumedata, usampler3D indexmap)
 {
-    vec3 step = 1.0 / vec3(textureSize(indexmap, 0) * (bricksize - 1));
+    // Moving out of a brick may cause us to sample a constant, larger brick,
+    // resulting in a worse normal approximation. So keep the step smaller than
+    // 1 interpolation cell to avoid it
+    vec3 step = 0.1 / vec3(textureSize(indexmap, 0) * (bricksize - 1));
     return max(max(step.x, step.y), step.z);
 }
 float get_eps() { return get_eps(volumedata, indexmap); }

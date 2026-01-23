@@ -1220,6 +1220,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
             if isnothing(cached)
                 indexmap = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
                 bricks = ShaderAbstractions.Sampler(packed, minfilter = :linear)
+                a = length(data.indexmap) * 4 / 1024^2
+                b = length(bricks) / 1024^2
+                @info "-> $a + $b = $(a+b)"
                 return nothing, indexmap, bricks, data.bricksize[1]
             else
                 # TODO: I don't this works
