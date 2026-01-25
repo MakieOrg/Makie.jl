@@ -147,7 +147,11 @@ module SDF
     end
 
     begin
+        sign1(x::Real) = ifelse(signbit(x), -one(x), +one(x))
+        sign1(x::VecTypes) = sign1.(x)
+        norm2(v::VecTypes) = dot(v, v)
         xy_norm(p) = norm(p[Vec(1, 2)])
+        xy_norm2(p) = norm2(p[Vec(1, 2)])
 
         # SDF functions
 
@@ -254,54 +258,46 @@ module SDF
         end
 
         # TODO: doesn't work well, try Quillez version again
-        function pyramid(ray_pos, radius::Real, height::Real)
-            # use xy symmetry
-            pos = Vec3f(abs(ray_pos[1]), abs(ray_pos[2]), height - ray_pos[3]);
+        function pyramid(ray_pos, w::Real, height::Real)
+            h = 2f0 * height
+            w2 = w*w
+            m2 = h*h + w2;
 
-            # project ray_pos onto the side surfaces where side_dir is the vector going
-            # from the tip of the pyramid down one of the sides
-            side_dir = Vec2f(radius, 2f0 * height);
-            side_length2 = dot(side_dir, side_dir);
+            # 8x symmetry
+            # after this, +x is the closest mantle plane, +y is the width
+            p = Vec3f(abs(ray_pos[1]), abs(ray_pos[2]), ray_pos[3])
+            p = ifelse(p[2] > p[1], Vec3f(p[2], p[1], p[3]), p)
 
-            # and also the edge between side surfaces
-            edge_dir = Vec3f(radius, radius, 2f0 * height);
-            edge_length2 = dot(edge_dir, edge_dir);
+            p = Vec3f(p[1] - w, p[2] - w, p[3] + height)
 
-            # use projection ray_pos = a * side_dir + b * some_vec
-            x_proj = side_dir * clamp(dot(pos[Vec(1, 3)], side_dir), 0f0, side_length2) / side_length2;
-            y_proj = side_dir * clamp(dot(pos[Vec(2, 3)], side_dir), 0f0, side_length2) / side_length2;
-            xy_proj = edge_dir * clamp(dot(pos, edge_dir), 0f0, edge_length2) / edge_length2;
+            # decompose p into plane related vectors:
+            # q[1] component towards the side of the pyramid f_y = (0, 1, 0) (positive right)
+            # q[2] component towards the top of the pyramid f_x = (-w, 0, h) (positive up)
+            # q[3] component along the plane normal f_z = (h, 0, w) (positive outwards)
+            q = Vec3f(p[2], h * p[3] - w * p[1], h * p[1] + w * p[3])
+            # -w at center .. ∞ -> w at center .. 0 at edge and beyond
+            s = max(-q[1], 0f0)
+            # This is probably the interpolation along the mantle edge of the face
+            # I.e. along k = (-w, 0, h) + (0, w, 0) = (-w, w, h)
+            # dot(p, k) = t * dot(k, k)
+            # (q[2] + w * q[1]) = t * (w^2 + w² + h^2)   Note: q[1]/f_y does not include w
+            t = clamp((q[2] - w * q[1]) / (m2 + w2), 0f0, 1f0)
+            # distance from bottom corner * m2 (this avoids normalizing/division until later)
+            # q[1] / f_y direction only contributes outside
+            a = m2 * (q[1] + s) * (q[1] + s) + q[2] * q[2]
+            b = m2 * (q[1] + w * t) * (q[1] + w * t) + (q[2] - m2*t) * (q[2] - m2 * t)
 
-            # We can further disassemble some_vec = c * side_normal + d * perp_vec
-            # where perp_vec = u_y for the x surface. If d < width of the surface
-            # at x_proj, c is the closest distance. Check if this is the case:
-            # If it's not the case for the x or y surface, the edge must be closer(1)
-            in_x_range = Float32(pos[2] * height < 0.5 * radius * x_proj[2]);
-            in_y_range = Float32(pos[1] * height < 0.5 * radius * y_proj[2]);
-
-            mantle_dist = norm(
-                in_x_range * Vec3f(pos[1] - x_proj[1], pos[3] - x_proj[2], 0) +
-                in_y_range * Vec3f(pos[2] - y_proj[1], pos[3] - y_proj[2], 0) +
-                (1f0 - in_x_range) * (1f0 - in_y_range) * (pos - xy_proj)
-            );
-
-            # (1) ... except if the bottom face is closer
-            # directly calculate the distance here, treating anything from -radius .. radius
-            # as zero distance (or 0 .. radius with symmetry)
-            base_dist = norm(Vec3f(
-                max(pos[1] - radius, 0f0),
-                max(pos[2] - radius, 0f0),
-                pos[3] - 2f0 * height
-            ))
-
-            # figure out if we're inside tbe pyramid by checking if x, y < the width
-            # of the pyramid at the closest point, and if we're not below the pyramid
-            local_radius = in_x_range * x_proj[1] + in_y_range * y_proj[1] +
-                (1f0 - in_x_range) * (1f0 - in_y_range) * xy_proj[1];
-            is_inside = (pos[1] < local_radius) && (pos[2] < local_radius) && (abs(ray_pos[3]) < height);
-            _sign = ifelse(is_inside, -1f0, 1f0)
-
-            return _sign * min(mantle_dist, base_dist);
+            d2 = max(-q[2], q[1] * m2 + q[2] * w) < 0f0 ? 0f0 : min(a, b)
+            mantle_dist = sqrt((d2 + q[3] * q[3]) / m2)
+            bottom_dist = norm(Vec3f(max(0f0, p[1]), max(0f0, p[2]), p[3]))
+            _sign = sign(max(q[3], -p[3]))
+            # mantle_dist does not consider the base, so it's wrong everywhere
+            # under the base of the pyramid -> use bottom_dist if p[3] < 0
+            # mantle_dist also does not consider the bottom inside, so it needs
+            # to that might be closer. Outside outside mantle_dist is always
+            # < bottom_dist, so we can just a min / ifelse(a < b, a, b)
+            # mantle_dist also doesn't do corners right sigh
+            return _sign * ifelse(p[3] < 0.0 || bottom_dist < mantle_dist, bottom_dist, mantle_dist)
         end
 
         # ::Command resolution for positions
