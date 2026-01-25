@@ -626,10 +626,9 @@ module SDF
         return Node(commands, Node[], bb)
     end
 
-    function process_commands(main, ops, reset = true)
+    function process_commands(main, ops)
         was_postfix = false
         commands = Command[]
-        reset && push!(commands, Command(Commands._reset))
 
         prev = :nothing
         for (name, data) in ops
@@ -708,6 +707,7 @@ module SDF
 
     function flatten_command_tree(node::Node, command_buffer = Command[])
         if isempty(node.children) # SDF shape node, just add all commands
+            push!(command_buffer, Command(Commands._reset))
             append!(command_buffer, node.commands)
 
         elseif length(node.children) == 1
@@ -938,10 +938,11 @@ end
 
 function Brickmap{T}(bricksize::NTuple{3, Int}, _size::NTuple{3, Int}) where {T}
     bricks = Array{T, 3}[]
-    idx_size = cld.(_size .- 1, bricksize)
+    idx_size = cld.(_size .- 1, bricksize .- 1)
     indices = fill(UInt32(0), idx_size)
+    brick_buffer = Array{T, 3}(undef, bricksize)
 
-    return Brickmap{T}(indices, bricks, _size, bricksize)
+    return Brickmap{T}(indices, bricks, _size, bricksize, brick_buffer)
 end
 
 get_brick_index(bm::Brickmap, i, j, k) = bm.indexmap[i, j, k]
@@ -994,6 +995,57 @@ function get_modifiable_brick(bm::Brickmap{T}, i, j, k) where {T}
     end
 end
 
+function Base.show(io::IO, ::MIME"text/plain", brickmap::Brickmap{T}) where {T}
+    N, M = size(brickmap.indexmap)
+    println(io, "$(brickmap.size[1])×$(brickmap.size[2]) Brickmap{$T}:")
+    println(io, "  ", N, "×", M, " indices")
+    print(io, "  $(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2])
+end
+
+function maybe_add_brick!(
+        brickmap::Brickmap, root::SDF.Node,
+        i, j, k,
+        mini, delta, brick_delta,
+        bricksize,
+        uint8_scale
+    )
+    brick = brickmap.brick_buffer
+    origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+
+    # check if edge is contained
+    # otherwise we can throw this away
+    contains_positive = false
+    contains_negative = false
+
+    for bk in 1:bricksize
+        z = origin[3] + brick_delta[3] * (bk - 1)
+        for bj in 1:bricksize
+            y = origin[2] + brick_delta[2] * (bj - 1)
+            for bi in 1:bricksize
+                x = origin[1] + brick_delta[1] * (bi - 1)
+                dist = SDF.compute_signed_distance_at(root, Point3f(x, y, z))
+                # -celldiameter .. celldiameter -> 0..255
+                f_normed = clamp(uint8_scale * dist + 0.5f0, 0f0, 1f0)
+                brick[bi, bj, bk] = N0f8(f_normed)
+                contains_negative |= dist < 0
+                contains_positive |= dist > 0
+            end
+        end
+    end
+
+    # Hmm...
+    # Can we skip a brick that remains more than cellsize away?
+    # if !all(==(0xff), brick)
+    #     insert_brick!(brickmap, i, j, k, brick)
+    # end
+
+    if contains_negative && contains_positive # contains edge
+        insert_brick!(brickmap, i, j, k, copy(brick))
+        return true
+    end
+
+    return false
+end
 
 function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     if !allequal(widths(bb))
@@ -1002,17 +1054,16 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
 
     # left and right edge of the brickmap map to extrema of bb
     # each brick is a cell in the brickmap, so we need N-1 bricks to create N edges
-    N_blocks = cld(N - 1, bricksize)
-    N = N_blocks * bricksize + 1
+    N_blocks = cld(N-1, bricksize-1)
+    N = N_blocks * (bricksize-1) + 1
 
     brickmap = Brickmap{N0f8}(bricksize, N)
     @assert all(==(N), brickmap.size)
     @assert all(==(N_blocks), size(brickmap.indexmap))
 
     box_scale = norm(widths(bb))
-    normalization = Float32(1.0 / box_scale)
-    brickdiameter = sqrt(3.0) / (N_blocks - 1)
-    celldiameter = brickdiameter / bricksize
+    brickdiameter = sqrt(3.0) * box_scale / (N_blocks - 1) # relative to bb
+    brickradius = 0.5 * brickdiameter
 
     # step through coarse grid (N_blocks is the number of bricks/cells)
     delta = widths(bb) ./ N_blocks
@@ -1020,9 +1071,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     # step through brick grid (delta is the width of the brick, bricksize is edge-like)
     brick_delta = delta / (bricksize - 1)
 
-    uint8_scale = 255f0 / (2f0 * celldiameter)
-    @info brickdiameter
-    @info celldiameter
+    uint8_scale = 0.5f0 * bricksize / brickdiameter
+
     content_count = 0
     content_count2 = 0
 
@@ -1034,47 +1084,17 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
                 x = mini[1] + delta[1] * (i - 0.5)
 
                 pos = Point3f(x, y, z)
-                if SDF.is_inside_sdf(root, pos, 0.5 * box_scale * brickdiameter)
+                if SDF.is_inside_sdf(root, pos, brickradius)
                     content_count += 1
 
                     # check if brick could contain edge based on center
-                    dist = normalization * SDF.compute_signed_distance_at(root, pos)
-                    if abs(dist) < 0.5 * brickdiameter
-                        content_count2 += 1
-                        brick = Array{N0f8, 3}(undef, bricksize, bricksize, bricksize)
-                        origin = Point3f(mini + delta .* ((i, j, k) .- 1))
-
-                        # check if edge is contained
-                        # otherwise we can throw this away
-                        contains_positive = false
-                        contains_negative = false
-
-                        for bk in 1:bricksize
-                            z = origin[3] + brick_delta[3] * (bk - 1)
-                            for bj in 1:bricksize
-                                y = origin[2] + brick_delta[2] * (bj - 1)
-                                for bi in 1:bricksize
-                                    x = origin[1] + brick_delta[1] * (bi - 1)
-                                    dist = SDF.compute_signed_distance_at(root, Point3f(x, y, z))
-                                    dist = normalization * dist
-                                    # -celldiameter .. celldiameter -> 0..255
-                                    f255 = clamp((dist + celldiameter) * uint8_scale, 0, 255)
-                                    brick[bi, bj, bk] = N0f8(round(UInt8, f255), nothing)
-                                    contains_negative |= dist < 0
-                                    contains_positive |= dist > 0
-                                end
-                            end
-                        end
-
-                        # Hmm...
-                        # Can we skip a brick that remains more than cellsize away?
-                        # if !all(==(0xff), brick)
-                        #     insert_brick!(brickmap, i, j, k, brick)
-                        # end
-
-                        if contains_negative && contains_positive # contains edge
-                            insert_brick!(brickmap, i, j, k, brick)
-                        end
+                    dist = SDF.compute_signed_distance_at(root, pos)
+                    if abs(dist) < brickradius
+                        content_count2 += maybe_add_brick!(
+                            brickmap, root, i, j, k,
+                            mini, delta, brick_delta,
+                            bricksize, uint8_scale
+                        )
                     end
 
                 end
@@ -1082,8 +1102,9 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
         end
     end
 
-    @info "Rect Skipped $(1 - content_count / (N_blocks^3))%"
-    @info "SDF  Skipped $(1 - content_count2 / (N_blocks^3))%"
+    @info "Rect Skipped $(100 - 100 * content_count / (N_blocks^3))%"
+    @info "SDF  Skipped $(100 - 100 * content_count2 / (N_blocks^3))%"
+    @info "Relative     $(100 - 100 * content_count2 / content_count)%"
 
     return brickmap
 end

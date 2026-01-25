@@ -16,13 +16,14 @@ get_space(::EmptyCamera) = :clip
     RayMarchSDF # 6
 end
 
-# TODO: Consider tracking emptied vector elements to avoid frequent moves from delete
 struct Brickmap{T}
     indexmap::Array{UInt32, 3}
     bricks::Vector{Array{T, 3}}
 
     size::NTuple{3, Int}
     bricksize::NTuple{3, Int}
+
+    brick_buffer::Array{T, 3}
 end
 
 
