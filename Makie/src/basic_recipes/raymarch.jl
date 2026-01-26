@@ -2,8 +2,7 @@ module SDF
     using LinearAlgebra
     using GeometryBasics
     using GeometryBasics: VecTypes
-    using ...Makie
-    using ...Makie: Quaternion, RGBA
+    using ...Makie: Quaternion, RGBA, lerp
 
     module Commands
 
@@ -129,6 +128,7 @@ module SDF
         is_prefix(x::ID) = Int(x) < Int(_start_of_shapes)
         is_shape(x::ID) = Int(_start_of_shapes) < Int(x) < Int(_start_of_merge)
         is_merge(x::ID) = Int(_start_of_merge) < Int(x) < Int(_start_of_postfix)
+        is_smooth_merge(x::ID) = x in (op_smooth_intersection, op_smooth_subtraction, op_smooth_union, op_smooth_xor)
         is_shape_or_merge(x::ID) = Int(_start_of_shapes) < Int(x) < Int(_start_of_postfix)
         is_postfix(x::ID) = Int(_start_of_postfix) < Int(x)
 
@@ -334,10 +334,17 @@ module SDF
                     end
 
                     h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
+                    s = h * h * smoothing
+                    return final_sign * (min(sdf1, sdf2) - s)
+                end::Float32
+            end
+        end
+
+                    h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
                     w = h * h
                     # m = 0.5 * w
                     s = w * smoothing
-                    return _sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
+                    return final_sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
                 end::Float32
             end
         end
@@ -765,9 +772,21 @@ module SDF
             if isempty(node.children)
                 return true
             else
-                for child in node.children
-                    if is_inside_sdf(child, pos)
-                        return true
+                idx = findfirst(cmd -> Commands.is_smooth_merge(cmd.id), node.commands)
+                if isnothing(idx)
+                    for child in node.children
+                        if is_inside_sdf(child, pos)
+                            return true
+                        end
+                    end
+                else
+                    # This is not correct when merging more than 2 sdfs because
+                    # the displacement can stack
+                    range = node.commands[idx].data[1]::Float32
+                    for child in node.children
+                        if is_inside_sdf(child, pos, range)
+                            return true
+                        end
                     end
                 end
                 return false
@@ -784,9 +803,19 @@ module SDF
             if isempty(node.children)
                 return true
             else
-                for child in node.children
-                    if is_inside_sdf(child, pos, range)
-                        return true
+                idx = findfirst(cmd -> Commands.is_smooth_merge(cmd.id), node.commands)
+                if isnothing(idx)
+                    for child in node.children
+                        if is_inside_sdf(child, pos, range)
+                            return true
+                        end
+                    end
+                else
+                    range += node.commands[idx].data[1]::Float32
+                    for child in node.children
+                        if is_inside_sdf(child, pos, range)
+                            return true
+                        end
                     end
                 end
                 return false
@@ -796,16 +825,29 @@ module SDF
         end
     end
 
-    const SDF_buffer = Float32[]
+    function compute_leaf_signed_distance_at(node::SDF.Node, pos)
+        sdf = NaN32
+        for command in node.commands
+            pos, sdf = evaluate_command(command, pos, sdf)
+        end
+        return sdf
+    end
+
     function compute_signed_distance_at(node::SDF.Node, pos)
         if isempty(node.children)
-            sdf = NaN32
-            for command in node.commands
-                pos, sdf = evaluate_command(command, pos, sdf)
+            return compute_leaf_signed_distance_at(node, pos)
+        else
+            SDF_buffer = compute_signed_distance_at.(node.children, Ref(pos))
+            sdf = evaluate_merge_command(first(node.commands), SDF_buffer)
+            for i in 2:length(node.commands)
+                pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
             return sdf
+        end
+    end
         else
-            resize!(SDF_buffer, length(node.children))
+            # resize!(SDF_buffer, length(node.children))
+            SDF_buffer = Vector{Float32}(undef, length(node.children))
             for i in eachindex(node.children)
                 SDF_buffer[i] = compute_signed_distance_at(node.children[i], pos)
             end
@@ -1012,8 +1054,17 @@ function maybe_add_brick!(
     brick = brickmap.brick_buffer
     origin = Point3f(mini + delta .* ((i, j, k) .- 1))
 
-    # check if edge is contained
-    # otherwise we can throw this away
+    # > How aggresiively can we discard bricks?
+    # For a volume shape, the worst case is brick[:, :, end] .== 0.0. Two bricks
+    # share these values, but one brick will be entirely > 0.0, the other
+    # entirely < 0.0. (Any other case will have a sign change in one of the bricks)
+    # -> need at least <=, >=
+    # for 0-width objects there is no < 0.0 to find. So we'd lose the object if
+    # we don't include cases where distance < cellsize
+    # -> need to keep every brick with abs(dist) < cellsize
+    # this costs like 50% more memory though, so:
+    # TODO: check if any shape is thin enough to cause issues
+    # TODO: Or maybe add it as a conversion kwarg?
     contains_positive = false
     contains_negative = false
 
@@ -1027,16 +1078,16 @@ function maybe_add_brick!(
                 # -celldiameter .. celldiameter -> 0..255
                 f_normed = clamp(uint8_scale * dist + 0.5f0, 0f0, 1f0)
                 brick[bi, bj, bk] = N0f8(f_normed)
-                contains_negative |= dist < 0
-                contains_positive |= dist > 0
+                contains_negative |= dist <= 0
+                contains_positive |= dist >= 0
             end
         end
     end
 
-    # Hmm...
-    # Can we skip a brick that remains more than cellsize away?
-    # if !all(==(0xff), brick)
-    #     insert_brick!(brickmap, i, j, k, brick)
+    # Less aggressive discard
+    # if any(x -> 0 < x < 1, brick)
+    #     insert_brick!(brickmap, i, j, k, copy(brick))
+    #     return true
     # end
 
     if contains_negative && contains_positive # contains edge
@@ -1071,6 +1122,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     # step through brick grid (delta is the width of the brick, bricksize is edge-like)
     brick_delta = delta / (bricksize - 1)
 
+    # scales distances from -cellsize .. cellsize -> 0 .. 1
+    # where cellsize is the (1, 1, 1) distance to the next entry
     uint8_scale = 0.5f0 * bricksize / brickdiameter
 
     content_count = 0
