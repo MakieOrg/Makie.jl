@@ -302,110 +302,96 @@ module SDF
 
         # ::Command resolution for positions
 
-        function evaluate_merge_command(command, sdfs)
+        function evaluate_merge_command(command, sdf1, sdf2)
             Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
 
             if command.id == Commands.op_union
-                return minimum(sdfs)
+                return min(sdf1, sdf2)
             elseif command.id == Commands.op_subtraction
-                return max(-first(sdfs), minimum(view(sdfs, 2:length(sdfs))))
+                return max(-sdf1, sdf2)
             elseif command.id == Commands.op_intersection
-                return maximum(sdfs)
+                return max(sdf1, sdf2)
             elseif command.id == Commands.op_xor
-                return reduce(sdfs, init = Inf32) do sdf1, sdf2
-                    return max(min(sdf1, sdf2), -max(sdf1, sdf2))
-                end
+                return max(min(sdf1, sdf2), -max(sdf1, sdf2))
             else # smooth cases
                 smoothing = command.data[1]
                 inv_smoothing = 1f0 / smoothing
-                return reduce(sdfs) do sdf1, sdf2
-                    final_sign = -1f0
-                    if command.id == Commands.op_smooth_union
-                        final_sign = 1f0
-                    elseif command.id == Commands.op_smooth_subtraction
-                        sdf2 = -sdf2
-                    elseif command.id == Commands.op_smooth_intersection
-                        sdf1 = -sdf1
-                        sdf2 = -sdf2
-                    else
-                        temp = min(sdf1, sdf2)
-                        sdf2 = -max(sdf1, sdf2)
-                        sdf1 = temp
-                    end
+                final_sign = -1f0
+                if command.id == Commands.op_smooth_union
+                    final_sign = 1f0
+                elseif command.id == Commands.op_smooth_subtraction
+                    sdf2 = -sdf2
+                elseif command.id == Commands.op_smooth_intersection
+                    sdf1 = -sdf1
+                    sdf2 = -sdf2
+                else
+                    temp = min(sdf1, sdf2)
+                    sdf2 = -max(sdf1, sdf2)
+                    sdf1 = temp
+                end
 
-                    h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
-                    s = h * h * smoothing
-                    return final_sign * (min(sdf1, sdf2) - s)
-                end::Float32
+                h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
+                s = h * h * smoothing
+                return final_sign * (min(sdf1, sdf2) - s)
             end
         end
 
-        function evaluate_merge_command_with_color(command, sdfs, colors)
+        function evaluate_merge_command_with_color(command, sdf1, sdf2, color1, color2)
             Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
 
             if command.id == Commands.op_union
-                sdf, idx = findmin(sdfs)
-                return sdf, colors[idx]
+                left = sdf1 < sdf2
+                return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
             elseif command.id == Commands.op_subtraction
-                sdf, idx = findmin(view(sdfs, 2:length(sdfs)))
-                idx = ifelse(-first(sdfs) > sdf, 1, idx + 1)
-                return max(-first(sdfs), sdf), colors[idx]
+                return max(-sdf1, sdf2), ifelse(-sdf1 > sdf2, color1, color2)
             elseif command.id == Commands.op_intersection
-                sdf, idx = findmax(sdfs)
-                return sdf, colors[idx]
+                left = sdf1 > sdf2
+                return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
             elseif command.id == Commands.op_xor
-                sdf = sdfs[1]
-                color = colors[1]
-                for i in 2:length(sdfs)
-                    color = ifelse(
-                        sdf < sdf2,
-                        ifelse(sdf > -sdf2, color, colors[i]),
-                        ifelse(sdf2 > -sdf, colors[i], color),
-                    )
-                    sdf = max(min(sdf, sdf2), -max(sdf, sdf2))
-                end
+                color = ifelse(
+                    sdf1 < sdf2,
+                    ifelse(sdf1 > -sdf2, color1, color2),
+                    ifelse(sdf2 > -sdf1, color2, color1),
+                )
+                sdf = max(min(sdf1, sdf2), -max(sdf1, sdf2))
                 return sdf, color
             else # smooth cases
                 # TODO: fix this, it's bleeding
-                # smoothing = command.data[1]
-                smoothing = 6f0 * command.data[1]
+                smoothing = command.data[1]
                 inv_smoothing = 1f0 / smoothing
-                sdf1 = sdfs[1]
-                color1 = colors[1]
-                for i in 2:length(sdfs)
-                    sdf2 = sdfs[i]
-                    color2 = colors[i]
 
-                    final_sign = -1f0
-                    if command.id == Commands.op_smooth_union
-                        final_sign = 1f0
-                    elseif command.id == Commands.op_smooth_subtraction
-                        sdf2 = -sdf2
-                    elseif command.id == Commands.op_smooth_intersection
-                        sdf1 = -sdf1
-                        sdf2 = -sdf2
-                    else
-                        temp = min(sdf1, sdf2)
-                        sdf2 = -max(sdf1, sdf2)
-                        sdf1 = temp
-                        tempc = ifelse(sdf1 < sdf2, color1, color2)
-                        color2 = ifelse(sdf1 > sdf2, color1, color2)
-                        color1 = tempc
-                    end
-
-                    h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
-                    w = h * h
-                    m = 0.5f0 * w
-                    s = w * smoothing
-                    color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
-                    sdf1 = final_sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
-
-                    # h = max(smoothing -  abs(sdf1 - sdf2), 0f0) * inv_smoothing;
-                    # m = h * h * h * 0.5f0;
-                    # s = m * smoothing * 0.3333333333333333f0;
-                    # color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1f0 - m))
-                    # sdf1 = final_sign * ifelse(sdf1 < sdf2, sdf1 - s, sdf2 - s)
+                final_sign = -1f0
+                if command.id == Commands.op_smooth_union
+                    final_sign = 1f0
+                elseif command.id == Commands.op_smooth_subtraction
+                    sdf2 = -sdf2
+                elseif command.id == Commands.op_smooth_intersection
+                    sdf1 = -sdf1
+                    sdf2 = -sdf2
+                else
+                    temp = min(sdf1, sdf2)
+                    sdf2 = -max(sdf1, sdf2)
+                    sdf1 = temp
+                    tempc = ifelse(sdf1 < sdf2, color1, color2)
+                    color2 = ifelse(sdf1 > sdf2, color1, color2)
+                    color1 = tempc
                 end
+
+                h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
+                w = h * h
+                m = 0.5f0 * w
+                s = w * smoothing
+                color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
+                sdf1 = final_sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
+
+                # cubic
+                # smoothing *= 6f0
+                # inv_smoothing = 1f0 / smoothing
+                # h = max(smoothing -  abs(sdf1 - sdf2), 0f0) * inv_smoothing;
+                # m = h * h * h * 0.5f0;
+                # s = m * smoothing * 0.3333333333333333f0;
+                # color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1f0 - m))
+                # sdf1 = final_sign * ifelse(sdf1 < sdf2, sdf1 - s, sdf2 - s)
                 return sdf1, color1
             end
         end
@@ -898,8 +884,12 @@ module SDF
         if isempty(node.children)
             return compute_leaf_signed_distance_at(node, pos)
         else
-            SDF_buffer = compute_signed_distance_at.(node.children, Ref(pos))
-            sdf = evaluate_merge_command(first(node.commands), SDF_buffer)
+            sdf = compute_signed_distance_at(node.children[1], pos)
+            merge_cmd = first(node.commands)
+            for i in 2:length(node.children)
+                other = compute_signed_distance_at(node.children[i], pos)
+                sdf = evaluate_merge_command(merge_cmd, sdf, other)
+            end
             for i in 2:length(node.commands)
                 pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
@@ -915,16 +905,14 @@ module SDF
             color = RGBAf(data[1], data[2], data[3], data[4])
             return sdf, color
         else
-            # resize!(SDF_buffer, length(node.children))
-            # resize!(SDF_color_buffer, length(node.children))
-            SDF_buffer = Vector{Float32}(undef, length(node.children))
-            SDF_color_buffer = Vector{RGBAf}(undef, length(node.children))
-            for i in eachindex(node.children)
+            sdf, color = compute_color_at(node.children[1], pos)
+            merge_cmd = first(node.commands)
+            for i in 2:length(node.children)
                 _sdf, _color = compute_color_at(node.children[i], pos)
-                SDF_buffer[i] = _sdf
-                SDF_color_buffer[i] = _color
+                sdf, color = evaluate_merge_command_with_color(
+                    merge_cmd, sdf, _sdf, color, _color
+                )
             end
-            sdf, color = evaluate_merge_command_with_color(first(node.commands), SDF_buffer, SDF_color_buffer)
             for i in 2:length(node.commands)
                 pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
