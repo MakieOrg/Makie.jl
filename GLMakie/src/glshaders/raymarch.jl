@@ -19,6 +19,7 @@ function assemble_raymarched_robj!(data, screen::Screen, attr, args, input2glnam
 
         id_buffer = nothing => Texture
         data_buffer = nothing => Texture
+        brick_colors = nothing => Texture
 
         transparency = false
         overdraw = false

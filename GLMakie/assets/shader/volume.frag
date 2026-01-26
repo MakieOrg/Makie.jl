@@ -24,6 +24,7 @@ in vec3 frag_vert;
 {{volumedata_type}} volumedata;
 {{indexmap_type}} indexmap;
 {{bricks_type}} bricks;
+{{brick_colors_type}} brick_colors;
 
 {{color_map_type}} color_map;
 {{color_type}} color;
@@ -90,7 +91,6 @@ vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks
     uvec3 isize = textureSize(indexmap, 0);
     ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - 1);
     uint index = texelFetch(indexmap, indexmap_ijk, 0).x; // check
-    // uint index = texture(indexmap, uvw).x;
 
     vec3 istep = 1 / vec3(isize - 1); // uvw distance to next brick
 
@@ -172,6 +172,48 @@ vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks
         0, 0, 0
     );
 }
+
+vec3 brick_debug_color(usampler3D indexmap, vec3 uvw)
+{
+    uvec3 isize = textureSize(indexmap, 0) * bricksize;
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - bricksize);
+    vec3 brick_color = 0.25 + 0.5 * mod(indexmap_ijk / bricksize, 2);
+    // small differences in blue are harder to see
+    vec3 cell_color = -vec3(0.05, 0.05, 0.1) + vec3(0.1, 0.1, 0.2) * mod(mod(indexmap_ijk, bricksize), 2);
+    return brick_color + cell_color;
+}
+
+vec3 get_brick_color(usampler3D indexmap, sampler1D brick_colors, vec3 uvw)
+{
+    ivec3 isize = ivec3(textureSize(indexmap, 0));
+    vec3 ijk = uvw * isize;
+    ivec3 mini = ivec3(ijk);
+
+    vec3 color = vec3(0);
+    float summed_weight = 0.0;
+
+    for (int i = 0; i < 2; i++)
+    {
+        for (int j = 0; j < 2; j++)
+        {
+            for (int k = 0; k < 2; k++)
+            {
+                ivec3 picked = min(mini + ivec3(i, j, k), isize-1);
+                uint idx = texelFetch(indexmap, picked, 0).x;
+                if (idx != 0)
+                {
+                    vec3 c = texelFetch(brick_colors, int(idx) - 1, 0).rgb;
+                    vec3 w = 1 - abs(ijk - picked);
+                    color += w.x * w.y * w.z * c;
+                    summed_weight += w.x * w.y * w.z;
+                }
+            }
+        }
+    }
+
+    return color / summed_weight;
+}
+vec3 get_brick_color(vec3 uvw) { return get_brick_color(indexmap, brick_colors, uvw); }
 
 float get_eps(sampler3D volumedata, Nothing indexmap)
 {
@@ -490,7 +532,9 @@ vec4 raymarch_sdf(vec3 front, vec3 dir)
 
     float cost = i / num_samples;
     // vec3 color = vec3(cost * cost, (1 - cost) * (1 - cost), 0.1);
-    vec3 color = vec3(3 * cost - 2, 1 - 3 * cost, 1 - abs(3 * cost - 1.5));
+    // vec3 color = vec3(3 * cost - 2, 1 - 3 * cost, 1 - abs(3 * cost - 1.5));
+    // vec3 color = brick_debug_color(indexmap, pos);
+    vec3 color = get_brick_color(pos);
     // return vec4(color, 1);
 
     vec3 normal = generate_sdf_normal(pos);

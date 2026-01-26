@@ -1181,6 +1181,10 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
         data[:color_norm] = attr.scaled_colorrange[]
     end
 
+    if !isnothing(attr.brick_colors[])
+        data[:brick_colors] = Texture(screen.glscreen, attr.brick_colors[])
+    end
+
     return draw_volume(screen, data)
 end
 
@@ -1241,6 +1245,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         end
     end
 
+    map!(attr, [:scaled_color, :args], [:brick_colors]) do data, (x, y, z, root_node)
+        if data isa Makie.Brickmap
+            ep_x = Makie.to_endpoints(x, "x", VolumeLike)
+            ep_y = Makie.to_endpoints(y, "y", VolumeLike)
+            ep_z = Makie.to_endpoints(z, "z", VolumeLike)
+            bb = Rect3f(
+                ep_x[1], ep_y[1], ep_z[1],
+                ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
+            )
+            return (Makie.generate_lowres_brick_colors(data, bb, root_node), )
+        else
+            return (nothing, )
+        end
+    end
+
+
     add_constant!(attr, :is_orthographic, Makie.is_orthographic(cameracontrols(scene)))
 
     inputs = [
@@ -1250,7 +1270,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         # :alpha_colormap, :scaled_colorrange,
     ]
     uniforms = [
-        :volumedata, :indexmap, :bricks, :bricksize,
+        :volumedata, :indexmap, :bricks, :bricksize, :brick_colors,
         # :scaled_color,
         :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
