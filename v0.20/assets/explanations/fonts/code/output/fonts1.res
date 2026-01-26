@@ -1,0 +1,1 @@
+FTFont (family = BlackChancery, style = Regular)

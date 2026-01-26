@@ -1,0 +1,12 @@
+~~~
+<pre><code>WGLMakie.activate&#33;&#40;; screen_config...&#41;</code></pre>
+<p>Sets WGLMakie as the currently active backend and also allows to quickly set the <code>screen_config</code>. Note, that the <code>screen_config</code> can also be set permanently via <code>Makie.set_theme&#33;&#40;WGLMakie&#61;&#40;screen_config...,&#41;&#41;</code>.</p>
+<h1>Arguments one can pass via <code>screen_config</code>:</h1>
+<ul>
+<li><p><code>framerate &#61; 30</code>: Set framerate &#40;frames per second&#41; to a higher number for smoother animations, or to a lower to use less resources.</p>
+</li>
+</ul>
+
+
+
+~~~

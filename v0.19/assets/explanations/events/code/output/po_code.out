@@ -1,0 +1,9 @@
+With low priority listener:
+Low priority: 1
+
+With medium priority listener:
+Medium blocking priority: 2
+
+With high priority listener:
+High Priority: 3
+Medium blocking priority: 3

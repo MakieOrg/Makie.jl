@@ -1,0 +1,63 @@
+~~~
+<pre><code>GLMakie.activate&#33;&#40;; screen_config...&#41;</code></pre>
+<p>Sets GLMakie as the currently active backend and also optionally modifies the screen configuration using <code>screen_config</code> keyword arguments. Note that the <code>screen_config</code> can also be set permanently via <code>Makie.set_theme&#33;&#40;GLMakie&#61;&#40;screen_config...,&#41;&#41;</code>.</p>
+<h1>Arguments one can pass via <code>screen_config</code>:</h1>
+<h2>Renderloop</h2>
+<ul>
+<li><p><code>renderloop &#61; GLMakie.renderloop</code>: Sets a function <code>renderloop&#40;::GLMakie.Screen&#41;</code> which starts a renderloop for the screen.</p>
+</li>
+</ul>
+<div class="admonition warning"><p class="admonition-title">Warning</p><p>The keyword arguments below are not effective if <code>renderloop</code> isn&#39;t set to <code>GLMakie.renderloop</code>, unless implemented in a custom renderloop function:</p>
+</div>
+<ul>
+<li><p><code>pause_renderloop &#61; false</code>: If <code>true</code>, creates a screen with a paused renderloop. The renderloop can be started with <code>GLMakie.start_renderloop&#33;&#40;screen&#41;</code> and paused again with <code>GLMakie.pause_renderloop&#33;&#40;screen&#41;</code>.</p>
+</li>
+<li><p><code>vsync &#61; false</code>: Whether to enable vsync for the window.</p>
+</li>
+<li><p><code>render_on_demand &#61; true</code>: If <code>true</code>, the scene will only be rendered if something has changed in it.</p>
+</li>
+<li><p><code>framerate &#61; 30.0</code>: Sets the currently rendered frames per second.</p>
+</li>
+<li><p><code>px_per_unit &#61; automatic</code>: Sets the ratio between the number of rendered pixels and the <code>Makie</code> resolution. It defaults to the value of <code>scalefactor</code> but may be any positive real number.</p>
+</li>
+</ul>
+<h2>GLFW window attributes</h2>
+<ul>
+<li><p><code>float &#61; false</code>: Whether the window should float above other windows.</p>
+</li>
+<li><p><code>focus_on_show &#61; false</code>: If <code>true</code>, focuses the window when newly opened.</p>
+</li>
+<li><p><code>decorated &#61; true</code>: Whether or not to show window decorations.</p>
+</li>
+<li><p><code>title::String &#61; &quot;Makie&quot;</code>: Sets the window title.</p>
+</li>
+<li><p><code>fullscreen &#61; false</code>: Whether to start the window in fullscreen mode.</p>
+</li>
+<li><p><code>debugging &#61; false</code>: If <code>true</code>, starts the GLFW.Window/OpenGL context with debug output.</p>
+</li>
+<li><p><code>monitor::Union&#123;Nothing, GLFW.Monitor&#125; &#61; nothing</code>: Sets the monitor on which the window should be opened. If set to <code>nothing</code>, GLFW will decide which monitor to use.</p>
+</li>
+<li><p><code>visible &#61; true</code>: Whether or not the window should be visible when first created.</p>
+</li>
+<li><p><code>scalefactor &#61; automatic</code>: Sets the window scaling factor, such as <code>2.0</code> on HiDPI/Retina displays. It is set automatically based on the display, but may be any positive real number.</p>
+</li>
+</ul>
+<h2>Rendering constants &amp; Postprocessor</h2>
+<ul>
+<li><p><code>oit &#61; false</code>: Whether to enable order independent transparency for the window.</p>
+</li>
+<li><p><code>fxaa &#61; true</code>: Whether to enable fxaa &#40;anti-aliasing&#41; for the window.</p>
+</li>
+<li><p><code>ssao &#61; true</code>: Whether to enable screen space ambient occlusion, which simulates natural shadowing at inner edges and crevices.</p>
+</li>
+<li><p><code>transparency_weight_scale &#61; 1000f0</code>: Adjusts a factor in the rendering shaders for order independent transparency.   This should be the same for all of them &#40;within one rendering pipeline&#41; otherwise depth &quot;order&quot; will be broken.</p>
+</li>
+<li><p><code>max_lights &#61; 64</code>: The maximum number of lights with <code>shading &#61; MultiLightShading</code></p>
+</li>
+<li><p><code>max_light_parameters &#61; 5 * N_lights</code>: The maximum number of light parameters that can be uploaded. These include everything other than the light color &#40;i.e. position, direction, attenuation, angles&#41; in terms of scalar floats.</p>
+</li>
+</ul>
+
+
+
+~~~
