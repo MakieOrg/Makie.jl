@@ -157,7 +157,9 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        io = IOBuffer()
+        short_show(io, result)
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $(String(take!(io)))")
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
