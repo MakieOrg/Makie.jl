@@ -60,8 +60,6 @@ With the keywords `merge` and `unique` you can control how plot objects with the
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
 
-To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
-
 ```@figure
 
 f = Figure()
@@ -89,6 +87,25 @@ end
 f
 ```
 
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects. Together with the `merge` keyword this can be useful for legend interactivity spanning multiple axes.
+
+```@figure
+
+f = Figure()
+
+ax1 = Axis(f[1, 1])
+ax2 = Axis(f[1, 2])
+
+xs = range(0, 4pi, length = 31)
+lines!(ax1, xs, sin, label = "sin", color = :blue)
+lines!(ax2, xs, cos, label = "cos", color = :red)
+scatter!(ax1, xs, sin, label = "Points", color = :black)
+scatter!(ax2, xs, cos, label = "Points", color = :black)
+
+f[0, 1:2] = Legend(f, [ax1, ax2], "Automatic Joint Legend", merge = true, orientation = :horizontal, tellheight = true)
+
+f
+```
 
 ## Legend Inside An Axis
 
