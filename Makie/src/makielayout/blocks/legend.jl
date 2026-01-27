@@ -997,15 +997,17 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene, AbstractVector{<:Union{Axis, Axis3, Scene, LScene}}}, title = nothing; merge = false, unique = false, kwargs...)
 
 Create a single-group legend with all plots from `axis` that have the
 attribute `label` set.
 
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
+
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene, AbstractVector{<:Union{Axis, Axis3, Scene, LScene}}}, title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     return Legend(fig_or_scene, plots, labels, title; kwargs...)
@@ -1075,6 +1077,7 @@ get_plots(p::PlotList) = haskey(p.attributes, :label) && p.attributes[:label] is
 
 get_plots(ax::Union{Axis, Axis3}) = get_plots(ax.scene)
 get_plots(lscene::LScene) = get_plots(lscene.scene)
+get_plots(axes::AbstractVector) = collect(Iterators.flatmap(get_plots, axes))
 function get_plots(scene::Scene)
     plots = AbstractPlot[]
     for p in scene.plots
