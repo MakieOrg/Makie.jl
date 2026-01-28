@@ -49,6 +49,9 @@ function draw_volume(screen, data::Dict)
         bricks = nothing => Texture
         bricksize = 0
 
+        color_indexmap = nothing => Texture
+        color_brick = nothing => Texture
+
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = nothing => Texture

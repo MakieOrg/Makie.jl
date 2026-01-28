@@ -3,6 +3,7 @@ module SDF
     using GeometryBasics
     using GeometryBasics: VecTypes
     using ...Makie: Quaternion, RGBA, lerp
+    using ...Makie
 
     module Commands
 
@@ -1105,6 +1106,26 @@ function Base.show(io::IO, ::MIME"text/plain", brickmap::Brickmap{T}) where {T}
     print(io, "  $(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2])
 end
 
+function pack_bricks(brickmap::Makie.Brickmap)
+    packed, N = pack_bricks(brickmap.bricks, brickmap.bricksize)
+    return packed
+end
+
+function pack_bricks(bricks, bricksize, skip = 0)
+    N = ceil(Int, cbrt(length(bricks) + skip))
+    T = eltype(eltype(bricks))
+    packed = Array{T, 3}(undef, (N, N, N) .* bricksize)
+    cart = CartesianIndices((N, N, N))
+    for (idx, brick) in enumerate(bricks)
+        i, j, k = Tuple(cart[idx + skip]) .- 1
+        is = i * bricksize[1] + 1 : (i + 1) * bricksize[1]
+        js = j * bricksize[2] + 1 : (j + 1) * bricksize[2]
+        ks = k * bricksize[3] + 1 : (k + 1) * bricksize[3]
+        copyto!(view(packed, is, js, ks), brick)
+    end
+    return packed, N
+end
+
 function maybe_add_brick!(
         brickmap::Brickmap, root::SDF.Node,
         i, j, k,
@@ -1146,15 +1167,15 @@ function maybe_add_brick!(
     end
 
     # Less aggressive discard
-    # if any(x -> 0 < x < 1, brick)
-    #     insert_brick!(brickmap, i, j, k, copy(brick))
-    #     return true
-    # end
-
-    if contains_negative && contains_positive # contains edge
+    if any(x -> 0 < x < 1, brick)
         insert_brick!(brickmap, i, j, k, copy(brick))
         return true
     end
+
+    # if contains_negative && contains_positive # contains edge
+    #     insert_brick!(brickmap, i, j, k, copy(brick))
+    #     return true
+    # end
 
     return false
 end
@@ -1233,31 +1254,123 @@ function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
     )
     N = 512 # 1024
     @time brickmap = sdf_brickmap(bb, node, N)
-    @info "$(N^3 * 4 / 1024^2)MB ->"
+    @info "$N^3 $(N^3 * 4 / 1024^2)MB ->"
     return (ep_x, ep_y, ep_z, brickmap)
 end
 
-function generate_lowres_brick_colors(brickmap::Brickmap, bb::Rect3f, root::SDF.Node)
+struct BrickmapColors
+    indexmap::Vector{Tuple{Bool, UInt32}}
+    static_colors::Vector{RGB{N0f8}}
+    color_bricks::Vector{Array{RGB{N0f8}, 3}}
+    bricksize::Tuple{Int, Int, Int}
+end
+
+function generate_brick_colors(brickmap::Brickmap, bb::Rect3f, root::SDF.Node)
     N_blocks = size(brickmap.indexmap)
+    bricksize = brickmap.bricksize
     mini = minimum(bb)
     delta = widths(bb) ./ N_blocks
+    brick_delta = delta ./ (bricksize .- 1)
 
-    colors = Vector{RGB{N0f8}}(undef, maximum(brickmap.indexmap))
+    cellsize = 2 * sqrt(3) * norm(widths(bb)) / ((N_blocks[1] - 1) * bricksize[1])
+
+    indexmap = Vector{Tuple{Bool, UInt32}}(undef, length(brickmap.bricks))
+    static_colors = RGB{N0f8}[]
+    color_bricks = Array{RGB{N0f8}, 3}[]
+
+    color_buffer = Array{RGB{N0f8}, 3}(undef, bricksize)
 
     for ijk in CartesianIndices(brickmap.indexmap)
         brick_idx = brickmap.indexmap[ijk]
         if brick_idx != 0
             i, j, k = Tuple(ijk)
-            pos = Point3f(
-                mini[1] + delta[1] * (i - 0.5),
-                mini[2] + delta[2] * (j - 0.5),
-                mini[3] + delta[3] * (k - 0.5)
+            brick_origin = Point3f(
+                mini[1] + delta[1] * (i - 1),
+                mini[2] + delta[2] * (j - 1),
+                mini[3] + delta[3] * (k - 1)
             )
 
-            sdf, color = SDF.compute_color_at(root, pos)
-            colors[brick_idx] = color
+            first_color = RGBA{N0f8}(0,0,0,0)
+            first_color_set = false
+            contains_multiple = false
+
+            for bk in 1:bricksize[3], bj in 1:bricksize[2], bi in 1:bricksize[1]
+                pos = brick_origin + Point3f(
+                    brick_delta[1] * (bi - 1),
+                    brick_delta[2] * (bj - 1),
+                    brick_delta[3] * (bk - 1)
+                )
+
+                sdf, color = SDF.compute_color_at(root, pos)
+                rgb8 = RGB{N0f8}(color)
+                if !contains_multiple && abs(sdf) < cellsize
+                    if !first_color_set
+                        first_color = rgb8
+                        first_color_set = true
+                    elseif rgb8 != first_color
+                        contains_multiple = true
+                    end
+                end
+                color_buffer[bi, bj, bk] = rgb8
+            end
+
+            if contains_multiple
+                push!(color_bricks, copy(color_buffer))
+                indexmap[brick_idx] = (false, length(color_bricks))
+            else
+                idx = findfirst(==(first_color), static_colors)
+                if isnothing(idx)
+                    push!(static_colors, first_color)
+                    indexmap[brick_idx] = (true, length(static_colors))
+                else
+                    indexmap[brick_idx] = (true, idx)
+                end
+            end
+
         end
     end
 
-    return colors
+    return BrickmapColors(indexmap, static_colors, color_bricks, bricksize)
+end
+
+function pack_brick_colors(colors::BrickmapColors)
+    bricksize = colors.bricksize
+    entries_per_brick = prod(bricksize)
+    n_static_color_bricks = max(1, cld(length(colors.static_colors), entries_per_brick))
+
+    # TODO: probably needs to be a 2D array
+    pack_length = length(colors.indexmap)
+    pack_height = max(1, cld(pack_length, 8192))
+    pack_width = cld(pack_length, pack_height)
+    packed_indices = Matrix{UInt32}(undef, pack_width, pack_height)
+
+    map!(packed_indices, colors.indexmap) do (is_static, index)
+        # -1 for zero based indices
+        # +n_static_color_bricks so we skip over bricks used for static colors
+        idx = index - UInt32(1) + ifelse(is_static, UInt32(0), UInt32(n_static_color_bricks))
+        # left most bit marks static vs interpolated colors
+        return (UInt32(is_static) << 31) | idx
+    end
+
+    # generate normal bricks, skipping n_static_color_bricks
+    packed_bricks, N = pack_bricks(colors.color_bricks, bricksize, n_static_color_bricks)
+
+    # fill out static color bricks
+    cart = CartesianIndices((N, N, N))
+    for n in 1:n_static_color_bricks
+        ijk = Tuple(cart[n])
+        rx, ry, rz = range.(((ijk .- 1) .* bricksize .+ 1), (ijk .* bricksize))
+        brick = view(packed_bricks, rx, ry, rz)
+
+        input_range = range(
+            (n - 1) * entries_per_brick + 1,
+            min(n * entries_per_brick, length(colors.static_colors))
+        )
+        for (brick_idx, color_idx) in enumerate(input_range)
+            brick[brick_idx] = colors.static_colors[color_idx]
+        end
+    end
+
+
+    return packed_indices, packed_bricks
 end

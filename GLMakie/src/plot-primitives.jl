@@ -1181,25 +1181,11 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
         data[:color_norm] = attr.scaled_colorrange[]
     end
 
-    if !isnothing(attr.brick_colors[])
-        data[:brick_colors] = Texture(screen.glscreen, attr.brick_colors[])
-    end
+    # if !isnothing(attr.brick_colors[])
+    #     data[:brick_colors] = Texture(screen.glscreen, attr.brick_colors[])
+    # end
 
     return draw_volume(screen, data)
-end
-
-function pack_bricks(brickmap::Makie.Brickmap)
-    N = ceil(Int, cbrt(length(brickmap.bricks)))
-    packed = Array{N0f8, 3}(undef, (N, N, N) .* brickmap.bricksize)
-    cart = CartesianIndices((N, N, N))
-    for (idx, brick) in enumerate(brickmap.bricks)
-        i, j, k = Tuple(cart[idx]) .- 1
-        is = i * brickmap.bricksize[1] + 1 : (i + 1) * brickmap.bricksize[1]
-        js = j * brickmap.bricksize[2] + 1 : (j + 1) * brickmap.bricksize[2]
-        ks = k * brickmap.bricksize[3] + 1 : (k + 1) * brickmap.bricksize[3]
-        copyto!(view(packed, is, js, ks), brick)
-    end
-    return packed
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
@@ -1220,13 +1206,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         attr, [:scaled_color], [:volumedata, :indexmap, :bricks, :bricksize]
     ) do (data,), changed, cached
         if data isa Makie.Brickmap
-            packed = pack_bricks(data)
+            @info "Brickmap packing"
+            @time packed = Makie.pack_bricks(data)
             if isnothing(cached)
                 indexmap = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
                 bricks = ShaderAbstractions.Sampler(packed, minfilter = :linear)
                 a = length(data.indexmap) * 4 / 1024^2
                 b = length(bricks) / 1024^2
-                @info "-> $a + $b = $(a+b)"
+                @info "-> $a + $b = $(a+b) (SDF data)"
                 return nothing, indexmap, bricks, data.bricksize[1]
             else
                 # TODO: I don't this works
@@ -1245,7 +1232,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         end
     end
 
-    map!(attr, [:scaled_color, :args], [:brick_colors]) do data, (x, y, z, root_node)
+    map!(
+        attr, [:scaled_color, :args], [:color_indexmap, :color_brick]
+    ) do data, (x, y, z, root_node)
         if data isa Makie.Brickmap
             ep_x = Makie.to_endpoints(x, "x", VolumeLike)
             ep_y = Makie.to_endpoints(y, "y", VolumeLike)
@@ -1254,9 +1243,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
                 ep_x[1], ep_y[1], ep_z[1],
                 ep_x[2] - ep_x[1], ep_y[2] - ep_y[1], ep_z[2] - ep_z[1]
             )
-            return (Makie.generate_lowres_brick_colors(data, bb, root_node), )
+            @info "Color Gen"
+            @time begin
+                brickmap_colors = Makie.generate_brick_colors(data, bb, root_node)
+                indices, bricks = Makie.pack_brick_colors(brickmap_colors)
+            end
+            a = length(indices) * 4 / 1024^2
+            b = length(bricks) * 3 / 1024^2
+            @info "-> + $a + $b = $(a+b) (color)"
+            return indices, bricks
         else
-            return (nothing, )
+            return (nothing, nothing, nothing)
         end
     end
 
@@ -1270,7 +1267,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         # :alpha_colormap, :scaled_colorrange,
     ]
     uniforms = [
-        :volumedata, :indexmap, :bricks, :bricksize, :brick_colors,
+        :volumedata, :indexmap, :bricks, :bricksize,
+        :color_indexmap, :color_brick,
         # :scaled_color,
         :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,

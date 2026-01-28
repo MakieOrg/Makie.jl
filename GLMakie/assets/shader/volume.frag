@@ -24,7 +24,9 @@ in vec3 frag_vert;
 {{volumedata_type}} volumedata;
 {{indexmap_type}} indexmap;
 {{bricks_type}} bricks;
-{{brick_colors_type}} brick_colors;
+
+{{color_indexmap_type}} color_indexmap;
+{{color_brick_type}} color_brick;
 
 {{color_map_type}} color_map;
 {{color_type}} color;
@@ -81,6 +83,46 @@ vec4 get_volume_sample(sampler3D volumedata, Nothing indexmap, Nothing bricks, v
     return texture(volumedata, uvw);
 }
 
+uvec3 to_3D_index(uint index, ivec3 size)
+{
+    uint size_xy = size.x * size.y;
+    uint k = index / size_xy;
+    index = index - size_xy * k;
+    uint j = index / size.x;
+    uint i = index - size.x * j;
+    return uvec3(i, j, k);
+}
+
+vec3 to_brickmap_uvw(usampler3D indexmap, uint brick_index, ivec3 size, vec3 uvw)
+{
+    // size where each brick is viewed as a single entry
+    ivec3 brickmap_size = size / bricksize;
+    // matrix indices for the brick
+    uvec3 ijk = to_3D_index(brick_index, brickmap_size);
+
+    uvec3 isize = textureSize(indexmap, 0);
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - 1);
+
+    // index of brick -> uvw in brickmap
+    vec3 brickmap_uvw_origin = (vec3(ijk) + 0.5 / bricksize) / vec3(brickmap_size);
+
+    // effective size of the volume data
+    // for each index in indexmap, we have a brick
+    // each brick shares its shell with neighboring bricks -> (bricksize - 1)
+    uvec3 world_size = isize * (bricksize - 1);
+
+    // how far from the origin of the brick are we?
+    vec3 offset_index = uvw * vec3(world_size) - indexmap_ijk * (bricksize - 1);
+
+    // how far are we from the brick origin in the brickmaps uvw space?
+    vec3 brickmap_uvw_offset = offset_index / vec3(size);
+
+    // what's the full uvw position in the brickmap?
+    vec3 brickmap_uvw = brickmap_uvw_origin + brickmap_uvw_offset;
+
+    return brickmap_uvw;
+}
+
 int tracker = 0;
 vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks, vec3 uvw)
 {
@@ -117,43 +159,9 @@ vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks
     //     1.0
     // );
 
-    ivec3 size = ivec3(textureSize(bricks, 0)) / bricksize;
+    ivec3 size = ivec3(textureSize(bricks, 0));
 
-    uint size_xy = size.x * size.y;
-    uint k = index / size_xy;
-    index = index - size_xy * k;
-    uint j = index / size.x;
-    uint i = index - size.x * j;
-
-    // meh, not much to learn from that
-    // return vec4(
-    //     float(i) / float(size.x - 1),
-    //     float(j) / float(size.y - 1),
-    //     float(k) / float(size.z - 1),
-    //     1
-    // );
-
-    // index.dim < size.dim
-    // return vec4(size.x - i, size.y - j, size.z - k, 1);
-
-    //////////////////////////////////////////////////////////////////////////// ^check
-
-    // index of brick -> uvw in brickmap
-    vec3 brickmap_uvw_origin = (vec3(i, j, k) + 0.5 / bricksize) / vec3(size);
-
-    // effective size of the volume data
-    // for each index in indexmap, we have a brick
-    // each brick shares its shell with neighboring bricks -> (bricksize - 1)
-    uvec3 world_size = isize * (bricksize - 1);
-
-    // how far from the origin of the brick are we?
-    vec3 offset_index = uvw * vec3(world_size) - indexmap_ijk * (bricksize - 1);
-
-    // how far are we from the brick origin in the brickmaps uvw space?
-    vec3 brickmap_uvw_offset = offset_index / vec3(textureSize(bricks, 0));
-
-    // what's the full uvw position in the brickmap?
-    vec3 brickmap_uvw = brickmap_uvw_origin + brickmap_uvw_offset;
+    vec3 brickmap_uvw = to_brickmap_uvw(indexmap, index, size, uvw);
 
     // in-brick offset
     // return vec4(offset_index / vec3(bricksize-1), 1);
@@ -173,6 +181,11 @@ vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks
     );
 }
 
+vec4 get_volume_sample(vec3 uvw)
+{
+    return get_volume_sample(volumedata, indexmap, bricks, uvw);
+}
+
 vec3 brick_debug_color(usampler3D indexmap, vec3 uvw)
 {
     uvec3 isize = textureSize(indexmap, 0) * bricksize;
@@ -183,37 +196,46 @@ vec3 brick_debug_color(usampler3D indexmap, vec3 uvw)
     return brick_color + cell_color;
 }
 
-vec3 get_brick_color(usampler3D indexmap, sampler1D brick_colors, vec3 uvw)
+vec3 get_brick_color(usampler3D indexmap, usampler2D color_indexmap, sampler3D color_brick, vec3 uvw)
 {
-    ivec3 isize = ivec3(textureSize(indexmap, 0));
-    vec3 ijk = uvw * isize;
-    ivec3 mini = ivec3(ijk);
+    uint brick_idx = texture(indexmap, uvw).x;
+    if (brick_idx == 0)
+        return vec3(1, 0, 1);
 
-    vec3 color = vec3(0);
-    float summed_weight = 0.0;
+    brick_idx--;
 
-    for (int i = 0; i < 2; i++)
+    uvec2 csize = textureSize(color_indexmap, 0);
+    ivec2 color_brick_idx = ivec2(brick_idx % csize.x, brick_idx / csize.x);
+    uint packed_color_index = texelFetch(color_indexmap, color_brick_idx, 0).x;
+
+    bool is_static = ((uint(1) << 31) & packed_color_index) > 0;
+
+    if (is_static)
     {
-        for (int j = 0; j < 2; j++)
-        {
-            for (int k = 0; k < 2; k++)
-            {
-                ivec3 picked = min(mini + ivec3(i, j, k), isize-1);
-                uint idx = texelFetch(indexmap, picked, 0).x;
-                if (idx != 0)
-                {
-                    vec3 c = texelFetch(brick_colors, int(idx) - 1, 0).rgb;
-                    vec3 w = 1 - abs(ijk - picked);
-                    color += w.x * w.y * w.z * c;
-                    summed_weight += w.x * w.y * w.z;
-                }
-            }
-        }
-    }
+        uint color_index = ~(uint(1) << 31) & packed_color_index;
 
-    return color / summed_weight;
+        uint brick_length = bricksize * bricksize * bricksize;
+        uint brick_index = color_index / brick_length;
+
+        ivec3 size = ivec3(textureSize(color_brick, 0));
+        uvec3 ijk = to_3D_index(brick_index, size);
+
+        uvec3 inner_index = to_3D_index(color_index - brick_index * brick_length, ivec3(bricksize));
+        vec3 color = texelFetch(color_brick, ivec3(ijk + inner_index), 0).rgb;
+        return color;
+    }
+    else
+    {
+        uint brick_index = packed_color_index;
+
+        ivec3 size = ivec3(textureSize(color_brick, 0));
+        vec3 brickmap_uvw = to_brickmap_uvw(indexmap, brick_index, size, uvw);
+
+        vec3 color = texture(color_brick, brickmap_uvw).rgb;
+        return color;
+    }
 }
-vec3 get_brick_color(vec3 uvw) { return get_brick_color(indexmap, brick_colors, uvw); }
+vec3 get_brick_color(vec3 uvw) { return get_brick_color(indexmap, color_indexmap, color_brick, uvw); }
 
 float get_eps(sampler3D volumedata, Nothing indexmap)
 {
@@ -229,11 +251,6 @@ float get_eps(Nothing volumedata, usampler3D indexmap)
     return max(max(step.x, step.y), step.z);
 }
 float get_eps() { return get_eps(volumedata, indexmap); }
-
-vec4 get_volume_sample(vec3 uvw)
-{
-    return get_volume_sample(volumedata, indexmap, bricks, uvw);
-}
 
 uvec3 get_volume_size(sampler3D volumedata, Nothing indexmap)
 {
