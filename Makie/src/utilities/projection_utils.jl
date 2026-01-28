@@ -16,12 +16,32 @@ to allow clip space clipping to happen elsewhere.)
 - `output_space = :pixel` sets the output space. Can be `:space` or `:markerspace` to refer to those plot attributes or any static space like `:pixel`.
 - `input_name = :positions` sets the source positions which will be projected.
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
-- `apply_transform = input_space === :space` controls whether transformations and float32convert are applied.
+- `apply_transform = input_space === :space` controls whether forward transformations and float32convert are applied.
 - `apply_transform_func = apply_transform` controls whether `transform_func` is applied.
-- `apply_float32convert = apply_transform` controls whether `float32convert` is applied.
+- `apply_float32convert = apply_transform && output_space != :space` controls whether `float32convert` is applied.
 - `apply_model = apply_transform` controls whether the `model` matrix is applied.
 - `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
+- `apply_inverse_transform = output_space === :space && !apply_transform` controls whether inverse transformations are applied when projecting to data space.
+- `apply_inverse_transform_func = apply_inverse_transform` controls whether inverse `transform_func` is applied.
+- `apply_inverse_float32convert = apply_inverse_transform` controls whether inverse `float32convert` is applied.
+- `apply_inverse_model = apply_inverse_transform` controls whether inverse `model` matrix is applied.
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
+
+## Order of projections and transformations
+
+The order in which transformations and projections apply to the positions
+referred to by `input_name` is:
+
+1. transform func
+2. model
+3. float32convert
+4. projections
+    1. clip planes
+    2. input_space -> output_space projection
+    3. yflip
+5. inverse float32convert
+6. inverse model
+7. inverse transform func
 
 Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
 [`register_positions_transformed_f32c!`](@ref), [`register_projected_rotations_2d!`](@ref)
@@ -41,39 +61,125 @@ function register_projected_positions!(
         input_name::Symbol = :positions,
         output_name::Symbol = Symbol(output_space, :_, input_name),
         yflip::Bool = false,
+        # Forward transforms
         apply_transform::Bool = input_space === :space,
         apply_transform_func::Bool = apply_transform,
-        apply_float32convert::Bool = apply_transform,
+        apply_float32convert::Bool = apply_transform && !is_data_space(output_space),
         apply_model::Bool = apply_transform,
         apply_clip_planes::Bool = false,
+        # Inverse transforms
+        apply_inverse_transform::Bool = output_space === :space && !apply_transform,
+        apply_inverse_transform_func::Bool = apply_inverse_transform,
+        apply_inverse_float32convert::Bool = apply_inverse_transform,
+        apply_inverse_model::Bool = apply_inverse_transform,
     ) where {OT <: VecTypes}
 
-    # Handle transform function + f32c
+    #=
+    - projections (space) and transformations (transform func, model) are orthogonal,
+      meaning they don't depend on each other
+    - float32convert is special:
+        - (forward) f32c only applies when the input space is :data (or dynamic
+          data via :space, :markerspace), because the other spaces can't have
+          float32 precision issues
+        - plots apply f32c based on their space, so it's generally desirable to
+          have f64 (pre f32c) outputs here when targeting :data space
+
+    With inverse transforms we have:
+    1. apply transform func
+    2. apply float32convert
+    3. apply model_f32c
+    4. apply projection (input_space -> output_space) (+ clip planes, yflip)
+    5. apply inverse model_f32c
+    6. apply inverse float32convert
+    7. apply inverse transform func
+
+    To figure out what can be skipped we need to figure out which parts combine
+    to identities.
+
+    Note that the order of float32convert and model is swapped so that GLMakie
+    and WGLMakie can apply a Float32 safe version of the model matrix on the GPU.
+        f32c(model(data)) = model_f32(f32c(data))
+    =#
+
+    # We can statically skip steps if they combine to an identity regardless of
+    # what other steps do. This is the case if everything between the step and
+    # its inverse is also an identity (statically).
+    # There can still be dynamic identities, but these require computations to
+    # exist for dynamic evaluation.
+    is_static_identity_camera_projection = input_space === output_space && !yflip
+    is_static_identity_projection = is_static_identity_camera_projection && (apply_model === apply_inverse_model)
+    is_static_identity_f32convert = is_static_identity_projection && (apply_float32convert === apply_inverse_float32convert)
+    is_all_static_identity = is_static_identity_f32convert && (apply_transform_func == apply_inverse_transform_func)
+
+    if is_all_static_identity
+        ComputePipeline.alias!(plot_graph, input_name, output_name)
+        return getindex(plot_graph, output_name)
+    end
+
+    current_output = input_name
+
+    # Handle forward transform function
     if apply_transform_func
-        transformed_name = Symbol(input_name, :_transformed)
-        register_positions_transformed!(plot_graph; input_name, output_name = transformed_name)
-    else
-        transformed_name = input_name
+        # This checks if plot.space[] == :data.
+        # input_space == :data does not overwrite this
+        transformed_name = Symbol(current_output, :_transformed)
+        register_positions_transformed!(plot_graph; input_name = current_output, output_name = transformed_name)
+        current_output = transformed_name
     end
 
-    if apply_float32convert && !is_data_space(output_space)
-        transformed_f32c_name = Symbol(transformed_name, :_f32c)
-        register_positions_transformed_f32c!(plot_graph; input_name = transformed_name, output_name = transformed_f32c_name)
-    else
-        # Pipeline will apply f32c if the input space is data space, so we
-        # should avoid it here. TODO: also dynamically
-        transformed_f32c_name = transformed_name
+    # Handle forward float32convert
+    if apply_float32convert && !is_static_identity_f32convert
+        transformed_f32c_name = Symbol(current_output, :_f32c)
+        register_positions_transformed_f32c!(plot_graph; input_name = current_output, output_name = transformed_f32c_name)
+        current_output = transformed_f32c_name
     end
 
-    if apply_model || (input_space !== output_space) || yflip
+    # Use intermediate name for projection output if transform_func still needs to apply
+    projection_output = if apply_inverse_transform_func
+        apply_inverse_float32convert ? Symbol(current_output, :_projected_f32c) : Symbol(current_output, :_projected)
+    else
+        output_name
+    end
+
+    # create inverse float32convert matrix to include at the end of projections
+    postfix_matrix = nothing
+    if apply_inverse_float32convert && !is_static_identity_f32convert
+        if output_space == :space
+            map!(inv_f32_convert_matrix, plot_graph, [:f32c, :space], :dynamic_inverse_f32c_matrix)
+            postfix_matrix = :dynamic_inverse_f32c_matrix
+        elseif is_data_space(output_space)
+            map!(inv_f32_convert_matrix, plot_graph, :f32c, :inverse_f32c_matrix)
+            postfix_matrix = :inverse_f32c_matrix
+        end
+    end
+
+    # apply projections + optional inverse float32convert matrix.
+    # At most, this includes:
+    # 1. model or model_f32, based on `model_name`, if `apply_model = true`
+    # 2. projection matrix, based on `input_space` and `output_space`
+    # 3. inverse model, if `apply_inverse_model = true`
+    # 4. inverse float32convert, if postfix_matrix is set accordingly
+    if !is_static_identity_projection || (apply_inverse_float32convert && !is_static_identity_f32convert)
         register_positions_projected!(
             scene_graph, plot_graph, OT;
             input_space, output_space,
-            input_name = transformed_f32c_name, output_name,
-            yflip, apply_model, apply_clip_planes
+            input_name = current_output, output_name = projection_output,
+            model_name = ifelse(apply_float32convert, :model_f32c, :model),
+            yflip, apply_model, apply_inverse_model, apply_clip_planes, postfix_matrix
         )
-    else
-        ComputePipeline.alias!(plot_graph, transformed_f32c_name, output_name)
+        current_output = projection_output
+    end
+
+    if apply_inverse_transform_func
+        map!(inverse_transform, plot_graph, :transform_func, :inverse_transform_func)
+        # Use Makie. prefix to avoid shadowing by kwarg `apply_transform::Bool`
+        map!(Makie.apply_transform, plot_graph, [:inverse_transform_func, current_output], output_name)
+        current_output = output_name
+    end
+
+    # Alias to final output name if different
+    if current_output !== output_name
+        ComputePipeline.alias!(plot_graph, current_output, output_name)
     end
 
     return getindex(plot_graph, output_name)
@@ -114,35 +220,52 @@ function register_positions_projected!(
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
+        model_name::Symbol = :model,
+        postfix_matrix::Union{Nothing, Symbol} = nothing,
         yflip::Bool = false,
         apply_model::Bool = input_space === :space,
+        apply_inverse_model::Bool = false,
         apply_clip_planes::Bool = false
     ) where {OT <: VecTypes}
 
     # Connect necessary projection matrix from scene
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
-    merged_matrix_name = Symbol(ifelse(yflip, "yflip_", "") * string(projection_matrix_name) * "_model")
+    merged_matrix_name = Symbol(
+        ifelse(postfix_matrix isa Symbol, "$(postfix_matrix)_", "") *
+            ifelse(apply_inverse_model, "inverse_model_", "") *
+            ifelse(yflip, "yflip_", "") *
+            string(projection_matrix_name) *
+            ifelse(apply_model, "_$model_name", "") * "4d"
+    )
+
+    inputs = Symbol[]
+
+    if postfix_matrix isa Symbol
+        push!(inputs, postfix_matrix)
+    end
+
+    if apply_inverse_model
+        map!(inv, plot_graph, :model, :inverse_model)
+        push!(inputs, :inverse_model)
+    end
 
     # connect resolution for yflip (Cairo) and model matrix if requested
-    inputs = Symbol[]
     if yflip
         is_pixel_space(output_space) || error("`yflip = true` is currently only allowed when targeting pixel space")
         if !haskey(plot_graph, :resolution)
             add_input!(plot_graph, :resolution, scene_graph[:resolution])
         end
-        push!(inputs, :resolution)
+        map!(plot_graph, :resolution, :yflip_matrix) do res
+            return transformationmatrix(Vec3d(0, res[2], 0), Vec3d(1, -1, 1))
+        end
+        push!(inputs, :yflip_matrix)
     end
 
     push!(inputs, projection_matrix_name)
-    # in data space f32c is not applied and we should use the plain model matrix
-    apply_model && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
+    apply_model && push!(inputs, model_name)
 
     # merge/create projection related matrices
-    flip_matrix(res::Vec2) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
-    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
-    combine_matrices(pv::Mat4, m::Mat4) = Mat4f(pv * m)::Mat4f
-    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
+    combine_matrices(matrices...) = Mat4d(foldl(*, matrices))::Mat4d
     map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
 
     # apply projection
@@ -184,6 +307,15 @@ end
 
 function register_f32c_matrix!(attr)
     return map!(attr, :f32c, :f32c_matrix)
+end
+
+function apply_inverse_model_to_positions(model::Mat4, positions)
+    inv_model = inv(model)
+    return map(positions) do p
+        p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
+        p4d = inv_model * p4d
+        return Point3f(p4d[Vec(1, 2, 3)] ./ p4d[4])
+    end
 end
 
 ################################################################################
