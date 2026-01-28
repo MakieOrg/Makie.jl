@@ -64,7 +64,7 @@ function register_projected_positions!(
         # Forward transforms
         apply_transform::Bool = input_space === :space,
         apply_transform_func::Bool = apply_transform,
-        apply_float32convert::Bool = apply_transform && (output_space != :space),
+        apply_float32convert::Bool = apply_transform && !is_data_space(output_space),
         apply_model::Bool = apply_transform,
         apply_clip_planes::Bool = false,
         # Inverse transforms
@@ -109,9 +109,9 @@ function register_projected_positions!(
     is_static_identity_camera_projection = input_space === output_space && !yflip
     is_static_identity_projection = is_static_identity_camera_projection && (apply_model === apply_inverse_model)
     is_static_identity_f32convert = is_static_identity_projection && (apply_float32convert === apply_inverse_float32convert)
+    is_all_static_identity = is_static_identity_f32convert && (apply_transform_func == apply_inverse_transform_func)
 
-    # "is_static_identity_transform" which implies everything is an identity
-    if is_static_identity_f32convert && (apply_transform_func == apply_inverse_transform_func)
+    if is_all_static_identity
         ComputePipeline.alias!(plot_graph, input_name, output_name)
         return getindex(plot_graph, output_name)
     end
