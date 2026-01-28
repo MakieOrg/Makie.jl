@@ -18,14 +18,30 @@ to allow clip space clipping to happen elsewhere.)
 - `output_name = Symbol(output_space, :_, input_name)` sets the name of the projected positions.
 - `apply_transform = input_space === :space` controls whether forward transformations and float32convert are applied.
 - `apply_transform_func = apply_transform` controls whether `transform_func` is applied.
-- `apply_float32convert = apply_transform` controls whether `float32convert` is applied.
+- `apply_float32convert = apply_transform && output_space != :space` controls whether `float32convert` is applied.
 - `apply_model = apply_transform` controls whether the `model` matrix is applied.
 - `apply_clip_planes = false` controls whether points clipped by `clip_planes` are replaced by NaN. (Does not consider clip space clipping. Only applies if `is_data_space(input_space)`.)
-- `apply_inverse_transform = output_space === :space` controls whether inverse transformations are applied when projecting to data space.
+- `apply_inverse_transform = output_space === :space && !apply_transform` controls whether inverse transformations are applied when projecting to data space.
 - `apply_inverse_transform_func = apply_inverse_transform` controls whether inverse `transform_func` is applied.
 - `apply_inverse_float32convert = apply_inverse_transform` controls whether inverse `float32convert` is applied.
 - `apply_inverse_model = apply_inverse_transform` controls whether inverse `model` matrix is applied.
 - `yflip = false` flips the `y` coordinate if set to true and `output_space = :pixel`
+
+## Order of projections and transformations
+
+The order in which transformations and projections apply to the positions
+referred to by `input_name` is:
+
+1. transform func
+2. model
+3. float32convert
+4. projections
+    1. clip planes
+    2. input_space -> output_space projection
+    3. yflip
+5. inverse float32convert
+6. inverse model
+7. inverse transform func
 
 Related: [`register_position_transforms!`](@ref), [`register_positions_transformed!`](@ref),
 [`register_positions_transformed_f32c!`](@ref), [`register_projected_rotations_2d!`](@ref)
@@ -118,39 +134,40 @@ function register_projected_positions!(
         current_output = transformed_f32c_name
     end
 
-    # Use intermediate name for projection output if any inverse transforms will be applied
-    needs_any_inverse =
-        (apply_inverse_float32convert && !is_static_identity_f32convert) ||
-        (apply_inverse_transform_func && !is_static_identity_transform)
-    projection_output = needs_any_inverse ? Symbol(current_output, :_projected) : output_name
+    # Use intermediate name for projection output if transform_func still needs to apply
+    projection_output = if apply_inverse_transform_func
+        apply_inverse_float32convert ? Symbol(current_output, :_projected_f32c) : Symbol(current_output, :_projected)
+    else
+        output_name
+    end
 
-    if !is_static_identity_projection
+    # create inverse float32convert matrix to include at the end of projections
+    postfix_matrix = nothing
+    if apply_inverse_float32convert && !is_static_identity_f32convert
+        if output_space == :space
+            map!(inv_f32_convert_matrix, plot_graph, [:f32c, :space], :dynamic_inverse_f32c_matrix)
+            postfix_matrix = :dynamic_inverse_f32c_matrix
+        elseif is_data_space(output_space)
+            map!(inv_f32_convert_matrix, plot_graph, :f32c, :inverse_f32c_matrix)
+            postfix_matrix = :inverse_f32c_matrix
+        end
+    end
+
+    # apply projections + optional inverse float32convert matrix.
+    # At most, this includes:
+    # 1. model or model_f32, based on `model_name`, if `apply_model = true`
+    # 2. projection matrix, based on `input_space` and `output_space`
+    # 3. inverse model, if `apply_inverse_model = true`
+    # 4. inverse float32convert, if postfix_matrix is set accordingly
+    if !is_static_identity_projection || (apply_inverse_float32convert && !is_static_identity_f32convert)
         register_positions_projected!(
             scene_graph, plot_graph, OT;
             input_space, output_space,
             input_name = current_output, output_name = projection_output,
             model_name = ifelse(apply_float32convert, :model_f32c, :model),
-            inverse_model_name = ifelse(apply_inverse_float32convert, :inverse_model_f32c, :inverse_model),
-            yflip, apply_model, apply_inverse_model, apply_clip_planes
+            yflip, apply_model, apply_inverse_model, apply_clip_planes, postfix_matrix
         )
         current_output = projection_output
-    end
-
-
-    if apply_inverse_float32convert && !is_static_identity_f32convert
-        inv_f32c_name = apply_inverse_transform_func ? Symbol(current_output, :_inv_f32c) : output_name
-
-        if output_space === :space  # dynamic
-            map!(plot_graph, [current_output, :f32c, :space], inv_f32c_name) do pos, f32c, space
-                return is_data_space(space) ? inv(f32c).(pos) : pos
-            end
-            current_output = inv_f32c_name
-        elseif is_data_space(output_space)  # static data space
-            map!(plot_graph, [current_output, :f32c], inv_f32c_name) do pos, f32c
-                return inv(f32c).(pos)
-            end
-            current_output = inv_f32c_name
-        end
     end
 
     if apply_inverse_transform_func
@@ -204,7 +221,7 @@ function register_positions_projected!(
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
         model_name::Symbol = :model,
-        inverse_model_name::Symbol = :inverse_model,
+        postfix_matrix::Union{Nothing, Symbol} = nothing,
         yflip::Bool = false,
         apply_model::Bool = input_space === :space,
         apply_inverse_model::Bool = false,
@@ -214,7 +231,8 @@ function register_positions_projected!(
     # Connect necessary projection matrix from scene
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
     merged_matrix_name = Symbol(
-        ifelse(apply_inverse_model, "$(inverse_model_name)_", "") *
+        ifelse(postfix_matrix isa Symbol, "$(postfix_matrix)_", "") *
+        ifelse(apply_inverse_model, "inverse_model_", "") *
         ifelse(yflip, "yflip_", "") *
         string(projection_matrix_name) *
         ifelse(apply_model, "_$model_name", "") * "4d"
@@ -222,13 +240,13 @@ function register_positions_projected!(
 
     inputs = Symbol[]
 
-    # Technically we should use:
-    # - model if f32convert was not applied
-    # - model_f32c if f32convert was applied
+    if postfix_matrix isa Symbol
+        push!(inputs, postfix_matrix)
+    end
+
     if apply_inverse_model
         map!(inv, plot_graph, :model, :inverse_model)
-        map!(inv, plot_graph, :model_f32c, :inverse_model_f32c)
-        push!(inputs, inverse_model_name)
+        push!(inputs, :inverse_model)
     end
 
     # connect resolution for yflip (Cairo) and model matrix if requested
@@ -237,22 +255,17 @@ function register_positions_projected!(
         if !haskey(plot_graph, :resolution)
             add_input!(plot_graph, :resolution, scene_graph[:resolution])
         end
-        push!(inputs, :resolution)
+        map!(plot_graph, :resolution, :yflip_matrix) do res
+            return transformationmatrix(Vec3d(0, res[2], 0), Vec3d(1, -1, 1))
+        end
+        push!(inputs, :yflip_matrix)
     end
 
     push!(inputs, projection_matrix_name)
     apply_model && push!(inputs, model_name)
 
     # merge/create projection related matrices
-    flip_matrix(res::Vec2) = transformationmatrix(Vec3d(0, res[2], 0), Vec3d(1, -1, 1))
-    combine_matrices(im::Mat4, res::Vec2, pv::Mat4, m::Mat4) = Mat4d(im * flip_matrix(res) * pv * m)::Mat4d
-    combine_matrices(im::Mat4, res::Vec2, pv::Mat4) = Mat4d(im * flip_matrix(res) * pv)::Mat4d
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4d(flip_matrix(res) * pv * m)::Mat4d
-    combine_matrices(res::Vec2, pv::Mat4) = Mat4d(flip_matrix(res) * pv)::Mat4d
-    combine_matrices(im::Mat4, pv::Mat4, m::Mat4) = Mat4d(im * pv * m)::Mat4d
-    combine_matrices(pv::Mat4, m::Mat4) = Mat4d(pv * m)::Mat4d
-    combine_matrices(pv::Mat4) = Mat4d(pv)::Mat4d
-
+    combine_matrices(matrices...) = Mat4d(foldl(*, matrices))::Mat4d
     map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
 
     # apply projection
