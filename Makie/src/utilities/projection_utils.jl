@@ -48,11 +48,11 @@ function register_projected_positions!(
         # Forward transforms
         apply_transform::Bool = input_space === :space,
         apply_transform_func::Bool = apply_transform,
-        apply_float32convert::Bool = apply_transform,
+        apply_float32convert::Bool = apply_transform && (output_space != :space),
         apply_model::Bool = apply_transform,
         apply_clip_planes::Bool = false,
         # Inverse transforms
-        apply_inverse_transform::Bool = output_space === :space,
+        apply_inverse_transform::Bool = output_space === :space && !apply_transform,
         apply_inverse_transform_func::Bool = apply_inverse_transform,
         apply_inverse_float32convert::Bool = apply_inverse_transform,
         apply_inverse_model::Bool = apply_inverse_transform,
@@ -84,7 +84,6 @@ function register_projected_positions!(
     and WGLMakie can apply a Float32 safe version of the model matrix on the GPU.
         f32c(model(data)) = model_f32(f32c(data))
     =#
-
 
     # We can statically skip steps if they combine to an identity regardless of
     # what other steps do. This is the case if everything between the step and
@@ -130,6 +129,8 @@ function register_projected_positions!(
             scene_graph, plot_graph, OT;
             input_space, output_space,
             input_name = current_output, output_name = projection_output,
+            model_name = ifelse(apply_float32convert, :model_f32c, :model),
+            inverse_model_name = ifelse(apply_inverse_float32convert, :inverse_model_f32c, :inverse_model),
             yflip, apply_model, apply_inverse_model, apply_clip_planes
         )
         current_output = projection_output
@@ -202,6 +203,8 @@ function register_positions_projected!(
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
+        model_name::Symbol = :model,
+        inverse_model_name::Symbol = :inverse_model,
         yflip::Bool = false,
         apply_model::Bool = input_space === :space,
         apply_inverse_model::Bool = false,
@@ -211,10 +214,10 @@ function register_positions_projected!(
     # Connect necessary projection matrix from scene
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
     merged_matrix_name = Symbol(
-        ifelse(apply_inverse_model, "inverse_model_", "") *
+        ifelse(apply_inverse_model, "$(inverse_model_name)_", "") *
         ifelse(yflip, "yflip_", "") *
         string(projection_matrix_name) *
-        ifelse(apply_model, "_model", "") * "4f"
+        ifelse(apply_model, "_$model_name", "") * "4d"
     )
 
     inputs = Symbol[]
@@ -223,8 +226,9 @@ function register_positions_projected!(
     # - model if f32convert was not applied
     # - model_f32c if f32convert was applied
     if apply_inverse_model
-        map!(inv, plot_graph, :model_f32c, :inverse_model)
-        push!(inputs, :inverse_model)
+        map!(inv, plot_graph, :model, :inverse_model)
+        map!(inv, plot_graph, :model_f32c, :inverse_model_f32c)
+        push!(inputs, inverse_model_name)
     end
 
     # connect resolution for yflip (Cairo) and model matrix if requested
@@ -237,17 +241,17 @@ function register_positions_projected!(
     end
 
     push!(inputs, projection_matrix_name)
-    apply_model && push!(inputs, :model_f32c)
+    apply_model && push!(inputs, model_name)
 
     # merge/create projection related matrices
-    flip_matrix(res::Vec2) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
-    combine_matrices(im::Mat4, res::Vec2, pv::Mat4, m::Mat4) = Mat4f(im * flip_matrix(res) * pv * m)::Mat4f
-    combine_matrices(im::Mat4, res::Vec2, pv::Mat4) = Mat4f(im * flip_matrix(res) * pv)::Mat4f
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
-    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
-    combine_matrices(im::Mat4, pv::Mat4, m::Mat4) = Mat4f(im * pv * m)::Mat4f
-    combine_matrices(pv::Mat4, m::Mat4) = Mat4f(pv * m)::Mat4f
-    combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
+    flip_matrix(res::Vec2) = transformationmatrix(Vec3d(0, res[2], 0), Vec3d(1, -1, 1))
+    combine_matrices(im::Mat4, res::Vec2, pv::Mat4, m::Mat4) = Mat4d(im * flip_matrix(res) * pv * m)::Mat4d
+    combine_matrices(im::Mat4, res::Vec2, pv::Mat4) = Mat4d(im * flip_matrix(res) * pv)::Mat4d
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4d(flip_matrix(res) * pv * m)::Mat4d
+    combine_matrices(res::Vec2, pv::Mat4) = Mat4d(flip_matrix(res) * pv)::Mat4d
+    combine_matrices(im::Mat4, pv::Mat4, m::Mat4) = Mat4d(im * pv * m)::Mat4d
+    combine_matrices(pv::Mat4, m::Mat4) = Mat4d(pv * m)::Mat4d
+    combine_matrices(pv::Mat4) = Mat4d(pv)::Mat4d
 
     map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
 
