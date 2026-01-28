@@ -1380,6 +1380,122 @@ end
 end
 
 
+"""
+    Table(fig_or_scene; kwargs...)
+
+A table widget for displaying tabular data with interactive features like row selection,
+column sorting, and scrolling.
+
+## Example
+
+```julia
+fig = Figure()
+data = (name = ["Alice", "Bob", "Charlie"], age = [25, 30, 35], city = ["NYC", "LA", "Chicago"])
+t = Table(fig[1,1]; data = data)
+
+# Listen to selection changes
+on(t.selection) do sel
+    println("Selected: ", sel)
+end
+```
+
+## Attributes
+
+$(ATTRIBUTE_DEFAULTS)
+$(ATTRIBUTE_DESCRIPTIONS)
+"""
+@Block Table begin
+    @attributes begin
+        "The height setting of the table."
+        height = Auto()
+        "The width setting of the table."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = true
+        "The horizontal alignment of the table in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the table in its suggested bounding box."
+        valign = :center
+        "The alignment mode of the table in its parent GridLayout."
+        alignmode = Inside()
+
+        "The tabular data to display. Can be a NamedTuple or Dict{Symbol, Any} where each value is a column vector."
+        data = (a = [1, 2, 3], b = ["x", "y", "z"])
+        "Custom column names to display. If `automatic`, uses the data's keys."
+        column_names = automatic
+        "Column widths. Can be `:auto` (equal widths), a number (all same width), or a vector of widths."
+        column_widths = :auto
+
+        "Index of the currently selected row. 0 means no selection."
+        i_selected = 0
+        "The data of the currently selected row as a NamedTuple. This is the output observable to listen to."
+        selection = nothing
+
+        "Index of the column to sort by. 0 means no sorting."
+        sort_column = 0
+        "Sort direction, either `:ascending` or `:descending`."
+        sort_direction = :ascending
+        "Whether clicking column headers enables sorting."
+        sortable = true
+
+        "Maximum number of visible rows. If `nothing`, shows all rows."
+        max_visible_rows = nothing
+        "Current scroll offset (row index to start displaying from)."
+        scroll_offset = 0
+        "Scroll speed multiplier for mouse wheel scrolling."
+        scroll_speed = 3.0
+
+        "Background color of the header row."
+        header_color = RGBf(0.2, 0.2, 0.2)
+        "Text color of the header row."
+        header_textcolor = :white
+        "Font size of the header text."
+        header_fontsize = 14.0f0
+        "Height of the header row in pixels."
+        header_height = 30.0
+        "Whether to show sort direction indicator (↑/↓) in the header."
+        show_sort_indicator = true
+
+        "Background color of even-numbered data rows."
+        cell_color_even = RGBf(0.98, 0.98, 0.98)
+        "Background color of odd-numbered data rows."
+        cell_color_odd = RGBf(0.94, 0.94, 0.94)
+        "Background color of the hovered row."
+        cell_color_hover = COLOR_ACCENT_DIMMED[]
+        "Background color of the selected row."
+        cell_color_selected = COLOR_ACCENT[]
+        "Text color of data cells."
+        cell_textcolor = :black
+        "Font size of data cell text."
+        cell_fontsize = 12.0f0
+        "Height of each data row in pixels."
+        row_height = 25.0
+        "Padding inside cells as (left, right, bottom, top)."
+        cell_padding = (8, 8, 4, 4)
+
+        "Whether to show grid lines."
+        show_grid = true
+        "Color of grid lines."
+        grid_color = RGBf(0.8, 0.8, 0.8)
+        "Width of grid lines."
+        grid_linewidth = 1.0
+        "Whether to show vertical grid lines."
+        show_vertical_lines = true
+        "Whether to show horizontal grid lines."
+        show_horizontal_lines = true
+
+        "Callback function `(table, row_index, row_data) -> nothing` called on row click."
+        on_row_click = nothing
+        "Callback function `(table, row_index, row_data) -> nothing` called on row double-click."
+        on_row_doubleclick = nothing
+        "Callback function `(table, column_index, direction) -> nothing` called when sort changes."
+        on_sort_change = nothing
+    end
+end
+
+
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
