@@ -232,10 +232,10 @@ function register_positions_projected!(
     projection_matrix_name = register_camera_matrix!(scene_graph, plot_graph, input_space, output_space)
     merged_matrix_name = Symbol(
         ifelse(postfix_matrix isa Symbol, "$(postfix_matrix)_", "") *
-        ifelse(apply_inverse_model, "inverse_model_", "") *
-        ifelse(yflip, "yflip_", "") *
-        string(projection_matrix_name) *
-        ifelse(apply_model, "_$model_name", "") * "4d"
+            ifelse(apply_inverse_model, "inverse_model_", "") *
+            ifelse(yflip, "yflip_", "") *
+            string(projection_matrix_name) *
+            ifelse(apply_model, "_$model_name", "") * "4d"
     )
 
     inputs = Symbol[]
