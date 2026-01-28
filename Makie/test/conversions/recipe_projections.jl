@@ -16,15 +16,18 @@ using ComputePipeline
         @test length(p.attributes.outputs) == N + nodes_added
     end
 
+    # nodes added: output
     run_checks(
         :space_positions, p.positions_transformed_f32c[], 1;
-        input_space = :space, output_space = :space, apply_model = false
+        input_space = :space, output_space = :space, apply_model = false,
+        apply_inverse_transform = false
     )
 
     # Nodes added: identity_matrix, combined matrix, output
     run_checks(
         :space_pos2, p.positions_transformed_f32c[], 3;
-        output_space = :space, apply_model = true, output_name = :space_pos2
+        output_space = :space, apply_model = true, output_name = :space_pos2,
+        apply_inverse_transform = false
     )
 
     # This should throw to avoid overwriting/reusing the wrong output
@@ -74,7 +77,8 @@ using ComputePipeline
     # No transform & projection
     run_checks(
         :raw, p.positions[], 1;
-        output_space = :space, apply_transform = false, output_name = :raw
+        output_space = :space, apply_transform = false, output_name = :raw,
+        apply_inverse_transform = false
     )
 
     # Constant space
