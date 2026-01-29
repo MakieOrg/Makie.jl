@@ -256,7 +256,7 @@ const REFIMG_STYLES = Styles(
         "border-radius" => "8px",
         "margin-bottom" => "16px"
     ),
-        CSS(
+    CSS(
         ".cycle-checkbox",
         "transform" => "scale(1.2)",
         "margin" => "4px 8px 4px 0",
