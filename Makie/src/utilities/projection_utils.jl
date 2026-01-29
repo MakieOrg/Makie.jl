@@ -220,7 +220,7 @@ function register_positions_projected!(
         output_space::Symbol = :pixel,
         input_name::Symbol = :positions_transformed_f32c,
         output_name::Symbol = Symbol(output_space, :_positions),
-        model_name::Symbol = :model,
+        model_name::Symbol = :model_f32c,
         postfix_matrix::Union{Nothing, Symbol} = nothing,
         yflip::Bool = false,
         apply_model::Bool = input_space === :space,
@@ -303,19 +303,6 @@ end
 function register_model_clip_planes!(attr, modelname = :model_f32c)
     map!(to_model_space, attr, [modelname, :clip_planes], :model_clip_planes)
     return
-end
-
-function register_f32c_matrix!(attr)
-    return map!(attr, :f32c, :f32c_matrix)
-end
-
-function apply_inverse_model_to_positions(model::Mat4, positions)
-    inv_model = inv(model)
-    return map(positions) do p
-        p4d = to_ndim(Point4d, to_ndim(Point3d, p, 0), 1)
-        p4d = inv_model * p4d
-        return Point3f(p4d[Vec(1, 2, 3)] ./ p4d[4])
-    end
 end
 
 ################################################################################
