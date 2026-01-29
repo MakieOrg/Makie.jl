@@ -1425,13 +1425,19 @@ $(ATTRIBUTE_DESCRIPTIONS)
         data = (a = [1, 2, 3], b = ["x", "y", "z"])
         "Custom column names to display. If `automatic`, uses the data's keys."
         column_names = automatic
-        "Column widths. Can be `:auto` (equal widths), a number (all same width), or a vector of widths."
+        "Column widths. Can be `:auto` (equal widths), `:fit` (auto-fit to content), a number (all same width), or a vector of widths."
         column_widths = :auto
+        "Row heights. Can be `automatic` (uniform using row_height), a number, or a vector of heights per row."
+        row_heights = automatic
 
         "Index of the currently selected row. 0 means no selection."
         i_selected = 0
         "The data of the currently selected row as a NamedTuple. This is the output observable to listen to."
         selection = nothing
+        "Selected cell as (row, col) tuple. (0, 0) means no cell selection."
+        i_selected_cell = (0, 0)
+        "The data of the currently selected cell. This is the output observable for cell-level selection."
+        cell_selection = nothing
 
         "Index of the column to sort by. 0 means no sorting."
         sort_column = 0
@@ -1458,9 +1464,11 @@ $(ATTRIBUTE_DESCRIPTIONS)
         "Whether to show sort direction indicator (↑/↓) in the header."
         show_sort_indicator = true
 
-        "Background color of even-numbered data rows."
+        "Per-cell background colors as a Matrix. If `automatic`, uses even/odd coloring."
+        cell_color = automatic
+        "Background color of even-numbered data rows (when cell_color is automatic)."
         cell_color_even = RGBf(0.98, 0.98, 0.98)
-        "Background color of odd-numbered data rows."
+        "Background color of odd-numbered data rows (when cell_color is automatic)."
         cell_color_odd = RGBf(0.94, 0.94, 0.94)
         "Background color of the hovered row."
         cell_color_hover = COLOR_ACCENT_DIMMED[]
@@ -1492,6 +1500,10 @@ $(ATTRIBUTE_DESCRIPTIONS)
         on_row_doubleclick = nothing
         "Callback function `(table, column_index, direction) -> nothing` called when sort changes."
         on_sort_change = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell click."
+        on_cell_click = nothing
+        "Callback function `(table, row, col, cell_data) -> nothing` called on cell right-click."
+        on_cell_rightclick = nothing
     end
 end
 

@@ -82,6 +82,36 @@ t = Table(fig[1, 1];
 fig
 ```
 
+## Per-Cell Colors
+
+You can provide a matrix for `cell_color` and/or `cell_textcolor` to color individual cells:
+
+```@figure backend=GLMakie
+
+fig = Figure()
+
+data = (
+    name = ["Alice", "Bob", "Charlie", "Diana"],
+    score = [95, 82, 78, 91],
+    status = ["Pass", "Pass", "Fail", "Pass"]
+)
+
+# Create color matrix based on data
+colors = [
+    RGBf(0.9, 1.0, 0.9)  RGBf(0.9, 1.0, 0.9)  RGBf(0.9, 1.0, 0.9);
+    RGBf(0.9, 1.0, 0.9)  RGBf(1.0, 1.0, 0.8)  RGBf(0.9, 1.0, 0.9);
+    RGBf(0.9, 1.0, 0.9)  RGBf(1.0, 0.8, 0.8)  RGBf(1.0, 0.8, 0.8);
+    RGBf(0.9, 1.0, 0.9)  RGBf(0.9, 1.0, 0.9)  RGBf(0.9, 1.0, 0.9)
+]
+
+t = Table(fig[1, 1];
+    data = data,
+    cell_color = colors
+)
+
+fig
+```
+
 
 ## Sorting
 
@@ -130,6 +160,30 @@ t.on_sort_change[] = (table, column_index, direction) -> begin
     println("Sorted by column $column_index ($direction)")
 end
 ```
+
+## Auto-Fit Columns
+
+You can automatically resize columns to fit their content using `auto_fit_columns!`:
+
+```julia
+using GLMakie
+
+fig = Figure()
+data = (
+    name = ["Short", "A much longer name here", "Medium"],
+    value = [1, 2, 3]
+)
+
+t = Table(fig[1, 1]; data = data)
+
+# Render once, then auto-fit columns to content
+display(fig)
+auto_fit_columns!(t.plots[1])  # Access the TablePlot
+
+fig
+```
+
+Similarly, `auto_fit_rows!` adjusts row heights to fit text content.
 
 
 ## Attributes
