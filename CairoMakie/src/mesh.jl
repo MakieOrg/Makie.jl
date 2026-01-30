@@ -397,7 +397,8 @@ function draw_atomic(scene::Scene, screen::Screen, @nospecialize(plot::Makie.Mes
     # The rest happens in draw_scattered_mesh()
     transformed_pos = Makie.apply_model(
         plot.model_f32c[]::Mat4f,
-        plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}})
+        plot.positions_transformed_f32c[]::Union{Vector{Point2f}, Vector{Point3f}}
+    )
     colors = compute_colors(plot)
     uv_transform = plot.pattern_uv_transform[]
 
