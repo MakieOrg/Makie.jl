@@ -1036,17 +1036,17 @@ end
 ################################################################################
 
 
-function Brickmap{T}(bricksize, _size) where {T}
-    return Brickmap{T}(Makie.to3tuple(bricksize), Makie.to3tuple(_size))
+function Brickmap{T}(bricksize, _size; kwargs...) where {T}
+    return Brickmap{T}(Makie.to3tuple(bricksize), Makie.to3tuple(_size); kwargs...)
 end
 
-function Brickmap{T}(bricksize::NTuple{3, Int}, _size::NTuple{3, Int}) where {T}
+function Brickmap{T}(bricksize::NTuple{3, Int}, _size::NTuple{3, Int}; kwargs...) where {T}
     bricks = Array{T, 3}[]
     idx_size = cld.(_size .- 1, bricksize .- 1)
     indices = fill(UInt32(0), idx_size)
-    brick_buffer = Array{T, 3}(undef, bricksize)
+    attributes = Dict{Symbol, Any}(kwargs)
 
-    return Brickmap{T}(indices, bricks, _size, bricksize, brick_buffer)
+    return Brickmap{T}(indices, bricks, attributes, _size, bricksize)
 end
 
 get_brick_index(bm::Brickmap, i, j, k) = bm.indexmap[i, j, k]
@@ -1106,6 +1106,8 @@ function Base.show(io::IO, ::MIME"text/plain", brickmap::Brickmap{T}) where {T}
     print(io, "  $(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2])
 end
 
+Base.getindex(b::Brickmap, s::Symbol) = b.attributes[s]
+
 function pack_bricks(brickmap::Makie.Brickmap)
     packed, N = pack_bricks(brickmap.bricks, brickmap.bricksize)
     return packed
@@ -1126,14 +1128,21 @@ function pack_bricks(bricks, bricksize, skip = 0)
     return packed, N
 end
 
+struct SparseBrickmapColors
+    indexmap::Vector{Tuple{Bool, UInt32}}
+    static_colors::Vector{RGB{N0f8}}
+    color_bricks::Vector{Array{RGB{N0f8}, 3}}
+end
+
 function maybe_add_brick!(
         brickmap::Brickmap, root::SDF.Node,
         i, j, k,
         mini, delta, brick_delta,
         bricksize,
-        uint8_scale
+        uint8_scale,
+        brick = Array{N0f8, 3}(undef, brickmap.bricksize),
+        color_buffer = Array{RGB{N0f8}, 3}(undef, brickmap.bricksize)
     )
-    brick = brickmap.brick_buffer
     origin = Point3f(mini + delta .* ((i, j, k) .- 1))
 
     # > How aggresiively can we discard bricks?
@@ -1149,6 +1158,9 @@ function maybe_add_brick!(
     # TODO: Or maybe add it as a conversion kwarg?
     contains_positive = false
     contains_negative = false
+    contains_multiple_colors = false
+    first_color_set = false
+    first_color = RGB{N0f8}(0,0,0)
 
     for bk in 1:bricksize
         z = origin[3] + brick_delta[3] * (bk - 1)
@@ -1156,19 +1168,49 @@ function maybe_add_brick!(
             y = origin[2] + brick_delta[2] * (bj - 1)
             for bi in 1:bricksize
                 x = origin[1] + brick_delta[1] * (bi - 1)
-                dist = SDF.compute_signed_distance_at(root, Point3f(x, y, z))
-                # -celldiameter .. celldiameter -> 0..255
-                f_normed = clamp(uint8_scale * dist + 0.5f0, 0f0, 1f0)
-                brick[bi, bj, bk] = N0f8(f_normed)
-                contains_negative |= dist <= 0
-                contains_positive |= dist >= 0
+
+                sdf, color = SDF.compute_color_at(root, Point3f(x, y, z))
+
+                # -celldiameter .. celldiameter ->  -0.5 .. 0.5
+                f_normed = uint8_scale * sdf
+                f01 = clamp(f_normed + 0.5f0, 0f0, 1f0)
+                brick[bi, bj, bk] = N0f8(f01)
+                contains_negative |= sdf <= 0
+                contains_positive |= sdf >= 0
+
+                rgb8 = RGB{N0f8}(color)
+                if !contains_multiple_colors && abs(f_normed) < 0.5f0
+                    if !first_color_set
+                        first_color = rgb8
+                        first_color_set = true
+                    elseif rgb8 != first_color
+                        contains_multiple_colors = true
+                    end
+                end
+                color_buffer[bi, bj, bk] = rgb8
             end
         end
     end
 
     # Less aggressive discard
     if any(x -> 0 < x < 1, brick)
+        # Note: needs lock for multithreading
         insert_brick!(brickmap, i, j, k, copy(brick))
+
+        bmc = brickmap[:color]::SparseBrickmapColors
+        if contains_multiple_colors
+            push!(bmc.color_bricks, copy(color_buffer))
+            push!(bmc.indexmap, (false, length(bmc.color_bricks)))
+        else
+            idx = findfirst(==(first_color), bmc.static_colors)
+            if isnothing(idx)
+                push!(bmc.static_colors, first_color)
+                push!(bmc.indexmap, (true, length(bmc.static_colors)))
+            else
+                push!(bmc.indexmap, (true, idx))
+            end
+        end
+
         return true
     end
 
@@ -1190,7 +1232,11 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     N_blocks = cld(N-1, bricksize-1)
     N = N_blocks * (bricksize-1) + 1
 
-    brickmap = Brickmap{N0f8}(bricksize, N)
+    brickmap_colors = SparseBrickmapColors(
+        Tuple{Bool, UInt32}[], RGB{N0f8}[], Array{RGB{N0f8}, 3}[]
+    )
+
+    brickmap = Brickmap{N0f8}(bricksize, N, color = brickmap_colors)
     @assert all(==(N), brickmap.size)
     @assert all(==(N_blocks), size(brickmap.indexmap))
 
@@ -1207,6 +1253,10 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     # scales distances from -cellsize .. cellsize -> 0 .. 1
     # where cellsize is the (1, 1, 1) distance to the next entry
     uint8_scale = 0.5f0 * bricksize / brickdiameter
+
+    # Note: one buffer per thread for multithreading, or create them per thread?
+    brick_buffer = Array{N0f8, 3}(undef, brickmap.bricksize)
+    color_buffer = Array{RGB{N0f8}, 3}(undef, brickmap.bricksize)
 
     content_count = 0
     content_count2 = 0
@@ -1228,7 +1278,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
                         content_count2 += maybe_add_brick!(
                             brickmap, root, i, j, k,
                             mini, delta, brick_delta,
-                            bricksize, uint8_scale
+                            bricksize, uint8_scale,
+                            brick_buffer, color_buffer
                         )
                     end
 
@@ -1258,83 +1309,8 @@ function convert_arguments(::VolumeLike, x, y, z, node::SDF.Node)
     return (ep_x, ep_y, ep_z, brickmap)
 end
 
-struct BrickmapColors
-    indexmap::Vector{Tuple{Bool, UInt32}}
-    static_colors::Vector{RGB{N0f8}}
-    color_bricks::Vector{Array{RGB{N0f8}, 3}}
-    bricksize::Tuple{Int, Int, Int}
-end
-
-function generate_brick_colors(brickmap::Brickmap, bb::Rect3f, root::SDF.Node)
-    N_blocks = size(brickmap.indexmap)
+function pack_brick_colors(brickmap::Brickmap, colors::SparseBrickmapColors)
     bricksize = brickmap.bricksize
-    mini = minimum(bb)
-    delta = widths(bb) ./ N_blocks
-    brick_delta = delta ./ (bricksize .- 1)
-
-    cellsize = 2 * sqrt(3) * norm(widths(bb)) / ((N_blocks[1] - 1) * bricksize[1])
-
-    indexmap = Vector{Tuple{Bool, UInt32}}(undef, length(brickmap.bricks))
-    static_colors = RGB{N0f8}[]
-    color_bricks = Array{RGB{N0f8}, 3}[]
-
-    color_buffer = Array{RGB{N0f8}, 3}(undef, bricksize)
-
-    for ijk in CartesianIndices(brickmap.indexmap)
-        brick_idx = brickmap.indexmap[ijk]
-        if brick_idx != 0
-            i, j, k = Tuple(ijk)
-            brick_origin = Point3f(
-                mini[1] + delta[1] * (i - 1),
-                mini[2] + delta[2] * (j - 1),
-                mini[3] + delta[3] * (k - 1)
-            )
-
-            first_color = RGBA{N0f8}(0,0,0,0)
-            first_color_set = false
-            contains_multiple = false
-
-            for bk in 1:bricksize[3], bj in 1:bricksize[2], bi in 1:bricksize[1]
-                pos = brick_origin + Point3f(
-                    brick_delta[1] * (bi - 1),
-                    brick_delta[2] * (bj - 1),
-                    brick_delta[3] * (bk - 1)
-                )
-
-                sdf, color = SDF.compute_color_at(root, pos)
-                rgb8 = RGB{N0f8}(color)
-                if !contains_multiple && abs(sdf) < cellsize
-                    if !first_color_set
-                        first_color = rgb8
-                        first_color_set = true
-                    elseif rgb8 != first_color
-                        contains_multiple = true
-                    end
-                end
-                color_buffer[bi, bj, bk] = rgb8
-            end
-
-            if contains_multiple
-                push!(color_bricks, copy(color_buffer))
-                indexmap[brick_idx] = (false, length(color_bricks))
-            else
-                idx = findfirst(==(first_color), static_colors)
-                if isnothing(idx)
-                    push!(static_colors, first_color)
-                    indexmap[brick_idx] = (true, length(static_colors))
-                else
-                    indexmap[brick_idx] = (true, idx)
-                end
-            end
-
-        end
-    end
-
-    return BrickmapColors(indexmap, static_colors, color_bricks, bricksize)
-end
-
-function pack_brick_colors(colors::BrickmapColors)
-    bricksize = colors.bricksize
     entries_per_brick = prod(bricksize)
     n_static_color_bricks = max(1, cld(length(colors.static_colors), entries_per_brick))
 
