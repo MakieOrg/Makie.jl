@@ -309,7 +309,7 @@ module SDF
             if command.id == Commands.op_union
                 return min(sdf1, sdf2)
             elseif command.id == Commands.op_subtraction
-                return max(-sdf1, sdf2)
+                return max(sdf1, -sdf2)
             elseif command.id == Commands.op_intersection
                 return max(sdf1, sdf2)
             elseif command.id == Commands.op_xor
@@ -344,7 +344,7 @@ module SDF
                 left = sdf1 < sdf2
                 return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
             elseif command.id == Commands.op_subtraction
-                return max(-sdf1, sdf2), ifelse(-sdf1 > sdf2, color1, color2)
+                return max(sdf1, -sdf2), color1
             elseif command.id == Commands.op_intersection
                 left = sdf1 > sdf2
                 return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
