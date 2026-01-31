@@ -9,9 +9,7 @@ Bresenham's line algorithm to get all pixels between two points.
   IBM Systems Journal 4, 25-30. \
   https://doi.org/10.1147/sj.41.0025
 """
-function bresenham_line(x1::Int, y1::Int, x2::Int, y2::Int)::Vector{Tuple{Int,Int}}
-    pixels = Tuple{Int,Int}[]
-
+function bresenham_line!(buffer::Matrix{Float64}, x1::Int, y1::Int, x2::Int, y2::Int, max_x::Int, max_y::Int)
     dx = abs(x2 - x1)
     dy = abs(y2 - y1)
     sx = x1 < x2 ? 1 : -1
@@ -21,7 +19,9 @@ function bresenham_line(x1::Int, y1::Int, x2::Int, y2::Int)::Vector{Tuple{Int,In
     x, y = x1, y1
 
     while true
-        push!(pixels, (x, y))
+        if 1 <= x <= max_x && 1 <= y <= max_y
+            buffer[x, y] = 1.0
+        end
 
         if x == x2 && y == y2
             break
@@ -37,13 +37,16 @@ function bresenham_line(x1::Int, y1::Int, x2::Int, y2::Int)::Vector{Tuple{Int,In
             y += sy
         end
     end
-
-    return pixels
 end
 
 """
     compute_normalized_density(
-        series::AbstractVector, bins_x::Int, bins_y::Int
+        density_buffer::Matrix{Float64},
+        series::AbstractVector,
+        bins_x::Int,
+        bins_y::Int,
+        value_min::AbstractFloat,
+        value_max::AbstractFloat,
     )::Matrix{Float64}
 
 Compute arc-length normalized density for a single time series using Bresenham-style line
@@ -56,20 +59,20 @@ rendering.
   https://doi.org/10.48550/arXiv.1808.06019
 
 # Arguments
-- `series::AbstractVector`: A single time series (vector of values over time)
-- `bins_x::Int`: Number of bins in the time dimension (horizontal resolution)
-- `bins_y::Int`: Number of bins in the value dimension (vertical resolution)
-
-# Returns
-`density::Matrix{Float64}`: A `bins_x ⋅ bins_y` matrix where each entry represents the
-  normalized density contribution of this time series at that location.
-  Each column sums to at most 1.0 (or 0.0 if no data passes through that time bin).
+- `density_buffer`: Cache for density values
+- `series`: A single time series (vector of values over time)
+- `bins_x`: Number of bins in the time dimension (horizontal resolution)
+- `bins_y`: Number of bins in the value dimension (vertical resolution)
 """
-function compute_normalized_density(
-    series::AbstractVector, bins_x::Int, bins_y::Int, value_min::AbstractFloat, value_max::AbstractFloat
-)::Matrix{Float64}
+function compute_normalized_density!(
+    density_buffer::Matrix{Float64},
+    series::AbstractVector,
+    bins_x::Int,
+    bins_y::Int,
+    value_min::AbstractFloat,
+    value_max::AbstractFloat,
+)::Nothing
     n_times = length(series)
-    dense_mat = zeros(bins_x, bins_y)
 
     # Map time indices to bins
     time_to_bin = range(1, bins_x, n_times)
@@ -85,24 +88,18 @@ function compute_normalized_density(
         x2 = round(Int, time_to_bin[i + 1])
         y2 = value_to_bin(series[i + 1])
 
-        pixels = bresenham_line(x1, y1, x2, y2)
-
-        for (px, py) in pixels
-            if 1 <= px <= bins_x && 1 <= py <= bins_y
-                dense_mat[px, py] = 1.0
-            end
-        end
+        bresenham_line!(density_buffer, x1, y1, x2, y2, bins_x, bins_y)
     end
 
     # Apply arc length normalization
-    for row in 1:bins_x
-        col_sum = sum(view(dense_mat, row, :))
+    @views for row in 1:bins_x
+        col_sum = sum(view(density_buffer, row, :))
         if col_sum > 0
-            dense_mat[row, :] ./= col_sum
+            density_buffer[row, :] ./= col_sum
         end
     end
 
-    return dense_mat
+    return nothing
 end
 
 function denseline_data(ts_matrix::T, bins_x::Int64, bins_y::Int64)::T where {T<:AbstractMatrix}
@@ -111,12 +108,14 @@ function denseline_data(ts_matrix::T, bins_x::Int64, bins_y::Int64)::T where {T<
     value_max = maximum(ts_matrix)
 
     density_map = zeros(bins_x, bins_y)
+    density_tmp = zeros(bins_x, bins_y)
 
     # Process each time series
     for series_idx in axes(ts_matrix, 2)
         series = view(ts_matrix, :, series_idx)
-        series_density = compute_normalized_density(series, bins_x, bins_y, value_min, value_max)
-        density_map .+= series_density
+        compute_normalized_density!(density_tmp, series, bins_x, bins_y, value_min, value_max)
+        density_map .+= density_tmp
+        fill!(density_tmp, 0.0)
     end
 
     return density_map
@@ -150,15 +149,10 @@ A Makie recipe for creating density line visualizations of multiple time series.
 end
 
 function Makie.plot!(dl::DenseLines)
-    # Extract the time series matrix from converted arguments
-    ts_matrix = dl.ts_matrix
-
     # Compute density data with dynamic updating
     map!(
         dl.attributes, [:ts_matrix, :bins_x, :bins_y], [:density_map, :value_min, :value_max]
     ) do ts_mat, bx, by
-        n_times, n_series = size(ts_mat)
-
         density_map = denseline_data(ts_mat, bx, by)
 
         # Define value range for binning
