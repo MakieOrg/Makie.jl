@@ -5,8 +5,11 @@ module SDF
     using ...Makie: Quaternion, RGBA, lerp
     using ...Makie
 
-    module Commands
+    ############################################################################
+    ### IDs
+    ############################################################################
 
+    module Commands
         @enum ID::UInt8 begin
             # prefix operations
             _reset # resets positional transformaitons (mostly prefix operations)
@@ -147,7 +150,12 @@ module SDF
         end
     end
 
-    begin
+
+    ############################################################################
+    ### SDF and Command evaluation
+    ############################################################################
+
+    @fastmath begin
         sign1(x::Real) = ifelse(signbit(x), -one(x), +one(x))
         sign1(x::VecTypes) = sign1.(x)
         norm2(v::VecTypes) = dot(v, v)
@@ -537,9 +545,10 @@ module SDF
             end
         end
 
+        # @fastmath replaces minimum, maximum
         function apply_prefix(command, bb::Rect3f)
-            mini = minimum(bb)
-            maxi = maximum(bb)
+            mini = GeometryBasics.minimum(bb)
+            maxi = GeometryBasics.maximum(bb)
             ws = widths(bb)
             if command.id == Commands.op_revolution
                 # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
@@ -580,7 +589,7 @@ module SDF
         end
 
         function apply_postfix(command, bb::Rect3f)
-            mini = minimum(bb)
+            mini = GeometryBasics.minimum(bb)
             ws = widths(bb)
             if command.id == Commands.op_extrusion
                 e = command.data
@@ -601,8 +610,8 @@ module SDF
             elseif length(bbs) == 1
                 return only(bbs)
             elseif command.id in (Commands.op_union, Commands.op_smooth_union)
-                mini = mapreduce(minimum, (a, b) -> min.(a, b), bbs)
-                maxi = mapreduce(maximum, (a, b) -> max.(a, b), bbs)
+                mini = mapreduce(GeometryBasics.minimum, (a, b) -> min.(a, b), bbs)
+                maxi = mapreduce(GeometryBasics.maximum, (a, b) -> max.(a, b), bbs)
                 return Rect3f(mini, maxi .- mini)
             elseif command.id in (Commands.op_subtraction, Commands.op_smooth_subtraction)
                 # TODO:
@@ -611,8 +620,8 @@ module SDF
                 return reduce(intersect, bbs)
             elseif command.id in (Commands.op_xor, Commands.op_smooth_xor)
                 # TODO:
-                mini = mapreduce(minimum, min, bbs)
-                maxi = mapreduce(maximum, max, bbs)
+                mini = mapreduce(GeometryBasics.minimum, min, bbs)
+                maxi = mapreduce(GeometryBasics.maximum, max, bbs)
                 return Rect3f(mini, maxi .- mini)
             end
             return Rect3f()
@@ -632,6 +641,9 @@ module SDF
 
     end
 
+    ############################################################################
+    ### SDF Tree
+    ############################################################################
 
     struct Command
         id::Commands.ID
@@ -659,6 +671,7 @@ module SDF
     struct Node
         # prefixes | shape or merge | postfixes
         commands::Vector{Command}
+        main_idx::Int # index of shape or merge command
         children::Vector{Node}
         bbox::Rect3f
     end
@@ -674,16 +687,17 @@ module SDF
 
         main = Command(op, reinterpret(Vec4f, to_color(color)), args...)
         # This assumes kwargs are ordered
-        commands = process_commands(main, kwargs)
+        commands, main_idx = process_commands(main, kwargs)
 
         bb = SDF.get_shape_bbox(commands)
 
-        return Node(commands, Node[], bb)
+        return Node(commands, main_idx, Node[], bb)
     end
 
     function process_commands(main, ops)
         was_postfix = false
         commands = Command[]
+        main_idx = 0
 
         prev = :nothing
         for (name, data) in ops
@@ -698,6 +712,7 @@ module SDF
             op = Command(id, data)
             if Commands.is_postfix(id) && !was_postfix
                 push!(commands, main, op)
+                main_idx = length(commands)
                 was_postfix = true
             else
                 push!(commands, op)
@@ -706,9 +721,12 @@ module SDF
             prev = name
         end
 
-        was_postfix || push!(commands, main)
+        if !was_postfix
+            push!(commands, main)
+            main_idx = length(commands)
+        end
 
-        return commands
+        return commands, main_idx
     end
 
     function Merge(op::Commands.ID, children::Tuple, args...; kwargs...)
@@ -739,7 +757,7 @@ module SDF
             bb = apply_postfix(commands[i], bb)
         end
 
-        return Node(commands, children, bb)
+        return Node(commands, 1, children, bb)
     end
 
     union(children::Node...; kwargs...) = Merge(Commands.op_union, children; kwargs...)
@@ -874,10 +892,16 @@ module SDF
     end
 
     function compute_leaf_signed_distance_at(node::SDF.Node, pos)
-        sdf = NaN32
-        for command in node.commands
-            pos, sdf = evaluate_command(command, pos, sdf)
+        for i in 1:node.main_idx-1
+            pos = evaluate_prefix_command(node.commands[i], pos)::Point3f
         end
+
+        sdf = evaluate_shape_command(node.commands[node.main_idx], pos)::Float32
+
+        for i in node.main_idx+1:length(node.commands)
+            sdf = evaluate_postfix_command(node.commands[i], pos, sdf)::Float32
+        end
+
         return sdf
     end
 
@@ -886,7 +910,7 @@ module SDF
             return compute_leaf_signed_distance_at(node, pos)
         else
             sdf = compute_signed_distance_at(node.children[1], pos)
-            merge_cmd = first(node.commands)
+            merge_cmd = node.commands[node.main_idx]
             for i in 2:length(node.children)
                 other = compute_signed_distance_at(node.children[i], pos)
                 sdf = evaluate_merge_command(merge_cmd, sdf, other)
@@ -899,14 +923,14 @@ module SDF
     end
 
     function compute_color_at(node::SDF.Node, pos)
-        if isempty(node.children)
+        # TODO: inbounds should be fine?
+        @inbounds if isempty(node.children)
             sdf = compute_leaf_signed_distance_at(node, pos)
-            idx = findfirst(cmd -> Commands.is_shape(cmd.id), node.commands)::Int
-            data = node.commands[idx].data
+            data = node.commands[node.main_idx].data
             color = RGBAf(data[1], data[2], data[3], data[4])
             return sdf, color
         else
-            sdf, color = compute_color_at(node.children[1], pos)
+            sdf, color = compute_color_at(node.children[node.main_idx], pos)
             merge_cmd = first(node.commands)
             for i in 2:length(node.children)
                 _sdf, _color = compute_color_at(node.children[i], pos)
@@ -1160,7 +1184,7 @@ function maybe_add_brick!(
     contains_negative = false
     contains_multiple_colors = false
     first_color_set = false
-    first_color = RGB{N0f8}(0,0,0)
+    first_color = RGB{N0f8}(1,0,1)
 
     for bk in 1:bricksize
         z = origin[3] + brick_delta[3] * (bk - 1)
@@ -1171,15 +1195,16 @@ function maybe_add_brick!(
 
                 sdf, color = SDF.compute_color_at(root, Point3f(x, y, z))
 
-                # -celldiameter .. celldiameter ->  -0.5 .. 0.5
+                # Note: converting to 0..1 and using the normal N0f8 constructor
+                # is noticably slower
+                # -celldiameter .. celldiameter ->  -127.5 .. 127.5
                 f_normed = uint8_scale * sdf
-                f01 = clamp(f_normed + 0.5f0, 0f0, 1f0)
-                brick[bi, bj, bk] = N0f8(f01)
+                brick[bi, bj, bk] = N0f8(trunc(UInt8, clamp(f_normed + 128, 0, 255.9)), nothing)
                 contains_negative |= sdf <= 0
                 contains_positive |= sdf >= 0
 
                 rgb8 = RGB{N0f8}(color)
-                if !contains_multiple_colors && abs(f_normed) < 0.5f0
+                if !contains_multiple_colors && abs(f_normed) < 127.5f0
                     if !first_color_set
                         first_color = rgb8
                         first_color_set = true
@@ -1250,9 +1275,9 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     # step through brick grid (delta is the width of the brick, bricksize is edge-like)
     brick_delta = delta / (bricksize - 1)
 
-    # scales distances from -cellsize .. cellsize -> 0 .. 1
+    # -cellsize .. cellsize -> -127.5 .. 127.5
     # where cellsize is the (1, 1, 1) distance to the next entry
-    uint8_scale = 0.5f0 * bricksize / brickdiameter
+    uint8_scale = 127.5f0 * bricksize / brickdiameter
 
     # Note: one buffer per thread for multithreading, or create them per thread?
     brick_buffer = Array{N0f8, 3}(undef, brickmap.bricksize)
