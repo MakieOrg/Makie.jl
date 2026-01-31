@@ -329,13 +329,13 @@ module SDF
                 if command.id == Commands.op_smooth_union
                     final_sign = 1f0
                 elseif command.id == Commands.op_smooth_subtraction
-                    sdf2 = -sdf2
+                    sdf1 = -sdf1
                 elseif command.id == Commands.op_smooth_intersection
                     sdf1 = -sdf1
                     sdf2 = -sdf2
                 else
-                    temp = min(sdf1, sdf2)
-                    sdf2 = -max(sdf1, sdf2)
+                    temp = -min(sdf1, sdf2)
+                    sdf2 = max(sdf1, sdf2)
                     sdf1 = temp
                 end
 
@@ -343,6 +343,14 @@ module SDF
                 s = h * h * smoothing
                 return final_sign * (min(sdf1, sdf2) - s)
             end
+        end
+
+        function smooth_union(sdf1, sdf2, smoothing)
+            h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) / smoothing, 1f0)
+            w = h * h
+            m = 0.5f0 * w
+            s = w * smoothing
+            return m, s
         end
 
         function evaluate_merge_command_with_color(command, sdf1, sdf2, color1, color2)
@@ -364,45 +372,40 @@ module SDF
                 )
                 sdf = max(min(sdf1, sdf2), -max(sdf1, sdf2))
                 return sdf, color
-            else # smooth cases
-                # TODO: fix this, it's bleeding
-                smoothing = command.data[1]
-                inv_smoothing = 1f0 / smoothing
-
-                final_sign = -1f0
-                if command.id == Commands.op_smooth_union
-                    final_sign = 1f0
-                elseif command.id == Commands.op_smooth_subtraction
-                    sdf2 = -sdf2
-                elseif command.id == Commands.op_smooth_intersection
-                    sdf1 = -sdf1
-                    sdf2 = -sdf2
-                else
-                    temp = min(sdf1, sdf2)
-                    sdf2 = -max(sdf1, sdf2)
-                    sdf1 = temp
-                    tempc = ifelse(sdf1 < sdf2, color1, color2)
-                    color2 = ifelse(sdf1 > sdf2, color1, color2)
-                    color1 = tempc
-                end
-
-                h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
-                w = h * h
-                m = 0.5f0 * w
-                s = w * smoothing
-                color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
-                sdf1 = final_sign * (ifelse(sdf1 < sdf2, sdf1, sdf2) - s)
-
-                # cubic
-                # smoothing *= 6f0
-                # inv_smoothing = 1f0 / smoothing
-                # h = max(smoothing -  abs(sdf1 - sdf2), 0f0) * inv_smoothing;
-                # m = h * h * h * 0.5f0;
-                # s = m * smoothing * 0.3333333333333333f0;
-                # color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1f0 - m))
-                # sdf1 = final_sign * ifelse(sdf1 < sdf2, sdf1 - s, sdf2 - s)
+            elseif command.id == Commands.op_smooth_union
+                m, s = smooth_union(sdf1, sdf2, command.data[1])
+                color = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
+                sdf = min(sdf1, sdf2) - s
+                return sdf, color
+            elseif command.id == Commands.op_smooth_subtraction
+                m, s = smooth_union(sdf1, -sdf2, command.data[1])
+                sdf = max(sdf1, -sdf2) + s
+                return sdf, color1 # removed color should not affect final color
+            elseif command.id == Commands.op_smooth_intersection
+                m, s = smooth_union(sdf1, sdf2, command.data[1])
+                color = lerp(color1, color2, ifelse(sdf1 > sdf2, m, 1 - m))
+                sdf = max(sdf1, sdf2) + s
+                return sdf, color
+            elseif command.id == Commands.op_smooth_xor
+                # color doesn't depend on the part that removed
+                color = ifelse(sdf1 < sdf2, color1, color2)
+                union = min(sdf1, sdf2)
+                intersection = max(sdf1, sdf2)
+                m, s = smooth_union(union, -intersection, command.data[1])
+                sdf = max(union, -intersection) + s
+                return sdf, color
+            else
+                error("Unknown command $(command.id)")
                 return sdf1, color1
             end
+            # cubic
+            # smoothing *= 6f0
+            # inv_smoothing = 1f0 / smoothing
+            # h = max(smoothing -  abs(sdf1 - sdf2), 0f0) * inv_smoothing;
+            # m = h * h * h * 0.5f0;
+            # s = m * smoothing * 0.3333333333333333f0;
+            # color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1f0 - m))
+            # sdf1 = final_sign * ifelse(sdf1 < sdf2, sdf1 - s, sdf2 - s)
         end
 
         function evaluate_prefix_command(command, pos)
@@ -617,7 +620,7 @@ module SDF
                 # TODO:
                 return first(bbs)
             elseif command.id in (Commands.op_intersection, Commands.op_smooth_intersection)
-                return reduce(intersect, bbs)
+                return reduce(Base.intersect, bbs)
             elseif command.id in (Commands.op_xor, Commands.op_smooth_xor)
                 # TODO:
                 mini = mapreduce(GeometryBasics.minimum, min, bbs)
@@ -762,12 +765,14 @@ module SDF
 
     union(children::Node...; kwargs...) = Merge(Commands.op_union, children; kwargs...)
     diff(children::Node...; kwargs...) = Merge(Commands.op_subtraction, children; kwargs...)
+    subtract(children::Node...; kwargs...) = diff(children...; kwargs...)
     intersect(children::Node...; kwargs...) = Merge(Commands.op_intersection, children; kwargs...)
     xor(children::Node...; kwargs...) = Merge(Commands.op_xor, children; kwargs...)
 
     function smooth_union(children::Node...; smooth, kwargs...)
         return Merge(Commands.op_smooth_union, children, smooth; kwargs...)
     end
+    smooth_subtract(children::Node...; kwargs...) = smooth_diff(children...; kwargs...)
     function smooth_diff(children::Node...; smooth, kwargs...)
         return Merge(Commands.op_smooth_subtraction, children, smooth; kwargs...)
     end
