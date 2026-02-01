@@ -643,22 +643,39 @@ void main()
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
-    vec3 dir;
+    vec3 dir, start;
+    vec3 stop = back_position;
+
     if (is_orthographic)
-        dir = mat3(modelinv) * -view_direction; // is this correct for a direction?
+    {
+        dir = mat3(modelinv) * -view_direction;
+        dir = normalize(dir);
+
+        // How far along dir is the near plane?
+        // For orthographic projections:
+        // dir, eyeposition define the plane from which every ray originates
+        // start is on the plane such that start + t * dir == stop
+        //      stop
+        //       /|
+        //      / | dir
+        //     /  |
+        // eye ---- start
+        start = stop + dot(eye_unit - stop, dir) * dir;
+    }
     else
+    {
+        start = eye_unit;
         dir = normalize(eye_unit - back_position);
+    }
 
     // In model space (pre model application) the volume is defined in a const
     // 0..1 box. If the camera is inside the box we start our rays from the
     // camera position (eyeposition).
     // TODO: Should we consider near here?
 
-    bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
-            || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
+    bool is_outside_box = (start.x < 0.0 || start.y < 0.0 || start.z < 0.0
+            || start.x > 1.0 || start.y > 1.0 || start.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
 
     // Otherwise we find the box - ray intersection so we can skip the empty
     // space between the camera and the volume
@@ -673,6 +690,8 @@ void main()
         float solution = min_bigger_0(solution_1, solution_0);
         start = back_position + solution * dir;
     }
+
+
 
 #ifdef ENABLE_DEPTH
     vec4 frag_coord = projectionview * model * vec4(start, 1);
