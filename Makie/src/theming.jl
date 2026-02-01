@@ -158,7 +158,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
         tonemap = :aces,
         gamma = 2.2f0,
         sensor = nothing,  # FilmSensor(iso=100, white_balance=0) for pbrt-style sensor simulation
-        backend = Array  # Array for CPU, ROCArray for AMD GPU, CuArray for NVIDIA GPU
+        backend = Array,  # Array for CPU, ROCArray for AMD GPU, CuArray for NVIDIA GPU
+        denoise = false,  # Enable à-trous wavelet denoising
+        denoise_config = nothing  # DenoiseConfig(iterations=5, sigma_color=4.0, ...)
     )
 )
 
