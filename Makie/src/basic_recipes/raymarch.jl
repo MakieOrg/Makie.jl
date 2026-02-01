@@ -853,7 +853,7 @@ module SDF
     function apply_merge!(cmd::Command, left::Vector{Base.RefValue{Rect3f}}, right::Vector{Base.RefValue{Rect3f}})
         if cmd.id == Commands.op_subtraction
             # left: keep (may or may not be removed depending on right)
-            # right: intersect (only matters if intersecting left)
+            # right: intersections (only matters where it intersects with left)
             for b in right
                 affected = Rect3f()
                 for a in left
@@ -1267,6 +1267,14 @@ function maybe_add_brick!(
     first_color_set = false
     first_color = RGB{N0f8}(1,0,1)
 
+    function fast_rgb8(c)
+        return RGB{N0f8}(
+            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+        )
+    end
+
     for bk in 1:bricksize
         z = origin[3] + brick_delta[3] * (bk - 1)
         for bj in 1:bricksize
@@ -1284,7 +1292,7 @@ function maybe_add_brick!(
                 contains_negative |= sdf <= 0
                 contains_positive |= sdf >= 0
 
-                rgb8 = RGB{N0f8}(color)
+                rgb8 = fast_rgb8(color)
                 if !contains_multiple_colors && abs(f_normed) < 127.5f0
                     if !first_color_set
                         first_color = rgb8
