@@ -676,7 +676,11 @@ module SDF
         commands::Vector{Command}
         main_idx::Int # index of shape or merge command
         children::Vector{Node}
-        bbox::Rect3f
+
+        # aware of this node + children
+        local_bbox::Rect3f
+        # aware of all operations
+        global_bbox::Base.RefValue{Rect3f}
     end
 
     function Shape(op::Symbol, args...; color = :orange, kwargs...)
@@ -694,7 +698,7 @@ module SDF
 
         bb = SDF.get_shape_bbox(commands)
 
-        return Node(commands, main_idx, Node[], bb)
+        return Node(commands, main_idx, Node[], bb, Ref{Rect3f}())
     end
 
     function process_commands(main, ops)
@@ -754,13 +758,13 @@ module SDF
             push!(commands, Command(id, data))
         end
 
-        bbs = map(child -> child.bbox, children)
+        bbs = map(child -> child.local_bbox, children)
         bb = apply_merge(commands[1], bbs)
         for i in 2:length(commands)
             bb = apply_postfix(commands[i], bb)
         end
 
-        return Node(commands, 1, children, bb)
+        return Node(commands, 1, children, bb, Ref{Rect3f}())
     end
 
     union(children::Node...; kwargs...) = Merge(Commands.op_union, children; kwargs...)
@@ -837,63 +841,134 @@ module SDF
         return id_buffer, data_buffer
     end
 
-    # TODO: correct merging
-    function is_inside_sdf(node::SDF.Node, pos)
-        if pos in node.bbox
-            if isempty(node.children)
-                return true
-            else
-                idx = findfirst(cmd -> Commands.is_smooth_merge(cmd.id), node.commands)
-                if isnothing(idx)
-                    for child in node.children
-                        if is_inside_sdf(child, pos)
-                            return true
-                        end
-                    end
-                else
-                    # This is not correct when merging more than 2 sdfs because
-                    # the displacement can stack
-                    range = node.commands[idx].data[1]::Float32
-                    for child in node.children
-                        if is_inside_sdf(child, pos, range)
-                            return true
-                        end
+    # complex later...
+    # 1. collect leaf bbs in vector
+    # 2. apply operations
+    # 3. deposit leaf bbs & compute merged bbs
+
+    # simple first!
+    deref(x) = x
+    deref(x::Base.RefValue) = x[]
+
+    function apply_merge!(cmd::Command, left::Vector{Base.RefValue{Rect3f}}, right::Vector{Base.RefValue{Rect3f}})
+        if cmd.id == Commands.op_subtraction
+            # left: keep (may or may not be removed depending on right)
+            # right: intersect (only matters if intersecting left)
+            for b in right
+                affected = Rect3f()
+                for a in left
+                    affected = Base.union(affected, Base.intersect(a[], b[]))
+                end
+                b[] = affected
+            end
+        elseif cmd.id == Commands.op_smooth_subtraction
+            # Tighter solution?
+            for b in right
+                affected = Rect3f()
+                for a in left
+                    affected = Base.union(affected, Base.union(a[], b[]))
+                end
+                b[] = affected
+            end
+        elseif cmd.id in (Commands.op_intersection, Commands.op_smooth_intersection)
+            # the result could be in any intersection created from any left and
+            # any right boundingbox
+            sleft = deref.(left)
+            sright = deref.(right)
+            foreach(bb -> bb[] = Rect3f(), left)
+            foreach(bb -> bb[] = Rect3f(), right)
+            for (ar, a) in zip(left, sleft)
+                for (br, b) in zip(right, sright)
+                    if overlaps(a, b)
+                        intersection = Base.intersect(a, b)
+                        ar[] = Base.union(ar[], intersection)
+                        br[] = Base.union(br[], intersection)
                     end
                 end
-                return false
             end
-        else
-            return false
+        # elseif cmd.id == Commands.op_union
+            # result is the combination of all bboxes
+        # elseif cmd.id == Commands.op_xor
+            # result could be anywhere in the union of left and right bboxes
+        elseif cmd.id == Commands.op_smooth_xor
+            append!(left, right)
+            bb = foldl((a, b) -> Base.union(deref(a), deref(b)), left)
+            foreach(x -> x[] = bb, left)
+            return left
+        elseif cmd.id == Commands.op_smooth_union
+            # only case where smoothing is not reductive
+            # TODO: Can we do better and apply a lower ceiling for the amount added here?
+            r = cmd.data[1] # smoothing range
+            append!(left, right)
+            bb = foldl((a, b) -> Base.union(deref(a), deref(b)), left)
+            bb = Rect3f(minimum(bb) .- r, widths(bb) .+ 2r)
+            foreach(x -> x[] = bb, left)
+            return left
         end
+        append!(left, right)
+        return left
     end
 
-    function is_inside_sdf(node::SDF.Node, pos, range)
-        ws = 0.5 .* widths(node.bbox)
-        dist = rect(pos .- minimum(node.bbox) .- ws, ws)
-        if dist < range
-            if isempty(node.children)
-                return true
-            else
-                idx = findfirst(cmd -> Commands.is_smooth_merge(cmd.id), node.commands)
-                if isnothing(idx)
-                    for child in node.children
-                        if is_inside_sdf(child, pos, range)
-                            return true
-                        end
-                    end
-                else
-                    range += node.commands[idx].data[1]::Float32
-                    for child in node.children
-                        if is_inside_sdf(child, pos, range)
-                            return true
-                        end
-                    end
-                end
-                return false
-            end
+    function calculate_global_bboxes!(node::SDF.Node, bbs = Base.RefValue{Rect3f}[])
+        if isempty(node.children) # leaf node
+            node.global_bbox[] = node.local_bbox
+            push!(bbs, node.global_bbox)
+
         else
-            return false
+            merge_cmd = node.commands[node.main_idx]
+
+            left = calculate_global_bboxes!(node.children[1])
+            right = Base.RefValue{Rect3f}[]
+            for i in 2:length(node.children)
+                calculate_global_bboxes!(node.children[i], right)
+                @assert !isempty(right)
+                apply_merge!(merge_cmd, left, right)
+                empty!(right)
+            end
+
+            for i in node.main_idx+1 : length(node.commands)
+                for bb in left
+                    bb[] = apply_postfix(node.commands[i], bb[])
+                end
+            end
+
+            append!(bbs, left)
+
+            node.global_bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left)
+            push!(bbs, node.global_bbox)
         end
+
+        return bbs
+    end
+
+    is_inside(pos::Point3, node::Node, range) = is_inside(pos, node.global_bbox[], range)
+    function is_inside(pos::Point3, bb::Rect3f, range)
+        ws = 0.5 .* widths(bb)
+        dist = rect(pos .- minimum(bb) .- ws, ws)
+        return dist < range
+    end
+
+    function copy_node_without_children(node::Node)
+        return Node(
+            node.commands, node.main_idx, Node[],
+            node.local_bbox, node.global_bbox
+        )
+    end
+
+    function trimmed_tree(region::Rect3f, ref_tree::Node)
+        new_tree = copy_node_without_children(ref_tree)
+        return trimmed_tree_rec!(new_tree, region, ref_tree)
+    end
+
+    function trimmed_tree_rec!(parent::Node, region::Rect3f, ref_tree::Node)
+        for child in ref_tree.children
+            if overlaps(child.global_bbox[], region)
+                node = copy_node_without_children(child)
+                push!(parent.children, node)
+                trimmed_tree_rec!(node, region, child)
+            end
+        end
+        return parent
     end
 
     function compute_leaf_signed_distance_at(node::SDF.Node, pos)
@@ -1173,6 +1248,7 @@ function maybe_add_brick!(
         color_buffer = Array{RGB{N0f8}, 3}(undef, brickmap.bricksize)
     )
     origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+    reduced_tree = SDF.trimmed_tree(Rect3f(origin, delta), root)
 
     # > How aggresiively can we discard bricks?
     # For a volume shape, the worst case is brick[:, :, end] .== 0.0. Two bricks
@@ -1198,7 +1274,7 @@ function maybe_add_brick!(
             for bi in 1:bricksize
                 x = origin[1] + brick_delta[1] * (bi - 1)
 
-                sdf, color = SDF.compute_color_at(root, Point3f(x, y, z))
+                sdf, color = SDF.compute_color_at(reduced_tree, Point3f(x, y, z))
 
                 # Note: converting to 0..1 and using the normal N0f8 constructor
                 # is noticably slower
@@ -1288,6 +1364,11 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     brick_buffer = Array{N0f8, 3}(undef, brickmap.bricksize)
     color_buffer = Array{RGB{N0f8}, 3}(undef, brickmap.bricksize)
 
+    bbs = SDF.calculate_global_bboxes!(root)
+    foreach(bbs) do bb_ref
+        bb_ref[] = Rect(minimum(bb_ref[]) .- delta, widths(bb_ref[]) .+ 2delta)
+    end
+
     content_count = 0
     content_count2 = 0
 
@@ -1299,7 +1380,7 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
                 x = mini[1] + delta[1] * (i - 0.5)
 
                 pos = Point3f(x, y, z)
-                if true # SDF.is_inside_sdf(root, pos, brickradius)
+                if SDF.is_inside(pos, root, brickradius)
                     content_count += 1
 
                     # check if brick could contain edge based on center
