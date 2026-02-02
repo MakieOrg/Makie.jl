@@ -1203,11 +1203,18 @@ function get_modifiable_brick(bm::Brickmap{T}, i, j, k) where {T}
     end
 end
 
+function Base.show(io::IO, brickmap::Brickmap{T}) where {T}
+    X, Y, Z = size(brickmap.indexmap)
+    print(io, "$(brickmap.size[1])×$(brickmap.size[2]) Brickmap{$T} with ")
+    print(io, X, "×", Y, "×", Z, " indices, ")
+    print(io, "$(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2], "×", brickmap.bricksize[3])
+end
+
 function Base.show(io::IO, ::MIME"text/plain", brickmap::Brickmap{T}) where {T}
-    N, M = size(brickmap.indexmap)
+    X, Y, Z = size(brickmap.indexmap)
     println(io, "$(brickmap.size[1])×$(brickmap.size[2]) Brickmap{$T}:")
-    println(io, "  ", N, "×", M, " indices")
-    print(io, "  $(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2])
+    println(io, "  ", X, "×", Y, "×", Z, " indices")
+    print(io, "  $(length(brickmap.bricks)) bricks of size ", brickmap.bricksize[1], "×", brickmap.bricksize[2], "×", brickmap.bricksize[3])
 end
 
 Base.getindex(b::Brickmap, s::Symbol) = b.attributes[s]
