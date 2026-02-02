@@ -409,39 +409,44 @@ module SDF
         end
 
         function evaluate_prefix_command(command, pos)
+            # Indexing directly is very beneficial here (indirect @inbounds)
+            data = command.data
             if command.id == Commands.op_revolution
                 # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
                 # float moves the 2d object away from th center of rotation
                 # TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
-                return Point3f(xy_norm(pos) - command.data[1], pos.z, 0f0);
+                return Point3f(xy_norm(pos) - data[1], pos.z, 0f0);
             elseif command.id == Commands.op_elongate
-                return pos - clamp.(pos, -command.data, command.data);
+                v = Vec3f(data[1], data[2], data[3])
+                return pos - clamp.(pos, -v, v);
             elseif command.id == Commands.op_rotation
-                return Quaternionf(command.data...) * pos
+                return Quaternionf(data[1], data[2], data[3], data[4]) * pos
             elseif command.id == Commands.op_mirror
                 # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
-                return Point3f(Makie.lerp.(pos, abs.(pos), command.data))
+                mirrored = Vec3f(data[1], data[2], data[3])
+                return Makie.lerp.(pos, abs.(pos), mirrored)
             elseif command.id == Commands.op_infinite_repetition
-                return pos - command.data .* round(pos ./ command.data);
+                rep = Vec3f(data[1], data[2], data[3])
+                return pos - rep .* round(pos ./ rep);
             elseif command.id == Commands.op_limited_repetition
-                rep_dist = Vec3f(view(command.data, 1:3))
-                limit = Vec3f(view(command.data, 4:6))
+                rep_dist = Vec3f(data[1], data[2], data[3])
+                limit = Vec3f(data[4], data[5], data[6])
                 return pos - rep_dist * clamp(round(pos ./ rep_dist), -limit, limit);
             elseif command.id == Commands.op_twist
-                k = command.data[1];
+                k = data[1];
                 c = cos(k * pos.z);
                 s = sin(k * pos.z);
                 T = Makie.Mat2f(c, -s, s, c);
                 return Point3f((T * pos[Vec(1, 2)])..., pos.z); # Quilez has this reorder (T*xz, y)
             elseif command.id == Commands.op_bend
-                k = command.data[1];
+                k = data[1];
                 c = cos(k * pos.z);
                 s = sin(k * pos.z);
                 T = Makie.Mat2f(c, -s, s, c);
                 p2 = T * Point2f(pos[1], pos[3])
                 return Point3f(p2[1], pos[2], p2[2]) # Quilez has this not reorder (T*xy, z)
             elseif command.id == Commands.op_translation
-                return pos .- Vec3f(command.data);
+                return pos .- Vec3f(data[1], data[2], data[3]);
             end
             return pos
         end
@@ -483,7 +488,8 @@ module SDF
 
         function evaluate_postfix_command(command, pos, sdf)
             if command.id == Commands.op_extrusion
-                vec = Vec2f(sdf, length(abs.(pos) .- command.data));
+                v = Vec3f(data[1], data[2], data[3])
+                vec = Vec2f(sdf, norm(abs.(pos) .- v));
                 sdf = min(max(vec[1], vec[2]), 0f0) + norm(max(vec, 0f0));
             elseif command.id == Commands.op_rounding
                 sdf = sdf - command.data[1]
@@ -1387,6 +1393,7 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
 
     content_count = 0
     content_count2 = 0
+    content_count3 = 0
 
     for k in 1:N_blocks
         z = mini[3] + delta[3] * (k - 0.5)
@@ -1402,7 +1409,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
                     # check if brick could contain edge based on center
                     dist = SDF.compute_signed_distance_at(root, pos)
                     if abs(dist) < brickradius
-                        content_count2 += maybe_add_brick!(
+                        content_count2 += 1
+                        content_count3 += maybe_add_brick!(
                             brickmap, root, i, j, k,
                             mini, delta, brick_delta,
                             bricksize, uint8_scale,
@@ -1415,9 +1423,11 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
         end
     end
 
-    @info "Rect Skipped $(100 - 100 * content_count / (N_blocks^3))%"
-    @info "SDF  Skipped $(100 - 100 * content_count2 / (N_blocks^3))%"
-    @info "Relative     $(100 - 100 * content_count2 / content_count)%"
+    @info "Rect  Skipped   $(100 - 100 * content_count / (N_blocks^3))%"
+    @info "SDF   Skipped   $(100 - 100 * content_count2 / (N_blocks^3))%"
+    @info "final Skipped   $(100 - 100 * content_count3 / (N_blocks^3))%"
+    @info "Relative 1 -> 2 $(100 - 100 * content_count2 / content_count)%"
+    @info "Relative 2 -> 3 $(100 - 100 * content_count3 / content_count2)%"
 
     return brickmap
 end
