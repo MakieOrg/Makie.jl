@@ -417,10 +417,10 @@ module SDF
             elseif command.id == Commands.op_elongate
                 return pos - clamp.(pos, -command.data, command.data);
             elseif command.id == Commands.op_rotation
-                return reinterpret(Quaternionf, command.data) * pos
+                return Quaternionf(command.data...) * pos
             elseif command.id == Commands.op_mirror
                 # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
-                return Makie.lerp.(pos, abs.(pos), command.data);
+                return Point3f(Makie.lerp.(pos, abs.(pos), command.data))
             elseif command.id == Commands.op_infinite_repetition
                 return pos - command.data .* round(pos ./ command.data);
             elseif command.id == Commands.op_limited_repetition
@@ -563,10 +563,10 @@ module SDF
             elseif command.id == Commands.op_elongate
                 return Rect3f(mini .- command.data, ws .+ 2 .* commanda.data)
             elseif command.id == Commands.op_rotation
-                return rotate_bbox(reinterpret(Quaternionf, command.data), bb)
+                return Makie.rotate_bbox(Quaternionf(command.data...), bb)
             elseif command.id == Commands.op_mirror
                 # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
-                sym_ws = max.(abs(mini), abs(maxi))
+                sym_ws = @. max(abs(mini), abs(maxi))
                 mini = lerp.(mini, -sym_ws, command.data)
                 maxi = lerp.(maxi, sym_ws, command.data)
                 return Rect3f(mini, maxi .- mini)
@@ -599,7 +599,8 @@ module SDF
                 return Rect3f(mini .- Vec3f(0,0, e), ws .+ Vec3f(0, 0, 2e))
             elseif command.id in (Commands.op_rounding, Commands.op_onion)
                 r = command.data[1]
-                return Rect3f(mini .- r, ws .+ 2r)
+                bb2 = Rect3f(mini .- r, ws .+ 2r)
+                return bb2
             else
                 return bb
             end
@@ -719,7 +720,7 @@ module SDF
             op = Command(id, data)
             if Commands.is_postfix(id) && !was_postfix
                 push!(commands, main, op)
-                main_idx = length(commands)
+                main_idx = length(commands) - 1
                 was_postfix = true
             else
                 push!(commands, op)
@@ -934,7 +935,7 @@ module SDF
 
             append!(bbs, left)
 
-            node.global_bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left)
+            node.global_bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left, init = Rect3f())
             push!(bbs, node.global_bbox)
         end
 
@@ -1277,8 +1278,8 @@ function maybe_add_brick!(
     function fast_rgb8(c)
         return RGB{N0f8}(
             N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
-            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
-            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * green(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * blue(c)), nothing),
         )
     end
 
