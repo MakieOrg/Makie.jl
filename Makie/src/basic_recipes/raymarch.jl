@@ -2,7 +2,7 @@ module SDF
     using LinearAlgebra
     using GeometryBasics
     using GeometryBasics: VecTypes
-    using ...Makie: Quaternion, RGBA, lerp
+    using ...Makie: Quaternion, RGBAf, lerp
     using ...Makie
 
     ############################################################################
@@ -412,7 +412,7 @@ module SDF
             return sdf, color
         end
 
-        function smooth_subtraction(sdf1, sdf2, color1, color2, smoothing)
+        function smooth_difference(sdf1, sdf2, color1, color2, smoothing)
             m, s = smooth_union_factors(sdf1, -sdf2, smoothing)
             sdf = max(sdf1, -sdf2) + s
             return sdf, color1 # removed color should not affect final color
@@ -484,31 +484,31 @@ module SDF
         data = command.data
 
         if command.id == Commands.shape3D_sphere
-            return OP.sphere(pos, data[5])::Float32
+            return OP.sphere(pos, data[5])
         elseif command.id == Commands.shape3D_octahedron
-            return OP.octahedron(pos, data[5])::Float32
+            return OP.octahedron(pos, data[5])
         elseif command.id == Commands.shape3D_pyramid
-            return OP.pyramid(pos, data[5], data[6])::Float32
+            return OP.pyramid(pos, data[5], data[6])
         elseif command.id == Commands.shape3D_torus
-            return OP.torus(pos, data[5], data[6])::Float32
+            return OP.torus(pos, data[5], data[6])
         elseif command.id == Commands.shape3D_capsule
-            return OP.capsule(pos, data[5], data[6])::Float32
+            return OP.capsule(pos, data[5], data[6])
         elseif command.id == Commands.shape3D_cylinder
-            return OP.cylinder(pos, data[5], data[6])::Float32
+            return OP.cylinder(pos, data[5], data[6])
         elseif command.id == Commands.shape3D_ellipsoid
-            return OP.ellipsoid(pos, Vec3f(data[5], data[6], data[7]))::Float32
+            return OP.ellipsoid(pos, Vec3f(data[5], data[6], data[7]))
         elseif command.id == Commands.shape3D_rect
-            return OP.rect(pos, Vec3f(data[5], data[6], data[7]))::Float32
+            return OP.rect(pos, Vec3f(data[5], data[6], data[7]))
         elseif command.id == Commands.shape3D_link
-            return OP.link(pos, data[5], data[6], data[7])::Float32
+            return OP.link(pos, data[5], data[6], data[7])
         elseif command.id == Commands.shape3D_cone
-            return OP.cone(pos, data[5], data[6])::Float32
+            return OP.cone(pos, data[5], data[6])
         elseif command.id == Commands.shape3D_capped_cone
-            return OP.capped_cone(pos, data[5], data[6], data[7])::Float32
+            return OP.capped_cone(pos, data[5], data[6], data[7])
         elseif command.id == Commands.shape3D_box_frame
-            return OP.box_frame(pos, Vec3f(data[5], data[6], data[7]), data[8])::Float32
+            return OP.box_frame(pos, Vec3f(data[5], data[6], data[7]), data[8])
         elseif command.id == Commands.shape3D_capped_torus
-            return OP.capped_torus(pos, data[5], data[6], data[7])::Float32
+            return OP.capped_torus(pos, data[5], data[6], data[7])
         else
             error("Unrecognized shape command $(command.id)")
             return 10_000f0
@@ -573,16 +573,158 @@ module SDF
         end
     end
 
-    function evaluate_command(command, pos::Point3f, sdf::Float32)
+    function evaluate_command(command, pos, sdf)
         if Commands.is_prefix(command.id)
-            return evaluate_prefix_command(command, pos)::Point3f, sdf
+            return evaluate_prefix_command(command, pos), sdf
         elseif Commands.is_shape(command.id)
-            return pos, evaluate_shape_command(command, pos)::Float32
+            return pos, evaluate_shape_command(command, pos)
         elseif Commands.is_postfix(command.id)
-            return pos, evaluate_postfix_command(command, pos, sdf)::Float32
+            return pos, evaluate_postfix_command(command, pos, sdf)
         else
             error("Could not process $command")
         end
+    end
+
+     function evaluate_prefix_command!(command, pos::Array)
+        # Indexing directly is very beneficial here (indirect @inbounds)
+        data = command.data
+        if command.id == Commands.op_revolution
+            pos .= OP.revolution.(pos, data[1])
+        elseif command.id == Commands.op_elongate
+            pos .= OP.elongate.(pos, Ref(Vec3f(data[1], data[2], data[3])))
+        elseif command.id == Commands.op_rotation
+            pos .= OP.rotation.(pos, Ref(Quaternionf(data[1], data[2], data[3], data[4])))
+        elseif command.id == Commands.op_mirror
+            pos .= OP.mirror.(pos, Ref(Vec3f(data[1], data[2], data[3])))
+        elseif command.id == Commands.op_infinite_repetition
+            pos .= OP.infinite_repetition.(pos, Ref(Vec3f(data[1], data[2], data[3])))
+        elseif command.id == Commands.op_limited_repetition
+            periods = Vec3f(data[1], data[2], data[3])
+            limits = Vec3f(data[4], data[5], data[6])
+            pos .= OP.limited_repetition.(pos, Ref(periods), Ref(limits))
+        elseif command.id == Commands.op_twist
+            pos .= OP.twist.(pos, data[1])
+        elseif command.id == Commands.op_bend
+            pos .= OP.bend.(pos, data[1])
+        elseif command.id == Commands.op_translation
+            pos .= OP.translation.(pos, Ref(Vec3f(data[1], data[2], data[3])))
+        else
+            error("Unrecognized prefix command $(command.id)")
+        end
+        return pos
+    end
+
+    function evaluate_shape_command!(command, pos::Array, sdf::Array)
+        # data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+        data = command.data
+
+        if command.id == Commands.shape3D_sphere
+            sdf .= OP.sphere.(pos, data[5])
+        elseif command.id == Commands.shape3D_octahedron
+            sdf .= OP.octahedron.(pos, data[5])
+        elseif command.id == Commands.shape3D_pyramid
+            sdf .= OP.pyramid.(pos, data[5], data[6])
+        elseif command.id == Commands.shape3D_torus
+            sdf .= OP.torus.(pos, data[5], data[6])
+        elseif command.id == Commands.shape3D_capsule
+            sdf .= OP.capsule.(pos, data[5], data[6])
+        elseif command.id == Commands.shape3D_cylinder
+            sdf .= OP.cylinder.(pos, data[5], data[6])
+        elseif command.id == Commands.shape3D_ellipsoid
+            sdf .= OP.ellipsoid.(pos, Ref(Vec3f(data[5], data[6], data[7])))
+        elseif command.id == Commands.shape3D_rect
+            sdf .= OP.rect.(pos, Ref(Vec3f(data[5], data[6], data[7])))
+        elseif command.id == Commands.shape3D_link
+            sdf .= OP.link.(pos, data[5], data[6], data[7])
+        elseif command.id == Commands.shape3D_cone
+            sdf .= OP.cone.(pos, data[5], data[6])
+        elseif command.id == Commands.shape3D_capped_cone
+            sdf .= OP.capped_cone.(pos, data[5], data[6], data[7])
+        elseif command.id == Commands.shape3D_box_frame
+            sdf .= OP.box_frame.(pos, Ref(Vec3f(data[5], data[6], data[7])), data[8])
+        elseif command.id == Commands.shape3D_capped_torus
+            sdf .= OP.capped_torus.(pos, data[5], data[6], data[7])
+        else
+            error("Unrecognized shape command $(command.id)")
+            sdf .= 10_000f0
+        end
+        return sdf
+    end
+
+    function evaluate_merge_command!(command, sdf1::Array, sdf2::Array)
+        if command.id == Commands.op_union
+            sdf1 .= OP.union.(sdf1, sdf2)
+        elseif command.id == Commands.op_subtraction
+            sdf1 .= OP.difference.(sdf1, sdf2)
+        elseif command.id == Commands.op_intersection
+            sdf1 .= OP.intersection.(sdf1, sdf2)
+        elseif command.id == Commands.op_xor
+            sdf1 .= OP.xor.(sdf1, sdf2)
+        elseif command.id == Commands.op_smooth_union
+            sdf1 .= OP.smooth_union.(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_subtraction
+            sdf1 .= OP.smooth_difference.(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_intersection
+            sdf1 .= OP.smooth_intersection.(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_xor
+            sdf1 .= OP.smooth_xor.(sdf1, sdf2, command.data[1])
+        else
+            error("$(command.id) is not a recognized merge command")
+        end
+        return sdf1
+    end
+
+    function evaluate_merge_command!(command, sdf1::Array, sdf2::Array, color1::Array, color2::Array)
+        if command.id == Commands.op_union
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.union(sdf1[i], sdf2[i], color1[i], color2[i])
+            end
+        elseif command.id == Commands.op_subtraction
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.difference(sdf1[i], sdf2[i], color1[i], color2[i])
+            end
+        elseif command.id == Commands.op_intersection
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.intersection(sdf1[i], sdf2[i], color1[i], color2[i])
+            end
+        elseif command.id == Commands.op_xor
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.xor(sdf1[i], sdf2[i], color1[i], color2[i])
+            end
+        elseif command.id == Commands.op_smooth_union
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.smooth_union(sdf1[i], sdf2[i], color1[i], color2[i], command.data[1])
+            end
+        elseif command.id == Commands.op_smooth_subtraction
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.smooth_difference(sdf1[i], sdf2[i], color1[i], color2[i], command.data[1])
+            end
+        elseif command.id == Commands.op_smooth_intersection
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.smooth_intersection(sdf1[i], sdf2[i], color1[i], color2[i], command.data[1])
+            end
+        elseif command.id == Commands.op_smooth_xor
+            for i in eachindex(sdf1)
+                sdf1[i], color1[i] = OP.smooth_xor(sdf1[i], sdf2[i], color1[i], color2[i], command.data[1])
+            end
+        else
+            error("$(command.id) is not a recognized merge command")
+        end
+        return sdf1, color1
+    end
+
+    function evaluate_postfix_command!(command, pos::Array, sdf::Array)
+        data = command.data
+        if command.id == Commands.op_extrusion
+            sdf .= OP.extrusion.(pos, sdf, Ref(Vec3f(data[1], data[2], data[3])))
+        elseif command.id == Commands.op_rounding
+            sdf .= OP.rounding.(pos, sdf, command.data[1])
+        elseif command.id == Commands.op_onion
+            sdf .= OP.onion.(pos, sdf, command.data[1])
+        else
+            error("$(command.id) is not a recognized postfix command.")
+        end
+        return sdf
     end
 
     @fastmath begin
@@ -750,7 +892,7 @@ module SDF
 
     make_splattable(x) = x
     make_splattable(q::Quaternion) = q.data
-    make_splattable(c::RGBA) = reinterpret(Vec4f, c)
+    make_splattable(c::RGBAf) = reinterpret(Vec4f, c)
 
     struct Node
         # prefixes | shape or merge | postfixes
@@ -866,6 +1008,18 @@ module SDF
     end
     function smooth_xor(children::Node...; smooth, kwargs...)
         return Merge(Commands.op_smooth_xor, children, smooth; kwargs...)
+    end
+
+    Base.show(io::IO, ::MIME"text/plain", node::Node) = show_rec(io, node)
+    function show_rec(io, node, depth = 0)
+        main = node.commands[node.main_idx]
+        name = Commands.get_name(main.id)
+        print(io, "  "^depth, "SDF ", name, " Node")
+        for child in node.children
+            println(io)
+            show_rec(io, child, depth+1)
+        end
+        return
     end
 
     function flatten_command_tree(node::Node, command_buffer = Command[])
@@ -1091,8 +1245,8 @@ module SDF
             color = RGBAf(data[1], data[2], data[3], data[4])
             return sdf, color
         else
-            sdf, color = compute_color_at(node.children[node.main_idx], pos)
-            merge_cmd = first(node.commands)
+            sdf, color = compute_color_at(node.children[1], pos)
+            merge_cmd = node.commands[node.main_idx]
             for i in 2:length(node.children)
                 _sdf, _color = compute_color_at(node.children[i], pos)
                 sdf, color = evaluate_merge_command(
@@ -1103,6 +1257,88 @@ module SDF
                 pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
             return sdf, color
+        end
+    end
+
+
+    mutable struct Cache{T}
+        size::NTuple{3, Int}
+        buffers::Vector{Array{T, 3}}
+        current::Int
+    end
+    Cache{T}(size) where {T} = Cache{T}(size, Array{T, 3}[], 0)
+    reset!(c::Cache) = c.current = 0
+    current(c::Cache) = c.buffers[c.current]
+    function get_buffer(c::Cache{T}) where {T}
+        c.current += 1
+        if c.current > length(c.buffers)
+            b = Array{T, 3}(undef, c.size)
+            push!(c.buffers, b)
+            return b
+        else
+            return c.buffers[c.current]
+        end
+    end
+    release!(c::Cache) = c.current -= 1
+    function get_first_buffer(c::Cache)
+        c.current == 1 || error("The front buffer is currently still reserved!")
+        return first(c.buffers)
+    end
+
+    function compute_color_at(node::SDF.Node, pos_cache::Cache{Point3f}, sdf_cache::Cache{Float32}, color_cache::Cache{RGBAf})
+        # TODO: inbounds should be fine?
+        pos = current(pos_cache)
+
+        @inbounds if isempty(node.children)
+            for i in 1:node.main_idx-1
+                evaluate_prefix_command!(node.commands[i], pos)
+            end
+
+            sdf = get_buffer(sdf_cache)
+            evaluate_shape_command!(node.commands[node.main_idx], pos, sdf)
+
+            for i in node.main_idx+1:length(node.commands)
+                evaluate_postfix_command!(node.commands[i], pos, sdf)
+            end
+
+            data = node.commands[node.main_idx].data
+            color = RGBAf(data[1], data[2], data[3], data[4])
+            fill!(get_buffer(color_cache), color)
+            return
+        else
+            parent_pos = current(pos_cache)
+            child_pos = get_buffer(pos_cache)
+            copyto!(child_pos, parent_pos)
+
+            compute_color_at(node.children[1], pos_cache, sdf_cache, color_cache)
+            left_sdf = current(sdf_cache)
+            left_color = current(color_cache)
+
+            merge_cmd = node.commands[node.main_idx]
+            for i in 2:length(node.children)
+                copyto!(child_pos, parent_pos)
+                compute_color_at(node.children[i], pos_cache, sdf_cache, color_cache)
+
+                right_sdf = current(sdf_cache)
+                right_color = current(color_cache)
+
+                evaluate_merge_command!(
+                    merge_cmd, left_sdf, right_sdf, left_color, right_color
+                )
+
+                # allow the right sdf, color buffers to be reused in the next
+                # iteration
+                release!(sdf_cache)
+                release!(color_cache)
+            end
+            # allow child_pos to be reused
+            release!(pos_cache)
+
+            # uses parent_pos, left_sdf
+            for i in node.main_idx+1 : length(node.commands)
+                evaluate_command!(node.commands[i], pos, sdf)
+            end
+            return
         end
     end
 
@@ -1424,6 +1660,109 @@ function maybe_add_brick!(
     return false
 end
 
+function maybe_add_brick!(
+        brickmap::Brickmap, root::SDF.Node,
+        i, j, k,
+        mini, delta, brick_delta,
+        uint8_scale,
+        pos_cache::SDF.Cache{<:Point},
+        sdf_cache::SDF.Cache{<:Real},
+        color_cache::SDF.Cache{<:Colorant}
+    )
+
+    # cleanup leftover state
+    SDF.reset!(pos_cache)
+    SDF.reset!(sdf_cache)
+    SDF.reset!(color_cache)
+
+    # setup positions
+    bricksize = brickmap.bricksize
+    origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+    positions = SDF.get_buffer(pos_cache)
+    @inbounds for ijk in CartesianIndices(bricksize)
+        _ijk = Tuple(ijk)
+        positions[ijk] = origin .+ brick_delta .* (_ijk .- 1)
+    end
+
+    # compute sdfs + colors
+    reduced_tree = SDF.trimmed_tree(Rect3f(origin, delta), root)
+    SDF.compute_color_at(reduced_tree, pos_cache, sdf_cache, color_cache)
+
+    # analyze results (should it create a brick?)
+    sdfs = SDF.get_first_buffer(sdf_cache)
+    colors = SDF.get_first_buffer(color_cache)
+
+    contains_positive = false
+    contains_negative = false
+    contains_resolvable_distance = false
+    contains_multiple_colors = false
+    first_color_set = false
+    first_color = colors[1]
+
+    @inbounds for i in eachindex(sdfs)
+        sdf = sdfs[i]
+        f_normed = uint8_scale * sdf
+        contains_negative |= sdf <= 0
+        contains_positive |= sdf >= 0
+        is_resolvable = abs(f_normed) < 127.5f0
+        contains_resolvable_distance |= is_resolvable
+        if !contains_multiple_colors && is_resolvable
+            if !first_color_set
+                first_color = colors[i]
+                first_color_set = true
+            elseif colors[i] != first_color
+                contains_multiple_colors = true
+            end
+        elseif contains_multiple_colors && contains_negative && contains_positive
+            break
+        end
+    end
+
+    # Commit data
+    function fast_rgb8(c)
+        return RGB{N0f8}(
+            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * green(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * blue(c)), nothing),
+        )
+    end
+
+    # or check contains_positive, contains_negative
+    if contains_resolvable_distance
+        sdf_brick = Array{N0f8}(undef, bricksize)
+        @inbounds for i in eachindex(sdf_brick)
+            f_normed = clamp(uint8_scale * sdfs[i] + 128, 0, 255.9)
+            sdf_brick[i] = N0f8(trunc(UInt8, f_normed), nothing)
+        end
+
+        # Note: needs lock for multithreading
+        insert_brick!(brickmap, i, j, k, sdf_brick)
+
+        bmc = brickmap[:color]::SparseBrickmapColors
+        if contains_multiple_colors
+            color_brick = Array{RGB{N0f8}}(undef, bricksize)
+            @inbounds for i in eachindex(color_brick)
+                color_brick[i] = fast_rgb8(colors[i])
+            end
+            push!(bmc.color_bricks, color_brick)
+            push!(bmc.indexmap, (false, length(bmc.color_bricks)))
+        else
+            static_color = fast_rgb8(first_color)
+            idx = findfirst(==(static_color), bmc.static_colors)
+            if isnothing(idx)
+                push!(bmc.static_colors, static_color)
+                push!(bmc.indexmap, (true, length(bmc.static_colors)))
+            else
+                push!(bmc.indexmap, (true, idx))
+            end
+        end
+
+        return true
+    end
+
+    return false
+end
+
 function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     if !allequal(widths(bb))
         error("Bounding box must be a cube, i.e. equal widths, but has $(widths(bb))")
@@ -1457,8 +1796,9 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     uint8_scale = 127.5f0 * bricksize / brickdiameter
 
     # Note: one buffer per thread for multithreading, or create them per thread?
-    brick_buffer = Array{N0f8, 3}(undef, brickmap.bricksize)
-    color_buffer = Array{RGB{N0f8}, 3}(undef, brickmap.bricksize)
+    pos_cache = SDF.Cache{Point3f}(brickmap.bricksize)
+    sdf_cache = SDF.Cache{Float32}(brickmap.bricksize)
+    color_cache = SDF.Cache{RGBAf}(brickmap.bricksize)
 
     bbs = SDF.calculate_global_bboxes!(root)
     foreach(bbs) do bb_ref
@@ -1487,8 +1827,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
                         content_count3 += maybe_add_brick!(
                             brickmap, root, i, j, k,
                             mini, delta, brick_delta,
-                            bricksize, uint8_scale,
-                            brick_buffer, color_buffer
+                            uint8_scale,
+                            pos_cache, sdf_cache, color_cache
                         )
                     end
 
@@ -1497,6 +1837,9 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
         end
     end
 
+    @info "position cache: $(length(pos_cache.buffers)) @ $(pos_cache.current)"
+    @info "sdf cache: $(length(sdf_cache.buffers)) @ $(sdf_cache.current)"
+    @info "color cache: $(length(color_cache.buffers)) @ $(color_cache.current)"
     @info "Rect  Skipped   $(100 - 100 * content_count / (N_blocks^3))%"
     @info "SDF   Skipped   $(100 - 100 * content_count2 / (N_blocks^3))%"
     @info "final Skipped   $(100 - 100 * content_count3 / (N_blocks^3))%"
