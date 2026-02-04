@@ -2377,10 +2377,8 @@ function el32convert(x::ShaderAbstractions.Sampler{T, N}) where {T, N}
     T32 === T && return x
     data = el32convert(x.data)
     return ShaderAbstractions.Sampler{T32, N, typeof(data)}(
-        data, x.minfilter, x.magfilter,
-        x.repeat,
-        x.anisotropic, mipmap = s.mipmap,
-        x.color_swizzel,
+        data, x.minfilter, x.magfilter, x.repeat,
+        x.mipmap, x.anisotropic, x.color_swizzel,
         ShaderAbstractions.ArrayUpdater(data, x.updates.update)
     )
 end

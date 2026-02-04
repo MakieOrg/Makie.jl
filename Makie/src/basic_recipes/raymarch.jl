@@ -155,14 +155,22 @@ module SDF
     ### SDF and Command evaluation
     ############################################################################
 
+    # module this?
+    module OP
     @fastmath begin
+        using LinearAlgebra
+        using GeometryBasics
+        using Makie: Quaternionf, lerp, VecTypes
+
         sign1(x::Real) = ifelse(signbit(x), -one(x), +one(x))
         sign1(x::VecTypes) = sign1.(x)
         norm2(v::VecTypes) = dot(v, v)
         xy_norm(p) = norm(p[Vec(1, 2)])
         xy_norm2(p) = norm2(p[Vec(1, 2)])
 
+        ########################################################################
         # SDF functions
+        ########################################################################
 
         sphere(ray_pos, radius::Real) = norm(ray_pos) - radius
 
@@ -309,43 +317,87 @@ module SDF
             return _sign * ifelse(p[3] < 0.0 || bottom_dist < mantle_dist, bottom_dist, mantle_dist)
         end
 
-        # ::Command resolution for positions
 
-        function evaluate_merge_command(command, sdf1, sdf2)
-            Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
+        ########################################################################
+        # prefix functions
+        ########################################################################
 
-            if command.id == Commands.op_union
-                return min(sdf1, sdf2)
-            elseif command.id == Commands.op_subtraction
-                return max(sdf1, -sdf2)
-            elseif command.id == Commands.op_intersection
-                return max(sdf1, sdf2)
-            elseif command.id == Commands.op_xor
-                return max(min(sdf1, sdf2), -max(sdf1, sdf2))
-            else # smooth cases
-                smoothing = command.data[1]
-                inv_smoothing = 1f0 / smoothing
-                final_sign = -1f0
-                if command.id == Commands.op_smooth_union
-                    final_sign = 1f0
-                elseif command.id == Commands.op_smooth_subtraction
-                    sdf1 = -sdf1
-                elseif command.id == Commands.op_smooth_intersection
-                    sdf1 = -sdf1
-                    sdf2 = -sdf2
-                else
-                    temp = -min(sdf1, sdf2)
-                    sdf2 = max(sdf1, sdf2)
-                    sdf1 = temp
-                end
+        # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
+        # float moves the 2d object away from th center of rotation
+        # TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
+        revolution(pos, radius::Float32) = Point3f(xy_norm(pos) - radius, pos.z, 0f0)
+        elongate(pos, v::Vec3f) = pos - clamp.(pos, -v, v)
+        rotation(pos, q::Quaternionf) = q * pos
 
-                h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
-                s = h * h * smoothing
-                return final_sign * (min(sdf1, sdf2) - s)
-            end
+        # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
+        mirror(pos, should_mirror::Vec3f) = lerp.(pos, abs.(pos), should_mirror)
+        infinite_repetition(pos, periods::Vec3f) = pos - periods .* round(pos ./ periods)
+
+        function limited_repetition(pos, periods::Vec3f, limits::Vec3f)
+            return pos - periods * clamp(round(pos ./ periods), -limits, limits)
         end
 
+        function twist(pos, factor::Float32)
+            c = cos(factor * pos.z);
+            s = sin(factor * pos.z);
+            T = Mat2f(c, -s, s, c);
+            return Point3f((T * pos[Vec(1, 2)])..., pos.z); # Quilez has this reorder (T*xz, y)
+        end
+
+        function bend(pos, factor::Float32)
+            c = cos(factor * pos.z);
+            s = sin(factor * pos.z);
+            T = Mat2f(c, -s, s, c);
+            p2 = T * Point2f(pos[1], pos[3])
+            return Point3f(p2[1], pos[2], p2[2]) # Quilez has this not reorder (T*xy, z)
+        end
+
+        translation(pos, offset::Vec3f) = pos .- offset
+
+        ########################################################################
+        # merge functions
+        ########################################################################
+
+        union(sdf1, sdf2) = min(sdf1, sdf2)
+        difference(sdf1, sdf2) = max(sdf1, -sdf2)
+        intersection(sdf1, sdf2) = max(sdf1, sdf2)
+        xor(sdf1, sdf2) = max(min(sdf1, sdf2), -max(sdf1, sdf2))
+
         function smooth_union(sdf1, sdf2, smoothing)
+                inv_smoothing = 1f0 / smoothing
+                h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) * inv_smoothing, 1f0)
+                s = h * h * smoothing
+                return min(sdf1, sdf2) - s
+        end
+        smooth_difference(sdf1, sdf2, smoothing) = -smooth_union(-sdf1, sdf2, smoothing)
+        smooth_intersection(sdf1, sdf2, smoothing) = -smooth_union(-sdf1, -sdf2, smoothing)
+        smooth_xor(sdf1, sdf2, smoothing) = -smooth_union(-min(sdf1, sdf2), max(sdf1, sdf2), smoothing)
+
+        # with color
+
+        function union(sdf1, sdf2, color1, color2)
+            return ifelse(sdf1 < sdf2, sdf1, sdf2), ifelse(sdf1 < sdf2, color1, color2)
+        end
+
+        function difference(sdf1, sdf2, color1, color2)
+            return max(sdf1, -sdf2), color1
+        end
+
+        function intersection(sdf1, sdf2, color1, color2)
+            return ifelse(sdf1 > sdf2, sdf1, sdf2), ifelse(sdf1 > sdf2, color1, color2)
+        end
+
+        function xor(sdf1, sdf2, color1, color2)
+            color = ifelse(
+                sdf1 < sdf2,
+                ifelse(sdf1 > -sdf2, color1, color2),
+                ifelse(sdf2 > -sdf1, color2, color1),
+            )
+            sdf = max(min(sdf1, sdf2), -max(sdf1, sdf2))
+            return sdf, color
+        end
+
+        function smooth_union_factors(sdf1, sdf2, smoothing)
             h = 1f0 - min(0.25f0 * abs(sdf1 - sdf2) / smoothing, 1f0)
             w = h * h
             m = 0.5f0 * w
@@ -353,165 +405,187 @@ module SDF
             return m, s
         end
 
-        function evaluate_merge_command_with_color(command, sdf1, sdf2, color1, color2)
-            Commands.is_merge(command.id) || error("$(command.id) should be a merge command")
-
-            if command.id == Commands.op_union
-                left = sdf1 < sdf2
-                return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
-            elseif command.id == Commands.op_subtraction
-                return max(sdf1, -sdf2), color1
-            elseif command.id == Commands.op_intersection
-                left = sdf1 > sdf2
-                return ifelse(left, sdf1, sdf2), ifelse(left, color1, color2)
-            elseif command.id == Commands.op_xor
-                color = ifelse(
-                    sdf1 < sdf2,
-                    ifelse(sdf1 > -sdf2, color1, color2),
-                    ifelse(sdf2 > -sdf1, color2, color1),
-                )
-                sdf = max(min(sdf1, sdf2), -max(sdf1, sdf2))
-                return sdf, color
-            elseif command.id == Commands.op_smooth_union
-                m, s = smooth_union(sdf1, sdf2, command.data[1])
-                color = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
-                sdf = min(sdf1, sdf2) - s
-                return sdf, color
-            elseif command.id == Commands.op_smooth_subtraction
-                m, s = smooth_union(sdf1, -sdf2, command.data[1])
-                sdf = max(sdf1, -sdf2) + s
-                return sdf, color1 # removed color should not affect final color
-            elseif command.id == Commands.op_smooth_intersection
-                m, s = smooth_union(sdf1, sdf2, command.data[1])
-                color = lerp(color1, color2, ifelse(sdf1 > sdf2, m, 1 - m))
-                sdf = max(sdf1, sdf2) + s
-                return sdf, color
-            elseif command.id == Commands.op_smooth_xor
-                # color doesn't depend on the part that removed
-                color = ifelse(sdf1 < sdf2, color1, color2)
-                union = min(sdf1, sdf2)
-                intersection = max(sdf1, sdf2)
-                m, s = smooth_union(union, -intersection, command.data[1])
-                sdf = max(union, -intersection) + s
-                return sdf, color
-            else
-                error("Unknown command $(command.id)")
-                return sdf1, color1
-            end
-            # cubic
-            # smoothing *= 6f0
-            # inv_smoothing = 1f0 / smoothing
-            # h = max(smoothing -  abs(sdf1 - sdf2), 0f0) * inv_smoothing;
-            # m = h * h * h * 0.5f0;
-            # s = m * smoothing * 0.3333333333333333f0;
-            # color1 = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1f0 - m))
-            # sdf1 = final_sign * ifelse(sdf1 < sdf2, sdf1 - s, sdf2 - s)
+        function smooth_union(sdf1, sdf2, color1, color2, smoothing)
+            m, s = smooth_union_factors(sdf1, sdf2, smoothing)
+            color = lerp(color1, color2, ifelse(sdf1 < sdf2, m, 1 - m))
+            sdf = min(sdf1, sdf2) - s
+            return sdf, color
         end
 
-        function evaluate_prefix_command(command, pos)
-            # Indexing directly is very beneficial here (indirect @inbounds)
-            data = command.data
-            if command.id == Commands.op_revolution
-                # TODO: arbitrary rotation around vec3? Or just force use of op_rotation...
-                # float moves the 2d object away from th center of rotation
-                # TODO: What should 2D shapes do with the third coordinate? What's neutral? Inf?
-                return Point3f(xy_norm(pos) - data[1], pos.z, 0f0);
-            elseif command.id == Commands.op_elongate
-                v = Vec3f(data[1], data[2], data[3])
-                return pos - clamp.(pos, -v, v);
-            elseif command.id == Commands.op_rotation
-                return Quaternionf(data[1], data[2], data[3], data[4]) * pos
-            elseif command.id == Commands.op_mirror
-                # vec3 input is 1 (true) if the axis should be mirrored, 0 (false) otherwise
-                mirrored = Vec3f(data[1], data[2], data[3])
-                return Makie.lerp.(pos, abs.(pos), mirrored)
-            elseif command.id == Commands.op_infinite_repetition
-                rep = Vec3f(data[1], data[2], data[3])
-                return pos - rep .* round(pos ./ rep);
-            elseif command.id == Commands.op_limited_repetition
-                rep_dist = Vec3f(data[1], data[2], data[3])
-                limit = Vec3f(data[4], data[5], data[6])
-                return pos - rep_dist * clamp(round(pos ./ rep_dist), -limit, limit);
-            elseif command.id == Commands.op_twist
-                k = data[1];
-                c = cos(k * pos.z);
-                s = sin(k * pos.z);
-                T = Makie.Mat2f(c, -s, s, c);
-                return Point3f((T * pos[Vec(1, 2)])..., pos.z); # Quilez has this reorder (T*xz, y)
-            elseif command.id == Commands.op_bend
-                k = data[1];
-                c = cos(k * pos.z);
-                s = sin(k * pos.z);
-                T = Makie.Mat2f(c, -s, s, c);
-                p2 = T * Point2f(pos[1], pos[3])
-                return Point3f(p2[1], pos[2], p2[2]) # Quilez has this not reorder (T*xy, z)
-            elseif command.id == Commands.op_translation
-                return pos .- Vec3f(data[1], data[2], data[3]);
-            end
-            return pos
+        function smooth_subtraction(sdf1, sdf2, color1, color2, smoothing)
+            m, s = smooth_union_factors(sdf1, -sdf2, smoothing)
+            sdf = max(sdf1, -sdf2) + s
+            return sdf, color1 # removed color should not affect final color
         end
 
-        function evaluate_shape_command(command, pos)
-            # data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
-            data = command.data
-
-            if command.id == Commands.shape3D_sphere
-                return sphere(pos, data[5])::Float32
-            elseif command.id == Commands.shape3D_octahedron
-                return octahedron(pos, data[5])::Float32
-            elseif command.id == Commands.shape3D_pyramid
-                return pyramid(pos, data[5], data[6])::Float32
-            elseif command.id == Commands.shape3D_torus
-                return torus(pos, data[5], data[6])::Float32
-            elseif command.id == Commands.shape3D_capsule
-                return capsule(pos, data[5], data[6])::Float32
-            elseif command.id == Commands.shape3D_cylinder
-                return cylinder(pos, data[5], data[6])::Float32
-            elseif command.id == Commands.shape3D_ellipsoid
-                return ellipsoid(pos, Vec3f(data[5], data[6], data[7]))::Float32
-            elseif command.id == Commands.shape3D_rect
-                return rect(pos, Vec3f(data[5], data[6], data[7]))::Float32
-            elseif command.id == Commands.shape3D_link
-                return link(pos, data[5], data[6], data[7])::Float32
-            elseif command.id == Commands.shape3D_cone
-                return cone(pos, data[5], data[6])::Float32
-            elseif command.id == Commands.shape3D_capped_cone
-                return capped_cone(pos, data[5], data[6], data[7])::Float32
-            elseif command.id == Commands.shape3D_box_frame
-                return box_frame(pos, Vec3f(data[5], data[6], data[7]), data[8])::Float32
-            elseif command.id == Commands.shape3D_capped_torus
-                return capped_torus(pos, data[5], data[6], data[7])::Float32
-            else
-                return 10_000f0
-            end
+        function smooth_intersection(sdf1, sdf2, color1, color2, smoothing)
+            m, s = smooth_union_factors(sdf1, sdf2, smoothing)
+            color = lerp(color1, color2, ifelse(sdf1 > sdf2, m, 1 - m))
+            sdf = max(sdf1, sdf2) + s
+            return sdf, color
         end
 
-        function evaluate_postfix_command(command, pos, sdf)
-            if command.id == Commands.op_extrusion
-                v = Vec3f(data[1], data[2], data[3])
-                vec = Vec2f(sdf, norm(abs.(pos) .- v));
-                sdf = min(max(vec[1], vec[2]), 0f0) + norm(max(vec, 0f0));
-            elseif command.id == Commands.op_rounding
-                sdf = sdf - command.data[1]
-            elseif command.id == Commands.op_onion
-                sdf = abs(sdf) - command.data[1]
-            else
-                return sdf
-            end
+        function smooth_xor(sdf1, sdf2, color1, color2, smoothing)
+            # color doesn't depend on the part that removed
+            color = ifelse(sdf1 < sdf2, color1, color2)
+            union = min(sdf1, sdf2)
+            intersection = max(sdf1, sdf2)
+            m, s = smooth_union_factors(union, -intersection, smoothing)
+            sdf = max(union, -intersection) + s
+            return sdf, color
         end
 
-        function evaluate_command(command, pos::Point3f, sdf::Float32)
-            if Commands.is_prefix(command.id)
-                return evaluate_prefix_command(command, pos)::Point3f, sdf
-            elseif Commands.is_shape(command.id)
-                return pos, evaluate_shape_command(command, pos)::Float32
-            elseif Commands.is_postfix(command.id)
-                return pos, evaluate_postfix_command(command, pos, sdf)::Float32
-            else
-                error("Could not process $command")
-            end
+        ########################################################################
+        # postfix functions
+        ########################################################################
+
+        function extrusion(pos, sdf, by::Vec3f)
+            vec = Vec2f(sdf, norm(abs.(pos) .- by));
+            return min(max(vec[1], vec[2]), 0f0) + norm(max(vec, 0f0))
         end
 
+        rounding(pos, sdf, range::Float32) = sdf - range
+        onion(pos, sdf, thickness::Float32) = abs(sdf) - thickness
+
+    end # fastmath
+    end
+
+    function evaluate_prefix_command(command, pos)
+        # Indexing directly is very beneficial here (indirect @inbounds)
+        data = command.data
+        if command.id == Commands.op_revolution
+            return OP.revolution(pos, data[1])
+        elseif command.id == Commands.op_elongate
+            return OP.elongate(pos, Vec3f(data[1], data[2], data[3]))
+        elseif command.id == Commands.op_rotation
+            return OP.rotation(pos, Quaternionf(data[1], data[2], data[3], data[4]))
+        elseif command.id == Commands.op_mirror
+            return OP.mirror(pos, Vec3f(data[1], data[2], data[3]))
+        elseif command.id == Commands.op_infinite_repetition
+            return OP.infinite_repetition(pos, Vec3f(data[1], data[2], data[3]))
+        elseif command.id == Commands.op_limited_repetition
+            periods = Vec3f(data[1], data[2], data[3])
+            limits = Vec3f(data[4], data[5], data[6])
+            return OP.limited_repetition(pos, periods, limits)
+        elseif command.id == Commands.op_twist
+            return OP.twist(pos, data[1])
+        elseif command.id == Commands.op_bend
+            return OP.bend(pos, data[1])
+        elseif command.id == Commands.op_translation
+            return OP.translation(pos, Vec3f(data[1], data[2], data[3]))
+        else
+            error("Unrecognized prefix command $(command.id)")
+        end
+        return pos
+    end
+
+    function evaluate_shape_command(command, pos)
+        # data = ntuple(i -> command.data[i + 4], length(command.data) - 4)
+        data = command.data
+
+        if command.id == Commands.shape3D_sphere
+            return OP.sphere(pos, data[5])::Float32
+        elseif command.id == Commands.shape3D_octahedron
+            return OP.octahedron(pos, data[5])::Float32
+        elseif command.id == Commands.shape3D_pyramid
+            return OP.pyramid(pos, data[5], data[6])::Float32
+        elseif command.id == Commands.shape3D_torus
+            return OP.torus(pos, data[5], data[6])::Float32
+        elseif command.id == Commands.shape3D_capsule
+            return OP.capsule(pos, data[5], data[6])::Float32
+        elseif command.id == Commands.shape3D_cylinder
+            return OP.cylinder(pos, data[5], data[6])::Float32
+        elseif command.id == Commands.shape3D_ellipsoid
+            return OP.ellipsoid(pos, Vec3f(data[5], data[6], data[7]))::Float32
+        elseif command.id == Commands.shape3D_rect
+            return OP.rect(pos, Vec3f(data[5], data[6], data[7]))::Float32
+        elseif command.id == Commands.shape3D_link
+            return OP.link(pos, data[5], data[6], data[7])::Float32
+        elseif command.id == Commands.shape3D_cone
+            return OP.cone(pos, data[5], data[6])::Float32
+        elseif command.id == Commands.shape3D_capped_cone
+            return OP.capped_cone(pos, data[5], data[6], data[7])::Float32
+        elseif command.id == Commands.shape3D_box_frame
+            return OP.box_frame(pos, Vec3f(data[5], data[6], data[7]), data[8])::Float32
+        elseif command.id == Commands.shape3D_capped_torus
+            return OP.capped_torus(pos, data[5], data[6], data[7])::Float32
+        else
+            error("Unrecognized shape command $(command.id)")
+            return 10_000f0
+        end
+    end
+
+    function evaluate_merge_command(command, sdf1, sdf2)
+        if command.id == Commands.op_union
+            return OP.union(sdf1, sdf2)
+        elseif command.id == Commands.op_subtraction
+            return OP.difference(sdf1, sdf2)
+        elseif command.id == Commands.op_intersection
+            return OP.intersection(sdf1, sdf2)
+        elseif command.id == Commands.op_xor
+            return OP.xor(sdf1, sdf2)
+        elseif command.id == Commands.op_smooth_union
+            return OP.smooth_union(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_subtraction
+            return OP.smooth_difference(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_intersection
+            return OP.smooth_intersection(sdf1, sdf2, command.data[1])
+        elseif command.id == Commands.op_smooth_xor
+            return OP.smooth_xor(sdf1, sdf2, command.data[1])
+        else
+            error("$(command.id) is not a recognized merge command")
+        end
+    end
+
+    function evaluate_merge_command(command, sdf1, sdf2, color1, color2)
+        if command.id == Commands.op_union
+            return OP.union(sdf1, sdf2, color1, color2)
+        elseif command.id == Commands.op_subtraction
+            return OP.difference(sdf1, sdf2, color1, color2)
+        elseif command.id == Commands.op_intersection
+            return OP.intersection(sdf1, sdf2, color1, color2)
+        elseif command.id == Commands.op_xor
+            return OP.xor(sdf1, sdf2, color1, color2)
+        elseif command.id == Commands.op_smooth_union
+            return OP.smooth_union(sdf1, sdf2, color1, color2, command.data[1])
+        elseif command.id == Commands.op_smooth_subtraction
+            return OP.smooth_difference(sdf1, sdf2, color1, color2, command.data[1])
+        elseif command.id == Commands.op_smooth_intersection
+            return OP.smooth_intersection(sdf1, sdf2, color1, color2, command.data[1])
+        elseif command.id == Commands.op_smooth_xor
+            return OP.smooth_xor(sdf1, sdf2, color1, color2, command.data[1])
+        else
+            error("$(command.id) is not a recognized merge command")
+        end
+    end
+
+    function evaluate_postfix_command(command, pos, sdf)
+        data = command.data
+        if command.id == Commands.op_extrusion
+            return OP.extrusion(pos, sdf, Vec3f(data[1], data[2], data[3]))
+        elseif command.id == Commands.op_rounding
+            return OP.rounding(pos, sdf, command.data[1])
+        elseif command.id == Commands.op_onion
+            return OP.onion(pos, sdf, command.data[1])
+        else
+            error("$(command.id) is not a recognized postfix command.")
+            return sdf
+        end
+    end
+
+    function evaluate_command(command, pos::Point3f, sdf::Float32)
+        if Commands.is_prefix(command.id)
+            return evaluate_prefix_command(command, pos)::Point3f, sdf
+        elseif Commands.is_shape(command.id)
+            return pos, evaluate_shape_command(command, pos)::Float32
+        elseif Commands.is_postfix(command.id)
+            return pos, evaluate_postfix_command(command, pos, sdf)::Float32
+        else
+            error("Could not process $command")
+        end
+    end
+
+    @fastmath begin
         # ::Command resolution for Rect3f
         function bbox_from_shape(command)
             # strip color
@@ -636,20 +710,20 @@ module SDF
             end
             return Rect3f()
         end
-
-        function get_shape_bbox(commands)
-            idx = findfirst(cmd -> Commands.is_shape(cmd.id), commands)::Int
-            bb = bbox_from_shape(commands[idx])
-            for i in idx-1:-1:1
-                bb = apply_prefix(commands[i], bb)
-            end
-            for i in idx+1:length(commands)
-                bb = apply_postfix(commands[i], bb)
-            end
-            return bb
-        end
-
     end
+
+    function get_shape_bbox(commands)
+        idx = findfirst(cmd -> Commands.is_shape(cmd.id), commands)::Int
+        bb = bbox_from_shape(commands[idx])
+        for i in idx-1:-1:1
+            bb = apply_prefix(commands[i], bb)
+        end
+        for i in idx+1:length(commands)
+            bb = apply_postfix(commands[i], bb)
+        end
+        return bb
+    end
+
 
     ############################################################################
     ### SDF Tree
@@ -951,7 +1025,7 @@ module SDF
     is_inside(pos::Point3, node::Node, range) = is_inside(pos, node.global_bbox[], range)
     function is_inside(pos::Point3, bb::Rect3f, range)
         ws = 0.5 .* widths(bb)
-        dist = rect(pos .- minimum(bb) .- ws, ws)
+        dist = OP.rect(pos .- minimum(bb) .- ws, ws)
         return dist < range
     end
 
@@ -1021,7 +1095,7 @@ module SDF
             merge_cmd = first(node.commands)
             for i in 2:length(node.children)
                 _sdf, _color = compute_color_at(node.children[i], pos)
-                sdf, color = evaluate_merge_command_with_color(
+                sdf, color = evaluate_merge_command(
                     merge_cmd, sdf, _sdf, color, _color
                 )
             end
