@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)

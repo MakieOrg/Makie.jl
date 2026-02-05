@@ -1189,33 +1189,8 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function update_volume_or_brickmap((data,), changed, cached)
-    if data isa Makie.Brickmap
-        @info "Brickmap packing"
-        @time packed = Makie.pack_bricks(data)
-        @info "Color Gen"
-        @time color_indices, color_bricks = Makie.pack_brick_colors(
-            data, data[:color]::Makie.SparseBrickmapColors
-        )
-
-        # TODO: ShaderAbstractions for color stuff
-        if isnothing(cached)
-            indexmap_tex = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
-            bricks_tex = ShaderAbstractions.Sampler(packed, minfilter = :linear)
-            color_indices_tex = ShaderAbstractions.Sampler(color_indices, minfilter = :nearest)
-            color_bricks_tex = ShaderAbstractions.Sampler(color_bricks, minfilter = :linear)
-            a = length(data.indexmap) * 4 / 1024^2
-            b = length(packed) / 1024^2
-            c = length(color_indices) * 4 / 1024^2
-            d = length(color_bricks) * 3 / 1024^2
-            @info "-> $a + $b + $c + $d = $(a+b+c+d) (indices, bricks, color indexmap, color bricks)"
-            return nothing, indexmap_tex, bricks_tex, data.bricksize[1], color_indices_tex, color_bricks_tex
-        else
-            ShaderAbstractions.update!(cached.indexmap, data.indexmap)
-            ShaderAbstractions.update!(cached.bricks, packed)
-            ShaderAbstractions.update!(cached.color_indexmap, color_indices)
-            ShaderAbstractions.update!(cached.color_brick, color_bricks)
-            return values(cached)
-        end
+    if data isa Makie.CSGBuffers
+        return nothing, data.indices, data.sdf_bricks, data.bricksize, data.color_indices, data.color_bricks
     else
         if isnothing(cached)
             volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)

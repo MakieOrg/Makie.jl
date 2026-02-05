@@ -135,9 +135,12 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         end
 
         if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
+            line = edge_callback_location(edge)
+            io = IOBuffer()
+            ioc = IOContext(io, :limit => true, :compact => true, :displaysize => (50, 1))
+            show(ioc, result)
+            str = String(take!(io))
+            error("Result needs to have same length. Found: $str, for func $(line)")
         end
 
         outputs = ntuple(length(result)) do i

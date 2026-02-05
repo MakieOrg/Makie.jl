@@ -25,6 +25,14 @@ struct Brickmap{T}
     bricksize::NTuple{3, Int}
 end
 
+struct CSGBuffers
+    indices::ShaderAbstractions.Sampler{UInt32, 3, Array{UInt32, 3}}
+    sdf_bricks::ShaderAbstractions.Sampler{N0f8, 3, Array{N0f8, 3}}
+    color_indices::ShaderAbstractions.Sampler{UInt32, 2, Matrix{UInt32}}
+    color_bricks::ShaderAbstractions.Sampler{RGB{N0f8}, 3, Array{RGB{N0f8}, 3}}
+    bricksize::Int
+end
+
 
 const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
 
@@ -574,3 +582,5 @@ struct Float32Convert
     scaling::Observable{LinearScaling}
     resolution::Float32
 end
+
+const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
