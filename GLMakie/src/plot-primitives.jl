@@ -1188,6 +1188,45 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
     return draw_volume(screen, data)
 end
 
+function update_volume_or_brickmap((data,), changed, cached)
+    if data isa Makie.Brickmap
+        @info "Brickmap packing"
+        @time packed = Makie.pack_bricks(data)
+        @info "Color Gen"
+        @time color_indices, color_bricks = Makie.pack_brick_colors(
+            data, data[:color]::Makie.SparseBrickmapColors
+        )
+
+        # TODO: ShaderAbstractions for color stuff
+        if isnothing(cached)
+            indexmap_tex = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
+            bricks_tex = ShaderAbstractions.Sampler(packed, minfilter = :linear)
+            color_indices_tex = ShaderAbstractions.Sampler(color_indices, minfilter = :nearest)
+            color_bricks_tex = ShaderAbstractions.Sampler(color_bricks, minfilter = :linear)
+            a = length(data.indexmap) * 4 / 1024^2
+            b = length(packed) / 1024^2
+            c = length(color_indices) * 4 / 1024^2
+            d = length(color_bricks) * 3 / 1024^2
+            @info "-> $a + $b + $c + $d = $(a+b+c+d) (indices, bricks, color indexmap, color bricks)"
+            return nothing, indexmap_tex, bricks_tex, data.bricksize[1], color_indices_tex, color_bricks_tex
+        else
+            ShaderAbstractions.update!(cached.indexmap, data.indexmap)
+            ShaderAbstractions.update!(cached.bricks, packed)
+            ShaderAbstractions.update!(cached.color_indexmap, color_indices)
+            ShaderAbstractions.update!(cached.color_brick, color_bricks)
+            return values(cached)
+        end
+    else
+        if isnothing(cached)
+            volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)
+            return volumedata, nothing, nothing, nothing, nothing
+        else
+            ShaderAbstractions.update!(cached.volumedata, data)
+            return cached.volumedata, nothing, nothing, nothing, nothing
+        end
+    end
+end
+
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     attr = plot.attributes
 
@@ -1203,43 +1242,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
     end
 
     register_computation!(
+        update_volume_or_brickmap,
         attr, [:scaled_color],
         [:volumedata, :indexmap, :bricks, :bricksize, :color_indexmap, :color_brick]
-    ) do (data,), changed, cached
-        if data isa Makie.Brickmap
-            @info "Brickmap packing"
-            @time packed = Makie.pack_bricks(data)
-            @info "Color Gen"
-            @time color_indices, color_bricks = Makie.pack_brick_colors(
-                data, data[:color]::Makie.SparseBrickmapColors
-            )
-
-            # TODO: ShaderAbstractions for color stuff
-            if isnothing(cached)
-                indexmap = ShaderAbstractions.Sampler(data.indexmap, minfilter = :nearest)
-                bricks = ShaderAbstractions.Sampler(packed, minfilter = :linear)
-                a = length(data.indexmap) * 4 / 1024^2
-                b = length(bricks) / 1024^2
-                c = length(color_indices) * 4 / 1024^2
-                d = length(color_bricks) * 3 / 1024^2
-                @info "-> $a + $b + $c + $d = $(a+b+c+d) (indices, bricks, color indexmap, color bricks)"
-                return nothing, indexmap, bricks, data.bricksize[1], color_indices, color_bricks
-            else
-                # TODO: I don't this works
-                ShaderAbstractions.update!(cached.indexmap, data.indexmap)
-                ShaderAbstractions.update!(cached.bricks, packed)
-                return nothing, cached.indexmap, cached.bricks, data.bricksize[1], color_indices, color_bricks
-            end
-        else
-            if isnothing(cached)
-                volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)
-                return volumedata, nothing, nothing, nothing, nothing
-            else
-                ShaderAbstractions.update!(cached.volumedata, data)
-                return cached.volumedata, nothing, nothing, nothing, nothing
-            end
-        end
-    end
+    )
 
     add_constant!(attr, :is_orthographic, Makie.is_orthographic(cameracontrols(scene)))
 

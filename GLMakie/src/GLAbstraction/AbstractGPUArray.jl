@@ -207,8 +207,6 @@ export resize
 export GPUArray
 export GPUVector
 
-export update!
-
 export gpu_data
 export gpu_resize!
 export gpu_getindex
