@@ -379,8 +379,12 @@ module SDF
             return ifelse(sdf1 < sdf2, sdf1, sdf2), ifelse(sdf1 < sdf2, color1, color2)
         end
 
+        # TODO: should this always be the color of what's being subtracted from?
+        # Or the closest (which is always the second)?
+        # Or maybe ifelse(alpha(color2) == 0, color1, color2) ?
         function difference(sdf1, sdf2, color1, color2)
             return max(sdf1, -sdf2), color1
+            # return max(sdf1, -sdf2), ifelse(sdf1 > -sdf2, color1, color2)
         end
 
         function intersection(sdf1, sdf2, color1, color2)
@@ -1193,7 +1197,13 @@ module SDF
 
     function trimmed_tree(region::Rect3f, ref_tree::Node)
         new_tree = copy_node_without_children(ref_tree)
-        return trimmed_tree_rec!(new_tree, region, ref_tree)
+        trimmed_tree_rec!(new_tree, region, ref_tree)
+        keep = cleanup_empty_nodes!(new_tree)
+        if keep
+            return new_tree
+        else
+            return Node(Command[], 0, Node[], Ref{Rect3f}())
+        end
     end
 
     function trimmed_tree_rec!(parent::Node, region::Rect3f, ref_tree::Node)
@@ -1205,6 +1215,18 @@ module SDF
             end
         end
         return parent
+    end
+
+    function cleanup_empty_nodes!(node)
+        # cleanup every child node, remove empty nodes
+        filter!(cleanup_empty_nodes!, node.children)
+        # mark the node for cleanup (false) if it has no children (anymore) and
+        # it is not a shape node
+        if isempty(node.children)
+            main = node.commands[node.main_idx]
+            return Commands.is_shape(main.id)
+        end
+        return true # otherwise keep it
     end
 
     function compute_leaf_signed_distance_at(node::SDF.Node, pos)
@@ -1698,6 +1720,7 @@ function maybe_add_brick!(
 
     # compute sdfs + colors
     reduced_tree = SDF.trimmed_tree(Rect3f(origin, delta), root)
+    reduced_tree.main_idx == 0 && return false # empty tree
     SDF.compute_color_at(reduced_tree, pos_cache, sdf_cache, color_cache)
 
     # analyze results (should it create a brick?)
@@ -1775,6 +1798,13 @@ function maybe_add_brick!(
     return false
 end
 
+function print_bb_rec(node, depth = 0)
+    main = node.commands[node.main_idx]
+    name = SDF.Commands.get_name(main.id)
+    println("  "^depth, name, " ", node.bbox[])
+    foreach(child -> print_bb_rec(child, depth + 2), node.children)
+end
+
 function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     if !allequal(widths(bb))
         error("Bounding box must be a cube, i.e. equal widths, but has $(widths(bb))")
@@ -1816,6 +1846,8 @@ function sdf_brickmap(bb::Rect3f, root::SDF.Node, N = 512, bricksize = 8)
     foreach(bbs) do bb_ref
         bb_ref[] = Rect(minimum(bb_ref[]) .- delta, widths(bb_ref[]) .+ 2delta)
     end
+
+    # print_bb_rec(root)
 
     content_count = 0
     content_count2 = 0
