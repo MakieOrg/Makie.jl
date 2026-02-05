@@ -585,7 +585,7 @@ module SDF
         end
     end
 
-     function evaluate_prefix_command!(command, pos::Array)
+    function evaluate_prefix_command!(command, pos::Array)
         # Indexing directly is very beneficial here (indirect @inbounds)
         data = command.data
         if command.id == Commands.op_revolution
@@ -854,19 +854,6 @@ module SDF
         end
     end
 
-    function get_shape_bbox(commands)
-        idx = findfirst(cmd -> Commands.is_shape(cmd.id), commands)::Int
-        bb = bbox_from_shape(commands[idx])
-        for i in idx-1:-1:1
-            bb = apply_prefix(commands[i], bb)
-        end
-        for i in idx+1:length(commands)
-            bb = apply_postfix(commands[i], bb)
-        end
-        return bb
-    end
-
-
     ############################################################################
     ### SDF Tree
     ############################################################################
@@ -900,11 +887,11 @@ module SDF
         main_idx::Int # index of shape or merge command
         children::Vector{Node}
 
-        # aware of this node + children
-        local_bbox::Rect3f
-        # aware of all operations
-        global_bbox::Base.RefValue{Rect3f}
+        # partially filled later
+        bbox::Base.RefValue{Rect3f}
     end
+
+    Node(commands, main_idx, children) = Node(commands, main_idx, children, Ref{Rect3f}())
 
     function Shape(op::Symbol, args...; color = :orange, kwargs...)
         return Shape(Commands.get_id(op), args...; color = color, kwargs...)
@@ -919,9 +906,7 @@ module SDF
         # This assumes kwargs are ordered
         commands, main_idx = process_commands(main, kwargs)
 
-        bb = SDF.get_shape_bbox(commands)
-
-        return Node(commands, main_idx, Node[], bb, Ref{Rect3f}())
+        return Node(commands, main_idx, Node[])
     end
 
     function process_commands(main, ops)
@@ -968,26 +953,9 @@ module SDF
             error("Merge nodes must be defined with merge commands")
         end
 
-        commands = Command[Command(op, args)]
-        for (name, data) in pairs(kwargs)
-            id = Commands.get_id(name)
+        commands, main_idx = process_commands(Command(op, args), kwargs)
 
-            if Commands.is_prefix(id)
-                error("Merge nodes currently don't support prefix operations")
-            elseif Commands.is_shape_or_merge(id)
-                error("$name is not a transformation.")
-            end
-
-            push!(commands, Command(id, data))
-        end
-
-        bbs = map(child -> child.local_bbox, children)
-        bb = apply_merge(commands[1], bbs)
-        for i in 2:length(commands)
-            bb = apply_postfix(commands[i], bb)
-        end
-
-        return Node(commands, 1, children, bb, Ref{Rect3f}())
+        return Node(commands, main_idx, children)
     end
 
     union(children::Node...; kwargs...) = Merge(Commands.op_union, children; kwargs...)
@@ -1144,18 +1112,54 @@ module SDF
         return left
     end
 
-    function calculate_global_bboxes!(node::SDF.Node, bbs = Base.RefValue{Rect3f}[])
-        if isempty(node.children) # leaf node
-            node.global_bbox[] = node.local_bbox
-            push!(bbs, node.global_bbox)
+    function calculate_global_bboxes!(node::SDF.Node)
+        bbs = Base.RefValue{Rect3f}[]
+        apply_prefixes!(node, bbs)
+        empty!(bbs)
+        apply_postfixes_and_merges!(node, bbs)
+        return bbs
+    end
 
+    function apply_prefixes!(node::SDF.Node, bbs::Vector{Base.RefValue{Rect3f}})
+        if isempty(node.children) # leaf node
+            bb = bbox_from_shape(node.commands[node.main_idx])
+            for i in node.main_idx-1 : -1 : 1
+                bb = apply_prefix(node.commands[i], bb)
+            end
+            node.bbox[] = bb
+            push!(bbs, node.bbox)
+        else
+            start = length(bbs) + 1
+            for child in node.children
+                apply_prefixes!(child, bbs)
+            end
+
+            for bb_idx in start:length(bbs)
+                for op_idx in node.main_idx - 1 : -1 : 1
+                    bbs[bb_idx][] = apply_prefix(node.commands[op_idx], bbs[bb_idx][])
+                end
+            end
+        end
+
+        return bbs
+    end
+
+    function apply_postfixes_and_merges!(node::SDF.Node, bbs)
+        if isempty(node.children) # leaf node
+            bb = node.bbox[]
+            for i in node.main_idx+1 : length(node.commands)
+                bb = apply_postfix(node.commands[i], bb)
+            end
+            node.bbox[] = bb
+            push!(bbs, node.bbox)
         else
             merge_cmd = node.commands[node.main_idx]
 
-            left = calculate_global_bboxes!(node.children[1])
+            left = Base.RefValue{Rect3f}[]
+            apply_postfixes_and_merges!(node.children[1], left)
             right = Base.RefValue{Rect3f}[]
             for i in 2:length(node.children)
-                calculate_global_bboxes!(node.children[i], right)
+                apply_postfixes_and_merges!(node.children[i], right)
                 @assert !isempty(right)
                 apply_merge!(merge_cmd, left, right)
                 empty!(right)
@@ -1169,14 +1173,14 @@ module SDF
 
             append!(bbs, left)
 
-            node.global_bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left, init = Rect3f())
-            push!(bbs, node.global_bbox)
+            node.bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left, init = Rect3f())
+            push!(bbs, node.bbox)
         end
 
         return bbs
     end
 
-    is_inside(pos::Point3, node::Node, range) = is_inside(pos, node.global_bbox[], range)
+    is_inside(pos::Point3, node::Node, range) = is_inside(pos, node.bbox[], range)
     function is_inside(pos::Point3, bb::Rect3f, range)
         ws = 0.5 .* widths(bb)
         dist = OP.rect(pos .- minimum(bb) .- ws, ws)
@@ -1184,10 +1188,7 @@ module SDF
     end
 
     function copy_node_without_children(node::Node)
-        return Node(
-            node.commands, node.main_idx, Node[],
-            node.local_bbox, node.global_bbox
-        )
+        return Node(node.commands, node.main_idx, Node[], node.bbox)
     end
 
     function trimmed_tree(region::Rect3f, ref_tree::Node)
@@ -1197,7 +1198,7 @@ module SDF
 
     function trimmed_tree_rec!(parent::Node, region::Rect3f, ref_tree::Node)
         for child in ref_tree.children
-            if overlaps(child.global_bbox[], region)
+            if overlaps(child.bbox[], region)
                 node = copy_node_without_children(child)
                 push!(parent.children, node)
                 trimmed_tree_rec!(node, region, child)
@@ -1224,13 +1225,16 @@ module SDF
         if isempty(node.children)
             return compute_leaf_signed_distance_at(node, pos)
         else
+            for i in 1 : node.main_idx - 1
+                pos = evaluate_prefix_command(node.commands[i], pos)
+            end
             sdf = compute_signed_distance_at(node.children[1], pos)
             merge_cmd = node.commands[node.main_idx]
             for i in 2:length(node.children)
                 other = compute_signed_distance_at(node.children[i], pos)
                 sdf = evaluate_merge_command(merge_cmd, sdf, other)
             end
-            for i in 2:length(node.commands)
+            for i in node.main_idx + 1 : length(node.commands)
                 pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
             return sdf
@@ -1245,6 +1249,9 @@ module SDF
             color = RGBAf(data[1], data[2], data[3], data[4])
             return sdf, color
         else
+            for i in 1 : node.main_idx - 1
+                pos = evaluate_prefix_command(node.commands[i], pos)
+            end
             sdf, color = compute_color_at(node.children[1], pos)
             merge_cmd = node.commands[node.main_idx]
             for i in 2:length(node.children)
@@ -1253,7 +1260,7 @@ module SDF
                     merge_cmd, sdf, _sdf, color, _color
                 )
             end
-            for i in 2:length(node.commands)
+            for i in node.main_idx + 1 : length(node.commands)
                 pos, sdf = evaluate_command(node.commands[i], pos, sdf)
             end
             return sdf, color
@@ -1307,6 +1314,11 @@ module SDF
             return
         else
             parent_pos = current(pos_cache)
+
+            for i in 1 : node.main_idx - 1
+                evaluate_prefix_command!(node.commands[i], pos)
+            end
+
             child_pos = get_buffer(pos_cache)
             copyto!(child_pos, parent_pos)
 
@@ -1336,7 +1348,7 @@ module SDF
 
             # uses parent_pos, left_sdf
             for i in node.main_idx+1 : length(node.commands)
-                evaluate_command!(node.commands[i], pos, sdf)
+                evaluate_postfix_command!(node.commands[i], pos, sdf)
             end
             return
         end
