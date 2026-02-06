@@ -765,9 +765,9 @@ module SDF
                 # return Rect3f(.-(ws .+ 0.5 * w), 2 .* ws .+ w)
                 return Rect3f(.-ws, 2 .* ws)
             elseif command.id == Commands.shape3D_capped_torus
-                angle, R, r = data
-                ymin = R * cos(min(angle, pi))
-                dx = R * sin(min(angle, 0.5pi))
+                phi, R, r = data
+                ymin = R * cos(min(phi, pi))
+                dx = R * sin(min(phi, 0.5pi))
                 return Rect3f(-dx-r, ymin-r, -r, 2*(dx+r), (R - ymin) + 2r, 2r)
             else
                 return Rect3f()
@@ -892,10 +892,12 @@ module SDF
         children::Vector{Node}
 
         # partially filled later
-        bbox::Base.RefValue{Rect3f}
+        bbox::Base.RefValue{Rect3f} # Ref used for tracking
+        changed::Base.RefValue{Bool}
     end
 
-    Node(commands, main_idx, children) = Node(commands, main_idx, children, Ref{Rect3f}())
+
+    Node(commands, main_idx, children) = Node(commands, main_idx, children, Ref{Rect3f}(), Ref(true))
 
     function Shape(op::Symbol, args...; color = :orange, kwargs...)
         return Shape(Commands.get_id(op), args...; color = color, kwargs...)
@@ -991,6 +993,62 @@ module SDF
             println(io)
             show_rec(io, child, depth+1)
         end
+        return
+    end
+
+    Base.:(==)(a::Command, b::Command) = (a.id == b.id) && (a.data == b.data)
+    shallow_equal(a::Node, b::Node) = a.commands == b.commands
+    shallow_hash(n::Node) = hash(n.commands)
+
+    function mark_changed_nodes!(new::Node, old::Node, bbs = Rect3f[])
+        if shallow_equal(new, old)
+            # This node matches, check children
+            new.changed[] = false
+            old.changed[] = false
+
+            # TODO: improve this to recognize middle deletions, reordering
+            N = min(length(new.children), length(old.children))
+            for i in 1:N
+                mark_changed_nodes!(new.children[i], old.children[i], bbs)
+            end
+
+            if length(new.children) > N
+                for i in N+1 : length(new.children)
+                    set_all_children_as_changed!(new.children[i], bbs)
+                end
+            elseif length(old.children) > N
+                for i in N+1 : length(old.children)
+                    set_all_children_as_changed!(old.children[i], bbs)
+                end
+            end
+
+        else
+            # this node changed, mark whole branch as changed
+            set_all_children_as_changed!(new)
+            set_all_children_as_changed!(old)
+
+            if new.bbox[] in old.bbox[]
+                push!(bbs, old.bbox[])
+            elseif old.bbox[] in new.bbox[]
+                push!(bbs, new.bbox[])
+            else
+                push!(bbs, old.bbox[], new.bbox[])
+            end
+        end
+
+        return bbs
+    end
+
+    function set_all_children_as_changed!(n::Node, bbs)
+        n.changed[] = true
+        push!(bbs, n.bbox[])
+        foreach(child -> set_all_children_as_changed!(child, bbs), n.children)
+        return
+    end
+
+    function set_all_children_as_changed!(n::Node)
+        n.changed[] = true
+        foreach(set_all_children_as_changed!, n.children)
         return
     end
 
@@ -1192,7 +1250,7 @@ module SDF
     end
 
     function copy_node_without_children(node::Node)
-        return Node(node.commands, node.main_idx, Node[], node.bbox)
+        return Node(node.commands, node.main_idx, Node[])
     end
 
     function trimmed_tree(region::Rect3f, ref_tree::Node)
@@ -1202,7 +1260,7 @@ module SDF
         if keep
             return new_tree
         else
-            return Node(Command[], 0, Node[], Ref{Rect3f}())
+            return Node(Command[], 0, Node[])
         end
     end
 
@@ -1501,7 +1559,7 @@ function Brickmap{T}(bricksize::NTuple{3, Int}, _size::NTuple{3, Int}; kwargs...
     indices = fill(UInt32(0), idx_size)
     attributes = Dict{Symbol, Any}(kwargs)
 
-    return Brickmap{T}(indices, bricks, attributes, _size, bricksize)
+    return Brickmap{T}(indices, bricks, attributes, _size, bricksize, Int[])
 end
 
 get_brick_index(bm::Brickmap, i, j, k) = bm.indexmap[i, j, k]
@@ -1516,41 +1574,65 @@ function get_value(bm::Brickmap, i, j, k)
     return brick[bi, bj, bk]
 end
 
-function delete_brick!(bm::Brickmap, i, j, k)
-    # TODO: this should probably be smarter to avoid moving data downstream...
+# function delete_brick!(bm::Brickmap, i, j, k)
+#     # TODO: this should probably be smarter to avoid moving data downstream...
+#     brick_idx = get_brick_index(bm, i, j, k)
+#     if !is_empty_brick(brick_idx)
+#         bm.indexmap[i, j, k] = UInt32(0)
+#         deleteat!(bm.bricks, brick_idx)
+#     end
+#     return
+# end
+
+function free_brick!(bm::Brickmap, i, j, k)
     brick_idx = get_brick_index(bm, i, j, k)
     if !is_empty_brick(brick_idx)
+        push!(bm.available, brick_idx)
+        for attrib in values(bm.attributes)
+            free_brick!(attrib, brick_idx)
+        end
         bm.indexmap[i, j, k] = UInt32(0)
-        deleteat!(bm.bricks, brick_idx)
     end
     return
 end
 
 function insert_brick!(bm::Brickmap{T}, i, j, k, value::Array{T, 3}) where {T}
     if is_empty_brick(bm, i, j, k)
-        unchecked_add_brick!(bm, i, j, k, value)
+        return unchecked_add_brick!(bm, i, j, k, value)
     else
         idx = get_brick_index(bm, i, j, k)
         bm.bricks[idx] = value
+        return idx
     end
-    return
 end
 
 function unchecked_add_brick!(bm::Brickmap{T}, i, j, k, value::Array{T, 3}) where {T}
-    idx = UInt32(length(bm.bricks) + 1)
+    if isempty(bm.available)
+        push!(bm.bricks, value)
+        idx = UInt32(length(bm.bricks))
+    else
+        idx = pop!(bm.available)
+        copyto!(bm.bricks[idx], value)
+    end
     bm.indexmap[i, j, k] = idx
-    push!(bm.bricks, value)
-    return
+    return idx
 end
 
-function get_modifiable_brick(bm::Brickmap{T}, i, j, k) where {T}
+function get_or_create_brick(bm::Brickmap{T}, i, j, k) where {T}
     brick_idx = get_brick_index(bm, i, j, k)
     if is_empty_brick(brick_idx)
-        A = Array{3, T}(undef, bm.bricksize)
-        unchecked_add_brick!(bm, i, j, k, A)
-        return A
+        if isempty(bm.available)
+            A = Array{T, 3}(undef, bm.bricksize)
+            push!(bm.bricks, A)
+            brick_idx = UInt32(length(bm.bricks))
+        else
+            brick_idx = pop!(bm.available)
+            A = bm.bricks[brick_idx]
+        end
+        bm.indexmap[i, j, k] = brick_idx
+        return brick_idx => A
     else
-        return get_brick(bm, brick_idx)
+        return brick_idx => get_brick(bm, brick_idx)
     end
 end
 
@@ -1594,6 +1676,112 @@ struct SparseBrickmapColors
     indexmap::Vector{Tuple{Bool, UInt32}}
     static_colors::Vector{RGB{N0f8}}
     color_bricks::Vector{Array{RGB{N0f8}, 3}}
+    available_statics::Vector{Int}
+    available_bricks::Vector{Int}
+end
+
+function SparseBrickmapColors()
+    return SparseBrickmapColors(
+        Tuple{Bool, UInt32}[], RGB{N0f8}[], Array{RGB{N0f8}, 3}[], Int[], Int[]
+    )
+end
+
+function free_brick!(b::SparseBrickmapColors, brick_idx)
+    # doesn't exist || already freed
+    if !(0 < brick_idx <= length(b.indexmap)) || (b.indexmap[brick_idx][2] == 0)
+        return
+    end
+    # unset index
+    is_static, idx = b.indexmap[brick_idx]
+    b.indexmap[brick_idx] = (is_static, UInt32(0))
+    # only mark static color available if not reused
+    if is_static
+        if !any(p -> p[2] == idx, b.indexmap)
+            b.static_colors[idx] = RGB{N0f8}(1, 0, 1)
+            push!(b.available_statics, idx)
+        end
+    else
+        push!(b.available_bricks, idx)
+    end
+    return
+end
+
+function set_static_color!(b::SparseBrickmapColors, brick_idx, c::Colorant)
+    rgb8 = RGB{N0f8}(
+        N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+        N0f8(trunc(UInt8, 255.99f0 * green(c)), nothing),
+        N0f8(trunc(UInt8, 255.99f0 * blue(c)), nothing),
+    )
+    return set_static_color!(b, brick_idx, rgb8)
+end
+
+function set_static_color!(b::SparseBrickmapColors, brick_idx, c::RGB{N0f8})
+    free_brick!(b, brick_idx)
+
+    idx = -1
+    if c == RGB{N0f8}(1, 0, 1)
+        for i in eachindex(b.static_colors)
+            if b.static_colors[i] == c && !in(i, b.available_statics)
+                idx = i
+                break
+            end
+        end
+    else
+        for i in eachindex(b.static_colors)
+            if b.static_colors[i] == c
+                idx = i
+            end
+        end
+    end
+
+    if idx == -1
+        if isempty(b.available_statics)
+            push!(b.static_colors, c)
+            idx = length(b.static_colors)
+        else
+            idx = pop!(b.available_statics)
+            b.static_colors[idx] = c
+        end
+    end
+
+    if brick_idx > length(b.indexmap)
+        @assert brick_idx == length(b.indexmap) + 1 "$brick_idx, $(length(b.indexmap))"
+        push!(b.indexmap, (true, idx))
+    else
+        b.indexmap[brick_idx] = (true, idx)
+    end
+
+    return
+end
+
+function set_interpolated_color!(b::SparseBrickmapColors, brick_idx, cs::Array)
+    free_brick!(b, brick_idx)
+
+    idx = if isempty(b.available_bricks)
+        push!(b.color_bricks, Array{RGB{N0f8}}(undef, size(cs)))
+        length(b.color_bricks)
+    else
+        pop!(b.available_bricks)
+    end
+
+    color_brick = b.color_bricks[idx]
+    for i in eachindex(cs)
+        c = cs[i]
+        color_brick[i] = RGB{N0f8}(
+            N0f8(trunc(UInt8, 255.99f0 * red(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * green(c)), nothing),
+            N0f8(trunc(UInt8, 255.99f0 * blue(c)), nothing),
+        )
+    end
+
+    if brick_idx > length(b.indexmap)
+        @assert brick_idx == length(b.indexmap) + 1 "$brick_idx, $(length(b.indexmap))"
+        push!(b.indexmap, (false, idx))
+    else
+        b.indexmap[brick_idx] = (false, idx)
+    end
+
+    return
 end
 
 function maybe_add_brick!(
@@ -1798,10 +1986,13 @@ function maybe_add_brick!(
     return false
 end
 
+
 function print_bb_rec(node, depth = 0)
     main = node.commands[node.main_idx]
     name = SDF.Commands.get_name(main.id)
-    println("  "^depth, name, " ", node.bbox[])
+    # println("  "^depth, name, " ", node.bbox[])
+    str = "  "^depth * "$name $(node.bbox[])\n"
+    printstyled(str, color = node.changed[] ? :bold : :light_black)
     foreach(child -> print_bb_rec(child, depth + 2), node.children)
 end
 

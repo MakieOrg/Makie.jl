@@ -23,6 +23,7 @@ struct Brickmap{T}
 
     size::NTuple{3, Int}
     bricksize::NTuple{3, Int}
+    available::Vector{UInt32}
 end
 
 struct CSGBuffers
