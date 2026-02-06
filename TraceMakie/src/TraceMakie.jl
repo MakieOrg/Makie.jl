@@ -814,50 +814,14 @@ end
 
 function to_trace_light(light::Makie.AmbientLight)
     color = light.color isa Observable ? light.color[] : light.color
-    return Hikari.AmbientLight(
-        to_spectrum(color),
-    )
+    rgb = RGB{Float32}(RGBf(color))
+    return Hikari.AmbientLight(rgb)
 end
 
 function to_trace_light(light::Makie.PointLight)
-    # Convert color to RGB values
-    rgb = RGBf(light.color)
-
-    # Separate intensity from color:
-    # - intensity = max(r, g, b) - this is the radiance scale
-    # - color = rgb / intensity - normalized color (0-1 range)
-    intensity = max(rgb.r, rgb.g, rgb.b)
-
-    if intensity > 0
-        # Normalize color to 0-1 range
-        norm_r = Float32(rgb.r / intensity)
-        norm_g = Float32(rgb.g / intensity)
-        norm_b = Float32(rgb.b / intensity)
-    else
-        norm_r = 1f0
-        norm_g = 1f0
-        norm_b = 1f0
-        intensity = 0f0
-    end
-
-    # Create RGBIlluminantSpectrum from normalized color
-    table = Hikari.get_srgb_table()
-    spectrum = Hikari.rgb_illuminant_spectrum(table, norm_r, norm_g, norm_b)
-
-    # Scale calculation following pbrt-v4:
-    # Li = scale * spectrum.Sample(lambda) / dist²
-    # spectrum.Sample(lambda) = spectrum.scale * poly(λ) * D65(λ)
-    #   For normalized RGB, poly ≈ 0.5 and scale = 2, so Sample ≈ D65(λ)
-    #
-    # In pbrt-v4, PointLight::Create does:
-    #   light_scale = 1 / SpectrumToPhotometric(illuminant)
-    # where SpectrumToPhotometric extracts just the D65 illuminant from RGBIlluminantSpectrum
-    # and computes InnerProduct(D65, Y) = D65_PHOTOMETRIC
-    #
-    # So: scale = intensity / D65_PHOTOMETRIC
-    scale = Float32(intensity) / Hikari.D65_PHOTOMETRIC
-
-    return Hikari.PointLight(Vec3f(light.position), spectrum, scale)
+    # Use Hikari's RGB constructor which handles spectral conversion and normalization
+    rgb = RGB{Float32}(RGBf(light.color))
+    return Hikari.PointLight(rgb, Vec3f(light.position))
 end
 
 function to_trace_light(light::Makie.SunSkyLight)
@@ -875,15 +839,10 @@ function to_trace_light(light::Makie.SunSkyLight)
 end
 
 function to_trace_light(light::Makie.DirectionalLight)
-    # Convert Makie's DirectionalLight to Hikari's DirectionalLight
-    # Makie direction points TO light, Hikari direction is direction light TRAVELS
-    # So we need to negate
-    transform = Hikari.Transformation(Mat4f(I))
-    return Hikari.DirectionalLight(
-        transform,
-        to_spectrum(light.color),
-        -Vec3f(light.direction),  # Negate: Makie points TO light, Hikari is travel direction
-    )
+    # Use Hikari's RGB constructor which handles spectral conversion and normalization
+    # Negate direction: Makie points TO light, Hikari is travel direction
+    rgb = RGB{Float32}(RGBf(light.color))
+    return Hikari.DirectionalLight(rgb, -Vec3f(light.direction))
 end
 
 function to_trace_light(light::Makie.EnvironmentLight)

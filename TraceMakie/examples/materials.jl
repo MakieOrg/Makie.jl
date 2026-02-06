@@ -210,11 +210,13 @@ begin
 end
 
 # Render
-TraceMakie.activate!(backend=Array,
+sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
+TraceMakie.activate!(
+    backend=ROCArray,
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,
-    sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
+    sensor=sensor
 )
 nsamples = 10
 integrator = Hikari.VolPath(samples=nsamples, max_depth=50)
@@ -222,7 +224,3 @@ img = @time colorbuffer(ax; backend=TraceMakie, integrator=integrator)
 save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp.png"), img)
 # Array: 23s
 # ROCarray:1.4s
-
-
-screen = Makie.getscreen(ax)
-img

@@ -57,8 +57,3 @@ display(fig; backend=GLMakie)
 using AMDGPU
 TraceMakie.activate!(integrator=TraceMakie.VolPath(samples=10), backend=ROCArray)
 colorbuffer(fig)
-
-save("overlay_tracemakie2.png", fig)
-println("Saved overlay_tracemakie.png")
-
-println("\nCompare the two images - scatter markers and lines should be at the same positions.")

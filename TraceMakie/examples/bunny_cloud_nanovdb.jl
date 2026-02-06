@@ -2,11 +2,8 @@
 # Uses actual NanoVDB volumetric data from pbrt-v4-scenes for spatially-varying density
 #
 # This parses the NanoVDB file format directly in Julia and renders with GridMedium + VolPath
-using TraceMakie, Makie, Hikari, GeometryBasics, Raycore
+using TraceMakie, Makie, Hikari, GeometryBasics
 using FileIO
-using Zlib_jll
-using pocl_jll, OpenCL
-using KernelAbstractions
 
 # Rotation matrix helpers for pbrt-style transforms
 _RotX(θ) = Mat3f(1, 0, 0, 0, cos(θ), -sin(θ), 0, sin(θ), cos(θ))
@@ -125,7 +122,7 @@ nsamples = 5
     exposure=0.5,
     tonemap=nothing,
     white_balance=5000,
-    backend=Array
+    backend=ROCArray
 )
 img
 # img

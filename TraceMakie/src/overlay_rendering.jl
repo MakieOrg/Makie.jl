@@ -100,7 +100,7 @@ end
 
 function create_raster_context(scene::Makie.Scene, resolution::Point2f)
     cc = scene.camera_controls
-    view_proj = scene.camera.projectionview[]
+    view_proj = Mat4f(scene.camera.projectionview[])
     near = Float32(cc.near[])
     far = Float32(cc.far[])
     return Overlay.RasterContext(view_proj, Vec2f(resolution); near=near, far=far)
