@@ -225,7 +225,7 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
-        elseif color isa Union{ShaderAbstractions.Sampler, CSGBuffers}
+        elseif color isa Union{ShaderAbstractions.Sampler, SDFBrickmap}
             val = color
         elseif color isa AbstractArray
             val = add_alpha.(color, alpha)

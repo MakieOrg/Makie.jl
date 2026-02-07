@@ -30,13 +30,13 @@ module CSG
 end
 
 function update_brickmap!(
-        brickmap::Brickmap{N0f8}, bb::Rect3f, root::SDF.Node,
+        brickmap::SDFBrickmap, bb::Rect3f, root::SDF.Node,
         regions_to_update::Vector{Rect3f}
     )
     # TODO: Is this an error?
     isempty(regions_to_update) && return
 
-    N_blocks = size(brickmap.indexmap, 1)
+    N_blocks = size(brickmap.indices, 1)
 
     # coarse grid (indices) with
     # minimum = mini + 0 * delta
@@ -62,7 +62,7 @@ function update_brickmap!(
     brickradius = 0.5 * brickdiameter
 
     # step through brick grid (delta is the width of the brick, bricksize is edge-like)
-    bricksize = brickmap.bricksize[1]
+    bricksize = brickmap.bricksize
     brick_delta = delta / (bricksize - 1)
 
     # -cellsize .. cellsize -> -127.5 .. 127.5
@@ -70,9 +70,9 @@ function update_brickmap!(
     uint8_scale = 127.5f0 * bricksize / brickdiameter
 
     # Note: one buffer per thread for multithreading, or create them per thread?
-    pos_cache = SDF.Cache{Point3f}(brickmap.bricksize)
-    sdf_cache = SDF.Cache{Float32}(brickmap.bricksize)
-    color_cache = SDF.Cache{RGBAf}(brickmap.bricksize)
+    pos_cache = SDF.Cache{Point3f}((bricksize, bricksize, bricksize))
+    sdf_cache = SDF.Cache{Float32}((bricksize, bricksize, bricksize))
+    color_cache = SDF.Cache{RGBAf}((bricksize, bricksize, bricksize))
 
     # print_bb_rec(root)
 
@@ -120,11 +120,16 @@ function update_brickmap!(
         end
     end
 
+    # TODO: merge overlapping bboxes, update indices per merge bbox
+    ShaderAbstractions.update!(brickmap.indices)
+
+    finish_update!(brickmap)
+
     return
 end
 
 function update_brick!(
-        brickmap::Brickmap, root::SDF.Node,
+        brickmap::SDFBrickmap, root::SDF.Node,
         i, j, k,
         mini, delta, brick_delta,
         uint8_scale,
@@ -142,7 +147,7 @@ function update_brick!(
     bricksize = brickmap.bricksize
     origin = Point3f(mini + delta .* ((i, j, k) .- 1))
     positions = SDF.get_buffer(pos_cache)
-    @inbounds for ijk in CartesianIndices(bricksize)
+    @inbounds for ijk in CartesianIndices((bricksize, bricksize, bricksize))
         _ijk = Tuple(ijk)
         positions[ijk] = origin .+ brick_delta .* (_ijk .- 1)
     end
@@ -196,13 +201,12 @@ function update_brick!(
             f_normed = clamp(uint8_scale * sdfs[i] + 128, 0, 255.9)
             sdf_brick[i] = N0f8(trunc(UInt8, f_normed), nothing)
         end
+        finish_brick_update!(brickmap, brick_idx)
 
-        # TODO: needs to be able to edit
-        bmc = brickmap[:color]::SparseBrickmapColors
         if contains_multiple_colors
-            set_interpolated_color!(bmc, brick_idx, colors)
+            set_interpolated_color!(brickmap, brick_idx, colors)
         else
-            set_static_color!(bmc, brick_idx, first_color)
+            set_static_color!(brickmap, brick_idx, first_color)
         end
 
         return true
@@ -265,7 +269,8 @@ function plot!(p::CSGPlot)
     bricksize = p.bricksize[]
     N_blocks = cld(N-1, bricksize-1)
     N = N_blocks * (bricksize-1) + 1
-    brickmap = Brickmap{N0f8}((bricksize, bricksize, bricksize), N, color = SparseBrickmapColors())
+    # brickmap = Brickmap{N0f8}((bricksize, bricksize, bricksize), N, color = SparseBrickmapColors())
+    brickmap = SDFBrickmap(bricksize, N)
 
 
     map!(p, [:x, :y, :z], :data_limits) do x, y, z
@@ -304,38 +309,9 @@ function plot!(p::CSGPlot)
         return brickmap
     end
 
-    # TODO: for diffed updates we probably need to generate Samplers here
-    # so we can update the correct regions
-    map!(p, :brickmap, :brick_indices) do brickmap
-        return ShaderAbstractions.Sampler(brickmap.indexmap, minfilter = :nearest)
-    end
+    # force this to run before connecting the backend so we don't spam updates
+    # during construction
+    p.brickmap[]
 
-    map!(p, :brickmap, :sdf_bricks) do brickmap
-        # TODO: use consistent 2D size to avoid reordering?
-        # Or use the Z-order curve? Actually doesn't seem that difficult?
-        @info "Brickmap packing"
-        packed = pack_bricks(brickmap)
-        return ShaderAbstractions.Sampler(packed, minfilter = :linear)
-    end
-
-    map!(p, :brickmap, [:color_indexmap, :color_bricks]) do brickmap
-        # TODO: same todo as sdf bricks
-        @info "Color Packing"
-        @time indexmap, bricks = pack_brick_colors(brickmap, brickmap.attributes[:color]::SparseBrickmapColors)
-        indexmap_tex = ShaderAbstractions.Sampler(indexmap, minfilter = :nearest)
-        brick_tex = ShaderAbstractions.Sampler(bricks, minfilter = :linear)
-
-        return indexmap_tex, brick_tex
-    end
-
-    map!(p, [:brickmap, :brick_indices, :sdf_bricks, :color_indexmap, :color_bricks], :buffers) do brickmap, args...
-        a = Base.summarysize(args[1]) / 1024^2
-        b = Base.summarysize(args[2]) / 1024^2
-        c = Base.summarysize(args[3]) / 1024^2
-        d = Base.summarysize(args[4]) / 1024^2
-        @info "$a + $b + $c + $d = $(a+b+c+d) (indices, bricks, color indexmap, color bricks)"
-        return CSGBuffers(args..., brickmap.bricksize[1])
-    end
-
-    volume!(p, p.x, p.y, p.z, p.buffers, algorithm = :sdf, isorange = p.minstep)
+    volume!(p, p.x, p.y, p.z, p.brickmap, algorithm = :sdf, isorange = p.minstep)
 end

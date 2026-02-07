@@ -305,7 +305,14 @@ function gpu_setindex!(t::Texture{T, N}, newvalue::Array{T, N}, indexes::Union{U
 end
 
 
-function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo = glGenFramebuffers()) where {T}
+function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}) where {T}
+    fbo = glGenFramebuffers()
+    gpu_resize!(target, source, fbo)
+    glDeleteFramebuffers(1, Ref(fbo))
+    return
+end
+
+function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo) where {T}
     gl_switch_context!(target.context)
     @assert target.context == source.context
     glBindFramebuffer(GL_FRAMEBUFFER, fbo)
@@ -319,10 +326,11 @@ function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo = glGen
     )
     glDrawBuffer(GL_COLOR_ATTACHMENT1)
     w, h = map(minimum, zip(size(target), size(source)))
-    return glBlitFramebuffer(
+    glBlitFramebuffer(
         0, 0, w, h, 0, 0, w, h,
         GL_COLOR_BUFFER_BIT, GL_NEAREST
     )
+    return
 end
 
 

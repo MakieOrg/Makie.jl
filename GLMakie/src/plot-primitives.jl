@@ -1189,8 +1189,8 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function update_volume_or_brickmap((data,), changed, cached)
-    if data isa Makie.CSGBuffers
-        return nothing, data.indices, data.sdf_bricks, data.bricksize, data.color_indices, data.color_bricks
+    if data isa Makie.SDFBrickmap
+        return nothing, data.indices, data.bricks, data.bricksize, data.color_indexmap, data.color_bricks
     else
         if isnothing(cached)
             volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)
