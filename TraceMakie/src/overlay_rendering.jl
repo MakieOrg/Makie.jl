@@ -106,134 +106,54 @@ function create_raster_context(scene::Makie.Scene, resolution::Point2f)
     return Overlay.RasterContext(view_proj, Vec2f(resolution); near=near, far=far)
 end
 
-"""
-    render_overlay_plot!(overlay, depth_buffer, ctx, info::OverlayPlotInfo)
+render_overlay_plot!(overlay, depth_buffer, ctx, info::OverlayPlotInfo) =
+    render_overlay_plot!(overlay, depth_buffer, ctx, info.plot)
 
-Render a single overlay plot based on its type.
-"""
-function render_overlay_plot!(overlay, depth_buffer, ctx, info::OverlayPlotInfo)
-    plot = info.plot
+# Fallback for unsupported overlay plot types
+render_overlay_plot!(overlay, depth_buffer, ctx, ::Makie.AbstractPlot) = nothing
 
-    if info.plot_type == :lines
-        render_lines_overlay!(overlay, depth_buffer, ctx, plot)
-    elseif info.plot_type == :linesegments
-        render_linesegments_overlay!(overlay, depth_buffer, ctx, plot)
-    elseif info.plot_type == :scatter
-        render_scatter_overlay!(overlay, depth_buffer, ctx, plot)
-    elseif info.plot_type == :text
-        render_text_overlay!(overlay, depth_buffer, ctx, plot)
-    end
+# Shared helpers for overlay rendering
+
+_overlay_positions(plot) = [Makie.to_ndim(Point3f, p, 0f0) for p in plot.converted[][1]]
+
+function _overlay_color(plot)
+    color_attr = haskey(plot.attributes, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
+    return Makie.to_color(color_attr)
 end
 
-"""
-    render_lines_overlay!(overlay, depth_buffer, ctx, plot)
-
-Render a lines plot as overlay.
-"""
-function render_lines_overlay!(overlay, depth_buffer, ctx, plot)
-    # Extract positions from plot (converted is a Computed, [] unwraps to tuple)
-    positions = plot.converted[][1]
-
-    # Handle different position formats
-    points = if positions isa AbstractVector{<:Point3f}
-        positions
-    elseif positions isa AbstractVector{<:Point2f}
-        # Convert 2D to 3D (z=0)
-        [Point3f(p[1], p[2], 0f0) for p in positions]
-    else
-        # Try to convert
-        Point3f.(positions)
-    end
-
-    # Get color
-    color_attr = haskey(plot.attributes, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
-    color = to_overlay_color(color_attr)
-
-    # Handle linewidth (can be scalar or vector, may be empty)
+function _overlay_linewidth(plot)
     lw_attr = haskey(plot.attributes, :linewidth) ? plot.linewidth[] : 1f0
-    linewidth = if lw_attr isa AbstractVector
-        isempty(lw_attr) ? 1f0 : Float32(first(lw_attr))
-    else
-        Float32(lw_attr)
-    end
-
-    Overlay.rasterize_lines!(overlay, depth_buffer, ctx, points, color, linewidth; connect=true)
+    return lw_attr isa AbstractVector ? (isempty(lw_attr) ? 1f0 : Float32(first(lw_attr))) : Float32(lw_attr)
 end
 
-"""
-    render_linesegments_overlay!(overlay, depth_buffer, ctx, plot)
-
-Render a linesegments plot as overlay.
-"""
-function render_linesegments_overlay!(overlay, depth_buffer, ctx, plot)
-    positions = plot.converted[][1]
-
-    points = if positions isa AbstractVector{<:Point3f}
-        positions
-    elseif positions isa AbstractVector{<:Point2f}
-        [Point3f(p[1], p[2], 0f0) for p in positions]
-    else
-        Point3f.(positions)
-    end
-
-    color_attr = haskey(plot.attributes, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
-    color = to_overlay_color(color_attr)
-
-    # Handle linewidth (can be scalar or vector, may be empty)
-    lw_attr = haskey(plot.attributes, :linewidth) ? plot.linewidth[] : 1f0
-    linewidth = if lw_attr isa AbstractVector
-        isempty(lw_attr) ? 1f0 : Float32(first(lw_attr))
-    else
-        Float32(lw_attr)
-    end
-
-    Overlay.rasterize_linesegments!(overlay, depth_buffer, ctx, points, color, linewidth)
-end
-
-"""
-    render_scatter_overlay!(overlay, depth_buffer, ctx, plot)
-
-Render a scatter plot as overlay.
-"""
-function render_scatter_overlay!(overlay, depth_buffer, ctx, plot)
-    positions = plot.converted[][1]
-
-    points = if positions isa AbstractVector{<:Point3f}
-        positions
-    elseif positions isa AbstractVector{<:Point2f}
-        [Point3f(p[1], p[2], 0f0) for p in positions]
-    else
-        Point3f.(positions)
-    end
-
-    color_attr = haskey(plot.attributes, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
-    color = to_overlay_color(color_attr)
-
-    # Get marker size (can be scalar, Vec2, or vector)
+function _overlay_markersize(plot)
     ms_attr = haskey(plot.attributes, :markersize) ? plot.markersize[] : 10f0
-    markersize = if ms_attr isa Number
-        Float32(ms_attr)
-    elseif ms_attr isa Vec2f
-        Float32(max(ms_attr[1], ms_attr[2]))  # Use max dimension
-    elseif ms_attr isa AbstractVector
-        isempty(ms_attr) ? 10f0 : Float32(first(ms_attr) isa Number ? first(ms_attr) : first(ms_attr)[1])
-    else
-        10f0
-    end
+    s = Makie.to_2d_scale(ms_attr)
+    return s isa Vec2f ? Float32(max(s[1], s[2])) : Float32(max(first(s)...))
+end
+
+function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.lines})
+    points = _overlay_positions(plot)
+    Overlay.rasterize_lines!(overlay, depth_buffer, ctx, points, _overlay_color(plot), _overlay_linewidth(plot); connect=true)
+end
+
+function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.linesegments})
+    points = _overlay_positions(plot)
+    Overlay.rasterize_linesegments!(overlay, depth_buffer, ctx, points, _overlay_color(plot), _overlay_linewidth(plot))
+end
+
+function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.scatter})
+    points = _overlay_positions(plot)
+    markersize = _overlay_markersize(plot)
 
     # Get marker shape
     marker = haskey(plot.attributes, :marker) ? plot.marker[] : :circle
     shape = marker_to_shape(marker)
 
-    Overlay.rasterize_scatter!(overlay, depth_buffer, ctx, points, color, markersize, shape)
+    Overlay.rasterize_scatter!(overlay, depth_buffer, ctx, points, _overlay_color(plot), markersize, shape)
 end
 
-"""
-    render_text_overlay!(overlay, depth_buffer, ctx, plot)
-
-Render a text plot as overlay using Makie's computed glyph data.
-"""
-function render_text_overlay!(overlay, depth_buffer, ctx, plot)
+function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.text})
     attr = plot.attributes
 
     # Check if computed attributes are available
@@ -260,10 +180,10 @@ function render_text_overlay!(overlay, depth_buffer, ctx, plot)
 
     # Get per-character colors
     colors = if haskey(attr, :text_color)
-        [to_overlay_color(c) for c in attr[:text_color][]]
+        Makie.to_color.(attr[:text_color][])
     else
         color_attr = haskey(attr, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
-        fill(to_overlay_color(color_attr), length(sdf_uvs))
+        fill(Makie.to_color(color_attr), length(sdf_uvs))
     end
 
     # Get rotations (per character)
@@ -291,14 +211,7 @@ function render_text_overlay!(overlay, depth_buffer, ctx, plot)
         marker_off = marker_offsets[i] # Screen-space offset from text anchor to glyph origin
         rotation = rotations[min(i, length(rotations))]
 
-        # Convert position to Point3f
-        world_pos = if pos isa Point3f
-            pos
-        elseif pos isa Point2f
-            Point3f(pos[1], pos[2], 0f0)
-        else
-            Point3f(pos...)
-        end
+        world_pos = Makie.to_ndim(Point3f, pos, 0f0)
 
         # Project text anchor to screen space
         screen_anchor, depth, visible = Overlay.project(ctx, world_pos)
@@ -450,48 +363,15 @@ end
 # Color/Shape Utilities
 # =============================================================================
 
-"""
-    to_overlay_color(color) -> RGBA{Float32}
+const MARKER_SHAPE_MAP = Dict{Symbol, UInt8}(
+    :circle => Overlay.CIRCLE, :o => Overlay.CIRCLE,
+    :rect => Overlay.RECTANGLE, :square => Overlay.RECTANGLE,
+    :diamond => Overlay.DIAMOND,
+    :cross => Overlay.CROSS, :+ => Overlay.CROSS,
+    :utriangle => Overlay.TRIANGLE, :dtriangle => Overlay.TRIANGLE, :triangle => Overlay.TRIANGLE,
+    :hexagon => Overlay.HEXAGON,
+    :star => Overlay.STAR, :star5 => Overlay.STAR,
+)
 
-Convert various color formats to RGBA{Float32} for overlay rendering.
-"""
-function to_overlay_color(color)
-    if color isa RGBA{Float32}
-        return color
-    elseif color isa RGBA
-        return RGBA{Float32}(color.r, color.g, color.b, color.alpha)
-    elseif color isa RGB
-        return RGBA{Float32}(color.r, color.g, color.b, 1f0)
-    elseif color isa Colorant
-        c = convert(RGBA{Float32}, color)
-        return c
-    else
-        # Default to black
-        return RGBA{Float32}(0f0, 0f0, 0f0, 1f0)
-    end
-end
-
-"""
-    marker_to_shape(marker) -> UInt8
-
-Convert Makie marker symbol to Overlay shape constant.
-"""
-function marker_to_shape(marker)
-    if marker == :circle || marker == :o
-        return Overlay.CIRCLE
-    elseif marker == :rect || marker == :square
-        return Overlay.RECTANGLE
-    elseif marker == :diamond
-        return Overlay.DIAMOND
-    elseif marker == :cross || marker == :+
-        return Overlay.CROSS
-    elseif marker == :utriangle || marker == :dtriangle || marker == :triangle
-        return Overlay.TRIANGLE
-    elseif marker == :hexagon
-        return Overlay.HEXAGON
-    elseif marker == :star || marker == :star5
-        return Overlay.STAR
-    else
-        return Overlay.CIRCLE  # Default
-    end
-end
+marker_to_shape(marker::Symbol) = get(MARKER_SHAPE_MAP, marker, Overlay.CIRCLE)
+marker_to_shape(::Any) = Overlay.CIRCLE

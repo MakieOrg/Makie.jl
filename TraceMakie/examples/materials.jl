@@ -224,3 +224,4 @@ img = @time colorbuffer(ax; backend=TraceMakie, integrator=integrator)
 save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp.png"), img)
 # Array: 23s
 # ROCarray:1.4s
+img

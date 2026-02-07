@@ -94,9 +94,6 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
     println(io, "TraceMakie.Screen")
     if !isnothing(screen.scene)
         println(io, "  Scene size: ", size(screen.scene))
-        if !isnothing(screen.state)
-            println(io, "  Plots: ", length(screen.state.plot_infos))
-        end
     else
         println(io, "  Scene: not attached")
     end
@@ -114,21 +111,8 @@ function Base.isopen(screen::Screen)
     return objectid(screen) in _open_screens || screen.state !== nothing
 end
 
-"""
-    cleanup!(state::TraceMakieState)
-
-Release GPU memory held by TraceMakieState.
-"""
 function cleanup!(state::TraceMakieState)
-    # Cleanup film
     Hikari.cleanup!(state.film)
-
-    # Finalize all preserved GPU arrays
-    for arr in state.preserve
-        finalize(arr)
-    end
-    empty!(state.preserve)
-
     return nothing
 end
 
@@ -139,16 +123,13 @@ Release all GPU resources held by the screen, including the integrator state,
 film, and preserved GPU arrays. Call this when done rendering to free GPU memory.
 """
 function Base.close(screen::Screen)
-    # Cleanup TraceMakieState if present
     if screen.state !== nothing
         cleanup!(screen.state)
         screen.state = nothing
     end
 
-    # Cleanup integrator's cached state
     close(screen.config.integrator)
 
-    # Remove from open screens tracking
     delete!(_open_screens, objectid(screen))
 
     return nothing
@@ -171,7 +152,6 @@ end
 function Screen(scene::Scene, config::ScreenConfig)
     screen = Screen(size(scene), config)
     screen.scene = scene
-    # Register screen with scene so getscreen(scene) works
     Makie.push_screen!(scene, screen)
     return screen
 end
@@ -180,18 +160,14 @@ Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
-    # Check if backend changed - if so, we need to recreate the screen entirely
     if screen.config.backend !== config.backend
-        # Backend changed, need new screen with new state
         return Screen(scene, config)
     end
 
-    # Check if integrator changed - if so, invalidate state to force re-render
     if typeof(screen.config.integrator) !== typeof(config.integrator)
         screen.state = nothing
     end
 
-    # Update the config (postprocessing params like exposure/tonemap/gamma)
     screen.config = config
     return screen
 end
@@ -207,19 +183,35 @@ function render!(screen::Screen)
     isnothing(state) && error("Screen not set up - call display first")
     isnothing(scene) && error("No scene attached to screen")
 
-    # Sync transforms and refit TLAS if needed
-    sync_transforms!(state)
+    # Poll compute graph for updates, then sync/refit TLAS
+    poll_all_plots(screen, scene)
+    tlas = get_tlas(state)
+    Raycore.sync!(tlas)
+    Raycore.refit_tlas!(tlas)
 
-    # Clear film and render (scene/film are already CPU or GPU based on backend)
-    Hikari.clear!(state.film)
+    # Clear film if data changed
+    if state.needs_film_clear
+        Hikari.clear!(state.film)
+        state.needs_film_clear = false
+    end
+
     camera = state.camera[]
+
+    # Adapt scene for kernel traversal (TLAS → StaticTLAS, MultiTypeSet → StaticMultiTypeSet)
+    backend = screen.config.backend
+    ka_backend = if backend === Array
+        Raycore.KA.CPU()
+    else
+        Raycore.KA.get_backend(backend{Float32}(undef, 1))
+    end
+    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
 
     # Fill auxiliary buffers if denoising is enabled (before main render)
     if screen.config.denoise
-        Hikari.fill_aux_buffers!(state.film, state.hikari_scene, camera)
+        Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
     end
 
-    screen.config.integrator(state.hikari_scene, state.film, camera)
+    screen.config.integrator(adapted_scene, state.film, camera)
     return state.film
 end
 
@@ -234,15 +226,19 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     film = state.film
     camera = state.camera[]
 
-    # Convert pixel samples to framebuffer (needed before denoising)
-    # Note: VolPath integrator writes directly to framebuffer in its finalize kernel,
-    # so we only call to_framebuffer! for other integrators (like Whitted) that use tiles
+    # Convert pixel samples to framebuffer
     if !(screen.config.integrator isa Hikari.VolPath)
         Hikari.to_framebuffer!(film)
     end
-    scene = Adapt.adapt(backend, state.hikari_scene)
+    # Adapt scene for kernel traversal (fill_aux_buffers! needs StaticTLAS)
+    ka_backend = if backend === Array
+        Raycore.KA.CPU()
+    else
+        Raycore.KA.get_backend(backend{Float32}(undef, 1))
+    end
+    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
     # Fill depth buffer for overlay depth testing
-    Hikari.fill_aux_buffers!(film, scene, camera)
+    Hikari.fill_aux_buffers!(film, adapted_scene, camera)
 
     # Apply denoising if enabled (before postprocessing)
     config = screen.config
@@ -251,11 +247,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         Hikari.denoise!(film; config=denoise_cfg)
     end
 
-    # Apply postprocessing on GPU/CPU (tonemapping, gamma, exposure, sensor)
-    # Note: when denoising is enabled, postprocess! reads from postprocess buffer (denoised)
-    # When denoising is disabled, postprocess! reads from framebuffer (raw)
     if config.denoise
-        # Denoised result is in postprocess buffer, copy back to framebuffer for postprocess!
         copyto!(film.framebuffer, film.postprocess)
     end
 
@@ -269,14 +261,15 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # Render overlay plots (lines, scatter, text)
     if !isempty(state.overlay_plots)
         render_overlays!(state, screen.scene)
-        # DEBUG: Capture overlay for inspection
         DEBUG_OVERLAY[] = copy(state.overlay_buffer)
-        # Composite overlay onto postprocessed image (both use array convention)
         Overlay.composite!(film.postprocess, state.overlay_buffer)
     end
 
     # Copy postprocess buffer to CPU if on GPU, then convert to RGB{N0f8}
+    # Flip vertically: film renders in raster convention (y=0 top),
+    # Makie JuliaNative expects y=0 bottom
     result = Array(map(clamp01nan, film.postprocess))
+    result = result[end:-1:begin, :]
 
     if format == Makie.GLNative
         return Makie.jl_to_gl_format(result)
@@ -289,50 +282,22 @@ end
     postprocess!(screen::Screen; exposure=nothing, tonemap=nothing, gamma=nothing)
 
 Re-apply postprocessing to an already-rendered screen without re-rendering.
-
-This is useful for quickly experimenting with different postprocessing settings
-after a render is complete. Parameters that are not specified will use the
-screen's existing config values.
-
-# Arguments
-- `screen`: A Screen that has already been rendered
-- `exposure`: Exposure multiplier (default: use screen config)
-- `tonemap`: Tonemapping method (:aces, :reinhard, :uncharted2, :filmic, or nothing)
-- `gamma`: Gamma correction value (default: use screen config)
-
-# Returns
-The postprocessed image as `Matrix{RGB{N0f8}}`
-
-# Example
-```julia
-# Render once
-screen = TraceMakie.Screen(scene)
-img = Makie.colorbuffer(screen)
-
-# Try different postprocessing without re-rendering
-img_bright = TraceMakie.postprocess!(screen; exposure=2.0)
-img_filmic = TraceMakie.postprocess!(screen; tonemap=:filmic)
-img_low_gamma = TraceMakie.postprocess!(screen; gamma=1.8)
-img_sensor = TraceMakie.postprocess!(screen; sensor=Hikari.FilmSensor(iso=90, white_balance=5000))
-```
 """
 function postprocess!(screen::Screen;
     exposure::Union{Real, Nothing} = nothing,
-    tonemap::Union{Symbol, Nothing, Missing} = missing,  # missing = use config, nothing = no tonemap
+    tonemap::Union{Symbol, Nothing, Missing} = missing,
     gamma::Union{Real, Nothing} = nothing,
-    sensor::Union{Hikari.FilmSensor, Nothing, Missing} = missing,  # missing = use config, nothing = no sensor
+    sensor::Union{Hikari.FilmSensor, Nothing, Missing} = missing,
 )
     if isnothing(screen.state)
         error("Screen has not been rendered yet. Call Makie.colorbuffer(screen) first.")
     end
 
-    # Use provided values or fall back to screen config
     exp_val = isnothing(exposure) ? screen.config.exposure : Float32(exposure)
     tm_val = ismissing(tonemap) ? screen.config.tonemap : tonemap
     gamma_val = isnothing(gamma) ? screen.config.gamma : Float32(gamma)
     sensor_val = ismissing(sensor) ? screen.config.sensor : sensor
 
-    # Apply postprocessing (works on GPU or CPU)
     Hikari.postprocess!(screen.state.film;
         exposure = exp_val,
         tonemap = tm_val,
@@ -340,7 +305,6 @@ function postprocess!(screen::Screen;
         sensor = sensor_val
     )
 
-    # Copy to CPU if on GPU, then convert to RGB{N0f8}
     postprocess_cpu = Array(screen.state.film.postprocess)
     result = map(postprocess_cpu) do c
         RGB{N0f8}(c.r, c.g, c.b)
@@ -351,17 +315,27 @@ end
 
 function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw...)
     screen.scene = scene
-    screen.state = convert_scene_with_state(scene, screen.config.backend, screen.config.integrator)
+    init_scene!(screen, scene)
     return screen
 end
 
 function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    # For now, rebuild the entire state when plots change
-    # Future: incremental updates
-    if !isnothing(screen.state)
-        screen.state = convert_scene_with_state(scene, screen.config.backend, screen.config.integrator)
+    isnothing(screen.state) && return screen
+    scene_3d = find_3d_scene(scene)
+    isnothing(scene_3d) && return screen
+    Makie.for_each_atomic_plot(plot) do p
+        haskey(p, :trace_renderobject) || draw_atomic(screen, scene_3d, p)
     end
+    Raycore.sync!(screen.state.hikari_scene.accel)
     return screen
+end
+
+function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+    isnothing(screen.state) && return
+    Makie.for_each_atomic_plot(plot) do p
+        delete_trace_robj!(screen, p)
+    end
+    Raycore.sync!(screen.state.hikari_scene.accel)
 end
 
 Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
@@ -401,7 +375,6 @@ function activate!(; screen_config...)
 end
 
 function __init__()
-    # Register TraceMakie's default theme at init time (before activate)
     activate!()
     return
 end
@@ -411,7 +384,7 @@ end
 # =============================================================================
 
 """
-    render_interactive(mscene; backend, max_depth=5, exposure=1.0f0, tonemap=:aces, gamma=1.2f0, render_backend=Array)
+    render_interactive(mscene; integrator, exposure, tonemap, gamma, sensor, backend)
 
 Start an interactive ray-tracing render loop for a Makie scene.
 
@@ -419,43 +392,23 @@ The render loop continuously updates as the camera moves. Uses progressive rende
 with 1 sample per pixel per frame, accumulating samples over time for noise reduction.
 When the camera moves or plot data changes, the film is cleared and accumulation restarts.
 
-Plot data changes (volume data, material parameters, etc.) are detected via the compute graph
-polling mechanism - no Observable callbacks needed.
-
 Postprocessing parameters (exposure, tonemap, gamma) can be Observables for reactive updates.
-
-# Arguments
-- `mscene::Makie.Scene`: The Makie scene to render
-- `backend`: The Makie backend to use for display (e.g., GLMakie)
-- `max_depth=5`: Maximum ray bounces
-- `exposure=1.0f0`: Exposure value (can be Observable)
-- `tonemap=:aces`: Tonemapping method (can be Observable, options: :aces, :reinhard, :filmic, nothing)
-- `gamma=1.2f0`: Gamma correction (can be Observable)
-- `render_backend=Array`: Array type for rendering (Array for CPU, ROCArray/CuArray for GPU)
-
-# Returns
-A named tuple with handles for controlling the render:
-- `stop`: Function to stop the render loop
 """
 function render_interactive(mscene::Makie.Scene;
                             integrator=Hikari.Whitted(samples=1, max_depth=5),
                             exposure=1.0f0, tonemap=:aces, gamma=1.2f0,
                             sensor=nothing, backend=Array)
-    # Wrap non-Observable parameters in Observables for uniform handling
     exposure_obs = exposure isa Observable ? exposure : Observable(exposure)
     tonemap_obs = tonemap isa Observable ? tonemap : Observable(tonemap)
     gamma_obs = gamma isa Observable ? gamma : Observable(gamma)
 
-    # Create Screen with proper backend configuration
     config = ScreenConfig(integrator, Float32(exposure_obs[]), tonemap_obs[], gamma_obs[], sensor, backend)
     screen = Screen(nothing, nothing, config)
-    # Initialize state via display
     display(screen, mscene)
     state = screen.state
     film = state.film
     camera = state.camera
 
-    # Create overlay scene for progressive display
     imsub = Scene(mscene)
     display_buffer = film.postprocess
     imgp = image!(imsub, -1 .. 1, -1 .. 1, Array(display_buffer), uv_transform=(:rotr90, :flip_y))
@@ -465,15 +418,30 @@ function render_interactive(mscene::Makie.Scene;
     cam_rendered = camera[]
     running = Threads.Atomic{Bool}(true)
 
-    # Main render loop using render! for progressive rendering
+    # Adapt scene once for kernel traversal; re-adapt after topology changes
+    ka_backend = if backend === Array
+        Raycore.KA.CPU()
+    else
+        Raycore.KA.get_backend(backend{Float32}(undef, 1))
+    end
+    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
+
     root = Makie.rootparent(mscene)
     Base.errormonitor(Threads.@spawn while running[]
         Makie.isclosed(root) && break
 
-        # Poll for plot data updates (material changes, geometry updates, etc.)
-        # This triggers the compute graph to apply any pending in-place updates
-        if poll_updates!(state)
-            # Data changed - clear film and integrator state
+        # Poll compute graph for plot data updates
+        poll_all_plots(screen, mscene)
+
+        # Sync and refit TLAS (no-ops when clean)
+        tlas = get_tlas(state)
+        Raycore.sync!(tlas)
+        Raycore.refit_tlas!(tlas)
+
+        if state.needs_film_clear
+            state.needs_film_clear = false
+            # Re-adapt scene after topology changes
+            adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
             Hikari.clear!(film)
             Hikari.clear!(screen.config.integrator)
             lock(loki) do
@@ -484,7 +452,6 @@ function render_interactive(mscene::Makie.Scene;
         # Check camera change
         if cam_rendered != camera[]
             cam_rendered = camera[]
-            # Clear film and integrator state to restart accumulation
             Hikari.clear!(film)
             Hikari.clear!(screen.config.integrator)
             lock(loki) do
@@ -492,17 +459,13 @@ function render_interactive(mscene::Makie.Scene;
             end
         end
 
-        # Refit TLAS if transforms changed (e.g., animated objects)
-        refit_if_needed!(state)
-
-        # Render one iteration/sample using render! (allocation-free, progressive)
-        Hikari.render!(screen.config.integrator, state.hikari_scene, film, camera[])
+        # Render one iteration/sample
+        Hikari.render!(screen.config.integrator, adapted_scene, film, camera[])
 
         # Apply postprocessing with current observable values
         current_tonemap = tonemap_obs[]
         tonemap_sym = current_tonemap isa Symbol ? current_tonemap : (isnothing(current_tonemap) ? nothing : Symbol(current_tonemap))
 
-        # Get sensor from config (may be nothing)
         current_sensor = screen.config.sensor
         Hikari.postprocess!(film; exposure=Float32(exposure_obs[]), tonemap=tonemap_sym, gamma=Float32(gamma_obs[]), sensor=current_sensor)
 
@@ -510,10 +473,9 @@ function render_interactive(mscene::Makie.Scene;
             imgp[3] = Array(film.postprocess)
             imgp.visible = true
         end
-        sleep(1/30)  # 60 FPS update rate
+        sleep(1/30)
     end)
 
-    # Camera visibility thread - hides overlay when camera is moving
     Base.errormonitor(Threads.@spawn while running[] && !Makie.isclosed(root)
         lock(loki) do
             if cam_start != camera[]
@@ -524,7 +486,6 @@ function render_interactive(mscene::Makie.Scene;
         sleep(1/30)
     end)
 
-    # Return control handles
     return (
         running = running,
         screen = screen,
