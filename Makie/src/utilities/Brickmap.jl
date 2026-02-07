@@ -32,13 +32,15 @@ end
 SDFBrickmap(bricksize, _size) = SDFBrickmap(bricksize, to3tuple(_size))
 function SDFBrickmap(bricksize::Int, _size::NTuple{3, Int})
     idx_size = cld.(_size .- 1, bricksize .- 1)
-    # init with size > 0 to avoid frequent early resizes
-    init_size = (8 * bricksize, 8 * bricksize, 8 * bricksize) # 512 bricks
+    # initial size should probably be at least as much as an xy plane would take...
+    D = trunc(Int, cbrt(prod(idx_size) / minimum(idx_size))) * bricksize
+    init_brick_size = (D, D, D)
+    init_color_brick_size = (4, 4, 4) .* bricksize
     return SDFBrickmap(
         ShaderAbstractions.Sampler(fill(UInt32(0), idx_size)),
-        ShaderAbstractions.Sampler(Array{N0f8, 3}(undef, init_size)), # 512
+        ShaderAbstractions.Sampler(Array{N0f8, 3}(undef, init_brick_size)),
         ShaderAbstractions.Sampler(Matrix{UInt32}(undef, 32, 32)), # 1024 values
-        ShaderAbstractions.Sampler(Array{RGB{N0f8}}(undef, div.(init_size, 2))), # 64
+        ShaderAbstractions.Sampler(Array{RGB{N0f8}}(undef, init_color_brick_size)),
         _size, bricksize,
         0, 0, 0, 1, # 1 color brick reserved for static colors
         false, false, false,
@@ -96,10 +98,11 @@ output = reshape([block1, block2, block3, block4, empty, empty], (3, 2))
 ```
 """
 function increase_size_blocked(A::Array{T, 3}, blocksize::NTuple{3, <:Integer}) where {T}
-    # TODO: Would it be better to update X first? does it matter?
-    # resize
-    X, Y, Z = size(A)
-    S = Z < Y ? (X, Y, Z+blocksize[3]) : (Y < X ? (X, Y+blocksize[2], Z) : (X+blocksize[1], Y, Z))
+    S = div.(size(A), blocksize)
+    # avoid slow growth for small arrays
+    # size 1..10 adds (511, 504, 485, 448, 387, 513, 657, 819, 999, 1744) elements
+    delta = max.(ceil.(Int, sqrt.(S)), 10 .- S)
+    S = (S .+ delta) .* blocksize
     B = similar(A, S)
 
     # copy
@@ -118,9 +121,11 @@ function increase_size_blocked(A::Array{T, 3}, blocksize::NTuple{3, <:Integer}) 
 end
 
 function increase_size_and_copy_no_pad(A::Array{T, 2}) where {T}
-    X, Y = size(A)
+    S = size(A)
     N = length(A)
-    S = Y < X ? (X, Y+1) : (X+1, Y)
+    # this one is initialized to a fairly large value so no need to worry about
+    # slow growth at small values
+    S = S .+ ceil.(Int, sqrt.(S))
     B = similar(A, S)
     copyto!(view(B, 1:N), view(A, 1:N))
     return B
@@ -132,10 +137,11 @@ function get_view_into_packed(blocks::ShaderAbstractions.Sampler{T, 3}, blocksiz
         new = increase_size_blocked(A, (blocksize, blocksize, blocksize))
         setfield!(blocks, :data, new)
         return true, get_view_into_packed(blocks, blocksize, block_idx)[2]
+    else
+        ijk = Tuple(CartesianIndices(div.(size(A), blocksize))[block_idx])
+        ranges = range.((ijk .- 1) .* blocksize .+ 1, ijk .* blocksize)
+        return false, view(A, ranges...)
     end
-    ijk = Tuple(CartesianIndices(div.(size(A), blocksize))[block_idx])
-    ranges = range.((ijk .- 1) .* blocksize .+ 1, ijk .* blocksize)
-    return false, view(A, ranges...)
 end
 
 function _set_static_color!(bm::SDFBrickmap, idx::Integer, c::RGB{N0f8})
