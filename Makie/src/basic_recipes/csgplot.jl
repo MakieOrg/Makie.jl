@@ -262,6 +262,15 @@ function pad_tree_bbs!(node::SDF.Node, by::Vec3f)
     return
 end
 
+function print_bb_rec(node, depth = 0)
+    main = node.commands[node.main_idx]
+    name = SDF.Commands.get_name(main.id)
+    # println("  "^depth, name, " ", node.bbox[])
+    str = "  "^depth * "$name $(node.bbox[])\n"
+    printstyled(str, color = node.changed[] ? :bold : :light_black)
+    foreach(child -> print_bb_rec(child, depth + 2), node.children)
+end
+
 function plot!(p::CSGPlot)
 
     N = p.resolution[]

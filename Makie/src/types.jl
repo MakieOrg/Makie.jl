@@ -16,25 +16,6 @@ get_space(::EmptyCamera) = :clip
     RayMarchSDF # 6
 end
 
-struct Brickmap{T}
-    indexmap::Array{UInt32, 3}
-    bricks::Vector{Array{T, 3}}
-    attributes::Dict{Symbol, Any}
-
-    size::NTuple{3, Int}
-    bricksize::NTuple{3, Int}
-    available::Vector{UInt32}
-end
-
-struct CSGBuffers
-    indices::ShaderAbstractions.Sampler{UInt32, 3, Array{UInt32, 3}}
-    sdf_bricks::ShaderAbstractions.Sampler{N0f8, 3, Array{N0f8, 3}}
-    color_indices::ShaderAbstractions.Sampler{UInt32, 2, Matrix{UInt32}}
-    color_bricks::ShaderAbstractions.Sampler{RGB{N0f8}, 3, Array{RGB{N0f8}, 3}}
-    bricksize::Int
-end
-
-
 const ComputePlots = Union{Scatter, Lines, LineSegments, Image, Heatmap, Mesh, Surface, Voxels, Volume, MeshScatter, Text}
 
 include("interaction/iodevices.jl")
