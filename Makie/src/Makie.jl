@@ -185,7 +185,6 @@ include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
-include("basic_recipes/raymarch.jl")
 include("basic_recipes/csgplot.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
