@@ -151,7 +151,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
 
         if changed.trace_transforms
             tlas = hikari_scene.accel
-            backend = KernelAbstractions.get_backend(tlas.instances.transform)
+            backend = KernelAbstractions.get_backend(tlas.instances)
             transforms_gpu = KernelAbstractions.allocate(backend, Mat4f, length(transforms))
             copyto!(transforms_gpu, transforms)
             Raycore.update_instance_transforms!(tlas, transforms_gpu, length(transforms), robj.first_instance_idx)

@@ -126,12 +126,7 @@ begin
     mirror = Hikari.Mirror(Kr=(0.95, 0.95, 0.95))
 
     # --- Coated materials ---
-    coated_gold = Hikari.CoatedConductor(
-        interface_roughness=0.05,
-        conductor_eta=(0.143, 0.374, 1.442),
-        conductor_k=(3.983, 2.385, 1.603),
-        conductor_roughness=0.02
-    )
+    coated_gold = Hikari.Gold()
     car_paint = Hikari.CoatedConductor(
         interface_roughness=0.08,
         reflectance=(0.85, 0.1, 0.1),
@@ -218,7 +213,7 @@ TraceMakie.activate!(
     gamma=2.2f0,
     sensor=sensor
 )
-nsamples = 10
+nsamples = 100
 integrator = Hikari.VolPath(samples=nsamples, max_depth=50)
 img = @time colorbuffer(ax; backend=TraceMakie, integrator=integrator)
 save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp.png"), img)

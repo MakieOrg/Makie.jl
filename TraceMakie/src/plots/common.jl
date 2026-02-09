@@ -36,8 +36,8 @@ function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.G
     )
 end
 
-function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.MetalMaterial)
-    Hikari.MetalMaterial(material.eta, material.k, material.roughness, color_tex, material.remap_roughness)
+function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.ConductorMaterial)
+    Hikari.ConductorMaterial(material.eta, material.k, material.roughness, color_tex, material.remap_roughness)
 end
 
 function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.CoatedDiffuseMaterial)
@@ -85,6 +85,10 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Nothing})
     material = has_material ? to_value(plot.material) : nothing
 
     if material isa Hikari.Material && tex isa Hikari.Texture
+        # Only merge color with material if color was explicitly set by the user.
+        # Auto-assigned palette colors should not override Hikari materials.
+        color_explicitly_set = plot.attributes.inputs[:color].value !== nothing
+        color_explicitly_set || return material
         return merge_color_with_material(tex, material)
     elseif material isa Hikari.Material
         return material
@@ -166,8 +170,8 @@ function create_material_with_color(color::Colorant, template::Hikari.MatteMater
     Hikari.MatteMaterial(Hikari.ConstTexture(to_spectrum(color)), template.σ)
 end
 
-function create_material_with_color(color::Colorant, template::Hikari.MetalMaterial)
-    Hikari.MetalMaterial(
+function create_material_with_color(color::Colorant, template::Hikari.ConductorMaterial)
+    Hikari.ConductorMaterial(
         template.eta, template.k, template.roughness,
         Hikari.ConstTexture(to_spectrum(color)),
         template.remap_roughness
@@ -184,7 +188,7 @@ end
 # =============================================================================
 
 _get_material_texture(mat::Hikari.MatteMaterial) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
-_get_material_texture(mat::Hikari.MetalMaterial) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
+_get_material_texture(mat::Hikari.ConductorMaterial) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
 _get_material_texture(mat::Hikari.Material) = nothing
 
 # In-place texture data update via dispatch

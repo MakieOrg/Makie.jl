@@ -97,37 +97,61 @@ end
 # Light conversion
 # =============================================================================
 
-function to_trace_light(light::Makie.AmbientLight)
+# Whether an integrator uses spectral light transport (needs photometric normalization)
+_is_spectral_integrator(::Hikari.VolPath) = true
+_is_spectral_integrator(::Hikari.Integrator) = false
+
+function to_trace_light(light::Makie.AmbientLight, integrator)
     color = light.color isa Observable ? light.color[] : light.color
     rgb = RGB{Float32}(RGBf(color))
     return Hikari.AmbientLight(rgb)
 end
 
-function to_trace_light(light::Makie.PointLight)
+function to_trace_light(light::Makie.PointLight, integrator)
     c = RGBf(light.color)
-    i = Hikari.RGBSpectrum(c.r, c.g, c.b)
-    return Hikari.PointLight(Raycore.translate(Vec3f(light.position)), i, 1f0)
+    if _is_spectral_integrator(integrator)
+        # Spectral path: PointLight(RGB{Float32}, position) creates RGBIlluminantSpectrum
+        # with photometric normalization (scale = 1/spectrum_to_photometric), matching pbrt-v4
+        return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
+    else
+        # RGB path: direct RGBSpectrum intensity for Whitted/SPPM/FastWavefront
+        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
+        return Hikari.PointLight(Raycore.translate(Vec3f(light.position)), i, 1f0)
+    end
 end
 
-function to_trace_light(light::Makie.SunSkyLight)
-    sun_intensity = Hikari.RGBSpectrum(light.intensity)
+function to_trace_light(light::Makie.SunSkyLight, integrator)
     ground_albedo = Hikari.RGBSpectrum(light.ground_albedo.r, light.ground_albedo.g, light.ground_albedo.b)
-    return Hikari.SunSkyLight(
-        Vec3f(light.direction),
-        sun_intensity;
-        turbidity=light.turbidity,
-        ground_albedo=ground_albedo,
-        ground_enabled=light.ground_enabled,
-    )
+    if _is_spectral_integrator(integrator)
+        # Spectral path: pre-bake sky to EnvironmentLight + separate SunLight (pbrt-v4 approach).
+        # Returns a tuple — caller handles pushing both lights.
+        return Hikari.sunsky_to_envlight(
+            direction=Vec3f(light.direction),
+            intensity=Float32(light.intensity),
+            turbidity=light.turbidity,
+            ground_albedo=ground_albedo,
+            ground_enabled=light.ground_enabled,
+        )
+    else
+        # Non-spectral path: keep as SunSkyLight for Whitted/FastWavefront
+        sun_intensity = Hikari.RGBSpectrum(light.intensity)
+        return Hikari.SunSkyLight(
+            Vec3f(light.direction),
+            sun_intensity;
+            turbidity=light.turbidity,
+            ground_albedo=ground_albedo,
+            ground_enabled=light.ground_enabled,
+        )
+    end
 end
 
-function to_trace_light(light::Makie.DirectionalLight)
+function to_trace_light(light::Makie.DirectionalLight, integrator)
     c = RGBf(light.color)
     i = Hikari.RGBSpectrum(c.r, c.g, c.b)
     return Hikari.DirectionalLight(Raycore.Transformation(Mat4f(I)), i, Vec3f(light.direction), 1f0)
 end
 
-function to_trace_light(light::Makie.EnvironmentLight)
+function to_trace_light(light::Makie.EnvironmentLight, integrator)
     data = map(c -> Hikari.RGBSpectrum(c.r, c.g, c.b), light.image)
     rotation = Hikari.rotation_matrix(light.rotation_angle, light.rotation_axis)
     env_map = Hikari.EnvironmentMap(data, rotation)
@@ -135,7 +159,7 @@ function to_trace_light(light::Makie.EnvironmentLight)
     return Hikari.EnvironmentLight(env_map, Hikari.RGBSpectrum(photometric_scale))
 end
 
-function to_trace_light(light)
+function to_trace_light(light, integrator)
     return nothing
 end
 
@@ -219,19 +243,25 @@ function init_scene!(screen, mscene::Makie.Scene)
 
     # Extract lights and push to scene
     makie_lights = Makie.get_lights(scene_3d)
+    integrator = screen.config.integrator
     for light in makie_lights
-        l = to_trace_light(light)
-        if !isnothing(l)
+        l = to_trace_light(light, integrator)
+        if l isa Tuple
+            # sunsky_to_envlight returns (EnvironmentLight, SunLight)
+            for li in l
+                push!(hikari_scene.lights, li)
+            end
+        elseif !isnothing(l)
             push!(hikari_scene.lights, l)
         end
     end
 
-    # Add ambient light if present, but skip if we already have SunSkyLight
-    has_sunsky = Hikari.SunSkyLight in hikari_scene.lights.data_order
-    if !has_sunsky && haskey(scene_3d.compute, :ambient_color)
+    # Add ambient light if present, but skip if we already have SunSkyLight or EnvironmentLight
+    has_infinite = any(T -> T <: Hikari.SunSkyLight || T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
+    if !has_infinite && haskey(scene_3d.compute, :ambient_color)
         ambient_color = scene_3d.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
-            push!(hikari_scene.lights, Hikari.AmbientLight(to_spectrum(ambient_color)))
+            push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient_color)))
         end
     end
 
@@ -256,8 +286,9 @@ function init_scene!(screen, mscene::Makie.Scene)
     screen.state = state
 
     # Call draw_atomic for each atomic plot (registers compute graph nodes)
+    # Skip plots that already have :trace_renderobject (e.g. re-init from VideoStream)
     Makie.for_each_atomic_plot(mscene) do p
-        draw_atomic(screen, scene_3d, p)
+        haskey(p, :trace_renderobject) || draw_atomic(screen, scene_3d, p)
     end
 
     # Resolve all registered computations to push geometry into TLAS

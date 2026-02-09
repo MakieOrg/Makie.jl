@@ -112,7 +112,7 @@ function Base.isopen(screen::Screen)
 end
 
 function cleanup!(state::TraceMakieState)
-    Hikari.cleanup!(state.film)
+    Hikari.free!(state.film)
     return nothing
 end
 
@@ -164,10 +164,6 @@ function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene:
         return Screen(scene, config)
     end
 
-    if typeof(screen.config.integrator) !== typeof(config.integrator)
-        screen.state = nothing
-    end
-
     screen.config = config
     return screen
 end
@@ -197,21 +193,21 @@ function render!(screen::Screen)
 
     camera = state.camera[]
 
-    # Adapt scene for kernel traversal (TLAS → StaticTLAS, MultiTypeSet → StaticMultiTypeSet)
-    backend = screen.config.backend
-    ka_backend = if backend === Array
-        Raycore.KA.CPU()
-    else
-        Raycore.KA.get_backend(backend{Float32}(undef, 1))
-    end
-    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
-
     # Fill auxiliary buffers if denoising is enabled (before main render)
     if screen.config.denoise
+        backend = screen.config.backend
+        ka_backend = if backend === Array
+            Raycore.KA.CPU()
+        else
+            Raycore.KA.get_backend(backend{Float32}(undef, 1))
+        end
+        adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
         Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
     end
 
-    screen.config.integrator(adapted_scene, state.film, camera)
+    # Pass non-adapted scene — integrator adapts internally and needs
+    # MultiTypeSet (not StaticMultiTypeSet) for state construction
+    screen.config.integrator(state.hikari_scene, state.film, camera)
     return state.film
 end
 
@@ -266,10 +262,10 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     end
 
     # Copy postprocess buffer to CPU if on GPU, then convert to RGB{N0f8}
-    # Flip vertically: film renders in raster convention (y=0 top),
-    # Makie JuliaNative expects y=0 bottom
+    # Hikari camera uses screen_window with y_min at bottom, so raster y=0 is
+    # the bottom of the image. The framebuffer is already in JuliaNative orientation
+    # (row 1 = top of image). No flip needed.
     result = Array(map(clamp01nan, film.postprocess))
-    result = result[end:-1:begin, :]
 
     if format == Makie.GLNative
         return Makie.jl_to_gl_format(result)
@@ -335,7 +331,25 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     Makie.for_each_atomic_plot(plot) do p
         delete_trace_robj!(screen, p)
     end
-    Raycore.sync!(screen.state.hikari_scene.accel)
+    # Don't sync here — sync happens lazily before next render in render!().
+    # Syncing during scene teardown would access GPU arrays that may already be freed.
+end
+
+# Called from scene finalizer — proactively free GPU resources.
+function Base.delete!(screen::Screen, ::Scene)
+    isnothing(screen.state) && return
+    _free_state_gpu!(screen.state)
+    screen.state = nothing
+end
+
+function _free_state_gpu!(state::TraceMakieState)
+    Raycore.free!(state.hikari_scene.accel)
+    Hikari.free!(state.film)
+    for set in (state.hikari_scene.lights, state.hikari_scene.materials, state.hikari_scene.media)
+        set isa Raycore.MultiTypeSet || continue
+        Raycore.free!(set)
+    end
+    finalize(state.hikari_scene.media_interfaces)
 end
 
 Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true
@@ -418,14 +432,6 @@ function render_interactive(mscene::Makie.Scene;
     cam_rendered = camera[]
     running = Threads.Atomic{Bool}(true)
 
-    # Adapt scene once for kernel traversal; re-adapt after topology changes
-    ka_backend = if backend === Array
-        Raycore.KA.CPU()
-    else
-        Raycore.KA.get_backend(backend{Float32}(undef, 1))
-    end
-    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
-
     root = Makie.rootparent(mscene)
     Base.errormonitor(Threads.@spawn while running[]
         Makie.isclosed(root) && break
@@ -440,8 +446,6 @@ function render_interactive(mscene::Makie.Scene;
 
         if state.needs_film_clear
             state.needs_film_clear = false
-            # Re-adapt scene after topology changes
-            adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
             Hikari.clear!(film)
             Hikari.clear!(screen.config.integrator)
             lock(loki) do
@@ -459,8 +463,8 @@ function render_interactive(mscene::Makie.Scene;
             end
         end
 
-        # Render one iteration/sample
-        Hikari.render!(screen.config.integrator, adapted_scene, film, camera[])
+        # Render one iteration/sample (integrator adapts scene internally)
+        Hikari.render!(screen.config.integrator, state.hikari_scene, film, camera[])
 
         # Apply postprocessing with current observable values
         current_tonemap = tonemap_obs[]
