@@ -105,19 +105,34 @@ function increase_size_blocked(A::Array{T, 3}, blocksize::NTuple{3, <:Integer}) 
     S = (S .+ delta) .* blocksize
     B = similar(A, S)
 
-    # copy
-    N_blocks = div(length(A), prod(blocksize))
-    old_indices = CartesianIndices(div.(size(A), blocksize))
-    new_indices = CartesianIndices(div.(size(B), blocksize))
+    copy_blocks_to!(B, A, blocksize)
 
-    for block_idx in 1:N_blocks
+    return B
+end
+
+function copy_blocks_to!(target::Array{T, 3}, source::Array{T, 3}, blocksize::NTuple{3, <:Integer}) where {T}
+    @boundscheck begin
+        all(size(target) .> size(source)) &&
+        all(size(target) .% blocksize == 0) &&
+        all(size(source) .% blocksize == 0)
+    end
+
+    # copy
+    N_blocks = div(length(source), prod(blocksize))
+    old_indices = CartesianIndices(div.(size(source), blocksize))
+    new_indices = CartesianIndices(div.(size(target), blocksize))
+
+    # TODO: Maybe this could be improve by iterating one array continuously and
+    # calculating the indices in the other directly?
+    @inbounds for block_idx in 1:N_blocks
         old_ijk = Tuple(old_indices[block_idx])
         old_ranges = range.((old_ijk .- 1) .* blocksize .+ 1, old_ijk .* blocksize)
         new_ijk = Tuple(new_indices[block_idx])
         new_ranges = range.((new_ijk .- 1) .* blocksize .+ 1, new_ijk .* blocksize)
-        copyto!(view(B, new_ranges...), view(A, old_ranges...))
+        copyto!(view(target, new_ranges...), view(source, old_ranges...))
     end
-    return B
+
+    return
 end
 
 function increase_size_and_copy_no_pad(A::Array{T, 2}) where {T}

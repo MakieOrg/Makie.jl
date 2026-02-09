@@ -40,9 +40,10 @@ module SDF
         # partially filled later
         bbox::Base.RefValue{Rect3f} # Ref used for tracking
         changed::Base.RefValue{Bool}
+        active::Base.RefValue{Bool}
     end
 
-    Node(commands, main_idx, children) = Node(commands, main_idx, children, Ref{Rect3f}(), Ref(true))
+    Node(commands, main_idx, children) = Node(commands, main_idx, children, Ref{Rect3f}(), Ref(true), Ref(true))
 
     function Node(op::Symbol, args...; children = Node[], kwargs...)
         main = Command(op, args...)
@@ -530,7 +531,7 @@ module SDF
         end
     end
 
-        function evaluate_merge_command(command, sdf1, sdf2)
+    function evaluate_merge_command(command, sdf1, sdf2)
         if command.id == :union
             return OP.union(sdf1, sdf2)
         elseif command.id == :subtraction
@@ -735,23 +736,23 @@ module SDF
         end
     end
     release!(c::Cache) = c.current -= 1
-    function get_first_buffer(c::Cache)
-        c.current == 1 || error("The front buffer is currently still reserved!")
+    function get_first_buffer(c::Cache{T}) where {T}
+        c.current == 1 || error("The front buffer is currently still reserved! ($(c.current), $T)")
         return first(c.buffers)
     end
 
     function compute_color_at(
             node::SDF.Node,
-            pos_cache::Cache{Point3f}, sdf_cache::Cache{Float32}, color_cache::Cache{RGBAf}
+            pos_cache::Cache{Point3f}, sdf_cache::Cache{Float32}, color_cache::Cache{RGBAf},
         )
 
         pos = current(pos_cache)
 
-        @inbounds if isempty(node.children)
-            for i in 1:node.main_idx-1
-                evaluate_prefix_command!(node.commands[i], pos)
-            end
+        for i in 1 : node.main_idx - 1
+            evaluate_prefix_command!(node.commands[i], pos)
+        end
 
+        @inbounds if isempty(node.children)
             sdf = get_buffer(sdf_cache)
             evaluate_shape_command!(node.commands[node.main_idx], pos, sdf)
 
@@ -762,16 +763,9 @@ module SDF
             data = node.commands[node.main_idx].data
             color = RGBAf(data[1], data[2], data[3], data[4])
             fill!(get_buffer(color_cache), color)
-            return
         else
-            parent_pos = current(pos_cache)
-
-            for i in 1 : node.main_idx - 1
-                evaluate_prefix_command!(node.commands[i], pos)
-            end
-
             child_pos = get_buffer(pos_cache)
-            copyto!(child_pos, parent_pos)
+            copyto!(child_pos, pos)
 
             compute_color_at(node.children[1], pos_cache, sdf_cache, color_cache)
             left_sdf = current(sdf_cache)
@@ -779,7 +773,13 @@ module SDF
 
             merge_cmd = node.commands[node.main_idx]
             for i in 2:length(node.children)
-                copyto!(child_pos, parent_pos)
+                if !node.children[i].active[]
+                    # @info "skip $(counter[])"
+                    # counter[] += 1
+                    continue
+                end
+
+                copyto!(child_pos, pos)
                 compute_color_at(node.children[i], pos_cache, sdf_cache, color_cache)
 
                 right_sdf = current(sdf_cache)
@@ -801,8 +801,8 @@ module SDF
             for i in node.main_idx+1 : length(node.commands)
                 evaluate_postfix_command!(node.commands[i], pos, sdf)
             end
-            return
         end
+        return
     end
 
     ############################################################################
@@ -1043,45 +1043,116 @@ module SDF
     end
 
     ############################################################################
-    ### Utility (tree trimming)
+    ### Utility (tree trimming, sdf + bbox based)
     ############################################################################
 
-    function copy_node_without_children(node::Node)
-        return Node(node.commands, node.main_idx, Node[])
+    function is_relevant(sdf1, sdf2, radius)
+        # Consider a brick of a given `radius` with two sdf samples `sdf1` and
+        # `sdf2` at the center. The minimum distances on the brick are then
+        # given `sdf - radius`, the maximum `sdf + radius`. Knowing that, we
+        # can predict whether sdf1 and sdf2 are relevant to the result of
+        # `min(sdf1, sdf2)` within the brick:
+        left_relevant = sdf1 - radius <= sdf2 + radius
+        right_relevant = sdf2 - radius <= sdf1 + radius
+        return left_relevant, right_relevant
     end
 
-    function trimmed_tree(region::Rect3f, ref_tree::Node)
-        new_tree = copy_node_without_children(ref_tree)
-        trimmed_tree_rec!(new_tree, region, ref_tree)
-        keep = cleanup_empty_nodes!(new_tree)
-        if keep
-            return new_tree
+    function evaluate_merge_command(command, sdf1, sdf2, radius)
+        sdf = evaluate_merge_command(command, sdf1, sdf2)
+        if command.id == :union
+            return is_relevant(sdf1, sdf2, radius), sdf
+        elseif command.id == :subtraction
+            return is_relevant(-sdf1, sdf2, radius), sdf
+        elseif command.id == :intersection
+            return is_relevant(-sdf1, -sdf2, radius), sdf
+        elseif command.id == :xor
+            # max(min(a, b), -max(a, b))
+            # max(a <= b ? a : b, a >= b ? -a : -b)
+            # a <= b: max(a, -b) -> a >= -b ? a : -b
+            # a >= b: max(b, -a) -> b >= -a ? b : -a
+            # These are:
+            # ((a <= b) && (a >= -b)) || ((a >= b) && (b <= -a)) (paths leading to a)
+            left_relevant = ((sdf1 - radius <= sdf2 + radius) && (-sdf2 - radius <= sdf1 + radius)) ||
+                ((sdf2 - radius <= sdf1 + radius) && (sdf2 - radius <= -sdf1 + radius))
+            # ((a <= b) && (a <= -b)) || ((a >= b) && (b >= -a)) (paths leading to b)
+            right_relevant = ((sdf1 - radius <= sdf2 + radius) && (sdf1 - radius <= -sdf2 + radius)) ||
+                ((sdf2 - radius <= sdf1 + radius) && (-sdf1 - radius <= sdf2 + radius))
+            return (left_relevant, right_relevant), sdf
+        elseif command.id == :smooth_union
+            return is_relevant(sdf1, sdf2, radius + command.data[1]), sdf
+        elseif command.id == :smooth_subtraction
+            return is_relevant(-sdf1, sdf2, radius), sdf
+        elseif command.id == :smooth_intersection
+            return is_relevant(-sdf1, -sdf2, radius), sdf
+        elseif command.id == :smooth_xor
+            radius += command.data[1]
+            left_relevant = ((sdf1 - radius <= sdf2 + radius) && (-sdf2 - radius <= sdf1 + radius)) ||
+                ((sdf2 - radius <= sdf1 + radius) && (sdf2 - radius <= -sdf1 + radius))
+            right_relevant = ((sdf1 - radius <= sdf2 + radius) && (sdf1 - radius <= -sdf2 + radius)) ||
+                ((sdf2 - radius <= sdf1 + radius) && (-sdf1 - radius <= sdf2 + radius))
+            return (left_relevant, right_relevant), sdf
         else
-            return Node(Command[], 0, Node[])
+            error("$(command.id) is not a recognized merge command")
         end
     end
 
-    function trimmed_tree_rec!(parent::Node, region::Rect3f, ref_tree::Node)
-        for child in ref_tree.children
-            if overlaps(child.bbox[], region)
-                node = copy_node_without_children(child)
-                push!(parent.children, node)
-                trimmed_tree_rec!(node, region, child)
-            end
+    function print_active(node::Node, depth = 0)
+        cmd = node.commands[node.main_idx].id
+        if depth > 0
+            println("| "^(depth-1), "|-", cmd, " ", node.active[])
+        else
+            println(cmd, " ", node.active[])
         end
-        return parent
+        foreach(n -> print_active(n, depth+1), node.children)
+        return
     end
 
-    function cleanup_empty_nodes!(node)
-        # cleanup every child node, remove empty nodes
-        filter!(cleanup_empty_nodes!, node.children)
-        # mark the node for cleanup (false) if it has no children (anymore) and
-        # it is not a shape node
+    function mark_active!(root::Node, pos::Point3f, radius::Float32, bbox::Rect3f)
+        sdf = mark_active_rec!(root, pos, radius, bbox)
+        root.active[] = (abs(sdf) - radius <= 0f0) && overlaps(root.bbox[], bbox)
+        # root.active[] && print_active(root)
+        return sdf
+    end
+
+    function mark_active_rec!(node::Node, pos::Point3f, radius::Float32, bbox::Rect3f)
+        for i in 1:node.main_idx-1
+            pos = evaluate_prefix_command(node.commands[i], pos)::Point3f
+        end
+
         if isempty(node.children)
-            main = node.commands[node.main_idx]
-            return is_shape(main.id)
+            sdf = evaluate_shape_command(node.commands[node.main_idx], pos)::Float32
+            node.active[] = overlaps(node.bbox[], bbox)
+        else
+            sdf = mark_active_rec!(node.children[1], pos, radius, bbox)
+            merge_cmd = node.commands[node.main_idx]
+            for i in 2:length(node.children)
+                other = mark_active_rec!(node.children[i], pos, radius, bbox)
+                keep, sdf = evaluate_merge_command(merge_cmd, sdf, other, radius)
+                if !(keep[1] || keep[2])
+                    error("$keep")
+                end
+
+                # Since left comes from a combination of nodes, all involved nodes
+                # need to be discarded if their result is irrelevant to this merge
+                if keep[1] == false
+                    for j in 1:i-1
+                        node.children[j].active[] = false
+                    end
+                end
+
+                # keep it or set it to false
+                node.children[i].active[] = node.children[i].active[] && keep[2]
+            end
+
+            # may be marked inactive based on merge of SDFs by parent
+            node.active[] = overlaps(node.bbox[], bbox)
         end
-        return true # otherwise keep it
+
+        for i in node.main_idx+1:length(node.commands)
+            sdf = evaluate_postfix_command(node.commands[i], pos, sdf)::Float32
+        end
+
+        return sdf
     end
 
     ############################################################################
@@ -1337,7 +1408,7 @@ function update_brickmap!(
 end
 
 function update_brick!(
-        brickmap::SDFBrickmap, root::SDF.Node,
+        brickmap::SDFBrickmap, tree::SDF.Node,
         i, j, k,
         mini, delta, brick_delta,
         uint8_scale,
@@ -1351,23 +1422,28 @@ function update_brick!(
     SDF.reset!(sdf_cache)
     SDF.reset!(color_cache)
 
-    # setup positions
+    # Prepare sdf tree
     bricksize = brickmap.bricksize
     origin = Point3f(mini + delta .* ((i, j, k) .- 1))
+    center = origin .+ 0.5f0 * delta
+    # 0.5f0 * delta (brickradius) does not seems to be enough as it still
+    # generates bricks when we discard everything that is active...?
+    # SDF.mark_active!(tree, center, 0.67f0 * norm(delta), Rect3f(origin, delta))
+    SDF.mark_active!(tree, center, norm(delta), Rect3f(origin, delta))
+    if !tree.active[]
+        free_brick!(brickmap, i, j, k)
+        return false # empty tree
+    end
+
+    # setup positions
     positions = SDF.get_buffer(pos_cache)
     @inbounds for ijk in CartesianIndices((bricksize, bricksize, bricksize))
         _ijk = Tuple(ijk)
         positions[ijk] = origin .+ brick_delta .* (_ijk .- 1)
     end
 
-    # TODO: Can we remove unchanged bricks too? Or are they still needed for correct results?
     # compute sdfs + colors
-    reduced_tree = SDF.trimmed_tree(Rect3f(origin, delta), root)
-    if reduced_tree.main_idx == 0
-        free_brick!(brickmap, i, j, k)
-        return false # empty tree
-    end
-    SDF.compute_color_at(reduced_tree, pos_cache, sdf_cache, color_cache)
+    SDF.compute_color_at(tree, pos_cache, sdf_cache, color_cache)
 
     # analyze results (should it create a brick?)
     sdfs = SDF.get_first_buffer(sdf_cache)
