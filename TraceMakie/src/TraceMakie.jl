@@ -31,6 +31,8 @@ mutable struct TraceMakieState
     camera::Observable
     hikari_scene::Hikari.AbstractScene
     needs_film_clear::Bool
+    # Pre-allocated buffer for clamp01nan in colorbuffer (avoids per-frame GPU alloc)
+    colorbuffer_tmp::AbstractMatrix{RGB{Float32}}
     # Overlay system for lines, scatter, text
     overlay_buffer::Matrix{RGBA{Float32}}
     overlay_plots::Vector{OverlayPlotInfo}
@@ -225,14 +227,7 @@ function init_scene!(screen, mscene::Makie.Scene)
         diagonal=1.0f0, scale=1.0f0,
     )
 
-    backend = screen.config.backend
-
-    ka_backend = if backend === Array
-        Raycore.KA.CPU()
-    else
-        tmp = backend{Float32}(undef, 1)
-        Raycore.KA.get_backend(tmp)
-    end
+    ka_backend = screen.config.backend
     hikari_scene = Hikari.Scene(backend=ka_backend)
 
     # Find the 3D scene for camera and lights
@@ -275,6 +270,9 @@ function init_scene!(screen, mscene::Makie.Scene)
     # Create camera
     camera = to_trace_camera(scene_3d, film)
 
+    # Pre-allocate colorbuffer clamp buffer (same type/size as film.postprocess)
+    colorbuffer_tmp = similar(film.postprocess)
+
     # Create overlay buffer matching film size
     film_size = size(film.framebuffer)
     overlay_buffer = fill(RGBA{Float32}(0f0, 0f0, 0f0, 0f0), film_size)
@@ -282,7 +280,7 @@ function init_scene!(screen, mscene::Makie.Scene)
     # Collect overlay plots
     overlay_plots = collect_overlay_plots(mscene)
 
-    state = TraceMakieState(film, camera, hikari_scene, false, overlay_buffer, overlay_plots)
+    state = TraceMakieState(film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, overlay_plots)
     screen.state = state
 
     # Call draw_atomic for each atomic plot (registers compute graph nodes)

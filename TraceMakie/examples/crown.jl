@@ -290,7 +290,7 @@ function render_crown(;
     max_depth=10
 )
     scene = create_crown_scene(resolution=resolution)
-    TraceMakie.activate!(backend=ROCArray)
+    TraceMakie.activate!(backend=AMDGPU.ROCBackend())
     @time img = colorbuffer(scene;
         backend=TraceMakie,
         integrator=Hikari.VolPath(

@@ -232,7 +232,7 @@ function render_killeroo_gold(;
     samples=64,
     max_depth=8,
     subdivision_levels=3,
-    backend=Array
+    backend=Raycore.KA.CPU()
 )
     scene = create_killeroo_gold_scene(; resolution, subdivision_levels)
 
@@ -252,6 +252,6 @@ end
 
 # Example usage:
 using AMDGPU
-img, scene = render_killeroo_gold(; samples=64, backend=ROCArray)
+img, scene = render_killeroo_gold(; samples=64, backend=AMDGPU.ROCBackend())
 # save("killeroo-gold.png", img)
 scene = create_killeroo_gold_scene()

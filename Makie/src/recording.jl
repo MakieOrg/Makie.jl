@@ -157,6 +157,95 @@ end
 
 
 """
+    record_longrunning(func, figlike, path, iter;
+        framerate=24, frame_format=:png, overwrite=false,
+        compression=nothing, profile=nothing, pixel_format=nothing, preset=nothing, loop=nothing,
+        backend=current_backend(), screen_config...)
+
+Like [`record`](@ref), but saves each frame as an individual image file in a folder next to `path`.
+If interrupted and re-run, it will skip already-rendered frames (still calling `func` to advance the
+simulation state) and only render new ones.
+
+# Arguments
+- `func`: called as `func(i)` for each element `i` in `iter`.
+- `figlike`: a `Figure`, `FigureAxisPlot`, or `Scene`.
+- `path`: output video path (e.g. `"video.mp4"`). Frames are stored in a sibling folder `"\$(path)_frames/"`.
+- `iter`: the iterator to loop over.
+- `framerate=24`: target framerate for the output video.
+- `frame_format=:png`: image format for saved frames.
+- `overwrite=false`: if `true`, re-renders all frames even if they already exist.
+- `compression`, `profile`, `pixel_format`, `preset`, `loop`: video encoding options, see [`VideoStreamOptions`](@ref).
+- `backend`, `screen_config...`: forwarded to the backend for rendering.
+
+# Example
+```julia
+record_longrunning(fig, "simulation.mp4", 1:1000) do i
+    update_simulation!(i)
+end
+```
+"""
+function record_longrunning(func, figlike::FigureLike, path::AbstractString, iter;
+        framerate=24, frame_format=:png, overwrite=false, update=true,
+        compression=nothing, profile=nothing, pixel_format=nothing, preset=nothing, loop=nothing,
+        backend=current_backend(), visible=false, screen_config...)
+    p, _ = splitext(path)
+    video_format = lstrip(splitext(path)[2], '.')
+    frame_folder = p * "_frames"
+    isdir(frame_folder) || mkpath(frame_folder)
+
+    n = length(iter)
+    nd = max(4, _count_digits(n))
+    frame_path(idx) = joinpath(frame_folder, "frame_$(lpad(idx, nd, '0')).$(frame_format)")
+
+    # Figure out which frames already exist
+    existing = Set{Int}()
+    if !overwrite
+        for idx in 1:n
+            if isfile(frame_path(idx))
+                push!(existing, idx)
+            end
+        end
+    end
+    n_existing = length(existing)
+    n_to_render = n - n_existing
+    if n_existing > 0
+        @info "record_longrunning: found $n_existing existing frames, $n_to_render to render"
+    end
+
+    # Set up screen
+    config = Dict{Symbol, Any}(screen_config)
+    get!(config, :visible, visible)
+    get!(config, :start_renderloop, false)
+    scene = get_scene(figlike)
+    update && update_state_before_display!(figlike)
+    screen = getscreen(backend, scene, config, JuliaNative)
+    progress = ProgressMeter.Progress(n; desc="Recording frames: ", showspeed=true)
+    for (idx, i) in enumerate(iter)
+        func(i)
+        if idx in existing
+            ProgressMeter.next!(progress; showvalues=[(:status, "skipped (cached)")])
+        else
+            frame = colorbuffer(screen)
+            FileIO.save(frame_path(idx), frame)
+            ProgressMeter.next!(progress; showvalues=[(:status, "rendered")])
+        end
+        yield()
+    end
+    ProgressMeter.finish!(progress)
+    close(screen)
+
+    # Assemble frames into video using VideoStreamOptions for proper encoding
+    @info "record_longrunning: assembling $n frames into video at $path"
+    input_pattern = joinpath(frame_folder, "frame_%0$(nd)d.$(frame_format)")
+    vso = VideoStreamOptions(video_format, framerate, compression, profile, pixel_format, preset, loop, "quiet", input_pattern, false)
+    cmd = to_ffmpeg_cmd(vso)
+    run(`$(FFMPEG_jll.ffmpeg()) $cmd $path`)
+    return path
+end
+
+_count_digits(n) = n <= 0 ? 1 : floor(Int, log10(n)) + 1
+
+"""
     Record(func, figlike, [iter]; kw_args...)
 
 Check [`Makie.record`](@ref) for documentation.

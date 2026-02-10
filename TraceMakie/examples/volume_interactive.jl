@@ -190,7 +190,7 @@ function create_benchmark_scene(vol_data, grid_extent;
     samples=1,
     max_depth=3,
     resolution=(800, 600),
-    backend=Array)
+    backend=Raycore.KA.CPU())
 
     scene = Scene(size=resolution)
     cam3d!(scene)

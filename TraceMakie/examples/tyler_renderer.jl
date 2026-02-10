@@ -123,7 +123,7 @@ function tyler_renderer_app(;
             end
 
             # Select backend
-            backend = backend_str == "CPU" ? Array : ROCArray
+            backend = backend_str == "CPU" ? Raycore.KA.CPU() : AMDGPU.ROCBackend()
 
             # Render using colorbuffer - handles scene conversion, rendering, and postprocessing
             status_label.text = "Rendering with $integrator_str ($samples samples)..."

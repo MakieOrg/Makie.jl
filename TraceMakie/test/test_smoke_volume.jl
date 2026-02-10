@@ -43,7 +43,7 @@ let
 
     # Test with Array backend first
     TraceMakie.activate!(
-        backend=Array,
+        backend=Raycore.KA.CPU(),
         exposure=1f0,
         tonemap=nothing,
         gamma=2.2f0,

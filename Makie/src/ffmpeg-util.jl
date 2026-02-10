@@ -93,7 +93,7 @@ struct VideoStreamOptions
             end
         end
 
-        if !((input == "pipe:0" || isfile(input)))
+        if !((input == "pipe:0" || isfile(input) || contains(input, "%")))
             error("file needs to be \"pipe:0\" or a valid file path")
         end
 

@@ -15,7 +15,7 @@ using Extents: Extent
 
 using Oceananigans: FieldTimeSeries, interior
 using FileIO
-using AMDGPU: ROCArray
+using AMDGPU
 using pocl_jll, OpenCL
 using Hikari
 
@@ -552,7 +552,7 @@ function render_rayshader(;
         exposure=1.0f0,
         tonemap=:aces,
         gamma=2.0f0,
-        backend=ROCArray,
+        backend=AMDGPU.ROCBackend(),
         save_path=nothing,
         kwargs...
     )
@@ -625,7 +625,7 @@ function render_rayshader_interactive(;
     sun_altitude=20.0,
     sun_azimuth=135.0,
     max_depth=12,
-    backend=Array,
+    backend=Raycore.KA.CPU(),
     exposure=0.8f0,
     tonemap=:aces,
     gamma=2.2f0,
@@ -675,7 +675,7 @@ handles, scene = render_rayshader_interactive(
     sun_altitude=20.0,
     sun_azimuth=135.0,
     max_depth=12,
-    backend=ROCArray,
+    backend=AMDGPU.ROCBackend(),
     exposure=0.8f0,
     figsize=(1024, 768),
 )

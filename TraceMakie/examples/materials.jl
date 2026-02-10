@@ -207,7 +207,7 @@ end
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
 TraceMakie.activate!(
-    backend=ROCArray,
+    backend=AMDGPU.ROCBackend(),
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,

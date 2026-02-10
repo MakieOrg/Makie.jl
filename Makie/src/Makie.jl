@@ -46,6 +46,7 @@ using Downloads
 using ShaderAbstractions
 using Dates
 using ComputePipeline
+import ProgressMeter
 
 import Unitful
 import UnicodeFun
@@ -340,7 +341,7 @@ export plot!, plot
 export abline! # until deprecation removal
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
-export VideoStream, recordframe!, record, Record
+export VideoStream, recordframe!, record, record_longrunning, Record
 export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients

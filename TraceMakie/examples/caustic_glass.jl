@@ -56,7 +56,7 @@ begin
 end
 using AMDGPU
 # Render with SPPM (good for caustics)
-TraceMakie.activate!(backend=ROCArray,
+TraceMakie.activate!(backend=AMDGPU.ROCBackend(),
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,

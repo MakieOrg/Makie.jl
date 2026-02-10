@@ -71,7 +71,7 @@ function render_smoke(;
     max_depth=50,
     resolution=(800, 800),
     cloud_resolution=64,
-    backend=ROCArray
+    backend=AMDGPU.ROCBackend()
 )
     TraceMakie.activate!(;
         backend=backend,
@@ -88,6 +88,6 @@ function render_smoke(;
 end
 
 # Run
-img, scene = render_smoke(samples=1000, max_depth=50, cloud_resolution=128, backend=ROCArray)
+img, scene = render_smoke(samples=1000, max_depth=50, cloud_resolution=128, backend=AMDGPU.ROCBackend())
 save(joinpath(@__DIR__, "smoke.png"), img)
 img

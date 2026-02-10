@@ -40,7 +40,7 @@ let
 
     # Activate with ROCArray backend
     TraceMakie.activate!(
-        backend=ROCArray,
+        backend=AMDGPU.ROCBackend(),
         exposure=0.5f0,
         tonemap=nothing,
         gamma=2.2f0,

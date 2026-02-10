@@ -68,21 +68,21 @@ end
 # =============================================================================
 integrator_configs = [
     (
-        backend = ROCArray,
+        backend = AMDGPU.ROCBackend(),
         exposure = 1.0f0,
         integrator = TraceMakie.Whitted(samples=16, max_depth=5),
         tonemap = :aces,
         gamma = 2.2f0,
     ),
     (
-        backend = Array,
+        backend = Raycore.KA.CPU(),
         exposure = 1.0f0,
         integrator = Hikari.FastWavefront(),
         tonemap = :aces,
         gamma = 2.0f0,
     ),
     (
-        backend = Array,
+        backend = Raycore.KA.CPU(),
         exposure = 1.0f0,
         integrator = Hikari.SPPM(search_radius=0.075f0, max_depth=5, iterations=200),
         tonemap = :aces,
@@ -112,7 +112,7 @@ end
 
 # Render with VolPath integrator
 volpath_config = (
-    backend = Array,
+    backend = Raycore.KA.CPU(),
     exposure = 0.8f0,
     integrator = TraceMakie.VolPath(samples_per_pixel=20, max_depth=8),
     tonemap = :aces,

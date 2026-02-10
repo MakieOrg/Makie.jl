@@ -81,11 +81,11 @@ function create_test_materials_scene(; size=(400, 300))
 end
 
 """
-    test_render_materials(; backend=Array, samples=1)
+    test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
 
 Test rendering the materials scene with the given backend.
 """
-function test_render_materials(; backend=Array, samples=1)
+function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
     TraceMakie.activate!(
         backend=backend,
         exposure=0.5f0,
@@ -103,7 +103,7 @@ end
 
 @testset "Materials Scene Rendering" begin
     @testset "CPU Array backend" begin
-        img = test_render_materials(backend=Array, samples=1)
+        img = test_render_materials(backend=Raycore.KA.CPU(), samples=1)
         @test size(img) == (400, 300)
         @test eltype(img) <: Colorant
     end
@@ -112,6 +112,6 @@ end
 # Can be run standalone to test
 if abspath(PROGRAM_FILE) == @__FILE__
     println("Running materials scene test...")
-    @time test_render_materials(backend=Array, samples=1)
+    @time test_render_materials(backend=Raycore.KA.CPU(), samples=1)
     println("Test completed successfully!")
 end

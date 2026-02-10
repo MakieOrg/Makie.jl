@@ -221,7 +221,7 @@ function record_particles(filename::String="particles.mp4";
         dt::Float32=1.0f0/30.0f0,
         samples_per_pixel::Int=8,
         preset="ultrafast",
-        backend=Array,
+        backend=Raycore.KA.CPU(),
         integrator=Hikari.FastWavefront(samples=samples_per_pixel)
     )
 
@@ -257,4 +257,4 @@ function record_particles(filename::String="particles.mp4";
     return scene, ps, mplot
 end
 using AMDGPU
-record_particles("particles.mp4"; n_frames=2, samples_per_pixel=8, n_particles=2000, backend=ROCArray)
+record_particles("particles.mp4"; n_frames=2, samples_per_pixel=8, n_particles=2000, backend=AMDGPU.ROCBackend())

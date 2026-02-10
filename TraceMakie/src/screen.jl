@@ -31,10 +31,10 @@ Configuration for TraceMakie rendering.
   - `Hikari.FilmSensor(iso=100, white_balance=0)` - ISO and white balance
   - ISO scales brightness (100 = baseline, 90 = slightly darker)
   - white_balance in Kelvin (0 = disabled, 5000 = warm, 6500 = D65)
-* `backend`: Array type for rendering (default: `Array` for CPU)
-  - `Array` - CPU rendering
-  - `ROCArray` - AMD GPU via AMDGPU.jl
-  - `CuArray` - NVIDIA GPU via CUDA.jl
+* `backend`: KernelAbstractions backend for rendering (default: `KA.CPU()`)
+  - `Raycore.KA.CPU()` - CPU rendering
+  - `AMDGPU.ROCBackend()` - AMD GPU via AMDGPU.jl
+  - `CUDA.CUDABackend()` - NVIDIA GPU via CUDA.jl
 * `denoise`: Enable à-trous wavelet denoising (default: false)
   - Requires auxiliary buffers (normals, depth) to be filled
   - Significantly reduces noise at low sample counts
@@ -47,15 +47,16 @@ struct ScreenConfig
     tonemap::Union{Symbol, Nothing}
     gamma::Union{Float32, Nothing}
     sensor::Union{Hikari.FilmSensor, Nothing}
-    backend::Type  # Array type: Array for CPU, ROCArray/CuArray for GPU
+    backend::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
     denoise::Bool
     denoise_config::Union{Hikari.DenoiseConfig, Nothing}
 
-    function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, backend=Array, denoise=false, denoise_config=nothing)
+    function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, backend=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
         actual_integrator = integrator isa Makie.Automatic ? Whitted() : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
-        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, sensor, backend, denoise, denoise_config)
+        actual_backend = backend isa Makie.Automatic ? Raycore.KA.CPU() : backend
+        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, sensor, actual_backend, denoise, denoise_config)
     end
 end
 
@@ -85,7 +86,7 @@ end
 
 function Base.show(io::IO, screen::Screen)
     scene_str = isnothing(screen.scene) ? "nothing" : "Scene(\$(size(screen.scene)))"
-    backend_name = nameof(screen.config.backend)
+    backend_name = nameof(typeof(screen.config.backend))
     integrator_name = nameof(typeof(screen.config.integrator))
     print(io, "Screen(\$scene_str, backend=\$backend_name, integrator=\$integrator_name)")
 end
@@ -97,7 +98,7 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
     else
         println(io, "  Scene: not attached")
     end
-    println(io, "  Backend: ", nameof(screen.config.backend))
+    println(io, "  Backend: ", nameof(typeof(screen.config.backend)))
     println(io, "  Integrator: ", nameof(typeof(screen.config.integrator)))
     print(io, "  Exposure: ", screen.config.exposure)
 end
@@ -195,13 +196,7 @@ function render!(screen::Screen)
 
     # Fill auxiliary buffers if denoising is enabled (before main render)
     if screen.config.denoise
-        backend = screen.config.backend
-        ka_backend = if backend === Array
-            Raycore.KA.CPU()
-        else
-            Raycore.KA.get_backend(backend{Float32}(undef, 1))
-        end
-        adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
+        adapted_scene = Adapt.adapt(screen.config.backend, state.hikari_scene)
         Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
     end
 
@@ -215,7 +210,6 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     if isnothing(screen.state)
         display(screen, screen.scene; figure = figure)
     end
-    backend = screen.config.backend
     render!(screen)
 
     state = screen.state
@@ -227,12 +221,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         Hikari.to_framebuffer!(film)
     end
     # Adapt scene for kernel traversal (fill_aux_buffers! needs StaticTLAS)
-    ka_backend = if backend === Array
-        Raycore.KA.CPU()
-    else
-        Raycore.KA.get_backend(backend{Float32}(undef, 1))
-    end
-    adapted_scene = Adapt.adapt(ka_backend, state.hikari_scene)
+    adapted_scene = Adapt.adapt(screen.config.backend, state.hikari_scene)
     # Fill depth buffer for overlay depth testing
     Hikari.fill_aux_buffers!(film, adapted_scene, camera)
 
@@ -265,7 +254,9 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     # Hikari camera uses screen_window with y_min at bottom, so raster y=0 is
     # the bottom of the image. The framebuffer is already in JuliaNative orientation
     # (row 1 = top of image). No flip needed.
-    result = Array(map(clamp01nan, film.postprocess))
+    # Use pre-allocated buffer to avoid GPU alloc every frame (GC doesn't track GPU memory)
+    map!(clamp01nan, state.colorbuffer_tmp, film.postprocess)
+    result = Array(state.colorbuffer_tmp)
 
     if format == Makie.GLNative
         return Makie.jl_to_gl_format(result)
@@ -411,7 +402,7 @@ Postprocessing parameters (exposure, tonemap, gamma) can be Observables for reac
 function render_interactive(mscene::Makie.Scene;
                             integrator=Hikari.Whitted(samples=1, max_depth=5),
                             exposure=1.0f0, tonemap=:aces, gamma=1.2f0,
-                            sensor=nothing, backend=Array)
+                            sensor=nothing, backend=Raycore.KA.CPU())
     exposure_obs = exposure isa Observable ? exposure : Observable(exposure)
     tonemap_obs = tonemap isa Observable ? tonemap : Observable(tonemap)
     gamma_obs = gamma isa Observable ? gamma : Observable(gamma)

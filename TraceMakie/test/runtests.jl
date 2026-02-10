@@ -37,7 +37,7 @@ end
 
     mesh!(scene, Sphere(Point3f(0), 1f0); material=Hikari.Diffuse(Kd=(0.8, 0.2, 0.2)))
 
-    TraceMakie.activate!(; backend=Array, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
+    TraceMakie.activate!(; exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
     screen = TraceMakie.Screen(scene)
     display(screen, scene)
 

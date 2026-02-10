@@ -88,7 +88,7 @@ function render_nanovdb_bunny(nvdb_path::String;
     white_balance=4000f0,
     tonemap=:aces,
     gamma=2.2f0,
-    backend=Array,
+    backend=Raycore.KA.CPU(),
     kwargs...
 )
     # Configure VolPath integrator with pbrt-matching sensor settings
@@ -122,7 +122,7 @@ nsamples = 5
     exposure=0.5,
     tonemap=nothing,
     white_balance=5000,
-    backend=ROCArray
+    backend=AMDGPU.ROCBackend()
 )
 img
 # img

@@ -55,5 +55,5 @@ GLMakie.activate!()
 display(fig; backend=GLMakie)
 # Save TraceMakie version
 using AMDGPU
-TraceMakie.activate!(integrator=TraceMakie.VolPath(samples=10), backend=ROCArray)
+TraceMakie.activate!(integrator=TraceMakie.VolPath(samples=10), backend=AMDGPU.ROCBackend())
 colorbuffer(fig)

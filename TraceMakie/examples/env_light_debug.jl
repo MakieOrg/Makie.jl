@@ -37,7 +37,7 @@ end
 
 # Configure VolPath
 volpath_config = (
-    backend = Array,
+    backend = Raycore.KA.CPU(),
     integrator = TraceMakie.VolPath(samples=spp, max_depth=5),
     exposure = 1.0f0,
     tonemap = :aces,
