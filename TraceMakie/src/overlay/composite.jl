@@ -1,72 +1,41 @@
 # ============================================================================
-# Overlay Compositing
+# Overlay Compositing (KA Kernel Path)
 # ============================================================================
-# Composite overlay buffer onto ray-traced image
+# All operations use KernelAbstractions — single code path for CPU and GPU.
 
-"""
-    clear_overlay!(overlay)
+# ============================================================================
+# Clear
+# ============================================================================
 
-Clear the overlay buffer to transparent black.
-"""
 function clear_overlay!(overlay::AbstractMatrix{RGBA{Float32}})
     overlay .= RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
     return overlay
 end
 
-"""
-    composite!(dst, background, overlay)
+# ============================================================================
+# Depth Buffer Y-Flip Kernel
+# ============================================================================
+# Film stores depth with row 1 = bottom (raster convention).
+# Overlay uses row 1 = top (screen convention). This kernel flips.
 
-Composite overlay onto background using Porter-Duff "over" operation.
-Result is written to dst (can be same as background for in-place operation).
+@kernel function flip_depth_y_kernel!(dst, @Const(src))
+    px, py = @index(Global, NTuple)
+    h, _ = size(src)
+    @inbounds dst[py, px] = src[h - py + 1, px]
+end
 
-# Arguments
-- `dst`: Output buffer (RGB{Float32})
-- `background`: Ray-traced image (RGB{Float32})
-- `overlay`: Overlay buffer (RGBA{Float32})
-"""
-function composite!(
-    dst::AbstractMatrix{RGB{Float32}},
-    background::AbstractMatrix{RGB{Float32}},
-    overlay::AbstractMatrix{RGBA{Float32}},
-)
-    @assert size(dst) == size(background) == size(overlay)
-
-    for i in eachindex(dst, background, overlay)
-        bg = background[i]
-        ov = overlay[i]
-        alpha = ov.alpha
-        inv_alpha = 1f0 - alpha
-
-        dst[i] = RGB{Float32}(
-            ov.r * alpha + bg.r * inv_alpha,
-            ov.g * alpha + bg.g * inv_alpha,
-            ov.b * alpha + bg.b * inv_alpha
-        )
-    end
+function flip_depth_y!(dst::AbstractMatrix{Float32}, src::AbstractMatrix{Float32})
+    backend = KernelAbstractions.get_backend(dst)
+    h, w = size(src)
+    flip_depth_y_kernel!(backend)(dst, src; ndrange=(w, h))
+    KernelAbstractions.synchronize(backend)
     return dst
 end
 
-"""
-    composite!(dst, overlay)
-
-In-place composite: blend overlay onto dst.
-"""
-function composite!(
-    dst::AbstractMatrix{RGB{Float32}},
-    overlay::AbstractMatrix{RGBA{Float32}},
-)
-    return composite!(dst, dst, overlay)
-end
-
 # ============================================================================
-# GPU Kernel Version
+# Composite Kernel
 # ============================================================================
 
-"""
-    composite_kernel!
-
-GPU kernel for parallel compositing.
-"""
 @kernel function composite_kernel!(
     dst,
     @Const(background),
@@ -88,12 +57,7 @@ GPU kernel for parallel compositing.
     end
 end
 
-"""
-    composite_gpu!(dst, background, overlay)
-
-GPU-accelerated compositing using KernelAbstractions.
-"""
-function composite_gpu!(
+function composite!(
     dst::AbstractMatrix{RGB{Float32}},
     background::AbstractMatrix{RGB{Float32}},
     overlay::AbstractMatrix{RGBA{Float32}},
@@ -105,19 +69,19 @@ function composite_gpu!(
     return dst
 end
 
+function composite!(
+    dst::AbstractMatrix{RGB{Float32}},
+    overlay::AbstractMatrix{RGBA{Float32}},
+)
+    return composite!(dst, dst, overlay)
+end
+
 # ============================================================================
 # Utility: Create Overlay Buffer
 # ============================================================================
 
-"""
-    create_overlay_buffer(resolution; backend=Array)
-
-Create an overlay buffer matching the given resolution.
-"""
-function create_overlay_buffer(resolution::Tuple{Int, Int}; backend::Type=Array)
-    return backend{RGBA{Float32}}(undef, resolution...)
-end
-
-function create_overlay_buffer(width::Int, height::Int; backend::Type=Array)
-    return create_overlay_buffer((height, width); backend=backend)
+function create_overlay_buffer(backend, resolution::Tuple{Int, Int})
+    buf = KernelAbstractions.allocate(backend, RGBA{Float32}, resolution...)
+    clear_overlay!(buf)
+    return buf
 end

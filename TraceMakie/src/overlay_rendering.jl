@@ -1,104 +1,72 @@
 # =============================================================================
-# Overlay Plot Collection
-# =============================================================================
-
-"""
-    get_overlay_plot_type(plot) -> Symbol or nothing
-
-Determine if a plot should be rendered as an overlay and return its type.
-"""
-get_overlay_plot_type(::Makie.Plot{Makie.lines}) = :lines
-get_overlay_plot_type(::Makie.Plot{Makie.linesegments}) = :linesegments
-get_overlay_plot_type(::Makie.Plot{Makie.scatter}) = :scatter
-get_overlay_plot_type(::Makie.Plot{Makie.text}) = :text
-get_overlay_plot_type(::Makie.AbstractPlot) = nothing
-
-"""
-    collect_overlay_plots(mscene::Makie.Scene) -> Vector{OverlayPlotInfo}
-
-Collect all plots that should be rendered as overlays (lines, scatter, text).
-These are not converted to ray-traced geometry but rasterized in a separate pass.
-Recursively collects from child scenes (handles LScene) and child plots (like Axis3D).
-"""
-function collect_overlay_plots(mscene::Makie.Scene)
-    overlay_plots = OverlayPlotInfo[]
-    collect_overlay_plots_from_scene!(overlay_plots, mscene)
-    return overlay_plots
-end
-
-"""
-    collect_overlay_plots_from_scene!(overlay_plots, scene)
-
-Recursively collect overlay plots from a scene and all its child scenes.
-"""
-function collect_overlay_plots_from_scene!(overlay_plots::Vector{OverlayPlotInfo}, scene::Makie.Scene)
-    # Collect from this scene's plots
-    for plot in scene.plots
-        collect_overlay_plots_recursive!(overlay_plots, plot)
-    end
-    # Recurse into child scenes (handles LScene nested structure)
-    for child in scene.children
-        collect_overlay_plots_from_scene!(overlay_plots, child)
-    end
-end
-
-"""
-    collect_overlay_plots_recursive!(overlay_plots, plot)
-
-Recursively collect overlay plots from a plot and its children.
-"""
-function collect_overlay_plots_recursive!(overlay_plots::Vector{OverlayPlotInfo}, plot)
-    # Check if this plot is an overlay type
-    plot_type = get_overlay_plot_type(plot)
-    if !isnothing(plot_type)
-        push!(overlay_plots, OverlayPlotInfo(plot, plot_type))
-    end
-
-    # Recurse into child plots (for composite plots like Axis3D)
-    if hasfield(typeof(plot), :plots) && !isempty(plot.plots)
-        for child in plot.plots
-            collect_overlay_plots_recursive!(overlay_plots, child)
-        end
-    end
-end
-
-# =============================================================================
 # Overlay Rendering
 # =============================================================================
+# Iterates all plots with overlay trace_renderobjects and dispatches to
+# KA rasterize kernels. No CPU for-loops that scalar-index GPU arrays.
 
-"""
-    render_overlays!(state::TraceMakieState, scene::Makie.Scene)
+# =============================================================================
+# Main entry point
+# =============================================================================
 
-Render all overlay plots (lines, scatter, text) using the Overlay module.
-Uses Makie's camera matrices to ensure overlay aligns with ray-traced content.
-"""
-function render_overlays!(state::TraceMakieState, scene::Makie.Scene)
+function render_overlays!(screen)
+    state = screen.state
+    scene = screen.scene
     film = state.film
     overlay = state.overlay_buffer
-    # Flip depth buffer Y to match overlay's flipped Y coordinates
-    # Overlay uses Y flip (NDC Y=1 -> screen Y=0), so depth buffer needs same flip
-    depth_buffer = reverse(film.depth, dims=1)
+
+    # Flip depth buffer Y (film: row 1=bottom, overlay: row 1=top)
+    Overlay.flip_depth_y!(state.depth_flipped, film.depth)
 
     # Clear overlay buffer
     Overlay.clear_overlay!(overlay)
 
-    # Find the 3D scene for proper camera matrices (handles LScene nested structure)
+    # Find the 3D scene for camera matrices
     scene_3d = find_3d_scene(scene)
     if isnothing(scene_3d)
-        @warn "No 3D scene found for overlay rendering"
-        return  # No 3D scene found, skip overlay rendering
+        return
     end
 
-    # Create raster context from Makie's camera (ensures correct projection)
-    ctx = create_raster_context(scene_3d, film.resolution)
+    # Create raster context from Makie's camera
+    ctx = _create_raster_context(scene_3d, film.resolution)
 
-    # Render each overlay plot
-    for info in state.overlay_plots
-        render_overlay_plot!(overlay, depth_buffer, ctx, info)
+    # Iterate all atomic plots with overlay trace_renderobjects
+    has_overlay = Ref(false)
+    depth_buf = state.depth_flipped
+    Makie.for_each_atomic_plot(scene) do p
+        haskey(p, :trace_renderobject) || return nothing
+        robj = try
+            p[:trace_renderobject][]
+        catch
+            return nothing
+        end
+        isnothing(robj) && return nothing
+        hasproperty(robj, :type) || return nothing
+
+        rtype = robj.type
+        if rtype === :linesegments
+            _render_overlay_linesegments!(overlay, depth_buf, ctx, robj)
+            has_overlay[] = true
+        elseif rtype === :lines
+            _render_overlay_lines!(overlay, depth_buf, ctx, robj)
+            has_overlay[] = true
+        elseif rtype === :scatter
+            _render_overlay_scatter!(overlay, depth_buf, ctx, robj)
+            has_overlay[] = true
+        elseif rtype === :text
+            _render_overlay_text!(overlay, depth_buf, ctx, robj)
+            has_overlay[] = true
+        end
+        return nothing
+    end
+
+    # Composite overlay onto postprocessed image
+    if has_overlay[]
+        DEBUG_OVERLAY[] = Array(overlay)
+        Overlay.composite!(film.postprocess, overlay)
     end
 end
 
-function create_raster_context(scene::Makie.Scene, resolution::Point2f)
+function _create_raster_context(scene::Makie.Scene, resolution::Point2f)
     cc = scene.camera_controls
     view_proj = Mat4f(scene.camera.projectionview[])
     near = Float32(cc.near[])
@@ -106,73 +74,61 @@ function create_raster_context(scene::Makie.Scene, resolution::Point2f)
     return Overlay.RasterContext(view_proj, Vec2f(resolution); near=near, far=far)
 end
 
-render_overlay_plot!(overlay, depth_buffer, ctx, info::OverlayPlotInfo) =
-    render_overlay_plot!(overlay, depth_buffer, ctx, info.plot)
+# =============================================================================
+# Per-type overlay rendering (dispatched from render_overlays!)
+# =============================================================================
 
-# Fallback for unsupported overlay plot types
-render_overlay_plot!(overlay, depth_buffer, ctx, ::Makie.AbstractPlot) = nothing
-
-# Shared helpers for overlay rendering
-
-_overlay_positions(plot) = [Makie.to_ndim(Point3f, p, 0f0) for p in plot.converted[][1]]
-
-function _overlay_color(plot)
-    color_attr = haskey(plot.attributes, :color) ? plot.color[] : RGBAf(0, 0, 0, 1)
-    return Makie.to_color(color_attr)
+function _render_overlay_linesegments!(overlay, depth_buffer, ctx, robj)
+    Overlay.rasterize_lines!(
+        overlay, depth_buffer, ctx,
+        robj.positions, robj.style.color, robj.style.linewidth,
+        robj.buffers;
+        connect=false,
+    )
 end
 
-function _overlay_linewidth(plot)
-    lw_attr = haskey(plot.attributes, :linewidth) ? plot.linewidth[] : 1f0
-    return lw_attr isa AbstractVector ? (isempty(lw_attr) ? 1f0 : Float32(first(lw_attr))) : Float32(lw_attr)
+function _render_overlay_lines!(overlay, depth_buffer, ctx, robj)
+    Overlay.rasterize_lines!(
+        overlay, depth_buffer, ctx,
+        robj.positions, robj.style.color, robj.style.linewidth,
+        robj.buffers;
+        connect=true,
+    )
 end
 
-function _overlay_markersize(plot)
-    ms_attr = haskey(plot.attributes, :markersize) ? plot.markersize[] : 10f0
-    s = Makie.to_2d_scale(ms_attr)
-    return s isa Vec2f ? Float32(max(s[1], s[2])) : Float32(max(first(s)...))
+function _render_overlay_scatter!(overlay, depth_buffer, ctx, robj)
+    Overlay.rasterize_scatter!(
+        overlay, depth_buffer, ctx,
+        robj.positions, robj.style.color, robj.style.markersize,
+        robj.style.shape, robj.buffers,
+    )
 end
 
-function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.lines})
-    points = _overlay_positions(plot)
-    Overlay.rasterize_lines!(overlay, depth_buffer, ctx, points, _overlay_color(plot), _overlay_linewidth(plot); connect=true)
-end
+# =============================================================================
+# Text rendering
+# =============================================================================
+# Text uses Makie's SDF atlas and glyph layout — glyph data is computed on CPU,
+# uploaded to GPU, and rasterized via the KA text kernel.
 
-function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.linesegments})
-    points = _overlay_positions(plot)
-    Overlay.rasterize_linesegments!(overlay, depth_buffer, ctx, points, _overlay_color(plot), _overlay_linewidth(plot))
-end
-
-function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.scatter})
-    points = _overlay_positions(plot)
-    markersize = _overlay_markersize(plot)
-
-    # Get marker shape
-    marker = haskey(plot.attributes, :marker) ? plot.marker[] : :circle
-    shape = marker_to_shape(marker)
-
-    Overlay.rasterize_scatter!(overlay, depth_buffer, ctx, points, _overlay_color(plot), markersize, shape)
-end
-
-function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie.text})
+function _render_overlay_text!(overlay, depth_buffer, ctx, robj)
+    plot = robj.plot
     attr = plot.attributes
 
-    # Check if computed attributes are available
+    # Check if computed glyph attributes are available
     if !haskey(attr, :sdf_uv) || !haskey(attr, :quad_scale)
-        @warn "Text plot missing computed glyph attributes" maxlog=1
         return
     end
 
     # Get computed glyph data
-    sdf_uvs = attr[:sdf_uv][]              # Vec4f per glyph (u_min, v_min, u_max, v_max)
-    quad_scales = attr[:quad_scale][]      # Vec2f per glyph
-    quad_offsets = attr[:quad_offset][]    # Vec2f per glyph
-    marker_offsets = attr[:marker_offset][] # Point3f per glyph (glyph origin + offset)
+    sdf_uvs = attr[:sdf_uv][]
+    quad_scales = attr[:quad_scale][]
+    quad_offsets = attr[:quad_offset][]
+    marker_offsets = attr[:marker_offset][]
 
-    # Get per-character positions (these are the text anchor positions, repeated per char)
+    # Get per-character positions
     positions = if haskey(attr, :per_char_positions_transformed_f32c)
         attr[:per_char_positions_transformed_f32c][]
     else
-        # Fallback to regular positions expanded
         pos = plot.converted[1][]
         blocks = attr[:text_blocks][]
         [pos[i] for (i, r) in enumerate(blocks) for _ in r]
@@ -186,177 +142,74 @@ function render_overlay_plot!(overlay, depth_buffer, ctx, plot::Makie.Plot{Makie
         fill(Makie.to_color(color_attr), length(sdf_uvs))
     end
 
-    # Get rotations (per character)
-    rotations = if haskey(attr, :text_rotation)
-        attr[:text_rotation][]
-    else
-        fill(Quaternionf(0, 0, 0, 1), length(sdf_uvs))
-    end
+    n_glyphs = length(sdf_uvs)
+    n_glyphs == 0 && return
 
-    # Get the texture atlas
+    # Get texture atlas
     atlas = Makie.get_texture_atlas()
     atlas_data = atlas.data
     atlas_size = Vec2f(size(atlas_data, 2), size(atlas_data, 1))
 
-    n_glyphs = length(sdf_uvs)
-    n_glyphs == 0 && return
+    # Compute glyph instances on CPU
+    backend = KernelAbstractions.get_backend(overlay)
+    glyph_screen_pos = Vector{Vec2f}(undef, n_glyphs)
+    glyph_screen_sizes = Vector{Vec2f}(undef, n_glyphs)
+    glyph_depths = Vector{Float32}(undef, n_glyphs)
+    glyph_uv_bounds = Vector{Vec4f}(undef, n_glyphs)
+    glyph_colors = Vector{RGBA{Float32}}(undef, n_glyphs)
 
-    # Render each glyph
+    valid_count = 0
     for i in 1:n_glyphs
         pos = positions[min(i, length(positions))]
-        color = colors[min(i, length(colors))]
-        uv_rect = sdf_uvs[i]
-        scale = quad_scales[i]       # Screen-space glyph size in pixels
-        offset = quad_offsets[i]      # Screen-space quad offset (fine positioning)
-        marker_off = marker_offsets[i] # Screen-space offset from text anchor to glyph origin
-        rotation = rotations[min(i, length(rotations))]
-
         world_pos = Makie.to_ndim(Point3f, pos, 0f0)
 
-        # Project text anchor to screen space
         screen_anchor, depth, visible = Overlay.project(ctx, world_pos)
         !visible && continue
 
-        # All offsets (marker_offset, quad_offset, quad_scale) are in screen pixels
-        # marker_offset: offset from text anchor to this glyph's origin
-        # quad_offset: fine offset for the glyph quad (e.g., for baseline alignment)
-        # quad_scale: size of the glyph quad in screen pixels
-        # Makie computes offsets for GLMakie where Y+ is up, but our screen has Y+ down
-        # So we negate the Y components of the offsets
+        uv_rect = sdf_uvs[i]
+        scale = quad_scales[i]
+        offset = quad_offsets[i]
+        marker_off = marker_offsets[i]
+
         screen_pos = Vec2f(
             screen_anchor[1] + marker_off[1] + offset[1],
             screen_anchor[2] - marker_off[2] - offset[2]
         )
 
-        # quad_scale is already the screen-space glyph size
         glyph_width = scale[1]
         glyph_height = scale[2]
+        (glyph_width < 1f0 || glyph_height < 1f0) && continue
 
-        # Create and render glyph instance
-        glyph = Overlay.GlyphInstance(
-            screen_pos,
-            Vec2f(glyph_width, glyph_height),
-            depth,
-            uv_rect,
-            color
-        )
-
-        render_single_glyph!(overlay, depth_buffer, glyph, atlas_data, atlas_size)
+        valid_count += 1
+        glyph_screen_pos[valid_count] = screen_pos
+        glyph_screen_sizes[valid_count] = Vec2f(glyph_width, glyph_height)
+        glyph_depths[valid_count] = depth
+        glyph_uv_bounds[valid_count] = uv_rect
+        glyph_colors[valid_count] = RGBA{Float32}(colors[min(i, length(colors))])
     end
-end
 
-"""
-    render_single_glyph!(overlay, depth_buffer, glyph, atlas_data, atlas_size)
+    valid_count == 0 && return
 
-Render a single glyph to the overlay buffer.
-"""
-function render_single_glyph!(
-    overlay::Matrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    glyph::Overlay.GlyphInstance,
-    atlas_data::AbstractMatrix,
-    atlas_size::Vec2f,
-)
+    # Upload to GPU via adapt
+    gpu_screen_pos = Adapt.adapt(backend, glyph_screen_pos[1:valid_count])
+    gpu_screen_sizes = Adapt.adapt(backend, glyph_screen_sizes[1:valid_count])
+    gpu_depths = Adapt.adapt(backend, glyph_depths[1:valid_count])
+    gpu_uv_bounds = Adapt.adapt(backend, glyph_uv_bounds[1:valid_count])
+    gpu_colors = Adapt.adapt(backend, glyph_colors[1:valid_count])
+
+    # Upload atlas to GPU (TODO: cache this)
+    gpu_atlas = Adapt.adapt(backend, Float32.(atlas_data))
+
+    # Launch text kernel
     h, w = size(overlay)
-
-    # Skip tiny glyphs
-    (glyph.screen_size[1] < 1f0 || glyph.screen_size[2] < 1f0) && return
-
-    # Glyph bounding box in screen space
-    min_x = max(1, floor(Int, glyph.screen_pos[1]))
-    max_x = min(w, ceil(Int, glyph.screen_pos[1] + glyph.screen_size[1]))
-    min_y = max(1, floor(Int, glyph.screen_pos[2]))
-    max_y = min(h, ceil(Int, glyph.screen_pos[2] + glyph.screen_size[2]))
-
-    # Early exit if completely outside screen
-    (max_x < min_x || max_y < min_y) && return
-
-    # UV bounds in atlas
-    u_min, v_min, u_max, v_max = glyph.uv_bounds[1], glyph.uv_bounds[2], glyph.uv_bounds[3], glyph.uv_bounds[4]
-
-    # Rasterize glyph quad
-    for py in min_y:max_y
-        for px in min_x:max_x
-            # Compute UV within glyph [0, 1]
-            # Flip local_v because GLMakie's quad origin is at bottom-left
-            # but we iterate with py increasing downward from screen_pos (top)
-            local_u = (Float32(px) - glyph.screen_pos[1]) / glyph.screen_size[1]
-            local_v = 1f0 - (Float32(py) - glyph.screen_pos[2]) / glyph.screen_size[2]
-
-            # Skip if outside glyph bounds
-            (local_u < 0f0 || local_u > 1f0 || local_v < 0f0 || local_v > 1f0) && continue
-
-            # Map to atlas UV coordinates (no flip - direct mapping)
-            atlas_u = u_min + local_u * (u_max - u_min)
-            atlas_v = v_min + local_v * (v_max - v_min)
-
-            # Sample SDF from atlas (bilinear interpolation)
-            sdf = sample_atlas_bilinear(atlas_data, atlas_size, atlas_u, atlas_v)
-
-            # Depth test
-            rt_depth = depth_buffer[py, px]
-            depth_bias = 0.001f0 * glyph.depth
-            glyph.depth > rt_depth + depth_bias && continue
-
-            # The atlas SDF: edge is at glyph_padding (12), inside < 12, outside > 12
-            # SDF values are in atlas pixel units
-            edge_threshold = 12f0  # atlas.glyph_padding
-            aa_width = 1.5f0
-            coverage = clamp((edge_threshold - sdf + aa_width) / (2f0 * aa_width), 0f0, 1f0)
-            coverage < 0.001f0 && continue
-
-            # Apply alpha and blend
-            alpha = glyph.color.alpha * coverage
-            overlay[py, px] = Overlay.alpha_blend(
-                RGBA{Float32}(glyph.color.r, glyph.color.g, glyph.color.b, alpha),
-                overlay[py, px]
-            )
-        end
-    end
-end
-
-"""
-    sample_atlas_bilinear(atlas_data, atlas_size, u, v)
-
-Sample the atlas with bilinear interpolation.
-u, v are in [0, 1] normalized coordinates.
-"""
-@inline function sample_atlas_bilinear(
-    atlas_data::AbstractMatrix,
-    atlas_size::Vec2f,
-    u::Float32,
-    v::Float32,
-)
-    # Convert normalized UV to pixel coordinates
-    # Atlas data is stored as Julia matrix with row 1 at top
-    px = u * atlas_size[1]
-    py = v * atlas_size[2]
-
-    # Get integer and fractional parts
-    x0 = floor(Int, px)
-    y0 = floor(Int, py)
-    x1 = x0 + 1
-    y1 = y0 + 1
-    fx = px - Float32(x0)
-    fy = py - Float32(y0)
-
-    # Clamp to valid range
-    h, w = size(atlas_data)
-    x0 = clamp(x0, 1, w)
-    x1 = clamp(x1, 1, w)
-    y0 = clamp(y0, 1, h)
-    y1 = clamp(y1, 1, h)
-
-    # Sample four corners (atlas is [row, col] = [y, x])
-    v00 = Float32(atlas_data[y0, x0])
-    v10 = Float32(atlas_data[y0, x1])
-    v01 = Float32(atlas_data[y1, x0])
-    v11 = Float32(atlas_data[y1, x1])
-
-    # Bilinear interpolation
-    v0 = v00 * (1f0 - fx) + v10 * fx
-    v1 = v01 * (1f0 - fx) + v11 * fx
-    return v0 * (1f0 - fy) + v1 * fy
+    Overlay.rasterize_text_kernel!(backend)(
+        overlay, depth_buffer,
+        gpu_screen_pos, gpu_screen_sizes, gpu_depths, gpu_uv_bounds, gpu_colors,
+        gpu_atlas, Int32(size(atlas_data, 2)), Int32(size(atlas_data, 1)),
+        Int32(valid_count);
+        ndrange=(w, h)
+    )
+    KernelAbstractions.synchronize(backend)
 end
 
 # =============================================================================

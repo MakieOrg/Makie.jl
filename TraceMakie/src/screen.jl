@@ -243,17 +243,10 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         sensor = config.sensor
     )
 
-    # Render overlay plots (lines, scatter, text)
-    if !isempty(state.overlay_plots)
-        render_overlays!(state, screen.scene)
-        DEBUG_OVERLAY[] = copy(state.overlay_buffer)
-        Overlay.composite!(film.postprocess, state.overlay_buffer)
-    end
+    # Render overlay plots (lines, scatter, text) via KA kernels
+    render_overlays!(screen)
 
     # Copy postprocess buffer to CPU if on GPU, then convert to RGB{N0f8}
-    # Hikari camera uses screen_window with y_min at bottom, so raster y=0 is
-    # the bottom of the image. The framebuffer is already in JuliaNative orientation
-    # (row 1 = top of image). No flip needed.
     # Use pre-allocated buffer to avoid GPU alloc every frame (GC doesn't track GPU memory)
     map!(clamp01nan, state.colorbuffer_tmp, film.postprocess)
     result = Array(state.colorbuffer_tmp)

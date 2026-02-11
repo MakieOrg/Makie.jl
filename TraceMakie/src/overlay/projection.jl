@@ -96,6 +96,39 @@ Check if a screen-space point is within the screen bounds (with optional margin)
            screen[2] <= resolution[2] + margin
 end
 
+# ============================================================================
+# GPU Projection Kernel
+# ============================================================================
+
+@kernel function project_positions_kernel!(
+    screen_out,
+    depth_out,
+    visible_out,
+    @Const(positions),
+    view_proj::Mat4f,
+    resolution_x::Float32,
+    resolution_y::Float32,
+)
+    i = @index(Global)
+    @inbounds begin
+        p = positions[i]
+        p4 = Vec4f(p[1], p[2], p[3], 1f0)
+        clip = view_proj * p4
+
+        vis = clip[4] > 0f0
+        inv_w = ifelse(abs(clip[4]) > 1f-10, 1f0 / clip[4], 0f0)
+        ndc_x = clip[1] * inv_w
+        ndc_y = clip[2] * inv_w
+
+        screen_x = (ndc_x * 0.5f0 + 0.5f0) * resolution_x
+        screen_y = (1f0 - (ndc_y * 0.5f0 + 0.5f0)) * resolution_y
+
+        screen_out[i] = Vec2f(screen_x, screen_y)
+        depth_out[i] = clip[4]
+        visible_out[i] = UInt32(vis)
+    end
+end
+
 """
     clip_line_to_screen(a::Vec2f, b::Vec2f, resolution::Vec2f) -> (a_clipped, b_clipped, visible)
 

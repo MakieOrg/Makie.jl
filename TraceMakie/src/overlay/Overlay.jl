@@ -22,15 +22,16 @@ const HEXAGON = UInt8(6)
 const STAR = UInt8(7)
 
 # Core exports
-export RasterContext, project, project_with_scale
+export RasterContext, project, project_with_scale, project_positions_kernel!
 
 # Rasterization functions
 export rasterize_lines!, rasterize_linesegments!
-export rasterize_scatter!, rasterize_scatter_world_size!
-export rasterize_text!, prepare_text_glyphs, GlyphInstance
+export rasterize_scatter!
+export rasterize_text!, rasterize_text_kernel!, prepare_text_glyphs, GlyphInstance
+export allocate_line_buffers, allocate_scatter_buffers
 
 # Compositing
-export composite!, composite_gpu!, clear_overlay!, create_overlay_buffer
+export composite!, clear_overlay!, create_overlay_buffer, flip_depth_y!
 
 # Shape constants
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, TRIANGLE, CROSS, DIAMOND, HEXAGON, STAR

@@ -21,11 +21,6 @@ const DEBUG_OVERLAY = Ref{Any}(nothing)
 # TraceMakieState
 # =============================================================================
 
-struct OverlayPlotInfo
-    plot::Makie.AbstractPlot
-    plot_type::Symbol  # :lines, :linesegments, :scatter, :text
-end
-
 mutable struct TraceMakieState
     film::Hikari.Film
     camera::Observable
@@ -33,9 +28,10 @@ mutable struct TraceMakieState
     needs_film_clear::Bool
     # Pre-allocated buffer for clamp01nan in colorbuffer (avoids per-frame GPU alloc)
     colorbuffer_tmp::AbstractMatrix{RGB{Float32}}
-    # Overlay system for lines, scatter, text
-    overlay_buffer::Matrix{RGBA{Float32}}
-    overlay_plots::Vector{OverlayPlotInfo}
+    # Overlay system for lines, scatter, text (on KA backend)
+    overlay_buffer::AbstractMatrix{RGBA{Float32}}
+    # Pre-allocated flipped depth buffer for overlay rendering
+    depth_flipped::AbstractMatrix{Float32}
 end
 
 # Helper to get TLAS from state
@@ -106,7 +102,11 @@ _is_spectral_integrator(::Hikari.Integrator) = false
 function to_trace_light(light::Makie.AmbientLight, integrator)
     color = light.color isa Observable ? light.color[] : light.color
     rgb = RGB{Float32}(RGBf(color))
-    return Hikari.AmbientLight(rgb)
+    if _is_spectral_integrator(integrator)
+        return Hikari.AmbientLight(rgb)
+    else
+        return Hikari.AmbientLight(Hikari.RGBSpectrum(rgb.r, rgb.g, rgb.b))
+    end
 end
 
 function to_trace_light(light::Makie.PointLight, integrator)
@@ -213,6 +213,9 @@ include("plots/mesh.jl")
 include("plots/meshscatter.jl")
 include("plots/surface.jl")
 include("plots/volume.jl")
+include("plots/lines.jl")
+include("plots/scatter_overlay.jl")
+include("plots/text_overlay.jl")
 
 # =============================================================================
 # init_scene! — create Hikari scene from Makie scene, call draw_atomic per plot
@@ -256,7 +259,13 @@ function init_scene!(screen, mscene::Makie.Scene)
     if !has_infinite && haskey(scene_3d.compute, :ambient_color)
         ambient_color = scene_3d.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
-            push!(hikari_scene.lights, Hikari.AmbientLight(RGB{Float32}(ambient_color)))
+            ambient_rgb = RGB{Float32}(ambient_color)
+            ambient_light = if _is_spectral_integrator(integrator)
+                Hikari.AmbientLight(ambient_rgb)
+            else
+                Hikari.AmbientLight(Hikari.RGBSpectrum(ambient_rgb.r, ambient_rgb.g, ambient_rgb.b))
+            end
+            push!(hikari_scene.lights, ambient_light)
         end
     end
 
@@ -273,14 +282,14 @@ function init_scene!(screen, mscene::Makie.Scene)
     # Pre-allocate colorbuffer clamp buffer (same type/size as film.postprocess)
     colorbuffer_tmp = similar(film.postprocess)
 
-    # Create overlay buffer matching film size
+    # Create overlay buffer on KA backend (same as film)
     film_size = size(film.framebuffer)
-    overlay_buffer = fill(RGBA{Float32}(0f0, 0f0, 0f0, 0f0), film_size)
+    overlay_buffer = Overlay.create_overlay_buffer(ka_backend, film_size)
 
-    # Collect overlay plots
-    overlay_plots = collect_overlay_plots(mscene)
+    # Pre-allocate flipped depth buffer for overlay rendering
+    depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, film_size...)
 
-    state = TraceMakieState(film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, overlay_plots)
+    state = TraceMakieState(film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped)
     screen.state = state
 
     # Call draw_atomic for each atomic plot (registers compute graph nodes)

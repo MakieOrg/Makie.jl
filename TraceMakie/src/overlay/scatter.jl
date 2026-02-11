@@ -1,156 +1,38 @@
 # ============================================================================
-# Scatter/Marker Rasterization
+# Scatter/Marker Rasterization (KA Kernel Path)
 # ============================================================================
-# GPU-ready marker rasterization using procedural SDFs
+# Uses KernelAbstractions for both CPU and GPU backends.
+# Flow: project positions → prepare marker data → rasterize per-pixel kernel.
 
 using LinearAlgebra: norm
 
-"""
-    rasterize_scatter!(overlay, depth_buffer, ctx, positions, colors, sizes, shape)
+# ============================================================================
+# Prepare Scatter Data Kernel
+# ============================================================================
 
-Rasterize scatter markers at 3D positions.
-
-# Arguments
-- `overlay`: RGBA output buffer (modified in place)
-- `depth_buffer`: Ray-traced depth buffer for depth testing
-- `ctx`: RasterContext with projection info
-- `positions`: Vector of 3D world-space marker positions
-- `colors`: Single color or per-marker colors
-- `sizes`: Single size or per-marker sizes (in pixels)
-- `shape`: Marker shape (CIRCLE, RECTANGLE, etc.)
-"""
-function rasterize_scatter!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    ctx::RasterContext,
-    positions::AbstractVector{<:Point3f},
-    colors::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
-    sizes::Union{Float32, AbstractVector{Float32}},
-    shape::UInt8=CIRCLE,
-)
-    n_markers = length(positions)
-    n_markers == 0 && return
-
-    for i in 1:n_markers
-        pos = positions[i]
-        color = colors isa AbstractVector ? colors[i] : colors
-        marker_size = sizes isa AbstractVector ? sizes[i] : sizes
-
-        # Project to screen space
-        screen, depth, visible = project(ctx, pos)
-        !visible && continue
-
-        # Rasterize this marker
-        rasterize_marker!(overlay, depth_buffer, ctx.resolution, screen, depth, color, marker_size, shape)
-    end
-end
-
-"""
-    rasterize_marker!(overlay, depth_buffer, resolution, screen, depth, color, size, shape)
-
-Rasterize a single marker at screen position.
-"""
-function rasterize_marker!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    resolution::Vec2f,
-    screen::Vec2f,
-    depth::Float32,
+# Set invisible markers to zero size so they are skipped by the pixel kernel
+@kernel function prepare_scatter_data_kernel!(
+    colors_out, sizes_out,
+    @Const(visible),
     color::RGBA{Float32},
     marker_size::Float32,
-    shape::UInt8,
 )
-    h, w = size(overlay)
-    half_size = marker_size * 0.5f0
-
-    # Bounding box with AA padding
-    padding = AA_RADIUS + 1f0
-    min_x = max(1, floor(Int, screen[1] - half_size - padding))
-    max_x = min(w, ceil(Int, screen[1] + half_size + padding))
-    min_y = max(1, floor(Int, screen[2] - half_size - padding))
-    max_y = min(h, ceil(Int, screen[2] + half_size + padding))
-
-    # Early exit if completely outside screen
-    (max_x < min_x || max_y < min_y) && return
-
-    # Rasterize bounding box
-    for py in min_y:max_y
-        for px in min_x:max_x
-            # Compute UV in marker space [0, 1]
-            uv = Vec2f(
-                (Float32(px) - screen[1]) / marker_size + 0.5f0,
-                (Float32(py) - screen[2]) / marker_size + 0.5f0
-            )
-
-            # Evaluate SDF (negative inside, positive outside)
-            sdf = evaluate_shape_sdf(shape, uv)
-
-            # Scale SDF to pixel units
-            sdf_px = sdf * marker_size
-
-            # Skip if too far outside
-            sdf_px > AA_RADIUS && continue
-
-            # Depth test
-            rt_depth = depth_buffer[py, px]
-            depth_bias = 0.001f0 * depth
-            depth > rt_depth + depth_bias && continue
-
-            # Compute coverage using anti-aliasing
-            coverage = aastep(0f0, sdf_px)
-            coverage < 0.001f0 && continue
-
-            # Apply alpha and blend
-            alpha = color.alpha * coverage
-            overlay[py, px] = alpha_blend(
-                RGBA{Float32}(color.r, color.g, color.b, alpha),
-                overlay[py, px]
-            )
+    i = @index(Global)
+    @inbounds begin
+        if visible[i] == UInt32(1)
+            colors_out[i] = color
+            sizes_out[i] = marker_size
+        else
+            colors_out[i] = RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
+            sizes_out[i] = 0f0
         end
     end
 end
 
-"""
-    rasterize_scatter_world_size!(overlay, depth_buffer, ctx, positions, colors, sizes, shape)
-
-Rasterize scatter markers with world-space sizes (sizes scale with perspective).
-"""
-function rasterize_scatter_world_size!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    ctx::RasterContext,
-    positions::AbstractVector{<:Point3f},
-    colors::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
-    world_sizes::Union{Float32, AbstractVector{Float32}},
-    shape::UInt8=CIRCLE,
-)
-    n_markers = length(positions)
-    n_markers == 0 && return
-
-    for i in 1:n_markers
-        pos = positions[i]
-        color = colors isa AbstractVector ? colors[i] : colors
-        world_size = world_sizes isa AbstractVector ? world_sizes[i] : world_sizes
-
-        # Project to screen space with size
-        screen, depth, visible, screen_size = project_with_scale(ctx, pos, world_size)
-        !visible && continue
-
-        # Use screen-space size for rasterization
-        rasterize_marker!(overlay, depth_buffer, ctx.resolution, screen, depth, color, screen_size, shape)
-    end
-end
-
 # ============================================================================
-# GPU Kernel Version
+# Per-Pixel Rasterization Kernel
 # ============================================================================
 
-"""
-    rasterize_scatter_pixel!
-
-Inner function for scatter rasterization at a single pixel.
-Separated from kernel to allow normal control flow.
-"""
 @inline function rasterize_scatter_pixel!(
     overlay,
     depth_buffer,
@@ -179,6 +61,9 @@ Separated from kernel to allow normal control flow.
         color = colors[i]
         marker_size = sizes[i]
         half_size = marker_size * 0.5f0
+
+        # Skip invisible markers (size == 0)
+        marker_size < 0.001f0 && continue
 
         # Quick bounding box rejection
         margin = half_size + AA_RADIUS
@@ -221,12 +106,6 @@ Separated from kernel to allow normal control flow.
     return
 end
 
-"""
-    rasterize_scatter_kernel!
-
-GPU kernel for parallel scatter rasterization.
-Each thread handles one pixel, checking all markers.
-"""
 @kernel function rasterize_scatter_kernel!(
     overlay,
     @Const(depth_buffer),
@@ -244,71 +123,100 @@ Each thread handles one pixel, checking all markers.
     )
 end
 
-"""
-    rasterize_scatter_per_marker_kernel!
+# ============================================================================
+# High-Level API: rasterize_scatter!
+# ============================================================================
 
-Alternative GPU kernel where each thread handles one marker.
-Better for scenes with many markers but sparse coverage.
-"""
-@kernel function rasterize_scatter_per_marker_kernel!(
-    overlay,
-    @Const(depth_buffer),
-    @Const(screen_positions),
-    @Const(depths),
-    @Const(colors),
-    @Const(sizes),
-    shape::UInt8,
+function rasterize_scatter!(
+    overlay::AbstractMatrix{RGBA{Float32}},
+    depth_buffer::AbstractMatrix{Float32},
+    ctx::RasterContext,
+    positions::AbstractVector{<:Point3f},
+    color::RGBA{Float32},
+    marker_size::Float32,
+    shape::UInt8=CIRCLE,
 )
-    marker_idx = @index(Global)
+    n = length(positions)
+    n == 0 && return
+
+    backend = KernelAbstractions.get_backend(overlay)
+
+    # 1. Project positions
+    screen_pos = KernelAbstractions.allocate(backend, Vec2f, n)
+    depths = KernelAbstractions.allocate(backend, Float32, n)
+    vis = KernelAbstractions.allocate(backend, UInt32, n)
+
+    project_positions_kernel!(backend)(
+        screen_pos, depths, vis, positions,
+        ctx.view_proj, ctx.resolution[1], ctx.resolution[2];
+        ndrange=n
+    )
+
+    # 2. Prepare per-marker data (set invisible markers to zero size)
+    colors_arr = KernelAbstractions.allocate(backend, RGBA{Float32}, n)
+    sizes_arr = KernelAbstractions.allocate(backend, Float32, n)
+
+    prepare_scatter_data_kernel!(backend)(
+        colors_arr, sizes_arr, vis, color, marker_size;
+        ndrange=n
+    )
+
+    # 3. Rasterize (per-pixel kernel)
     h, w = size(overlay)
+    rasterize_scatter_kernel!(backend)(
+        overlay, depth_buffer, screen_pos, depths,
+        colors_arr, sizes_arr, shape, Int32(n);
+        ndrange=(w, h)
+    )
+    KernelAbstractions.synchronize(backend)
+end
 
-    @inbounds begin
-        screen = screen_positions[marker_idx]
-        depth = depths[marker_idx]
-        color = colors[marker_idx]
-        marker_size = sizes[marker_idx]
-        half_size = marker_size * 0.5f0
+# Pre-allocated buffer variant
+function rasterize_scatter!(
+    overlay::AbstractMatrix{RGBA{Float32}},
+    depth_buffer::AbstractMatrix{Float32},
+    ctx::RasterContext,
+    positions::AbstractVector{<:Point3f},
+    color::RGBA{Float32},
+    marker_size::Float32,
+    shape::UInt8,
+    buffers::NamedTuple,
+)
+    n = length(positions)
+    n == 0 && return
 
-        # Bounding box
-        padding = AA_RADIUS + 1f0
-        min_x = max(Int32(1), floor(Int32, screen[1] - half_size - padding))
-        max_x = min(Int32(w), ceil(Int32, screen[1] + half_size + padding))
-        min_y = max(Int32(1), floor(Int32, screen[2] - half_size - padding))
-        max_y = min(Int32(h), ceil(Int32, screen[2] + half_size + padding))
+    backend = KernelAbstractions.get_backend(overlay)
 
-        # Rasterize bounding box
-        for py in min_y:max_y
-            for px in min_x:max_x
-                p = Vec2f(Float32(px), Float32(py))
+    # 1. Project positions (reuse buffers)
+    project_positions_kernel!(backend)(
+        buffers.screen_pos, buffers.depth, buffers.visible, positions,
+        ctx.view_proj, ctx.resolution[1], ctx.resolution[2];
+        ndrange=n
+    )
 
-                # UV in marker space
-                uv = Vec2f(
-                    (p[1] - screen[1]) / marker_size + 0.5f0,
-                    (p[2] - screen[2]) / marker_size + 0.5f0
-                )
+    # 2. Prepare per-marker data (reuse buffers)
+    prepare_scatter_data_kernel!(backend)(
+        buffers.colors, buffers.sizes, buffers.visible, color, marker_size;
+        ndrange=n
+    )
 
-                # SDF evaluation
-                sdf = evaluate_shape_sdf(shape, uv)
-                sdf_px = sdf * marker_size
+    # 3. Rasterize (per-pixel kernel)
+    h, w = size(overlay)
+    rasterize_scatter_kernel!(backend)(
+        overlay, depth_buffer, buffers.screen_pos, buffers.depth,
+        buffers.colors, buffers.sizes, shape, Int32(n);
+        ndrange=(w, h)
+    )
+    KernelAbstractions.synchronize(backend)
+end
 
-                sdf_px > AA_RADIUS && continue
-
-                # Depth test
-                rt_depth = depth_buffer[py, px]
-                depth_bias = 0.001f0 * depth
-                depth > rt_depth + depth_bias && continue
-
-                # Coverage and blend
-                coverage = aastep(0f0, sdf_px)
-                coverage < 0.001f0 && continue
-
-                alpha = color.alpha * coverage
-                # Note: This has race conditions! Use atomics or sort by depth
-                overlay[py, px] = alpha_blend(
-                    RGBA{Float32}(color.r, color.g, color.b, alpha),
-                    overlay[py, px]
-                )
-            end
-        end
-    end
+# Allocate reusable buffers for scatter rasterization
+function allocate_scatter_buffers(backend, n_positions::Int)
+    return (
+        screen_pos = KernelAbstractions.allocate(backend, Vec2f, n_positions),
+        depth = KernelAbstractions.allocate(backend, Float32, n_positions),
+        visible = KernelAbstractions.allocate(backend, UInt32, n_positions),
+        colors = KernelAbstractions.allocate(backend, RGBA{Float32}, n_positions),
+        sizes = KernelAbstractions.allocate(backend, Float32, n_positions),
+    )
 end

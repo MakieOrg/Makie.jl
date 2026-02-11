@@ -1,247 +1,91 @@
 # ============================================================================
-# Line Rasterization
+# Line Rasterization (KA Kernel Path)
 # ============================================================================
-# GPU-ready line segment rasterization with anti-aliasing and depth testing
+# Uses KernelAbstractions for both CPU and GPU backends.
+# Flow: project positions → build segments → rasterize per-pixel kernel.
 
 using LinearAlgebra: norm, dot
 
-"""
-    LineSegment
+# ============================================================================
+# Segment Build Kernels
+# ============================================================================
 
-A single line segment with screen-space coordinates and depth.
-"""
-struct LineSegment
-    # Screen-space endpoints
-    p1::Vec2f
-    p2::Vec2f
-    # View-space depths at endpoints
-    d1::Float32
-    d2::Float32
-    # Color (with alpha)
-    color::RGBA{Float32}
-    # Line width in pixels
-    linewidth::Float32
-end
-
-"""
-    rasterize_lines!(overlay, depth_buffer, ctx, positions, colors, linewidth; connect=true)
-
-Rasterize connected line strip or individual segments.
-
-# Arguments
-- `overlay`: RGBA output buffer (modified in place)
-- `depth_buffer`: Ray-traced depth buffer for depth testing
-- `ctx`: RasterContext with projection info
-- `positions`: Vector of 3D world-space points
-- `colors`: Single color or per-vertex colors
-- `linewidth`: Line width in pixels
-- `connect`: If true, treat as connected line strip; if false, treat as pairs of segments
-"""
-function rasterize_lines!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    ctx::RasterContext,
-    positions::AbstractVector{<:Point3f},
-    colors::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
-    linewidth::Float32;
-    connect::Bool=true,
-)
-    n_points = length(positions)
-    n_points < 2 && return
-
-    # Project all points to screen space
-    screen_points = Vector{Vec2f}(undef, n_points)
-    depths = Vector{Float32}(undef, n_points)
-    visible = Vector{Bool}(undef, n_points)
-
-    for i in 1:n_points
-        screen_points[i], depths[i], visible[i] = project(ctx, positions[i])
-    end
-
-    # Determine segments based on connect mode
-    if connect
-        # Connected line strip: n-1 segments
-        for i in 1:(n_points - 1)
-            # Skip if either endpoint is behind camera
-            (!visible[i] || !visible[i + 1]) && continue
-
-            color = colors isa AbstractVector ? colors[i] : colors
-            seg = LineSegment(
-                screen_points[i], screen_points[i + 1],
-                depths[i], depths[i + 1],
-                color, linewidth
-            )
-            rasterize_segment!(overlay, depth_buffer, ctx.resolution, seg)
-        end
-    else
-        # Disconnected segments: pairs of points
-        for i in 1:2:(n_points - 1)
-            (!visible[i] || !visible[i + 1]) && continue
-
-            color = colors isa AbstractVector ? colors[i] : colors
-            seg = LineSegment(
-                screen_points[i], screen_points[i + 1],
-                depths[i], depths[i + 1],
-                color, linewidth
-            )
-            rasterize_segment!(overlay, depth_buffer, ctx.resolution, seg)
-        end
-    end
-end
-
-"""
-    rasterize_linesegments!(overlay, depth_buffer, ctx, positions, colors, linewidth)
-
-Rasterize disconnected line segments (pairs of points).
-"""
-function rasterize_linesegments!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    ctx::RasterContext,
-    positions::AbstractVector{<:Point3f},
-    colors::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
-    linewidth::Float32,
-)
-    rasterize_lines!(overlay, depth_buffer, ctx, positions, colors, linewidth; connect=false)
-end
-
-"""
-    rasterize_segment!(overlay, depth_buffer, resolution, seg)
-
-Rasterize a single line segment with anti-aliasing and depth testing.
-Uses analytical line distance for smooth edges.
-"""
-function rasterize_segment!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    resolution::Vec2f,
-    seg::LineSegment,
-)
-    h, w = size(overlay)
-
-    # Compute bounding box with AA padding
-    half_width = seg.linewidth * 0.5f0 + AA_RADIUS + 1f0
-    min_x = max(1, floor(Int, min(seg.p1[1], seg.p2[1]) - half_width))
-    max_x = min(w, ceil(Int, max(seg.p1[1], seg.p2[1]) + half_width))
-    min_y = max(1, floor(Int, min(seg.p1[2], seg.p2[2]) - half_width))
-    max_y = min(h, ceil(Int, max(seg.p1[2], seg.p2[2]) + half_width))
-
-    # Early exit if completely outside screen
-    (max_x < min_x || max_y < min_y) && return
-
-    # Line direction and length
-    dir = seg.p2 - seg.p1
-    line_len_sq = dot(dir, dir)
-    line_len = sqrt(line_len_sq)
-
-    # Handle degenerate line (point)
-    if line_len < 1f-6
-        # Just draw a circle at p1
-        rasterize_point!(overlay, depth_buffer, seg.p1, seg.d1, seg.color, seg.linewidth)
-        return
-    end
-
-    # Normalized direction
-    dir_norm = dir / line_len
-
-    # Rasterize bounding box
-    for py in min_y:max_y
-        for px in min_x:max_x
-            p = Vec2f(Float32(px), Float32(py))
-
-            # Compute distance to line segment
-            pa = p - seg.p1
-            t = clamp(dot(pa, dir) / line_len_sq, 0f0, 1f0)
-
-            # Closest point on segment
-            closest = seg.p1 + t * dir
-            dist = norm(p - closest)
-
-            # Line half-width
-            half_lw = seg.linewidth * 0.5f0
-
-            # Skip if too far from line
-            dist > half_lw + AA_RADIUS && continue
-
-            # Interpolate depth along segment
-            depth = seg.d1 + t * (seg.d2 - seg.d1)
-
-            # Depth test (with small bias)
-            rt_depth = depth_buffer[py, px]
-            depth_bias = 0.001f0 * depth
-            depth > rt_depth + depth_bias && continue
-
-            # Compute coverage using SDF-based anti-aliasing
-            sdf = dist - half_lw
-            coverage = aastep(0f0, sdf)
-
-            # Skip if no coverage
-            coverage < 0.001f0 && continue
-
-            # Apply alpha and blend
-            alpha = seg.color.alpha * coverage
-            overlay[py, px] = alpha_blend(
-                RGBA{Float32}(seg.color.r, seg.color.g, seg.color.b, alpha),
-                overlay[py, px]
-            )
-        end
-    end
-end
-
-"""
-    rasterize_point!(overlay, depth_buffer, center, depth, color, size)
-
-Rasterize a single point as a filled circle (helper for degenerate lines).
-"""
-function rasterize_point!(
-    overlay::AbstractMatrix{RGBA{Float32}},
-    depth_buffer::AbstractMatrix{Float32},
-    center::Vec2f,
-    depth::Float32,
+# Build segments for connected line strip: n-1 segments from n points
+@kernel function build_line_strip_segments_kernel!(
+    screen_p1, screen_p2, d1, d2, seg_colors,
+    @Const(screen_pos), @Const(depths), @Const(visible),
     color::RGBA{Float32},
-    size::Float32,
 )
-    h, w = size(overlay)
-    radius = size * 0.5f0
+    i = @index(Global)
+    @inbounds begin
+        screen_p1[i] = screen_pos[i]
+        screen_p2[i] = screen_pos[i + 1]
+        d1[i] = depths[i]
+        d2[i] = depths[i + 1]
+        # Zero-alpha color for invisible segments (skipped by pixel kernel)
+        vis = visible[i] == UInt32(1) && visible[i + 1] == UInt32(1)
+        seg_colors[i] = ifelse(vis, color, RGBA{Float32}(0f0, 0f0, 0f0, 0f0))
+    end
+end
 
-    min_x = max(1, floor(Int, center[1] - radius - AA_RADIUS))
-    max_x = min(w, ceil(Int, center[1] + radius + AA_RADIUS))
-    min_y = max(1, floor(Int, center[2] - radius - AA_RADIUS))
-    max_y = min(h, ceil(Int, center[2] + radius + AA_RADIUS))
+# Build segments for disconnected pairs: n/2 segments from n points
+@kernel function build_line_pair_segments_kernel!(
+    screen_p1, screen_p2, d1, d2, seg_colors,
+    @Const(screen_pos), @Const(depths), @Const(visible),
+    color::RGBA{Float32},
+)
+    i = @index(Global)
+    @inbounds begin
+        idx1 = 2 * i - 1
+        idx2 = 2 * i
+        screen_p1[i] = screen_pos[idx1]
+        screen_p2[i] = screen_pos[idx2]
+        d1[i] = depths[idx1]
+        d2[i] = depths[idx2]
+        vis = visible[idx1] == UInt32(1) && visible[idx2] == UInt32(1)
+        seg_colors[i] = ifelse(vis, color, RGBA{Float32}(0f0, 0f0, 0f0, 0f0))
+    end
+end
 
-    for py in min_y:max_y
-        for px in min_x:max_x
-            p = Vec2f(Float32(px), Float32(py))
-            dist = norm(p - center)
+# Per-vertex color variants
+@kernel function build_line_strip_segments_percolor_kernel!(
+    screen_p1, screen_p2, d1, d2, seg_colors,
+    @Const(screen_pos), @Const(depths), @Const(visible),
+    @Const(colors),
+)
+    i = @index(Global)
+    @inbounds begin
+        screen_p1[i] = screen_pos[i]
+        screen_p2[i] = screen_pos[i + 1]
+        d1[i] = depths[i]
+        d2[i] = depths[i + 1]
+        vis = visible[i] == UInt32(1) && visible[i + 1] == UInt32(1)
+        seg_colors[i] = ifelse(vis, colors[i], RGBA{Float32}(0f0, 0f0, 0f0, 0f0))
+    end
+end
 
-            sdf = dist - radius
-            sdf > AA_RADIUS && continue
-
-            rt_depth = depth_buffer[py, px]
-            depth > rt_depth + 0.001f0 * depth && continue
-
-            coverage = aastep(0f0, sdf)
-            coverage < 0.001f0 && continue
-
-            alpha = color.alpha * coverage
-            overlay[py, px] = alpha_blend(
-                RGBA{Float32}(color.r, color.g, color.b, alpha),
-                overlay[py, px]
-            )
-        end
+@kernel function build_line_pair_segments_percolor_kernel!(
+    screen_p1, screen_p2, d1, d2, seg_colors,
+    @Const(screen_pos), @Const(depths), @Const(visible),
+    @Const(colors),
+)
+    i = @index(Global)
+    @inbounds begin
+        idx1 = 2 * i - 1
+        idx2 = 2 * i
+        screen_p1[i] = screen_pos[idx1]
+        screen_p2[i] = screen_pos[idx2]
+        d1[i] = depths[idx1]
+        d2[i] = depths[idx2]
+        vis = visible[idx1] == UInt32(1) && visible[idx2] == UInt32(1)
+        seg_colors[i] = ifelse(vis, colors[idx1], RGBA{Float32}(0f0, 0f0, 0f0, 0f0))
     end
 end
 
 # ============================================================================
-# GPU Kernel Version (for KernelAbstractions)
+# Per-Pixel Rasterization Kernel
 # ============================================================================
 
-"""
-    rasterize_lines_pixel!
-
-Inner function for line rasterization at a single pixel.
-Separated from kernel to allow normal control flow.
-"""
 @inline function rasterize_lines_pixel!(
     overlay,
     depth_buffer,
@@ -272,6 +116,9 @@ Separated from kernel to allow normal control flow.
         d1 = depth1[seg_idx]
         d2 = depth2[seg_idx]
         color = colors[seg_idx]
+
+        # Skip invisible segments (alpha == 0)
+        color.alpha < 0.001f0 && continue
 
         # Quick bounding box rejection
         margin = half_lw + AA_RADIUS
@@ -326,12 +173,6 @@ Separated from kernel to allow normal control flow.
     return
 end
 
-"""
-    rasterize_lines_kernel!
-
-GPU kernel for parallel line rasterization.
-Each thread handles one pixel in the bounding box of all lines.
-"""
 @kernel function rasterize_lines_kernel!(
     overlay,
     @Const(depth_buffer),
@@ -347,5 +188,149 @@ Each thread handles one pixel in the bounding box of all lines.
     rasterize_lines_pixel!(
         overlay, depth_buffer, screen_p1, screen_p2,
         depth1, depth2, colors, linewidth, n_segments, px, py
+    )
+end
+
+# ============================================================================
+# High-Level API: rasterize_lines! / rasterize_linesegments!
+# ============================================================================
+# These are the main entry points. They use KA kernels for both CPU and GPU,
+# providing a single code path.
+
+function rasterize_lines!(
+    overlay::AbstractMatrix{RGBA{Float32}},
+    depth_buffer::AbstractMatrix{Float32},
+    ctx::RasterContext,
+    positions::AbstractVector{<:Point3f},
+    color::RGBA{Float32},
+    linewidth::Float32;
+    connect::Bool=true,
+)
+    n_points = length(positions)
+    n_points < 2 && return
+
+    backend = KernelAbstractions.get_backend(overlay)
+    n_segs = connect ? (n_points - 1) : (n_points ÷ 2)
+    n_segs < 1 && return
+
+    # 1. Project positions
+    screen_pos = KernelAbstractions.allocate(backend, Vec2f, n_points)
+    depths = KernelAbstractions.allocate(backend, Float32, n_points)
+    vis = KernelAbstractions.allocate(backend, UInt32, n_points)
+
+    project_positions_kernel!(backend)(
+        screen_pos, depths, vis, positions,
+        ctx.view_proj, ctx.resolution[1], ctx.resolution[2];
+        ndrange=n_points
+    )
+
+    # 2. Build segment arrays
+    sp1 = KernelAbstractions.allocate(backend, Vec2f, n_segs)
+    sp2 = KernelAbstractions.allocate(backend, Vec2f, n_segs)
+    d1 = KernelAbstractions.allocate(backend, Float32, n_segs)
+    d2 = KernelAbstractions.allocate(backend, Float32, n_segs)
+    seg_colors = KernelAbstractions.allocate(backend, RGBA{Float32}, n_segs)
+
+    if connect
+        build_line_strip_segments_kernel!(backend)(
+            sp1, sp2, d1, d2, seg_colors,
+            screen_pos, depths, vis, color;
+            ndrange=n_segs
+        )
+    else
+        build_line_pair_segments_kernel!(backend)(
+            sp1, sp2, d1, d2, seg_colors,
+            screen_pos, depths, vis, color;
+            ndrange=n_segs
+        )
+    end
+
+    # 3. Rasterize (per-pixel kernel)
+    h, w = size(overlay)
+    rasterize_lines_kernel!(backend)(
+        overlay, depth_buffer, sp1, sp2, d1, d2, seg_colors,
+        linewidth, Int32(n_segs);
+        ndrange=(w, h)
+    )
+    KernelAbstractions.synchronize(backend)
+end
+
+function rasterize_linesegments!(
+    overlay::AbstractMatrix{RGBA{Float32}},
+    depth_buffer::AbstractMatrix{Float32},
+    ctx::RasterContext,
+    positions::AbstractVector{<:Point3f},
+    color::RGBA{Float32},
+    linewidth::Float32,
+)
+    rasterize_lines!(overlay, depth_buffer, ctx, positions, color, linewidth; connect=false)
+end
+
+# Pre-allocated buffer variant: avoids per-frame GPU allocation
+function rasterize_lines!(
+    overlay::AbstractMatrix{RGBA{Float32}},
+    depth_buffer::AbstractMatrix{Float32},
+    ctx::RasterContext,
+    positions::AbstractVector{<:Point3f},
+    color::RGBA{Float32},
+    linewidth::Float32,
+    buffers::NamedTuple;
+    connect::Bool=true,
+)
+    n_points = length(positions)
+    n_points < 2 && return
+
+    backend = KernelAbstractions.get_backend(overlay)
+    n_segs = connect ? (n_points - 1) : (n_points ÷ 2)
+    n_segs < 1 && return
+
+    # 1. Project positions (reuse buffers)
+    project_positions_kernel!(backend)(
+        buffers.screen_pos, buffers.depth, buffers.visible, positions,
+        ctx.view_proj, ctx.resolution[1], ctx.resolution[2];
+        ndrange=n_points
+    )
+
+    # 2. Build segment arrays (reuse buffers)
+    if connect
+        build_line_strip_segments_kernel!(backend)(
+            buffers.screen_p1, buffers.screen_p2,
+            buffers.d1, buffers.d2, buffers.seg_colors,
+            buffers.screen_pos, buffers.depth, buffers.visible, color;
+            ndrange=n_segs
+        )
+    else
+        build_line_pair_segments_kernel!(backend)(
+            buffers.screen_p1, buffers.screen_p2,
+            buffers.d1, buffers.d2, buffers.seg_colors,
+            buffers.screen_pos, buffers.depth, buffers.visible, color;
+            ndrange=n_segs
+        )
+    end
+
+    # 3. Rasterize (per-pixel kernel)
+    h, w = size(overlay)
+    rasterize_lines_kernel!(backend)(
+        overlay, depth_buffer,
+        buffers.screen_p1, buffers.screen_p2,
+        buffers.d1, buffers.d2, buffers.seg_colors,
+        linewidth, Int32(n_segs);
+        ndrange=(w, h)
+    )
+    KernelAbstractions.synchronize(backend)
+end
+
+# Allocate reusable buffers for line rasterization
+function allocate_line_buffers(backend, n_positions::Int, connect::Bool)
+    n_segs = connect ? (n_positions - 1) : (n_positions ÷ 2)
+    return (
+        screen_pos = KernelAbstractions.allocate(backend, Vec2f, n_positions),
+        depth = KernelAbstractions.allocate(backend, Float32, n_positions),
+        visible = KernelAbstractions.allocate(backend, UInt32, n_positions),
+        screen_p1 = KernelAbstractions.allocate(backend, Vec2f, n_segs),
+        screen_p2 = KernelAbstractions.allocate(backend, Vec2f, n_segs),
+        d1 = KernelAbstractions.allocate(backend, Float32, n_segs),
+        d2 = KernelAbstractions.allocate(backend, Float32, n_segs),
+        seg_colors = KernelAbstractions.allocate(backend, RGBA{Float32}, n_segs),
     )
 end
