@@ -718,11 +718,7 @@ function Makie.plot!(p::HeatmapShader)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
-            if T <: RGB
-                _img = T[RGB(val, val, val) for _ in 1:1, _ in 1:1]
-            else
-                _img = T[val for _ in 1:1, _ in 1:1]
-            end
+            _img = [T(val) for _ in 1:1, _ in 1:1]
         else
             _img = img
         end
