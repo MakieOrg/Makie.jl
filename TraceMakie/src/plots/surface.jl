@@ -16,7 +16,11 @@ function _build_surface_mesh(x, y, z, plot)
     positions = grid(x, y, z, trans)
     r = Tesselation(Rect2f((0, 0), (1, 1)), size(z))
     faces = decompose(GLTriangleFace, r)
-    uv = decompose_uv(r)
+    # Tessellation UV has u=row_idx, v=col_idx, but Hikari's texture sampling
+    # maps (u,v) → data[1+(M-1)*(1-v), 1+(N-1)*u]. To get data[i,j] for
+    # vertex at grid position (i,j), we need u=(j-1)/(N-1) and v=(M-i)/(M-1),
+    # i.e. swap and flip: (u_old, v_old) → (v_old, 1-u_old).
+    uv = map(u -> Vec2f(1f0-u[2], 1f0 - u[1]), decompose_uv(r))
     mesh = normal_mesh(GeometryBasics.Mesh(positions, faces, uv=uv))
     return Raycore.TriangleMesh(mesh)
 end

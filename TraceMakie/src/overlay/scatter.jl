@@ -52,7 +52,7 @@ end
 
     p = Vec2f(Float32(px), Float32(py))
     result_color = RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
-    rt_depth = depth_buffer[py, px]
+    rt_depth = @inbounds depth_buffer[h - py + 1, px]  # depth is bottom-up, screen is top-down
 
     # Check each marker
     @inbounds for i in 1:n_markers

@@ -10,28 +10,19 @@
 
 function render_overlays!(screen)
     state = screen.state
-    scene = screen.scene
+    scene = state.makie_scene
     film = state.film
     overlay = state.overlay_buffer
-
-    # Flip depth buffer Y (film: row 1=bottom, overlay: row 1=top)
-    Overlay.flip_depth_y!(state.depth_flipped, film.depth)
 
     # Clear overlay buffer
     Overlay.clear_overlay!(overlay)
 
-    # Find the 3D scene for camera matrices
-    scene_3d = find_3d_scene(scene)
-    if isnothing(scene_3d)
-        return
-    end
-
     # Create raster context from Makie's camera
-    ctx = _create_raster_context(scene_3d, film.resolution)
+    ctx = _create_raster_context(scene, film.resolution)
 
     # Iterate all atomic plots with overlay trace_renderobjects
     has_overlay = Ref(false)
-    depth_buf = state.depth_flipped
+    depth_buf = film.depth  # bottom-up; rasterize kernels flip Y index internally
     Makie.for_each_atomic_plot(scene) do p
         haskey(p, :trace_renderobject) || return nothing
         robj = try
@@ -66,11 +57,26 @@ function render_overlays!(screen)
     end
 end
 
-function _create_raster_context(scene::Makie.Scene, resolution::Point2f)
-    cc = scene.camera_controls
+function _create_raster_context(scene::Makie.Scene, resolution)
     view_proj = Mat4f(scene.camera.projectionview[])
-    near = Float32(cc.near[])
-    far = Float32(cc.far[])
+    cc = scene.camera_controls
+    if hasproperty(cc, :near) && hasproperty(cc, :far)
+        near = Float32(cc.near[])
+        far = Float32(cc.far[])
+    else
+        # Extract near/far from projection matrix (OpenGL convention)
+        proj = Mat4f(scene.camera.projection[])
+        A = proj[3, 3]
+        B = proj[3, 4]
+        near = B / (A - 1f0)
+        far = B / (A + 1f0)
+        if !isfinite(near) || near <= 0f0
+            near = 0.1f0
+        end
+        if !isfinite(far) || far <= near
+            far = 1000f0
+        end
+    end
     return Overlay.RasterContext(view_proj, Vec2f(resolution); near=near, far=far)
 end
 

@@ -106,8 +106,8 @@ function rasterize_glyph!(
             # higher values are further from the edge, with ~0 at the edge
             # Let's use it directly: positive inside, negative outside
 
-            # Depth test
-            rt_depth = depth_buffer[py, px]
+            # Depth test (depth is bottom-up, screen is top-down)
+            rt_depth = depth_buffer[h - py + 1, px]
             depth_bias = 0.001f0 * glyph.depth
             glyph.depth > rt_depth + depth_bias && continue
 
@@ -267,7 +267,7 @@ Separated from kernel to allow normal control flow.
 
     p = Vec2f(Float32(px), Float32(py))
     result_color = RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
-    rt_depth = depth_buffer[py, px]
+    rt_depth = @inbounds depth_buffer[h - py + 1, px]  # depth is bottom-up, screen is top-down
 
     atlas_size = Vec2f(Float32(atlas_width), Float32(atlas_height))
 

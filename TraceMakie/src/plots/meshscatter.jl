@@ -36,6 +36,9 @@ function extract_meshscatter_materials(plot::Makie.MeshScatter, n_instances::Int
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material_template = has_material ? to_value(plot.material) : nothing
 
+    # Always return Vector{MatteMaterial} with 0D (ConstTexture) for type stability
+    # across reactive updates — ComputePipeline types the Ref from the first return.
+
     # Per-instance colors: use Makie's compute_colors to resolve colormapping
     if color isa AbstractVector && length(color) == n_instances
         computed = Makie.compute_colors(plot.attributes)
@@ -44,7 +47,25 @@ function extract_meshscatter_materials(plot::Makie.MeshScatter, n_instances::Int
         end
     end
 
-    return extract_material(plot, plot.color)
+    # Uniform color: replicate the same material for all instances
+    base_color = if color isa Colorant
+        to_color(color)
+    elseif color isa Union{String, Symbol}
+        to_color(color)
+    elseif color isa AbstractVector{<:Colorant} && !isempty(color)
+        to_color(first(color))
+    else
+        computed = Makie.compute_colors(plot.attributes)
+        if computed isa AbstractVector{<:Colorant} && !isempty(computed)
+            to_color(first(computed))
+        elseif computed isa Colorant
+            to_color(computed)
+        else
+            RGBAf(0.8, 0.8, 0.8, 1.0)
+        end
+    end
+
+    return [create_material_with_color(base_color, material_template) for _ in 1:n_instances]
 end
 
 # --- TLAS creation helper ---
@@ -114,64 +135,44 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     end
 
     # 3. Color → materials (independent of transforms)
+    # NOTE: Always return a valid material (never `nothing`) so the edge type
+    # is stable across reactive updates (ComputePipeline types the Ref from
+    # the first return value).
     register_computation!(attr, [:color], [:trace_materials]) do args, changed, last
         positions = to_value(attr[:positions])
-        n = length(positions)
-        n == 0 && return (nothing,)
+        n = max(length(positions), 1)
         return (extract_meshscatter_materials(plot, n),)
     end
 
     # 4. TLAS management: combine marker mesh, transforms, materials
+    # NOTE: Never return (nothing,) — ComputePipeline types its Ref from the first
+    # return value. If the first call returns nothing (empty positions), subsequent
+    # calls with data can't assign a NamedTuple to Ref{Nothing}.
+    # Instead, _meshscatter_create! handles empty transforms naturally (0 TLAS entries).
+    #
+    # Always do a full delete+recreate when anything changes.  In-place transform
+    # updates via first_instance_idx are unsafe: when multiple meshscatter plots
+    # exist, one plot's deletion shifts the indices of all others.
     register_computation!(attr, [:trace_marker_mesh, :trace_transforms, :trace_materials], [:trace_renderobject]) do args, changed, last
         tmesh = args.trace_marker_mesh
         transforms = args.trace_transforms
         materials = args.trace_materials
 
-        isempty(transforms) && return (nothing,)
-        isnothing(materials) && return (nothing,)
-
         n_instances = length(transforms)
 
-        if isnothing(last) || isnothing(last.trace_renderobject)
-            # First run
+        if isnothing(last) || !hasproperty(last.trace_renderobject, :tmesh)
             return (_meshscatter_create!(hikari_scene, state, tmesh, transforms, materials, n_instances),)
         end
 
         robj = last.trace_renderobject
 
-        # Full rebuild if marker changed or instance count changed
-        if changed.trace_marker_mesh || n_instances != robj.n_instances
+        # Any change → full rebuild (delete old instances, create new ones).
+        if changed.trace_marker_mesh || changed.trace_transforms || changed.trace_materials
             _meshscatter_delete_handles!(hikari_scene, robj)
-            # Re-extract materials if count changed (since materials node didn't know about count change)
             if n_instances != robj.n_instances
                 materials = extract_meshscatter_materials(plot, n_instances)
             end
             return (_meshscatter_create!(hikari_scene, state, tmesh, transforms, materials, n_instances),)
-        end
-
-        if changed.trace_transforms
-            tlas = hikari_scene.accel
-            backend = KernelAbstractions.get_backend(tlas.instances)
-            transforms_gpu = KernelAbstractions.allocate(backend, Mat4f, length(transforms))
-            copyto!(transforms_gpu, transforms)
-            Raycore.update_instance_transforms!(tlas, transforms_gpu, length(transforms), robj.first_instance_idx)
-            state.needs_film_clear = true
-        end
-
-        if changed.trace_materials
-            computed = Makie.compute_colors(plot.attributes)
-            if robj.per_instance && computed isa AbstractVector{<:Colorant}
-                for (i, mat) in enumerate(robj.materials)
-                    tex = _get_material_texture(mat)
-                    !isnothing(tex) && fill!(tex.data, to_spectrum(to_color(computed[i])))
-                end
-            elseif !robj.per_instance
-                tex = _get_material_texture(robj.material)
-                if !isnothing(tex) && computed isa Colorant
-                    fill!(tex.data, to_spectrum(to_color(computed)))
-                end
-            end
-            state.needs_film_clear = true
         end
 
         return (robj,)

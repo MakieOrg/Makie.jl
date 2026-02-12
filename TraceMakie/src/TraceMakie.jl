@@ -22,6 +22,7 @@ const DEBUG_OVERLAY = Ref{Any}(nothing)
 # =============================================================================
 
 mutable struct TraceMakieState
+    makie_scene::Makie.Scene
     film::Hikari.Film
     camera::Observable
     hikari_scene::Hikari.AbstractScene
@@ -32,6 +33,8 @@ mutable struct TraceMakieState
     overlay_buffer::AbstractMatrix{RGBA{Float32}}
     # Pre-allocated flipped depth buffer for overlay rendering
     depth_flipped::AbstractMatrix{Float32}
+    # Per-scene integrator state (e.g. VolPathState) — each scene accumulates independently
+    integrator_state::Any
 end
 
 # Helper to get TLAS from state
@@ -48,22 +51,48 @@ include("plots/common.jl")
 # =============================================================================
 
 """
-    find_3d_scene(scene::Makie.Scene) -> Union{Makie.Scene, Nothing}
+    collect_renderable_scenes(scene::Makie.Scene) -> Vector{Makie.Scene}
 
-Find the first scene in the tree that has a 3D camera (Camera3D).
+Walk the scene tree and return all scenes that have a 3D camera (not PixelCamera
+or EmptyCamera) and contain at least one atomic plot in their subtree.
+Each returned scene gets its own ray-tracing state (Film, TLAS, camera).
 """
-function find_3d_scene(scene::Makie.Scene)
-    cc = scene.camera_controls
-    if hasproperty(cc, :eyeposition)
-        return scene
+function collect_renderable_scenes(scene::Makie.Scene)
+    result = Makie.Scene[]
+    _collect_renderable!(result, scene)
+    return result
+end
+
+function _is_3d_camera(cc)
+    return !(cc isa Makie.PixelCamera || cc isa Makie.EmptyCamera)
+end
+
+function _has_atomic_plots(scene::Makie.Scene)
+    found = Ref(false)
+    Makie.for_each_atomic_plot(scene) do _
+        found[] = true
+    end
+    return found[]
+end
+
+function _collect_renderable!(result, scene::Makie.Scene)
+    if _is_3d_camera(scene.camera_controls) && _has_atomic_plots(scene)
+        push!(result, scene)
+        # Don't recurse into children — they're covered by for_each_atomic_plot
+        return
     end
     for child in scene.children
-        result = find_3d_scene(child)
-        if !isnothing(result)
-            return result
-        end
+        _collect_renderable!(result, child)
     end
-    return nothing
+end
+
+# Check if target is the same scene or a descendant of parent
+function _scene_contains(parent::Makie.Scene, target::Makie.Scene)
+    parent === target && return true
+    for child in parent.children
+        _scene_contains(child, target) && return true
+    end
+    return false
 end
 
 """
@@ -169,22 +198,38 @@ end
 # Camera conversion
 # =============================================================================
 
-function to_trace_camera(scene::Makie.Scene, film)
+function to_trace_camera(scene::Makie.Scene, film; screen_window=nothing)
     cc = scene.camera_controls
-    aspect = film.resolution[1] / film.resolution[2]
-    screen_window = Hikari.Bounds2(Point2f(-aspect, -1.0f0), Point2f(aspect, 1.0f0))
-
-    return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov) do eyeposition, lookat, upvector, fov
-        view = Hikari.look_at(
-            Point3f(eyeposition), Point3f(lookat), Vec3f(upvector),
-        )
-        return Hikari.PerspectiveCamera(
-            view, screen_window,
-            0.0f0, 1.0f0, 0.0f0, 1.0f6, Float32(fov),
-            film
-        )
+    # Camera3D (LScene) has eyeposition/lookat/fov on camera_controls
+    if hasproperty(cc, :eyeposition) && hasproperty(cc, :lookat) && hasproperty(cc, :fov)
+        aspect = film.resolution[1] / film.resolution[2]
+        sw = isnothing(screen_window) ? Hikari.Bounds2(Point2f(-aspect, -1.0f0), Point2f(aspect, 1.0f0)) : screen_window
+        return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov) do eyeposition, lookat, upvector, fov
+            view = Hikari.look_at(
+                Point3f(eyeposition), Point3f(lookat), Vec3f(upvector),
+            )
+            return Hikari.PerspectiveCamera(
+                view, sw,
+                0.0f0, 1.0f0, 0.0f0, 1.0f6, Float32(fov),
+                film
+            )
+        end
+    else
+        # Fallback: use scene.camera view/projection matrices (works with Axis3, etc.)
+        # The model matrix is NOT folded into the view — it is already baked into
+        # meshscatter/mesh instance transforms via plot[:model]. Folding it here
+        # would double-apply the transform, making geometry appear too small.
+        cam = scene.camera
+        resolution = Point2f(film.resolution)
+        sw = screen_window  # may be nothing (full viewport) or Bounds2 (cropped)
+        return lift(scene, cam.view, cam.projection) do view, proj
+            if isnothing(sw)
+                return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution)
+            else
+                return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution, sw)
+            end
+        end
     end
-    return
 end
 
 # =============================================================================
@@ -221,31 +266,11 @@ include("plots/text_overlay.jl")
 # init_scene! — create Hikari scene from Makie scene, call draw_atomic per plot
 # =============================================================================
 
-function init_scene!(screen, mscene::Makie.Scene)
-    resolution = Point2f(size(mscene))
-    film = Hikari.Film(
-        resolution;
-        filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
-        crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
-        diagonal=1.0f0, scale=1.0f0,
-    )
-
-    ka_backend = screen.config.backend
-    hikari_scene = Hikari.Scene(backend=ka_backend)
-
-    # Find the 3D scene for camera and lights
-    scene_3d = find_3d_scene(mscene)
-    if isnothing(scene_3d)
-        error("No 3D scene found in scene tree. TraceMakie requires a scene with a 3D camera (e.g., LScene or Scene with Camera3D).")
-    end
-
-    # Extract lights and push to scene
-    makie_lights = Makie.get_lights(scene_3d)
-    integrator = screen.config.integrator
+function _init_lights!(hikari_scene, rscene, integrator)
+    makie_lights = Makie.get_lights(rscene)
     for light in makie_lights
         l = to_trace_light(light, integrator)
         if l isa Tuple
-            # sunsky_to_envlight returns (EnvironmentLight, SunLight)
             for li in l
                 push!(hikari_scene.lights, li)
             end
@@ -256,8 +281,8 @@ function init_scene!(screen, mscene::Makie.Scene)
 
     # Add ambient light if present, but skip if we already have SunSkyLight or EnvironmentLight
     has_infinite = any(T -> T <: Hikari.SunSkyLight || T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
-    if !has_infinite && haskey(scene_3d.compute, :ambient_color)
-        ambient_color = scene_3d.compute[:ambient_color][]
+    if !has_infinite && haskey(rscene.compute, :ambient_color)
+        ambient_color = rscene.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
             ambient_rgb = RGB{Float32}(ambient_color)
             ambient_light = if _is_spectral_integrator(integrator)
@@ -270,41 +295,113 @@ function init_scene!(screen, mscene::Makie.Scene)
     end
 
     if isempty(hikari_scene.lights)
-        error("Must have at least one light")
+        error("Must have at least one light in scene")
     end
+end
+
+function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene)
+    ka_backend = screen.config.backend
+    integrator = screen.config.integrator
+
+    # Compute visible portion of viewport within figure bounds.
+    # Axis3 may request large viewports (e.g. 1000x1000) that extend beyond the
+    # figure. We only render the visible sub-region for efficiency.
+    vp = Makie.viewport(rscene)[]
+    vp_w, vp_h = Makie.widths(vp)
+    root_w, root_h = size(root_scene)
+    vx, vy = vp.origin
+
+    # Visible pixel range within the viewport
+    vis_x0 = max(0f0, -vx)
+    vis_y0 = max(0f0, -vy)
+    vis_x1 = min(vp_w, Float32(root_w) - vx)
+    vis_y1 = min(vp_h, Float32(root_h) - vy)
+
+    visible_w = max(1f0, vis_x1 - vis_x0)
+    visible_h = max(1f0, vis_y1 - vis_y0)
+    resolution = Point2f(visible_w, visible_h)
+
+    # Compute NDC screen window for the visible sub-region.
+    # Full viewport maps [0..vp_w] → NDC [-1..1]. The visible sub-region
+    # [vis_x0..vis_x1] maps to a sub-range of NDC.
+    ndc_x0 = -1f0 + 2f0 * vis_x0 / vp_w
+    ndc_y0 = -1f0 + 2f0 * vis_y0 / vp_h
+    ndc_x1 = -1f0 + 2f0 * vis_x1 / vp_w
+    ndc_y1 = -1f0 + 2f0 * vis_y1 / vp_h
+    screen_window = (vis_x0 == 0f0 && vis_y0 == 0f0 && vis_x1 == vp_w && vis_y1 == vp_h) ?
+        nothing :  # Full viewport, no crop needed
+        Hikari.Bounds2(Point2f(ndc_x0, ndc_y0), Point2f(ndc_x1, ndc_y1))
+
+    film = Hikari.Film(
+        resolution;
+        filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
+        crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
+        diagonal=1.0f0, scale=1.0f0,
+    )
+
+    hikari_scene = Hikari.Scene(backend=ka_backend)
+    _init_lights!(hikari_scene, rscene, integrator)
 
     # Convert film to GPU if backend is not Array
     film = Raycore.Adapt.adapt(ka_backend, film)
 
-    # Create camera
-    camera = to_trace_camera(scene_3d, film)
+    # Create camera with screen_window for the visible sub-region
+    camera = to_trace_camera(rscene, film; screen_window)
 
-    # Pre-allocate colorbuffer clamp buffer (same type/size as film.postprocess)
+    # Clear film when Makie camera changes (rotation, zoom, pan)
+    # Pre-allocate buffers
     colorbuffer_tmp = similar(film.postprocess)
-
-    # Create overlay buffer on KA backend (same as film)
     film_size = size(film.framebuffer)
     overlay_buffer = Overlay.create_overlay_buffer(ka_backend, film_size)
+    # depth_flipped is unused (kernels flip index instead), but struct field still exists
+    depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    # Pre-allocate flipped depth buffer for overlay rendering
-    depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, film_size...)
+    state = TraceMakieState(rscene, film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing)
+    on(rscene, rscene.camera.projectionview) do _
+        state.needs_film_clear = true
+    end
+    return state
+end
 
-    state = TraceMakieState(film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped)
-    screen.state = state
+function init_scene!(screen, mscene::Makie.Scene)
+    ka_backend = screen.config.backend
 
-    # Call draw_atomic for each atomic plot (registers compute graph nodes)
-    # Skip plots that already have :trace_renderobject (e.g. re-init from VideoStream)
-    Makie.for_each_atomic_plot(mscene) do p
-        haskey(p, :trace_renderobject) || draw_atomic(screen, scene_3d, p)
+    # Collect all renderable scenes (3D camera + has plots)
+    renderable = collect_renderable_scenes(mscene)
+    if isempty(renderable)
+        error("No renderable scenes found. TraceMakie requires scenes with 3D cameras (LScene, Axis3, etc.)")
     end
 
-    # Resolve all registered computations to push geometry into TLAS
-    poll_all_plots(screen, mscene)
+    empty!(screen.scene_states)
 
-    # Build TLAS BVH structure
-    Raycore.sync!(hikari_scene.accel)
+    for rscene in renderable
+        state = _create_scene_state(rscene, screen, mscene)
+        push!(screen.scene_states, state)
 
-    return state
+        # Set screen.state so draw_atomic closures capture the right per-scene state
+        screen.state = state
+
+        # Register draw_atomic for each atomic plot in this scene's subtree
+        # Skip plots that already have :trace_renderobject (e.g. re-init from VideoStream)
+        Makie.for_each_atomic_plot(rscene) do p
+            haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
+        end
+
+        # Resolve all registered computations to push geometry into TLAS
+        poll_all_plots(screen, rscene)
+
+        # Build TLAS BVH structure
+        Raycore.sync!(state.hikari_scene.accel)
+    end
+
+    # Pre-allocate full-figure output buffer on backend (height, width — Julia image convention)
+    root_w, root_h = size(mscene)
+    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGB{Float32}, root_h, root_w)
+
+    # Set primary state (used by render_interactive and single-scene paths)
+    screen.state = first(screen.scene_states)
+
+    return screen.state
 end
 
 # =============================================================================
@@ -318,8 +415,9 @@ function poll_all_plots(screen, mscene)
         if haskey(p, :trace_renderobject)
             try
                 p[:trace_renderobject][]  # triggers resolution if dirty
-            catch e
-                @error "Failed to update trace renderobject" exception=(e, catch_backtrace())
+            catch
+                # Silent catch — logging (even @warn) triggers JIT compilation
+                # that can crash Julia 1.12's GC during IncrementalCompact.
                 Makie.ComputePipeline.mark_resolved!(p.attributes[:trace_renderobject])
             end
         end
@@ -334,16 +432,25 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     haskey(plot.attributes, :trace_renderobject) || return
     robj = plot.attributes[:trace_renderobject][]
     isnothing(robj) && return
-    tlas = screen.state.hikari_scene.accel
-    if hasproperty(robj, :handles)
-        for h in robj.handles
-            delete!(tlas, h)
+
+    # Find which scene state owns this plot
+    pscene = Makie.parent_scene(plot)
+    for ss in screen.scene_states
+        if _scene_contains(ss.makie_scene, pscene)
+            tlas = ss.hikari_scene.accel
+            if hasproperty(robj, :handles)
+                for h in robj.handles
+                    delete!(tlas, h)
+                end
+            elseif hasproperty(robj, :handle)
+                delete!(tlas, robj.handle)
+            end
+            ss.needs_film_clear = true
+            break
         end
-    elseif hasproperty(robj, :handle)
-        delete!(tlas, robj.handle)
     end
+
     delete!(plot.attributes, :trace_renderobject, force=true, recursive=true)
-    screen.state.needs_film_clear = true
 end
 
 # Export TraceMakie-specific types

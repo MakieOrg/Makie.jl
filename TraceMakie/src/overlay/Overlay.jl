@@ -31,7 +31,7 @@ export rasterize_text!, rasterize_text_kernel!, prepare_text_glyphs, GlyphInstan
 export allocate_line_buffers, allocate_scatter_buffers
 
 # Compositing
-export composite!, clear_overlay!, create_overlay_buffer, flip_depth_y!
+export composite!, clear_overlay!, create_overlay_buffer
 
 # Shape constants
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, TRIANGLE, CROSS, DIAMOND, HEXAGON, STAR

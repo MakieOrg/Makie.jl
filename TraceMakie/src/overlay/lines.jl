@@ -107,7 +107,7 @@ end
     p = Vec2f(Float32(px), Float32(py))
     result_color = RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
     half_lw = linewidth * 0.5f0
-    rt_depth = depth_buffer[py, px]
+    rt_depth = @inbounds depth_buffer[h - py + 1, px]  # depth is bottom-up, screen is top-down
 
     # Check each segment
     @inbounds for seg_idx in 1:n_segments

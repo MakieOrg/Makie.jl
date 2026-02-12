@@ -13,26 +13,6 @@ function clear_overlay!(overlay::AbstractMatrix{RGBA{Float32}})
 end
 
 # ============================================================================
-# Depth Buffer Y-Flip Kernel
-# ============================================================================
-# Film stores depth with row 1 = bottom (raster convention).
-# Overlay uses row 1 = top (screen convention). This kernel flips.
-
-@kernel function flip_depth_y_kernel!(dst, @Const(src))
-    px, py = @index(Global, NTuple)
-    h, _ = size(src)
-    @inbounds dst[py, px] = src[h - py + 1, px]
-end
-
-function flip_depth_y!(dst::AbstractMatrix{Float32}, src::AbstractMatrix{Float32})
-    backend = KernelAbstractions.get_backend(dst)
-    h, w = size(src)
-    flip_depth_y_kernel!(backend)(dst, src; ndrange=(w, h))
-    KernelAbstractions.synchronize(backend)
-    return dst
-end
-
-# ============================================================================
 # Composite Kernel
 # ============================================================================
 
