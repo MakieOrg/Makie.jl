@@ -104,7 +104,8 @@ end
     # Bounds check
     (px < 1 || px > w || py < 1 || py > h) && return
 
-    p = Vec2f(Float32(px), Float32(py))
+    # Pixel centers at half-integer coords (matching OpenGL convention)
+    p = Vec2f(Float32(px) - 0.5f0, Float32(py) - 0.5f0)
     result_color = RGBA{Float32}(0f0, 0f0, 0f0, 0f0)
     half_lw = linewidth * 0.5f0
     rt_depth = @inbounds depth_buffer[h - py + 1, px]  # depth is bottom-up, screen is top-down
@@ -121,7 +122,7 @@ end
         color.alpha < 0.001f0 && continue
 
         # Quick bounding box rejection
-        margin = half_lw + AA_RADIUS
+        margin = half_lw + ANTIALIAS_RADIUS
         min_x = min(p1[1], p2[1]) - margin
         max_x = max(p1[1], p2[1]) + margin
         min_y = min(p1[2], p2[2]) - margin
@@ -144,7 +145,7 @@ end
         dist = norm(p - closest)
 
         # Skip if too far
-        dist > half_lw + AA_RADIUS && continue
+        dist > half_lw + ANTIALIAS_RADIUS && continue
 
         # Interpolate depth
         depth = d1 + t * (d2 - d1)
@@ -153,8 +154,8 @@ end
         depth_bias = 0.001f0 * depth
         depth > rt_depth + depth_bias && continue
 
-        # Coverage
-        sdf = dist - half_lw
+        # Coverage (positive inside: half_lw - dist > 0 means inside line)
+        sdf = half_lw - dist
         coverage = aastep(0f0, sdf)
         coverage < 0.001f0 && continue
 
@@ -202,7 +203,7 @@ function rasterize_lines!(
     depth_buffer::AbstractMatrix{Float32},
     ctx::RasterContext,
     positions::AbstractVector{<:Point3f},
-    color::RGBA{Float32},
+    color::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
     linewidth::Float32;
     connect::Bool=true,
 )
@@ -224,21 +225,23 @@ function rasterize_lines!(
         ndrange=n_points
     )
 
-    # 2. Build segment arrays
+    # 2. Build segment arrays — dispatch scalar vs per-vertex color
     sp1 = KernelAbstractions.allocate(backend, Vec2f, n_segs)
     sp2 = KernelAbstractions.allocate(backend, Vec2f, n_segs)
     d1 = KernelAbstractions.allocate(backend, Float32, n_segs)
     d2 = KernelAbstractions.allocate(backend, Float32, n_segs)
     seg_colors = KernelAbstractions.allocate(backend, RGBA{Float32}, n_segs)
 
-    if connect
-        build_line_strip_segments_kernel!(backend)(
+    if color isa RGBA{Float32}
+        kernel = connect ? build_line_strip_segments_kernel! : build_line_pair_segments_kernel!
+        kernel(backend)(
             sp1, sp2, d1, d2, seg_colors,
             screen_pos, depths, vis, color;
             ndrange=n_segs
         )
     else
-        build_line_pair_segments_kernel!(backend)(
+        kernel = connect ? build_line_strip_segments_percolor_kernel! : build_line_pair_segments_percolor_kernel!
+        kernel(backend)(
             sp1, sp2, d1, d2, seg_colors,
             screen_pos, depths, vis, color;
             ndrange=n_segs
@@ -260,19 +263,20 @@ function rasterize_linesegments!(
     depth_buffer::AbstractMatrix{Float32},
     ctx::RasterContext,
     positions::AbstractVector{<:Point3f},
-    color::RGBA{Float32},
+    color::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
     linewidth::Float32,
 )
     rasterize_lines!(overlay, depth_buffer, ctx, positions, color, linewidth; connect=false)
 end
 
-# Pre-allocated buffer variant: avoids per-frame GPU allocation
+# Pre-allocated buffer variant: avoids per-frame GPU allocation.
+# color can be a single RGBA{Float32} or a per-vertex AbstractVector{RGBA{Float32}}.
 function rasterize_lines!(
     overlay::AbstractMatrix{RGBA{Float32}},
     depth_buffer::AbstractMatrix{Float32},
     ctx::RasterContext,
     positions::AbstractVector{<:Point3f},
-    color::RGBA{Float32},
+    color::Union{RGBA{Float32}, AbstractVector{<:RGBA{Float32}}},
     linewidth::Float32,
     buffers::NamedTuple;
     connect::Bool=true,
@@ -291,16 +295,18 @@ function rasterize_lines!(
         ndrange=n_points
     )
 
-    # 2. Build segment arrays (reuse buffers)
-    if connect
-        build_line_strip_segments_kernel!(backend)(
+    # 2. Build segment arrays — dispatch scalar vs per-vertex color kernel
+    if color isa RGBA{Float32}
+        kernel = connect ? build_line_strip_segments_kernel! : build_line_pair_segments_kernel!
+        kernel(backend)(
             buffers.screen_p1, buffers.screen_p2,
             buffers.d1, buffers.d2, buffers.seg_colors,
             buffers.screen_pos, buffers.depth, buffers.visible, color;
             ndrange=n_segs
         )
     else
-        build_line_pair_segments_kernel!(backend)(
+        kernel = connect ? build_line_strip_segments_percolor_kernel! : build_line_pair_segments_percolor_kernel!
+        kernel(backend)(
             buffers.screen_p1, buffers.screen_p2,
             buffers.d1, buffers.d2, buffers.seg_colors,
             buffers.screen_pos, buffers.depth, buffers.visible, color;
@@ -308,7 +314,7 @@ function rasterize_lines!(
         )
     end
 
-    # 3. Rasterize (per-pixel kernel)
+    # 3. Rasterize (per-pixel kernel — same for both color modes)
     h, w = size(overlay)
     rasterize_lines_kernel!(backend)(
         overlay, depth_buffer,

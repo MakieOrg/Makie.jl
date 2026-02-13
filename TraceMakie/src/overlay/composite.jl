@@ -29,10 +29,12 @@ end
         alpha = ov.alpha
         inv_alpha = 1f0 - alpha
 
+        # Overlay is already premultiplied alpha (from Porter-Duff "over" blending
+        # in the per-pixel rasterizers), so use src + dst*(1-alpha)
         dst[i] = RGB{Float32}(
-            ov.r * alpha + bg.r * inv_alpha,
-            ov.g * alpha + bg.g * inv_alpha,
-            ov.b * alpha + bg.b * inv_alpha
+            ov.r + bg.r * inv_alpha,
+            ov.g + bg.g * inv_alpha,
+            ov.b + bg.b * inv_alpha
         )
     end
 end

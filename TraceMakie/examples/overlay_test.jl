@@ -1,7 +1,7 @@
 # Overlay Test - Compare TraceMakie overlay with GLMakie
 # Tests scatter markers and lines on top of a ray-traced surface
 
-using GLMakie, TraceMakie, FileIO
+using Revise, GLMakie, TraceMakie, FileIO, ImageShow
 
 # Create surface data
 xs = range(-2, 2, length=30)
@@ -26,21 +26,17 @@ line_points = Point3f[
 ]
 
 function create_test_scene()
-    fig = Figure(size=(600*4, 450*4))
+    fig = Figure(size=(600, 450))
     lscene = LScene(fig[1,1], show_axis=true)
 
     # Add surface
     surface!(lscene, xs, ys, zs, colormap=:viridis)
 
     # Add scatter markers at corners
-    scatter!(lscene, corner_points, markersize=15, color=:red)
+    meshscatter!(lscene, corner_points, markersize=0.1, color=:red)
 
     # Add lines connecting corners
     linesegments!(lscene, line_points, linewidth=3, color=:yellow)
-
-    # Add environment light for TraceMakie
-    Makie.push_light!(lscene.scene, Makie.EnvironmentLight(1.5, fill(RGBf(1,1,1), 2, 2)))
-
     # Set camera
     cam3d!(lscene.scene, eyeposition=Vec3f(5, 5, 4), lookat=Vec3f(0, 0, 0), upvector=Vec3f(0, 0, 1))
 
@@ -48,12 +44,18 @@ function create_test_scene()
 end
 
 # Create and save both versions
-fig = create_test_scene()
-
-# Save GLMakie version
-GLMakie.activate!()
-display(fig; backend=GLMakie)
-# Save TraceMakie version
 using AMDGPU
+# fig, ax, pl = scatter(rand(10))
 TraceMakie.activate!(integrator=TraceMakie.VolPath(samples=10), backend=AMDGPU.ROCBackend())
-colorbuffer(fig)
+colorbuffer(fig; backend=TraceMakie)
+
+
+begin
+    fig = create_test_scene()
+    surface(fig[1, 2], rand(5, 5))
+    TraceMakie.interactive_window(fig; backend=AMDGPU.ROCBackend())
+    display(fig; backend=GLMakie)
+end
+
+using Random
+colorbuffer(surface(rand(5, 5)); backend=TraceMakie)

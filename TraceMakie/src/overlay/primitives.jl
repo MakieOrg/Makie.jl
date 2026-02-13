@@ -2,8 +2,8 @@
 # Primitive SDF Functions and Anti-Aliasing Utilities
 # ============================================================================
 
-# Anti-aliasing radius in pixels
-const AA_RADIUS = 0.8f0
+# Half width of antialiasing smoothstep (matches GLMakie: 1/sqrt(2))
+const ANTIALIAS_RADIUS = 0.70710677f0
 
 # Use norm from LinearAlgebra for vector length
 using LinearAlgebra: norm, dot
@@ -21,11 +21,12 @@ Smooth Hermite interpolation between 0 and 1 when x is in [edge0, edge1].
 end
 
 """
-Anti-aliased step function: smooth transition from 1 to 0 around threshold.
-Returns 1 when dist << threshold, 0 when dist >> threshold.
+Anti-aliased step function matching GLMakie convention.
+Returns 1 when dist > threshold (inside), 0 when dist < threshold (outside).
+Assumes positive-inside signed distance fields.
 """
-@inline function aastep(threshold::Float32, dist::Float32)
-    return 1f0 - smoothstep(threshold - AA_RADIUS, threshold + AA_RADIUS, dist)
+@inline function aastep(threshold::Float32, dist::Float32, aa::Float32=ANTIALIAS_RADIUS)
+    return smoothstep(threshold - aa, threshold + aa, dist)
 end
 
 """

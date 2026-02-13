@@ -8,25 +8,37 @@
 Holds camera projection information for rasterizing 3D primitives to screen space.
 """
 struct RasterContext
-    # Combined view-projection matrix
+    # Combined view-projection matrix (used by lines and position projection)
     view_proj::Mat4f
     # Inverse view-projection for unprojection (if needed)
     inv_view_proj::Mat4f
+    # Separate projection and view matrices (used by sprite transform pipeline)
+    projection::Mat4f
+    view_mat::Mat4f
     # Screen resolution (width, height)
     resolution::Vec2f
+    # Pixels per unit (display scaling)
+    px_per_unit::Float32
     # Camera near/far planes
     near::Float32
     far::Float32
 end
 
-"""
-    RasterContext(view_proj::Mat4f, resolution::Vec2f; near=0.1f0, far=1000f0)
+function RasterContext(
+    view_proj::Mat4f, projection::Mat4f, view_mat::Mat4f,
+    resolution::Vec2f;
+    px_per_unit::Float32=1f0, near::Float32=0.1f0, far::Float32=1000f0,
+)
+    inv_vp = Mat4f(inv(view_proj))
+    return RasterContext(view_proj, inv_vp, projection, view_mat, resolution, px_per_unit, near, far)
+end
 
-Create a RasterContext from a view-projection matrix.
-"""
+# Convenience constructor for lines-only use (no separate proj/view needed)
 function RasterContext(view_proj::Mat4f, resolution::Vec2f; near::Float32=0.1f0, far::Float32=1000f0)
     inv_vp = Mat4f(inv(view_proj))
-    return RasterContext(view_proj, inv_vp, resolution, near, far)
+    proj = Mat4f(I)
+    view_m = Mat4f(I)
+    return RasterContext(view_proj, inv_vp, proj, view_m, resolution, 1f0, near, far)
 end
 
 """

@@ -3,9 +3,10 @@
 # =============================================================================
 # Positions stored as GPU arrays, projected + rasterized at render time via KA.
 
-# Extract a single RGBA color from whatever the compute graph provides
-_to_single_rgba(c::AbstractVector) = isempty(c) ? RGBA{Float32}(0,0,0,0) : RGBA{Float32}(Makie.to_color(first(c)))
-_to_single_rgba(c) = RGBA{Float32}(Makie.to_color(c))
+# Convert color to RGBA — preserves per-vertex color vectors
+_to_overlay_color(c::AbstractVector{<:Colorant}) = RGBA{Float32}.(c)
+_to_overlay_color(c::AbstractVector) = isempty(c) ? RGBA{Float32}(0,0,0,0) : RGBA{Float32}.(Makie.to_color.(c))
+_to_overlay_color(c) = RGBA{Float32}(Makie.to_color(c))
 
 # Extract a single linewidth from scalar or vector
 _to_single_linewidth(lw::AbstractVector) = isempty(lw) ? 1f0 : Float32(first(lw))
@@ -15,15 +16,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
     attr = plot.attributes
     state = screen.state
 
-    # 1. Positions → GPU array (use final world-space positions with model transforms)
+    # 1. Positions → GPU array (ensure Point3f for overlay projection)
     register_computation!(attr, [:positions_transformed_f32c], [:trace_overlay_positions]) do args, changed, last
-        positions = args.positions_transformed_f32c
+        positions = [Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
         return (Adapt.adapt(screen.config.backend, positions),)
     end
 
-    # 2. Color/linewidth → style
+    # 2. Color/linewidth → style (per-vertex colors uploaded to GPU)
     register_computation!(attr, [:color, :linewidth], [:trace_overlay_style]) do args, changed, last
-        color = _to_single_rgba(args.color)
+        color = _to_overlay_color(args.color)
+        if color isa AbstractVector
+            color = Adapt.adapt(screen.config.backend, color)
+        end
         lw = _to_single_linewidth(args.linewidth)
         return ((color=color, linewidth=lw),)
     end
@@ -59,15 +63,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
     attr = plot.attributes
     state = screen.state
 
-    # 1. Positions → GPU array
+    # 1. Positions → GPU array (ensure Point3f for overlay projection)
     register_computation!(attr, [:positions_transformed_f32c], [:trace_overlay_positions]) do args, changed, last
-        positions = args.positions_transformed_f32c
+        positions = [Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
         return (Adapt.adapt(screen.config.backend, positions),)
     end
 
-    # 2. Color/linewidth → style
+    # 2. Color/linewidth → style (per-vertex colors uploaded to GPU)
     register_computation!(attr, [:color, :linewidth], [:trace_overlay_style]) do args, changed, last
-        color = _to_single_rgba(args.color)
+        color = _to_overlay_color(args.color)
+        if color isa AbstractVector
+            color = Adapt.adapt(screen.config.backend, color)
+        end
         lw = _to_single_linewidth(args.linewidth)
         return ((color=color, linewidth=lw),)
     end

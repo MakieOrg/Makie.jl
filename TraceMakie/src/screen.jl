@@ -13,11 +13,9 @@ const VolPath = Hikari.VolPath
 
 Configuration for TraceMakie rendering.
 
-* `integrator`: The integrator to use for rendering (default: `Whitted()`)
-  - `Whitted(; samples=8, max_depth=5)` - Fast Whitted-style ray tracing
-  - `SPPM(; search_radius=0.075, max_depth=5, iterations=100)` - Stochastic progressive photon mapping
-  - `FastWavefront(; samples=4)` - GPU-optimized wavefront path tracing
+* `integrator`: The integrator to use for rendering (default: `VolPath()`)
   - `VolPath(; samples_per_pixel=64, max_depth=8)` - Volumetric path tracing
+  - `FastWavefront(; samples=4)` - GPU-optimized wavefront path tracing
 * `exposure`: Exposure multiplier for postprocessing (default: 1.0)
 * `tonemap`: Tonemapping method (default: :aces)
   - `:reinhard` - Simple Reinhard L/(1+L)
@@ -52,7 +50,7 @@ struct ScreenConfig
     denoise_config::Union{Hikari.DenoiseConfig, Nothing}
 
     function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, backend=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
-        actual_integrator = integrator isa Makie.Automatic ? Whitted() : integrator
+        actual_integrator = integrator isa Makie.Automatic ? VolPath() : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
         actual_backend = backend isa Makie.Automatic ? Raycore.KA.CPU() : backend
@@ -110,6 +108,45 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
 end
 
 Base.size(screen::Screen) = isnothing(screen.scene) ? (0, 0) : size(screen.scene)
+
+function Base.resize!(screen::Screen, w::Int, h::Int)
+    (w > 0 && h > 0) || return nothing
+    isnothing(screen.scene) && return nothing
+    isempty(screen.scene_states) && return nothing
+
+    ka_backend = screen.config.backend
+
+    for state in screen.scene_states
+        cleanup!(state)
+
+        if state.overlay_only
+            resolution = Point2f(Float32(w), Float32(h))
+            screen_window = nothing
+        else
+            resolution, screen_window = _compute_scene_resolution(state.makie_scene, w, h)
+        end
+
+        film = Hikari.Film(resolution;
+            filter=Hikari.LanczosSincFilter(Point2f(1.0f0), 3.0f0),
+            crop_bounds=Hikari.Bounds2(Point2f(0.0f0), Point2f(1.0f0)),
+            diagonal=1.0f0, scale=1.0f0)
+        film = Raycore.Adapt.adapt(ka_backend, film)
+
+        state.film = film
+        state.colorbuffer_tmp = similar(film.postprocess)
+        state.overlay_buffer = Overlay.create_overlay_buffer(ka_backend, size(film.framebuffer))
+
+        if !state.overlay_only && !isnothing(state.camera)
+            state.camera = to_trace_camera(state.makie_scene, film; screen_window)
+        end
+
+        state.integrator_state = nothing
+        state.needs_film_clear = true
+    end
+
+    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGB{Float32}, h, w)
+    return nothing
+end
 
 # Track whether screen is open for resource management
 const _open_screens = Set{UInt}()
@@ -184,12 +221,22 @@ Base.empty!(::Screen) = nothing
 function render!(screen::Screen)
     state = screen.state
     isnothing(state) && error("Screen not set up - call display first")
+
+    # Skip ray tracing for overlay-only states
+    state.overlay_only && return state.film
+
     integrator = screen.config.integrator
 
     # Poll compute graph for updates on this scene's plots
     poll_all_plots(screen, state.makie_scene)
     tlas = get_tlas(state)
     Raycore.sync!(tlas)
+
+    # Skip ray tracing if TLAS has no geometry (e.g. scene with only overlay plots)
+    if isempty(tlas.instances)
+        return state.film
+    end
+
     Raycore.refit_tlas!(tlas)
 
     # Load per-scene integrator state (each scene accumulates independently)
@@ -226,18 +273,43 @@ end
 function _postprocess_scene_state!(screen::Screen, scene_state::TraceMakieState)
     screen.state = scene_state
     film = scene_state.film
-    camera = scene_state.camera[]
     config = screen.config
+
+    if scene_state.overlay_only
+        # Overlay-only: fill postprocess with scene background color, set depth to max
+        bg = scene_state.makie_scene.backgroundcolor[]
+        bg_rgb = RGB{Float32}(bg)
+        fill!(film.postprocess, bg_rgb)
+        fill!(film.depth, Float32(1e30))  # all overlays pass depth test
+
+        # Poll compute graph for overlay data
+        poll_all_plots(screen, scene_state.makie_scene)
+
+        # Render overlay plots
+        render_overlays!(screen)
+
+        # Copy to CPU
+        map!(clamp01nan, scene_state.colorbuffer_tmp, film.postprocess)
+        return
+    end
+
+    camera = scene_state.camera[]
 
     # Convert pixel samples to framebuffer
     if !(config.integrator isa Hikari.VolPath)
         Hikari.to_framebuffer!(film)
     end
 
-    # Adapt scene for kernel traversal (fill_aux_buffers! needs StaticTLAS)
-    adapted_scene = Adapt.adapt(config.backend, scene_state.hikari_scene)
-    # Fill depth buffer for overlay depth testing
-    Hikari.fill_aux_buffers!(film, adapted_scene, camera)
+    # Fill depth buffer for overlay depth testing (skip if no geometry)
+    tlas = scene_state.hikari_scene.accel
+    if !isempty(tlas.instances)
+        lights = scene_state.hikari_scene.lights
+        has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
+        adapted_scene = Adapt.adapt(config.backend, scene_state.hikari_scene)
+        Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
+    else
+        fill!(film.depth, Float32(1e30))  # all overlays pass depth test
+    end
 
     # Apply denoising if enabled
     if config.denoise
@@ -247,11 +319,15 @@ function _postprocess_scene_state!(screen::Screen, scene_state::TraceMakieState)
     end
 
     # Postprocess (tonemap, gamma, exposure)
+    # Mask escaped rays with root scene background color so compositor shows through
+    root_bg = screen.scene.backgroundcolor[]
+    bg_rgb = RGB{Float32}(red(root_bg), green(root_bg), blue(root_bg))
     Hikari.postprocess!(film;
         exposure = config.exposure,
         tonemap = config.tonemap,
         gamma = config.gamma,
-        sensor = config.sensor
+        sensor = config.sensor,
+        background = bg_rgb,
     )
 
     # Render overlay plots (lines, scatter, text) via KA kernels
@@ -264,7 +340,8 @@ end
 # Postprocess all scenes and composite into output buffer — shared by
 # colorbuffer() and interactive_window().
 function _postprocess_and_composite!(screen::Screen)
-    fill!(screen.output_buffer, RGB{Float32}(0, 0, 0))
+    bg = screen.scene.backgroundcolor[]
+    fill!(screen.output_buffer, RGB{Float32}(red(bg), green(bg), blue(bg)))
     for scene_state in screen.scene_states
         _postprocess_scene_state!(screen, scene_state)
         _composite_scene!(screen.output_buffer, scene_state, screen.scene)
@@ -514,19 +591,26 @@ function interactive_window(root_scene::Makie.Scene;
     dummy = fill(RGB{Float32}(0, 0, 0), root_h, root_w)
     imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, uv_transform=(:rotr90, :flip_y))
 
-    loki = Threads.ReentrantLock()
+    last_root_size = Ref((root_w, root_h))
     running = Threads.Atomic{Bool}(true)
 
-    # Render thread — camera changes are detected via needs_film_clear
-    # (set by on(projectionview) callback registered in _create_scene_state)
+    # Render thread — detects viewport changes and camera changes each frame
     Base.errormonitor(Threads.@spawn while running[]
         Makie.isclosed(root_scene) && break
 
+        # Detect viewport resize (same pattern as GLMakie's render_frame)
+        cur_w, cur_h = size(root_scene)
+        if (cur_w, cur_h) != last_root_size[]
+            last_root_size[] = (cur_w, cur_h)
+            resize!(screen, cur_w, cur_h)
+            imgp[1] = 0..cur_w
+            imgp[2] = 0..cur_h
+            imgp.visible = false
+        end
+
         # Hide overlay if any scene needs clearing (camera moved, data changed)
         if any(ss -> ss.needs_film_clear, screen.scene_states)
-            lock(loki) do
-                imgp.visible = false
-            end
+            imgp.visible = false
         end
 
         # Update screen config from reactive observables
@@ -546,11 +630,8 @@ function interactive_window(root_scene::Makie.Scene;
 
         # Postprocess + composite (same path as colorbuffer)
         result_cpu = _postprocess_and_composite!(screen)
-
-        lock(loki) do
-            imgp[3] = result_cpu
-            imgp.visible = true
-        end
+        imgp[3] = result_cpu
+        imgp.visible = true
 
         sleep(1/30)
     end)

@@ -57,6 +57,13 @@ function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.D
     )
 end
 
+function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.CoatedDiffuseTransmissionMaterial)
+    Hikari.CoatedDiffuseTransmissionMaterial(
+        color_tex, material.transmittance, material.u_roughness, material.v_roughness, material.thickness,
+        material.eta, material.albedo, material.g, material.max_depth, material.n_samples, material.remap_roughness
+    )
+end
+
 function merge_color_with_material(color_tex::Hikari.Texture, material::Hikari.CoatedConductorMaterial)
     material
 end
@@ -85,9 +92,15 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Nothing})
     material = has_material ? to_value(plot.material) : nothing
 
     if material isa Hikari.Material && tex isa Hikari.Texture
-        # Only merge color with material if color was explicitly set by the user.
-        # Auto-assigned palette colors should not override Hikari materials.
-        color_explicitly_set = plot.attributes.inputs[:color].value !== nothing
+        # If material was set post-construction (not in inputs), it's a deliberate
+        # user override (e.g. recipe_plot.plots[1].material = my_mat) and should
+        # always take priority over any colors, including recipe-assigned ones.
+        material_in_inputs = haskey(plot.attributes.inputs, :material) && plot.attributes.inputs[:material].value !== nothing
+        if !material_in_inputs
+            return material
+        end
+        # Both material and color were provided in the constructor - merge them.
+        color_explicitly_set = haskey(plot.attributes.inputs, :color) && plot.attributes.inputs[:color].value !== nothing
         color_explicitly_set || return material
         return merge_color_with_material(tex, material)
     elseif material isa Hikari.Material
@@ -118,11 +131,18 @@ function extract_material(plot::Plot, color_obs::Union{Makie.Computed, Observabl
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material = has_material ? to_value(plot.material) : nothing
 
-    # If material is provided and color was NOT explicitly set by the user,
-    # use the material as-is without merging auto-assigned palette colors
-    color_explicitly_set = plot.attributes.inputs[:color].value !== nothing
-    if material isa Hikari.Material && !color_explicitly_set
-        return material
+    # If material was set post-construction (not in inputs), it's a deliberate
+    # user override and should always take priority over any colors.
+    if material isa Hikari.Material
+        material_in_inputs = haskey(plot.attributes.inputs, :material) && plot.attributes.inputs[:material].value !== nothing
+        if !material_in_inputs
+            return material
+        end
+        # Both were in constructor - only merge if color was also explicitly set
+        color_explicitly_set = haskey(plot.attributes.inputs, :color) && plot.attributes.inputs[:color].value !== nothing
+        if !color_explicitly_set
+            return material
+        end
     end
 
     tex = color_to_texture(color, plot)
