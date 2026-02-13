@@ -1045,7 +1045,7 @@ end
 function calculated_attributes!(::Type{Volume}, plot::Plot)
     attr = plot.attributes
     ComputePipeline.alias!(attr, :model, :model_f32c)
-    if attr.volume[] isa SDFBrickmap
+    if attr.volume[] isa SDFBrickmapSamplers
         ComputePipeline.alias!(attr, :volume, :scaled_color)
     else
         register_colormapping!(attr, :volume)

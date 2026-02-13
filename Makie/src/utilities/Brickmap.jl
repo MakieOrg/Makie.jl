@@ -1,16 +1,41 @@
-# TODO:
-# - memcpy isn't ok because we have blocks that need to keep their layout
-# - also +1 is not ok for resize, needs to be + blocksize
-# - could either do a bunch of bricksize^3 copies and keep normal indices, or
-#   do z-curve
-
-mutable struct SDFBrickmap
+struct SDFBrickmapSamplers
     indices::ShaderAbstractions.Sampler{UInt32, 3, Array{UInt32, 3}}
     bricks::ShaderAbstractions.Sampler{N0f8, 3, Array{N0f8, 3}}
 
     # With 8k as the texture size limit this would allow 64e6 indices... probably enough?
     color_indexmap::ShaderAbstractions.Sampler{UInt32, 2, Array{UInt32, 2}}
     color_bricks::ShaderAbstractions.Sampler{RGB{N0f8}, 3, Array{RGB{N0f8}, 3}}
+    bricksize::Int
+end
+
+function SDFBrickmapSamplers(
+        indices::Array{UInt32, 3},
+        bricks::Array{N0f8, 3},
+        color_indexmap::Array{UInt32, 2},
+        color_bricks::Array{RGB{N0f8}, 3},
+        bricksize::Integer
+    )
+    return SDFBrickmapSamplers(
+        ShaderAbstractions.Sampler(indices),
+        ShaderAbstractions.Sampler(bricks),
+        ShaderAbstractions.Sampler(color_indexmap),
+        ShaderAbstractions.Sampler(color_bricks),
+        bricksize
+    )
+end
+
+function SDFBrickmapSamplers(bricksize::Integer)
+    return SDFBrickmapSamplers(
+        ShaderAbstractions.Sampler(Array{UInt32, 3}(undef, 0, 0, 0)),
+        ShaderAbstractions.Sampler(Array{N0f8, 3}(undef, 0, 0, 0)),
+        ShaderAbstractions.Sampler(Array{UInt32, 2}(undef, 0, 0)),
+        ShaderAbstractions.Sampler(Array{RGB{N0f8}, 3}(undef, 0, 0, 0)),
+        bricksize
+    )
+end
+
+mutable struct SDFBrickmap
+    samplers::SDFBrickmapSamplers
 
     size::NTuple{3, Int}
     bricksize::Int # equal for each dim
@@ -36,12 +61,13 @@ function SDFBrickmap(bricksize::Int, _size::NTuple{3, Int})
     D = trunc(Int, cbrt(prod(idx_size) / minimum(idx_size))) * bricksize
     init_brick_size = (D, D, D)
     init_color_brick_size = (4, 4, 4) .* bricksize
+    indices = fill(UInt32(0), idx_size)
+    bricks = Array{N0f8, 3}(undef, init_brick_size)
+    color_indexmap = fill(typemax(UInt32), 32, 32) # 1024 values
+    color_bricks = Array{RGB{N0f8}}(undef, init_color_brick_size)
+    samplers = SDFBrickmapSamplers(indices, bricks, color_indexmap, color_bricks, bricksize)
     return SDFBrickmap(
-        ShaderAbstractions.Sampler(fill(UInt32(0), idx_size)),
-        ShaderAbstractions.Sampler(Array{N0f8, 3}(undef, init_brick_size)),
-        ShaderAbstractions.Sampler(Matrix{UInt32}(undef, 32, 32)), # 1024 values
-        ShaderAbstractions.Sampler(Array{RGB{N0f8}}(undef, init_color_brick_size)),
-        _size, bricksize,
+        samplers, _size, bricksize,
         0, 0, 0, 1, # 1 color brick reserved for static colors
         false, false, false,
         UInt32[], UInt32[], UInt32[]
@@ -49,9 +75,9 @@ function SDFBrickmap(bricksize::Int, _size::NTuple{3, Int})
 end
 
 get_brick_index(bm::SDFBrickmap, i, j, k) = _indices(bm)[i, j, k]
-_indices(bm::SDFBrickmap) = ShaderAbstractions.data(bm.indices)
-_color_indices(bm::SDFBrickmap) = ShaderAbstractions.data(bm.color_indexmap)
-_color_bricks(bm::SDFBrickmap) = ShaderAbstractions.data(bm.color_bricks)
+_indices(bm::SDFBrickmap) = ShaderAbstractions.data(bm.samplers.indices)
+_color_indices(bm::SDFBrickmap) = ShaderAbstractions.data(bm.samplers.color_indexmap)
+_color_bricks(bm::SDFBrickmap) = ShaderAbstractions.data(bm.samplers.color_bricks)
 
 # TODO: could be part of finish?
 # function start_update!(bm::SDFBrickmap)
@@ -64,18 +90,18 @@ _color_bricks(bm::SDFBrickmap) = ShaderAbstractions.data(bm.color_bricks)
 finish_brick_update!(bm::SDFBrickmap, i, j, k) = finish_brick_update!(bm, get_brick_index(bm, i, j, k))
 function finish_brick_update!(bm::SDFBrickmap, brick_idx)
     (brick_idx == 0 || bm.delay_brick_update) && return
-    _, v = get_view_into_packed(bm.bricks, bm.bricksize, brick_idx)
+    _, v = get_view_into_packed(bm.samplers.bricks, bm.bricksize, brick_idx)
     @assert !bm.delay_brick_update "should not get a resize here"
-    ShaderAbstractions.update!(bm.bricks, v.indices...)
+    ShaderAbstractions.update!(bm.samplers.bricks, v.indices...)
     return
 end
 
 function finish_update!(bm::SDFBrickmap)
-    bm.delay_brick_update && ShaderAbstractions.update!(bm.bricks)
-    ShaderAbstractions.update!(bm.color_indexmap)
+    bm.delay_brick_update && ShaderAbstractions.update!(bm.samplers.bricks)
+    ShaderAbstractions.update!(bm.samplers.color_indexmap)
     r = 1:bm.bricksize
-    ShaderAbstractions.update!(bm.color_bricks, r, r, r)
-    bm.delay_color_brick_update && ShaderAbstractions.update!(bm.color_bricks)
+    ShaderAbstractions.update!(bm.samplers.color_bricks, r, r, r)
+    bm.delay_color_brick_update && ShaderAbstractions.update!(bm.samplers.color_bricks)
 
     bm.delay_brick_update = false
     bm.delay_color_indexmap_update = false
@@ -103,7 +129,8 @@ function increase_size_blocked(A::Array{T, 3}, blocksize::NTuple{3, <:Integer}) 
     # size 1..10 adds (511, 504, 485, 448, 387, 513, 657, 819, 999, 1744) elements
     delta = max.(ceil.(Int, sqrt.(S)), 10 .- S)
     S = (S .+ delta) .* blocksize
-    B = similar(A, S)
+    # B = similar(A, S)
+    B = zeros(T, S)
 
     copy_blocks_to!(B, A, blocksize)
 
@@ -135,13 +162,14 @@ function copy_blocks_to!(target::Array{T, 3}, source::Array{T, 3}, blocksize::NT
     return
 end
 
-function increase_size_and_copy_no_pad(A::Array{T, 2}) where {T}
-    S = size(A)
+function increase_size_and_copy_no_pad(A::Array{T, 2}, len) where {T}
     N = length(A)
-    # this one is initialized to a fairly large value so no need to worry about
-    # slow growth at small values
-    S = S .+ ceil.(Int, sqrt.(S))
-    B = similar(A, S)
+    D = ceil(Int, sqrt(len))
+    if T == UInt32
+        B = fill(typemax(UInt32), D, D) # for safety with color_indexmap
+    else
+        B = similar(A, (D, D))
+    end
     copyto!(view(B, 1:N), view(A, 1:N))
     return B
 end
@@ -167,7 +195,7 @@ function _set_static_color!(bm::SDFBrickmap, idx::Integer, c::RGB{N0f8})
         # also needs to update color brick counter if we add it
     end
     bm.static_color_counter = max(bm.static_color_counter, idx)
-    _, static_colors = get_view_into_packed(bm.color_bricks, bm.bricksize, color_brick_idx)
+    _, static_colors = get_view_into_packed(bm.samplers.color_bricks, bm.bricksize, color_brick_idx)
     static_colors[mod1(idx, N)] = c
     return
 end
@@ -186,6 +214,7 @@ function free_color_brick!(bm::SDFBrickmap, brick_idx)
     brick_idx == 0 && return
 
     indexmap = _color_indices(bm)
+    # v this seems to get out of order...?
     bm.color_index_counter < brick_idx && return # nothing to free
     merged_idx = indexmap[brick_idx]
     merged_idx == typemax(UInt32) && return # already freed, probably redundant?
@@ -224,19 +253,22 @@ function get_or_create_brick(bm::SDFBrickmap, i, j, k)
             brick_idx = pop!(bm.available_bricks)
         end
     end
-    bm.indices[i, j, k] = brick_idx
+    bm.samplers.indices[i, j, k] = brick_idx
     # if we resize we reupload everything at the end
-    resized, A = get_view_into_packed(bm.bricks, bm.bricksize, brick_idx)
+    resized, A = get_view_into_packed(bm.samplers.bricks, bm.bricksize, brick_idx)
     bm.delay_brick_update |= resized
     return brick_idx => A
 end
 
 function set_color_index!(bm::SDFBrickmap, brick_idx, color_idx, is_static::Bool)
+    @assert brick_idx <= length(bm.samplers.indices.data) "brick_idx $brick_idx can't exceed the maximum number of bricks $(length(bm.indices.data))"
+    @assert color_idx <= bm.brick_counter + 1 "color_idx $color_idx can't exceed the number of bricks + 1 $(bm.brick_counter + 1)"
+
     # maybe resize (should only add to length + 1, so one size bump should be enough)
     indexmap = _color_indices(bm)
     if brick_idx > length(indexmap)
-        new = increase_size_and_copy_no_pad(indexmap)
-        setfield!(bm.color_indexmap, :data, new)
+        new = increase_size_and_copy_no_pad(indexmap, brick_idx)
+        setfield!(bm.samplers.color_indexmap, :data, new)
     end
     indexmap = _color_indices(bm)
     @assert brick_idx <= length(indexmap) "$brick_idx > $(length(indexmap))"
@@ -264,8 +296,9 @@ function get_or_create_color_brick(bm, brick_idx)
     else
         pop!(bm.available_color_bricks)
     end
+    @assert idx <= bm.brick_counter + 1 "$idx < $(bm.brick_counter + 1)"
 
-    resized, color_brick = get_view_into_packed(bm.color_bricks, bm.bricksize, idx)
+    resized, color_brick = get_view_into_packed(bm.samplers.color_bricks, bm.bricksize, idx)
     bm.delay_color_brick_update |= resized
 
     set_color_index!(bm, brick_idx, idx, false)
@@ -284,7 +317,7 @@ function set_interpolated_color!(bm, brick_idx, colors)
         )
     end
     if !bm.delay_color_brick_update
-        ShaderAbstractions.update!(bm.color_bricks, brick.indices...)
+        ShaderAbstractions.update!(bm.samplers.color_bricks, brick.indices...)
     end
     return
 end
@@ -300,7 +333,7 @@ function set_static_color!(bm, brick_idx, c)
     free_color_brick!(bm, brick_idx)
 
     # TODO: allow multiple
-    _, static_colors = get_view_into_packed(bm.color_bricks, bm.bricksize, 1)
+    _, static_colors = get_view_into_packed(bm.samplers.color_bricks, bm.bricksize, 1)
     max_idx = min(bm.static_color_counter, length(static_colors))
 
     # does the color already exist?

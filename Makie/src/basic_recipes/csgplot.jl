@@ -1315,7 +1315,7 @@ function update_brickmap!(
     # TODO: Is this an error?
     isempty(regions_to_update) && return
 
-    N_blocks = size(brickmap.indices, 1)
+    N_blocks = size(brickmap.samplers.indices, 1)
 
     # coarse grid (indices) with
     # minimum = mini + 0 * delta
@@ -1400,7 +1400,7 @@ function update_brickmap!(
     end
 
     # TODO: merge overlapping bboxes, update indices per merge bbox
-    ShaderAbstractions.update!(brickmap.indices)
+    ShaderAbstractions.update!(brickmap.samplers.indices)
 
     finish_update!(brickmap)
 
@@ -1606,5 +1606,7 @@ function plot!(p::CSGPlot)
     # during construction
     p.brickmap[]
 
-    volume!(p, p.x, p.y, p.z, p.brickmap, algorithm = :sdf, isorange = p.minstep)
+    map!(bm -> bm.samplers, p, :brickmap, :samplers)
+
+    volume!(p, p.x, p.y, p.z, p.samplers, algorithm = :sdf, isorange = p.minstep)
 end

@@ -1189,7 +1189,7 @@ function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
 end
 
 function update_volume_or_brickmap((data,), changed, cached)
-    if data isa Makie.SDFBrickmap
+    if data isa Makie.SDFBrickmapSamplers
         return nothing, data.indices, data.bricks, data.bricksize, data.color_indexmap, data.color_bricks
     else
         if isnothing(cached)
