@@ -32,8 +32,8 @@ function GLVertexArray(bufferdict::Dict{Symbol, GLBuffer}, program::GLProgram, i
         shader_names = [string(shader.name) for shader in program.shader]
         error(
             "Could not construct VertexArray - not all buffers are available." *
-            "\n  Required: $buffernames\n  Buffers: $bufferdict" *
-            "\n  Shaders: $shader_names"
+                "\n  Required: $buffernames\n  Buffers: $bufferdict" *
+                "\n  Shaders: $shader_names"
         )
     end
 

@@ -316,6 +316,9 @@ end
     f, a, p = image(rotr90(cow))
 end
 
+# activate!() changes the default, so we need a reset here
+GLMakie.activate!(render_pipeline = Makie.default_pipeline())
+
 @reference_test "Dynamic Render Pipeline replacement" begin
     scene = Scene(size = (300, 300))
     meshscatter!(scene, Rect2f(-0.5, -0.5, 1, 1), alpha = 0.5, markersize = Vec3f(0.4, 0.6, 0.5), transparency = true)
