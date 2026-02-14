@@ -173,7 +173,8 @@ function handle_color_getter!(uniform_dict)
 end
 
 function assemble_particle_robj!(attr, data)
-    data[:positions_transformed_f32c] = attr.positions_transformed_f32c
+    pos_key = haskey(attr, :wgl_positions) ? :wgl_positions : :positions_transformed_f32c
+    data[pos_key] = getproperty(attr, pos_key)
     handle_color!(data, attr)
     handle_color_getter!(data)
 
@@ -190,7 +191,7 @@ function assemble_particle_robj!(attr, data)
     data[:transform_marker] = attr.transform_marker
     per_instance_keys = Set(
         [
-            :positions_transformed_f32c, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
+            pos_key, :converted_rotation, :quad_offset, :quad_scale, :vertex_color,
             :intensity, :sdf_uv, :converted_strokecolor, :marker_offset, :markersize,
         ]
     )
@@ -277,11 +278,12 @@ function create_shader(scene::Scene, plot::Scatter)
 
     # ComputePipeline.alias!(attr, :rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :positions_transformed_f32c, :wgl_positions)
 
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
     backend_colors!(attr, :scatter_color)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap,
         :uniform_colorrange, :nan_color, :highclip_color,
@@ -298,30 +300,21 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
-const SCENE_ATLASES = Dict{Session, Set{UInt32}}()
-const SCENE_ATLAS_LOCK = ReentrantLock()
-
 function get_atlas_tracker(f, scene::Scene)
-    return lock(SCENE_ATLAS_LOCK) do
-        for (s, _) in SCENE_ATLASES
-            Bonito.isclosed(s) && delete!(SCENE_ATLASES, s)
-        end
-        screen = Makie.getscreen(scene, WGLMakie)
-        if isnothing(screen) || isnothing(screen.session)
-            @warn "No session found, returning empty atlas tracker"
-            # TODO, it's not entirely clear in which case this can happen,
-            # which is why we don't just error, but just assume there isn't anything tracked
-            return f(Set{UInt32}())
-        end
-        session = Bonito.root_session(screen.session)
-        if haskey(SCENE_ATLASES, session)
-            return f(SCENE_ATLASES[session])
-        else
-            atlas = Set{UInt32}()
-            SCENE_ATLASES[session] = atlas
-            return f(atlas)
-        end
+    screen = Makie.getscreen(scene, WGLMakie)
+    if isnothing(screen) || isnothing(screen.session)
+        @warn "No session found, returning empty atlas tracker"
+        # TODO, it's not entirely clear in which case this can happen,
+        # which is why we don't just error, but just assume there isn't anything tracked
+        return f(Set{UInt32}())
     end
+    session = screen.session
+    atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
+    if isnothing(atlas)
+        atlas = Set{UInt32}()
+        Bonito.set_metadata!(session, :wglmakie_scene_atlas, atlas)
+    end
+    return f(atlas)
 end
 
 function get_scatter_data(scene::Scene, markers, fonts)
@@ -365,8 +358,9 @@ function create_shader(scene::Scene, plot::Makie.Text)
 
     ComputePipeline.alias!(attr, :text_rotation, :converted_rotation)
     ComputePipeline.alias!(attr, :text_strokecolor, :converted_strokecolor)
+    ComputePipeline.alias!(attr, :per_char_positions_transformed_f32c, :wgl_positions)
     inputs = [
-        :positions_transformed_f32c,
+        :wgl_positions,
 
         :vertex_color, :uniform_color, :uniform_colormap, :uniform_colorrange,
         :nan_color, :highclip_color, :lowclip_color, :pattern,

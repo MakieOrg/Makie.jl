@@ -76,3 +76,17 @@ end
     end
 
 end
+
+@testset "Attributes() passthrough" begin
+    # Plot construction should not overwrite `attr`
+    attr = Attributes(color = :red)
+    scene = Scene()
+    p1 = scatter!(scene, attr, rand(10))
+    p2 = scatter!(scene, attr, rand(10), color = :blue)
+    p3 = scatter!(scene, attr, rand(10))
+
+    @test p1.color[] == to_color(:red)
+    @test p2.color[] == to_color(:blue)
+    @test p3.color[] == to_color(:red)
+    @test length(attr) == 1
+end

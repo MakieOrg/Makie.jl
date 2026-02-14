@@ -30,6 +30,7 @@ using DelaunayTriangulation
 using SparseArrays
 using DynamicQuantities
 using StructArrays
+using Distributions
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
 using Makie: loadasset
