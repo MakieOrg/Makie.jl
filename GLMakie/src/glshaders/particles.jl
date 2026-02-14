@@ -63,7 +63,6 @@ function draw_mesh_particle(screen, data)
         f32c_scale = Vec3f(1) # drawing_primitives.jl
     end
 
-    shading = pop!(data, :shading)::Makie.ShadingAlgorithm
     data[:color] = to_meshcolor(screen.glscreen, get!(data, :color, nothing))
     @gen_defaults! data begin
         color_map = nothing => Texture
@@ -78,27 +77,14 @@ function draw_mesh_particle(screen, data)
         backlight = 0.0f0
 
         instances = const_lift(length, position)
-        transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "util.vert", "particles.vert",
-            "fragment_output.frag", "lighting.frag", "mesh.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, TextureBuffer),
-                "shading" => light_calc(shading),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
+
     end
     if !isnothing(Makie.to_value(intensity))
         data[:intensity] = intensity_convert_tex(screen.glscreen, intensity, position)
     end
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
-
 
 """
 This is the most primitive particle system, which uses simple points as primitives.
@@ -113,17 +99,10 @@ function draw_pixel_scatter(screen, position::VectorTypes, data::Dict)
         color_norm = nothing
         scale = 2.0f0
         f32c_scale = Vec3f(1)
-        transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "dots.vert", "dots.frag",
-            view = Dict("TARGET_STAGE" => target_stage(screen, data))
-        )
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = () -> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
 
 """
@@ -158,18 +137,7 @@ function draw_scatter(screen, position, data)
         indices = const_lift(length, position) => to_index_buffer
         # rotation and billboard don't go along
         billboard = rotation == Vec4f(0, 0, 0, 1) => "if `billboard` == true, particles will always face camera"
-        fxaa = false
-        transparency = false
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "fragment_output.frag", "util.vert", "sprites.geom",
-            "sprites.vert", "distance_shape.frag",
-            view = Dict(
-                "position_calc" => position_calc(position, GLBuffer),
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
         scale_primitive = true
         gl_primitive = GL_POINTS
     end
@@ -178,7 +146,63 @@ function draw_scatter(screen, position, data)
     # different length compared to position. Intensities will be interpolated in that case
     data[:intensity] = intensity_convert(screen.glscreen, intensity, position)
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
 
 @specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::MeshScatter, view::Dict{String, String})
+    shading = Makie.get_shading_mode(plot)
+    position = plot.positions_transformed_f32c[]
+    view["position_calc"] = position_calc(position, TextureBuffer)
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+
+    shader = GLVisualizeShader(
+        screen,
+        "util.vert", "particles.vert",
+        "fragment_output.frag", "lighting.frag", "mesh.frag",
+        view = view
+    )
+    return shader
+end
+
+function get_prerender(plot::Scatter)
+    if plot.marker[] isa FastPixel
+        return () -> glEnable(GL_VERTEX_PROGRAM_POINT_SIZE)
+    else
+        return EmptyPrerender()
+    end
+end
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Scatter, view::Dict{String, String})
+    if plot.marker[] isa FastPixel
+        return GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "dots.vert", "dots.frag",
+            view = view
+        )
+    else
+        position = plot.positions_transformed_f32c[]
+        view["position_calc"] = position_calc(position, GLBuffer)::String
+        return GLVisualizeShader(
+            screen,
+            "fragment_output.frag", "util.vert", "sprites.geom",
+            "sprites.vert", "distance_shape.frag",
+            view = view
+        )
+    end
+end
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Text, view::Dict{String, String})
+    position = plot.positions_transformed_f32c[]
+    view["position_calc"] = position_calc(position, GLBuffer)::String
+    shader = GLVisualizeShader(
+        screen,
+        "fragment_output.frag", "util.vert", "sprites.geom",
+        "sprites.vert", "distance_shape.frag",
+        view = view
+    )
+    return shader
+end

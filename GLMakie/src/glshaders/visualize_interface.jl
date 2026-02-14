@@ -74,10 +74,10 @@ end
 
 struct GLVisualizeShader <: AbstractLazyShader
     screen::Screen
-    paths::Tuple
+    paths::Vector{ShaderSource}
     kw_args::Dict{Symbol, Any}
     function GLVisualizeShader(
-            screen::Screen, paths::String...;
+            screen::Screen, paths::Vector{String};
             view = Dict{String, String}(), kw_args...
         )
         # TODO properly check what extensions are available
@@ -91,42 +91,67 @@ struct GLVisualizeShader <: AbstractLazyShader
         return new(screen, map(x -> loadshader(x), paths), args)
     end
 end
-
-function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, data)
-    return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, data)
+function GLVisualizeShader(screen::Screen, path1::String, paths::String...; kw_args...)
+    return GLVisualizeShader(screen, String[path1, paths...]; kw_args...)
 end
 
-function assemble_shader(data)
-    shader = data[:shader]::GLVisualizeShader
-    delete!(data, :shader)
-    primitive = get(data, :gl_primitive, GL_TRIANGLES)
-    pre_fun = get(data, :prerender, nothing)
-    post_fun = get(data, :postrender, nothing)
+function GLAbstraction.gl_convert(ctx::GLAbstraction.GLContext, shader::GLVisualizeShader, uniforms, buffers)
+    return GLAbstraction.gl_convert(ctx, shader.screen.shader_cache, shader, uniforms, buffers)
+end
 
-    transp = get(data, :transparency, Observable(false))
-    overdraw = get(data, :overdraw, Observable(false))
-
-    pre = if !isnothing(pre_fun)
-        _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
-        () -> (_pre_fun(); pre_fun())
-    else
-        GLAbstraction.StandardPrerender(transp, overdraw)
+function initialize_renderobject!(screen::Screen, robj::RenderObject, plot::Plot)
+    for stage in screen.render_pipeline
+        initialize_renderobject!(screen, stage, robj, plot)
     end
+    return
+end
 
-    robj = RenderObject(data, shader, pre, nothing, shader.screen.glscreen)
+initialize_renderobject!(screen, stage, robj, plot) = nothing
 
-    post = if haskey(data, :instances)
-        GLAbstraction.StandardPostrenderInstanced(pop!(data, :instances), robj.vertexarray, primitive)
+
+renders_in_stage(robj, ::GLRenderStage) = false
+function renders_in_stage(plot::Plot, stage::RenderPlots)
+    ssao = to_value(get(plot.attributes, :ssao, false))::Bool
+    transparency = to_value(get(plot.attributes, :transparency, false))::Bool
+    fxaa = to_value(get(plot.attributes, :fxaa, false))::Bool
+
+    return compare(ssao, stage.ssao) &&
+        compare(transparency, stage.transparency) &&
+        compare(fxaa, stage.fxaa)
+end
+
+function initialize_renderobject!(screen, stage::RenderPlots, robj, plot)
+    renders_in_stage(plot, stage) || return
+    name = stage.target
+    view = Dict{String, String}()
+    if name === :forward_render_objectid
+        view["TARGET_STAGE"] = "#define DEFAULT_TARGET"
+    elseif name === :forward_render_objectid_geom
+        view["TARGET_STAGE"] = "#define SSAO_TARGET"
+    elseif name === :forward_render_objectid_oit
+        view["TARGET_STAGE"] = "#define OIT_TARGET"
     else
-        GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
+        error("Could not define render outputs.")
     end
+    lazy_shader = default_shader(screen, robj, plot, view)::GLVisualizeShader
+    pre = get_prerender(plot)
+    post = get_postrender(plot)
+    add_instructions!(robj, name, lazy_shader, pre = pre, post = post)
+    return
+end
 
-    robj.postrenderfunction = if !isnothing(post_fun)
-        () -> (post(); post_fun())
-    else
-        post
+# TODO: consider splitting RenderPlots stages and dispatch this on them instead
+# of using the runtime name?
+get_prerender(::Plot) = GLAbstraction.EmptyPrerender()
+get_postrender(::Plot) = GLAbstraction.EmptyPostrender()
+
+function reinitialize_renderobjects!(screen::Screen)
+    for (_, _, robj) in screen.renderlist
+        GLAbstraction.clear_instructions!(robj)
+        plot = screen.cache2plot[robj.id]
+        initialize_renderobject!(screen, robj, plot)
     end
-    return robj
+    return
 end
 
 """
@@ -157,26 +182,3 @@ to_index_buffer(ctx, x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"
 )
-
-function target_stage(screen, data)
-    idx = findfirst(stage -> renders_in_stage(data, stage), screen.render_pipeline.stages)
-    @assert !isnothing(idx) "Could not find a render stage compatible with the given settings."
-
-    # Activate the required outputs + code via `#define` and `#ifdef` blocks.
-    # For now we can just check the number of outputs to figure out what branch
-    # we need. If render stages get more complex this may need to be more generative.
-    fb = screen.render_pipeline.stages[idx].framebuffer
-    define = if fb.counter == 1
-        "#define MINIMAL_TARGET"
-    elseif fb.counter == 2
-        "#define DEFAULT_TARGET"
-    elseif fb.counter == 3
-        data[:oit_scale] = screen.config.transparency_weight_scale
-        "#define OIT_TARGET"
-    elseif fb.counter == 4
-        "#define SSAO_TARGET"
-    else
-        error("Number of colorbuffers in render framebuffer does not match any known configurations ($(fb.counter))")
-    end
-    return define
-end

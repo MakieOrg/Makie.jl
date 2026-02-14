@@ -18,6 +18,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
     format::GLenum
     parameters::TextureParameters{NDIM}
     size::NTuple{NDIM, Int}
+    layers::Int64
     context::GLContext
     observers::Vector{Observables.ObserverFunction}
     function Texture{T, NDIM}(
@@ -29,6 +30,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format::GLenum,
             parameters::TextureParameters{NDIM},
             size::NTuple{NDIM, Int},
+            layers::Int64 = -1
         ) where {T, NDIM}
         tex = new(
             id,
@@ -38,6 +40,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             format,
             parameters,
             size,
+            layers,
             context,
             Observables.ObserverFunction[]
         )
@@ -202,10 +205,35 @@ function Texture(
     texture = Texture{T, 2}(
         context, id, texturetype, numbertype,
         internalformat, format, texparams,
-        tuple(maxdims...)
+        tuple(maxdims...), layers
     )
     set_parameters(texture)
     return texture
+end
+
+function update!(t::Texture{T, D}, data::Vector{Array{T, D}}) where {T, D}
+    @assert t.texturetype == GL_TEXTURE_2D_ARRAY
+
+    # TODO: TexStorage does not allow resizing so we should probably check that here?
+    layers = length(data)
+    dims = map(size, data)
+    maxdims = foldl(dims, init = (0, 0)) do v0, x
+        a = max(v0[1], x[1])
+        b = max(v0[2], x[2])
+        (a, b)
+    end
+    @assert all(maxdims .<= t.size) && layers == t.layers "Resizing is not allowed for image vector textures"
+
+    gl_switch_context!(t.context)
+    bind(t)
+
+    for (layer, texel) in enumerate(data)
+        width, height = size(texel)
+        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, layer - 1, width, height, 1, t.format, t.pixeltype, texel)
+    end
+
+    bind(t, 0)
+    return
 end
 
 

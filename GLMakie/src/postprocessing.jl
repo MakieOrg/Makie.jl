@@ -1,11 +1,4 @@
 # Utilities:
-function draw_fullscreen(vao_id)
-    glBindVertexArray(vao_id)
-    glDrawArrays(GL_TRIANGLES, 0, 3)
-    glBindVertexArray(0)
-    return
-end
-
 struct PostprocessPrerender end
 
 function (sp::PostprocessPrerender)()
@@ -18,6 +11,32 @@ end
 
 rcpframe(x) = 1.0f0 ./ Vec2f(x[1], x[2])
 
+"""
+    PostProcessRenderObject(screen, inputs, shader; kwargs...)
+
+Creates a `RenderObject` with some default settings useful for post-processors.
+
+## Default Keyword Arguments:
+
+- `prerender = PostprocessPrerender()`: turns off depth testing, blending and face culling
+- `postrender = EmptyPostrender()`: does nothing
+- `primitive = GL_TRIANGLES`: render OpenGL triangles
+- `indices = 3`: Renders 4 vertices, 2 triangles (`(0, 1, 2), (1, 2, 3)`)
+- `instances = nothing`: No instanced rendering
+"""
+function PostProcessRenderObject(
+        screen, inputs::Dict{Symbol, Any}, shader;
+        prerender = PostprocessPrerender(),
+        postrender = GLAbstraction.EmptyPostrender(),
+        indices = 3, instances = nothing, primitive = GLAbstraction.GL_TRIANGLES
+    )
+    get!(inputs, :indices, indices)
+    get!(inputs, :instances, instances)
+    get!(inputs, :gl_primitive, primitive)
+    robj = RenderObject(screen.glscreen, inputs)
+    add_instructions!(robj, :main, shader, pre = prerender, post = postrender)
+    return robj
+end
 
 # or maybe Task? Stage?
 """
@@ -148,7 +167,7 @@ compare(val::Integer, filter::FilterOptions) = (filter == FilterAny) || (val == 
 A render pipeline stage which renders plots. This includes filtering options to
 distribute plots into, e.g. a pass for OIT.
 """
-struct RenderPlots <: GLRenderStage
+struct RenderPlots{Pre} <: GLRenderStage
     framebuffer::GLFramebuffer
     clear::Vector{Pair{Int, Vec4f}} # target index -> color
 
@@ -156,25 +175,105 @@ struct RenderPlots <: GLRenderStage
     transparency::FilterOptions
     fxaa::FilterOptions
 
-    for_oit::Bool
+    target::Symbol
+    prerender::Pre
 end
 
-function construct(::Val{:Render}, screen, framebuffer, inputs, parent)
-    ssao = FilterOptions(get(parent.attributes, :ssao, 2)) # can't do FilterOptions(::FilterOptions) ???
+
+# TODO: What's a good place for these?
+
+struct StandardPrerender
+end
+
+function enabletransparency()
+    glDisable(GL_BLEND)
+    glEnablei(GL_BLEND, 0)
+    # This does:
+    # target.rgb = source.a * source.rgb + (1 - source.a) * target.rgb
+    # target.a = 0 * source.a + 1 * target.a
+    # the latter is required to keep target.a = 1 for the OIT pass
+    glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE)
+    return
+end
+
+function handle_overdraw(overdraw)
+    if Bool(overdraw)
+        # Disable depth testing if overdrawing
+        glDisable(GL_DEPTH_TEST)
+    else
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+    end
+    return
+end
+
+function (sp::StandardPrerender)(overdraw::UInt8)
+    glDepthMask(GL_TRUE)
+    enabletransparency()
+
+    handle_overdraw(overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end
+
+struct OITPrerender
+end
+
+function (pre::OITPrerender)(overdraw::UInt8)
+    # disable depth buffer writing
+    glDepthMask(GL_FALSE)
+
+    # Blending
+    glEnable(GL_BLEND)
+    glBlendEquation(GL_FUNC_ADD)
+
+    # buffer 0 contains weight * color.rgba, should do sum
+    # destination <- 1 * source + 1 * destination
+    glBlendFunci(0, GL_ONE, GL_ONE)
+
+    # buffer 1 is objectid, do nothing
+    glDisablei(GL_BLEND, 1)
+
+    # buffer 2 is color.a, should do product
+    # destination <- 0 * source + (source) * destination
+    glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
+
+    handle_overdraw(overdraw)
+
+    # Disable cullface for now, until all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+
+    return
+end
+
+function construct(::Val{:Render}, screen, framebuffer, inputs, parent, target = :forward_render_objectid)
+    # can't do FilterOptions(::FilterOptions) ???
+    ssao = FilterOptions(get(parent.attributes, :ssao, 2))
     fxaa = FilterOptions(get(parent.attributes, :fxaa, 2))
     transparency = FilterOptions(get(parent.attributes, :transparency, 2))
-    return RenderPlots(framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa, false)
+    return RenderPlots(
+        framebuffer, [3 => Vec4f(0), 4 => Vec4f(0)], ssao, transparency, fxaa,
+        target, StandardPrerender()
+    )
 end
 
 function construct(::Val{Symbol("SSAO Render")}, screen, framebuffer, inputs, parent)
-    return construct(Val{:Render}(), screen, framebuffer, inputs, parent)
+    return construct(Val{:Render}(), screen, framebuffer, inputs, parent, :forward_render_objectid_geom)
 end
 
 function construct(::Val{Symbol("OIT Render")}, screen, framebuffer, inputs, parent)
     # HDR_color containing sums clears to 0
     # OIT_weight containing products clears to 1
     clear = [1 => Vec4f(0), 3 => Vec4f(1)]
-    return RenderPlots(framebuffer, clear, FilterAny, FilterTrue, FilterAny, true)
+    return RenderPlots(
+        framebuffer, clear, FilterAny, FilterTrue, FilterAny,
+        :forward_render_objectid_oit, OITPrerender()
+    )
 end
 
 function id2scene(screen, id1)
@@ -183,14 +282,6 @@ function id2scene(screen, id1)
         id1 == id2 && return true, scene
     end
     return false, nothing
-end
-
-renders_in_stage(robj, ::GLRenderStage) = false
-renders_in_stage(robj::RenderObject, stage::RenderPlots) = renders_in_stage(robj.uniforms, stage)
-function renders_in_stage(robj, stage::RenderPlots)
-    return compare(to_value(get(robj, :ssao, false)), stage.ssao) &&
-        compare(to_value(get(robj, :transparency, false)), stage.transparency) &&
-        compare(to_value(get(robj, :fxaa, false)), stage.fxaa)
 end
 
 on_resize(stage::RenderPlots, w, h) = resize!(stage.framebuffer, w, h)
@@ -211,7 +302,7 @@ function run_stage(screen, glscene, stage::RenderPlots)
         set_draw_buffers(stage.framebuffer)
 
         for (zindex, screenid, elem) in screen.renderlist
-            elem.visible && renders_in_stage(elem, stage) || continue
+            elem.visible && haskey(elem.variants, stage.target) || continue
 
             found, scene = id2scene(screen, screenid)
             (found && scene.visible[]) || continue
@@ -223,31 +314,9 @@ function run_stage(screen, glscene, stage::RenderPlots)
             glViewport(round.(Int, ppu .* minimum(a))..., round.(Int, ppu .* widths(a))...)
             elem[:px_per_unit] = ppu
 
-            if stage.for_oit
-                # disable depth buffer writing
-                glDepthMask(GL_FALSE)
+            stage.prerender(elem[:overdraw]::UInt8)
 
-                # Blending
-                glEnable(GL_BLEND)
-                glBlendEquation(GL_FUNC_ADD)
-
-                # buffer 0 contains weight * color.rgba, should do sum
-                # destination <- 1 * source + 1 * destination
-                glBlendFunci(0, GL_ONE, GL_ONE)
-
-                # buffer 1 is objectid, do nothing
-                glDisablei(GL_BLEND, 1)
-
-                # buffer 2 is color.a, should do product
-                # destination <- 0 * source + (source) * destination
-                glBlendFunci(2, GL_ZERO, GL_SRC_COLOR)
-
-            else
-                glDepthMask(GL_TRUE)
-                GLAbstraction.enabletransparency()
-            end
-
-            render(elem)
+            render(elem, elem.variants[stage.target])
         end
     catch e
         @error "Error while rendering!" exception = e
@@ -288,25 +357,20 @@ function construct(::Val{:OIT}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fullscreen.vert"),
         loadshader("postprocessing/OIT_blend.frag")
     )
-    robj = RenderObject(
-        inputs, shader,
-        () -> begin
-            glDepthMask(GL_TRUE)
-            glDisable(GL_DEPTH_TEST)
-            glDisable(GL_CULL_FACE)
-            glEnable(GL_BLEND)
-            # shader computes:
-            # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
-            # src.a = prod_alpha
-            # blending: (assumes opaque.a = 1)
-            # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
-            # opaque.a   = 0 * src.a   + 1 * opaque.a
-            glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
-        end,
-        nothing, screen.glscreen
-    )
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
-
+    prerender = () -> begin
+        glDepthMask(GL_TRUE)
+        glDisable(GL_DEPTH_TEST)
+        glDisable(GL_CULL_FACE)
+        glEnable(GL_BLEND)
+        # shader computes:
+        # src.rgb = sum_color / sum_weight * (1 - prod_alpha)
+        # src.a = prod_alpha
+        # blending: (assumes opaque.a = 1)
+        # opaque.rgb = 1 * src.rgb + src.a * opaque.rgb
+        # opaque.a   = 0 * src.a   + 1 * opaque.a
+        glBlendFuncSeparate(GL_ONE, GL_SRC_ALPHA, GL_ZERO, GL_ONE)
+    end
+    robj = PostProcessRenderObject(screen, inputs, shader, prerender = prerender)
     return RenderPass{:OIT}(framebuffer, robj)
 end
 
@@ -348,8 +412,7 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     inputs[:projection] = Mat4f(I)
     inputs[:bias] = 0.025f0
     inputs[:radius] = 0.5f0
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:SSAO1}(framebuffer, robj)
 end
@@ -365,8 +428,7 @@ function construct(::Val{:SSAO2}, screen, framebuffer, inputs, parent)
     )
     inputs[:inv_texel_size] = rcpframe(size(screen))
     inputs[:blur_range] = Int32(2)
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:SSAO2}(framebuffer, robj)
 end
@@ -446,8 +508,7 @@ function construct(::Val{:FXAA1}, screen, framebuffer, inputs, parent)
         view = Dict("FILTER_IN_SHADER" => filter_fxaa_in_shader ? "#define FILTER_IN_SHADER" : "")
     )
     filter_fxaa_in_shader || pop!(inputs, :objectid_buffer)
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:FXAA1}(framebuffer, robj)
 end
@@ -462,8 +523,7 @@ function construct(::Val{:FXAA2}, screen, framebuffer, inputs, parent)
         loadshader("postprocessing/fxaa.frag")
     )
     inputs[:RCPFrame] = rcpframe(size(framebuffer))
-    robj = RenderObject(inputs, shader, PostprocessPrerender(), nothing, screen.glscreen)
-    robj.postrenderfunction = () -> draw_fullscreen(robj.vertexarray.id)
+    robj = PostProcessRenderObject(screen, inputs, shader)
 
     return RenderPass{:FXAA2}(framebuffer, robj)
 end

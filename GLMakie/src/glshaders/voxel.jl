@@ -2,8 +2,6 @@
 function draw_voxels(screen, main::VolumeTypes, data::Dict)
     geom = Rect2f(Point2f(0), Vec2f(1.0))
     to_opengl_mesh!(screen.glscreen, data, const_lift(GeometryBasics.triangle_mesh, geom))
-    shading = pop!(data, :shading, FastShading)
-    debug = to_value(pop!(data, :debug, ""))
     @gen_defaults! data begin
         voxel_id = main => Texture
         gap = 0.0f0
@@ -12,26 +10,31 @@ function draw_voxels(screen, main::VolumeTypes, data::Dict)
             ifelse(gap > 0.01, 2 * N, N + 3)
         end
         model = Mat4f(I)
-        transparency = false
         backlight = 0.0f0
         color = nothing => Texture
         color_map = nothing => Texture
         uv_transform = nothing => Texture
         px_per_unit = 1.0f0
-        shader = GLVisualizeShader(
-            screen,
-            "voxel.vert",
-            "fragment_output.frag", "voxel.frag", "lighting.frag",
-            view = Dict(
-                "shading" => light_calc(shading),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data),
-                "DEBUG_FLAG_DEFINE" => debug
-            )
-        )
     end
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
 end
+
 @specialize
+
+function default_shader(screen::Screen, @nospecialize(::RenderObject), plot::Voxels, view::Dict{String, String})
+    shading = Makie.get_shading_mode(plot)
+    debug = to_value(get(plot.attributes, :debug, ""))
+    view["shading"] = light_calc(shading)
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+    view["DEBUG_FLAG_DEFINE"] = debug
+
+    shader = GLVisualizeShader(
+        screen,
+        "voxel.vert",
+        "fragment_output.frag", "voxel.frag", "lighting.frag",
+        view = view
+    )
+    return shader
+end

@@ -36,7 +36,6 @@ function to_opengl_mesh!(context, result, mesh_obs::TOrSignal{<:GeometryBasics.M
 end
 
 function draw_mesh(screen, data::Dict)
-    shading = pop!(data, :shading, NoShading)::Makie.ShadingAlgorithm
     @gen_defaults! data begin
         vertices = nothing => GLBuffer
         faces = nothing => indexbuffer
@@ -48,25 +47,28 @@ function draw_mesh(screen, data::Dict)
         color_map = nothing => Texture
         color_norm = nothing
         fetch_pixel = false
-        texturecoordinates = Vec2f(0) => GLBuffer
+        texturecoordinates = nothing => GLBuffer
         uv_transform = Mat{2, 3, Float32}(1, 0, 0, -1, 0, 1)
-        transparency = false
         px_per_unit = 1.0f0
         interpolate_in_fragment_shader = true
-        shader = GLVisualizeShader(
-            screen,
-            "util.vert", "mesh.vert",
-            "fragment_output.frag", "mesh.frag",
-            "lighting.frag",
-            view = Dict(
-                "shading" => light_calc(shading),
-                "picking_mode" => to_value(get(data, :picking_mode, "")),
-                "MAX_LIGHTS" => "#define MAX_LIGHTS $(screen.config.max_lights)",
-                "MAX_LIGHT_PARAMETERS" => "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)",
-                "TARGET_STAGE" => target_stage(screen, data)
-            )
-        )
     end
 
-    return assemble_shader(data)
+    return RenderObject(screen.glscreen, data)
+end
+
+function default_shader(screen::Screen, @nospecialize(robj::RenderObject), plot::Union{Mesh, Image}, view::Dict{String, String})
+    shading = Makie.get_shading_mode(plot)
+    view["shading"] = light_calc(shading)
+    view["picking_mode"] = to_value(get(robj.uniforms, :picking_mode, ""))
+    view["MAX_LIGHTS"] = "#define MAX_LIGHTS $(screen.config.max_lights)"
+    view["MAX_LIGHT_PARAMETERS"] = "#define MAX_LIGHT_PARAMETERS $(screen.config.max_light_parameters)"
+
+    shader = GLVisualizeShader(
+        screen,
+        "util.vert", "mesh.vert",
+        "fragment_output.frag", "mesh.frag",
+        "lighting.frag",
+        view = view
+    )
+    return shader
 end
