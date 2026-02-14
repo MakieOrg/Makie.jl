@@ -29,7 +29,12 @@ function GLVertexArray(bufferdict::Dict{Symbol, GLBuffer}, program::GLProgram, i
 
     # All required vertex buffers must exist
     if !all(name -> haskey(bufferdict, name), buffernames)
-        error("Could not construct VertexArray - not all buffers are available. \n  Required: $buffernames\n  Buffers: $bufferdict")
+        shader_names = [string(shader.name) for shader in program.shader]
+        error(
+            "Could not construct VertexArray - not all buffers are available." *
+            "\n  Required: $buffernames\n  Buffers: $bufferdict" *
+            "\n  Shaders: $shader_names"
+        )
     end
 
     vao = GLVertexArray(program.context, buffernames)
