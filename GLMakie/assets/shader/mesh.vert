@@ -7,12 +7,11 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 {{vertices_type}} vertices;
 {{vertex_color_type}} vertex_color;
 {{texturecoordinates_type}} texturecoordinates;
+{{normals_type}} normals;
 
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 uniform bool interpolate_in_fragment_shader = false;
-
-in vec3 normals;
 
 uniform mat4 projection, view, model;
 
@@ -20,6 +19,8 @@ uniform int num_clip_planes;
 uniform vec4 clip_planes[8];
 
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection);
+void render(vec4 position_world, Nothing normal, mat4 view, mat4 projection);
+
 vec4 get_color_from_cmap(float value, sampler1D color_map, vec2 colorrange);
 
 uniform uint objectid;
