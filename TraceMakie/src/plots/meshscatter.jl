@@ -129,9 +129,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     end
 
     # 2. Positions/scale/rotation/model → transform matrices (independent of color)
-    register_computation!(attr, [:positions, :markersize, :rotation, :model], [:trace_transforms]) do args, changed, last
-        isempty(args.positions) && return (Mat4f[],)
-        return (meshscatter_transforms(args.positions, args.markersize, args.rotation, Mat4f(args.model)),)
+    # positions_transformed_f32c has model+f32c applied as needed; model_f32c is the residual.
+    register_computation!(attr, [:positions_transformed_f32c, :markersize, :rotation, :model_f32c], [:trace_transforms]) do args, changed, last
+        isempty(args.positions_transformed_f32c) && return (Mat4f[],)
+        return (meshscatter_transforms(args.positions_transformed_f32c, args.markersize, args.rotation, Mat4f(args.model_f32c)),)
     end
 
     # 3. Color → materials (independent of transforms)

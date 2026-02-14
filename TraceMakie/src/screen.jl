@@ -119,7 +119,8 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     for state in screen.scene_states
         cleanup!(state)
 
-        if state.overlay_only
+        if state.overlay_only || state.makie_scene === screen.scene
+            # Overlay or scene IS the root — use full size, no viewport clipping
             resolution = Point2f(Float32(w), Float32(h))
             screen_window = nothing
         else
@@ -346,7 +347,108 @@ function _postprocess_and_composite!(screen::Screen)
         _postprocess_scene_state!(screen, scene_state)
         _composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
+
+    # Render overlays for scenes not covered by any renderable scene state
+    # (e.g. Axis3 blockscene decorations: ticks, labels, grid lines).
+    renderable = [s.makie_scene for s in screen.scene_states if !s.overlay_only]
+    if !isempty(renderable)
+        uncovered = _find_uncovered_overlay_scenes(screen.scene, renderable)
+        if !isempty(uncovered)
+            _render_uncovered_overlays!(screen, uncovered)
+        end
+    end
+
     return Array(screen.output_buffer)
+end
+
+# Render overlay plots from scenes not covered by any renderable scene state
+# into a root-sized overlay buffer and composite onto output_buffer.
+function _render_uncovered_overlays!(screen::Screen, uncovered_scenes)
+    output = screen.output_buffer
+    root_scene = screen.scene
+    root_w, root_h = size(root_scene)
+    root_res = Vec2f(Float32(root_w), Float32(root_h))
+    ka_backend = screen.config.backend
+
+    # Root-sized overlay and depth buffers
+    overlay_buf = Overlay.create_overlay_buffer(ka_backend, (root_h, root_w))
+    depth_buf = KernelAbstractions.allocate(ka_backend, Float32, root_h, root_w)
+    fill!(depth_buf, Float32(1e30))
+
+    # Transfer depth from each renderable scene state into root depth buffer
+    # so uncovered overlays are properly occluded by ray-traced geometry.
+    for scene_state in screen.scene_states
+        scene_state.overlay_only && continue
+        _blit_depth_to_root!(depth_buf, scene_state, root_scene, ka_backend)
+    end
+
+    has_overlay = Ref(false)
+    gpu_atlas_ref = Ref{Any}(nothing)
+    atlas_w_ref = Ref{Int32}(Int32(0))
+    atlas_h_ref = Ref{Int32}(Int32(0))
+
+    for uscene in uncovered_scenes
+        poll_all_plots(screen, uscene)
+        ctx = _create_raster_context_remapped(uscene, root_res)
+        remap = _compute_viewport_remap(uscene, root_res)
+        _render_scene_overlay_plots!(
+            overlay_buf, depth_buf, ctx, uscene, remap,
+            gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
+        )
+    end
+
+    if has_overlay[]
+        Overlay.composite!(output, overlay_buf)
+    end
+end
+
+# Copy a renderable scene's film depth buffer into the root-sized depth buffer
+# at the correct viewport position.
+@kernel function _blit_depth_kernel!(dst, @Const(src),
+                                     dst_r0::Int32, dst_c0::Int32,
+                                     src_r0::Int32, src_c0::Int32)
+    ix, iy = @index(Global, NTuple)
+    dr = dst_r0 + Int32(ix) - Int32(1)
+    dc = dst_c0 + Int32(iy) - Int32(1)
+    sr = src_r0 + Int32(ix) - Int32(1)
+    sc = src_c0 + Int32(iy) - Int32(1)
+    @inbounds dst[dr, dc] = src[sr, sc]
+end
+
+function _blit_depth_to_root!(root_depth, scene_state, root_scene, backend)
+    src_depth = scene_state.film.depth
+    out_h, out_w = size(root_depth)
+    vh, vw = size(src_depth)
+
+    if scene_state.makie_scene === root_scene
+        col_start = 1
+        row_start = 1
+    else
+        vp = Makie.viewport(scene_state.makie_scene)[]
+        vx, vy = vp.origin
+        fig_x = max(0f0, Float32(vx))
+        fig_y = max(0f0, Float32(vy))
+        col_start = Int(round(fig_x)) + 1
+        row_start = out_h - Int(round(fig_y)) - vh + 1
+    end
+
+    src_row_off = max(0, 1 - row_start)
+    src_col_off = max(0, 1 - col_start)
+    dst_r0 = max(1, row_start)
+    dst_c0 = max(1, col_start)
+    dst_r1 = min(out_h, row_start + vh - 1)
+    dst_c1 = min(out_w, col_start + vw - 1)
+
+    (dst_r0 > dst_r1 || dst_c0 > dst_c1) && return
+
+    ndrange = (dst_r1 - dst_r0 + 1, dst_c1 - dst_c0 + 1)
+    _blit_depth_kernel!(backend)(
+        root_depth, src_depth,
+        Int32(dst_r0), Int32(dst_c0),
+        Int32(src_row_off + 1), Int32(src_col_off + 1);
+        ndrange=ndrange,
+    )
+    KernelAbstractions.synchronize(backend)
 end
 
 @kernel function _composite_kernel!(output, @Const(sub_image),
@@ -362,16 +464,21 @@ end
 
 function _composite_scene!(output::AbstractMatrix{RGB{Float32}}, scene_state::TraceMakieState, root_scene::Makie.Scene)
     sub_image = scene_state.colorbuffer_tmp
-    vp = Makie.viewport(scene_state.makie_scene)[]
     out_h, out_w = size(output)
-
-    vx, vy = vp.origin
-    fig_x = max(0f0, vx)
-    fig_y = max(0f0, vy)
     vh, vw = size(sub_image)
 
-    col_start = Int(round(fig_x)) + 1
-    row_start = out_h - Int(round(fig_y)) - vh + 1
+    if scene_state.makie_scene === root_scene
+        # Scene IS the root — no viewport offset needed
+        col_start = 1
+        row_start = 1
+    else
+        vp = Makie.viewport(scene_state.makie_scene)[]
+        vx, vy = vp.origin
+        fig_x = max(0f0, Float32(vx))
+        fig_y = max(0f0, Float32(vy))
+        col_start = Int(round(fig_x)) + 1
+        row_start = out_h - Int(round(fig_y)) - vh + 1
+    end
 
     src_row_off = max(0, 1 - row_start)
     src_col_off = max(0, 1 - col_start)
@@ -589,7 +696,7 @@ function interactive_window(root_scene::Makie.Scene;
     root_w, root_h = size(root_scene)
     overlay_scene = Makie.Scene(root_scene; camera=Makie.campixel!)
     dummy = fill(RGB{Float32}(0, 0, 0), root_h, root_w)
-    imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, uv_transform=(:rotr90, :flip_y))
+    imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, uv_transform=(:rotr90, :flip_y), overdraw=true)
 
     last_root_size = Ref((root_w, root_h))
     running = Threads.Atomic{Bool}(true)

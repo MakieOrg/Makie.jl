@@ -32,10 +32,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         return ((color=color, linewidth=lw),)
     end
 
-    # 3. Combine → trace_renderobject
-    register_computation!(attr, [:trace_overlay_positions, :trace_overlay_style], [:trace_renderobject]) do args, changed, last
+    # 3. Combine → trace_renderobject (include model_f32c for overlay projection)
+    register_computation!(attr, [:trace_overlay_positions, :trace_overlay_style, :model_f32c], [:trace_renderobject]) do args, changed, last
         positions = args.trace_overlay_positions
         style = args.trace_overlay_style
+        model = Mat4f(args.model_f32c)
         n = length(positions)
         n < 2 && return (nothing,)
         backend = screen.config.backend
@@ -55,6 +56,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
             positions = positions,
             style = style,
             buffers = buffers,
+            model = model,
         ),)
     end
 end
@@ -79,10 +81,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         return ((color=color, linewidth=lw),)
     end
 
-    # 3. Combine → trace_renderobject
-    register_computation!(attr, [:trace_overlay_positions, :trace_overlay_style], [:trace_renderobject]) do args, changed, last
+    # 3. Combine → trace_renderobject (include model_f32c for overlay projection)
+    register_computation!(attr, [:trace_overlay_positions, :trace_overlay_style, :model_f32c], [:trace_renderobject]) do args, changed, last
         positions = args.trace_overlay_positions
         style = args.trace_overlay_style
+        model = Mat4f(args.model_f32c)
         n = length(positions)
         n < 2 && return (nothing,)
         backend = screen.config.backend
@@ -102,6 +105,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
             positions = positions,
             style = style,
             buffers = buffers,
+            model = model,
         ),)
     end
 end

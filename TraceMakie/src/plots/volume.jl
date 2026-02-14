@@ -95,10 +95,23 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
         return (Float32.(args.volume),)
     end
 
-    # 2. Spatial + colormap + material params → volume config
-    register_computation!(attr, [:x, :y, :z, :colormap, :colorrange, :material], [:trace_volume_config]) do args, changed, last
+    # 2. Spatial + colormap + material params + model → volume config
+    # model_f32c (aliased from model for Volume) places the volume in world space.
+    register_computation!(attr, [:x, :y, :z, :colormap, :colorrange, :material, :model_f32c], [:trace_volume_config]) do args, changed, last
         origin = Point3f(Float32(args.x[1]), Float32(args.y[1]), Float32(args.z[1]))
         extent = Vec3f(Float32(args.x[2]) - origin[1], Float32(args.y[2]) - origin[2], Float32(args.z[2]) - origin[3])
+
+        # Transform bounding box by model_f32c for correct world-space placement (Axis3 etc.)
+        model = Mat4f(args.model_f32c)
+        if model != Mat4f(I)
+            p1 = model * Vec4f(origin..., 1f0)
+            p2 = model * Vec4f((origin + extent)..., 1f0)
+            tp1 = Point3f(p1[1] / p1[4], p1[2] / p1[4], p1[3] / p1[4])
+            tp2 = Point3f(p2[1] / p2[4], p2[2] / p2[4], p2[3] / p2[4])
+            origin = Point3f(min.(tp1, tp2))
+            extent = Vec3f(max.(tp1, tp2) - min.(tp1, tp2))
+        end
+
         params = extract_volume_params(args.material)
         return ((origin=origin, extent=extent, colormap=args.colormap, colorrange=args.colorrange, params=params),)
     end

@@ -7,13 +7,17 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     hikari_scene = screen.state.hikari_scene
     state = screen.state
 
-    # 1. Mesh → processed mesh data (only recomputes when mesh geometry changes)
-    register_computation!(attr, [:mesh], [:trace_mesh_data]) do args, changed, last
+    # 1. Mesh → processed mesh data
+    # Use positions_transformed_f32c (which has model+f32c applied as needed) + decomposed
+    # topology from the mesh. For MetaMesh (defensive, normally split by recipe), use raw mesh.
+    register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals, :texturecoordinates], [:trace_mesh_data]) do args, changed, last
         mesh_val = args.mesh
         if mesh_val isa GeometryBasics.MetaMesh
             return (_process_metamesh(mesh_val),)
         else
-            return (Raycore.TriangleMesh(mesh_val),)
+            return (_build_mesh_from_decomposed(
+                args.positions_transformed_f32c, args.faces,
+                args.normals, args.texturecoordinates),)
         end
     end
 
@@ -22,11 +26,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         return (color_to_texture(args.color, plot),)
     end
 
-    # 3. TLAS management: combine mesh data, color texture, model transform
-    register_computation!(attr, [:trace_mesh_data, :trace_color_tex, :model], [:trace_renderobject]) do args, changed, last
+    # 3. TLAS management: combine mesh data, color texture, model_f32c transform
+    # model_f32c is identity when model was baked into positions, otherwise the full model.
+    register_computation!(attr, [:trace_mesh_data, :trace_color_tex, :model_f32c], [:trace_renderobject]) do args, changed, last
         mesh_data = args.trace_mesh_data
         color_tex = args.trace_color_tex
-        transform = Mat4f(args.model)
+        transform = Mat4f(args.model_f32c)
 
         if isnothing(last) || isnothing(last.trace_renderobject)
             # First run: create and push to scene
@@ -53,7 +58,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
             state.needs_film_clear = true
         end
 
-        if changed.model
+        if changed.model_f32c
             _mesh_update_transform!(hikari_scene, state, robj, transform)
         end
 
@@ -62,6 +67,22 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 end
 
 # --- Internal helpers ---
+
+# Build a TriangleMesh from decomposed arrays (pre-transformed positions + original topology)
+function _build_mesh_from_decomposed(positions, faces, normals, texturecoordinates)
+    kwargs = Dict{Symbol, Any}()
+    if !isnothing(normals)
+        kwargs[:normals] = Vec3f.(normals)
+    end
+    if !isnothing(texturecoordinates)
+        kwargs[:uv] = Vec2f.(texturecoordinates)
+    end
+    mesh = GeometryBasics.Mesh(Point3f.(positions), faces; kwargs...)
+    if isnothing(normals)
+        mesh = GeometryBasics.normal_mesh(mesh)
+    end
+    return Raycore.TriangleMesh(mesh)
+end
 
 # Process MetaMesh into submeshes with material info
 function _process_metamesh(mesh_val::GeometryBasics.MetaMesh)
@@ -89,6 +110,10 @@ function _mesh_push!(hikari_scene, state, plot, mesh_data, color_tex, transform)
 end
 
 function _mesh_push_single!(hikari_scene, state, plot, tmesh, color_tex, transform)
+    # Convert per-vertex color vectors to VertexColorTexture using mesh topology
+    if color_tex isa AbstractVector{<:Colorant}
+        color_tex = build_vertex_color_texture(color_tex, tmesh)
+    end
     mat = extract_material(plot, color_tex)
     mat_idx = push!(hikari_scene, mat)
     handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
@@ -105,16 +130,35 @@ function _mesh_push_metamesh!(hikari_scene, state, plot, mesh_data, color_tex, t
     hikari_materials = Dict{String, Any}()
     default_mat = nothing
 
+    # Check for user-provided material overrides (Dict{String, Material})
+    material_overrides = nothing
+    if haskey(plot, :material_overrides) && !isnothing(to_value(plot.material_overrides))
+        material_overrides = to_value(plot.material_overrides)
+    end
+
     for (name, tmesh) in zip(mesh_data.material_names, mesh_data.tmeshes)
         mat = get!(hikari_materials, name) do
-            if haskey(mesh_data.materials_dict, name)
-                glb_material_to_hikari(mesh_data.materials_dict[name])
-            else
-                if isnothing(default_mat)
-                    default_mat = extract_material(plot, color_tex)
+            # Priority 1: User-provided material override for this submesh name
+            if !isnothing(material_overrides) && haskey(material_overrides, name)
+                override_mat = material_overrides[name]
+                # Merge with GLB texture if available (e.g. apply diffuse map to EmissiveMaterial.Le)
+                if haskey(mesh_data.materials_dict, name)
+                    glb_tex = extract_glb_texture(mesh_data.materials_dict[name])
+                    if !isnothing(glb_tex)
+                        return merge_color_with_material(glb_tex, override_mat)
+                    end
                 end
-                default_mat
+                return override_mat
             end
+            # Priority 2: Convert GLB material dict to Hikari material
+            if haskey(mesh_data.materials_dict, name)
+                return glb_material_to_hikari(mesh_data.materials_dict[name])
+            end
+            # Priority 3: Fall back to plot-level color/material
+            if isnothing(default_mat)
+                default_mat = extract_material(plot, color_tex)
+            end
+            return default_mat
         end
 
         mat_idx = push!(hikari_scene, mat)
@@ -142,7 +186,7 @@ end
 
 function _mesh_update_transform!(hikari_scene, state, robj, transform)
     tlas = hikari_scene.accel
-    backend = KernelAbstractions.get_backend(tlas.instances.transform)
+    backend = tlas.backend
 
     if hasproperty(robj, :handles)
         for idx in robj.instance_indices

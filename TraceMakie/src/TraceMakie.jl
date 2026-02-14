@@ -212,7 +212,7 @@ function to_trace_camera(scene::Makie.Scene, film; screen_window=nothing)
             )
             return Hikari.PerspectiveCamera(
                 view, sw,
-                0.0f0, 1.0f0, 0.0f0, 1.0f6, Float32(fov),
+                0.0f0, 1.0f0, 0.0f0, 10f0^6, Float32(fov),
                 film
             )
         end
@@ -336,7 +336,14 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
     integrator = screen.config.integrator
 
     root_w, root_h = size(root_scene)
-    resolution, screen_window = _compute_scene_resolution(rscene, root_w, root_h)
+    if rscene === root_scene
+        # Scene IS the root — use full size, no viewport clipping.
+        # The viewport origin may be a Figure-level offset that doesn't apply here.
+        resolution = Point2f(Float32(root_w), Float32(root_h))
+        screen_window = nothing
+    else
+        resolution, screen_window = _compute_scene_resolution(rscene, root_w, root_h)
+    end
 
     film = Hikari.Film(
         resolution;
@@ -431,6 +438,21 @@ function _collect_overlay!(result, scene::Makie.Scene)
     end
 end
 
+# Find overlay-eligible scenes not covered by any renderable scene.
+# A scene is "covered" if it is a descendant of (or equal to) a renderable scene.
+function _find_uncovered_overlay_scenes(root::Makie.Scene, renderable::Vector{Makie.Scene})
+    all_overlay = collect_overlay_scenes(root)
+    return filter(all_overlay) do s
+        !any(r -> _scene_contains(r, s), renderable)
+    end
+end
+
+_is_overlay_plot(::Makie.Plot{Makie.scatter}) = true
+_is_overlay_plot(::Makie.Plot{Makie.linesegments}) = true
+_is_overlay_plot(::Makie.Plot{Makie.lines}) = true
+_is_overlay_plot(::Makie.Plot{Makie.text}) = true
+_is_overlay_plot(::Makie.Plot) = false
+
 function init_scene!(screen, mscene::Makie.Scene)
     ka_backend = screen.config.backend
 
@@ -452,6 +474,19 @@ function init_scene!(screen, mscene::Makie.Scene)
 
             poll_all_plots(screen, rscene)
             Raycore.sync!(state.hikari_scene.accel)
+        end
+
+        # Process overlay-eligible scenes not covered by any renderable scene
+        # (e.g. Axis3 blockscene with EmptyCamera that holds decoration plots).
+        uncovered = _find_uncovered_overlay_scenes(mscene, renderable)
+        for uscene in uncovered
+            for p in uscene.plots
+                Makie.for_each_atomic_plot(p) do ap
+                    _is_overlay_plot(ap) || return nothing
+                    haskey(ap, :trace_renderobject) || draw_atomic(screen, uscene, ap)
+                end
+            end
+            poll_all_plots(screen, uscene)
         end
     else
         # Overlay-only path: single state for root scene, all overlay scenes

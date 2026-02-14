@@ -85,9 +85,11 @@ function _dispatch_overlay_plot!(
     gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
 )
     haskey(p, :trace_renderobject) || return nothing
+    p.visible[] || return nothing
     robj = try
         p[:trace_renderobject][]
-    catch
+    catch e
+        @warn "TraceMakie: failed to access trace_renderobject for $(typeof(p))" exception=(e, catch_backtrace())
         return nothing
     end
     isnothing(robj) && return nothing
@@ -265,8 +267,9 @@ end
 # =============================================================================
 
 function _render_overlay_linesegments!(overlay, depth_buffer, ctx, robj)
+    effective_ctx = _apply_model_to_ctx(ctx, robj)
     Overlay.rasterize_lines!(
-        overlay, depth_buffer, ctx,
+        overlay, depth_buffer, effective_ctx,
         robj.positions, robj.style.color, robj.style.linewidth,
         robj.buffers;
         connect=false,
@@ -274,11 +277,28 @@ function _render_overlay_linesegments!(overlay, depth_buffer, ctx, robj)
 end
 
 function _render_overlay_lines!(overlay, depth_buffer, ctx, robj)
+    effective_ctx = _apply_model_to_ctx(ctx, robj)
     Overlay.rasterize_lines!(
-        overlay, depth_buffer, ctx,
+        overlay, depth_buffer, effective_ctx,
         robj.positions, robj.style.color, robj.style.linewidth,
         robj.buffers;
         connect=true,
+    )
+end
+
+# Apply model_f32c from a renderobject to the raster context's view_proj.
+# This ensures positions_transformed_f32c are correctly projected when model
+# is not baked into positions (the common case for Axis3 etc.).
+function _apply_model_to_ctx(ctx, robj)
+    if !hasproperty(robj, :model)
+        return ctx
+    end
+    model = robj.model
+    model == Mat4f(I) && return ctx
+    vp = ctx.view_proj * model
+    return Overlay.RasterContext(
+        vp, ctx.projection, ctx.view_mat, ctx.resolution;
+        px_per_unit=ctx.px_per_unit, near=ctx.near, far=ctx.far,
     )
 end
 
