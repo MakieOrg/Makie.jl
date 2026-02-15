@@ -170,8 +170,8 @@ end
 argument_dims(::Type{<:Annotation}, x, y) = (1, 2)
 argument_dims(::Type{<:Annotation}, ::VecTypes{2}) = ((1, 2),)
 argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}) = ((1, 2),)
-argument_dims(::Type{<:Annotation}, ::VecTypes{2}, ::VecTypes{2}) = ((1, 2), (1, 2),)
-argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}, ::VecTypesVector{2}) = ((1, 2), (1, 2),)
+argument_dims(::Type{<:Annotation}, ::VecTypes{2}, ::VecTypes{2}) = ((1, 2), (1, 2))
+argument_dims(::Type{<:Annotation}, ::VecTypesVector{2}, ::VecTypesVector{2}) = ((1, 2), (1, 2))
 argument_dims(::Type{<:Annotation}, x, y, x2, y2) = (1, 2, 1, 2)
 
 function convert_arguments(::Type{<:Annotation}, x::Real, y::Real)
