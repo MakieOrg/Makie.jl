@@ -354,10 +354,7 @@ end
 
         test_plot(qqplot, rand(100) .* u"m", rand(100) .* u"cm")
         # qqplot(rand(100) .* u"cm", rand(100)) # doesn't work, shouldn't work?
-        test_plot(
-            qqnorm, rand(100) .* u"cm",
-            dims = (2,)
-        )
+        test_plot(qqnorm, rand(100) .* u"cm", dims = (2,))
         test_plot(
             ecdfplot, 10 .* rand(100) .* u"m",
             dims = (1,)
@@ -395,7 +392,7 @@ end
         # Other independent cases
         ps = Point.(x, y)
         test_plot(annotation, ps, text = string.(1:10), dims = ((1, 2),))
-        test_plot(annotation, ps, ps, text = string.(1:10), dims = ((1, 2, 1, 2),))
+        test_plot(annotation, ps, ps, text = string.(1:10), dims = ((1, 2), (1, 2)))
         test_plot(arrows2d, ps, ps, dims = ((1, 2), (1, 2)))
         test_plot(bracket, ps, ps, dims = ((1, 2), (1, 2)))
         test_plot(band, ps, ps, dims = ((1, 2), (1, 2)))

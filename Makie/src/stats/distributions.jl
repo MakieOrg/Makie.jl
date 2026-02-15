@@ -117,8 +117,9 @@ function convert_arguments(::Type{<:QQPlot}, y::RealVector; qqline = :none, dist
     return (points, line)
 end
 
-convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
-    convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
+function convert_arguments(::Type{<:QQNorm}, y; qqline = :none, distribution = Distributions.Normal(0, 1))
+    return convert_arguments(QQPlot, y; qqline = qqline, distribution = distribution)
+end
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)
