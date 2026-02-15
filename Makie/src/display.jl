@@ -55,7 +55,9 @@ function delete_screen!(scene::Scene, screen::MakieScreen)
 end
 
 function render_pipeline_compat!(target, source, defaults)
-    if any(in(keys(source)), (:ssao, :fxaa, :oit)) ||
+    if haskey(source, :render_pipeline)
+        target[:render_pipeline] = source[:render_pipeline]
+    elseif any(in(keys(source)), (:ssao, :fxaa, :oit)) ||
             (to_value(defaults[:render_pipeline]) == automatic)
         ssao = to_value(get(source, :ssao, defaults[:ssao]))
         fxaa = to_value(get(source, :fxaa, defaults[:fxaa]))
