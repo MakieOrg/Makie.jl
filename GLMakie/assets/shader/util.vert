@@ -311,3 +311,23 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection)
     // SSAO + matcap
     o_view_normal = view_normalmatrix * normal;
 }
+
+void render(vec4 position_world, Nothing normal, mat4 view, mat4 projection)
+{
+    process_clip_planes(position_world.xyz);
+
+    // position in view space (as seen from camera)
+    vec4 view_pos = view * position_world;
+    view_pos /= view_pos.w;
+
+    // position in clip space (w/ depth)
+    gl_Position = projection * view_pos;
+    gl_Position.z += gl_Position.w * depth_shift;
+
+    // lighting is irrelevant without normals
+
+    // for SSAO
+    o_view_pos = view_pos.xyz / view_pos.w;
+    // SSAO + matcap
+    o_view_normal = vec3(0);
+}
