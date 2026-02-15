@@ -120,7 +120,7 @@ f
 
 ### Categorical Examples
 
-Categorical values need to be wrapped in `Cateogrical()` when constructing a plot:
+Categorical values need to be wrapped in `Categorical()` when constructing a plot:
 
 ```@figure dc_categorical
 f,a,p = scatter(Categorical([:A, :D, :F]), 1:3, color = :blue, marker = :circle, markersize = 30)
@@ -267,7 +267,7 @@ end
 
 # MyPlot2 has a 4 argument version where the first and last argument
 # do not relate to a dimension
-# (0 means no dimension and trailing 0s can be omited)
+# (0 means no dimension and trailing 0s can be omitted)
 function Makie.argument_dims(::MyPlot2, f, x, y, color_data)
     return (0, 1, 2)
 end
@@ -283,7 +283,7 @@ function Makie.argument_dims(
 end
 
 # These arguments should never be dim converted
-Makie.argument_dims(::MyPlot, unconvertable) = nothing
+Makie.argument_dims(::MyPlot, unconvertible) = nothing
 ```
 
 Note that `argument_dims` handle `x, y`, `x, y, z` vectors as well as their point-like representations automatically.
