@@ -91,7 +91,7 @@ end
 
 function merge_color_with_material(color_tex, material::Hikari.MediumInterface)
     merged_inner = merge_color_with_material(color_tex, material.material)
-    Hikari.MediumInterface(merged_inner; inside=material.inside, outside=material.outside)
+    Hikari.MediumInterface(merged_inner; inside=material.inside, outside=material.outside, arealight=material.arealight)
 end
 
 function merge_color_with_material(color_tex, material::Hikari.EmissiveMaterial)
@@ -174,24 +174,6 @@ end
 # GLB material conversion
 # =============================================================================
 
-"""
-Extract the diffuse color texture from a GLB material dictionary.
-Returns a Hikari texture (Texture or ConstTexture) or nothing if no diffuse info is present.
-"""
-function extract_glb_texture(mat_dict::Dict{String, Any})
-    if haskey(mat_dict, "diffuse map")
-        diffuse_map = mat_dict["diffuse map"]
-        if haskey(diffuse_map, "image")
-            return Hikari.Texture(to_spectrum(diffuse_map["image"]))
-        end
-    end
-    if haskey(mat_dict, "diffuse")
-        diffuse = mat_dict["diffuse"]
-        return Hikari.ConstTexture(to_spectrum(RGBf(diffuse[1], diffuse[2], diffuse[3])))
-    end
-    return nothing
-end
-
 function _has_nonzero_emissive(mat_dict::Dict{String, Any})
     if haskey(mat_dict, "emissive")
         e = mat_dict["emissive"]
@@ -200,54 +182,60 @@ function _has_nonzero_emissive(mat_dict::Dict{String, Any})
     return false
 end
 
-function glb_material_to_hikari(mat_dict::Dict{String, Any})
-    # Check for emissive properties first
+function _build_emissive_material(mat_dict::Dict{String, Any})
     has_emissive_map = haskey(mat_dict, "emissive map")
-    has_emissive = _has_nonzero_emissive(mat_dict) || has_emissive_map
-
-    if has_emissive
-        # Build emissive Le texture
-        if has_emissive_map
-            emissive_map = mat_dict["emissive map"]
-            if haskey(emissive_map, "image")
-                Le_tex = Hikari.Texture(to_spectrum(emissive_map["image"]))
-                # Apply emissive factor as scale if present
-                emissive_factor = get(mat_dict, "emissive", [1.0, 1.0, 1.0])
-                scale = max(emissive_factor[1], emissive_factor[2], emissive_factor[3])
-                return Hikari.EmissiveMaterial(Le_tex, Float32(max(scale, 1f0)), true)
-            end
-        end
-        # Emissive color only (no map)
-        if haskey(mat_dict, "emissive")
-            e = mat_dict["emissive"]
-            Le_tex = Hikari.ConstTexture(Hikari.RGBSpectrum(Float32(e[1]), Float32(e[2]), Float32(e[3])))
-            return Hikari.EmissiveMaterial(Le_tex, 1f0, true)
+    if has_emissive_map
+        emissive_map = mat_dict["emissive map"]
+        if haskey(emissive_map, "image")
+            Le_tex = Hikari.Texture(to_spectrum(emissive_map["image"]))
+            emissive_factor = get(mat_dict, "emissive", [1.0, 1.0, 1.0])
+            scale = max(emissive_factor[1], emissive_factor[2], emissive_factor[3])
+            return Hikari.EmissiveMaterial(Le_tex, Float32(max(scale, 1f0)), true)
         end
     end
+    if haskey(mat_dict, "emissive")
+        e = mat_dict["emissive"]
+        Le_tex = Hikari.ConstTexture(Hikari.RGBSpectrum(Float32(e[1]), Float32(e[2]), Float32(e[3])))
+        return Hikari.EmissiveMaterial(Le_tex, 1f0, true)
+    end
+    return nothing
+end
 
-    # Non-emissive: diffuse material
+function _build_diffuse_material(mat_dict::Dict{String, Any})
+    roughness = Float32(get(mat_dict, "roughness", 0.5f0))
+
     if haskey(mat_dict, "diffuse map")
         diffuse_map = mat_dict["diffuse map"]
         if haskey(diffuse_map, "image")
             img = diffuse_map["image"]
             tex = Hikari.Texture(to_spectrum(img))
-            roughness = get(mat_dict, "roughness", 0.5f0)
-            return Hikari.MatteMaterial(tex, Hikari.ConstTexture(Float32(roughness) * 90f0))
+            # Textured materials use MatteMaterial (supports stochastic alpha pass-through)
+            return Hikari.MatteMaterial(tex, Hikari.ConstTexture(roughness * 90f0))
         end
     end
 
-    if haskey(mat_dict, "diffuse")
-        diffuse = mat_dict["diffuse"]
-        color = RGBf(diffuse[1], diffuse[2], diffuse[3])
-        tex = Hikari.ConstTexture(to_spectrum(color))
-        roughness = get(mat_dict, "roughness", 0.5f0)
-        return Hikari.MatteMaterial(tex, Hikari.ConstTexture(Float32(roughness) * 90f0))
-    end
+    # Constant color: use explicit diffuse or GLTF default white (1,1,1)
+    diffuse = get(mat_dict, "diffuse", Vec3f(1, 1, 1))
+    color = RGBf(diffuse[1], diffuse[2], diffuse[3])
+    tex = Hikari.ConstTexture(to_spectrum(color))
 
-    return Hikari.MatteMaterial(
-        Hikari.ConstTexture(Hikari.RGBSpectrum(0.8f0, 0.8f0, 0.8f0)),
-        Hikari.ConstTexture(0.0f0)
-    )
+    # CoatedDiffuseMaterial gives proper GLTF PBR appearance (Fresnel specular + diffuse)
+    return Hikari.CoatedDiffuseMaterial(reflectance=tex, roughness=roughness)
+end
+
+function glb_material_to_hikari(mat_dict::Dict{String, Any})
+    has_emissive = _has_nonzero_emissive(mat_dict) || haskey(mat_dict, "emissive map")
+    diffuse_mat = _build_diffuse_material(mat_dict)
+    emissive_mat = has_emissive ? _build_emissive_material(mat_dict) : nothing
+
+    if !isnothing(diffuse_mat) && !isnothing(emissive_mat)
+        return Hikari.MediumInterface(diffuse_mat; arealight=emissive_mat)
+    elseif !isnothing(emissive_mat)
+        return Hikari.MediumInterface(emissive_mat)
+    else
+        # _build_diffuse_material now always returns a material (GLTF default white)
+        return diffuse_mat
+    end
 end
 
 # =============================================================================

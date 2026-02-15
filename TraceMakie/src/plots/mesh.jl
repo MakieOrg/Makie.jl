@@ -72,7 +72,7 @@ end
 function _build_mesh_from_decomposed(positions, faces, normals, texturecoordinates)
     kwargs = Dict{Symbol, Any}()
     if !isnothing(normals)
-        kwargs[:normals] = Vec3f.(normals)
+        kwargs[:normal] = Vec3f.(normals)
     end
     if !isnothing(texturecoordinates)
         kwargs[:uv] = Vec2f.(texturecoordinates)
@@ -84,14 +84,28 @@ function _build_mesh_from_decomposed(positions, faces, normals, texturecoordinat
     return Raycore.TriangleMesh(mesh)
 end
 
-# Process MetaMesh into submeshes with material info
+# Process MetaMesh into a single TriangleMesh with per-face material name mapping.
+# Uses the MetaMesh's view ranges directly (no split_mesh) to build per-face
+# material assignment. Actual scene material indices are set in _mesh_push_metamesh!.
 function _process_metamesh(mesh_val::GeometryBasics.MetaMesh)
     if haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
-        submeshes = GeometryBasics.split_mesh(mesh_val.mesh)
-        tmeshes = [Raycore.TriangleMesh(sm) for sm in submeshes]
+        inner_mesh = mesh_val.mesh
+        views = inner_mesh.views
+        mat_names = mesh_val[:material_names]
+
+        # Build per-face material name vector from view ranges (no split_mesh!)
+        n_faces = length(GeometryBasics.faces(inner_mesh))
+        per_face_mat_names = Vector{String}(undef, n_faces)
+        for (view_range, name) in zip(views, mat_names)
+            per_face_mat_names[view_range] .= name
+        end
+
+        # Convert the already-merged inner mesh directly to TriangleMesh
+        tmesh = Raycore.TriangleMesh(inner_mesh)
+
         return (
-            tmeshes=tmeshes,
-            material_names=mesh_val[:material_names],
+            tmesh=tmesh,
+            per_face_mat_names=per_face_mat_names,
             materials_dict=mesh_val[:materials],
             is_metamesh=true,
         )
@@ -122,55 +136,41 @@ function _mesh_push_single!(hikari_scene, state, plot, tmesh, color_tex, transfo
 end
 
 function _mesh_push_metamesh!(hikari_scene, state, plot, mesh_data, color_tex, transform)
-    handles = Raycore.TLASHandle[]
-    mat_indices = UInt32[]
+    # 1. Create materials for each unique name and get scene indices
+    unique_names = unique(mesh_data.per_face_mat_names)
+    name_to_idx = Dict{String, UInt32}()
     materials = Hikari.Material[]
-    instance_indices = Int[]
-
-    hikari_materials = Dict{String, Any}()
     default_mat = nothing
 
-    # Check for user-provided material overrides (Dict{String, Material})
-    material_overrides = nothing
-    if haskey(plot, :material_overrides) && !isnothing(to_value(plot.material_overrides))
-        material_overrides = to_value(plot.material_overrides)
-    end
-
-    for (name, tmesh) in zip(mesh_data.material_names, mesh_data.tmeshes)
-        mat = get!(hikari_materials, name) do
-            # Priority 1: User-provided material override for this submesh name
-            if !isnothing(material_overrides) && haskey(material_overrides, name)
-                override_mat = material_overrides[name]
-                # Merge with GLB texture if available (e.g. apply diffuse map to EmissiveMaterial.Le)
-                if haskey(mesh_data.materials_dict, name)
-                    glb_tex = extract_glb_texture(mesh_data.materials_dict[name])
-                    if !isnothing(glb_tex)
-                        return merge_color_with_material(glb_tex, override_mat)
-                    end
-                end
-                return override_mat
-            end
-            # Priority 2: Convert GLB material dict to Hikari material
-            if haskey(mesh_data.materials_dict, name)
-                return glb_material_to_hikari(mesh_data.materials_dict[name])
-            end
-            # Priority 3: Fall back to plot-level color/material
+    for name in unique_names
+        mat = if haskey(mesh_data.materials_dict, name)
+            glb_material_to_hikari(mesh_data.materials_dict[name])
+        else
             if isnothing(default_mat)
                 default_mat = extract_material(plot, color_tex)
             end
-            return default_mat
+            default_mat
         end
-
         mat_idx = push!(hikari_scene, mat)
-        handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
-        push!(handles, handle)
-        push!(mat_indices, mat_idx)
+        name_to_idx[name] = mat_idx
         push!(materials, mat)
-        push!(instance_indices, length(hikari_scene.accel.instances))
     end
 
+    # 2. Build per-face material index vector (UInt32 scene indices)
+    material_indices = UInt32[name_to_idx[name] for name in mesh_data.per_face_mat_names]
+
+    # 3. Create TriangleMesh with per-face material indices baked in
+    tmesh = mesh_data.tmesh
+    tmesh_with_mats = Raycore.TriangleMesh(
+        tmesh.vertices, tmesh.indices, tmesh.normals,
+        tmesh.tangents, tmesh.uv, material_indices
+    )
+
+    # 4. Push single mesh — push! reads material_indices per-face
+    handle = push!(hikari_scene.accel, tmesh_with_mats, first(values(name_to_idx)), transform)
+
     state.needs_film_clear = true
-    return (handles=handles, mat_indices=mat_indices, materials=materials, instance_indices=instance_indices)
+    return (handle=handle, materials=materials, instance_idx=length(hikari_scene.accel.instances))
 end
 
 function _mesh_delete_handles!(hikari_scene, robj)

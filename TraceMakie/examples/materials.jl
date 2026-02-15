@@ -137,14 +137,14 @@ begin
     # --- Plastic ---
     plastic_white = Hikari.Plastic(Kd=(0.9, 0.9, 0.9), Ks=(0.4, 0.4, 0.4), roughness=0.15)
 
-    # --- Emissive materials ---
-    emissive_white = Hikari.Emissive(Le=(4, 4, 4))
-    emissive_warm = Hikari.Emissive(Le=(2.0, 1.2, 0.5))
-    emissive_cyan = Hikari.Emissive(Le=(0.3, 1.5, 1.5))
+    # --- Emissive materials (pure emitters via MediumInterface) ---
+    emissive_white = Hikari.MediumInterface(Hikari.Emissive(Le=(4, 4, 4)))
+    emissive_warm = Hikari.MediumInterface(Hikari.Emissive(Le=(2.0, 1.2, 0.5)))
+    emissive_cyan = Hikari.MediumInterface(Hikari.Emissive(Le=(0.3, 1.5, 1.5)))
 
     # Textured emissive with Perlin pattern
     emissive_pattern_tex = make_perlin_rgb_texture(64; scale=5.0, base_color=(1.5, 0.3, 1.2), variation=0.8)
-    textured_emissive = Hikari.Emissive(Le=Hikari.Texture(emissive_pattern_tex))
+    textured_emissive = Hikari.MediumInterface(Hikari.Emissive(Le=Hikari.Texture(emissive_pattern_tex)))
 
     # --- Simple materials (back) ---
     diffuse_gray = Hikari.Diffuse(Kd=(0.6, 0.6, 0.6))
@@ -213,10 +213,10 @@ TraceMakie.activate!(
     gamma=2.2f0,
     sensor=sensor
 )
-nsamples = 100
+nsamples = 1000
 integrator = Hikari.VolPath(samples=nsamples, max_depth=50)
 img = @time colorbuffer(ax; backend=TraceMakie, integrator=integrator)
-save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp.png"), img)
-# Array: 23s
+save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
+# Array: 23s (10 samples)
 # ROCarray:1.4s
 img
