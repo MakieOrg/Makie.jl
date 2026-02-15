@@ -189,7 +189,6 @@ end
 end
 
 @reference_test "render stage parameters with SSAO postprocessor" begin
-    GLMakie.closeall() # (mostly?) for recompilation of plot shaders
     GLMakie.activate!(ssao = true)
     f = Figure()
     ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
@@ -208,7 +207,6 @@ end
 end
 
 @reference_test "render stage parameters without SSAO postprocessor" begin
-    GLMakie.closeall()
     GLMakie.activate!(ssao = false)
     f = Figure()
     ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
@@ -227,8 +225,6 @@ end
 end
 
 @reference_test "Custom stage in render pipeline" begin
-    GLMakie.closeall()
-
     function GLMakie.construct(::Val{:Tint}, screen, framebuffer, inputs, parent)
         frag_shader = """
         {{GLSL_VERSION}}
