@@ -317,7 +317,7 @@ end
 end
 
 # activate!() changes the default, so we need a reset here
-GLMakie.activate!(render_pipeline = Makie.default_pipeline())
+GLMakie.activate!(render_pipeline = Makie.automatic)
 
 @reference_test "Dynamic Render Pipeline replacement" begin
     scene = Scene(size = (300, 300))
