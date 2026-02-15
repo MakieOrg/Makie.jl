@@ -85,7 +85,7 @@ end
 
 Plot a histogram of `values`.
 """
-@recipe Hist (values::RealVector,) begin
+@recipe Hist (values::Union{RealVector, Vector{<:RealVector}},) begin
     """
     Sets the number of bins if set to an integer or the edges of bins if set to
     an sorted collection of real numbers.
