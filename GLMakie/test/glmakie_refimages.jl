@@ -188,8 +188,19 @@ end
     scene
 end
 
+# The kernel uses random which creates differences between CI runs without using
+# StableRNG
+function ssao_pipeline()
+    pipeline = Makie.default_pipeline(ssao = true)
+    attr = pipeline.stages[3].attributes
+    attr[:kernel] = Makie.generate_ssao_kernel(
+        attr[:N_samples][], attr[:lerp_min][], attr[:lerp_max][], RNG.STABLE_RNG
+    )
+    return pipeline
+end
+
 @reference_test "render stage parameters with SSAO postprocessor" begin
-    GLMakie.activate!(ssao = true)
+    GLMakie.activate!(render_pipeline = ssao_pipeline())
     f = Figure()
     ps = [Point3f(x, y, sin(x * y + y - x)) for x in range(-2, 2, length = 21) for y in range(-2, 2, length = 21)]
     for (i, ssao) in zip(1:2, (false, true))

@@ -65,6 +65,16 @@ function TransparentPlotRenderStage(; oit = true)
     return RenderStage(Symbol("OIT Render"); oit, outputs)
 end
 
+# for testing with a consistent kernel we want to be able to generate it from
+# a StableRNG
+function generate_ssao_kernel(N_samples = 64, lerp_min = 0.1f0, lerp_max = 1.0f0, RNG = Random.default_rng())
+   return map(1:N_samples) do i
+        n = normalize(Vec3f(2f0, 2f0, 1f0) .* rand(RNG, Vec3f) .- Vec3f(1f0, 1f0, 0f0))
+        scale = lerp_min + (lerp_max - lerp_min) * Float32(i / N_samples)^2
+        return Vec3f(scale * rand() * n)
+    end
+end
+
 """
     SSAOStage()
 
@@ -76,7 +86,22 @@ function SSAOStage(; kwargs...)
         :position => BufferFormat(3, Float32),
         :normal => BufferFormat(3, Float16),
     ]
-    stage1 = RenderStage(:SSAO1, inputs, [:occlusion => BufferFormat(1, N0f8)]; kwargs...)
+
+    N_samples = get(kwargs, :N_samples, 64)
+    lerp_min = get(kwargs, :lerp_min, 0.1f0)
+    lerp_max = get(kwargs, :lerp_min, 1.0f0)
+    kernel = get(kwargs, :kernel) do
+        generate_ssao_kernel(N_samples, lerp_min, lerp_max)
+    end
+    noise = map([(x, y) for x in 1:4, y in 1:4]) do (x, y)
+        s, c = sincos(2pi * rand())
+        return Vec2f(c, s)
+    end
+
+    stage1 = RenderStage(
+        :SSAO1, inputs, [:occlusion => BufferFormat(1, N0f8)];
+        N_samples, lerp_min, lerp_max, kernel = kernel, noise = noise,
+    )
 
     inputs = [
         :occlusion => BufferFormat(1, N0f8),

@@ -387,15 +387,9 @@ function construct(::Val{:SSAO1}, screen, framebuffer, inputs, parent)
     require_context(screen.glscreen)
 
     # SSAO setup
-    N_samples = 64
-    lerp_min = 0.1f0
-    lerp_max = 1.0f0
-    kernel = map(1:N_samples) do i
-        n = normalize([2.0rand() .- 1.0, 2.0rand() .- 1.0, rand()])
-        scale = lerp_min + (lerp_max - lerp_min) * (i / N_samples)^2
-        return Vec3f(scale * rand() * n)
-    end
-    noise = [normalize(Vec2f(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4]
+    kernel = parent.attributes[:kernel]
+    noise = parent.attributes[:noise]
+    N_samples = length(kernel)
 
     # compute occlusion
     shader = LazyShader(
