@@ -8,7 +8,6 @@ mutable struct DataInspector
     last_mouseposition::Tuple{Float64, Float64}
     last_selection::UInt64
     last_plot_element::PlotElement
-    update_counter::Vector{Int}
 
     inspector_attributes::Attributes
     tooltip_attributes::Attributes
@@ -27,7 +26,6 @@ mutable struct DataInspector
             parent,
             persistent, dynamic, plot_cache,
             (0.0, 0.0), 0x00, PlotElement((persistent,), IndexedAccessor(0, 0)),
-            [0, 0, 0, 0, 0],
             inspector_attr, tooltip_attr, indicator_attr,
             obsfuncs, channel
         )
@@ -37,6 +35,8 @@ mutable struct DataInspector
         return inspector
     end
 end
+
+Base.show(io::IO, ::MIME"text/plain", inspector::DataInspector) = print(io, "DataInspector()")
 
 function destroy!(inspector::DataInspector)
     foreach(off, inspector.obsfuncs)
@@ -208,14 +208,12 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
                     Base.showerror(Base.stderr, err)
                     rethrow(err)
                 end
-                # @info inspector.update_counter
             end
         end
     end
     inspector.update_channel = channel
     e = events(parent)
     tick_listener = on(e.tick, priority = tick_priority) do tick
-        inspector.update_counter[1] += 1 # TODO: for performance checks, remove later
 
         # This should be one frame behind in GLMakie. Maybe we should make ticks
         # predictive based on whether renderobjects need updates.
@@ -224,7 +222,6 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
         tooltip_needs_to_move = inspector.last_mouseposition != e.mouseposition[]
 
         if has_rendered || tooltip_needs_to_move
-            inspector.update_counter[2] += 1 # TODO: for performance checks, remove later
             empty_channel!(channel) # remove queued up hover requests
             put!(channel, nothing)
         end
@@ -265,13 +262,11 @@ function update_tooltip!(di::DataInspector)
         return
     end
 
-    di.update_counter[3] += 1 # TODO: for performance checks, remove later
 
     for (plot, idx) in pick_sorted(di.parent, mp, di.inspector_attributes.range[])
         # Areas of scenes can overlap so we need to make sure the plot is
         # actually in the correct scene
         if parent_scene(plot) == di.parent && plot.inspectable[]
-            di.update_counter[4] += 1 # TODO: for performance checks, remove later
             if update_tooltip!(di, plot, idx)
                 return
             end
@@ -342,8 +337,6 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     if di.inspector_attributes[:show_indicators][] && get(element, :show_indicator, true)
         update_indicator_internal!(di, element, pos)
     end
-
-    di.update_counter[5] += 1 # TODO: for performance checks, remove later
 
     return true
 end
