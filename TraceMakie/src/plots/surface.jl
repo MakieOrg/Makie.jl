@@ -2,7 +2,7 @@
 # draw_atomic for Makie.Surface
 # =============================================================================
 
-function _build_surface_mesh(positions::AbstractMatrix{<:Point3f})
+function build_surface_mesh(positions::AbstractMatrix{<:Point3f})
     r = Tesselation(Rect2f((0, 0), (1, 1)), size(positions))
     faces = decompose(GLTriangleFace, r)
     # Tessellation UV has u=row_idx, v=col_idx, but Hikari's texture sampling
@@ -10,8 +10,7 @@ function _build_surface_mesh(positions::AbstractMatrix{<:Point3f})
     # vertex at grid position (i,j), we need u=(j-1)/(N-1) and v=(M-i)/(M-1),
     # i.e. swap and flip: (u_old, v_old) → (v_old, 1-u_old).
     uv = map(u -> Vec2f(1f0-u[2], 1f0 - u[1]), decompose_uv(r))
-    mesh = normal_mesh(GeometryBasics.Mesh(vec(positions), faces, uv=uv))
-    return Raycore.TriangleMesh(mesh)
+    return normal_mesh(GeometryBasics.Mesh(vec(positions), faces, uv=uv))
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
@@ -22,11 +21,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     # Register Makie's surface position pipeline (transform_func + model + f32c)
     Makie.add_computation!(attr, scene, Val(:surface_transform))
 
-    # 1. Pre-transformed positions → surface mesh
-    # positions_transformed_f32c has transform_func + f32c applied.
-    # model may or may not be baked in — model_f32c is the residual.
+    # 1. Pre-transformed positions → surface mesh (GB.Mesh)
     register_computation!(attr, [:positions_transformed_f32c], [:trace_surface_mesh]) do args, changed, last
-        return (_build_surface_mesh(args.positions_transformed_f32c),)
+        return (build_surface_mesh(args.positions_transformed_f32c),)
     end
 
     # 2. Color → Hikari texture (independent of mesh geometry)
@@ -35,42 +32,39 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
     end
 
     # 3. TLAS management: combine mesh, color, model_f32c
-    # model_f32c is identity when model was baked into positions, otherwise the full model.
     register_computation!(attr, [:trace_surface_mesh, :trace_color_tex, :model_f32c], [:trace_renderobject]) do args, changed, last
-        tmesh = args.trace_surface_mesh
+        gb_mesh = args.trace_surface_mesh
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
 
         if isnothing(last) || isnothing(last.trace_renderobject)
             mat = extract_material(plot, color_tex)
-            mat_idx = push!(hikari_scene, mat)
-            handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
+            handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, mat_idx=mat_idx, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
+            return ((handle=handle, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
         end
 
         robj = last.trace_renderobject
 
         if changed.trace_surface_mesh
-            delete!(hikari_scene.accel, robj.handle)
+            delete_trace_handles!(hikari_scene, robj)
             mat = extract_material(plot, color_tex)
-            mat_idx = push!(hikari_scene, mat)
-            handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
+            handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, mat_idx=mat_idx, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
+            return ((handle=handle, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
         end
 
         if changed.trace_color_tex
-            tex = _get_material_texture(robj.material)
+            tex = get_material_texture(robj.material)
             if !isnothing(tex)
                 computed = Makie.compute_colors(plot.attributes)
-                _update_texture!(tex, computed)
+                update_texture!(tex, computed)
             end
             state.needs_film_clear = true
         end
 
         if changed.model_f32c
-            _mesh_update_transform!(hikari_scene, state, robj, transform)
+            update_trace_transform!(hikari_scene, state, robj, transform)
         end
 
         return (robj,)

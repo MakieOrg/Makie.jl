@@ -597,7 +597,11 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
 end
 
 # Called from scene finalizer — proactively free GPU resources.
-function Base.delete!(screen::Screen, ::Scene)
+# Guard: only tear down if the finalized scene matches the screen's current scene.
+# A stale scene finalizer (e.g. the temporary Scene() from the Screen constructor)
+# must not destroy the active scene state during init_scene!.
+function Base.delete!(screen::Screen, scene::Scene)
+    screen.scene === scene || return
     for ss in screen.scene_states
         _free_state_gpu!(ss)
     end

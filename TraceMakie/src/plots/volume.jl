@@ -96,7 +96,6 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
     end
 
     # 2. Spatial + colormap + material params + model → volume config
-    # model_f32c (aliased from model for Volume) places the volume in world space.
     register_computation!(attr, [:x, :y, :z, :colormap, :colorrange, :material, :model_f32c], [:trace_volume_config]) do args, changed, last
         origin = Point3f(Float32(args.x[1]), Float32(args.y[1]), Float32(args.z[1]))
         extent = Vec3f(Float32(args.x[2]) - origin[1], Float32(args.y[2]) - origin[2], Float32(args.z[2]) - origin[3])
@@ -140,12 +139,12 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
 
         if isnothing(last) || isnothing(last.trace_renderobject) || changed.trace_volume_config
             if !isnothing(last) && !isnothing(last.trace_renderobject)
-                delete!(hikari_scene.accel, last.trace_renderobject.geometry)
+                delete_trace_handles!(hikari_scene, last.trace_renderobject)
             end
-            mesh = Raycore.TriangleMesh(normal_mesh(Rect3f(config.origin, config.extent)))
+            gb_mesh = normal_mesh(Rect3f(config.origin, config.extent))
             glass = Hikari.GlassMaterial(Kr=Hikari.RGBSpectrum(0f0), Kt=Hikari.RGBSpectrum(1f0), index=1f0)
-            mat_idx = push!(hikari_scene, Hikari.MediumInterface(glass; inside=medium))
-            handle = push!(hikari_scene, mesh, mat_idx)
+            mat = Hikari.MediumInterface(glass; inside=medium)
+            handle = push!(hikari_scene, gb_mesh, mat)
             state.needs_film_clear = true
             return (handle,)
         end

@@ -7,197 +7,174 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     hikari_scene = screen.state.hikari_scene
     state = screen.state
 
-    # 1. Mesh → processed mesh data
-    # Use positions_transformed_f32c (which has model+f32c applied as needed) + decomposed
-    # topology from the mesh. For MetaMesh (defensive, normally split by recipe), use raw mesh.
-    register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals, :texturecoordinates], [:trace_mesh_data]) do args, changed, last
-        mesh_val = args.mesh
-        if mesh_val isa GeometryBasics.MetaMesh
-            return (_process_metamesh(mesh_val),)
-        else
-            return (_build_mesh_from_decomposed(
-                args.positions_transformed_f32c, args.faces,
-                args.normals, args.texturecoordinates),)
-        end
-    end
-
-    # 2. Color → Hikari texture (independent of mesh geometry)
+    # 1. Color → texture
     register_computation!(attr, [:color], [:trace_color_tex]) do args, changed, last
         return (color_to_texture(args.color, plot),)
     end
 
-    # 3. TLAS management: combine mesh data, color texture, model_f32c transform
-    # model_f32c is identity when model was baked into positions, otherwise the full model.
-    register_computation!(attr, [:trace_mesh_data, :trace_color_tex, :model_f32c], [:trace_renderobject]) do args, changed, last
-        mesh_data = args.trace_mesh_data
+    # 2. Everything → push to scene via Hikari
+    register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals,
+                                  :texturecoordinates, :trace_color_tex, :model_f32c],
+                          [:trace_renderobject]) do args, changed, last
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
 
-        if isnothing(last) || isnothing(last.trace_renderobject)
-            # First run: create and push to scene
-            return (_mesh_push!(hikari_scene, state, plot, mesh_data, color_tex, transform),)
+        if isnothing(last) || isnothing(last.trace_renderobject) ||
+           changed.mesh || changed.positions_transformed_f32c || changed.faces ||
+           changed.normals || changed.texturecoordinates || changed.trace_color_tex
+            # Delete old handles if rebuilding
+            !isnothing(last) && !isnothing(last.trace_renderobject) &&
+                delete_trace_handles!(hikari_scene, last.trace_renderobject)
+
+            robj = push_to_scene(args.mesh, hikari_scene, plot, color_tex,
+                                  args.positions_transformed_f32c, args.faces,
+                                  args.normals, args.texturecoordinates, transform)
+            state.needs_film_clear = true
+            return (robj,)
         end
 
         robj = last.trace_renderobject
-
-        if changed.trace_mesh_data
-            # Mesh geometry changed — full rebuild
-            _mesh_delete_handles!(hikari_scene, robj)
-            return (_mesh_push!(hikari_scene, state, plot, mesh_data, color_tex, transform),)
-        end
-
-        if changed.trace_color_tex
-            # Color changed → update material textures in-place
-            if hasproperty(robj, :material)
-                tex = _get_material_texture(robj.material)
-                if !isnothing(tex)
-                    computed = Makie.compute_colors(plot.attributes)
-                    _update_texture!(tex, computed)
-                end
-            end
-            state.needs_film_clear = true
-        end
-
         if changed.model_f32c
-            _mesh_update_transform!(hikari_scene, state, robj, transform)
+            update_trace_transform!(hikari_scene, state, robj, transform)
         end
-
         return (robj,)
     end
 end
 
-# --- Internal helpers ---
+# =============================================================================
+# Dispatch-based push_to_scene
+# =============================================================================
 
-# Build a TriangleMesh from decomposed arrays (pre-transformed positions + original topology)
-function _build_mesh_from_decomposed(positions, faces, normals, texturecoordinates)
-    kwargs = Dict{Symbol, Any}()
-    if !isnothing(normals)
-        kwargs[:normal] = Vec3f.(normals)
-    end
-    if !isnothing(texturecoordinates)
-        kwargs[:uv] = Vec2f.(texturecoordinates)
-    end
-    mesh = GeometryBasics.Mesh(Point3f.(positions), faces; kwargs...)
-    if isnothing(normals)
-        mesh = GeometryBasics.normal_mesh(mesh)
-    end
-    return Raycore.TriangleMesh(mesh)
-end
-
-# Process MetaMesh into a single TriangleMesh with per-face material name mapping.
-# Uses the MetaMesh's view ranges directly (no split_mesh) to build per-face
-# material assignment. Actual scene material indices are set in _mesh_push_metamesh!.
-function _process_metamesh(mesh_val::GeometryBasics.MetaMesh)
-    if haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
-        inner_mesh = mesh_val.mesh
-        views = inner_mesh.views
-        mat_names = mesh_val[:material_names]
-
-        # Build per-face material name vector from view ranges (no split_mesh!)
-        n_faces = length(GeometryBasics.faces(inner_mesh))
-        per_face_mat_names = Vector{String}(undef, n_faces)
-        for (view_range, name) in zip(views, mat_names)
-            per_face_mat_names[view_range] .= name
+# Extract diffuse texture from a GLTF material dict
+function extract_glb_diffuse_texture(mat_dict::Dict{String, Any})
+    if haskey(mat_dict, "diffuse map")
+        diffuse_map = mat_dict["diffuse map"]
+        if haskey(diffuse_map, "image")
+            return Hikari.Texture(to_spectrum(diffuse_map["image"]))
         end
-
-        # Convert the already-merged inner mesh directly to TriangleMesh
-        tmesh = Raycore.TriangleMesh(inner_mesh)
-
-        return (
-            tmesh=tmesh,
-            per_face_mat_names=per_face_mat_names,
-            materials_dict=mesh_val[:materials],
-            is_metamesh=true,
-        )
-    else
-        return Raycore.TriangleMesh(mesh_val.mesh)
     end
+    diffuse = get(mat_dict, "diffuse", Vec3f(1, 1, 1))
+    return Hikari.ConstTexture(to_spectrum(RGBf(diffuse[1], diffuse[2], diffuse[3])))
 end
 
-# Push mesh(es) to scene, creating materials
-function _mesh_push!(hikari_scene, state, plot, mesh_data, color_tex, transform)
-    if mesh_data isa NamedTuple && hasproperty(mesh_data, :is_metamesh)
-        return _mesh_push_metamesh!(hikari_scene, state, plot, mesh_data, color_tex, transform)
-    else
-        return _mesh_push_single!(hikari_scene, state, plot, mesh_data, color_tex, transform)
+# MetaMesh: multi-material
+function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, color_tex,
+                       positions, faces, normals, uv, transform)
+    has_embedded = haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
+    if !has_embedded
+        return push_to_scene_simple(mesh_val.mesh, hikari_scene, plot, color_tex, transform)
     end
-end
 
-function _mesh_push_single!(hikari_scene, state, plot, tmesh, color_tex, transform)
-    # Convert per-vertex color vectors to VertexColorTexture using mesh topology
-    if color_tex isa AbstractVector{<:Colorant}
-        color_tex = build_vertex_color_texture(color_tex, tmesh)
-    end
-    mat = extract_material(plot, color_tex)
-    mat_idx = push!(hikari_scene, mat)
-    handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
-    state.needs_film_clear = true
-    return (handle=handle, mat_idx=mat_idx, material=mat, instance_idx=length(hikari_scene.accel.instances))
-end
+    # Check if user explicitly provided a material template
+    user_material = haskey(plot, :material) && !isnothing(to_value(plot.material)) ?
+        to_value(plot.material) : nothing
 
-function _mesh_push_metamesh!(hikari_scene, state, plot, mesh_data, color_tex, transform)
-    # 1. Create materials for each unique name and get scene indices
-    unique_names = unique(mesh_data.per_face_mat_names)
-    name_to_idx = Dict{String, UInt32}()
-    materials = Hikari.Material[]
-    default_mat = nothing
+    inner = mesh_val.mesh
+    views = inner.views
+    mat_names = mesh_val[:material_names]
+    materials_dict = mesh_val[:materials]
+    gb_faces = GeometryBasics.faces(inner)
+    n_faces = length(gb_faces)
 
-    for name in unique_names
-        mat = if haskey(mesh_data.materials_dict, name)
-            glb_material_to_hikari(mesh_data.materials_dict[name])
-        else
-            if isnothing(default_mat)
-                default_mat = extract_material(plot, color_tex)
+    # Resolve per-face materials from GLTF data
+    per_face_materials = Vector{Hikari.Material}(undef, n_faces)
+    mat_cache = Dict{String, Hikari.Material}()
+    for (view_range, name) in zip(views, mat_names)
+        mat = get!(mat_cache, name) do
+            if haskey(materials_dict, name)
+                if !isnothing(user_material)
+                    # Merge GLTF diffuse texture into user's material type
+                    tex = extract_glb_diffuse_texture(materials_dict[name])
+                    merge_color_with_material(tex, user_material)
+                else
+                    result = glb_material_to_hikari(materials_dict[name])
+                    m = result.material
+                    if !isnothing(result.emission)
+                        m = Hikari.MediumInterface(m; emission=result.emission)
+                    end
+                    m
+                end
+            else
+                extract_material(plot, color_tex)
             end
-            default_mat
         end
-        mat_idx = push!(hikari_scene, mat)
-        name_to_idx[name] = mat_idx
-        push!(materials, mat)
+        for fi in view_range
+            per_face_materials[fi] = mat
+        end
     end
 
-    # 2. Build per-face material index vector (UInt32 scene indices)
-    material_indices = UInt32[name_to_idx[name] for name in mesh_data.per_face_mat_names]
-
-    # 3. Create TriangleMesh with per-face material indices baked in
-    tmesh = mesh_data.tmesh
-    tmesh_with_mats = Raycore.TriangleMesh(
-        tmesh.vertices, tmesh.indices, tmesh.normals,
-        tmesh.tangents, tmesh.uv, material_indices
-    )
-
-    # 4. Push single mesh — push! reads material_indices per-face
-    handle = push!(hikari_scene.accel, tmesh_with_mats, first(values(name_to_idx)), transform)
-
-    state.needs_film_clear = true
-    return (handle=handle, materials=materials, instance_idx=length(hikari_scene.accel.instances))
+    handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
+    return (handle=handle, instance_idx=length(hikari_scene.accel.instances))
 end
 
-function _mesh_delete_handles!(hikari_scene, robj)
+# Plain mesh: single material
+function push_to_scene(mesh_val, hikari_scene, plot, color_tex,
+                       positions, faces, normals_arg, uv, transform)
+    push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform;
+                          positions=positions, faces=faces, normals=normals_arg, uv=uv)
+end
+
+# Internal: build GB.Mesh from decomposed data and push with single material
+function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform;
+                               positions=nothing, faces=nothing, normals=nothing, uv=nothing)
+    # If mesh_val is already a GB.Mesh, use it directly; otherwise build from decomposed
+    gb_mesh = if mesh_val isa GeometryBasics.Mesh
+        mesh_val
+    else
+        # Build from decomposed arrays
+        kwargs = Dict{Symbol, Any}()
+        !isnothing(normals) && (kwargs[:normal] = Vec3f.(normals))
+        !isnothing(uv) && (kwargs[:uv] = Vec2f.(uv))
+        m = GeometryBasics.Mesh(Point3f.(positions), faces; kwargs...)
+        isnothing(normals) ? GeometryBasics.normal_mesh(m) : m
+    end
+
+    # Convert per-vertex colors to VertexColorTexture
+    if color_tex isa AbstractVector{<:Colorant}
+        color_tex = build_vertex_color_texture(color_tex, gb_mesh)
+    end
+
+    mat = extract_material(plot, color_tex)
+    handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
+    state_instance_idx = length(hikari_scene.accel.instances)
+    return (handle=handle, mat_idx=handle.interface, material=mat, instance_idx=state_instance_idx)
+end
+
+# =============================================================================
+# Handle management
+# =============================================================================
+
+function delete_trace_handles!(hikari_scene, robj)
     tlas = hikari_scene.accel
     if hasproperty(robj, :handles)
         for h in robj.handles
-            delete!(tlas, h)
+            actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
+            delete!(tlas, actual_handle)
         end
     elseif hasproperty(robj, :handle)
-        delete!(tlas, robj.handle)
+        h = robj.handle
+        # SceneHandle wraps a TLASHandle in .geometry
+        actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
+        delete!(tlas, actual_handle)
     end
 end
 
-function _mesh_update_transform!(hikari_scene, state, robj, transform)
+function update_trace_transform!(hikari_scene, state, robj, transform)
     tlas = hikari_scene.accel
     backend = tlas.backend
 
     if hasproperty(robj, :handles)
-        for idx in robj.instance_indices
-            t = KernelAbstractions.allocate(backend, Mat4f, 1)
-            fill!(t, transform)
-            Raycore.update_instance_transforms!(tlas, t, 1, idx)
+        for h in robj.handles
+            actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
+            Raycore.update_transform!(tlas, actual_handle, transform)
         end
     else
+        h = robj.handle
+        actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
+        idx = robj.instance_idx
         transforms = KernelAbstractions.allocate(backend, Mat4f, 1)
         fill!(transforms, transform)
-        Raycore.update_instance_transforms!(tlas, transforms, 1, robj.instance_idx)
+        Raycore.update_instance_transforms!(tlas, transforms, 1, idx)
     end
     state.needs_film_clear = true
 end

@@ -127,3 +127,4 @@ nsamples = 5
 img
 # img
 save("bunny-$(nsamples)ssp-tm.png", img)
+img

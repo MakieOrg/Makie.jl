@@ -70,47 +70,16 @@ end
 
 # --- TLAS creation helper ---
 
-function _meshscatter_create!(hikari_scene, state, tmesh, transforms, materials, n_instances)
-    has_per_instance = materials isa Vector
-
-    if has_per_instance
-        handles = Raycore.TLASHandle[]
-        first_instance_idx = length(hikari_scene.accel.instances) + 1
-        for (transform, mat) in zip(transforms, materials)
-            mat_idx = push!(hikari_scene, mat)
-            handle = push!(hikari_scene.accel, tmesh, mat_idx, transform)
-            push!(handles, handle)
-        end
-        state.needs_film_clear = true
-        return (
-            handles=handles, tmesh=tmesh, per_instance=true,
-            first_instance_idx=first_instance_idx,
-            n_instances=n_instances, materials=materials,
-        )
-    else
-        mat_idx = push!(hikari_scene, materials)
-        first_instance_idx = length(hikari_scene.accel.instances) + 1
-        handle = push!(hikari_scene.accel, Raycore.Instance(tmesh, transforms,
-                      [mat_idx for _ in 1:n_instances]))
-        state.needs_film_clear = true
-        return (
-            handle=handle, tmesh=tmesh, per_instance=false,
-            first_instance_idx=first_instance_idx,
-            n_instances=n_instances, material=materials, mat_idx=mat_idx,
-        )
+function meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances)
+    handles = Hikari.SceneHandle[]
+    for (transform, mat) in zip(transforms, materials)
+        handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
+        push!(handles, handle)
     end
-end
-
-function _meshscatter_delete_handles!(hikari_scene, robj)
-    isnothing(robj) && return
-    tlas = hikari_scene.accel
-    if hasproperty(robj, :handles)
-        for h in robj.handles
-            delete!(tlas, h)
-        end
-    elseif hasproperty(robj, :handle)
-        delete!(tlas, robj.handle)
-    end
+    state.needs_film_clear = true
+    return (
+        handles=handles, n_instances=n_instances, materials=materials,
+    )
 end
 
 # =============================================================================
@@ -122,10 +91,9 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     hikari_scene = screen.state.hikari_scene
     state = screen.state
 
-    # 1. Marker → TriangleMesh (only recomputes when marker changes)
+    # 1. Marker → GB.Mesh (only recomputes when marker changes)
     register_computation!(attr, [:marker], [:trace_marker_mesh]) do args, changed, last
-        mesh = meshscatter_marker_mesh(args.marker)
-        return (Raycore.TriangleMesh(mesh),)
+        return (meshscatter_marker_mesh(args.marker),)
     end
 
     # 2. Positions/scale/rotation/model → transform matrices (independent of color)
@@ -149,31 +117,31 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     # NOTE: Never return (nothing,) — ComputePipeline types its Ref from the first
     # return value. If the first call returns nothing (empty positions), subsequent
     # calls with data can't assign a NamedTuple to Ref{Nothing}.
-    # Instead, _meshscatter_create! handles empty transforms naturally (0 TLAS entries).
+    # Instead, meshscatter_create! handles empty transforms naturally (0 TLAS entries).
     #
     # Always do a full delete+recreate when anything changes.  In-place transform
     # updates via first_instance_idx are unsafe: when multiple meshscatter plots
     # exist, one plot's deletion shifts the indices of all others.
     register_computation!(attr, [:trace_marker_mesh, :trace_transforms, :trace_materials], [:trace_renderobject]) do args, changed, last
-        tmesh = args.trace_marker_mesh
+        gb_mesh = args.trace_marker_mesh
         transforms = args.trace_transforms
         materials = args.trace_materials
 
         n_instances = length(transforms)
 
-        if isnothing(last) || !hasproperty(last.trace_renderobject, :tmesh)
-            return (_meshscatter_create!(hikari_scene, state, tmesh, transforms, materials, n_instances),)
+        if isnothing(last) || isnothing(last.trace_renderobject) || !hasproperty(last.trace_renderobject, :handles)
+            return (meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances),)
         end
 
         robj = last.trace_renderobject
 
         # Any change → full rebuild (delete old instances, create new ones).
         if changed.trace_marker_mesh || changed.trace_transforms || changed.trace_materials
-            _meshscatter_delete_handles!(hikari_scene, robj)
+            delete_trace_handles!(hikari_scene, robj)
             if n_instances != robj.n_instances
                 materials = extract_meshscatter_materials(plot, n_instances)
             end
-            return (_meshscatter_create!(hikari_scene, state, tmesh, transforms, materials, n_instances),)
+            return (meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances),)
         end
 
         return (robj,)

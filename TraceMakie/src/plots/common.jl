@@ -25,13 +25,13 @@ Build a VertexColorTexture from per-vertex colors and a triangle mesh.
 Creates a (3, n_faces) matrix where each column stores the 3 vertex colors for that face,
 enabling proper barycentric interpolation during rendering.
 """
-function build_vertex_color_texture(vertex_colors::AbstractVector{<:Colorant}, mesh::Raycore.TriangleMesh)
-    n_faces = div(length(mesh.indices), 3)
+function build_vertex_color_texture(vertex_colors::AbstractVector{<:Colorant}, mesh::GeometryBasics.Mesh)
+    gb_faces = GeometryBasics.faces(mesh)
+    n_faces = length(gb_faces)
     face_colors = Matrix{Hikari.RGBSpectrum}(undef, 3, n_faces)
-    for f in 1:n_faces
-        base = 3 * (f - 1)
+    for (f, face) in enumerate(gb_faces)
         for v in 1:3
-            face_colors[v, f] = to_spectrum(vertex_colors[mesh.indices[base + v]])
+            face_colors[v, f] = to_spectrum(vertex_colors[face[v]])
         end
     end
     return Hikari.VertexColorTexture(face_colors, Int32(n_faces))
@@ -91,11 +91,7 @@ end
 
 function merge_color_with_material(color_tex, material::Hikari.MediumInterface)
     merged_inner = merge_color_with_material(color_tex, material.material)
-    Hikari.MediumInterface(merged_inner; inside=material.inside, outside=material.outside, arealight=material.arealight)
-end
-
-function merge_color_with_material(color_tex, material::Hikari.EmissiveMaterial)
-    Hikari.EmissiveMaterial(color_tex, material.scale, material.two_sided)
+    Hikari.MediumInterface(merged_inner; inside=material.inside, outside=material.outside, emission=material.emission)
 end
 
 # Fallback for unknown material types
@@ -174,7 +170,7 @@ end
 # GLB material conversion
 # =============================================================================
 
-function _has_nonzero_emissive(mat_dict::Dict{String, Any})
+function has_nonzero_emissive(mat_dict::Dict{String, Any})
     if haskey(mat_dict, "emissive")
         e = mat_dict["emissive"]
         return any(x -> x > 0, e)
@@ -182,7 +178,13 @@ function _has_nonzero_emissive(mat_dict::Dict{String, Any})
     return false
 end
 
-function _build_emissive_material(mat_dict::Dict{String, Any})
+"""
+    build_emission_info(mat_dict) -> NamedTuple or nothing
+
+Extract emission info (Le texture, scale, two_sided) from a GLTF material dict.
+Used later for DiffuseAreaLight registration during mesh push.
+"""
+function build_emission_info(mat_dict::Dict{String, Any})
     has_emissive_map = haskey(mat_dict, "emissive map")
     if has_emissive_map
         emissive_map = mat_dict["emissive map"]
@@ -190,18 +192,18 @@ function _build_emissive_material(mat_dict::Dict{String, Any})
             Le_tex = Hikari.Texture(to_spectrum(emissive_map["image"]))
             emissive_factor = get(mat_dict, "emissive", [1.0, 1.0, 1.0])
             scale = max(emissive_factor[1], emissive_factor[2], emissive_factor[3])
-            return Hikari.EmissiveMaterial(Le_tex, Float32(max(scale, 1f0)), true)
+            return (Le=Le_tex, scale=Float32(max(scale, 1f0)), two_sided=true)
         end
     end
     if haskey(mat_dict, "emissive")
         e = mat_dict["emissive"]
-        Le_tex = Hikari.ConstTexture(Hikari.RGBSpectrum(Float32(e[1]), Float32(e[2]), Float32(e[3])))
-        return Hikari.EmissiveMaterial(Le_tex, 1f0, true)
+        Le = Hikari.RGBSpectrum(Float32(e[1]), Float32(e[2]), Float32(e[3]))
+        return (Le=Le, scale=1f0, two_sided=true)
     end
     return nothing
 end
 
-function _build_diffuse_material(mat_dict::Dict{String, Any})
+function build_diffuse_material(mat_dict::Dict{String, Any})
     roughness = Float32(get(mat_dict, "roughness", 0.5f0))
 
     if haskey(mat_dict, "diffuse map")
@@ -223,19 +225,18 @@ function _build_diffuse_material(mat_dict::Dict{String, Any})
     return Hikari.CoatedDiffuseMaterial(reflectance=tex, roughness=roughness)
 end
 
-function glb_material_to_hikari(mat_dict::Dict{String, Any})
-    has_emissive = _has_nonzero_emissive(mat_dict) || haskey(mat_dict, "emissive map")
-    diffuse_mat = _build_diffuse_material(mat_dict)
-    emissive_mat = has_emissive ? _build_emissive_material(mat_dict) : nothing
+"""
+    glb_material_to_hikari(mat_dict) -> (material, emission_info)
 
-    if !isnothing(diffuse_mat) && !isnothing(emissive_mat)
-        return Hikari.MediumInterface(diffuse_mat; arealight=emissive_mat)
-    elseif !isnothing(emissive_mat)
-        return Hikari.MediumInterface(emissive_mat)
-    else
-        # _build_diffuse_material now always returns a material (GLTF default white)
-        return diffuse_mat
-    end
+Convert a GLTF material dict to a Hikari BSDF material and optional emission info.
+Returns a tuple: (material::Material, emission::NamedTuple or nothing).
+Emission info is used later during mesh push to create DiffuseAreaLights.
+"""
+function glb_material_to_hikari(mat_dict::Dict{String, Any})
+    diffuse_mat = build_diffuse_material(mat_dict)
+    has_emissive = has_nonzero_emissive(mat_dict) || haskey(mat_dict, "emissive map")
+    emission_info = has_emissive ? build_emission_info(mat_dict) : nothing
+    return (material=diffuse_mat, emission=emission_info)
 end
 
 # =============================================================================
@@ -267,14 +268,14 @@ end
 # Material texture extraction (for in-place color updates)
 # =============================================================================
 
-_get_material_texture(mat::Hikari.MatteMaterial) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
-_get_material_texture(mat::Hikari.ConductorMaterial) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
-_get_material_texture(mat::Hikari.Material) = nothing
+get_material_texture(mat::Hikari.MatteMaterial) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
+get_material_texture(mat::Hikari.ConductorMaterial) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
+get_material_texture(mat::Hikari.Material) = nothing
 
 # In-place texture data update via dispatch
-_update_texture!(tex::Hikari.Texture, color::AbstractMatrix{<:Colorant}) = (tex.data = to_spectrum(color))
-_update_texture!(tex::Hikari.Texture, color::AbstractVector{<:Colorant}) = (tex.data = to_spectrum.(color))
-_update_texture!(tex::Hikari.Texture, color::Colorant) = fill!(tex.data, to_spectrum(to_color(color)))
+update_texture!(tex::Hikari.Texture, color::AbstractMatrix{<:Colorant}) = (tex.data = to_spectrum(color))
+update_texture!(tex::Hikari.Texture, color::AbstractVector{<:Colorant}) = (tex.data = to_spectrum.(color))
+update_texture!(tex::Hikari.Texture, color::Colorant) = fill!(tex.data, to_spectrum(to_color(color)))
 
 # =============================================================================
 # Transform helpers

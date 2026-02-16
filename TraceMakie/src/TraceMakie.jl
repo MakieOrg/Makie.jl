@@ -1,6 +1,7 @@
 module TraceMakie
 
 using Makie, Hikari, Colors, LinearAlgebra, GeometryBasics, Raycore, KernelAbstractions
+using GeometryBasics: SVector
 using Makie: Observable, on, colorbuffer, to_value
 using Makie: Quaternionf
 using GeometryBasics: VecTypes
@@ -554,10 +555,13 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
             tlas = ss.hikari_scene.accel
             if hasproperty(robj, :handles)
                 for h in robj.handles
-                    delete!(tlas, h)
+                    actual_h = h isa Hikari.SceneHandle ? h.geometry : h
+                    delete!(tlas, actual_h)
                 end
             elseif hasproperty(robj, :handle)
-                delete!(tlas, robj.handle)
+                h = robj.handle
+                actual_h = h isa Hikari.SceneHandle ? h.geometry : h
+                delete!(tlas, actual_h)
             end
             ss.needs_film_clear = true
             break
