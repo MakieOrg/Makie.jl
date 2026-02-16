@@ -97,6 +97,7 @@ Plots bars of the given `heights` at the given (scalar) `positions`.
 end
 
 conversion_trait(::Type{<:BarPlot}) = PointBased()
+argument_dim_kwargs(::Type{<:BarPlot}) = (:direction,)
 
 """
     add_slow_limits!(plot)
