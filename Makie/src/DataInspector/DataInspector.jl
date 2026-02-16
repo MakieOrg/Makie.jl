@@ -181,7 +181,7 @@ function DataInspector(obj; blocking = false, no_tick_discard = false, kwargs...
         transformation = :nothing;
         kwarg_dict...
     )
-    register_projected_positions!(tt, input_name = :converted_1, output_name = :pixel_positions)
+    register_projected_positions!(tt, input_name = :positions, output_name = :pixel_positions)
 
     inspector = DataInspector(
         parent, Dict{UInt64, Tooltip}(), tt, Dict{Type, Plot}(),

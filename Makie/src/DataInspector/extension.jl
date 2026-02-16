@@ -12,13 +12,9 @@ function get_accessor(plot::BarPlot, idx, plot_stack::Tuple{<:Text, Vararg{Plot}
     return PlotElement((plot, plot.plots[1]), a)
 end
 
-# TODO:
-# Once barplot is refactored to use the compute graph, grab positions after
-# stack & dodge here and add a label_data method using these positions instead
 function get_tooltip_position(element::PlotElement{<:BarPlot})
-    # indexed elements can apply transform_func later
-    x, y = element.positions
-    y += element.offset
+    x = element.x
+    y = element.y + element.offset
     p = ifelse(element.direction == :x, Point(y, x), Point(x, y))
     return apply_transform(element.transform_func, p)
 end

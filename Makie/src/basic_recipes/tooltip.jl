@@ -6,9 +6,9 @@
 Creates a tooltip pointing at `position` displaying the given `string
 """
 @recipe Tooltip (
-    position::Union{
-        VecTypes{N, <:Real} where {N},
-        Tuple{<:VecTypes{N, <:Real} where {N}, <:AbstractString},
+    _converted::Union{
+        VecTypesVector{N, <:Real} where {N},
+        Tuple{<:VecTypesVector{N, <:Real} where {N}, <:AbstractString},
     },
 ) begin
     # General
