@@ -1,3 +1,5 @@
+argument_dims(::Type{<:Voxels}, x, y, z, chunk) = (1, 2, 3)
+
 # expand_dimensions would require conversion trait
 function convert_arguments(::Type{<:Voxels}, chunk::Array{<:Real, 3})
     X, Y, Z = map(x -> EndPoints(Float32(-0.5 * x), Float32(0.5 * x)), size(chunk))
@@ -104,7 +106,8 @@ end
 # TODO: Does have some overlap with the normal version...
 function register_voxel_colormapping!(attr)
     # TODO: Is resolving this immediately fine?
-    return if isnothing(attr[:color][])
+    add_constant!(attr, :fetch_pixel, false) # for CairoMakie
+    if isnothing(attr[:color][])
         register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
             N = 253 + (lowclip === automatic) + (highclip === automatic)
             cm = add_alpha.(resample_cmap(cmap, N), alpha)
@@ -140,6 +143,7 @@ function register_voxel_colormapping!(attr)
         end
 
     end
+    return
 end
 
 function calculated_attributes!(::Type{Voxels}, plot::Plot)

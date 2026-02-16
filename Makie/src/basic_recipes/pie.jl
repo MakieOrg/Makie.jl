@@ -24,6 +24,8 @@ Creates a pie chart from the given `values`.
     mixin_generic_plot_attributes()...
 end
 
+argument_dims(::Type{<:Pie}, args...) = nothing
+
 convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0.0, 0.0, values)
 convert_arguments(PT::Type{<:Pie}, point::VecTypes{2}, values::RealVector) = convert_arguments(PT, point[1], point[2], values)
 convert_arguments(PT::Type{<:Pie}, ps::AbstractVector{<:VecTypes{2}}, values::RealVector) = convert_arguments(PT, getindex.(ps, 1), getindex.(ps, 2), values)

@@ -444,30 +444,109 @@ function add_convert_kwargs!(attr, user_kw, P, args)
     end
 end
 
-function add_dim_converts!(attr::ComputeGraph, dim_converts, args, input = :args)
-    if !(length(args) in (2, 3))
-        # We only support plots with 2 or 3 dimensions right now
-        map!(attr, :args, :dim_converted) do args
-            return Ref{Any}(args)
+function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, args_converted, user_kw) where {P}
+    # Get dim of each argument. This needs to be reactive if we allow dynamic
+    # attributes that change dim-mapping, e.g. direction
+    kwarg_names = argument_dim_kwargs(P)
+
+    # initialize the necessary attributes early
+    defaults = default_theme(nothing, P)
+    for key in kwarg_names
+        if !haskey(attr.inputs, key)
+            haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
+            add_input!(attr, key, pop!(user_kw, key, defaults[key]))
         end
-        return
     end
 
-    inputs = Symbol[]
-    for (i, arg) in enumerate(args)
-        update_dim_conversion!(dim_converts, i, arg)
+    kwargs = NamedTuple{kwarg_names}([getproperty(attr, name)[] for name in kwarg_names])
+    dim_tuple = argument_dims(P, args_converted...; kwargs...)
+
+    if dim_tuple === nothing
+        # args declared not dim-convertible by argument_dims().
+        map!(args -> Ref{Any}(args), attr, :args, :dim_converted)
+        return
+
+    elseif !(dim_tuple isa Tuple)
+        # Format check
+        error("`arguments_dims() must return a `Tuple` of integers or `Nothing` but returned $dim_tuple")
+    end
+
+    # If convert_arguments() caused a change in dim-convertable arguments they
+    # should apply before treating dim converts
+    if args_converted !== args
+        map!(attr, [:args, :convert_kwargs], :recursive_convert) do args, kwargs
+            return convert_arguments(P, args...; kwargs...)
+        end
+        input = :recursive_convert
+    else
+        input = :args
+    end
+
+    # Add node for arg -> dim mapping. Should be dynamic for attributes like
+    # direction at least.
+    map!(attr, [input, kwarg_names...], :arg_dims) do args, kwargs...
+        nt = NamedTuple{kwarg_names}(kwargs)
+        return argument_dims(P, args...; nt...)
+    end
+
+    # This sets conversions per dimension if they have not already been set.
+    # If a recipe has multiple arguments for one dimension that dimension may
+    # be set multiple times here (but only the first one will actually be used)
+    maxdim = 0
+    for (i, dim) in enumerate(dim_tuple)
+        dim == 0 && continue
+        if dim isa Integer
+            update_dim_conversion!(dim_converts, dim, args_converted[i])
+            maxdim = max(maxdim, dim)
+        else
+            for (j, d) in enumerate(dim)
+                update_dim_conversion!(dim_converts, d, args_converted[i], j)
+                maxdim = max(maxdim, d)
+            end
+        end
+    end
+
+    # Add input containing Symbol(:dim_convert_, i) which triggers when the
+    # conversion changes. (One per dimension, so use unique on dim_tuple)
+    # Note that the order in dim_convert_names is important
+    dim_convert_names = Symbol[]
+    for i in 1:maxdim
         obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
         converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
         add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
-        push!(inputs, Symbol(:dim_convert_, i))
+        push!(dim_convert_names, Symbol(:dim_convert_, i))
     end
-    return register_computation!(attr, [input, inputs...], [:dim_converted]) do (expanded, converts...), changed, last
-        last_vals = isnothing(last) ? ntuple(i -> nothing, length(converts)) : last.dim_converted
-        result = ntuple(length(converts)) do i
-            return convert_dim_value(converts[i], attr, expanded[i], last_vals[i])
+
+    # Apply dim_convert
+    # TODO: Do we really need last here?
+    register_computation!(
+        attr, [input, :arg_dims, dim_convert_names...], [:dim_converted]
+    ) do (expanded, dims, converts...), changed, last
+
+        last_vals = isnothing(last) ? ntuple(i -> nothing, length(dims)) : last.dim_converted
+        result = ntuple(length(expanded)) do i
+            # argument i is associated with the dim convert of dimension dims[i]
+            if i <= length(dims) && dims[i] != 0
+                if dims[i] isa Integer
+                    return convert_dim_value(converts[dims[i]], attr, expanded[i], last_vals[i])
+                else
+                    # Vector{<:VecTypes} case, where dim converts are expected to
+                    # return an array for VecTypes dimension
+                    # These arrays are repackaged as a Point array which hopefully
+                    # goes through the remaining conversions without issues
+                    parts = map(eachindex(dims[i]), dims[i]) do idx, dim
+                        return convert_dim_value(converts[dim], attr, expanded[i], last_vals[i], idx)
+                    end
+                    return Point.(parts...)
+                end
+            else
+                return expanded[i]
+            end
         end
         return (Ref{Any}(result),)
     end
+
+    return
 end
 
 function error_check_convert_arguments(P, args, user_kw, args_converted)
@@ -490,34 +569,36 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
+
     args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
     kw = attr.convert_kwargs[]
     args_converted = convert_arguments(P, args...; kw...)
     error_check_convert_arguments(P, args, user_kw, args_converted)
     status = got_converted(P, conversion_trait(P, args...), args_converted)
-    force_dimconverts = needs_dimconvert(dim_converts)
-    if force_dimconverts
-        add_dim_converts!(attr, dim_converts, args)
+
+    # Controls whether the plot is forced to apply dim converts or allowed to
+    # use plain data in a dim_convert scene. Typically true for plots to scenes
+    # and false for plots to other plots
+    force_dimconverts = pop!(user_kw, :force_dimconverts)
+    defaults = default_theme(nothing, P)
+    space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+
+    if !is_data_space(space)
+        # dim converts do not apply in relative, pixel or clip space
+        map!(attr, :args, :dim_converted) do args
+            return Ref{Any}(args)
+        end
+    elseif force_dimconverts && needs_dimconvert(dim_converts)
+        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     elseif (status === true || status === SpecApi)
         # Nothing needs to be done, since we can just use convert_arguments without dim_converts
         # And just pass the arguments through
         map!(attr, :args, :dim_converted) do args
             return Ref{Any}(args)
         end
-    elseif isnothing(status) || status == true # we don't know (e.g. recipes)
-        add_dim_converts!(attr, dim_converts, args)
-    elseif status === false
-        if args_converted !== args
-            # Not at target conversion, but something got converted
-            # This means we need to convert the args before doing a dim conversion
-            map!(attr, :args, :recursive_convert) do args
-                return convert_arguments(P, args...)
-            end
-            add_dim_converts!(attr, dim_converts, args_converted, :recursive_convert)
-        else
-            add_dim_converts!(attr, dim_converts, args)
-        end
+    elseif isnothing(status) || status === false # we don't know (e.g. recipes) or incomplete conversion
+        add_dim_converts!(P, attr, dim_converts, args, args_converted, user_kw)
     end
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
@@ -782,7 +863,9 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     end
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
+
     add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
+
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
