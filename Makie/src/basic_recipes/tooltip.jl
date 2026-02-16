@@ -6,10 +6,8 @@
 Creates a tooltip pointing at `position` displaying the given `string
 """
 @recipe Tooltip (
-    _converted::Union{
-        VecTypesVector{N, <:Real} where {N},
-        Tuple{<:VecTypesVector{N, <:Real} where {N}, <:AbstractString},
-    },
+    positions::VecTypesVector{N, <:Real} where {N},
+    maybe_text::Union{AbstractVector, Nothing}
 ) begin
     # General
     text = ""
@@ -76,9 +74,6 @@ end
 function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractString)
     return (convert_arguments(PointBased(), x, y, z)[1], [str])
 end
-function convert_arguments(::Type{<:Tooltip}, xy::VecTypes, s::AbstractString)
-    return ((xy, s),)
-end
 
 function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractArray{<:AbstractString})
     return (convert_arguments(PointBased(), xy)[1], str)
@@ -92,7 +87,9 @@ function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractArray{<:Abst
     return (convert_arguments(PointBased(), x, y, z)[1], str)
 end
 
-convert_arguments(::Type{<:Tooltip}, args...) = convert_arguments(PointBased(), args...)
+function convert_arguments(::Type{<:Tooltip}, args...)
+    return convert_arguments(PointBased(), args...)[1], nothing
+end
 
 struct ToolTipShape
     placement::Symbol
@@ -155,12 +152,8 @@ end
 
 function plot!(p::Tooltip)
 
-    map!(p, [:converted, :text], [:positions, :extracted_text]) do args, text
-        if args isa Tuple{<:AbstractArray{<:VecTypes}, <:AbstractArray{<:AbstractString}}
-            return args
-        else
-            return args[1], text
-        end
+    map!(p, [:maybe_text, :text], :extracted_text) do arg, text
+        return isnothing(arg) ? text : arg
     end
 
     map!(ToolTipShape, p, [:placement, :align, :triangle_size], :shape)
