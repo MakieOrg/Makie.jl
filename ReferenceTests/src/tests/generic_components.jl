@@ -787,8 +787,19 @@ end
         end
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
-        wait_for_data_inspector(f.scene, di, true) do
+        success = wait_for_data_inspector(f.scene, di, true) do
             e.mouseposition[] = mp
+        end
+
+        # for WGLMakie
+        if !success
+            wait_for_data_inspector(f.scene, di, false) do
+                e.mouseposition[] = (1.0, 1.0)
+            end
+            success = wait_for_data_inspector(f.scene, di, true) do
+                e.mouseposition[] = mp
+            end
+            success || @warn "wait failed twice"
         end
 
         # collect_di_state!(states, di, attr_names)
