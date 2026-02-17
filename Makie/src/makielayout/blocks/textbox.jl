@@ -33,6 +33,15 @@ function _removechar!(index, displayed_chars, tbox, cursorindex)
     return tbox.displayed_string[] = join(newchars)
 end
 
+function _cursor_forward(tbox, cursorindex)
+    return if tbox.displayed_string[] != " "
+        cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
+    end
+end
+
+function _cursor_backward(cursorindex)
+    return cursorindex[] = max(0, cursorindex[] - 1)
+end
 
 function initialize_block!(tbox::Textbox)
 
@@ -251,16 +260,6 @@ function initialize_block!(tbox::Textbox)
     end
 
 
-    function cursor_forward()
-        return if tbox.displayed_string[] != " "
-            cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
-        end
-    end
-
-    function cursor_backward()
-        return cursorindex[] = max(0, cursorindex[] - 1)
-    end
-
 
     on(topscene, events(scene).keyboardbutton; priority = 60) do event
         if tbox.focused[]
@@ -303,9 +302,9 @@ function initialize_block!(tbox::Textbox)
                     end
                     defocus!(tbox)
                 elseif key == Keyboard.right
-                    cursor_forward()
+                    _cursor_forward(tbox, cursorindex)
                 elseif key == Keyboard.left
-                    cursor_backward()
+                    _cursor_backward(cursorindex)
                 end
             end
             return Consume(true)
