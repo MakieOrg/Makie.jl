@@ -382,6 +382,16 @@ function on_pulse(scene, cam::Camera3D, timestep)
     end
 end
 
+function _compute_diff(delta)
+    if projectiontype[] == Perspective
+        # TODO wrong scaling? :(
+        ynorm = 2 * norm(cam.lookat[] - cam.eyeposition[]) * tand(0.5 * cam.fov[])
+        return ynorm / size(scene, 2) * delta
+    else
+        viewnorm = norm(cam.eyeposition[] - cam.lookat[])
+        return 2 * viewnorm / size(scene, 2) * delta
+    end
+end
 
 function add_mouse_controls!(scene, cam::Camera3D)
     @extract cam.controls (translation_button, rotation_button, reposition_button, scroll_mod)
@@ -395,16 +405,6 @@ function add_mouse_controls!(scene, cam::Camera3D)
 
     e = events(scene)
 
-    function compute_diff(delta)
-        if projectiontype[] == Perspective
-            # TODO wrong scaling? :(
-            ynorm = 2 * norm(cam.lookat[] - cam.eyeposition[]) * tand(0.5 * cam.fov[])
-            return ynorm / size(scene, 2) * delta
-        else
-            viewnorm = norm(cam.eyeposition[] - cam.lookat[])
-            return 2 * viewnorm / size(scene, 2) * delta
-        end
-    end
 
     # drag start/stop
     on(camera(scene), e.mousebutton) do event
@@ -426,7 +426,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             # Drag stop translation/rotation
             if dragging[][1]
                 mousepos = mouseposition_px(scene)
-                diff = compute_diff(last_mousepos[] .- mousepos)
+                diff = _compute_diff(last_mousepos[] .- mousepos)
                 last_mousepos[] = mousepos
                 dragging[] = (false, false)
                 translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3d(diff[1], diff[2], 0.0))
@@ -465,7 +465,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
     on(camera(scene), e.mouseposition) do mp
         if dragging[][2] && ispressed(scene, translation_button[])
             mousepos = screen_relative(scene, mp)
-            diff = compute_diff(last_mousepos[] .- mousepos)
+            diff = _compute_diff(last_mousepos[] .- mousepos)
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, mouse_translationspeed[] * Vec3d(diff[1], diff[2], 0.0))
             return Consume(true)
