@@ -127,12 +127,12 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
             new_conversions[i] = ax_conversion
             # update in case new_conversions has a new conversion
             getproperty(ax, dim_sym)[] = new_conversions[i]
-            deregister = nothing
+            deregister = Ref{Any}() 
             # if the conversion changes, update the axis as well.
             # This should only ever happen once, since conversions are mutable after setting it to a new value
-            deregister = on(dim_observable(new_conversions, i)) do val
+            deregister[] = on(dim_observable(new_conversions, i)) do val
                 getproperty(ax, dim_sym)[] = val
-                off(deregister)
+                off(deregister[])
             end
         end
     end
