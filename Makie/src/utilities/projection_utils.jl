@@ -106,6 +106,9 @@ end
 function register_positions_projected!(scene::Scene, @nospecialize(plot::Plot), ::Type{OT} = Point3f; kwargs...) where {OT}
     return register_positions_projected!(scene.compute, plot.attributes, OT; kwargs...)
 end
+
+_flip_matrix(res::Vec2) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
+
 function register_positions_projected!(
         scene_graph::ComputePipeline.ComputeGraph,
         plot_graph::ComputePipeline.ComputeGraph,
@@ -138,9 +141,8 @@ function register_positions_projected!(
     apply_model && push!(inputs, ifelse(is_data_space(output_space), :model, :model_f32c))
 
     # merge/create projection related matrices
-    flip_matrix(res::Vec2) = transformationmatrix(Vec3(0, res[2], 0), Vec3(1, -1, 1))
-    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(flip_matrix(res) * pv * m)::Mat4f
-    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(flip_matrix(res) * pv)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4, m::Mat4) = Mat4f(_flip_matrix(res) * pv * m)::Mat4f
+    combine_matrices(res::Vec2, pv::Mat4) = Mat4f(_flip_matrix(res) * pv)::Mat4f
     combine_matrices(pv::Mat4, m::Mat4) = Mat4f(pv * m)::Mat4f
     combine_matrices(pv::Mat4) = Mat4f(pv)::Mat4f
     map!(combine_matrices, plot_graph, inputs, merged_matrix_name)
