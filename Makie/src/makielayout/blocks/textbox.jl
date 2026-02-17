@@ -9,6 +9,31 @@ function _reset_to_stored()
     end
 end
 
+function _insertchar!(c, index, displayed_chars, tbox, cursorindex)
+    if displayed_chars[] == [' ']
+        empty!(displayed_chars[])
+        index = 1
+    end
+    newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
+    tbox.displayed_string[] = join(newchars)
+    return cursorindex[] = index
+end
+
+function _removechar!(index, displayed_chars, tbox, cursorindex)
+    newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
+
+    if isempty(newchars)
+        newchars = [' ']
+    end
+
+    if cursorindex[] >= index
+        cursorindex[] = max(0, cursorindex[] - 1)
+    end
+
+    return tbox.displayed_string[] = join(newchars)
+end
+
+
 function initialize_block!(tbox::Textbox)
 
     topscene = tbox.blockscene
@@ -213,37 +238,13 @@ function initialize_block!(tbox::Textbox)
         return Consume(false)
     end
 
-    function insertchar!(c, index)
-        if displayed_chars[] == [' ']
-            empty!(displayed_chars[])
-            index = 1
-        end
-        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
-        tbox.displayed_string[] = join(newchars)
-        return cursorindex[] = index
-    end
-
     function appendchar!(c)
-        return insertchar!(c, length(tbox.displayed_string[]))
-    end
-
-    function removechar!(index)
-        newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
-
-        if isempty(newchars)
-            newchars = [' ']
-        end
-
-        if cursorindex[] >= index
-            cursorindex[] = max(0, cursorindex[] - 1)
-        end
-
-        return tbox.displayed_string[] = join(newchars)
+        return _insertchar!(c, length(tbox.displayed_string[]), displayed_chars, tbox, cursorindex)
     end
 
     on(topscene, events(scene).unicode_input; priority = 60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
-            insertchar!(char, cursorindex[] + 1)
+            _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex)
             return Consume(true)
         end
         return Consume(false)
@@ -274,7 +275,7 @@ function initialize_block!(tbox::Textbox)
                 end
 
                 if all(char -> is_allowed(char, tbox.restriction[]), content)
-                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    foreach(char -> _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex), content)
                     return Consume(true)
                 else
                     return Consume(false)
@@ -284,9 +285,9 @@ function initialize_block!(tbox::Textbox)
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace
-                    removechar!(cursorindex[])
+                    _removechar!(cursorindex[], displayed_chars, tbox, cursorindex)
                 elseif key == Keyboard.delete
-                    removechar!(cursorindex[] + 1)
+                    _removechar!(cursorindex[] + 1, displayed_chars, tbox, cursorindex)
                 elseif key == Keyboard.enter || key == Keyboard.kp_enter
                     # don't do anything for invalid input which should stay red
                     if displayed_is_valid[]
