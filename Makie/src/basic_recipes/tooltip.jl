@@ -87,9 +87,32 @@ function convert_arguments(::Type{<:Tooltip}, x, y, z, str::AbstractArray{<:Abst
     return (convert_arguments(PointBased(), x, y, z)[1], str)
 end
 
-function convert_arguments(::Type{<:Tooltip}, args...)
-    return convert_arguments(PointBased(), args...)[1], nothing
+function convert_arguments(::Type{<:Tooltip}, xy::Union{VecTypesVector, VecTypes})
+    return convert_arguments(PointBased(), xy)[1], nothing
 end
+
+function convert_arguments(::Type{<:Tooltip}, x::Union{Real, AbstractVector{<:Real}}, y::Union{Real, AbstractVector{<:Real}})
+    return convert_arguments(PointBased(), x, y)[1], nothing
+end
+
+function convert_arguments(
+        ::Type{<:Tooltip},
+        x::Union{Real, AbstractVector{<:Real}},
+        y::Union{Real, AbstractVector{<:Real}},
+        z::Union{Real, AbstractVector{<:Real}}
+    )
+    return convert_arguments(PointBased(), x, y, z)[1], nothing
+end
+
+argument_dims(::Type{<:Tooltip}, x, y, z, s) = (1, 2, 3)
+argument_dims(::Type{<:Tooltip}, x, y, s::AbstractString) = (1, 2)
+argument_dims(::Type{<:Tooltip}, x, y, s::AbstractVector{<:AbstractString}) = (1, 2)
+argument_dims(::Type{<:Tooltip}, ps::VecTypes{N}, s::AbstractString) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypesVector{N}, s::AbstractVector{<:AbstractString}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypes{N}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, ps::VecTypesVector{N}) where {N} = (1:N,)
+argument_dims(::Type{<:Tooltip}, x, y) = (1, 2)
+argument_dims(::Type{<:Tooltip}, x, y, z) = (1, 2, 3)
 
 struct ToolTipShape
     placement::Symbol

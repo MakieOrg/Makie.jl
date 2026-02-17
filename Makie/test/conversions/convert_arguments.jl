@@ -464,15 +464,15 @@ Makie.convert_arguments(::PointBased, ::MyConvVector) = ([Point(10, 20)],)
                 end
 
                 @testset "Tooltip" begin
-                    @test apply_conversion(Tooltip, ps2[1]) isa Tuple{Vector{Point2{T_out}}}
-                    @test apply_conversion(Tooltip, ps3[1]) isa Tuple{Vector{Point3{T_out}}}
-                    @test apply_conversion(Tooltip, xs[1], ys[1]) isa Tuple{Vector{Point2{T_out}}}
-                    @test apply_conversion(Tooltip, xs[1], ys[1], zs[1]) isa Tuple{Vector{Point3{T_out}}}
+                    @test apply_conversion(Tooltip, ps2[1]) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, ps3[1]) isa Tuple{Vector{Point3{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs[1], ys[1]) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs[1], ys[1], zs[1]) isa Tuple{Vector{Point3{T_out}}, Nothing}
 
-                    @test apply_conversion(Tooltip, ps2) isa Tuple{Vector{Point2{T_out}}}
-                    @test apply_conversion(Tooltip, ps3) isa Tuple{Vector{Point3{T_out}}}
-                    @test apply_conversion(Tooltip, xs, ys) isa Tuple{Vector{Point2{T_out}}}
-                    @test apply_conversion(Tooltip, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}}
+                    @test apply_conversion(Tooltip, ps2) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, ps3) isa Tuple{Vector{Point3{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs, ys) isa Tuple{Vector{Point2{T_out}}, Nothing}
+                    @test apply_conversion(Tooltip, xs, ys, zs) isa Tuple{Vector{Point3{T_out}}, Nothing}
 
                     @test apply_conversion(Tooltip, ps2[1], str) isa Tuple{Vector{Point2{T_out}}, Vector{String}}
                     @test apply_conversion(Tooltip, ps3[1], str) isa Tuple{Vector{Point3{T_out}}, Vector{String}}
