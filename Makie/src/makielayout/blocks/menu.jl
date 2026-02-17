@@ -17,6 +17,18 @@ function _update_option_colors!(hovered)
     return notify(optionpolycolors)
 end
 
+function _pick_entry(y)
+    # determine which rectangle in the list the mouse is in
+    # we do this geometrically and not by picking because it's hard to calculate the index
+    # of the text from the picking value returned
+    # translation due to scrolling has to be removed first
+    ytrans = y - translation(menuscene)[][2]
+    return argmin(
+        i -> abs(ytrans - 0.5 * (list_y_bounds[][i + 1] + list_y_bounds[][i])),
+        1:(length(list_y_bounds[]) - 1)
+    )
+end
+
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
@@ -166,17 +178,6 @@ function initialize_block!(m::Menu; default = 1)
     end
     notify(optionstrings)
 
-    function pick_entry(y)
-        # determine which rectangle in the list the mouse is in
-        # we do this geometrically and not by picking because it's hard to calculate the index
-        # of the text from the picking value returned
-        # translation due to scrolling has to be removed first
-        ytrans = y - translation(menuscene)[][2]
-        return argmin(
-            i -> abs(ytrans - 0.5 * (list_y_bounds[][i + 1] + list_y_bounds[][i])),
-            1:(length(list_y_bounds[]) - 1)
-        )
-    end
 
     was_inside_options = Ref(false)
     was_inside_button = Ref(false)
@@ -218,10 +219,10 @@ function initialize_block!(m::Menu; default = 1)
                 was_inside_options[] = true
                 # we either clicked on an item or hover it
                 if mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = pick_entry(mp[2])
+                    m.i_selected[] = _pick_entry(mp[2])
                     m.is_open[] = false
                 else # HOVER
-                    idx_hovered = pick_entry(mp[2])
+                    idx_hovered = _pick_entry(mp[2])
                     _update_option_colors!(idx_hovered)
                 end
             else
