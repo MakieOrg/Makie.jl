@@ -424,12 +424,13 @@ function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
     end
 end
 
+function _range(start, stop, step)
+    from = cld(start, step) * step
+    to = fld(stop, step) * step
+    return from:step:to
+end
+
 function best_ticks(start, stop, stepsizes, k_ideal)
-    function _range(start, stop, step)
-        from = cld(start, step) * step
-        to = fld(stop, step) * step
-        return from:step:to
-    end
     return argmin(_range(start, stop, step) for step in stepsizes) do rng
         _cost(rng, k_ideal)
     end
