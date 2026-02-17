@@ -7,7 +7,7 @@
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.scatter})
     attr = plot.attributes
     state = screen.state
-    backend = screen.config.backend
+    backend = screen.config.device
 
     # Register marker SDF computations (sdf_marker_shape, sdf_uv, image)
     Makie.all_marker_computations!(attr)

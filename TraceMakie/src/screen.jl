@@ -3,8 +3,6 @@
 # =============================================================================
 
 # Re-export integrators from Hikari for convenience
-const Whitted = Hikari.Whitted
-const SPPM = Hikari.SPPM
 const FastWavefront = Hikari.FastWavefront
 const VolPath = Hikari.VolPath
 
@@ -29,7 +27,7 @@ Configuration for TraceMakie rendering.
   - `Hikari.FilmSensor(iso=100, white_balance=0)` - ISO and white balance
   - ISO scales brightness (100 = baseline, 90 = slightly darker)
   - white_balance in Kelvin (0 = disabled, 5000 = warm, 6500 = D65)
-* `backend`: KernelAbstractions backend for rendering (default: `KA.CPU()`)
+* `device`: KernelAbstractions backend for rendering (default: `KA.CPU()`)
   - `Raycore.KA.CPU()` - CPU rendering
   - `AMDGPU.ROCBackend()` - AMD GPU via AMDGPU.jl
   - `CUDA.CUDABackend()` - NVIDIA GPU via CUDA.jl
@@ -45,16 +43,16 @@ struct ScreenConfig
     tonemap::Union{Symbol, Nothing}
     gamma::Union{Float32, Nothing}
     sensor::Union{Hikari.FilmSensor, Nothing}
-    backend::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
+    device::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
     denoise::Bool
     denoise_config::Union{Hikari.DenoiseConfig, Nothing}
 
-    function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, backend=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
+    function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
         actual_integrator = integrator isa Makie.Automatic ? VolPath() : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
-        actual_backend = backend isa Makie.Automatic ? Raycore.KA.CPU() : backend
-        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, sensor, actual_backend, denoise, denoise_config)
+        actual_device = device isa Makie.Automatic ? Raycore.KA.CPU() : device
+        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, sensor, actual_device, denoise, denoise_config)
     end
 end
 
@@ -90,9 +88,9 @@ end
 
 function Base.show(io::IO, screen::Screen)
     scene_str = isnothing(screen.scene) ? "nothing" : "Scene(\$(size(screen.scene)))"
-    backend_name = nameof(typeof(screen.config.backend))
+    device_name = nameof(typeof(screen.config.device))
     integrator_name = nameof(typeof(screen.config.integrator))
-    print(io, "Screen(\$scene_str, backend=\$backend_name, integrator=\$integrator_name)")
+    print(io, "Screen(\$scene_str, device=\$device_name, integrator=\$integrator_name)")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
@@ -102,7 +100,7 @@ function Base.show(io::IO, ::MIME"text/plain", screen::Screen)
     else
         println(io, "  Scene: not attached")
     end
-    println(io, "  Backend: ", nameof(typeof(screen.config.backend)))
+    println(io, "  Device: ", nameof(typeof(screen.config.device)))
     println(io, "  Integrator: ", nameof(typeof(screen.config.integrator)))
     print(io, "  Exposure: ", screen.config.exposure)
 end
@@ -114,7 +112,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
     isnothing(screen.scene) && return nothing
     isempty(screen.scene_states) && return nothing
 
-    ka_backend = screen.config.backend
+    ka_backend = screen.config.device
 
     for state in screen.scene_states
         cleanup!(state)
@@ -206,7 +204,7 @@ Screen(scene::Scene, config::ScreenConfig, ::IO, ::MIME) = Screen(scene, config)
 Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(scene, config)
 
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
-    if screen.config.backend !== config.backend
+    if screen.config.device !== config.device
         return Screen(scene, config)
     end
 
@@ -256,7 +254,7 @@ function render!(screen::Screen)
 
     # Fill auxiliary buffers if denoising is enabled (before main render)
     if screen.config.denoise
-        adapted_scene = Adapt.adapt(screen.config.backend, state.hikari_scene)
+        adapted_scene = Adapt.adapt(screen.config.device, state.hikari_scene)
         Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
     end
 
@@ -306,7 +304,7 @@ function _postprocess_scene_state!(screen::Screen, scene_state::TraceMakieState)
     if !isempty(tlas.instances)
         lights = scene_state.hikari_scene.lights
         has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-        adapted_scene = Adapt.adapt(config.backend, scene_state.hikari_scene)
+        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
         Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
     else
         fill!(film.depth, Float32(1e30))  # all overlays pass depth test
@@ -368,7 +366,7 @@ function _render_uncovered_overlays!(screen::Screen, uncovered_scenes)
     root_scene = screen.scene
     root_w, root_h = size(root_scene)
     root_res = Vec2f(Float32(root_w), Float32(root_h))
-    ka_backend = screen.config.backend
+    ka_backend = screen.config.device
 
     # Root-sized overlay and depth buffers
     overlay_buf = Overlay.create_overlay_buffer(ka_backend, (root_h, root_w))
@@ -637,11 +635,11 @@ Sets TraceMakie as the currently active backend and allows setting screen config
 # Examples
 
 ```julia
-# Use default Whitted integrator
+# Use default VolPath integrator
 TraceMakie.activate!()
 
-# Use Whitted with custom settings
-TraceMakie.activate!(integrator = TraceMakie.Whitted(samples=16, max_depth=8))
+# Use VolPath with custom settings
+TraceMakie.activate!(integrator = TraceMakie.VolPath(samples=16, max_depth=8))
 
 # Configure postprocessing
 TraceMakie.activate!(exposure = 1.5, tonemap = :reinhard, gamma = 2.2)
@@ -665,7 +663,7 @@ end
 # =============================================================================
 
 """
-    interactive_window(scene; integrator, exposure, tonemap, gamma, sensor, backend)
+    interactive_window(scene; integrator, exposure, tonemap, gamma, sensor, device)
 
 Progressively ray-trace a Makie scene in the background using TraceMakie,
 overlaying results onto the interactive display backend (e.g. GLMakie).
@@ -686,13 +684,13 @@ end
 function interactive_window(root_scene::Makie.Scene;
                             integrator=Hikari.VolPath(samples=1, max_depth=5),
                             exposure=1.0f0, tonemap=:aces, gamma=1.2f0,
-                            sensor=nothing, backend=Raycore.KA.CPU())
+                            sensor=nothing, device=Raycore.KA.CPU())
 
     exposure_obs = convert(Observable, exposure)
     tonemap_obs = convert(Observable, tonemap)
     gamma_obs = convert(Observable, gamma)
 
-    config = ScreenConfig(integrator, Float32(exposure_obs[]), tonemap_obs[], gamma_obs[], sensor, backend)
+    config = ScreenConfig(integrator, Float32(exposure_obs[]), tonemap_obs[], gamma_obs[], sensor, device)
     screen = Screen(nothing, nothing, config)
     Base.display(screen, root_scene)
 
@@ -730,7 +728,7 @@ function interactive_window(root_scene::Makie.Scene;
         screen.config = ScreenConfig(
             config.integrator, Float32(exposure_obs[]),
             tonemap_sym, Float32(gamma_obs[]),
-            config.sensor, config.backend, config.denoise, config.denoise_config,
+            config.sensor, config.device, config.denoise, config.denoise_config,
         )
 
         # Render 1 sample per scene (each scene accumulates independently)

@@ -19,14 +19,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
     # 1. Positions → GPU array (ensure Point3f for overlay projection)
     register_computation!(attr, [:positions_transformed_f32c], [:trace_overlay_positions]) do args, changed, last
         positions = [Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
-        return (Adapt.adapt(screen.config.backend, positions),)
+        return (Adapt.adapt(screen.config.device, positions),)
     end
 
     # 2. Color/linewidth → style (per-vertex colors uploaded to GPU)
     register_computation!(attr, [:color, :linewidth], [:trace_overlay_style]) do args, changed, last
         color = _to_overlay_color(args.color)
         if color isa AbstractVector
-            color = Adapt.adapt(screen.config.backend, color)
+            color = Adapt.adapt(screen.config.device, color)
         end
         lw = _to_single_linewidth(args.linewidth)
         return ((color=color, linewidth=lw),)
@@ -39,7 +39,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.linese
         model = Mat4f(args.model_f32c)
         n = length(positions)
         n < 2 && return (nothing,)
-        backend = screen.config.backend
+        backend = screen.config.device
 
         # Reuse buffers if size unchanged
         buffers = if !isnothing(last) && !isnothing(last.trace_renderobject) &&
@@ -68,14 +68,14 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
     # 1. Positions → GPU array (ensure Point3f for overlay projection)
     register_computation!(attr, [:positions_transformed_f32c], [:trace_overlay_positions]) do args, changed, last
         positions = [Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
-        return (Adapt.adapt(screen.config.backend, positions),)
+        return (Adapt.adapt(screen.config.device, positions),)
     end
 
     # 2. Color/linewidth → style (per-vertex colors uploaded to GPU)
     register_computation!(attr, [:color, :linewidth], [:trace_overlay_style]) do args, changed, last
         color = _to_overlay_color(args.color)
         if color isa AbstractVector
-            color = Adapt.adapt(screen.config.backend, color)
+            color = Adapt.adapt(screen.config.device, color)
         end
         lw = _to_single_linewidth(args.linewidth)
         return ((color=color, linewidth=lw),)
@@ -88,7 +88,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.lines}
         model = Mat4f(args.model_f32c)
         n = length(positions)
         n < 2 && return (nothing,)
-        backend = screen.config.backend
+        backend = screen.config.device
 
         # Reuse buffers if size unchanged
         buffers = if !isnothing(last) && !isnothing(last.trace_renderobject) &&

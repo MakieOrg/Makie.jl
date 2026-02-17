@@ -148,7 +148,7 @@ function to_trace_light(light::Makie.PointLight, integrator)
         # with photometric normalization (scale = 1/spectrum_to_photometric), matching pbrt-v4
         return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
     else
-        # RGB path: direct RGBSpectrum intensity for Whitted/SPPM/FastWavefront
+        # RGB path: direct RGBSpectrum intensity for FastWavefront
         i = Hikari.RGBSpectrum(c.r, c.g, c.b)
         return Hikari.PointLight(Raycore.translate(Vec3f(light.position)), i, 1f0)
     end
@@ -167,7 +167,7 @@ function to_trace_light(light::Makie.SunSkyLight, integrator)
             ground_enabled=light.ground_enabled,
         )
     else
-        # Non-spectral path: keep as SunSkyLight for Whitted/FastWavefront
+        # Non-spectral path: keep as SunSkyLight for FastWavefront
         sun_intensity = Hikari.RGBSpectrum(light.intensity)
         return Hikari.SunSkyLight(
             Vec3f(light.direction),
@@ -333,7 +333,7 @@ function _compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int
 end
 
 function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene)
-    ka_backend = screen.config.backend
+    ka_backend = screen.config.device
     integrator = screen.config.integrator
 
     root_w, root_h = size(root_scene)
@@ -381,7 +381,7 @@ end
 # Uses the ROOT scene's full viewport as the buffer — all overlay scenes render
 # into the same buffer using viewport-remapped projection matrices.
 function _create_overlay_only_state(root_scene::Makie.Scene, screen)
-    ka_backend = screen.config.backend
+    ka_backend = screen.config.device
 
     root_w, root_h = size(root_scene)
     resolution = Point2f(Float32(root_w), Float32(root_h))
@@ -455,7 +455,7 @@ _is_overlay_plot(::Makie.Plot{Makie.text}) = true
 _is_overlay_plot(::Makie.Plot) = false
 
 function init_scene!(screen, mscene::Makie.Scene)
-    ka_backend = screen.config.backend
+    ka_backend = screen.config.device
 
     # Collect all renderable scenes (3D camera + has plots)
     renderable = collect_renderable_scenes(mscene)
@@ -572,7 +572,7 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
 end
 
 # Export TraceMakie-specific types
-export Screen, ScreenConfig, Whitted, activate!, colorbuffer
+export Screen, ScreenConfig, activate!, colorbuffer
 
 # Re-export DenoiseConfig from Hikari for convenience
 const DenoiseConfig = Hikari.DenoiseConfig

@@ -153,12 +153,12 @@ const MAKIE_DEFAULT_THEME = Attributes(
     ),
 
     TraceMakie = Attributes(
-        integrator = automatic,  # Whitted() by default, or SPPM(), VolPath()
+        integrator = automatic,  # VolPath() by default, or FastWavefront()
         exposure = 1.0f0,
         tonemap = :aces,
         gamma = 2.2f0,
         sensor = nothing,  # FilmSensor(iso=100, white_balance=0) for pbrt-style sensor simulation
-        backend = automatic,  # KA backend: CPU(), ROCBackend(), CUDABackend(); automatic → CPU()
+        device = automatic,  # KA backend: CPU(), ROCBackend(), CUDABackend(); automatic → CPU()
         denoise = false,  # Enable à-trous wavelet denoising
         denoise_config = nothing  # DenoiseConfig(iterations=5, sigma_color=4.0, ...)
     )

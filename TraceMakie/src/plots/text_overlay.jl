@@ -8,7 +8,7 @@
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     attr = plot.attributes
     state = screen.state
-    backend = screen.config.backend
+    backend = screen.config.device
 
     # Text plots must have sdf_uv (computed by register_text_computations!)
     if !haskey(attr, :sdf_uv)
