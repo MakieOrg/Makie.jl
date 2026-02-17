@@ -1,4 +1,4 @@
-function _update_option_colors!(hovered)
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, m)
     n = length(optionstrings[])
     resize!(optionpolycolors.val, n)
     map!(optionpolycolors.val, 1:n) do idx
@@ -17,7 +17,7 @@ function _update_option_colors!(hovered)
     return notify(optionpolycolors)
 end
 
-function _pick_entry(y)
+function _pick_entry(y, menuscene, list_y_bounds)
     # determine which rectangle in the list the mouse is in
     # we do this geometrically and not by picking because it's hard to calculate the index
     # of the text from the picking value returned
@@ -186,7 +186,7 @@ function initialize_block!(m::Menu; default = 1)
             BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
         end
 
-        _update_option_colors!(0)
+        _update_option_colors!(0, optionstrings, optionpolycolors, m)
         notify(optionrects)
         return
     end
@@ -220,11 +220,11 @@ function initialize_block!(m::Menu; default = 1)
                 was_inside_options[] = true
                 # we either clicked on an item or hover it
                 if _mouse_up(butt, was_pressed_options) # PRESSED
-                    m.i_selected[] = _pick_entry(mp[2])
+                    m.i_selected[] = _pick_entry(mp[2], menuscene, list_y_bounds)
                     m.is_open[] = false
                 else # HOVER
-                    idx_hovered = _pick_entry(mp[2])
-                    _update_option_colors!(idx_hovered)
+                    idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -263,7 +263,7 @@ function initialize_block!(m::Menu; default = 1)
         # clean up hovers if we're outside
         if !is_over_options && was_inside_options[] # going from being inside to outside
             was_inside_options[] = false
-            _update_option_colors!(0)
+            _update_option_colors!(0, optionstrings, optionpolycolors, m)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false

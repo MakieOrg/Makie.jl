@@ -1,6 +1,6 @@
 using InteractiveUtils: clipboard
 
-function _reset_to_stored()
+function _reset_to_stored(cursorindex, tbox)
     cursorindex[] = 0
     return if isnothing(tbox.stored_string[])
         tbox.displayed_string[] = tbox.placeholder[]
@@ -241,7 +241,7 @@ function initialize_block!(tbox::Textbox)
 
     onmousedownoutside(mouseevents) do state
         if tbox.reset_on_defocus[]
-            _reset_to_stored()
+            _reset_to_stored(cursorindex, tbox)
         end
         defocus!(tbox)
         return Consume(false)
@@ -298,7 +298,7 @@ function initialize_block!(tbox::Textbox)
                     end
                 elseif key == Keyboard.escape
                     if tbox.reset_on_defocus[]
-                        _reset_to_stored()
+                        _reset_to_stored(cursorindex, tbox)
                     end
                     defocus!(tbox)
                 elseif key == Keyboard.right

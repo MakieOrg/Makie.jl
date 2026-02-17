@@ -212,7 +212,7 @@ function register_contourf_computations!(graph, argname)
     return
 end
 
-function calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+function _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
     levels = copy(levels)
     @assert issorted(levels)
     is_extended_low && pushfirst!(levels, -Inf)
@@ -243,7 +243,7 @@ function Makie.plot!(c::Contourf{<:Union{<:Tuple{<:AbstractVector{<:Real}, <:Abs
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, xs, ys, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 

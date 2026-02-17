@@ -86,7 +86,7 @@ function Makie.convert_arguments(
     return (tri, z)
 end
 
-function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
     levels = copy(levels)
     # adjust outer levels to be inclusive
     levels[1] = prevfloat(levels[1])
@@ -142,7 +142,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 
