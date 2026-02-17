@@ -23,7 +23,7 @@ function on_latest(f, observable::Observable; update = false, spawn = false, thr
 end
 
 
-function _run_f(current_value)
+function _run_f(f, current_value, observable)
     while true
         t1 = time()
         try
@@ -60,9 +60,9 @@ function on_latest(f, to_track, observable::Observable; update = false, spawn = 
         return lock(task_lock) do
             if isnothing(last_task_ref[]) || istaskdone(last_task_ref[])
                 if spawn
-                    last_task_ref[] = Threads.@spawn _run_f(new_value)
+                    last_task_ref[] = Threads.@spawn _run_f(f, new_value, observable) 
                 else
-                    last_task_ref[] = Threads.@async _run_f(new_value)
+                    last_task_ref[] = Threads.@async _run_f(f, new_value, observable)
                 end
             else
                 has_changed[] = true
