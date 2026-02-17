@@ -544,6 +544,17 @@ end
 ### Axis visualization - grid lines, clip, ticks
 ################################################################################
 
+function _default_rtickangle(rtickangle, direction, thetalims, rmirror)
+    if rtickangle === automatic
+        if xor(direction == -1, rmirror)
+            return thetalims[2]
+        else
+            return thetalims[1]
+        end
+    else
+        return rtickangle
+    end
+end
 
 # generates large square with circle sector cutout
 function _polar_clip_polygon(
@@ -589,18 +600,6 @@ function draw_axis!(po::PolarAxis)
         visible = po.rticklabelsvisible
     )
 
-    function default_rtickangle(rtickangle, direction, thetalims, rmirror)
-        if rtickangle === automatic
-            if xor(direction == -1, rmirror)
-                return thetalims[2]
-            else
-                return thetalims[1]
-            end
-        else
-            return rtickangle
-        end
-    end
-
     onany(
         po.blockscene,
         po.rticks, po.rminorticks, po.rtickformat, po.rtickangle,
@@ -613,7 +612,7 @@ function draw_axis!(po::PolarAxis)
         rmaxinv = 1.0 / (rlims[2] - target_r0)
         _rtickvalues, _rticklabels = get_ticks(rticks, identity, rtickformat, rlims...)
         _rtickradius = (_rtickvalues .- target_r0) .* rmaxinv
-        _rtickangle = default_rtickangle(rtickangle, dir, thetalims, rmirror)
+        _rtickangle = _default_rtickangle(rtickangle, dir, thetalims, rmirror)
         rtick_pos_lbl[] = tuple.(_rticklabels, Point2f.(_rtickradius, _rtickangle))
 
         # For grid lines
@@ -635,7 +634,7 @@ function draw_axis!(po::PolarAxis)
         po.rticksvisible, po.rtickalign, po.rticksize
     ) do dir, theta_0, rtickangle, thetalims, pad, rot, rmirror, tvis, talign, tlength
 
-        default_angle = default_rtickangle(rtickangle, dir, thetalims, rmirror)
+        default_angle = _default_rtickangle(rtickangle, dir, thetalims, rmirror)
         post_transform_angle = mod(dir * (default_angle + theta_0), 0 .. 2pi)
         angle = post_transform_angle + ifelse(rmirror, pi / 2, -pi / 2)
 
