@@ -667,8 +667,8 @@ end
 # if a plot still exists from last time, update it accordingly.
 # If the plot is removed from `plotspecs`, we'll delete it from here
 # and re-create it if it ever returns.
-_update_plotlist(spec::PlotSpec) = _update_plotlist([spec])
-function _update_plotlist(plotspecs)
+function _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
+    plotspec = ifelse(isa(plotspecs, PlotSpec), [plotspecs], plotspecs)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
@@ -703,7 +703,7 @@ function update_plotspecs!(
     l = Base.ReentrantLock()
     on(scene, list_of_plotspecs; update = true) do plotspecs
         @lock l begin
-            _update_plotlist(plotspecs)
+            _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
         end
         return
     end
