@@ -45,6 +45,6 @@ function wait_for_data_inspector(action, fig, inspector, visible = nothing)
         return has_switched && check_visible
     end
     # WGLMakie also needs time to render?
-    isdefined(Main, :WGLMakie) && sleep(2 / 30)
+    isdefined(Main, :WGLMakie) && sleep(3 / 30)
     return
 end
