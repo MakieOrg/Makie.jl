@@ -701,7 +701,7 @@ function update_plotspecs!(
     end
     l = Base.ReentrantLock()
     on(scene, list_of_plotspecs; update = true) do plotspecs
-        lock(l) do
+        @lock l begin
             update_plotlist(plotspecs)
         end
         return
