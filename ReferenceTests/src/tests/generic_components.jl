@@ -474,9 +474,10 @@ function collect_di_state!(states, di, attr_names)
 end
 
 # helper function for checking the state matches up
-function test_di_state(di, state, attr_names)
+function test_di_state(di, state, attr_names, i)
     tt = di.dynamic_tooltip
     for (name, value) in zip(attr_names, state)
+        getproperty(tt, name)[] == value || @warn "Failed test $i with Attribute $name"
         @test getproperty(tt, name)[] == value
     end
     return
@@ -603,7 +604,7 @@ end
         end
 
         # collect_di_state!(states, di, attr_names)
-        test_di_state(di, states[i], attr_names)
+        test_di_state(di, states[i], attr_names, i)
 
         if make_refimg[i]
             Makie.step!(st)
@@ -731,7 +732,7 @@ end
 end
 
 @reference_test "DataInspector in log space" begin
-    attr_names = (:converted_1, :text, :visible, :placement, :model, :space)
+    attr_names = (:positions, :text, :visible, :placement, :model, :space)
 
     f = Figure(size = (600, 500))
     ax = Axis(f[1, 1], xscale = log10, yscale = log10)
@@ -791,7 +792,7 @@ end
         end
 
         # collect_di_state!(states, di, attr_names)
-        test_di_state(di, states[i], attr_names)
+        test_di_state(di, states[i], attr_names, i)
 
         if i in indicator_indices
             Makie.step!(st)

@@ -1,7 +1,12 @@
+# Wrapper to allow and handle PlotElements with tooltips
+@recipe DataInspectorTooltip (elements::Vector{<:PlotElement},) begin
+    documented_attributes(Tooltip)...
+end
+
 mutable struct DataInspector
     parent::Scene
 
-    persistent_tooltips::Dict{UInt64, Tooltip}
+    persistent_tooltips::Dict{UInt64, DataInspectorTooltip}
     dynamic_tooltip::Tooltip
     indicator_cache::Dict{Type, Plot}
 
@@ -769,7 +774,7 @@ function update_persistent_tooltips!(di::DataInspector)
     return Consume(false)
 end
 
-function plot!(plot::Tooltip{<:Tuple{<:Vector{<:PlotElement}}})
+function plot!(plot::DataInspectorTooltip{<:Tuple{<:Vector{<:PlotElement}}})
     if isempty(plot.arg1[])
         error("tooltip(::Vector{PlotElement}) must not be initialized with an empty list.")
     end
@@ -827,7 +832,7 @@ function add_persistent_tooltip!(di::DataInspector, element::PlotElement{PT}) wh
         apply_tooltip_overwrites!(element, tt)
     else
         formatter = di.inspector_attributes[:formatter][]
-        tt = tooltip!(
+        tt = datainspectortooltip!(
             di.parent, PlotElement{PT}[element],
             _formatter = formatter; di.tooltip_attributes...
         )
