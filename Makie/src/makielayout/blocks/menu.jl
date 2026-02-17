@@ -29,6 +29,20 @@ function _pick_entry(y)
     )
 end
 
+function _mouse_up(butt, was_pressed)
+    if butt.button == Mouse.left
+        if butt.action == Mouse.press
+            was_pressed[] = true
+            return false
+        elseif butt.action == Mouse.release && was_pressed[]
+            was_pressed[] = false
+            return true
+        end
+    end
+    was_pressed[] = false
+    return false
+end
+
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
@@ -191,19 +205,6 @@ function initialize_block!(m::Menu; default = 1)
     # TODO, move this back to mousestatemachine, which does exactly this
     was_pressed_options = Ref(false)
     was_pressed_button = Ref(false)
-    function mouse_up(butt, was_pressed)
-        if butt.button == Mouse.left
-            if butt.action == Mouse.press
-                was_pressed[] = true
-                return false
-            elseif butt.action == Mouse.release && was_pressed[]
-                was_pressed[] = false
-                return true
-            end
-        end
-        was_pressed[] = false
-        return false
-    end
 
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
         mp = screen_relative(menuscene, position)
@@ -218,7 +219,7 @@ function initialize_block!(m::Menu; default = 1)
                 is_over_options = true
                 was_inside_options[] = true
                 # we either clicked on an item or hover it
-                if mouse_up(butt, was_pressed_options) # PRESSED
+                if _mouse_up(butt, was_pressed_options) # PRESSED
                     m.i_selected[] = _pick_entry(mp[2])
                     m.is_open[] = false
                 else # HOVER
@@ -237,7 +238,7 @@ function initialize_block!(m::Menu; default = 1)
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
                 was_inside_button[] = true
-                if mouse_up(butt, was_pressed_button) # PRESSED
+                if _mouse_up(butt, was_pressed_button) # PRESSED
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
