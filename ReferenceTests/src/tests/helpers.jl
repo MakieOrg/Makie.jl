@@ -38,12 +38,13 @@ function wait_for_data_inspector(action, fig, inspector, visible = nothing)
     action()
     notify(events(fig).tick)
     colorbuffer(fig)
-    wait_for() do
+    state = wait_for(timeout = 60) do
         # notify(events(fig).tick)
         has_switched = inspector.last_plot_element != last_plot_element
         check_visible = visible === nothing ? true : (inspector.dynamic_tooltip.visible[] == visible)
         return has_switched && check_visible
     end
+    state != :success && @warn "wait_for() returned :$state"
     # WGLMakie also needs time to render?
     isdefined(Main, :WGLMakie) && sleep(3 / 30)
     return
