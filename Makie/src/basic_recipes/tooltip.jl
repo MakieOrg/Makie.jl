@@ -7,7 +7,7 @@ Creates a tooltip pointing at `position` displaying the given `string
 """
 @recipe Tooltip (
     positions::VecTypesVector{N, <:Real} where {N},
-    maybe_text::Union{AbstractVector, Nothing}
+    maybe_text::Union{AbstractVector, Nothing},
 ) begin
     # General
     text = ""
