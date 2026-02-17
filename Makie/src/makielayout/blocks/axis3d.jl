@@ -454,11 +454,11 @@ function dim2(dim)
     end
 end
 
-_dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
+_dimsym1(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
 
 function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
-    attr(sym) = getproperty(ax, _dimsym(sym))
+    attr(sym) = getproperty(ax, _dimsym1(sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -592,8 +592,7 @@ end
 
 function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, _dimsym1(sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -798,13 +797,13 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
-function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
+_dimsym2(sym) = Symbol(
+    string((:x, :y, :z)[dim1]) *
+        string((:x, :y, :z)[dim2]) * string(sym)
+)
 
-    dimsym(sym) = Symbol(
-        string((:x, :y, :z)[dim1]) *
-            string((:x, :y, :z)[dim2]) * string(sym)
-    )
-    attr(sym) = getproperty(ax, dimsym(sym))
+function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
+    attr(sym) = getproperty(ax, _dimsym2(sym))
 
     rect = lift(limits) do lims
         mi = minimum(lims)
