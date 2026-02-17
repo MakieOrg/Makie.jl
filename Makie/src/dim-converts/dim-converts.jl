@@ -127,7 +127,7 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
             new_conversions[i] = ax_conversion
             # update in case new_conversions has a new conversion
             getproperty(ax, dim_sym)[] = new_conversions[i]
-            deregister = Ref{Any}(nothing) 
+            deregister = Ref{Any}(nothing)
             # if the conversion changes, update the axis as well.
             # This should only ever happen once, since conversions are mutable after setting it to a new value
             deregister[] = on(dim_observable(new_conversions, i)) do val
@@ -163,7 +163,7 @@ function needs_tick_update_observable(conversion::Observable)
         # so we need to listen for that change and then listen to the updates from that conversion.
         # This should only ever happen once, since you can only change a conversion once, IFF it was nothing.
         tick_update = Observable{Any}(nothing)
-        deregister = Ref{Any}(nothing) 
+        deregister = Ref{Any}(nothing)
         deregister[] = on(conversion) do conversion
             if !isnothing(conversion)
                 obs = needs_tick_update_observable(conversion)

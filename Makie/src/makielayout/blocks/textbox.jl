@@ -260,7 +260,6 @@ function initialize_block!(tbox::Textbox)
     end
 
 
-
     on(topscene, events(scene).keyboardbutton; priority = 60) do event
         if tbox.focused[]
             ctrl_v = (Keyboard.left_control | Keyboard.right_control) & Keyboard.v

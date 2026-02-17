@@ -590,7 +590,7 @@ end
 
 function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
-    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym)) 
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
