@@ -454,10 +454,11 @@ function dim2(dim)
     end
 end
 
+_dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
+
 function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, _dimsym(sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
