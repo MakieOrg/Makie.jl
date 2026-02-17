@@ -568,6 +568,10 @@ function _polar_clip_polygon(
 end
 
 
+function _tick_angle(theta_0, dir, ps, mirror)
+    return dir * (last.(ps) .+ (theta_0 + ifelse(mirror, -pi, 0)))
+end
+
 function draw_axis!(po::PolarAxis)
     _, sample_labels = get_ticks(po.rticks[], identity, po.rtickformat[], po.target_rlims[]...)
     rtick_pos_lbl = Observable(Tuple{eltype(sample_labels), Point2f}[])
@@ -872,13 +876,10 @@ function draw_axis!(po::PolarAxis)
         return [rotmatrix2d(angle) * shift for angle in angles]
     end
 
-    function tick_angle(theta_0, dir, ps, mirror)
-        return dir * (last.(ps) .+ (theta_0 + ifelse(mirror, -pi, 0)))
-    end
 
     # ((r, theta), lbl) -> (r, theta) -> theta
     rtickpos = map(ps -> last.(ps), po.blockscene, rtick_pos_lbl)
-    rtickrotation = map(tick_angle, po.blockscene, po.target_theta_0, po.direction, rtickpos, po.rticksmirrored)
+    rtickrotation = map(_tick_angle, po.blockscene, po.target_theta_0, po.direction, rtickpos, po.rticksmirrored)
     rtickplot = scatter!(
         po.overlay, rtickpos,
         marker = Rect,
@@ -891,7 +892,7 @@ function draw_axis!(po::PolarAxis)
 
     thetatickpos = map(ps -> last.(ps), po.blockscene, thetatick_pos_lbl)
     thetatickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetatickpos, po.thetaticksmirrored) do t0, d, p, m
-        return tick_angle(t0 + d * pi / 2, d, p, m)
+        return _tick_angle(t0 + d * pi / 2, d, p, m)
     end
 
     thetatickplot = scatter!(
@@ -910,7 +911,7 @@ function draw_axis!(po::PolarAxis)
         swap = xor(mirror, dir == -1)
         return swap ? last.(coordinates.(ls)) : first.(coordinates.(ls))
     end
-    rminortickrotation = map(tick_angle, po.blockscene, po.target_theta_0, po.direction, rminortickpos, po.rticksmirrored)
+    rminortickrotation = map(_tick_angle, po.blockscene, po.target_theta_0, po.direction, rminortickpos, po.rticksmirrored)
     rminortickplot = scatter!(
         po.overlay, rminortickpos,
         marker = Rect,
@@ -925,7 +926,7 @@ function draw_axis!(po::PolarAxis)
         return ps[ifelse(mirror, 1:2:end, 2:2:end)]
     end
     thetaminortickrotation = map(po.blockscene, po.target_theta_0, po.direction, thetaminortickpos, po.thetaticksmirrored) do t0, d, p, m
-        return tick_angle(t0 + d * pi / 2, d, p, m)
+        return _tick_angle(t0 + d * pi / 2, d, p, m)
     end
     thetaminortickplot = scatter!(
         po.overlay, thetaminortickpos,
