@@ -163,15 +163,15 @@ function needs_tick_update_observable(conversion::Observable)
         # so we need to listen for that change and then listen to the updates from that conversion.
         # This should only ever happen once, since you can only change a conversion once, IFF it was nothing.
         tick_update = Observable{Any}(nothing)
-        deregister = nothing
-        deregister = on(conversion) do conversion
+        deregister = Ref{Any}() 
+        deregister[] = on(conversion) do conversion
             if !isnothing(conversion)
                 obs = needs_tick_update_observable(conversion)
                 if !isnothing(obs)
                     connect!(tick_update, obs)
                 end
                 # this one doesn't need to listen anymore, since this update can only happen once
-                off(deregister)
+                off(deregister[])
             end
         end
         return tick_update
