@@ -1,7 +1,7 @@
 _xfun(x, bbox, ms) = x > 0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
 _yfun(y, bbox, ms) = y > 0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
 
-function _perform_toggle_animation()
+function _perform_toggle_animation(animating, button_endpoint_inactive, button_endpoint_active, framecolor, topscene, t, updatefunc)
     if animating[]
         return
     end
@@ -117,7 +117,7 @@ function initialize_block!(t::Toggle)
     end
 
     on(t.active) do active
-        _perform_toggle_animation()
+        _perform_toggle_animation(animating, button_endpoint_inactive, button_endpoint_active, framecolor, topscene, t, updatefunc)
     end
 
     onmouseover(mouseevents) do event
