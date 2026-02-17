@@ -382,7 +382,7 @@ function on_pulse(scene, cam::Camera3D, timestep)
     end
 end
 
-function _compute_diff(delta)
+function _compute_diff(delta, projectiontype, cam, scene)
     if projectiontype[] == Perspective
         # TODO wrong scaling? :(
         ynorm = 2 * norm(cam.lookat[] - cam.eyeposition[]) * tand(0.5 * cam.fov[])
@@ -426,7 +426,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
             # Drag stop translation/rotation
             if dragging[][1]
                 mousepos = mouseposition_px(scene)
-                diff = _compute_diff(last_mousepos[] .- mousepos)
+                diff = _compute_diff(last_mousepos[] .- mousepos, projectiontype, cam, scene)
                 last_mousepos[] = mousepos
                 dragging[] = (false, false)
                 translate_cam!(scene, cam, mouse_translationspeed[] .* Vec3d(diff[1], diff[2], 0.0))
@@ -465,7 +465,7 @@ function add_mouse_controls!(scene, cam::Camera3D)
     on(camera(scene), e.mouseposition) do mp
         if dragging[][2] && ispressed(scene, translation_button[])
             mousepos = screen_relative(scene, mp)
-            diff = _compute_diff(last_mousepos[] .- mousepos)
+            diff = _compute_diff(last_mousepos[] .- mousepos, projectiontype, cam, scene)
             last_mousepos[] = mousepos
             translate_cam!(scene, cam, mouse_translationspeed[] * Vec3d(diff[1], diff[2], 0.0))
             return Consume(true)
