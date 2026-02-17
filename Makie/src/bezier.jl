@@ -407,7 +407,7 @@ function parse_bezier_commands(svg)
     commands = PathCommand[]
     lastcomm = nothing
     function lastp()
-        return if isnothing(lastcomm)
+        return if isempty(commands) 
             Point2d(0, 0)
         else
             c = commands[end]
