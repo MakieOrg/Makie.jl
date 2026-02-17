@@ -20,6 +20,10 @@ struct Camera3D <: AbstractCamera3D
     near::Observable{Float64}
     far::Observable{Float64}
     bounding_sphere::Observable{Sphere{Float64}}
+
+    # depth of field
+    lens_radius::Observable{Float64}
+    focal_distance::Observable{Float64}
 end
 
 """
@@ -193,7 +197,11 @@ function Camera3D(scene::Scene; kwargs...)
         get(overwrites, :fov, Observable(45.0)),
         get(overwrites, :near, Observable(0.1)),
         get(overwrites, :far, Observable(far_default)),
-        Sphere(Point3d(0), 1.0)
+        Sphere(Point3d(0), 1.0),
+
+        # depth of field
+        get(overwrites, :lens_radius, Observable(0.0)),
+        get(overwrites, :focal_distance, Observable(1e6)),
     )
 
     disconnect!(camera(scene))

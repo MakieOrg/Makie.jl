@@ -202,35 +202,37 @@ end
 # =============================================================================
 
 function to_trace_camera(scene::Makie.Scene, film; screen_window=nothing)
-    cc = scene.camera_controls
-    # Camera3D (LScene) has eyeposition/lookat/fov on camera_controls
-    if hasproperty(cc, :eyeposition) && hasproperty(cc, :lookat) && hasproperty(cc, :fov)
-        aspect = film.resolution[1] / film.resolution[2]
-        sw = isnothing(screen_window) ? Hikari.Bounds2(Point2f(-aspect, -1.0f0), Point2f(aspect, 1.0f0)) : screen_window
-        return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov) do eyeposition, lookat, upvector, fov
-            view = Hikari.look_at(
-                Point3f(eyeposition), Point3f(lookat), Vec3f(upvector),
-            )
-            return Hikari.PerspectiveCamera(
-                view, sw,
-                0.0f0, 1.0f0, 0.0f0, 10f0^6, Float32(fov),
-                film
-            )
-        end
-    else
-        # Fallback: use scene.camera view/projection matrices (works with Axis3, etc.)
-        # The model matrix is NOT folded into the view — it is already baked into
-        # meshscatter/mesh instance transforms via plot[:model]. Folding it here
-        # would double-apply the transform, making geometry appear too small.
-        cam = scene.camera
-        resolution = Point2f(film.resolution)
-        sw = screen_window  # may be nothing (full viewport) or Bounds2 (cropped)
-        return lift(scene, cam.view, cam.projection) do view, proj
-            if isnothing(sw)
-                return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution)
-            else
-                return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution, sw)
-            end
+    return to_trace_camera(scene.camera_controls, scene, film; screen_window)
+end
+
+function to_trace_camera(cc::Makie.Camera3D, scene::Makie.Scene, film; screen_window=nothing)
+    aspect = film.resolution[1] / film.resolution[2]
+    sw = isnothing(screen_window) ? Hikari.Bounds2(Point2f(-aspect, -1.0f0), Point2f(aspect, 1.0f0)) : screen_window
+    return lift(scene, cc.eyeposition, cc.lookat, cc.upvector, cc.fov, cc.lens_radius, cc.focal_distance) do eyeposition, lookat, upvector, fov, lens_radius, focal_distance
+        view = Hikari.look_at(
+            Point3f(eyeposition), Point3f(lookat), Vec3f(upvector),
+        )
+        return Hikari.PerspectiveCamera(
+            view, sw,
+            0.0f0, 1.0f0, Float32(lens_radius), Float32(focal_distance), Float32(fov),
+            film
+        )
+    end
+end
+
+# Fallback: use scene.camera view/projection matrices (works with Axis3, etc.)
+# The model matrix is NOT folded into the view — it is already baked into
+# meshscatter/mesh instance transforms via plot[:model]. Folding it here
+# would double-apply the transform, making geometry appear too small.
+function to_trace_camera(cc, scene::Makie.Scene, film; screen_window=nothing)
+    cam = scene.camera
+    resolution = Point2f(film.resolution)
+    sw = screen_window  # may be nothing (full viewport) or Bounds2 (cropped)
+    return lift(scene, cam.view, cam.projection) do view, proj
+        if isnothing(sw)
+            return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution)
+        else
+            return Hikari.MatrixCamera(Mat4f(view), Mat4f(proj), resolution, sw)
         end
     end
 end
