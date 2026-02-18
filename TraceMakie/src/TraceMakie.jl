@@ -156,27 +156,15 @@ end
 
 function to_trace_light(light::Makie.SunSkyLight, integrator)
     ground_albedo = Hikari.RGBSpectrum(light.ground_albedo.r, light.ground_albedo.g, light.ground_albedo.b)
-    if _is_spectral_integrator(integrator)
-        # Spectral path: pre-bake sky to EnvironmentLight + separate SunLight (pbrt-v4 approach).
-        # Returns a tuple — caller handles pushing both lights.
-        return Hikari.sunsky_to_envlight(
-            direction=Vec3f(light.direction),
-            intensity=Float32(light.intensity),
-            turbidity=light.turbidity,
-            ground_albedo=ground_albedo,
-            ground_enabled=light.ground_enabled,
-        )
-    else
-        # Non-spectral path: keep as SunSkyLight for FastWavefront
-        sun_intensity = Hikari.RGBSpectrum(light.intensity)
-        return Hikari.SunSkyLight(
-            Vec3f(light.direction),
-            sun_intensity;
-            turbidity=light.turbidity,
-            ground_albedo=ground_albedo,
-            ground_enabled=light.ground_enabled,
-        )
-    end
+    # Pre-bake Hosek-Wilkie sky to EnvironmentLight + separate SunLight (pbrt-v4 approach).
+    # Returns a tuple — caller handles pushing both lights.
+    return Hikari.sunsky_to_envlight(
+        direction=Vec3f(light.direction),
+        intensity=Float32(light.intensity),
+        turbidity=light.turbidity,
+        ground_albedo=ground_albedo,
+        ground_enabled=light.ground_enabled,
+    )
 end
 
 function to_trace_light(light::Makie.DirectionalLight, integrator)
@@ -285,7 +273,7 @@ function _init_lights!(hikari_scene, rscene, integrator)
     end
 
     # Add ambient light if present, but skip if we already have SunSkyLight or EnvironmentLight
-    has_infinite = any(T -> T <: Hikari.SunSkyLight || T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
+    has_infinite = any(T -> T <: Hikari.EnvironmentLight, hikari_scene.lights.data_order)
     if !has_infinite && haskey(rscene.compute, :ambient_color)
         ambient_color = rscene.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
