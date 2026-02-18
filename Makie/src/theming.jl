@@ -152,7 +152,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         max_recursion = 10
     ),
 
-    TraceMakie = Attributes(
+    RayMakie = Attributes(
         integrator = automatic,  # VolPath() by default, or FastWavefront()
         exposure = 1.0f0,
         tonemap = :aces,

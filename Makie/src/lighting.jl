@@ -139,7 +139,7 @@ rotates 10° around X axis (matching pbrt's "Rotate 10 1 0 0").
 
 Availability:
 - RPRMakie
-- TraceMakie
+- RayMakie
 """
 struct EnvironmentLight <: AbstractLight
     intensity::Float32
@@ -166,7 +166,7 @@ Provides both directional sun illumination and a procedural sky background.
 - `ground_enabled`: Whether to show ground plane below horizon (default: true)
 
 Availability:
-- TraceMakie
+- RayMakie
 """
 struct SunSkyLight <: AbstractLight
     direction::Vec3f       # Direction TO the sun (normalized)
