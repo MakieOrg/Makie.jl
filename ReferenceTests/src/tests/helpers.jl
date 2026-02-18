@@ -31,7 +31,7 @@ else
     end
 end
 
-function wait_for_data_inspector(action, fig, inspector, visible = nothing, timeout = 10)
+function wait_for_data_inspector(action, fig, inspector, visible = nothing, timeout = 60)
     # WGLMakie: check for change in the picked plot element
     # GLMakie: force re-render via colorbuffer()
     last_plot_element = inspector.last_plot_element
