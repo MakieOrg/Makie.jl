@@ -668,13 +668,13 @@ end
 # If the plot is removed from `plotspecs`, we'll delete it from here
 # and re-create it if it ever returns.
 function _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
-    plotspec = ifelse(isa(plotspecs, PlotSpec), [plotspecs], plotspecs)
+    specs = ifelse(isa(plotspecs, PlotSpec), [plotspecs], plotspecs)
     # Global list of observables that need updating
     # Updating them all at once in the end avoids problems with triggering updates while updating
     # And at some point we may be able to optimize notify(list_of_observables)
     # diff_plotlist! deletes all plots that get reused from unused_plots
     # so, this will become our list of unused plots!
-    diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
+    diff_plotlist!(scene, specs, plotlist, unused_plots, new_plots)
     # Next, delete all plots that we haven't used
     # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
     if own_plots
