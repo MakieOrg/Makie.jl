@@ -1104,3 +1104,39 @@ end
         @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
     end
 end
+
+using ComputePipeline: ComputeGraphView
+
+@testset "Nested graphs" begin
+    graph = ComputeGraph()
+
+    add_input!(graph, :a, :a, :a, 1)
+    add_input!(graph, :a, :a, :b, 2)
+
+    @test haskey(graph.inputs, Symbol("a.a.a"))
+    @test haskey(graph.inputs, Symbol("a.a.b"))
+    @test graph[Symbol("a.a.a")][] == 1
+    @test graph[Symbol("a.a.b")][] == 2
+
+    @test graph.a isa ComputeGraphView
+    @test graph.a.a isa ComputeGraphView
+    @test graph.a.a.a isa Computed
+    @test graph.a.a.a[] == 1
+    @test graph.a.a.b[] == 2
+    @test graph.a[].a[].a[] == 1
+
+    map!((a, b) -> (a, b), graph, [graph.a.a.a, Symbol("a.a.b")], :x)
+    @test graph.x[] == (1, 2)
+
+    graph.a.a.a[] = 5
+    graph.a.a.b[] = -1
+    @test graph.a.a.a[] == 5
+    @test graph.a.a.b[] == -1
+    @test graph.x[] == (5, -1)
+
+    # Node is either part of a nesting chain or a value
+    add_input!(graph, :a, :b, 1)
+    @test_throws ErrorException add_input!(graph, :a, :b, :c, 1)
+    add_input!(graph, :a, :c, :a, 1)
+    @test_throws ErrorException add_input!(graph, :a, :c, 1)
+end
