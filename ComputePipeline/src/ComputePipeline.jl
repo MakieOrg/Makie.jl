@@ -214,9 +214,9 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple)
 
         next_level = tree.keytables[level][key_to_insert]
         if next_level == -1 && !isempty(tail)
-            error("Cannot inset (...).$key_to_insert.(...) - $key_to_insert is already marked as a final key.")
+            error("Cannot insert (...).$key_to_insert.(...) - (...).$key_to_insert is already set to a value.")
         elseif next_level != -1 && isempty(tail)
-            error("Cannot inset (...).$key_to_insert - $key_to_insert is already marked as a non-final key.")
+            error("Cannot insert (...).$key_to_insert - (...).$key_to_insert is already set to a nested graph.")
         else
             add_key!(tree, next_level, tail)
         end
@@ -670,7 +670,14 @@ function Base.show(io::IO, view::ComputeGraphView)
             node = get(attr.inputs, full_key, attr.outputs[full_key])
             print(io, "\n  ", key, " => ", node)
         else
-            print(io, "\n  ", key, " => nested nodes...")
+            next_level_dict = trace.parent.keytables[val]
+            ks = collect(keys(next_level_dict))
+            kstr = if length(ks) > 5
+                "$(ks[1]), $(ks[2]), $(ks[3]),..."
+            else
+                join(string.(ks), ", ")
+            end
+            print(io, "\n  ", key, " => ComputeGraphView($kstr)")
         end
     end
 
