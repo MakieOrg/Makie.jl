@@ -781,32 +781,10 @@ end
 
     for i in eachindex(mpos)
         mp = mpos[i]
-        @info i => mp
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
-        @info "set"
-        success = wait_for_data_inspector(f.scene, di, true) do
+        wait_for_data_inspector(f.scene, di, true) do
             e.mouseposition[] = mp
-        end
-        @info success
-
-        # for WGLMakie
-        if !success
-            @info "retry set $(di.dynamic_tooltip.visible[])"
-            if !di.dynamic_tooltip.visible[]
-                # jump to another index that'S hopefully not covered
-                j = mod1(i + 10, length(di.dynamic_tooltip))
-                wait_for_data_inspector(f.scene, di, true) do
-                    e.mouseposition[] = mpos[j]
-                end
-            end
-            wait_for_data_inspector(f.scene, di, false) do
-                e.mouseposition[] = (1.0, 1.0)
-            end
-            success = wait_for_data_inspector(f.scene, di, true) do
-                e.mouseposition[] = mp
-            end
-            success || @warn "wait failed twice"
         end
 
         # collect_di_state!(states, di, attr_names)
@@ -820,15 +798,8 @@ end
         end
 
         # remove tooltip so we don't select it
-        @info "reset"
-        success = wait_for_data_inspector(f.scene, di, false) do
+        wait_for_data_inspector(f.scene, di, false) do
             e.mouseposition[] = (1.0, 1.0)
-        end
-        if !success
-            @info "retry reset $(di.dynamic_tooltip.visible[])"
-            success = wait_for_data_inspector(f.scene, di, false) do
-                e.mouseposition[] = (599.0, 499.0)
-            end
         end
     end
 
