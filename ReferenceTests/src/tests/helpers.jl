@@ -31,21 +31,24 @@ else
     end
 end
 
-function wait_for_data_inspector(action, fig, inspector, visible = nothing)
+function wait_for_data_inspector(action, fig, inspector, visible = nothing, timeout = 60)
     # WGLMakie: check for change in the picked plot element
     # GLMakie: force re-render via colorbuffer()
     last_plot_element = inspector.last_plot_element
     action()
     notify(events(fig).tick)
     colorbuffer(fig)
-    state = wait_for(timeout = 60) do
+    status = wait_for(timeout = timeout) do
         # notify(events(fig).tick)
         has_switched = inspector.last_plot_element != last_plot_element
         check_visible = visible === nothing ? true : (inspector.dynamic_tooltip.visible[] == visible)
         return has_switched && check_visible
     end
-    state != :success && return false
+    if status != :success
+        @warn "Failed wait_for with status $status"
+        return false
+    end
     # WGLMakie also needs time to render?
-    isdefined(Main, :WGLMakie) && sleep(5 / 30)
+    isdefined(Main, :WGLMakie) && sleep(10 / 30)
     return true
 end
