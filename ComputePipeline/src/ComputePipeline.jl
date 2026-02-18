@@ -710,6 +710,8 @@ function Base.getindex(attr::ComputeGraphView, key::Symbol)
         return ComputeGraphView(attr.parent, temp_result)
     end
 end
+# Compat for (graph.attributes[]::Attributes)[:entry]/.entry
+Base.getindex(attr::ComputeGraphView) = attr
 
 function Base.setproperty!(attr::ComputeGraphView, key::Symbol, value)
     temp_result = attr.nested_trace[key]
