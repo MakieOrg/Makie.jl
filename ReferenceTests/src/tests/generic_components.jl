@@ -593,12 +593,6 @@ end
     for i in eachindex(mps)
         mp = mps[i]
 
-        # remove tooltip so we don't select it
-        wait_for_data_inspector(scene, di, false) do
-            e.mouseposition[] = (1.0, 1.0)
-        end
-        @test !di.dynamic_tooltip.visible[] # verify cleanup
-
         wait_for_data_inspector(scene, di, true) do
             e.mouseposition[] = mp
         end
@@ -612,6 +606,12 @@ end
             # if this is false we skipped a plot that uses indicators
             @test all(p -> !p.visible[], values(di.indicator_cache))
         end
+
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
     end
 
     st
@@ -767,7 +767,7 @@ end
 
     # One per plot, in order
     mpos = [
-        (82, 325), (116, 325),
+        (82, 325), (116, 225),
         (152, 350), (192, 350),
         (243, 380), (243, 270), (243, 230), (243, 180),
         (290, 325), (331, 325),
@@ -781,18 +781,25 @@ end
 
     for i in eachindex(mpos)
         mp = mpos[i]
-        # remove tooltip so we don't select it
-        wait_for_data_inspector(f.scene, di, false) do
-            e.mouseposition[] = (1.0, 1.0)
-        end
+        @info i => mp
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
+        @info "set"
         success = wait_for_data_inspector(f.scene, di, true) do
             e.mouseposition[] = mp
         end
+        @info success
 
         # for WGLMakie
         if !success
+            @info "retry set $(di.dynamic_tooltip.visible[])"
+            if !di.dynamic_tooltip.visible[]
+                # jump to another index that'S hopefully not covered
+                j = mod1(i + 10, length(di.dynamic_tooltip))
+                wait_for_data_inspector(f.scene, di, true) do
+                    e.mouseposition[] = mpos[j]
+                end
+            end
             wait_for_data_inspector(f.scene, di, false) do
                 e.mouseposition[] = (1.0, 1.0)
             end
@@ -810,6 +817,18 @@ end
         else
             # if this is false we skipped a plot that uses indicators
             @test all(p -> !p.visible[], values(di.indicator_cache))
+        end
+
+        # remove tooltip so we don't select it
+        @info "reset"
+        success = wait_for_data_inspector(f.scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        if !success
+            @info "retry reset $(di.dynamic_tooltip.visible[])"
+            success = wait_for_data_inspector(f.scene, di, false) do
+                e.mouseposition[] = (599.0, 499.0)
+            end
         end
     end
 
