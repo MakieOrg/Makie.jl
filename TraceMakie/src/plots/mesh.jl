@@ -76,18 +76,22 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
     gb_faces = GeometryBasics.faces(inner)
     n_faces = length(gb_faces)
 
-    # Resolve per-face materials from GLTF data
+    # Resolve per-face materials
     per_face_materials = Vector{Hikari.Material}(undef, n_faces)
     mat_cache = Dict{String, Hikari.Material}()
     for (view_range, name) in zip(views, mat_names)
         mat = get!(mat_cache, name) do
             if haskey(materials_dict, name)
-                if !isnothing(user_material)
+                mat_entry = materials_dict[name]
+                if mat_entry isa Hikari.Material
+                    # Direct Hikari material (e.g. from user-constructed MetaMesh)
+                    mat_entry
+                elseif !isnothing(user_material)
                     # Merge GLTF diffuse texture into user's material type
-                    tex = extract_glb_diffuse_texture(materials_dict[name])
+                    tex = extract_glb_diffuse_texture(mat_entry)
                     merge_color_with_material(tex, user_material)
                 else
-                    result = glb_material_to_hikari(materials_dict[name])
+                    result = glb_material_to_hikari(mat_entry)
                     m = result.material
                     if !isnothing(result.emission)
                         m = Hikari.MediumInterface(m; emission=result.emission)
