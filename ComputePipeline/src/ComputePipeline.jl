@@ -135,9 +135,12 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         end
 
         if length(result) != length(edge.outputs)
-            m = first(methods(edge.callback))
-            line = string(m.file, ":", m.line)
-            error("Result needs to have same length. Found: $(result), for func $(line)")
+            line = edge_callback_location(edge)
+            io = IOBuffer()
+            ioc = IOContext(io, :limit => true, :compact => true, :displaysize => (50, 1))
+            show(ioc, result)
+            str = String(take!(io))
+            error("Result needs to have same length. Found: $str, for func $(line)")
         end
 
         outputs = ntuple(length(result)) do i
@@ -157,7 +160,9 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         foreach(node -> node.dirty = false, edge.outputs)
 
     else
-        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $result")
+        io = IOBuffer()
+        short_show(io, result)
+        error("Wrong type as result $(typeof(result)). Needs to be Tuple with one element per output or nothing. Value: $(String(take!(io)))")
     end
     return TypedEdge(f, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end

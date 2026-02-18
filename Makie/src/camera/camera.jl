@@ -126,6 +126,9 @@ function is_mouseinside(scene::Scene)
     # end
 end
 
+is_orthographic(::AbstractCamera) = true
+
+
 
 function add_camera_computation!(graph::ComputeGraph, scene)
     # This includes all combinations of:

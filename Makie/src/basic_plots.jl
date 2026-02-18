@@ -321,7 +321,10 @@ colormap. How exactly the color is derived depends on the algorithm used.
     y::EndPoints,
     z::EndPoints,
     # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
-    volume::AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
+    volume::Union{
+        AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
+        SDFBrickmapSamplers
+    },
 ) begin
     """
     Sets the volume algorithm that is used. Available algorithms are:

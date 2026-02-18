@@ -1,6 +1,13 @@
 abstract type AbstractCamera3D <: AbstractCamera end
 
 get_space(::AbstractCamera3D) = :data
+function is_orthographic(cam::AbstractCamera3D)
+    if hasproperty(cam, :projectiontype)
+        return to_value(cam.projectiontype) == Orthographic
+    else
+        return false
+    end
+end
 
 struct Camera3D <: AbstractCamera3D
     # User settings
@@ -280,6 +287,8 @@ function deselect_all_cameras!(scene)
     end
     return nothing
 end
+
+is_orthographic(cam::Camera3D) = to_value(cam.settings[:projectiontype]) == Makie.Orthographic
 
 
 ################################################################################

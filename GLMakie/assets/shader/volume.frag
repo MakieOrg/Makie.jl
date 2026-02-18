@@ -22,18 +22,25 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 in vec3 frag_vert;
 
 {{volumedata_type}} volumedata;
+{{indexmap_type}} indexmap;
+{{bricks_type}} bricks;
+
+{{color_indexmap_type}} color_indexmap;
+{{color_brick_type}} color_brick;
 
 {{color_map_type}} color_map;
 {{color_type}} color;
 {{color_norm_type}} color_norm;
 
 uniform float absorption = 1.0;
-uniform vec3 eyeposition;
+uniform vec3 eyeposition, view_direction;
+uniform bool is_orthographic;
 
 uniform mat4 modelinv;
 uniform int algorithm;
 uniform float isovalue;
 uniform float isorange;
+uniform int bricksize;
 
 uniform mat4 model, projectionview;
 uniform int _num_clip_planes;
@@ -42,7 +49,8 @@ uniform float depth_shift;
 
 const float max_distance = 1.3;
 
-const int num_samples = 200;
+// const int num_samples = 200;
+const int num_samples = 1000;
 const float step_size = max_distance / float(num_samples);
 
 float _normalize(float val, float from, float to) { return (val-from) / (to - from);}
@@ -69,6 +77,194 @@ vec4 color_lookup(float intensity, Nothing color_ramp, Nothing norm, Nothing col
 vec4 color_lookup(samplerBuffer colormap, int index) { return texelFetch(colormap, index); }
 vec4 color_lookup(sampler1D colormap, int index) { return texelFetch(colormap, index, 0); }
 vec4 color_lookup(Nothing colormap, int index) { return vec4(0); }
+
+vec4 get_volume_sample(sampler3D volumedata, Nothing indexmap, Nothing bricks, vec3 uvw)
+{
+    return texture(volumedata, uvw);
+}
+
+uvec3 to_3D_index(uint index, ivec3 size)
+{
+    uint size_xy = size.x * size.y;
+    uint k = index / size_xy;
+    index = index - size_xy * k;
+    uint j = index / size.x;
+    uint i = index - size.x * j;
+    return uvec3(i, j, k);
+}
+
+vec3 to_brickmap_uvw(usampler3D indexmap, uint brick_index, ivec3 size, vec3 uvw)
+{
+    // size where each brick is viewed as a single entry
+    ivec3 brickmap_size = size / bricksize;
+    // matrix indices for the brick
+    uvec3 ijk = to_3D_index(brick_index, brickmap_size);
+
+    uvec3 isize = textureSize(indexmap, 0);
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - 1);
+
+    // index of brick -> uvw in brickmap
+    vec3 brickmap_uvw_origin = (vec3(ijk) + 0.5 / bricksize) / vec3(brickmap_size);
+
+    // effective size of the volume data
+    // for each index in indexmap, we have a brick
+    // each brick shares its shell with neighboring bricks -> (bricksize - 1)
+    uvec3 world_size = isize * (bricksize - 1);
+
+    // how far from the origin of the brick are we?
+    vec3 offset_index = uvw * vec3(world_size) - indexmap_ijk * (bricksize - 1);
+
+    // how far are we from the brick origin in the brickmaps uvw space?
+    vec3 brickmap_uvw_offset = offset_index / vec3(size);
+
+    // what's the full uvw position in the brickmap?
+    vec3 brickmap_uvw = brickmap_uvw_origin + brickmap_uvw_offset;
+
+    return brickmap_uvw;
+}
+
+int tracker = 0;
+vec4 get_volume_sample(Nothing volumedata, usampler3D indexmap, sampler3D bricks, vec3 uvw)
+{
+    // no half bins on the edges
+    // | 0 | 1 | 2 |  index
+    // 0  1/3 2/3  1  uv
+    // 0   1   2   3  uv * size
+    uvec3 isize = textureSize(indexmap, 0);
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - 1);
+    uint index = texelFetch(indexmap, indexmap_ijk, 0).x; // check
+
+    vec3 istep = 1 / vec3(isize - 1); // uvw distance to next brick
+
+    // no brick here, move to next spot (half a cellsize is allowed)
+    if (index == 0)
+    {
+        // when debug-drawing index we need to use smaller steps here so ray
+        // marching can actually find the start of a brick here
+        tracker = -1;
+        // return vec4(0.5 * length(istep), 0, 0, 0); // too large
+        return vec4(0.5 * istep.x, 0, 0, 0); // this seems fine
+        // return vec4(0.05 * length(istep), 0, 0, 0);
+        // return vec4(0.002, 0, 0, 0);
+    }
+    tracker = 1;
+
+    index--; // index = 0 is implied, not part of bricks
+
+    // test index
+    // return vec4(
+    //     float((index) % 7) / float(7),
+    //     float((index) % 17) / float(17),
+    //     float((index) % 23) / float(23),
+    //     1.0
+    // );
+
+    ivec3 size = ivec3(textureSize(bricks, 0));
+
+    vec3 brickmap_uvw = to_brickmap_uvw(indexmap, index, size, uvw);
+
+    // in-brick offset
+    // return vec4(offset_index / vec3(bricksize-1), 1);
+
+    // origin of brick in brickmap
+    // return vec4(brickmap_uvw_origin, 1);
+
+    // offset in brickmap
+    // return vec4(brickmap_uvw_offset * size, 1);
+
+    // convert UInt8 to a float
+    float cellsize = length(istep / bricksize); // distance to next point within a brick
+    float compressed_sample = texture(bricks, brickmap_uvw).x;
+    return vec4(
+        compressed_sample * 2.0 * cellsize - cellsize,
+        0, 0, 0
+    );
+}
+
+vec4 get_volume_sample(vec3 uvw)
+{
+    return get_volume_sample(volumedata, indexmap, bricks, uvw);
+}
+
+vec3 brick_debug_color(usampler3D indexmap, vec3 uvw)
+{
+    uvec3 isize = textureSize(indexmap, 0) * bricksize;
+    ivec3 indexmap_ijk = min(ivec3(uvw * isize), ivec3(isize) - bricksize);
+    vec3 brick_color = 0.25 + 0.5 * mod(indexmap_ijk / bricksize, 2);
+    // small differences in blue are harder to see
+    vec3 cell_color = -vec3(0.05, 0.05, 0.1) + vec3(0.1, 0.1, 0.2) * mod(mod(indexmap_ijk, bricksize), 2);
+    return brick_color + cell_color;
+}
+
+vec3 get_brick_color(usampler3D indexmap, usampler2D color_indexmap, sampler3D color_brick, vec3 uvw)
+{
+    uint brick_idx = texture(indexmap, uvw).x;
+    if (brick_idx == 0)
+        return vec3(1, 0, 1);
+
+    brick_idx--;
+
+    uvec2 csize = textureSize(color_indexmap, 0);
+    ivec2 color_brick_idx = ivec2(brick_idx % csize.x, brick_idx / csize.x);
+    uint packed_color_index = texelFetch(color_indexmap, color_brick_idx, 0).x;
+
+    bool is_static = ((uint(1) << 31) & packed_color_index) > 0;
+
+    if (is_static)
+    {
+        uint color_index = ~(uint(1) << 31) & packed_color_index;
+
+        uint brick_length = bricksize * bricksize * bricksize;
+        uint brick_index = color_index / brick_length;
+
+        ivec3 size = ivec3(textureSize(color_brick, 0));
+        uvec3 ijk = to_3D_index(brick_index, size);
+
+        uvec3 inner_index = to_3D_index(color_index - brick_index * brick_length, ivec3(bricksize));
+        vec3 color = texelFetch(color_brick, ivec3(ijk + inner_index), 0).rgb;
+        return color;
+    }
+    else
+    {
+        uint brick_index = packed_color_index;
+
+        ivec3 size = ivec3(textureSize(color_brick, 0));
+        vec3 brickmap_uvw = to_brickmap_uvw(indexmap, brick_index, size, uvw);
+
+        vec3 color = texture(color_brick, brickmap_uvw).rgb;
+        return color;
+    }
+}
+vec3 get_brick_color(vec3 uvw) { return get_brick_color(indexmap, color_indexmap, color_brick, uvw); }
+
+float get_eps(sampler3D volumedata, Nothing indexmap)
+{
+    vec3 step = 1.0 / vec3(textureSize(volumedata, 0));
+    return max(max(step.x, step.y), step.z);
+}
+float get_eps(Nothing volumedata, usampler3D indexmap)
+{
+    // Moving out of a brick may cause us to sample a constant, larger brick,
+    // resulting in a worse normal approximation. So keep the step smaller than
+    // 1 interpolation cell to avoid it
+    vec3 step = 0.1 / vec3(textureSize(indexmap, 0) * (bricksize - 1));
+    return max(max(step.x, step.y), step.z);
+}
+float get_eps() { return get_eps(volumedata, indexmap); }
+
+uvec3 get_volume_size(sampler3D volumedata, Nothing indexmap)
+{
+    return textureSize(volumedata, 0);
+}
+uvec3 get_volume_size(Nothing volumedata, usampler3D indexmap)
+{
+    return textureSize(indexmap, 0) * 8; // TODO: pass bricksize
+}
+uvec3 get_volume_size()
+{
+    return get_volume_size(volumedata, indexmap);
+}
+
 
 vec3 gennormal(vec3 uvw, float d, vec3 o)
 {
@@ -102,14 +298,14 @@ vec3 gennormal(vec3 uvw, float d, vec3 o)
         return vec3(0, 0, -1);
     }
 
-    a.x = texture(volumedata, uvw - vec3(o.x, 0.0, 0.0)).r;
-    b.x = texture(volumedata, uvw + vec3(o.x, 0.0, 0.0)).r;
+    a.x = get_volume_sample(uvw - vec3(o.x, 0.0, 0.0)).r;
+    b.x = get_volume_sample(uvw + vec3(o.x, 0.0, 0.0)).r;
 
-    a.y = texture(volumedata, uvw - vec3(0.0, o.y, 0.0)).r;
-    b.y = texture(volumedata, uvw + vec3(0.0, o.y, 0.0)).r;
+    a.y = get_volume_sample(uvw - vec3(0.0, o.y, 0.0)).r;
+    b.y = get_volume_sample(uvw + vec3(0.0, o.y, 0.0)).r;
 
-    a.z = texture(volumedata, uvw - vec3(0.0, 0.0, o.z)).r;
-    b.z = texture(volumedata, uvw + vec3(0.0, 0.0, o.z)).r;
+    a.z = get_volume_sample(uvw - vec3(0.0, 0.0, o.z)).r;
+    b.z = get_volume_sample(uvw + vec3(0.0, 0.0, o.z)).r;
 
     vec3 diff = a - b;
     float n = length(diff);
@@ -145,7 +341,7 @@ vec4 volume(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
+        float intensity = get_volume_sample(pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
@@ -164,7 +360,7 @@ vec4 additivergba(vec3 front, vec3 dir)
     vec4 integrated_color = vec4(0., 0., 0., 0.);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = get_volume_sample(pos);
         integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
         pos += dir;
     }
@@ -178,7 +374,7 @@ vec4 absorptionrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples ; ++i) {
-        vec4 density = texture(volumedata, pos);
+        vec4 density = get_volume_sample(pos);
         float opacity = step_size * density.a * absorption;
         T *= 1.0-opacity;
         if (T <= 0.01)
@@ -197,7 +393,7 @@ vec4 volumeindexedrgba(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     for (i; i < num_samples; ++i) {
-        int index = int(texture(volumedata, pos).x) - 1;
+        int index = int(get_volume_sample(pos).x) - 1;
         vec4 density = color_lookup(color_map, index);
         float opacity = step_size*density.a * absorption;
         Lo += (T*opacity)*density.rgb;
@@ -216,12 +412,12 @@ vec4 contours(vec3 front, vec3 dir)
     vec3 Lo = vec3(0.0);
     int i = 0;
     vec3 camdir = normalize(dir);
-    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
+    vec3 edge_gap = 0.5 / get_volume_size(); // see gennormal
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
     for (i; i < num_samples; ++i) {
-        float intensity = texture(volumedata, pos).x;
+        float intensity = get_volume_sample(pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
         float opacity = density.a;
         if(opacity > 0.0)
@@ -261,12 +457,12 @@ vec4 isosurface(vec3 front, vec3 dir)
     int i = 0;
     vec4 diffuse_color = color_lookup(isovalue, color_map, color_norm, color);
     vec3 camdir = normalize(dir);
-    vec3 edge_gap = 0.5 / textureSize(volumedata, 0); // see gennormal
+    vec3 edge_gap = 0.5 / get_volume_size(); // see gennormal
 #ifdef ENABLE_DEPTH
     float depth = 100000.0;
 #endif
     for (i; i < num_samples; ++i){
-        float density = texture(volumedata, pos).x;
+        float density = get_volume_sample(pos).x;
         if(abs(density - isovalue) < isorange)
         {
 
@@ -297,13 +493,81 @@ vec4 isosurface(vec3 front, vec3 dir)
     return c;
 }
 
+vec3 generate_sdf_normal(vec3 uvw)
+{
+    const vec2 k = vec2(1, -1) * 0.5773;
+    const float eps = get_eps();
+    float sdf1 = get_volume_sample(uvw + k.xyy * eps).x;
+    float sdf2 = get_volume_sample(uvw + k.yyx * eps).x;
+    float sdf3 = get_volume_sample(uvw + k.yxy * eps).x;
+    float sdf4 = get_volume_sample(uvw + k.xxx * eps).x;
+    return normalize(k.xyy * sdf1 + k.yyx * sdf2 + k.yxy * sdf3 + k.xxx * sdf4);
+}
+
+vec4 raymarch_sdf(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 c = vec4(0.0);
+    float max_distance = length(dir);
+    vec3 camdir = dir / max_distance;
+
+    float min_step = isorange;
+    float cumulative_distance = 0.0;
+    int i = 0;
+
+    for (i; i < num_samples; ++i)
+    {
+        vec4 temp = get_volume_sample(pos);
+        float signed_distance = temp.x;
+
+        // if (tracker == 1)
+        //     return temp;
+            // return vec4(signed_distance / 0.007, -signed_distance / 0.007, 0, 1);
+
+        // we still want to trigger this when we get into min_step range to
+        // make one last improvement
+        // if we get a negative distance (inside the shape) we want to be able
+        // to move back outside
+        pos = pos + sign(signed_distance) * max(abs(signed_distance), min_step) * camdir;
+        cumulative_distance += signed_distance;
+
+        if (abs(signed_distance) < min_step)
+            break;
+        else if (cumulative_distance > max_distance)
+        {
+            discard;
+            return vec4(0, 0, 0, 0);
+        }
+    }
+
+    vec4 world_pos = model * vec4(pos, 1);
+
+#ifdef ENABLE_DEPTH
+    vec4 frag_coord = projectionview * world_pos;
+    clip_depth = frag_coord.z / frag_coord.w;
+#endif
+
+    float cost = i / num_samples;
+    // vec3 color = vec3(cost * cost, (1 - cost) * (1 - cost), 0.1);
+    // vec3 color = vec3(3 * cost - 2, 1 - 3 * cost, 1 - abs(3 * cost - 1.5));
+    // vec3 color = brick_debug_color(indexmap, pos);
+    vec3 color = get_brick_color(pos);
+    // return vec4(color, 1);
+
+    vec3 normal = generate_sdf_normal(pos);
+    vec4 shaded_color = vec4(
+        illuminate(world_pos.xyz / world_pos.w, camdir, normal, color), 1.0
+    );
+    return shaded_color;
+}
+
 vec4 mip(vec3 front, vec3 dir)
 {
     vec3 pos = front + dir;
     int i = 1;
-    float maximum = texture(volumedata, front).x;
+    float maximum = get_volume_sample(front).x;
     for (i; i < num_samples; ++i, pos += dir){
-        float density = texture(volumedata, pos).x;
+        float density = get_volume_sample(pos).x;
         if(maximum < density)
             maximum = density;
     }
@@ -379,18 +643,39 @@ void main()
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
     vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
-    vec3 dir = normalize(eye_unit - back_position);
+    vec3 dir, start;
+    vec3 stop = back_position;
+
+    if (is_orthographic)
+    {
+        dir = mat3(modelinv) * -view_direction;
+        dir = normalize(dir);
+
+        // How far along dir is the near plane?
+        // For orthographic projections:
+        // dir, eyeposition define the plane from which every ray originates
+        // start is on the plane such that start + t * dir == stop
+        //      stop
+        //       /|
+        //      / | dir
+        //     /  |
+        // eye ---- start
+        start = stop + dot(eye_unit - stop, dir) * dir;
+    }
+    else
+    {
+        start = eye_unit;
+        dir = normalize(eye_unit - back_position);
+    }
 
     // In model space (pre model application) the volume is defined in a const
     // 0..1 box. If the camera is inside the box we start our rays from the
     // camera position (eyeposition).
     // TODO: Should we consider near here?
 
-    bool is_outside_box = (eye_unit.x < 0.0 || eye_unit.y < 0.0 || eye_unit.z < 0.0
-            || eye_unit.x > 1.0 || eye_unit.y > 1.0 || eye_unit.z > 1.0);
+    bool is_outside_box = (start.x < 0.0 || start.y < 0.0 || start.z < 0.0
+            || start.x > 1.0 || start.y > 1.0 || start.z > 1.0);
 
-    vec3 start = eye_unit;
-    vec3 stop = back_position;
 
     // Otherwise we find the box - ray intersection so we can skip the empty
     // space between the camera and the volume
@@ -406,6 +691,8 @@ void main()
         start = back_position + solution * dir;
     }
 
+
+
 #ifdef ENABLE_DEPTH
     vec4 frag_coord = projectionview * model * vec4(start, 1);
     clip_depth = frag_coord.z / frag_coord.w;
@@ -416,7 +703,8 @@ void main()
     if (process_clip_planes(start, stop))
         discard;
 
-    vec3 step_in_dir = (stop - start) / num_samples;
+    vec3 full_dir = (stop - start);
+    vec3 step_in_dir = full_dir / num_samples;
 
     // the algorithm numbers correspond to the order in the
     // RaymarchAlgorithm enum defined in Makie types.jl
@@ -432,6 +720,8 @@ void main()
         color = additivergba(start, step_in_dir);
     else if(algorithm == 5)
         color = volumeindexedrgba(start, step_in_dir);
+    else if(algorithm == 6)
+        color = raymarch_sdf(start, full_dir);
     else
         color = contours(start, step_in_dir);
 

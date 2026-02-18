@@ -7,13 +7,14 @@ using FixedPointNumbers
 using ColorTypes
 using ..GLMakie.GLFW
 using ..GLMakie: ShaderSource
-import ..GLMakie.Makie.ComputePipeline: update!
 import ..GLMakie: DEBUG
 using Printf
 using LinearAlgebra
 using Observables
 using ShaderAbstractions
-using ShaderAbstractions: current_context, is_context_active, context_alive, switch_context!
+using ShaderAbstractions: current_context, is_context_active, context_alive,
+    switch_context!
+import ShaderAbstractions: update!
 using GeometryBasics: StaticVector
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
@@ -99,7 +100,7 @@ export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
 export TextureParameters
 export TextureBuffer            # OpenGL texture buffer
-export update!                  # updates a gpu array with a Julia array
+# export update!                  # updates a gpu array with a Julia array
 export gpu_data                 # gets the data of a gpu array as a Julia Array
 
 export RenderObject             # An object which holds all GPU handles and datastructes to ready for rendering by calling render(obj)

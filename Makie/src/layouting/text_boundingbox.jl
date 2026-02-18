@@ -31,7 +31,7 @@ function unchecked_boundingbox(glyphs, origins, scales, extents, rotation)
     bb = Rect3d()
     broadcast_foreach(origins, glyphbbs, rotation) do charo, glyphbb, rotation
         glyphbb3 = Rect3d(to_ndim(Point3d, origin(glyphbb), 0), to_ndim(Point3d, widths(glyphbb), 0))
-        charbb = rotate_bbox(glyphbb3, rotation) + charo
+        charbb = rotate_bbox(rotation, glyphbb3) + charo
         if !isfinite_rect(bb)
             bb = charbb
         else
@@ -66,7 +66,9 @@ function height_insensitive_boundingbox_with_advance(ext::GlyphExtent)
     return Rect2d((l, b), (r - l, h - b))
 end
 
-function rotate_bbox(bb::Rect3{T}, rot) where {T <: Real}
+function rotate_bbox(rot::Quaternion, bb::Rect3{T}) where {T <: Real}
     points = decompose(Point3{T}, bb)
     return Rect3{T}(Ref(rot) .* points)
 end
+
+@deprecate rotate_bbox(bb::Rect3, rot) rotate_bbox(rot, bb) false

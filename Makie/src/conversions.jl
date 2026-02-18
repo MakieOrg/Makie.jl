@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
@@ -1665,7 +1664,7 @@ to_colormapping_type(x::Reverse) = to_colormapping_type(x.data)
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
         return Int32(value)
-    elseif isa(value, Integer) && value in 0:5
+    elseif isa(value, Integer) && value in 0:6
         return Int32(value)
     elseif value == 7
         return Int32(value) # makie internal contour implementation
@@ -1683,6 +1682,7 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         :absorptionrgba => AbsorptionRGBA,
         :indexedabsorption => IndexedAbsorptionRGBA,
         :additive => AdditiveRGBA,
+        :sdf => RayMarchSDF
     )
     return convert_attribute(
         get(vals, Symbol(value)) do
@@ -2377,10 +2377,8 @@ function el32convert(x::ShaderAbstractions.Sampler{T, N}) where {T, N}
     T32 === T && return x
     data = el32convert(x.data)
     return ShaderAbstractions.Sampler{T32, N, typeof(data)}(
-        data, x.minfilter, x.magfilter,
-        x.repeat,
-        x.anisotropic, mipmap = s.mipmap,
-        x.color_swizzel,
+        data, x.minfilter, x.magfilter, x.repeat,
+        x.mipmap, x.anisotropic, x.color_swizzel,
         ShaderAbstractions.ArrayUpdater(data, x.updates.update)
     )
 end

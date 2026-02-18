@@ -1045,7 +1045,11 @@ end
 function calculated_attributes!(::Type{Volume}, plot::Plot)
     attr = plot.attributes
     ComputePipeline.alias!(attr, :model, :model_f32c)
-    register_colormapping!(attr, :volume)
+    if attr.volume[] isa SDFBrickmapSamplers
+        ComputePipeline.alias!(attr, :volume, :scaled_color)
+    else
+        register_colormapping!(attr, :volume)
+    end
     return map!(attr, [:x, :y, :z], :data_limits) do x, y, z
         mini, maxi = Vec3.(x, y, z)
         return Rect3d(mini, maxi .- mini)

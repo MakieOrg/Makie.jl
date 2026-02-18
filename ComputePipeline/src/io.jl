@@ -327,10 +327,9 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         idx = findfirst(computed -> computed.name in marked, edge.inputs)
         if idx === nothing # All resolved
             print(io, "  with edge inputs:")
-            ioc = IOContext(io, :limit => true)
             for input in edge.inputs
                 print(io, "\n    ", input.name, " = ")
-                show(ioc, input.value[])
+                short_show(io, input.value[])
             end
             println(io)
             print_root_inputs(io, edge)
@@ -340,6 +339,21 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
     end
     return
 end
+
+function short_show(io, x::Vector)
+    if length(x) < 5
+        show(io, x)
+    else
+        println(io, "[", x[1], ", ", x[2], ", …, ", x[end], "]")
+    end
+end
+
+function short_show(io, x::Array{T, N}) where {T, N}
+    s = reduce((a, b) -> "$a×$b", size(x))
+    println(io, "$s Array{$T, $N}")
+end
+
+short_show(io, x) = show(io, x)
 
 function print_root_inputs(io::IO, edge::ComputeEdge)
     root_inputs = Set{Symbol}()

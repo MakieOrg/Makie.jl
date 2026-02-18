@@ -1174,17 +1174,32 @@ end
 
 
 function assemble_volume_robj!(data, screen::Screen, attr, args, input2glname)
-    interp = attr[:interpolate][] ? :linear : :nearest
-
-    data[:volumedata] = Texture(screen.glscreen, args.scaled_color, minfilter = interp)
     data[:enable_depth] = attr[:enable_depth][]
 
-    if args.scaled_color isa AbstractArray{<:Real}
-        data[:color_map] = args.alpha_colormap
-        data[:color_norm] = args.scaled_colorrange
+    if attr.scaled_color[] isa AbstractArray{<:Real}
+        data[:color_map] = attr.alpha_colormap[]
+        data[:color_norm] = attr.scaled_colorrange[]
     end
 
+    # if !isnothing(attr.brick_colors[])
+    #     data[:brick_colors] = Texture(screen.glscreen, attr.brick_colors[])
+    # end
+
     return draw_volume(screen, data)
+end
+
+function update_volume_or_brickmap((data,), changed, cached)
+    if data isa Makie.SDFBrickmapSamplers
+        return nothing, data.indices, data.bricks, data.bricksize, data.color_indexmap, data.color_bricks
+    else
+        if isnothing(cached)
+            volumedata = ShaderAbstractions.Sampler(data, minfilter = attr.interpolate[] ? :linear : :nearest)
+            return volumedata, nothing, nothing, nothing, nothing
+        else
+            ShaderAbstractions.update!(cached.volumedata, data)
+            return cached.volumedata, nothing, nothing, nothing, nothing
+        end
+    end
 end
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
@@ -1201,21 +1216,34 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Volume)
         return (Mat4f(inv(model)),)
     end
 
+    register_computation!(
+        update_volume_or_brickmap,
+        attr, [:scaled_color],
+        [:volumedata, :indexmap, :bricks, :bricksize, :color_indexmap, :color_brick]
+    )
+
+    add_constant!(attr, :is_orthographic, Makie.is_orthographic(cameracontrols(scene)))
+
     inputs = [
         # Special
         :space,
         # Needs explicit handling
-        :alpha_colormap, :scaled_colorrange,
+        # :alpha_colormap, :scaled_colorrange,
     ]
     uniforms = [
-        :scaled_color, :modelinv, :algorithm, :absorption, :isovalue, :isorange,
+        :volumedata, :indexmap, :bricks, :bricksize,
+        :color_indexmap, :color_brick,
+        # :scaled_color,
+        :modelinv, :algorithm, :absorption, :isovalue, :isorange,
         :diffuse, :specular, :shininess, :backlight,
         # :lowclip_color, :highclip_color, :nan_color,
         :uniform_model,
+        :is_orthographic
     ]
 
     input2glname = Dict{Symbol, Symbol}(
-        :scaled_color => :volumedata, :uniform_model => :model,
+        # :scaled_color => :volumedata,
+        :uniform_model => :model,
         :alpha_colormap => :color_map, :scaled_colorrange => :color_norm,
         :uniform_num_clip_planes => :_num_clip_planes
     )

@@ -5,6 +5,7 @@ version = "0.24.8"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
+Atomix = "a9b6321e-bd34-4604-b9c9-b65b8de01458"
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 CRC32c = "8bf52ea8-c179-5cab-976a-9e18b702a9bc"
 ColorBrewer = "a2cac450-b92f-5266-8821-25eda20663c8"
@@ -34,6 +35,7 @@ Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 InverseFunctions = "3587e190-3f89-42d0-90ee-14403ec27112"
 Isoband = "f1662d9f-8043-43de-a69a-05efc1cc6ff4"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 KernelDensity = "5ab0869b-81aa-558d-bb23-cbf5423bbe9b"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -68,11 +70,15 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
+[sources]
+ComputePipeline = {path = "../ComputePipeline"}
+
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
 
 [compat]
 Animations = "0.4"
+Atomix = "1.1.2"
 Base64 = "1.0, 1.6"
 CRC32c = "1.0, 1.6"
 ColorBrewer = "0.4"
@@ -102,6 +108,7 @@ Interpolations = "0.14, 0.15.1, 0.16"
 IntervalSets = "0.3, 0.4, 0.5, 0.6, 0.7"
 InverseFunctions = "0.1"
 Isoband = "0.1"
+KernelAbstractions = "0.9"
 KernelDensity = "0.5, 0.6"
 LaTeXStrings = "1.2"
 LinearAlgebra = "1.0, 1.6"
@@ -133,6 +140,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources.ComputePipeline]
-path = "../ComputePipeline"

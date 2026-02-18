@@ -44,7 +44,14 @@ function draw_volume(screen, data::Dict)
     shading = pop!(data, :shading, FastShading)
     pop!(data, :backlight, 0.0f0) # We overwrite this
     @gen_defaults! data begin
-        volumedata = Array{Float32, 3}(undef, 0, 0, 0) => Texture
+        volumedata = nothing => Texture
+        indexmap = nothing => Texture
+        bricks = nothing => Texture
+        bricksize = 0
+
+        color_indexmap = nothing => Texture
+        color_brick = nothing => Texture
+
         model = Mat4f(I)
         modelinv = const_lift(inv, model)
         color_map = nothing => Texture
