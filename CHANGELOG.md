@@ -26,49 +26,8 @@
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
-- Adjusted `Legend` to react to plots added to and deleted from an attached axis. For this `scene.onplot` was added to track plot creation and deletion. [#5672](https://github.com/MakieOrg/Makie.jl/pull/5672)
-- Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
-  - Fixed issues with tooltips reading `inspector_label` from the wrong plot
-  - Fixed issues with tooltips reporting positions of the wrong space
-  - **breaking** Broke up `show_data` into multiple parts:
-    - `get_accessor()` which produces picking information for a higher level plot
-    - `get_tooltip_position()` which extracts the position using that information
-    - `get_default_tooltip_label()` which generates a default label from picking information
-    - `update_indicator_plot!()` for drawing indicator plots
-    - removed `inspector_clear` and `inspector_hover` attributes which are now handled by `update_indicator_plot!()`
-  - Added functionality for persistent tooltips
-- Added support for nested attributes [#5482](https://github.com/MakieOrg/Makie.jl/pull/5482), [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
-  - ComputePipeline now has a system for simulating nested nodes, e.g. `add_input!(graph, :outer, :inner, 1); graph.outer.inner` [#5482](https://github.com/MakieOrg/Makie.jl/pull/5482)
-  - `@recipe ... begin ... end`, `@Block` and `@DocumentedAttributes` now support nesting via `key = @attributes begin ... end` blocks. These can also be documented and allow `mixin()...` expressions [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
-  - `@recipe ... do scene ... end` supports nested attributes via `key = Attributes(...)` [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
-  - `@recipe ... do scene ... end` is now marked as deprecated [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
-  - **mildly breaking** Internal attribute processing for plots and blocks has been reworked and merged, which includes the removal of various unexported functions [#5620](https://github.com/MakieOrg/Makie.jl/pull/5620)
-- Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)
-- Reworked `Block/@Block` infrastructure to support complex/block recipes. The infrastructure mostly mirrors the `@recipe` infrastructure from plots: [#5465](https://github.com/MakieOrg/Makie.jl/pull/5465)
-  - The names (and types) of converted arguments can be defined in `@Block MyBlock (arg1::Vector, arg2)`.
-  - Like traditional blocks, attributes are defined in a `@attribute begin ... end` block within `@Block`. Names defined outside this will be added as fields instead.
-  - `convert_arguments(::Type{MyBlock}, args...)` can be defined as a conversion between user passed arguments and converted arguments. Note that blocks are not parametric types so `<:MyBlock` is not needed
-  - Similarly `conversion_trait(::Type{MyBlock})` can also be defined
-  - Attribute converts rely on methods of `Makie.convert_for_attribute(::Type{T}, user_input)`.
-  - `initialize_block!(b::MyBlock)` is used to initialize the recipe with blocks and plots analogously to `plot!(p::MyPlot)`. The parent block `b::MyBlock` should be treated like a figure here, e.g. `Axis(b[1, 1])`
-  - After defining the block, it can be added to a figure like any other block `mb = MyBlock(fig[1, 1])`.
-  - The blocks within `MyBlock` can be accessed via the layout `mb.layout`, `mb.blocks` or `mb[i, j]`.
-- Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
-  - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
-  - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
-- Refactored `Colorbar` to use the compute graph [#5678](https://github.com/MakieOrg/Makie.jl/pull/5678)
-  - **minor breaking** `extract_colormap(plot)` is now expected to return a `Dict` containing the `color`, `colormap`, `colorrange`, `colorscale`, `lowclip` and `highclip` attributes of the given plot. Returning a `Makie.ColorMapping` still works but is considered deprecated.
-  - **minor breaking** The `limits` attribute has been deprecated in favor of `colorrange`
-- Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
-- Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
-- Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
-- **breaking** Changed the callback signature of ComputeGraph inputs from `callback(name, value)` to `callback(value)`. This changes `add_input!((name, val) -> ..., ...)` to `add_input!(val -> ..., ...)`. Note that you can be compatible with both by implementing multiple callback methods and capture `name` manually if you need it. [#5571](https://github.com/MakieOrg/Makie.jl/pull/5571)
-- Updated how documentation for plots is generated [#5389](https://github.com/MakieOrg/Makie.jl/pull/5389)
-  - **minor breaking** This may lead to duplicate call signatures, attribute and argument information, and examples as those are now added automatically.
-- Updated CairoMakie to allow LinePatterns to be vectorized [#5534](https://github.com/MakieOrg/Makie.jl/pull/5534)
-- **minor breaking** Reworked cycling internals for improved performance when adding many plots. This changes cycling behavior in some edge cases, e.g. when adding plot specs to a `plotlist`, after removing plots from a scene/axis or when leaving cycled attributes unset in recipes. Also allows `:cycle` to be themed via `theme[:PlotName][:cycle]` and cycled attributes to be overwritten by `theme[:Plot][...]`. [#5636](https://github.com/MakieOrg/Makie.jl/pull/5636)
-- **breaking** `nothing` is now treated as a value rather than "nothing changed" in ComputePipeline callbacks. `skip_update` is used to mark values as unchanged instead. `ComputePipeline.log_nothing_skip(true)` can be used to find potentially incorrect return values. [#5754](https://github.com/MakieOrg/Makie.jl/pull/5754)
-- `return nothing` has been deprecated for initializing multiple outputs in ComputePipeline callbacks. [#5754](https://github.com/MakieOrg/Makie.jl/pull/5754)
+- Added a system to simulate nesting in compute graphs to allow for nested attributes.
+  - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
 
 ## Unreleased
 
