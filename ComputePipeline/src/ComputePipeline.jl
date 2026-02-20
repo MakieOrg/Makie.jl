@@ -747,8 +747,32 @@ function Base.keys(view::ComputeGraphView)
     level = trace.next_index
     return keys(trace.parent.keytables[level])
 end
+
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
+
+function Base.iterate(view::ComputeGraphView)
+    ks = keys(view)
+    return iterate(view, (ks, iterate(ks)))
+end
+
+function Base.iterate(view::ComputeGraphView, state)
+    ks, substate = state
+    if isnothing(substate)
+        return nothing
+    else
+        key, key_state = substate
+        return key => view[key], (ks, iterate(ks, key_state))
+    end
+end
+
+function Base.length(view::ComputeGraphView)
+    trace = view.nested_trace
+    level = trace.next_index
+    return length(trace.parent.keytables[level])
+end
+
+Base.eltype(::Type{ComputeGraphView}) = Union{Pair{Symbol, ComputeGraphView}, Pair{Symbol, Computed}}
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
     if haskey(attr.outputs, key)

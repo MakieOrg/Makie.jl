@@ -1133,6 +1133,32 @@ using ComputePipeline: ComputeGraphView
         @test graph.a.const3[] == 0
     end
 
+    @testset "Interfaces" begin
+        # a.a.a and a.a.b are one element in graph.a (graph.a.a)
+        @test length(graph.a) == 6
+        @test length(graph.a.a) == 2
+        v = collect(graph.a.a)
+        @test length(v) == 2
+        @test Pair(:a, graph.a.a.a) in v
+        @test Pair(:b, graph.a.a.b) in v
+
+        result1, state = iterate(graph.a.a)
+        result2, state = iterate(graph.a.a, state)
+        final = iterate(graph.a.a, state)
+        @test result1 in v
+        @test result2 in v
+        @test isnothing(final)
+
+        @test keys(graph.a.a) == Set([:a, :b])
+        @test haskey(graph.a, :a)
+        @test haskey(graph.a, :a, :a)
+        @test haskey(graph.a, :a, :b)
+        @test !haskey(graph.a, :a, :c)
+        @test haskey(graph.a, :b)
+        @test !haskey(graph.a, :d)
+        @test !haskey(graph.a, :d, :a, :e)
+    end
+
     @testset "Access" begin
         @test graph.a isa ComputeGraphView
         @test graph.a.a isa ComputeGraphView
