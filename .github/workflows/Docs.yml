@@ -3,6 +3,8 @@ on:
   pull_request:
     branches:
       - master
+      - ff/breaking-0.25
+      - ff/render_pipeline_master
   push:
     tags:
       - '*'
