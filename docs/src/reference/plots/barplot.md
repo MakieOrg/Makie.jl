@@ -90,7 +90,7 @@ barplot(
     dodge = tbl.grp,
     color = tbl.grp,
     bar_labels = :y,
-    axis = (xticks = (1:3, ["left", "middle", "right"]),
+    axis = (yticks = (1:3, ["left", "middle", "right"]),
             title = "Dodged bars horizontal with labels"),
     colormap = [:red, :green, :blue],
     color_over_background=:red,

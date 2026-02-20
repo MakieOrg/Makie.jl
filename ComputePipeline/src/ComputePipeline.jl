@@ -416,11 +416,13 @@ end
 
 function mark_dirty!(computed::Computed)
     computed.dirty = true
-    hasparent(computed) || return
-    return mark_dirty!(computed.parent)
+    if hasparent(computed)
+        mark_dirty!(computed.parent)
+    end
+    return
 end
 
-function resolve!(input::Input)
+function _resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
     if isdefined(input.output, :value) && isassigned(input.output.value)
@@ -616,7 +618,7 @@ end
 
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
-function resolve!(edge::TypedEdge)
+function _resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
@@ -639,40 +641,74 @@ function resolve!(edge::TypedEdge)
     return
 end
 
+# resolve!() and update!() / setproperty!() must not mix. If they do, resolve!()
+# might be working with older values and mark a result as resolved when newer
+# values have been set by update!()/setproperty!()
+# update!()/setproperty!() currently only locks their local (top level) graph.
+# With this, resolve!() traces all inputs and locks every involved graph before
+# computing anything. This way every involved graph is locked during resolve
+# and update!()/setproperty!() can only run before or after.
+# Note that unlocking a top level graph once resolve!() is done with it is not
+# OK with the current locking behavior of update!()/setproperty!(). In that case
+# update!()/setproperty!() can intercept resolve!(), marking everything dirty
+# which resolve!() then overwrites, marking nodes as clean with old results.
+# Note as well recursively locking both functions, e.g.
+#   resolve!(edge) = lock(edge.graph.lock) do resolve!(edge.inputs) end
+# requires both update!()/setproperty!() and resolve!() to lock and unlock in
+# the same order to prevent deadlocks. They also must (?) also keep their locks
+# until a graph has been fully updated/resolved. This is difficult in practice
+# because of the different recursion direction of update!()/setproperty!() (down)
+# and resolve!() (up).
+lock_all_inputs!(edge::Input) = lock(edge.graph.lock)
+lock_all_inputs!(c::Computed) = lock_all_inputs!(c.parent)
+function lock_all_inputs!(edge::ComputeEdge)
+    # recurse up first so we lock top to bottom
+    foreach(lock_all_inputs!, edge.inputs)
+    lock(edge.graph.lock)
+end
+
+unlock_all_inputs!(edge::Input) = unlock(edge.graph.lock)
+unlock_all_inputs!(c::Computed) = unlock_all_inputs!(c.parent)
+function unlock_all_inputs!(edge::ComputeEdge)
+    foreach(unlock_all_inputs!, edge.inputs)
+    unlock(edge.graph.lock)
+end
+
 function resolve!(computed::Computed)
     try
+        lock_all_inputs!(computed)
         return _resolve!(computed)
     catch e
         rethrow(ResolveException(computed, e))
+    finally
+        unlock_all_inputs!(computed)
     end
 end
 
 function _resolve!(computed::Computed)
     if hasparent(computed)
-        resolve!(computed.parent)
+        _resolve!(computed.parent)
     end
     return computed.value[]
 end
 
-function resolve!(edge::ComputeEdge)
+function _resolve!(edge::ComputeEdge)
     isdirty(edge) || return false
-    return lock(edge.graph.lock) do
-        # Resolve inputs first
-        foreach(_resolve!, edge.inputs)
-        if !isassigned(edge.typed_edge)
-            # constructor does first resolve to determine fully typed outputs
-            edge.typed_edge[] = TypedEdge(edge)
-        else
-            resolve!(edge.typed_edge[])
-        end
-        edge.got_resolved[] = true
-        fill!(edge.inputs_dirty, false)
-        for dep in edge.dependents
-            mark_input_dirty!(edge, dep)
-        end
-        foreach(comp -> comp.dirty = false, edge.outputs)
-        return true
+    foreach(_resolve!, edge.inputs)
+    # Resolve inputs first
+    if !isassigned(edge.typed_edge)
+        # constructor does first resolve to determine fully typed outputs
+        edge.typed_edge[] = TypedEdge(edge)
+    else
+        _resolve!(edge.typed_edge[])
     end
+    edge.got_resolved[] = true
+    fill!(edge.inputs_dirty, false)
+    for dep in edge.dependents
+        mark_input_dirty!(edge, dep)
+    end
+    foreach(comp -> comp.dirty = false, edge.outputs)
+    return true
 end
 
 
@@ -750,7 +786,7 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
 end
 
-function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
+function _resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
     # outputs are identical to inputs, so just copy the input state. To be safe
     # don't overwrite any `dirty = true` state with false (maybe a problem if
     # the input gets resolved?)

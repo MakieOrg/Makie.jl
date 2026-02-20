@@ -96,7 +96,7 @@ function plot!(plot::Density{<:Tuple{<:RealVector}})
             ps = copy(upper)
             push!(ps, lower[end])
             push!(ps, lower[1])
-            push!(ps, lower[2])
+            push!(ps, upper[1])
             return ps
         else
             return upper
