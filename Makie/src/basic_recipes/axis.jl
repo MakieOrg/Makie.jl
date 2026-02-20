@@ -276,12 +276,12 @@ function draw_axis3d(plot)
             :fonts, attr.ticks.font, :tickfontsize, :titlegap, attr.ticks.textcolor,
             attr.ticks.rotation, attr.ticks.align,
             :axisnames_fontsize, attr.names.textcolor, attr.names.rotation,
-            attr.names.align, attr.names.font, :scene_scale
+            attr.names.align, attr.names.font, :scene_scale,
         ],
         [:text_positions, :text_strings, :text_color, :text_rotation, :text_fontsize, :text_align, :text_font]
     ) do lims, showticks, ranges, tgap, ticklabels, axisnames, fonts, tfont,
-        tfontsize, titlegap, ttextcolor, trotation, talign,
-        axisnames_size, axisnames_color, axisrotation, axisalign, axisnames_font, scale
+            tfontsize, titlegap, ttextcolor, trotation, talign,
+            axisnames_size, axisnames_color, axisrotation, axisalign, axisnames_font, scale
 
         positionbuffer = Point3f[]
         textbuffer = String[]
@@ -353,7 +353,7 @@ function draw_axis3d(plot)
         [
             :padded_limits, :showaxis, :showgrid, :ranges,
             attr.frame.axiscolor, attr.frame.axislinewidth,
-            attr.frame.linecolor, attr.frame.linewidth
+            attr.frame.linecolor, attr.frame.linewidth,
         ],
         [:line_positions, :line_colors, :line_widths]
     ) do lims, showaxis, showgrid, ranges, axiscolors, axislinewidth, gridcolors, gridthickness

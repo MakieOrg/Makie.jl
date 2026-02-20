@@ -222,7 +222,7 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple)
         else
             add_key!(tree, next_level, tail)
         end
-
+        return
     else
 
         @assert length(tree.keytables) >= level - 1
@@ -1015,7 +1015,7 @@ function handle_nested_keys(attr::ComputeGraph, names::Tuple)
         throw(
             ArgumentError(
                 "`add_input!([callback], attr, names..., value) requires all names to be Symbols, " *
-                "but name $(first_bad) is a $(typeof(names[first_bad]))."
+                    "but name $(first_bad) is a $(typeof(names[first_bad]))."
             )
         )
     end
@@ -1287,7 +1287,7 @@ function handle_nested_outputs(attr::ComputeGraph, outputs::Vector)
     _outputs = Vector{Symbol}(undef, length(outputs))
     for (i, namelike) in enumerate(outputs)
         if namelike isa Symbol
-            _outputs[i] =  namelike
+            _outputs[i] = namelike
         elseif namelike isa Tuple
             combined_name = merged_key(namelike)
             if !haskey(attr.nesting, namelike...)
