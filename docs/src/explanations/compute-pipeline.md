@@ -122,3 +122,41 @@ update!(graph, input1 = 2); # prints 4
 
 obs2 = ComputePipeline.get_observable!(graph, :output)
 ```
+
+## Nesting
+
+As of ComputePipeline@0.1.7 compute graphs can simulate nesting.
+A nested input can be created by either specifying multiple names or a tuple of names corresponding to nesting layers in `add_input!()`:
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :nested, :input1, 1)
+add_input!(graph, (:nested, :input2), 2)
+```
+
+These nodes can then by accessed like a nested structure:
+
+```julia
+graph.nested # ::ComputeGraphView which acts like a nested ::ComputeGraph in graph
+graph.nested[] # returns the same for compat with Attributes in Makie
+graph.nested.input1
+```
+
+And then can be used to define computations:
+
+```julia
+# creates graph.output
+map!(+, graph, [(:nested, :input1), (:nested, :input2)], :output)
+
+# creates graph.nested.output
+map!(-, graph, [(:nested, :input1), (:nested, :input2)], (:nested, :output))
+```
+
+The nested view of the compute graph can also be used as an input for `add_input!()`, `add_constant!()`, `map!()` and `register_computation!()`. This will cause all Symbols and Tuples to be evaluated relative to the nested view. (This requires the nesting to be established first.)
+
+```julia
+add_input!(graph.nested, :input3, 3)
+add_constant(graph.nested, :constant, 0)
+# graph.nested.input3 -> graph.nested.output1
+map!(x -> 2x, graph.nested, :input3, :output1)
+```

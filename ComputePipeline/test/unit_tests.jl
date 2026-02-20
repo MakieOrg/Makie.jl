@@ -1110,33 +1110,80 @@ using ComputePipeline: ComputeGraphView
 @testset "Nested graphs" begin
     graph = ComputeGraph()
 
-    add_input!(graph, :a, :a, :a, 1)
-    add_input!(graph, :a, :a, :b, 2)
+    @testset "Inputs" begin
+        add_input!(graph, :a, :a, :a, 1)
+        add_input!(graph, (:a, :a, :b), 2)
+        add_input!(graph.a, :b, 3)
+        add_input!(graph.a, :c, :a, 4)
 
-    @test haskey(graph.inputs, Symbol("a.a.a"))
-    @test haskey(graph.inputs, Symbol("a.a.b"))
-    @test graph[Symbol("a.a.a")][] == 1
-    @test graph[Symbol("a.a.b")][] == 2
+        @test haskey(graph.inputs, Symbol("a.a.a"))
+        @test haskey(graph.inputs, Symbol("a.a.b"))
+        @test haskey(graph.inputs, Symbol("a.b"))
+        @test haskey(graph.inputs, Symbol("a.c.a"))
+        @test graph[Symbol("a.a.a")][] == 1
+        @test graph[Symbol("a.a.b")][] == 2
+        @test graph[Symbol("a.b")][] == 3
+        @test graph[Symbol("a.c.a")][] == 4
 
-    @test graph.a isa ComputeGraphView
-    @test graph.a.a isa ComputeGraphView
-    @test graph.a.a.a isa Computed
-    @test graph.a.a.a[] == 1
-    @test graph.a.a.b[] == 2
-    @test graph.a[].a[].a[] == 1
+        add_constant!(graph, :a, :const1, 0)
+        @test graph.a.const1[] == 0
+        add_constant!(graph, (:a, :const2), 0)
+        @test graph.a.const2[] == 0
+        add_constant!(graph.a, :const3, 0)
+        @test graph.a.const3[] == 0
+    end
 
-    map!((a, b) -> (a, b), graph, [graph.a.a.a, Symbol("a.a.b")], :x)
-    @test graph.x[] == (1, 2)
+    @testset "Access" begin
+        @test graph.a isa ComputeGraphView
+        @test graph.a.a isa ComputeGraphView
+        @test graph.a.a.a isa Computed
+        @test graph.a.a.a[] == 1
+        @test graph.a.a.b[] == 2
+        @test graph.a[].a[].a[] == 1
+    end
 
-    graph.a.a.a[] = 5
-    graph.a.a.b[] = -1
-    @test graph.a.a.a[] == 5
-    @test graph.a.a.b[] == -1
-    @test graph.x[] == (5, -1)
+    @testset "Compute/map!" begin
+        # nested nodes -> unnested node
+        map!((a, b) -> (a, b), graph, [graph.a.a.a, Symbol("a.a.b")], :x)
+        @test graph.x[] == (1, 2)
+
+        graph.a.a.a[] = 5
+        graph.a.a.b[] = -1
+        @test graph.a.a.a[] == 5
+        @test graph.a.a.b[] == -1
+        @test graph.x[] == (5, -1)
+
+        # working inside nested view, nested nodes -> nested node
+        map!(*, graph.a, [:b, (:c, :a)], :d)
+        @test graph.a.d[] == graph.a.b[] * graph.a.c.a[]
+
+        # direct node access should also work outside the view
+        map!((a, b) -> (b, a), graph.a, [:b, graph.x], [:swapped_x, :swapped_b], init = ((-1, -1), -2))
+        # wrong results from bad init (for testing)
+        @test graph.a.swapped_x[] == (-1, -1)
+        @test graph.a.swapped_b[] == -2
+        graph.a.b = 7
+        @test graph.a.swapped_x[] == graph.x[]
+        @test graph.a.swapped_b[] == graph.a.b[]
+
+        map!(x -> (x, -x), graph, (:a, :c, :a), [(:a, :c, :plus), (:a, :c, :minus)])
+        @test graph.a.c.minus[] == -graph.a.c.a[]
+        @test graph.a.c.plus[] == graph.a.c.a[]
+
+        map!(x -> 2x, graph, (:a, :c, :a), :double)
+        @test graph.double[] == 2graph.a.c.a[]
+
+        map_latest!(graph.a, [:b], [(:c, :double_b)]) do x
+            return (x * 2,)
+        end
+        @test graph.a.c.double_b[] == 2 * graph.a.b[]
+    end
 
     # Node is either part of a nesting chain or a value
-    add_input!(graph, :a, :b, 1)
-    @test_throws ErrorException add_input!(graph, :a, :b, :c, 1)
-    add_input!(graph, :a, :c, :a, 1)
-    @test_throws ErrorException add_input!(graph, :a, :c, 1)
+    @testset "Restrictions" begin
+        add_input!(graph, :a, :y, 1)
+        @test_throws ErrorException add_input!(graph, :a, :y, :c, 1)
+        add_input!(graph, :a, :z, :a, 1)
+        @test_throws ErrorException add_input!(graph, :a, :z, 1)
+    end
 end
