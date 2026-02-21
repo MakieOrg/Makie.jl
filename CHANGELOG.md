@@ -70,7 +70,7 @@
 - Fixed `meshscatter` objects rendering with incorrect color when scaled to 0 [#5478](https://github.com/MakieOrg/Makie.jl/pull/5478)
 - Added stack and dodge handling to `hist` [#5340](https://github.com/MakieOrg/Makie.jl/pull/5340)
 - Fixed edge-like `hist` bins not working [#5493](https://github.com/MakieOrg/Makie.jl/pull/5493)
-- Improved rendering of LinePattern with CairoMakie
+- Improved rendering of LinePattern with CairoMakie [#5493](https://github.com/MakieOrg/Makie.jl/pull/5534)
 
 ## [0.24.8] - 2025-12-04
 
