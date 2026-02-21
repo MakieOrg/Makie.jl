@@ -80,7 +80,7 @@ end
 
 @testset "passing through and updating Attributes" begin
     obs = Observable(:red)
-    f, ax, pl = attrtest(1:5, 1:5; kwargs = (; color = obs, linewidth = 4));
+    f, ax, pl = attrtest(1:5, 1:5; kwargs = (; color = obs, linewidth = 4))
 
     @test pl.plots[1].color[] == to_color(:red)
     obs[] = :blue
@@ -101,7 +101,7 @@ function Makie.plot!(pl::PassthroughTest)
 end
 
 @testset "Nested ComputeGraph passthrough" begin
-    f,a,p = passthroughtest(1:5, 1:5);
+    f, a, p = passthroughtest(1:5, 1:5)
 
     # passing ::ComputeGraph with nesting which should connect to nesting in AttrTest
     @test p.plots[1].plots[1].color[] == to_color(:cyan)
@@ -159,7 +159,7 @@ function Makie.plot!(pl::PassthroughTest2)
 end
 
 @testset "Deeply Nested ComputeGraph passthrough" begin
-    f,a,p = passthroughtest2(1:5, 1:5);
+    f, a, p = passthroughtest2(1:5, 1:5)
 
     # ComputeGraph passed
     @test haskey(p.plots[1].attributes, :deeply, :nested, :attr, :color)
