@@ -741,7 +741,24 @@ function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTy
     return map!(f, p.attributes, inputs, outputs)
 end
 
-struct AttributeConvert{Key, Plot} <: Function end
+function default_attribute(user_attributes, (key, value))
+    if haskey(user_attributes, key)
+        if value isa Union{Attributes, ComputePipeline.ComputeGraphView}
+            return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
+        else
+            val = user_attributes[key]
+            val isa NamedTuple && return Attributes(val)
+            return val
+        end
+    elseif value isa AttributeMetadata
+        val = value.default_value
+        return val isa Inherit ? val.fallback : val
+    else
+        return to_value(value)
+    end
+end
+
+struct AttributeConvert{Key, Plot} end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(value) where {key, plot}
@@ -897,40 +914,27 @@ function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) 
 
     P = Plot{Func}
 
-    if first(user_args) isa Attributes
-        # This should keep user_args[1] unchanged, in case they get reused.
-        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
-        return build_plot(P, nothing, Base.tail(user_args), user_attributes)
-    elseif first(user_args) isa AbstractComputeGraph
-        return build_plot(P, user_args[1], Base.tail(user_args), user_attributes)
-    else
-        return build_plot(P, nothing, user_args, user_attributes)
-    end
-end
+    # And also plot!(plot, ::ComputeGraph, args...)
+    if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
+        # shallow copy user_attributes to isolate user Dict from changes
+        merged_attr = copy(user_attributes)
 
-function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
-    exclude = (:transformation, :transform_func)
-    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
-    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
-    if !isnothing(parent)
-        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
-        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
-    end
-    add_remaining_inputs!(build_callback, graph, attr, exclude)
-    return
-end
+        # Add all keys that are valid for this plot.
+        # Iterating through passthrough_attr is inconvenient with nested attributes,
+        # as those are saved with keys like `Symbol("outer.inner")`. These would
+        # need to be split and checked against valid_keys. Going the other way
+        # and checking if a key from valid_keys is in passthrough_attr doesn't
+        # require this
+        valid_keys = keys(plot_attributes(nothing, P))
+        passthrough_attr = first(user_args)
+        for key in valid_keys
+            # existing attributes (from kwargs) take priority
+            if haskey(passthrough_attr, key) && !haskey(merged_attr, key)
+                merged_attr[key] = passthrough_attr[key]
+            end
+        end
 
-function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
-    attr = documented_attributes(P)
-    name = Makie.plotkey(P)
-
-    # Cycle is added here to allow `plot(..., cycle = Observable(...))`. Updating
-    # cycle may only change which attribute maps to which, not which attributes
-    # are cycled (see add_theme!())
-    if !haskey(graph, :cycle)
-        _cycle = get(kwargs, :cycle, :uninitialized)
-        add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
+        return Plot{Func}(Base.tail(user_args), merged_attr)
     end
 
     if uses_convert_attribute(P)
