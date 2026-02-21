@@ -271,6 +271,10 @@ function align_pattern(pattern::Cairo.CairoPattern, scene, model)
     return
 end
 
+function linepattern_offset(scene::Scene, model)
+    return Makie.pattern_offset(scene.camera.projectionview[] * model, scene.camera.resolution[], true)
+end
+
 ########################################
 #        Common color utilities        #
 ########################################
@@ -286,6 +290,10 @@ function to_cairo_color(color::Makie.AbstractPattern, plot)
     align_pattern(cairopattern, Makie.parent_scene(plot), plot.model[])
     return cairopattern
 end
+
+# LinePattern is rendered as vector graphics in CairoMakie, so pass it through
+# without rasterizing to a CairoPattern bitmap.
+to_cairo_color(color::Makie.LinePattern, plot) = color
 
 function to_cairo_color(color, plot_object)
     return to_color((color, to_value(plot_object.alpha)))

@@ -44,6 +44,88 @@ end
 ### outline methods (::Vector{<:VecTypes{2}})
 ########################################
 
+function linepattern_spacing(tilesize::NTuple{2, Int}, normal::Vec2f)
+    a = abs(normal[1] * tilesize[1])
+    b = abs(normal[2] * tilesize[2])
+    return if a < 1.0f-6
+        b
+    elseif b < 1.0f-6
+        a
+    else
+        min(a, b)
+    end
+end
+
+function draw_linepattern_hatch!(ctx, pattern::Makie.LinePattern, bbox, offset::VecTypes{2})
+    x1, y1, x2, y2 = bbox
+    cx = (x1 + x2) / 2
+    cy = (y1 + y2) / 2
+    linecolor = pattern.colors[1]
+    for (dir, width, origin) in zip(pattern.dirs, pattern.widths, pattern.origins)
+        dir_norm = normalize(dir)
+        normal = normalize(Vec2f(-dir[2], dir[1]))
+        spacing = linepattern_spacing(pattern.tilesize, normal)
+        # Pixel-center alignment: LinePattern sampling uses a 0.5 px phase shift.
+        T = promote_type(eltype(origin), eltype(offset))
+        half_px = T(0.5)
+        base_origin = origin .+ offset .+ half_px
+
+        min_k = Inf
+        max_k = -Inf
+        for (corner_x, corner_y) in ((x1, y1), (x1, y2), (x2, y1), (x2, y2))
+            k = dot(Vec2f(corner_x, corner_y) .- base_origin, normal)
+            min_k = min(min_k, k)
+            max_k = max(max_k, k)
+        end
+
+        start_idx = floor(Int, min_k / spacing) - 1
+        end_idx = ceil(Int, max_k / spacing) + 1
+        line_length = hypot(x2 - x1, y2 - y1) * 2
+
+        Cairo.set_line_width(ctx, width)
+        Cairo.set_source_rgba(ctx, rgbatuple(linecolor)...)
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_BUTT)
+
+        for i in start_idx:end_idx
+            k = i * spacing
+            p_line = base_origin .+ normal .* k
+            t0 = dot(Vec2f(cx, cy) .- p_line, dir_norm)
+            p0 = p_line .+ dir_norm .* t0
+            start_point = p0 .- dir_norm .* line_length
+            end_point = p0 .+ dir_norm .* line_length
+            Cairo.move_to(ctx, start_point[1], start_point[2])
+            Cairo.line_to(ctx, end_point[1], end_point[2])
+        end
+        Cairo.stroke(ctx)
+    end
+    return
+end
+
+function draw_linepattern_fill!(
+        ctx, pattern::Makie.LinePattern, offset::VecTypes{2}, path_builder::Function; rebuild_path::Bool = false
+    )
+    Cairo.save(ctx)
+    path_builder()
+    x1, y1, x2, y2 = Cairo.path_extents(ctx)
+    bgcolor = pattern.colors[2]
+    if alpha(bgcolor) > 0
+        Cairo.set_source_rgba(ctx, rgbatuple(bgcolor)...)
+        Cairo.fill_preserve(ctx)
+    end
+    Cairo.clip(ctx)
+    Cairo.new_path(ctx)
+    draw_linepattern_hatch!(ctx, pattern, (x1, y1, x2, y2), offset)
+    Cairo.restore(ctx)
+    if rebuild_path
+        path_builder()
+    end
+    return
+end
+
+function draw_linepattern_fill!(path_builder::Function, ctx, pattern::Makie.LinePattern, offset::VecTypes{2}; rebuild_path::Bool = false)
+    return draw_linepattern_fill!(ctx, pattern, offset, path_builder; rebuild_path)
+end
+
 function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
     color = to_cairo_color(poly.color[], poly)
     strokecolor = to_cairo_color(poly.strokecolor[], poly)
@@ -61,6 +143,14 @@ function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point2})
         pattern_set_matrix(color, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
     end
     return
+end
+
+function draw_poly(scene::Scene, screen::Screen, poly, points::Vector{<:Point3})
+    if !to_value(get(poly, :project_point3_to_2d, false))
+        return draw_poly_as_mesh(scene, screen, poly)
+    end
+    points2 = map(p -> Point2f(p[1], p[2]), points)
+    return draw_poly(scene, screen, poly, points2)
 end
 
 function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point2}})
@@ -84,6 +174,29 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     return
 end
 
+function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vector{<:Point3}})
+    if !to_value(get(poly, :project_point3_to_2d, false))
+        return draw_poly_as_mesh(scene, screen, poly)
+    end
+    points2 = map(ps -> map(p -> Point2f(p[1], p[2]), ps), points_list)
+    return draw_poly(scene, screen, poly, points2)
+end
+
+function draw_poly(scene::Scene, screen::Screen, poly, elements::Vector)
+    isempty(elements) && return nothing
+    flatten_point3 = to_value(get(poly, :project_point3_to_2d, false))
+
+    if all(el -> el isa AbstractVector{<:Point2}, elements)
+        points_list = [Point2f.(ps) for ps in elements]
+        return draw_poly(scene, screen, poly, points_list)
+    elseif flatten_point3 && all(el -> el isa AbstractVector{<:Point3}, elements)
+        points_list = [Point2f[(p[1], p[2]) for p in ps] for ps in elements]
+        return draw_poly(scene, screen, poly, points_list)
+    end
+
+    return draw_poly_as_mesh(scene, screen, poly)
+end
+
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
@@ -105,6 +218,38 @@ function draw_poly(
     set_source(screen.context, color)
 
     Cairo.fill_preserve(screen.context)
+    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
+    Cairo.set_line_width(screen.context, strokewidth)
+    set_miter_limit(screen.context, miter_limit)
+    Cairo.set_line_join(screen.context, joinstyle)
+    Cairo.set_line_cap(screen.context, linecap)
+
+    pattern = to_cairo_linestyle(strokestyle, strokewidth)
+    if !isnothing(pattern)
+        Cairo.set_dash(screen.context, pattern)
+    end
+    Cairo.stroke(screen.context)
+    return
+end
+
+function draw_poly(
+        scene::Scene, screen::Screen, poly, points::Vector{<:Point2}, color::Makie.LinePattern,
+        model, strokecolor, strokestyle, strokewidth, miter_limit, joinstyle, linecap
+    )
+    space = poly.space[]
+    points = apply_transform(transform_func(poly), points)
+    points = clip_poly(poly.clip_planes[], points, space, model)
+    points = _project_position(scene, space, points, model, true)
+
+    offset = linepattern_offset(scene, model)
+    draw_linepattern_fill!(screen.context, color, offset; rebuild_path = true) do
+        Cairo.move_to(screen.context, points[1]...)
+        for p in points[2:end]
+            Cairo.line_to(screen.context, p...)
+        end
+        Cairo.close_path(screen.context)
+    end
+
     Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
     Cairo.set_line_width(screen.context, strokewidth)
     set_miter_limit(screen.context, miter_limit)
@@ -162,9 +307,17 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     linecap = to_cairo_linecap(poly.linecap[])
 
     broadcast_foreach(projected_shapes, color, strokecolor, poly.strokewidth[]) do shape, c, sc, sw
-        create_shape_path!(screen.context, shape)
-        set_source(screen.context, c)
-        Cairo.fill_preserve(screen.context)
+        if c isa Makie.LinePattern
+            offset = linepattern_offset(scene, model)
+            draw_linepattern_fill!(screen.context, c, offset; rebuild_path = true) do
+                create_shape_path!(screen.context, shape)
+            end
+        else
+            create_shape_path!(screen.context, shape)
+            set_source(screen.context, c)
+            Cairo.fill_preserve(screen.context)
+        end
+
         pattern = to_cairo_linestyle(linestyle, sw)
         if !isnothing(pattern)
             Cairo.set_dash(screen.context, pattern)
@@ -260,9 +413,16 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     linecap = to_cairo_linecap(poly.linecap[])
 
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
-        polypath(screen.context, po)
-        set_source(screen.context, c)
-        Cairo.fill_preserve(screen.context)
+        if c isa Makie.LinePattern
+            offset = linepattern_offset(scene, model)
+            draw_linepattern_fill!(screen.context, c, offset; rebuild_path = true) do
+                polypath(screen.context, po)
+            end
+        else
+            polypath(screen.context, po)
+            set_source(screen.context, c)
+            Cairo.fill_preserve(screen.context)
+        end
         set_source(screen.context, sc)
         Cairo.set_line_width(screen.context, sw)
         pattern = to_cairo_linestyle(strokestyle, sw)
@@ -297,9 +457,16 @@ function draw_poly(scene::Scene, screen::Screen, poly, polygons::AbstractArray{<
     linecap = to_cairo_linecap(poly.linecap[])
     broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do mpo, c, sc, sw
         for po in mpo.polygons
-            polypath(screen.context, po)
-            set_source(screen.context, c)
-            Cairo.fill_preserve(screen.context)
+            if c isa Makie.LinePattern
+                offset = linepattern_offset(scene, model)
+                draw_linepattern_fill!(screen.context, c, offset; rebuild_path = true) do
+                    polypath(screen.context, po)
+                end
+            else
+                polypath(screen.context, po)
+                set_source(screen.context, c)
+                Cairo.fill_preserve(screen.context)
+            end
             set_source(screen.context, sc)
             Cairo.set_line_width(screen.context, sw)
             pattern = to_cairo_linestyle(strokestyle, sw)
@@ -374,12 +541,16 @@ function draw_plot(
             points_segment = vcat(@view(lowerpoints[rng]), reverse(@view(upperpoints[rng])))
             points = clip_poly(band.clip_planes[], points_segment, space, model)
             points = project_position.(Ref(band), space, points, Ref(model))
-            Cairo.move_to(screen.context, points[1]...)
-            for p in points[2:end]
-                Cairo.line_to(screen.context, p...)
+            build_path = function ()
+                Cairo.move_to(screen.context, points[1]...)
+                for p in points[2:end]
+                    Cairo.line_to(screen.context, p...)
+                end
+                Cairo.close_path(screen.context)
+                return
             end
-            Cairo.close_path(screen.context)
             if color isa AbstractVector
+                build_path()
                 # for the gradient we use all points, irrespective of clipping
                 lower_proj = project_position.(Ref(band), space, points_segment[1:(end ÷ 2)], Ref(model))
                 p_first = lower_proj[begin]
@@ -397,7 +568,11 @@ function draw_plot(
                 Cairo.set_source(screen.context, pat)
                 Cairo.fill(screen.context)
                 Cairo.destroy(pat)
+            elseif color isa Makie.LinePattern
+                offset = linepattern_offset(scene, model)
+                draw_linepattern_fill!(screen.context, color, offset, build_path)
             else
+                build_path()
                 set_source(screen.context, color)
                 Cairo.fill(screen.context)
             end
