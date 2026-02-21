@@ -70,6 +70,7 @@
 - Fixed `meshscatter` objects rendering with incorrect color when scaled to 0 [#5478](https://github.com/MakieOrg/Makie.jl/pull/5478)
 - Added stack and dodge handling to `hist` [#5340](https://github.com/MakieOrg/Makie.jl/pull/5340)
 - Fixed edge-like `hist` bins not working [#5493](https://github.com/MakieOrg/Makie.jl/pull/5493)
+- Improved rendering of LinePattern with CairoMakie
 
 ## [0.24.8] - 2025-12-04
 
@@ -82,7 +83,7 @@
 - Fixed `scatter` markers not updating correctly [#5451](https://github.com/MakieOrg/Makie.jl/pull/5451)
 - Fixed `poly!()` ignoring `linecap`, `joinstyle`, `miter_limit` and `linestyle` in CairoMakie [#5415](https://github.com/MakieOrg/Makie.jl/pull/5415)
 - Fixed GLMakie precompilation error with native Wayland in COSMIC compositor [#5453](https://github.com/MakieOrg/Makie.jl/pull/5453)
-- Translated  `annotation` to compute graph and fix resizing updates [#5448](https://github.com/MakieOrg/Makie.jl/pull/5448)
+- Translated `annotation` to compute graph and fix resizing updates [#5448](https://github.com/MakieOrg/Makie.jl/pull/5448)
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
 
 ## [0.24.7] - 2025-11-18
@@ -135,6 +136,7 @@
 - Fixed `Bonito.record_latest` for changes in Makie v0.24 [#5185](https://github.com/MakieOrg/Makie.jl/pull/5185).
 
 ## [0.24.4] - 2025-07-17
+
 - Fixed rendering of volumes when the camera is inside the volume [#5164](https://github.com/MakieOrg/Makie.jl/pull/5164)
 - Added some validation for compute node initialization (which guards against some error in `map!()` callbacks) [#5170](https://github.com/MakieOrg/Makie.jl/pull/5170)
 - Added support for `GeometryBasics.MultiPoint` [#5182](https://github.com/MakieOrg/Makie.jl/pull/5182).
@@ -239,7 +241,7 @@
 - Added new `annotation` recipe which can be used for labeling many data points with automatically non-overlapping labels, or for more bespoke annotation with manually chosen positions and connecting arrows [#4891](https://github.com/MakieOrg/Makie.jl/pull/4891).
 - Fixed precompilation bug in julia dev 1.13 [#5018](https://github.com/MakieOrg/Makie.jl/pull/5018).
 - Fixed screen not open assertion and `Makie.isclosed(scene)` in WGLMakie [#5008](https://github.com/MakieOrg/Makie.jl/pull/5008).
-- Fixed `hist` erroring if it was passed an empty vector, it now defaults to an interval of `0..10` in the absence of any input.  [#5022](https://github.com/MakieOrg/Makie.jl/pull/5022)
+- Fixed `hist` erroring if it was passed an empty vector, it now defaults to an interval of `0..10` in the absence of any input. [#5022](https://github.com/MakieOrg/Makie.jl/pull/5022)
 
 ## [0.22.7] - 2025-05-23
 
@@ -448,7 +450,6 @@
 - Fix voxel clipping not being based on voxel centers [#4397](https://github.com/MakieOrg/Makie.jl/pull/4397)
 - Parsing `Q` and `q` commands in svg paths with `BezierPath` is now supported [#4413](https://github.com/MakieOrg/Makie.jl/pull/4413)
 
-
 ## [0.21.11] - 2024-09-13
 
 - Hot fixes for 0.21.10 [#4356](https://github.com/MakieOrg/Makie.jl/pull/4356).
@@ -603,7 +604,7 @@
 - Adds a tutorial for how to make recipes work with new types [#3816](https://github.com/MakieOrg/Makie.jl/pull/3816).
 - Provided an interface to convert markers in CairoMakie separately (`cairo_scatter_marker`) so external packages can overload it. [#3811](https://github.com/MakieOrg/Makie.jl/pull/3811)
 - Updated to DelaunayTriangulation v1.0 [#3787](https://github.com/MakieOrg/Makie.jl/pull/3787).
-- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and  `hidespines!` for `PolarAxis` axes [#3823](https://github.com/MakieOrg/Makie.jl/pull/3823).
+- Added methods `hidedecorations!`, `hiderdecorations!`, `hidethetadecorations!` and `hidespines!` for `PolarAxis` axes [#3823](https://github.com/MakieOrg/Makie.jl/pull/3823).
 - Added `loop` option support for HTML outputs when recording videos with `record` [#3697](https://github.com/MakieOrg/Makie.jl/pull/3697).
 
 ## [0.20.9] - 2024-03-29
@@ -740,14 +741,14 @@
 
 ## [0.19.7] - 2023-07-22
 
-- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color`.  This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002).
+- Allow arbitrary functions to color `streamplot` lines by passing a `Function` to `color`. This must accept `Point` of the appropriate dimension and return a `Point`, `Vec`, or other arraylike object [#2002](https://github.com/MakieOrg/Makie.jl/pull/2002).
 - `arrows` can now take input of the form `x::AbstractVector, y::AbstractVector, [z::AbstractVector,] f::Function`, where `f` must return a `VecTypes` of the appropriate dimension [#2597](https://github.com/MakieOrg/Makie.jl/pull/2597).
 - Exported colorbuffer, and added `colorbuffer(axis::Axis; include_decorations=false, colorbuffer_kws...)`, to get an image of an axis with or without decorations [#3078](https://github.com/MakieOrg/Makie.jl/pull/3078).
 - Fixed an issue where the `linestyle` of some polys was not applied to the stroke in CairoMakie. [#2604](https://github.com/MakieOrg/Makie.jl/pull/2604)
 - Add `colorscale = identity` to any plotting function using a colormap. This works with any scaling function like `log10`, `sqrt` etc. Consequently, `scale` for `hexbin` is replaced with `colorscale` [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
 - Add `alpha=1.0` argument to all basic plots, which supports independently adding an alpha component to colormaps and colors. Multiple alphas like in `plot(alpha=0.2, color=RGBAf(1, 0, 0, 0.5))`, will get multiplied [#2900](https://github.com/MakieOrg/Makie.jl/pull/2900).
 - `hexbin` now supports any per-observation weights which StatsBase respects - `<: StatsBase.AbstractWeights`, `Vector{Real}`, or `nothing` (the default). [#2804](https://github.com/MakieOrg/Makie.jl/pulls/2804)
-- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection.  Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.
+- Added a new Axis type, `PolarAxis`, which is an axis with a polar projection. Input is in `(r, theta)` coordinates and is transformed to `(x, y)` coordinates using the standard polar-to-cartesian transformation.
   Generally, its attributes are very similar to the usual `Axis` attributes, but `x` is replaced by `r` and `y` by `θ`.
   It also inherits from the theme of `Axis` in this manner, so should work seamlessly with Makie themes [#2990](https://github.com/MakieOrg/Makie.jl/pull/2990).
 - `inherit` now has a new signature `inherit(scene, attrs::NTuple{N, Symbol}, default_value)`, allowing recipe authors to access nested attributes when trying to inherit from the parent Scene.
@@ -895,7 +896,7 @@
 ## [0.17.11] - 2022-07-21
 
 - `rainclouds`(!) now supports `violin_limits` keyword argument, serving the same.
-role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pull/2137).
+  role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pull/2137).
 - Fixed an issue where nonzero `strokewidth` results in a thin outline of the wrong color if `color` and `strokecolor` didn't match and weren't transparent. [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
 - Improved performance around Axis(3) limits [#2115](https://github.com/MakieOrg/Makie.jl/pull/2115).
 - Cleaned up stroke artifacts in scatter and text [#2096](https://github.com/MakieOrg/Makie.jl/pull/2096).
@@ -970,7 +971,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 - Switched to erroring instead of warning for deprecated events `mousebuttons`, `keyboardbuttons` and `mousedrag`.
 - `Layoutable` was renamed to `Block` and the infrastructure changed such that attributes are fixed fields and each block has its own `Scene` for better encapsulation [#1796](https://github.com/MakieOrg/Makie.jl/pull/1796).
 - Added `SliderGrid` block which replaces the deprecated `labelslider!` and `labelslidergrid!` functions [#1796](https://github.com/MakieOrg/Makie.jl/pull/1796).
-- The default anti-aliasing method can now be set in `CairoMakie.activate!` using the `antialias` keyword.  Available options are `CairoMakie.Cairo.ANTIALIAS_*` [#1875](https://github.com/MakieOrg/Makie.jl/pull/1875).
+- The default anti-aliasing method can now be set in `CairoMakie.activate!` using the `antialias` keyword. Available options are `CairoMakie.Cairo.ANTIALIAS_*` [#1875](https://github.com/MakieOrg/Makie.jl/pull/1875).
 - Added ability to rasterize a plots in CairoMakie vector graphics if `plt.rasterize = true` or `plt.rasterize = scale::Int` [#1872](https://github.com/MakieOrg/Makie.jl/pull/1872).
 - Fixed segfaults in `streamplot_impl` on Mac M1 [#1830](https://github.com/MakieOrg/Makie.jl/pull/1830).
 - Set the [Cairo miter limit](https://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-miter-limit) to mimic GLMakie behaviour [#1844](https://github.com/MakieOrg/Makie.jl/pull/1844).
@@ -989,7 +990,7 @@ role as `datalimits` in `violin` [#2137](https://github.com/MakieOrg/Makie.jl/pu
 ## [0.16.0] - 2022-01-07
 
 - **Breaking** Removed `Node` alias [#1307](https://github.com/MakieOrg/Makie.jl/pull/1307), [#1393](https://github.com/MakieOrg/Makie.jl/pull/1393). To upgrade, simply replace all occurrences of `Node` with `Observable`.
-- **Breaking** Cleaned up `Scene` type [#1192](https://github.com/MakieOrg/Makie.jl/pull/1192), [#1393](https://github.com/MakieOrg/Makie.jl/pull/1393). The `Scene()` constructor doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like it did when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: https://docs.makie.org/dev/tutorials/scenes/.
+- **Breaking** Cleaned up `Scene` type [#1192](https://github.com/MakieOrg/Makie.jl/pull/1192), [#1393](https://github.com/MakieOrg/Makie.jl/pull/1393). The `Scene()` constructor doesn't create any axes or limits anymore. All keywords like `raw`, `show_axis` have been removed. A scene now always works like it did when using the deprecated `raw=true`. All the high level functionality like showing an axis and adding a 3d camera has been moved to `LScene`. See the new `Scene` tutorial for more info: <https://docs.makie.org/dev/tutorials/scenes/>.
 - **Breaking** Lights got moved to `Scene`, see the [lighting docs](https://docs.makie.org/stable/documentation/lighting) and [RPRMakie examples](https://docs.makie.org/stable/documentation/backends/rprmakie/).
 - Added ECDF plot [#1310](https://github.com/MakieOrg/Makie.jl/pull/1310).
 - Added Order Independent Transparency to GLMakie [#1418](https://github.com/MakieOrg/Makie.jl/pull/1418), [#1506](https://github.com/MakieOrg/Makie.jl/pull/1506). This type of transparency is now used with `transparency = true`. The old transparency handling is available with `transparency = false`.
