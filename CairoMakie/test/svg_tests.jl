@@ -66,7 +66,8 @@ end
         begin
             fig = Figure()
             ax = Axis(fig[1, 1])
-            barplot!(ax, 1:3, [5, 10, 7],
+            barplot!(
+                ax, 1:3, [5, 10, 7],
                 color = Makie.LinePattern(
                     direction = Makie.Vec2f(1, 1),
                     width = 1.25f0,
