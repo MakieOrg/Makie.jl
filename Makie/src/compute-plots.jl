@@ -704,7 +704,7 @@ end
 
 function default_attribute(user_attributes, (key, value))
     if haskey(user_attributes, key)
-        if value isa Attributes
+        if value isa Union{Attributes, ComputePipeline.ComputeGraphView}
             return merge(value, Attributes(Dict{Symbol, Any}(pairs(user_attributes[key]))))
         else
             val = user_attributes[key]
@@ -899,19 +899,26 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     P = Plot{Func}
 
     # And also plot!(plot, ::ComputeGraph, args...)
-    if !isempty(user_args) && first(user_args) isa ComputeGraph
-        # shallow copy with generalized type (avoid changing graph, allow non Computed types)
-        attr = Dict{Symbol, Any}(pairs(first(user_args).outputs))
+    if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
+        # shallow copy user_attributes to isolate user Dict from changes
+        merged_attr = copy(user_attributes)
 
-        # Blacklist these because they are controlled by Transformations()
-        filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
-
-        # remove attributes that the parent graph has but don't apply to this plot
+        # Add all keys that are valid for this plot.
+        # Iterating through passthrough_attr is inconvenient with nested attributes,
+        # as those are saved with keys like `Symbol("outer.inner")`. These would
+        # need to be split and checked against valid_keys. Going the other way
+        # and checking if a key from valid_keys is in passthrough_attr doesn't
+        # require this
         valid_keys = keys(plot_attributes(nothing, P))
-        filter!(kv -> in(kv[1], valid_keys), attr)
+        passthrough_attr = first(user_args)
+        for key in valid_keys
+            # existing attributes (from kwargs) take priority
+            if haskey(passthrough_attr, key) && !haskey(merged_attr, key)
+                merged_attr[key] = passthrough_attr[key]
+            end
+        end
 
-        merge!(attr, user_attributes)
-        return Plot{Func}(Base.tail(user_args), attr)
+        return Plot{Func}(Base.tail(user_args), merged_attr)
     end
 
     attr = ComputeGraph()

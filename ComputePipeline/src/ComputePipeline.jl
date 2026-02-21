@@ -275,6 +275,20 @@ function delete_key!(tree::NestedSearchTree, level, args::Tuple)
     end
 end
 
+keys_in_level(tree::NestedSearchTree, level) = keys(tree.keytables[level])
+
+function recursive_keys(tree::NestedSearchTree, level, root = tuple(), allkeys = Tuple[])
+    for (key, next_level) in tree.keytables[level]
+        if next_level == -1
+            push!(allkeys, (root..., key))
+        else
+            path = (root..., key)
+            recursive_keys(tree, next_level, path, allkeys)
+        end
+    end
+    return allkeys
+end
+
 struct TemporarySearchResult
     parent::NestedSearchTree
     keys::Vector{Symbol}
@@ -332,6 +346,9 @@ end
 function Base.haskey(tree::NestedSearchTree, key::Symbol, keys::Symbol...)
     return has_root_key(tree, key) && haskey(getindex(tree, key), keys...)
 end
+
+Base.keys(trace::TemporarySearchResult) = keys(trace.parent.keytables[trace.next_index])
+recursive_keys(trace::TemporarySearchResult) = recursive_keys(trace.parent, trace.next_index)
 
 abstract type AbstractComputeGraph end
 
@@ -689,7 +706,12 @@ end
 function Base.haskey(attr::ComputeGraph, key::Symbol)
     return haskey(attr.outputs, key) || haskey(attr.nesting.keytables[1], key)
 end
+function Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...)
+    return haskey(graph.nesting, key, keys...)
+end
+
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
+Base.keys(graph::ComputeGraph) = keys(graph.outputs)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?
@@ -714,6 +736,22 @@ to_graph(g::ComputeGraph) = g
 to_graph(v::ComputeGraphView) = v.parent
 
 function Base.show(io::IO, view::ComputeGraphView)
+    trace = view.nested_trace
+    level_dict = trace.parent.keytables[trace.next_index]
+    _show_view_from_table(io, level_dict)
+end
+
+function _show_view_from_table(io::IO, level_dict::Dict)
+    ks = collect(keys(level_dict))
+    kstr = if length(ks) > 5
+        ":$(ks[1]), :$(ks[2]), :$(ks[3]),..."
+    else
+        join(Ref(':') .* string.(ks), ", ")
+    end
+    print(io, "ComputeGraphView($kstr)")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
     attr = view.parent
     trace = view.nested_trace
 
@@ -729,28 +767,21 @@ function Base.show(io::IO, view::ComputeGraphView)
             print(io, "\n  ", key, " => ", node)
         else
             next_level_dict = trace.parent.keytables[val]
-            ks = collect(keys(next_level_dict))
-            kstr = if length(ks) > 5
-                "$(ks[1]), $(ks[2]), $(ks[3]),..."
-            else
-                join(string.(ks), ", ")
-            end
-            print(io, "\n  ", key, " => ComputeGraphView($kstr)")
+            print(io, "\n  ", key, " => ")
+            _show_view_from_table(io, next_level_dict)
         end
     end
 
     return
 end
 
-function Base.keys(view::ComputeGraphView)
-    trace = view.nested_trace
-    level = trace.next_index
-    return keys(trace.parent.keytables[level])
-end
+Base.keys(view::ComputeGraphView) = keys(view.nested_trace)
+recursive_keys(view::ComputeGraphView) = recursive_keys(view.nested_trace)
 
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
 
+# Generates pairs for `foo(; kwargs...)`
 function Base.iterate(view::ComputeGraphView)
     ks = keys(view)
     return iterate(view, (ks, iterate(ks)))
@@ -773,6 +804,11 @@ function Base.length(view::ComputeGraphView)
 end
 
 Base.eltype(::Type{ComputeGraphView}) = Union{Pair{Symbol, ComputeGraphView}, Pair{Symbol, Computed}}
+
+# only collects outputs as those are useful to create a child graph
+# TODO: these don't really fit together
+# Base.pairs(graph::ComputeGraph) = graph.outputs # not nested
+Base.pairs(view::ComputeGraphView) = (p for p in view) # nested
 
 function Base.getindex(attr::ComputeGraph, key::Symbol)
     if haskey(attr.outputs, key)
@@ -1132,6 +1168,27 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
         error("Cannot attach throughput with name $key - already exists!")
     end
     register_computation!(InputFunctionWrapper(key, conversion_func), attr, [value], [key])
+    return attr
+end
+
+
+# Note: These don't work with add_input!(attr, key1, key2, ..., value)
+function add_input!(attr::ComputeGraph, key::Symbol, value::ComputeGraphView)
+    return add_input!(attr::ComputeGraph, (key,), value)
+end
+function add_input!(attr::ComputeGraph, nested_keys::Tuple{Vararg{Symbol}}, value::ComputeGraphView)
+    for source_key in keys(value)
+        add_input!(attr, (nested_keys..., source_key), getindex(value, source_key))
+    end
+    return attr
+end
+function add_input!(f, attr::ComputeGraph, key::Symbol, value::ComputeGraphView)
+    return add_input!(f, attr::ComputeGraph, (key,), value)
+end
+function add_input!(f, attr::ComputeGraph, nested_keys::Tuple{Vararg{Symbol}}, value::ComputeGraphView)
+    for source_key in keys(value)
+        add_input!(f, attr, (nested_keys..., source_key), getindex(value, source_key))
+    end
     return attr
 end
 

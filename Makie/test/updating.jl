@@ -80,9 +80,103 @@ end
 
 @testset "passing through and updating Attributes" begin
     obs = Observable(:red)
-    f, ax, pl = attrtest(1:5, 1:5; kwargs = (; color = obs, linewidth = 4))
+    f, ax, pl = attrtest(1:5, 1:5; kwargs = (; color = obs, linewidth = 4));
 
     @test pl.plots[1].color[] == to_color(:red)
     obs[] = :blue
     @test pl.plots[1].color[] == to_color(:blue)
+end
+
+Makie.@recipe PassthroughTest begin
+    kwargs = Attributes(
+        color = :cyan,
+        linewidth = 7,
+    )
+end
+
+function Makie.plot!(pl::PassthroughTest)
+    attrtest!(pl, pl.attributes, pl.converted_1, pl.converted_2)
+    lines!(pl, pl.attributes.kwargs, pl.converted_1, pl.converted_2)
+    return pl
+end
+
+@testset "Nested ComputeGraph passthrough" begin
+    f,a,p = passthroughtest(1:5, 1:5);
+
+    # passing ::ComputeGraph with nesting which should connect to nesting in AttrTest
+    @test p.plots[1].plots[1].color[] == to_color(:cyan)
+    @test p.plots[1].plots[1].linewidth[] == 7
+    p.kwargs.color[] = :orange
+    @test p.plots[1].plots[1].color[] == to_color(:orange)
+
+    # passing ::ComputeGraphView which should connect nested nodes to unnested
+    # nodes in lines
+    @test p.plots[2].color[] == to_color(:orange)
+    @test p.plots[2].linewidth[] == 7
+    p.kwargs.linewidth[] = 3
+    @test p.plots[2].linewidth[] == 3
+end
+
+Makie.@recipe PassthroughTest1 begin
+    deeply = Attributes(
+        nested = Attributes(
+            attr = Attributes(
+                color = :black,
+                linewidth = 5
+            )
+        )
+    )
+    nested = Attributes(
+        attr = Attributes(
+            color = :white,
+            linewidth = 5
+        )
+    )
+end
+
+function Makie.plot!(pl::PassthroughTest1)
+    lines!(pl, pl.attributes.deeply.nested.attr, pl.converted_1, pl.converted_2)
+    lines!(pl, pl.attributes.nested.attr, pl.converted_1, pl.converted_2)
+    return pl
+end
+
+
+Makie.@recipe PassthroughTest2 begin
+    deeply = Attributes(
+        nested = Attributes(
+            attr = Attributes(
+                color = :red,
+                linewidth = 5
+            )
+        )
+    )
+end
+
+function Makie.plot!(pl::PassthroughTest2)
+    passthroughtest1!(pl, pl.attributes, pl.converted_1, pl.converted_2)
+    passthroughtest1!(pl, pl.attributes.deeply, pl.converted_1, pl.converted_2)
+    return pl
+end
+
+@testset "Deeply Nested ComputeGraph passthrough" begin
+    f,a,p = passthroughtest2(1:5, 1:5);
+
+    # ComputeGraph passed
+    @test haskey(p.plots[1].attributes, :deeply, :nested, :attr, :color)
+    @test p.plots[1].deeply.nested.attr.color[] == :red
+
+    # ComputeGraphView passed
+    @test haskey(p.plots[2].attributes, :nested, :attr, :color)
+    @test p.plots[2].nested.attr.color[] == :red
+
+    # attributes make it all the way
+    @test p.plots[1].plots[1].color[] == to_color(:red) # passed :deeply which is connected to :deeply
+    @test p.plots[1].plots[2].color[] == to_color(:white) # passed :nested which is defaulted
+    @test p.plots[2].plots[1].color[] == to_color(:black) # passed :deeply which is defaulted
+    @test p.plots[2].plots[2].color[] == to_color(:red) # passed :nested which is connected to :deeply.nested
+    p.deeply.nested.attr.color[] = :cyan
+    @test p.plots[1].plots[1].color[] == to_color(:cyan)
+    @test p.plots[1].plots[2].color[] == to_color(:white)
+    @test p.plots[2].plots[1].color[] == to_color(:black)
+    @test p.plots[2].plots[2].color[] == to_color(:cyan)
 end
