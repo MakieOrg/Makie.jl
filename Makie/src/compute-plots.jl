@@ -918,6 +918,9 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
             end
         end
 
+        # these are handled by TRansformations()
+        filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
+
         return Plot{Func}(Base.tail(user_args), merged_attr)
     end
 
