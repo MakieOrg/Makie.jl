@@ -182,21 +182,6 @@ function draw_poly(scene::Scene, screen::Screen, poly, points_list::Vector{<:Vec
     return draw_poly(scene, screen, poly, points2)
 end
 
-function draw_poly(scene::Scene, screen::Screen, poly, elements::Vector)
-    isempty(elements) && return nothing
-    flatten_point3 = to_value(get(poly, :project_point3_to_2d, false))
-
-    if all(el -> el isa AbstractVector{<:Point2}, elements)
-        points_list = [Point2f.(ps) for ps in elements]
-        return draw_poly(scene, screen, poly, points_list)
-    elseif flatten_point3 && all(el -> el isa AbstractVector{<:Point3}, elements)
-        points_list = [Point2f[(p[1], p[2]) for p in ps] for ps in elements]
-        return draw_poly(scene, screen, poly, points_list)
-    end
-
-    return draw_poly_as_mesh(scene, screen, poly)
-end
-
 draw_poly(scene::Scene, screen::Screen, poly, circle::Circle) = draw_poly(scene, screen, poly, decompose(Point2f, circle))
 
 # when color is a Makie.AbstractPattern, we don't need to go to Mesh
