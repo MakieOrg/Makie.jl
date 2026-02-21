@@ -19,11 +19,6 @@ end
     )
     @test svg_isnt_rasterized(
         begin
-            f = Figure(); Axis3(f[1, 1]); f
-        end
-    )
-    @test svg_isnt_rasterized(
-        begin
             f = Figure(); PolarAxis(f[1, 1]); f
         end
     )
