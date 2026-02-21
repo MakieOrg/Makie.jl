@@ -935,7 +935,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) 
         end
 
         # these are handled by TRansformations()
-        filter!(kv -> !in(kv[1], [:model, :transform_func]), attr)
+        filter!(kv -> !in(kv[1], [:model, :transform_func]), merged_attr)
 
         return Plot{Func}(Base.tail(user_args), merged_attr)
     end
