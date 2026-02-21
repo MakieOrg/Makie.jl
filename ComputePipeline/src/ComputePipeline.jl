@@ -739,6 +739,7 @@ function Base.show(io::IO, view::ComputeGraphView)
     trace = view.nested_trace
     level_dict = trace.parent.keytables[trace.next_index]
     _show_view_from_table(io, level_dict)
+    return
 end
 
 function _show_view_from_table(io::IO, level_dict::Dict)
@@ -749,6 +750,7 @@ function _show_view_from_table(io::IO, level_dict::Dict)
         join(Ref(':') .* string.(ks), ", ")
     end
     print(io, "ComputeGraphView($kstr)")
+    return
 end
 
 function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
