@@ -62,8 +62,12 @@ function draw_linepattern_hatch!(ctx, pattern::Makie.LinePattern, bbox, offset::
     cy = (y1 + y2) / 2
     linecolor = pattern.colors[1]
     for (dir, width, origin) in zip(pattern.dirs, pattern.widths, pattern.origins)
-        dir_norm = normalize(dir)
-        normal = normalize(Vec2f(-dir[2], dir[1]))
+        # Negate Y: LinePattern directions are in tile space (Y-up) but Cairo
+        # draws in screen space (Y-down).  The rasterized path handles this via
+        # reverse(to_image(); dims=2); here we flip the direction instead.
+        dir_screen = Vec2f(dir[1], -dir[2])
+        dir_norm = normalize(dir_screen)
+        normal = normalize(Vec2f(-dir_screen[2], dir_screen[1]))
         spacing = linepattern_spacing(pattern.tilesize, normal)
         # Pixel-center alignment: LinePattern sampling uses a 0.5 px phase shift.
         T = promote_type(eltype(origin), eltype(offset))
