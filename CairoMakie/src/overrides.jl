@@ -69,10 +69,7 @@ function draw_linepattern_hatch!(ctx, pattern::Makie.LinePattern, bbox, offset::
         dir_norm = normalize(dir_screen)
         normal = normalize(Vec2f(-dir_screen[2], dir_screen[1]))
         spacing = linepattern_spacing(pattern.tilesize, normal)
-        # Pixel-center alignment: LinePattern sampling uses a 0.5 px phase shift.
-        T = promote_type(eltype(origin), eltype(offset))
-        half_px = T(0.5)
-        base_origin = origin .+ offset .+ half_px
+        base_origin = origin .+ offset
 
         min_k = Inf
         max_k = -Inf
