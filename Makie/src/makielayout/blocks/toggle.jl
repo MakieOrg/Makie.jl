@@ -1,5 +1,10 @@
-_xfun(x, bbox, ms) = x > 0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
-_yfun(y, bbox, ms) = y > 0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
+function _toggle_endpoint(or, ms::Real, bbox::Rect, active::Bool)
+    theta = or == :horizontal ? 0 : (or == :vertical ? pi / 2 : or)
+    y, x = ifelse(active, -1, +1) .* sincos(theta)
+    _x = x > 0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
+    _y = y > 0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
+    return Point2f(_x, _y)
+end
 
 function _perform_toggle_animation(animating, button_endpoint_inactive, button_endpoint_active, buttonpos, framecolor, topscene, t, updatefunc)
     if animating[]
@@ -55,15 +60,11 @@ function initialize_block!(t::Toggle)
 
 
     button_endpoint_inactive = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
-        theta = or == :horizontal ? 0 : or == :vertical ? pi / 2 : or
-        y, x = sincos(theta)
-        Point2f(_xfun(x, bbox, ms), _yfun(y, bbox, ms))
+        return _toggle_endpoint(or, ms, bbox, false)
     end
 
     button_endpoint_active = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
-        theta = or == :horizontal ? 0 : or == :vertical ? pi / 2 : or
-        y, x = sincos(theta)
-        Point2f(_xfun(-x, bbox, ms), _yfun(-y, bbox, ms))
+        return _toggle_endpoint(or, ms, bbox, true)
     end
 
     buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments) do len, ms, cs

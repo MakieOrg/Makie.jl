@@ -424,14 +424,21 @@ function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
     end
 end
 
-function _range(start, stop, step)
+"""
+    aligned_range(start, stop, step)
+
+Generates a range that is aligned to multiples of step, i.e. start and stop are
+integer multiples of step. The returned range is strictly within the start..stop
+range.
+"""
+function aligned_range(start, stop, step)
     from = cld(start, step) * step
     to = fld(stop, step) * step
     return from:step:to
 end
 
 function best_ticks(start, stop, stepsizes, k_ideal)
-    return argmin(_range(start, stop, step) for step in stepsizes) do rng
+    return argmin(aligned_range(start, stop, step) for step in stepsizes) do rng
         _cost(rng, k_ideal)
     end
 end
