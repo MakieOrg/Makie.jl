@@ -336,3 +336,25 @@ end
 #     # reference test the zoomed out plot
 #     f
 # end
+
+@reference_test "StructArrays compat" begin
+    # Test construction and update
+    ps1 = StructArray(Point2f[(1, 2), (3, 4)])
+    ps2 = StructArray(Point2f[(1, 3), (3, 5)])
+    img = StructArray(to_color.([:red :orange; :green :blue]))
+
+    f, a, bp = band(ps1, ps2)
+    a, ip = image(f[1, 2], img)
+    a, pp = poly(f[2, 1], StructArray(Point2f.([1, 2, 1], [1, 1, 2])))
+    st = Makie.Stepper(f)
+    Makie.step!(st)
+
+    ps1 = StructArray(Point2f[(1, 1), (3, 4)])
+    ps2 = StructArray(Point2f[(1, 3), (3, 5)])
+    img = StructArray(to_color.([:red :cyan; :green :blue]))
+    update!(bp, arg1 = ps1, arg2 = ps2)
+    update!(ip, arg1 = img)
+    update!(pp, arg1 = StructArray(Point2f.([1, 2, 2], [1, 1, 2])))
+    Makie.step!(st)
+    st
+end

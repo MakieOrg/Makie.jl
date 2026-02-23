@@ -87,7 +87,7 @@ function initialize_block!(tbox::Textbox)
 
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values = true) do ci, bbs
-
+        isempty(bbs) && return Point2f(0)
         textplot = t.blockscene.plots[1]
 
         hadvances = Float32[]
@@ -126,6 +126,7 @@ function initialize_block!(tbox::Textbox)
 
     on(cursorpoints) do cpts
         typeof(tbox.width[]) <: Number || return
+        isempty(displayed_charbbs[]) && return
 
         # translate scene to keep cursor within box
         rel_cursor_pos = cpts[1][1] + scene.transformation.translation[][1]

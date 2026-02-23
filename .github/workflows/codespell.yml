@@ -10,7 +10,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - uses: codespell-project/actions-codespell@v2
       with:
         ignore_words_list: indexin,doubleclick,Heros,OT,jus,bu,te,lins,Missings

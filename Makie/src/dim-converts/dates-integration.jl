@@ -126,7 +126,7 @@ function get_ticks(ticks, scale, formatter, vmin::DateTime, vmax::DateTime)
     return values, labels
 end
 
-function get_ticks(ticks::Tuple{Any, Any}, formatter::Automatic, vmin::DateTime, vmax::DateTime)
+function get_ticks(ticks::Tuple{Any, Any}, scale, formatter::Automatic, vmin::DateTime, vmax::DateTime)
     return ticks[1], ticks[2]
 end
 
@@ -221,7 +221,70 @@ function get_ticks(d::DateTimeTicks, scale, formatter, vmin::DateTime, vmax::Dat
     return datetimes, labels
 end
 
+function get_ticks(s::StepRange{D, X}, scale, formatter, vmin::DateTime, vmax::DateTime) where {D <: Union{Date, DateTime}, X}
+    datetimes = collect(convert(StepRange{DateTime, X}, s))
+    kind = X === Year ? :year :
+        X === Month ? :month :
+        X === Day ? :day :
+        X === Hour ? :hour :
+        X === Minute ? :minute :
+        X === Second ? :second :
+        X === Millisecond ? :millisecond :
+        error("Unsupported step type: $X")
+    if formatter === automatic
+        labels = datetime_range_ticklabels(DateTimeTicks(), datetimes, kind)
+    else
+        labels = get_ticklabels(datetimes, formatter)
+    end
+    return datetimes, labels
+end
+
+function get_ticks(s::StepRange{Time, X}, scale, formatter, vmin::Time, vmax::Time) where {X}
+    # for now, take a shortcut and compute time ticks as datetime ticks on the same day where the day part is omitted in the dateformat
+    dtt = DateTimeTicks(
+        dateformat"yyyy",
+        dateformat"yyyy-mm",
+        dateformat"yyyy-mm-dd",
+        # these three are changed
+        dateformat"H:MM",
+        dateformat"H:MM:SS",
+        dateformat"H:MM:SS.sss",
+        #
+        dateformat"H:MM",
+        dateformat"H:MM:SS",
+        dateformat"H:MM:SS.sss",
+        dateformat":MM",
+        dateformat":M:SS",
+        dateformat":M:SS.sss",
+        dateformat":SS",
+        dateformat":SS.sss",
+        dateformat".sss",
+        5,
+    )
+    times = collect(s)
+    datetimes = DateTime.(0, 1, 1, Dates.hour.(times), Dates.minute.(times), Dates.second.(times), Dates.millisecond.(times))
+    kind = X === Hour ? :hour :
+        X === Minute ? :minute :
+        X === Second ? :second :
+        X === Millisecond ? :millisecond :
+        error("Unsupported step type: $X")
+    if formatter === automatic
+        labels = datetime_range_ticklabels(dtt, datetimes, kind)
+    else
+        labels = get_ticklabels(times, formatter)
+    end
+    return times, labels
+end
+
+# fallback conversions
+get_tickvalues(tickvalues, vmin::DateTime, vmax::DateTime) = convert(Vector{DateTime}, tickvalues)
+get_tickvalues(tickvalues, vmin::Time, vmax::Time) = convert(Vector{Time}, tickvalues)
+
 function get_tickvalues(ticks::AbstractVector{<:Union{Date, DateTime}}, scale, vmin::DateTime, vmax::DateTime)
+    return ticks
+end
+
+function get_tickvalues(ticks::AbstractVector{Time}, scale, vmin::Time, vmax::Time)
     return ticks
 end
 
@@ -233,12 +296,12 @@ function get_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, f
     return formatter(values)
 end
 
-function get_ticklabels(values::AbstractVector{<:DateTime}, formatter::String)
+function get_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::String)
     fmt = Dates.DateFormat(formatter)
     return [Dates.format(v, fmt) for v in values]
 end
 
-function get_ticklabels(values::AbstractVector{<:DateTime}, formatter::Dates.DateFormat)
+function get_ticklabels(values::AbstractVector{<:Union{Date, DateTime, Time}}, formatter::Dates.DateFormat)
     return [Dates.format(v, formatter) for v in values]
 end
 

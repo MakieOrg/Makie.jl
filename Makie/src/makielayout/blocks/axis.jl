@@ -832,7 +832,6 @@ function getlimits(la::Axis, dim)
         try
             bb = apply_transform(itf, bb)
         catch e
-            # TODO: Is this necessary?
             @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
             bb = data_limits(la.scene, exclude)
         end
@@ -1221,21 +1220,6 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     tight_xticklabel_spacing!(ax)
     tight_yticklabel_spacing!(ax)
     return
-end
-
-function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
-    nplots = length(ax.scene.plots)
-    println(io, "Axis with $nplots plots:")
-
-    for (i, p) in enumerate(ax.scene.plots)
-        println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
-    end
-    return
-end
-
-function Base.show(io::IO, ax::Axis)
-    nplots = length(ax.scene.plots)
-    return print(io, "Axis ($nplots plots)")
 end
 
 Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))

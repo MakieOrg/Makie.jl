@@ -632,7 +632,6 @@ function diff_plotlist!(
         if isnothing(reused_plot)
             # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-
             # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
             # But we want the scene to only contain one PlotList item with the newly created
             # Plots from the plotlist to only appear as children of the PlotList recipe
@@ -659,7 +658,6 @@ function diff_plotlist!(
             end
             update_plot!(reused_plot, old_spec, plotspec)
             new_plots[plotspec] = reused_plot
-
         end
     end
     return new_plots

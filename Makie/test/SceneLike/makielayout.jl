@@ -628,3 +628,17 @@ end
     @test_throws ErrorException Makie.set!(tb, "there")
     @test isnothing(Makie.unsafe_set!(tb, "there"))
 end
+
+@testset "No user plots in empty axis" begin
+    for T in subtypes(Makie.AbstractAxis)
+        f = Figure()
+        a = T(f[1, 1])
+        if T <: LScene
+            # LScene creates its axis as a single mostly self-managed plot,
+            # rather than a bunch of plots managed by the Block
+            @test length(a.scene.plots) == 1
+        else
+            @test isempty(a.scene.plots)
+        end
+    end
+end

@@ -1,6 +1,6 @@
 # [Transformations](@id transformations_reference_docs)
 
-Every plot and every scene contains a `Transformation` object which holds a `transform_func` and generates a `model` matrix.
+Every plot contains a `Transformation` object which holds a `transform_func` and generates a `model` matrix.
 
 ## Model Transformations
 
@@ -49,18 +49,8 @@ Makie.transform_func(a.scene) # (log, identity)
 Makie.transform_func(p) # (log, identity)
 ```
 
-You can set the transformation function of a plot by updating `plot.transformation.transform_func[] = new_func`.
-This will also change the transformation function of each child plot.
-Note that this will usually be reset when the plots parent transformation function changes, e.g. if `ax.xscale` is set in the example above.
-You can avoid this by explicitly not inheriting the transformation function, or by constructing the `Transformation` object yourself.
-See below.
-
-## Scene Transformation
-
-The Scene also holds onto a `Transformation` object.
-It doesn't affect the scene directly, but acts as a potential parent transformation to plots added to the scene.
-Whether it is used or not depends on the `transformation` attribute.
-By default it will be used if the space of the scene is compatible with the given plot.
+The transform function of a plot can be disconnected from its parent by passing a `Transformation()` directly.
+For information on how to add more transform functions, see [Transform Function Interface](@ref).
 
 ## `transformation` Attribute
 

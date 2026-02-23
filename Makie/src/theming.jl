@@ -136,8 +136,12 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # still needs to be here to gracefully deprecate it
         resize_to_body = nothing,
         px_per_unit = automatic,
-        scalefactor = automatic
-    ), RPRMakie = Attributes(
+        scalefactor = automatic,
+        use_html_widgets = false,
+        spinner = automatic
+    ),
+
+    RPRMakie = Attributes(
         iterations = 200,
         resource = automatic,
         plugin = automatic,

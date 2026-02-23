@@ -41,7 +41,7 @@ macro reference_test(name, code)
             else
                 t1 = time()
                 if $title in $REGISTERED_TESTS
-                    error("title must be unique. Duplicate title: $(title)")
+                    error("title must be unique. Duplicate title: $($title)")
                 end
                 println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
                 Makie.set_theme!(;
