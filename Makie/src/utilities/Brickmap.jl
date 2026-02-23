@@ -39,7 +39,7 @@ function SDFBrickmap(bricksize::Int, _size::NTuple{3, Int})
     return SDFBrickmap(
         ShaderAbstractions.Sampler(fill(UInt32(0), idx_size)),
         ShaderAbstractions.Sampler(Array{N0f8, 3}(undef, init_brick_size)),
-        ShaderAbstractions.Sampler(Matrix{UInt32}(undef, 32, 32)), # 1024 values
+        ShaderAbstractions.Sampler(fill(typemax(UInt32), 32, 32)), # 1024 values
         ShaderAbstractions.Sampler(Array{RGB{N0f8}}(undef, init_color_brick_size)),
         _size, bricksize,
         0, 0, 0, 1, # 1 color brick reserved for static colors

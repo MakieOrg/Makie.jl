@@ -918,8 +918,8 @@ module SDF
                 # left: keep (may or may not be removed depending on right)
                 # right: intersections (only matters where it intersects with left)
                 for b in right
-                    affected = Rect3f()
-                    for a in left
+                    affected = Base.intersect(left[1][], b[])
+                    for a in @view left[2:end]
                         affected = Base.union(affected, Base.intersect(a[], b[]))
                     end
                     b[] = affected
@@ -927,8 +927,8 @@ module SDF
             elseif cmd.id == :smooth_subtraction
                 # Tighter solution?
                 for b in right
-                    affected = Rect3f()
-                    for a in left
+                    affected = Base.union(left[1][], b[])
+                    for a in @view left[2:end]
                         affected = Base.union(affected, Base.union(a[], b[]))
                     end
                     b[] = affected
@@ -938,15 +938,30 @@ module SDF
                 # any right boundingbox
                 sleft = deref.(left)
                 sright = deref.(right)
-                foreach(bb -> bb[] = Rect3f(), left)
-                foreach(bb -> bb[] = Rect3f(), right)
-                for (ar, a) in zip(left, sleft)
-                    for (br, b) in zip(right, sright)
+                left_set = falses(length(left))
+                right_set = falses(length(right))
+                for (li, (ar, a)) in enumerate(zip(left, sleft))
+                    for (ri, (br, b)) in enumerate(zip(right, sright))
                         if overlaps(a, b)
-                            intersection = Base.intersect(a, b)
-                            ar[] = Base.union(ar[], intersection)
-                            br[] = Base.union(br[], intersection)
+                            isection = Base.intersect(a, b)
+                            ar[] = left_set[li] ? Base.union(ar[], isection) : isection
+                            br[] = right_set[ri] ? Base.union(br[], isection) : isection
+                            left_set[li] = true
+                            right_set[ri] = true
                         end
+                    end
+                end
+                # bboxes with no overlaps get a zero-size rect at their center
+                for (i, ar) in enumerate(left)
+                    if !left_set[i]
+                        c = GeometryBasics.minimum(sleft[i]) .+ 0.5f0 .* widths(sleft[i])
+                        ar[] = Rect3f(c, Vec3f(0))
+                    end
+                end
+                for (i, br) in enumerate(right)
+                    if !right_set[i]
+                        c = GeometryBasics.minimum(sright[i]) .+ 0.5f0 .* widths(sright[i])
+                        br[] = Rect3f(c, Vec3f(0))
                     end
                 end
             # elseif cmd.id == :union
@@ -1027,7 +1042,7 @@ module SDF
 
             append!(bbs, left)
 
-            node.bbox[] = foldl((a, b) -> Base.union(deref(a), deref(b)), left, init = Rect3f())
+            node.bbox[] = foldl((a, b) -> Base.union(a, deref(b)), left; init = deref(left[1]))
             push!(bbs, node.bbox)
         end
 
@@ -1328,7 +1343,7 @@ function update_brickmap!(
     #   merged_aligned_bb/index ranges => bbs_that_got_merged
     # and then loop based on first, check second
     # Find region that needs updating
-    raw_update_bb = reduce(union, regions_to_update, init = Rect3f())
+    raw_update_bb = reduce(union, regions_to_update)
     low = trunc.(Int, clamp.(fld.(minimum(raw_update_bb) .- mini, delta), 0, N_blocks-1)) .+ 1
     high = trunc.(Int, clamp.(cld.(maximum(raw_update_bb) .- mini, delta), 1, N_blocks))
     @info "Diffed bbs: $regions_to_update"
@@ -1605,6 +1620,6 @@ function plot!(p::CSGPlot)
     # force this to run before connecting the backend so we don't spam updates
     # during construction
     p.brickmap[]
-
+    @show typeof(p.brickmap[]) typeof(p.x[])
     volume!(p, p.x, p.y, p.z, p.brickmap, algorithm = :sdf, isorange = p.minstep)
 end
