@@ -428,7 +428,7 @@ end
 function plot_attributes(scene, T)
     plot_attr = Makie.documented_attributes(T)
     if isnothing(plot_attr)
-        return merge(default_theme(scene, T), default_theme(T))
+        return mergeleft!(default_theme(scene, T), default_theme(T))
     else
         return plot_attr.d
     end
@@ -710,9 +710,9 @@ function print_columns(io::IO, v::Vector{String}; gapsize = 2, rows_first = true
 
     lens = length.(v) # for unicode ligatures etc this won't work, but we don't use those for attribute names
     function col_widths(ncols; rows_first)
+        local nrows = ceil(Int, length(v) / ncols)
         max_widths = zeros(Int, ncols)
         for (i, len) in enumerate(lens)
-            nrows = ceil(Int, length(v) / ncols)
             j = rows_first ? fld1(i, nrows) : mod1(i, ncols)
             max_widths[j] = max(max_widths[j], len)
         end

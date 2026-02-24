@@ -16,6 +16,7 @@
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
 - Added a system to simulate nesting in compute graphs to allow for nested attributes.
   - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
+- Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)
 
 ## Unreleased
 

@@ -4,7 +4,7 @@
 const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
-    attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+    attrs = mergeleft!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
 end
 
@@ -318,16 +318,16 @@ function LineAxis(parent::Scene, attrs::Attributes)
     )
 
     ticklabel_annotation_obs = Observable(Tuple{Any, Point2f}[]; ignore_equal_values = true)
-    ticklabels = nothing # this gets overwritten later to be used in the below
+    ticklabels_ref = Ref{Any}(nothing) # this gets overwritten later to be used in the below
     ticklabel_ideal_space = Observable(0.0f0; ignore_equal_values = true)
 
     map!(parent, ticklabel_ideal_space, ticklabel_annotation_obs, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
             # height
-            ticklabelsvisible[] ? (ticklabels === nothing ? 0.0f0 : height(Rect2f(boundingbox(ticklabels, :data)))) : 0.0f0
+            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : height(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
         else
             # width
-            ticklabelsvisible[] ? (ticklabels === nothing ? 0.0f0 : width(Rect2f(boundingbox(ticklabels, :data)))) : 0.0f0
+            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : width(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
         end
         # in case there is no string in the annotations and the boundingbox comes back all NaN
         if !isfinite(maxwidth)
@@ -555,7 +555,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabel_annotation_obs populated once before adding the annotations
-    ticklabels = text!(
+    ticklabels_ref[] = text!(
         parent,
         ticklabel_annotation_obs,
         align = realticklabelalign,
@@ -568,7 +568,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         inspectable = false
     )
 
-    decorations[:ticklabels] = ticklabels
+    decorations[:ticklabels] = ticklabels_ref[]
 
     # HACKY: the ticklabels in the string need to be updated
     # before other stuff is triggered by them, which accesses the

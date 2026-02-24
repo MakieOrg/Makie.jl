@@ -1698,9 +1698,9 @@ function map_latest!(f, attr::ComputeGraph, inputs::Vector{Computed}, outputs::V
         while isopen(input_channel)
             try
                 # Take the first item (blocking if empty)
-                inputs = take_last!(input_channel; wait = true)
+                fetched_inputs = take_last!(input_channel; wait = true)
                 # Process the most recent inputs
-                result = f(inputs...)
+                result = f(fetched_inputs...)
                 # Put result in the result channel
                 put!(result_channel, result)
                 # Notify that we got a new value, for the below computation to run
