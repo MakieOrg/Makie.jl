@@ -709,6 +709,9 @@ end
 function Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...)
     return haskey(graph.nesting, key, keys...)
 end
+function Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}})
+    return haskey(graph, keys...)
+end
 
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 Base.keys(graph::ComputeGraph) = keys(graph.outputs)

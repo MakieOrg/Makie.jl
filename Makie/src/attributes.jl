@@ -19,6 +19,8 @@ value_convert(x::NamedTuple) = Attributes(x)
 
 # Version of `convert(Observable{Any}, obj)` that doesn't require runtime dispatch
 node_any(obj::Computed) = obj
+node_any(obj::ComputePipeline.ComputeGraphView) = obj
+node_any(obj::Attributes) = obj
 function node_any(@nospecialize(obj))
     isa(obj, Observable{Any}) && return obj
     isa(obj, Observable) && return convert(Observable{Any}, obj)
@@ -63,13 +65,19 @@ end
 
 Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
 function Base.empty!(x::Attributes)
-    attr = attributes(x)
-    for (key, obs) in attr
-        Observables.clear(obs)
-    end
-    empty!(attr)
+    empty_rec!(x::Attributes)
     return x
 end
+empty_rec!(x::Attributes) = empty_rec!(attributes(x))
+function empty_rec!(attr::Dict)
+    for (key, val) in attr
+        empty_rec!(val)
+    end
+    empty!(attr)
+    return
+end
+empty_rec!(obs::Observable) = Observables.clear(obs)
+empty_rec!(::Any) = nothing
 
 Base.length(x::Attributes) = length(attributes(x))
 
@@ -122,6 +130,10 @@ end
 
 function Base.setindex!(x::Attributes, value::Observable, key::Symbol)
     return x.attributes[key] = node_any(value)
+end
+
+function Base.setindex!(x::Attributes, value::Union{Attributes, ComputePipeline.ComputeGraphView}, key::Symbol)
+    return x.attributes[key] = value
 end
 
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
