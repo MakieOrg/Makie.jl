@@ -40,15 +40,16 @@ function Makie.plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Observable(fill(Point2f(NaN), plot.history[]))
-    buffer = copy(points[])
+    buffer_ref = Ref(copy(points[]))
     lines!(plot, Attributes(plot), points)
     start = time()
     on(plot, plot.signal) do x
-        points[][end] = signal2point(x, start)
-        circshift!(buffer, points[], 1)
-        buff_ref = buffer
-        buffer = points[]
-        points[] = buff_ref
+        current_visible = points[]
+        current_buffer = buffer_ref[]
+        current_visible[end] = signal2point(x, start)
+        circshift!(current_buffer, current_visible, 1)
+        points[] = current_buffer
+        buffer_ref[] = current_visible
     end
     return plot
 end

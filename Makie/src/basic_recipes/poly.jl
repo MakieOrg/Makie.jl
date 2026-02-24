@@ -180,14 +180,18 @@ function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, 
 
     map!(to_lines, plot, :polygon, [:outline, :increment_at])
     map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
-        if !(meshes isa Mesh) && meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+        if meshes isa AbstractVector && sc isa AbstractVector && length(sc) == length(meshes)
+            new_colors = similar(sc, length(outline))
             mesh_idx = 1
-            return map(eachindex(outline)) do point_idx
-                if point_idx == increment_at[mesh_idx]
+            next_switch = isempty(increment_at) ? -1 : increment_at[1]
+            for point_idx in eachindex(outline)
+                if point_idx == next_switch
                     mesh_idx += 1
+                    next_switch = increment_at[mesh_idx]
                 end
-                return sc[mesh_idx]
+                new_colors[point_idx] = sc[mesh_idx]
             end
+            return new_colors
         else
             return sc
         end
