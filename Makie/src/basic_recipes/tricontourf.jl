@@ -89,47 +89,48 @@ function Makie.convert_arguments(
     return (tri, z)
 end
 
+function _calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
+    levels = copy(levels)
+    # adjust outer levels to be inclusive
+    levels[1] = prevfloat(levels[1])
+    levels[end] = nextfloat(levels[end])
+    @assert issorted(levels)
+    is_extended_low && pushfirst!(levels, -Inf)
+    is_extended_high && push!(levels, Inf)
+    lows = levels[1:(end - 1)]
+    highs = levels[2:end]
+
+    xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
+    ys = [DelTri.gety(p) for p in DelTri.each_point(triangulation)]
+
+    trianglelist = compute_triangulation(triangulation)
+    filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
+
+    levelcenters = (highs .+ lows) ./ 2
+
+    for (fc, lc) in zip(filledcontours, levelcenters)
+        pointvecs = map(fc.polylines) do vecs
+            map(Point2f, vecs)
+        end
+        if isempty(pointvecs)
+            continue
+        end
+
+        for pointvec in pointvecs
+            p = Makie.Polygon(pointvec)
+            push!(polys, p)
+            push!(colors, lc)
+        end
+    end
+    return
+end
+
 function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVector{<:Real}}})
     graph = c.attributes
 
     # prepare levels, colormap related nodes
     register_contourf_computations!(graph, :zs)
 
-    function calculate_polys!(polys, colors, triangulation, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
-        levels = copy(levels)
-        # adjust outer levels to be inclusive
-        levels[1] = prevfloat(levels[1])
-        levels[end] = nextfloat(levels[end])
-        @assert issorted(levels)
-        is_extended_low && pushfirst!(levels, -Inf)
-        is_extended_high && push!(levels, Inf)
-        lows = levels[1:(end - 1)]
-        highs = levels[2:end]
-
-        xs = [DelTri.getx(p) for p in DelTri.each_point(triangulation)] # each_point preserves indices
-        ys = [DelTri.gety(p) for p in DelTri.each_point(triangulation)]
-
-        trianglelist = compute_triangulation(triangulation)
-        filledcontours = filled_tricontours(xs, ys, zs, trianglelist, levels)
-
-        levelcenters = (highs .+ lows) ./ 2
-
-        for (fc, lc) in zip(filledcontours, levelcenters)
-            pointvecs = map(fc.polylines) do vecs
-                map(Point2f, vecs)
-            end
-            if isempty(pointvecs)
-                continue
-            end
-
-            for pointvec in pointvecs
-                p = Makie.Polygon(pointvec)
-                push!(polys, p)
-                push!(colors, lc)
-            end
-        end
-        return
-    end
 
     register_computation!(
         graph,
@@ -144,7 +145,7 @@ function Makie.plot!(c::Tricontourf{<:Tuple{<:DelTri.Triangulation, <:AbstractVe
         else
             polys, colors = empty!.(values(cached))
         end
-        calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
+        _calculate_polys!(polys, colors, tri, zs, levels, is_extended_low, is_extended_high)
         return (polys, colors)
     end
 
