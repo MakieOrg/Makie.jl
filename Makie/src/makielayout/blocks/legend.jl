@@ -284,7 +284,7 @@ function initialize_block!(leg::Legend; entrygroups)
             for (i, entry) in enumerate(entries)
 
                 # fill missing entry attributes with those carried by the legend
-                merge!(entry.attributes, preset_attrs)
+                mergeleft!(entry.attributes, preset_attrs)
 
                 isnothing(entry.label[]) && continue
 
@@ -414,7 +414,7 @@ end
 
 
 function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
@@ -432,7 +432,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
 end
 
 function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
 
     fracpoints = attrs.linepoints
@@ -447,7 +447,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
 end
 
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
@@ -462,7 +462,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
 end
 
 function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     lims = map(scene, bbox, attr.limits) do bb, lims
         x0, y0 = minimum(bb)
@@ -481,7 +481,7 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
 end
 
 function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     plt = meshscatter!(
         scene, attr.position,
@@ -492,7 +492,7 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
-    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rot = Quaternionf(-0.17591983, -0.42470822, -0.82047325, 0.33985117)
     rotate!(plt, rot)
 
     on(scene, bbox, update = true) do bb
@@ -507,7 +507,7 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
 end
 
 function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     plt = mesh!(
         scene, attr.mesh,
@@ -517,7 +517,7 @@ function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
-    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rot = Quaternionf(-0.17591983, -0.42470822, -0.82047325, 0.33985117)
     rotate!(plt, rot)
 
     on(scene, bbox, update = true) do bb
@@ -613,10 +613,7 @@ function apply_legend_override!(le::T, override::LegendOverride) where {T <: Leg
 end
 
 function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
-    attrs = Attributes(; label)
-
-    kwargattrs = Attributes(kwargs)
-    merge!(attrs, kwargattrs)
+    attrs = mergeleft!(Attributes(; label), Attributes(kwargs))
 
     elems = legendelements(contentelement, legend, override)
     if isempty(elems)
@@ -627,10 +624,7 @@ end
 
 
 function LegendEntry(label, content, legend; kwargs...)
-    attrs = Attributes(label = label)
-
-    kwargattrs = Attributes(kwargs)
-    merge!(attrs, kwargattrs)
+    attrs = mergeleft!(Attributes(label = label), Attributes(kwargs))
 
     function get_plots(x)
         plots = AbstractPlot[]
