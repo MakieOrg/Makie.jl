@@ -286,7 +286,7 @@ function Makie.backend_showable(::Type{Screen}, ::T) where {T <: MIME}
 end
 
 function Base.close(screen::Screen; from_close = false)
-    return lock(screen.lock) do
+    return @lock screen.lock begin
         scene = screen.scene
         session = nothing
         if !isnothing(screen.session) && isopen(screen.session) && !from_close

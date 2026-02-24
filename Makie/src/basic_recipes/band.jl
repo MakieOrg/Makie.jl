@@ -33,9 +33,9 @@ function band_connect(n)
     return [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
+_nanpoint(::Type{<:Point3}) = Point3(NaN)
+_nanpoint(::Type{<:Point2}) = Point2(NaN)
 function Makie.plot!(plot::Band)
-    nanpoint(::Type{<:Point3}) = Point3(NaN)
-    nanpoint(::Type{<:Point2}) = Point2(NaN)
     map!(plot, [:lowerpoints, :upperpoints, :direction], :coordinates) do lowerpoints, upperpoints, direction
         n = length(lowerpoints)
         @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
@@ -47,8 +47,8 @@ function Makie.plot!(plot::Band)
         # if either x, upper or lower is NaN, all of them should be NaN to cut out a whole band segment and not just a triangle
         for i in 1:n
             if isnan(lowerpoints[i]) || isnan(upperpoints[i])
-                concat[i] = nanpoint(eltype(concat))
-                concat[n + i] = nanpoint(eltype(concat))
+                concat[i] = _nanpoint(eltype(concat))
+                concat[n + i] = _nanpoint(eltype(concat))
             end
         end
         return concat
