@@ -66,16 +66,40 @@ end
 
 # Return instance of AbstractDimConversion for a given type
 create_dim_conversion(argument_eltype::DataType) = NoDimConversion()
-should_dim_convert(::Type{<:Real}) = false
+should_dim_convert() = nothing
 function convert_dim_observable(::NoDimConversion, value::Observable, deregister)
     return value
 end
 
 # get_ticks needs overloading for Dim Conversion
 # Which gets ignored for no conversion/nothing
-function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax)
+function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, vmin, vmax, show_in_label)
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
+
+# TODO: temporary
+function get_ticks(c::Union{Nothing, AbstractDimConversion}, ticks, scale, formatter, vmin, vmax)
+    return get_ticks(c, ticks, scale, formatter, vmin, vmax, true)
+end
+
+show_dim_convert_in_ticklabel(dc::Union{AbstractDimConversion, Nothing}, ::Automatic) = show_dim_convert_in_ticklabel(dc)
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}) = false
+show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
+
+# Should this trigger an error or just return ""?
+get_label_suffix(dc, format, use_short) = apply_format(get_label_suffix(dc, use_short), format)
+get_label_suffix(dc, format) = apply_format(get_label_suffix(dc), format)
+get_label_suffix(dc, ::Bool) = get_label_suffix(dc)
+get_label_suffix(dc) = error("No axis label suffix defined for conversion $dc.")
+get_label_suffix(dc::Union{Nothing, NoDimConversion}) = ""
+
+# Don't default to generating a suffix for no dim conversion.
+# TODO: Maybe allow option cases to go through though so `suffix` can be used w/o dimconverts?
+show_dim_convert_in_axis_label(::Union{Nothing, NoDimConversion}, ::Automatic) = false
+
+show_dim_convert_in_axis_label(dc::AbstractDimConversion, ::Automatic) = show_dim_convert_in_axis_label(dc)
+show_dim_convert_in_axis_label(::AbstractDimConversion) = true
+show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
@@ -182,31 +206,42 @@ end
 
 convert_dim_value(conv, attr, value, last_value) = value
 
-function update_dim_conversion!(conversions::DimConversions, dim, value)
-    conversion = conversions[dim]
-    if !(conversion isa Union{Nothing, NoDimConversion})
-        return
-    end
-    c = dim_conversion_from_args(value)
-    return conversions[dim] = c
+function convert_dim_value(conv, attr, value, last_value, element_index)
+    return convert_dim_value(conv, attr, value, last_value)
 end
 
-function try_dim_convert(P::Type{<:Plot}, PTrait::ConversionTrait, user_attributes, args_obs::Tuple, deregister)
-    # Only 2 and 3d conversions are supported, and only
-    if !(length(args_obs) in (2, 3))
-        return args_obs
+function convert_dim_value(conv, attr, points::AbstractArray{<:VecTypes}, last_value, element_index)
+    isempty(points) && return Float64[]
+    dim_value = [p[element_index] for p in points]
+    last_dim_value = last_value === nothing ? nothing : [p[element_index] for p in last_value]
+    return convert_dim_value(conv, attr, dim_value, last_dim_value)
+end
+
+function convert_dim_value(conv, attr, point::VecTypes, last_value, element_index)
+    last = last_value === nothing ? nothing : last_value[element_index]
+    return convert_dim_value(conv, attr, point[element_index], last)
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value, element_idx)
+    return update_dim_conversion!(conversions, dim, value)
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value::VecTypes, element_idx)
+    return update_dim_conversion!(conversions, dim, value[element_idx])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, points::AbstractArray{<:VecTypes}, element_idx)
+    isempty(points) && return Float64[]
+    return update_dim_conversion!(conversions, dim, first(points)[element_idx])
+end
+
+function update_dim_conversion!(conversions::DimConversions, dim, value)
+    conversion = conversions[dim]
+    if conversion isa Union{Nothing, NoDimConversion}
+        c = dim_conversion_from_args(value)
+        return conversions[dim] = c
     end
-    converts = to_value(get!(() -> DimConversions(), user_attributes, :dim_conversions))
-    return ntuple(length(args_obs)) do i
-        arg = args_obs[i]
-        argval = to_value(arg)
-        # We only convert if we have a conversion struct (which isn't NoDimConversion),
-        # or if we we should dim_convert
-        if !isnothing(converts[i]) || should_dim_convert(P, argval) || should_dim_convert(PTrait, argval)
-            return convert_dim_observable(converts, i, arg, deregister)
-        end
-        return arg
-    end
+    return
 end
 
 function convert_dim_observable(conversions::DimConversions, dim::Int, value::Observable, deregister)
