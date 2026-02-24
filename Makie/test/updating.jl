@@ -122,14 +122,14 @@ Makie.@recipe PassthroughTest1 begin
         nested = Attributes(
             attr = Attributes(
                 color = :black,
-                linewidth = 5
+                linewidth = 3
             )
         )
     )
     nested = Attributes(
         attr = Attributes(
             color = :white,
-            linewidth = 5
+            linewidth = 3
         )
     )
 end
@@ -153,30 +153,66 @@ Makie.@recipe PassthroughTest2 begin
 end
 
 function Makie.plot!(pl::PassthroughTest2)
-    passthroughtest1!(pl, pl.attributes, pl.converted_1, pl.converted_2)
-    passthroughtest1!(pl, pl.attributes.deeply, pl.converted_1, pl.converted_2)
+    passthroughtest1!(
+        pl, pl.attributes, pl.converted_1, pl.converted_2,
+        nested = Attributes(attr = Attributes(linewidth = 1))
+    )
+    passthroughtest1!(
+        pl, pl.attributes.deeply, pl.converted_1, pl.converted_2,
+        deeply = Attributes(nested = Attributes(attr = Attributes(linewidth = 1)))
+    )
+    passthroughtest1!(
+        pl, pl.converted_1, pl.converted_2, deeply = pl.attributes.deeply,
+        nested = Attributes(attr = Attributes(linewidth = 1))
+    )
     return pl
 end
 
 @testset "Deeply Nested ComputeGraph passthrough" begin
-    f, a, p = passthroughtest2(1:5, 1:5)
+    f, a, p = passthroughtest2(1:5, 1:5);
 
     # ComputeGraph passed
     @test haskey(p.plots[1].attributes, :deeply, :nested, :attr, :color)
-    @test p.plots[1].deeply.nested.attr.color[] == :red
+    @test haskey(p.plots[1].attributes, :deeply, :nested, :attr, :linewidth)
+    @test haskey(p.plots[1].attributes, :nested, :attr, :color)
+    @test haskey(p.plots[1].attributes, :nested, :attr, :linewidth)
+    @test p.plots[1].deeply.nested.attr.color[] == :red # passthrough
+    @test p.plots[1].deeply.nested.attr.linewidth[] == 5 # passthrough
+    @test p.plots[1].nested.attr.color[] == :white # default
+    @test p.plots[1].nested.attr.linewidth[] == 1 # merge of explicit kwargs in recipe
 
     # ComputeGraphView passed
+    @test haskey(p.plots[2].attributes, :deeply, :nested, :attr, :color)
+    @test haskey(p.plots[2].attributes, :deeply, :nested, :attr, :linewidth)
     @test haskey(p.plots[2].attributes, :nested, :attr, :color)
-    @test p.plots[2].nested.attr.color[] == :red
+    @test haskey(p.plots[2].attributes, :nested, :attr, :linewidth)
+    @test p.plots[2].deeply.nested.attr.color[] == :black # default
+    @test p.plots[2].deeply.nested.attr.linewidth[] == 1 # merge
+    @test p.plots[2].nested.attr.color[] == :red # passthrough
+    @test p.plots[2].nested.attr.linewidth[] == 5 # passthrough
+
+    # ComputeGraphView passed through attributes
+    @test haskey(p.plots[3].attributes, :deeply, :nested, :attr, :color)
+    @test haskey(p.plots[3].attributes, :deeply, :nested, :attr, :linewidth)
+    @test haskey(p.plots[3].attributes, :nested, :attr, :color)
+    @test haskey(p.plots[3].attributes, :nested, :attr, :linewidth)
+    @test p.plots[3].deeply.nested.attr.color[] == :red # kwarg set (full)
+    @test p.plots[3].deeply.nested.attr.linewidth[] == 5 # kwarg set (full)
+    @test p.plots[3].nested.attr.color[] == :white # default
+    @test p.plots[3].nested.attr.linewidth[] == 1 # kwarg set (partial, merge)
 
     # attributes make it all the way
     @test p.plots[1].plots[1].color[] == to_color(:red) # passed :deeply which is connected to :deeply
     @test p.plots[1].plots[2].color[] == to_color(:white) # passed :nested which is defaulted
     @test p.plots[2].plots[1].color[] == to_color(:black) # passed :deeply which is defaulted
     @test p.plots[2].plots[2].color[] == to_color(:red) # passed :nested which is connected to :deeply.nested
+    @test p.plots[3].plots[1].color[] == to_color(:red) # passed :deeply which is connected to :deeply
+    @test p.plots[3].plots[2].color[] == to_color(:white) # passed :nested which is defaulted
     p.deeply.nested.attr.color[] = :cyan
     @test p.plots[1].plots[1].color[] == to_color(:cyan)
     @test p.plots[1].plots[2].color[] == to_color(:white)
     @test p.plots[2].plots[1].color[] == to_color(:black)
     @test p.plots[2].plots[2].color[] == to_color(:cyan)
+    @test p.plots[3].plots[1].color[] == to_color(:cyan) # passed :deeply which is connected to :deeply
+    @test p.plots[3].plots[2].color[] == to_color(:white) # passed :nested which is defaulted
 end
