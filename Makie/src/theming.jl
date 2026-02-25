@@ -158,7 +158,12 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
     for (key, value) in theme
         if !haskey(dict, key)
-            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
@@ -173,17 +178,27 @@ end
 
 # Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
 function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
-    result_dict = attributes(result)
+    dict = attributes(result)
     for (key, value) in priority
-        if !haskey(result_dict, key)
-            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        if !haskey(dict, key)
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
                 merge_without_obs_reverse!(current_value, value)
             else
-                result_dict[key] = Observable{Any}(to_value(value))
+                if value isa Attributes
+                    dict[key] = Attributes()
+                    merge_without_obs!(dict[key], value)
+                else
+                    dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                end
             end
         end
     end

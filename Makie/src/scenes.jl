@@ -48,7 +48,8 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "SSAO:")
     println(io, "    radius: ", ssao.radius[])
     println(io, "    bias:   ", ssao.bias[])
-    return println(io, "    blur:   ", ssao.blur[])
+    println(io, "    blur:   ", ssao.blur[])
+    return
 end
 
 function SSAO(; radius = nothing, bias = nothing, blur = nothing)
