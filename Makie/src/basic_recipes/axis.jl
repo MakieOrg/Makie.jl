@@ -230,9 +230,9 @@ to3tuple(x) = ntuple(i -> x, Val(3))
 """
     svtuple_getindex(x, idx)
 
-Like `sv_getindex(x, idx)` but treats tuples as an indexable collection.
+Like `sv_getindex(x, idx)` but treats VecTypes as an indexable collection.
 """
-svtuple_getindex(x::Tuple, idx) = x[idx]
+svtuple_getindex(x::VecTypes, idx) = x[idx]
 svtuple_getindex(x, idx) = sv_getindex(x, idx)
 
 function draw_axis3d(plot)
@@ -282,9 +282,11 @@ function draw_axis3d(plot)
             attr.names.align, attr.names.font, :scene_scale,
         ],
         [:text_positions, :text_strings, :text_color, :text_rotation, :text_fontsize, :text_align, :text_font]
-    ) do lims, showticks, ranges, tgap, ticklabels, axisnames, fonts, tfont,
-            tfontsize, titlegap, ttextcolor, trotation, talign,
-            axisnames_size, axisnames_color, axisrotation, axisalign, axisnames_font, scale
+    ) do lims, showticks, ranges, tgap, ticklabels, axisnames,
+            fonts, tfont, tfontsize, titlegap, ttextcolor,
+            trotation, talign,
+            axisnames_size, axisnames_color, axisrotation,
+            axisalign, axisnames_font, scale
 
         positionbuffer = Point3f[]
         textbuffer = String[]
@@ -300,7 +302,7 @@ function draw_axis3d(plot)
         for i in 1:N
             axis_vec = GeometryBasics.unit(Point{N, Float32}, i)
             width = Float32(limit_widths[i])
-            if showticks[i]
+            if svtuple_getindex(showticks, i)
                 range = ranges[i]
                 j = offset_indices[i]
                 tickdir = GeometryBasics.unit(Vec{N, Float32}, j)
@@ -322,13 +324,13 @@ function draw_axis3d(plot)
                     end
                 end
 
-                if !isempty(axisnames[i])
-                    font = to_font(fonts, tfont[i])
+                if !isempty(svtuple_getindex(axisnames, i))
+                    font = to_font(fonts, svtuple_getindex(tfont, i))
                     tick_widths = maximum(ticklabels[i]) do label
                         widths(text_bb(label, font, tfontsize[i]))[1]
                     end / scale[j]
                     pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
-                    push!(textbuffer, UnicodeFun.to_latex(axisnames[i]))
+                    push!(textbuffer, UnicodeFun.to_latex(svtuple_getindex(axisnames, i)))
                     push!(positionbuffer, pos)
                     push!(fontsize, svtuple_getindex(axisnames_size, i))
                     push!(color, to_color(svtuple_getindex(axisnames_color, i)))
@@ -359,7 +361,9 @@ function draw_axis3d(plot)
             attr.frame.linecolor, attr.frame.linewidth,
         ],
         [:line_positions, :line_colors, :line_widths]
-    ) do lims, showaxis, showgrid, ranges, axiscolors, axislinewidth, gridcolors, gridthickness
+    ) do lims, showaxis, showgrid, ranges,
+            axiscolors, axislinewidth,
+            gridcolors, gridthickness
 
         limit_widths = widths(lims)
         origin = minimum(lims)
@@ -373,15 +377,15 @@ function draw_axis3d(plot)
             width = Float32(limit_widths[i])
             stop = origin .+ (width .* axis_vec)
 
-            if showaxis[i]
+            if svtuple_getindex(showaxis, i)
                 push!(position_buffer, origin, stop)
                 push!(color, to_color(svtuple_getindex(axiscolors, i)))
                 push!(linewidth, svtuple_getindex(axislinewidth, i))
             end
 
-            if showgrid[i]
-                c = gridcolors[i]
-                thickness = gridthickness[i]
+            if svtuple_getindex(showgrid, i)
+                c = svtuple_getindex(gridcolors, i)
+                thickness = svtuple_getindex(gridthickness, i)
                 for _j in (i + 1):(i + N - 1)
                     j = mod1(_j, N)
                     dir = GeometryBasics.unit(Point{N, Float32}, j)
