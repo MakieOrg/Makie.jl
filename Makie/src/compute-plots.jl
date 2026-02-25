@@ -879,6 +879,7 @@ function add_or_update_nested_attribute!(graph, updates, keytuple, value, user_k
         # value comes from the scene theme which can't have an @inherit
         add_input!(graph, keytuple, value)
     end
+    return
 end
 
 function add_theme_inner!(updates, key, inherit::Inherit, user_kw, graph, scene_theme)
@@ -917,6 +918,7 @@ function add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
     if !haskey(graph, key)
         error(":$key should have already been added to the plot.")
     end
+    return
 end
 
 function inherit_theme_from_scene!(updates, plot_attr::Dict{Symbol, AttributeMetadata}, user_kw, graph, scene_theme)
@@ -927,6 +929,7 @@ function inherit_theme_from_scene!(updates, plot_attr::Dict{Symbol, AttributeMet
         value = meta.default_value
         add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
     end
+    return
 end
 
 function inherit_theme_from_scene!(updates, plot_attr::Attributes, user_kw, graph, scene_theme)
@@ -936,6 +939,7 @@ function inherit_theme_from_scene!(updates, plot_attr::Attributes, user_kw, grap
         end
         add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
     end
+    return
 end
 
 

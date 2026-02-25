@@ -169,7 +169,7 @@ function Makie.plot!(pl::PassthroughTest2)
 end
 
 @testset "Deeply Nested ComputeGraph passthrough" begin
-    f, a, p = passthroughtest2(1:5, 1:5);
+    f, a, p = passthroughtest2(1:5, 1:5)
 
     # ComputeGraph passed
     @test haskey(p.plots[1].attributes, :deeply, :nested, :attr, :color)
