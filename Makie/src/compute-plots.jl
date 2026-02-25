@@ -996,7 +996,7 @@ end
 
 # reached end
 function overwrite_plot_defaults!(updates, node::Computed, value)
-    push!(updates, node.name => value)
+    push!(updates, node.name => to_value(value))
     return
 end
 
