@@ -68,8 +68,8 @@ end
 # for testing with a consistent kernel we want to be able to generate it from
 # a StableRNG
 function generate_ssao_kernel(N_samples = 64, lerp_min = 0.1f0, lerp_max = 1.0f0, RNG = Random.default_rng())
-   return map(1:N_samples) do i
-        n = normalize(Vec3f(2f0, 2f0, 1f0) .* rand(RNG, Vec3f) .- Vec3f(1f0, 1f0, 0f0))
+    return map(1:N_samples) do i
+        n = normalize(Vec3f(2.0f0, 2.0f0, 1.0f0) .* rand(RNG, Vec3f) .- Vec3f(1.0f0, 1.0f0, 0.0f0))
         scale = lerp_min + (lerp_max - lerp_min) * Float32(i / N_samples)^2
         return Vec3f(scale * rand() * n)
     end
