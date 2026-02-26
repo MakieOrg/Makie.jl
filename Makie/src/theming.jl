@@ -98,9 +98,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         visible = true,
         start_renderloop = false,
         pdf_version = nothing
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -124,6 +122,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         oit = true,
         fxaa = true,
         ssao = false,
+        render_pipeline = automatic,
         # This adjusts a factor in the rendering shaders for order independent
         # transparency. This should be the same for all of them (within one rendering
         # pipeline) otherwise depth "order" will be broken.
@@ -131,9 +130,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
@@ -210,7 +207,7 @@ function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
         resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        resolved_theme = merge!(Theme(kwargs), resolved_theme)
+        resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
         merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
     return
@@ -284,7 +281,7 @@ update_theme!(Theme(colormap=:greys))
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
-        new_theme = merge!(with_theme, Attributes(kwargs))
+        new_theme = mergeleft!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
     end
