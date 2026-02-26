@@ -1,4 +1,4 @@
-using LaTeXStrings
+using Makie.LaTeXStrings
 @testset "bracket" begin
     @testset "LaTeXString support" begin
         # Test that LaTeX strings are preserved in bracket text, not converted to String
