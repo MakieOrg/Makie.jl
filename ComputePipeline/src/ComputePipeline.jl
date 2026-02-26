@@ -296,29 +296,7 @@ function get_observable!(c::Computed; use_deepcopy = true)
     end
 end
 
-function Observables.on(f, x::Computed; kwargs...)
-    obs = get_observable!(x)
-    return on(f, obs; kwargs...)
-end
-
-function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
-end
-function Observables.map!(f, target::Observable, args::Computed...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
-    return map!(f, target, obsies...; kwargs...)
-end
-function Observables.map(f, arg1::Computed, args...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    return map(f, obsies...; kwargs...)
-end
-
-function Observables.connect!(target::Observables.AbstractObservable, source::Computed)
-    return Observables.connect!(target, get_observable!(source))
-end
-
+include("observables_compat.jl")
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
