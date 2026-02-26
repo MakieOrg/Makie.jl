@@ -690,6 +690,36 @@ function diff_plotlist!(
     return new_plots
 end
 
+# Cache plots here so that we aren't re-creating plots every time;
+# if a plot still exists from last time, update it accordingly.
+# If the plot is removed from `plotspecs`, we'll delete it from here
+# and re-create it if it ever returns.
+function _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
+    specs = ifelse(isa(plotspecs, PlotSpec), [plotspecs], plotspecs)
+    # Global list of observables that need updating
+    # Updating them all at once in the end avoids problems with triggering updates while updating
+    # And at some point we may be able to optimize notify(list_of_observables)
+    # diff_plotlist! deletes all plots that get reused from unused_plots
+    # so, this will become our list of unused plots!
+    diff_plotlist!(scene, specs, plotlist, unused_plots, new_plots)
+    # Next, delete all plots that we haven't used
+    # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+    if own_plots
+        for (_, plot) in unused_plots
+            if !isnothing(plotlist)
+                filter!(x -> x !== plot, plotlist.plots)
+            end
+            delete!(scene, plot)
+        end
+        # Transfer all new plots into unused_plots for the next update!
+        @assert !any(x -> x in unused_plots, new_plots)
+        empty!(unused_plots)
+        merge!(unused_plots, new_plots)
+        empty!(new_plots)
+    end
+    return
+end
+
 function update_plotspecs!(
         scene::Scene, list_of_plotspecs::Observable,
         plotlist::Union{Nothing, PlotList} = nothing,
@@ -697,39 +727,10 @@ function update_plotspecs!(
         new_plots = IdDict{PlotSpec, Plot}(),
         own_plots = true
     )
-    # Cache plots here so that we aren't re-creating plots every time;
-    # if a plot still exists from last time, update it accordingly.
-    # If the plot is removed from `plotspecs`, we'll delete it from here
-    # and re-create it if it ever returns.
-    update_plotlist(spec::PlotSpec) = update_plotlist([spec])
-    function update_plotlist(plotspecs)
-        # Global list of observables that need updating
-        # Updating them all at once in the end avoids problems with triggering updates while updating
-        # And at some point we may be able to optimize notify(list_of_observables)
-        # diff_plotlist! deletes all plots that get reused from unused_plots
-        # so, this will become our list of unused plots!
-        diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
-        # Next, delete all plots that we haven't used
-        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        if own_plots
-            for (_, plot) in unused_plots
-                if !isnothing(plotlist)
-                    filter!(x -> x !== plot, plotlist.plots)
-                end
-                delete!(scene, plot)
-            end
-            # Transfer all new plots into unused_plots for the next update!
-            @assert !any(x -> x in unused_plots, new_plots)
-            empty!(unused_plots)
-            merge!(unused_plots, new_plots)
-            empty!(new_plots)
-        end
-        return
-    end
     l = Base.ReentrantLock()
     on(scene, list_of_plotspecs; update = true) do plotspecs
-        lock(l) do
-            update_plotlist(plotspecs)
+        @lock l begin
+            _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
         end
         return
     end

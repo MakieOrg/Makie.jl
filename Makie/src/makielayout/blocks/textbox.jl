@@ -1,5 +1,47 @@
 using InteractiveUtils: clipboard
 
+function _reset_to_stored(cursorindex, tbox)
+    cursorindex[] = 0
+    return if isnothing(tbox.stored_string[])
+        tbox.displayed_string[] = tbox.placeholder[]
+    else
+        tbox.displayed_string[] = tbox.stored_string[]
+    end
+end
+
+function _insertchar!(c, index, displayed_chars, tbox, cursorindex)
+    if displayed_chars[] == [' ']
+        empty!(displayed_chars[])
+        index = 1
+    end
+    newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
+    tbox.displayed_string[] = join(newchars)
+    return cursorindex[] = index
+end
+
+function _removechar!(index, displayed_chars, tbox, cursorindex)
+    newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
+
+    if isempty(newchars)
+        newchars = [' ']
+    end
+
+    if cursorindex[] >= index
+        cursorindex[] = max(0, cursorindex[] - 1)
+    end
+
+    return tbox.displayed_string[] = join(newchars)
+end
+
+function _cursor_forward(tbox, cursorindex)
+    return if tbox.displayed_string[] != " "
+        cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
+    end
+end
+
+function _cursor_backward(cursorindex)
+    return cursorindex[] = max(0, cursorindex[] - 1)
+end
 
 function initialize_block!(tbox::Textbox)
 
@@ -88,7 +130,7 @@ function initialize_block!(tbox::Textbox)
     cursorsize = Observable(Vec2f(1, tbox.fontsize[]))
     cursorpoints = lift(topscene, cursorindex, displayed_charbbs; ignore_equal_values = true) do ci, bbs
         isempty(bbs) && return Point2f(0)
-        textplot = t.blockscene.plots[1]
+        local textplot = t.blockscene.plots[1]
 
         hadvances = Float32[]
         broadcast_foreach(textplot.glyph_extents[], textplot.text_scales[]) do ex, sc
@@ -180,10 +222,10 @@ function initialize_block!(tbox::Textbox)
             return Consume(true)
         end
 
-        if typeof(tbox.width[]) <: Number
-            pos = state.data .- scene.transformation.translation[][1:2]
+        pos = if typeof(tbox.width[]) <: Number
+            state.data .- scene.transformation.translation[][1:2]
         else
-            pos = state.data
+            state.data
         end
         closest_charindex = argmin(
             [sum((pos .- center(bb)) .^ 2) for bb in displayed_charbbs[]]
@@ -210,65 +252,22 @@ function initialize_block!(tbox::Textbox)
 
     onmousedownoutside(mouseevents) do state
         if tbox.reset_on_defocus[]
-            reset_to_stored()
+            _reset_to_stored(cursorindex, tbox)
         end
         defocus!(tbox)
         return Consume(false)
     end
 
-    function insertchar!(c, index)
-        if displayed_chars[] == [' ']
-            empty!(displayed_chars[])
-            index = 1
-        end
-        newchars = [displayed_chars[][1:(index - 1)]; c; displayed_chars[][index:end]]
-        tbox.displayed_string[] = join(newchars)
-        return cursorindex[] = index
-    end
-
     function appendchar!(c)
-        return insertchar!(c, length(tbox.displayed_string[]))
-    end
-
-    function removechar!(index)
-        newchars = [displayed_chars[][1:(index - 1)]; displayed_chars[][(index + 1):end]]
-
-        if isempty(newchars)
-            newchars = [' ']
-        end
-
-        if cursorindex[] >= index
-            cursorindex[] = max(0, cursorindex[] - 1)
-        end
-
-        return tbox.displayed_string[] = join(newchars)
+        return _insertchar!(c, length(tbox.displayed_string[]), displayed_chars, tbox, cursorindex)
     end
 
     on(topscene, events(scene).unicode_input; priority = 60) do char
         if tbox.focused[] && is_allowed(char, tbox.restriction[])
-            insertchar!(char, cursorindex[] + 1)
+            _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex)
             return Consume(true)
         end
         return Consume(false)
-    end
-
-    function reset_to_stored()
-        cursorindex[] = 0
-        return if isnothing(tbox.stored_string[])
-            tbox.displayed_string[] = tbox.placeholder[]
-        else
-            tbox.displayed_string[] = tbox.stored_string[]
-        end
-    end
-
-    function cursor_forward()
-        return if tbox.displayed_string[] != " "
-            cursorindex[] = min(length(tbox.displayed_string[]), cursorindex[] + 1)
-        end
-    end
-
-    function cursor_backward()
-        return cursorindex[] = max(0, cursorindex[] - 1)
     end
 
 
@@ -285,7 +284,7 @@ function initialize_block!(tbox::Textbox)
                 end
 
                 if all(char -> is_allowed(char, tbox.restriction[]), content)
-                    foreach(char -> insertchar!(char, cursorindex[] + 1), content)
+                    foreach(char -> _insertchar!(char, cursorindex[] + 1, displayed_chars, tbox, cursorindex), content)
                     return Consume(true)
                 else
                     return Consume(false)
@@ -295,9 +294,9 @@ function initialize_block!(tbox::Textbox)
             if event.action != Keyboard.release
                 key = event.key
                 if key == Keyboard.backspace
-                    removechar!(cursorindex[])
+                    _removechar!(cursorindex[], displayed_chars, tbox, cursorindex)
                 elseif key == Keyboard.delete
-                    removechar!(cursorindex[] + 1)
+                    _removechar!(cursorindex[] + 1, displayed_chars, tbox, cursorindex)
                 elseif key == Keyboard.enter || key == Keyboard.kp_enter
                     # don't do anything for invalid input which should stay red
                     if displayed_is_valid[]
@@ -309,13 +308,13 @@ function initialize_block!(tbox::Textbox)
                     end
                 elseif key == Keyboard.escape
                     if tbox.reset_on_defocus[]
-                        reset_to_stored()
+                        _reset_to_stored(cursorindex, tbox)
                     end
                     defocus!(tbox)
                 elseif key == Keyboard.right
-                    cursor_forward()
+                    _cursor_forward(tbox, cursorindex)
                 elseif key == Keyboard.left
-                    cursor_backward()
+                    _cursor_backward(cursorindex)
                 end
             end
             return Consume(true)

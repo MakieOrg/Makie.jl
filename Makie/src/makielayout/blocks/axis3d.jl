@@ -31,8 +31,8 @@ function initialize_block!(ax::Axis3)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
-    cam = Axis3Camera()
-    cameracontrols!(scene, cam)
+    axis_cam = Axis3Camera()
+    cameracontrols!(scene, axis_cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits, ax.clip) do model, lims, clip
         if clip
             _planes = planes(lims)
@@ -94,25 +94,25 @@ function initialize_block!(ax::Axis3)
     end
 
     onany(scene, viewport_scaling, matrices) do viewport, (model, view, proj, lookat, eyepos)
-        cam = camera(scene)
-        Makie.set_proj_view!(cam, proj, view)
+        cam1 = camera(scene)
+        Makie.set_proj_view!(cam1, proj, view)
         scene.transformation.model[] = model
 
         viewdir = normalize(lookat - eyepos)
         up = Vec3d(0, 0, 1)
         u_z = -viewdir
         u_x = normalize(cross(up, u_z))
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam1.eyeposition[] = eyepos
+        cam1.upvector[] = cross(u_z, u_x)
+        cam1.view_direction[] = viewdir
 
         # We mirror the camera to the blockscene with adjusted viewport scaling
-        cam = camera(blockscene)
-        Makie.set_proj_view!(cam, viewport * proj, view)
+        cam2 = camera(blockscene)
+        Makie.set_proj_view!(cam2, viewport * proj, view)
         blockscene.transformation.model[] = model
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam2.eyeposition[] = eyepos
+        cam2.upvector[] = cross(u_z, u_x)
+        cam2.view_direction[] = viewdir
 
         return
     end
@@ -355,9 +355,9 @@ function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protru
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4d, points, 1)
 
             # convert to effective viewport
-            w = w / width; h = h / height
-            maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
-            maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
+            w_eff = w / width; h_eff = h / height
+            maxx = maximum(x -> abs(x[1] / (w_eff * x[4])), projpoints)
+            maxy = maximum(x -> abs(x[2] / (h_eff * x[4])), projpoints)
 
             # normalization to map max x/y to 1 in effective viewport
             ratio_x = 1.0 / maxx
@@ -452,8 +452,7 @@ end
 
 function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -587,8 +586,7 @@ end
 
 function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -664,7 +662,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
         return Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
-    align = lift(topscene, miv, min1, min2) do mv, m1, m2
+    tick_align = lift(topscene, miv, min1, min2) do mv, m1, m2
         if dim == 1
             (mv ⊻ m1 ? :right : :left, m2 ? :top : :bottom)
         elseif dim == 2
@@ -675,7 +673,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     end
 
     ticklabels_text = text!(
-        topscene, labels_positions, align = align,
+        topscene, labels_positions, align = tick_align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
         space = :pixel, inspectable = false
@@ -793,14 +791,9 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
+
 function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
-
-    dimsym(sym) = Symbol(
-        string((:x, :y, :z)[dim1]) *
-            string((:x, :y, :z)[dim2]) * string(sym)
-    )
-    attr(sym) = getproperty(ax, dimsym(sym))
-
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2], sym))
     rect = lift(limits) do lims
         mi = minimum(lims)
         ma = maximum(lims)

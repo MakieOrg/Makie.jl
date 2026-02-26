@@ -468,3 +468,37 @@ end
 function is_cairomakie_atomic_plot(plot::Tricontourf)
     return true
 end
+
+
+################################################################################
+#                                   Arrows2D                                   #
+#   The SVG backend does not support CairoMeshPattern, rasterizing the image   #
+#  instead of using vector constructs.  Avoid a simple arrow rasterizing the   #
+#  image by intercepting simple (typical) arrows and redirecting them through  #
+#             the already special cased 2D polygon rendering path.             #
+################################################################################
+
+function draw_plot(scene::Scene, screen::Screen, arrow::Arrows2D)
+    poly = only(arrow.plots)
+    color = to_cairo_color(poly.color[], poly)
+    model = Ref(poly.model[])
+    strokecolor = to_cairo_color(poly.strokecolor[], poly)
+    strokestyle = Makie.convert_attribute(poly.linestyle[], key"linestyle"())
+    strokewidth = poly.strokewidth[]
+
+    miter_limit = to_cairo_miter_limit(poly.miter_limit[])
+    joinstyle = to_cairo_joinstyle(poly.joinstyle[])
+    linecap = to_cairo_linecap(poly.linecap[])
+
+    broadcast_foreach(
+        poly.meshes[], color, model, strokecolor, strokestyle, strokewidth
+    ) do mesh, props...
+        points = [Point2(c[1], c[2]) for c in coordinates(mesh)]
+        draw_poly(scene, screen, poly, points, props..., miter_limit, joinstyle, linecap)
+    end
+    return nothing
+end
+
+function is_cairomakie_atomic_plot(plot::Arrows2D)
+    return true
+end

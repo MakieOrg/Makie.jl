@@ -27,7 +27,7 @@ DelimitedFiles = "1.9.1"
 FFMPEG_jll = "6.1.2, 7, 8"
 FileIO = "1.16.6"
 HTTP = "1"
-Statistics = "1.11.1"
+Statistics = "1"
 
 [apps]
 reference_updater = {}

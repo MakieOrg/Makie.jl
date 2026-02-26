@@ -7,11 +7,12 @@
  * @param {number} threshold - Minimum score to show
  */
 export function filterByScore(threshold) {
-    const t = parseFloat(threshold) || 0;
+    const t = parseFloat(threshold) || -1;
     const cards = document.querySelectorAll('.ref-card');
     cards.forEach(card => {
-        const score = parseFloat(card.dataset.score) || 0;
-        card.dataset.hidden = score >= t ? 'false' : 'true';
+        // 0 maps to false, but should be hidden if it's smaller than t
+        const score = (parseFloat(card.dataset.score) + 1) || Infinity;
+        card.dataset.hidden = score - 1 >= t ? 'false' : 'true';
     });
 }
 
@@ -25,6 +26,8 @@ export function filterByScore(threshold) {
  */
 export function setupImageCycleButton(buttonContainer, mediaRecorded, mediaReference, mediaGlmakie) {
     const button = buttonContainer.querySelector('button');
+    const cycle_checkbox = document.querySelectorAll('.cycle-checkbox')[0];
+
     if (!button) return;
 
     button.addEventListener('click', () => {
@@ -38,7 +41,12 @@ export function setupImageCycleButton(buttonContainer, mediaRecorded, mediaRefer
             mediaReference.style.zIndex = '3';
             mediaGlmakie.style.zIndex = '2';
             button.textContent = 'Showing: reference';
-        } else if (getZ(mediaReference) > getZ(mediaRecorded) && getZ(mediaReference) > getZ(mediaGlmakie)) {
+        } else if (
+                cycle_checkbox.checked &&
+                getZ(mediaReference) > getZ(mediaRecorded) &&
+                getZ(mediaReference) > getZ(mediaGlmakie)
+            )
+        {
             // Currently showing reference, switch to glmakie
             mediaRecorded.style.zIndex = '2';
             mediaReference.style.zIndex = '1';
@@ -193,7 +201,7 @@ export function collectCheckedFiles() {
             const filepath = card.dataset.filepath;
             if (filepath) {
                 // Check if this is from the missing files section (for deletion)
-                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Missing');
+                const isMissingSection = card.closest('.section')?.querySelector('h2')?.textContent?.includes('Old reference images without recordings');
                 if (isMissingSection) {
                     deleteFiles.push(filepath);
                 } else {
@@ -204,6 +212,22 @@ export function collectCheckedFiles() {
     });
 
     return { uploadFiles, deleteFiles };
+}
+
+export function toggleFiles(grid) {
+    const cards = Array.from(grid.children).filter(c => c.classList.contains('ref-card'));
+
+    cards.forEach(card => {
+        const checkbox = card.querySelector('.checkbox-input');
+        if (checkbox && card.dataset.hidden == 'false')
+        {
+            checkbox.checked = !checkbox.checked;
+        }
+    });
+
+    updateSelectionCounts();
+
+    return;
 }
 
 /**

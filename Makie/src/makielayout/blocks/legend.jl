@@ -81,25 +81,7 @@ function initialize_block!(leg::Legend; entrygroups)
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
-
-    on(blockscene, leg.padding) do p
-        grid.alignmode = Outside(p...)
-        relayout()
-        return
-    end
-
     update_grid = Observable(true)
-    onany(blockscene, update_grid, leg.margin) do _, margin
-        if manipulating_grid[]
-            return
-        end
-        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
-        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
-        if !any(isnothing.((w, h)))
-            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
-        end
-        return
-    end
 
     # these arrays store all the plot objects that the legend entries need
     titletexts = Optional{Label}[]
@@ -109,7 +91,7 @@ function initialize_block!(leg::Legend; entrygroups)
     entryshades = [Box[]]
     entryhalfshades = [Box[]]
 
-    function relayout()
+    relayout = () -> begin
         manipulating_grid[] = true
 
         rowcol(n) = ((n - 1) ÷ leg.nbanks[] + 1, (n - 1) % leg.nbanks[] + 1)
@@ -203,6 +185,25 @@ function initialize_block!(leg::Legend; entrygroups)
         translate!(scene, (0, 0, 10))
         return
     end
+
+    on(blockscene, leg.padding) do p
+        grid.alignmode = Outside(p...)
+        relayout()
+        return
+    end
+
+    onany(blockscene, update_grid, leg.margin) do _, margin
+        if manipulating_grid[]
+            return
+        end
+        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
+        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
+        if !any(isnothing.((w, h)))
+            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
+        end
+        return
+    end
+
 
     onany(
         blockscene, leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap,
@@ -1012,18 +1013,19 @@ function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = n
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots = filter(get_plots(ax)) do plot
+    lplots_init = filter(get_plots(ax)) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
-    labels = map(lplots) do l
+
+    labels_init = map(lplots_init) do l
         l.label[]
     end
 
-    if any(x -> x isa AbstractVector, labels)
+    lplots_flat, labels_flat = if any(x -> x isa AbstractVector, labels_init)
         _lplots = []
         _labels = []
-        for (lplot, label) in zip(lplots, labels)
+        for (lplot, label) in zip(lplots_init, labels_init)
             if label isa AbstractVector
                 for lab in label
                     push!(_lplots, lplot)
@@ -1034,37 +1036,40 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
                 push!(_labels, label)
             end
         end
-        lplots = _lplots
-        labels = _labels
+        _lplots, _labels
+    else
+        lplots_init, labels_init
     end
 
     # filter out plots with same plot type and label
-    if unique
-        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
-        lplots = first.(plots_labels)
-        labels = last.(plots_labels)
+    lplots_unique, labels_unique = if unique
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots_flat, labels_flat))
+        first.(plots_labels), last.(plots_labels)
+    else
+        lplots_flat, labels_flat
     end
 
-    if merge
-        ulabels = Base.unique(labels)
+    lplots_merged, labels_merged = if merge
+        ulabels = Base.unique(labels_unique)
         mergedplots = [
-            [lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
+            [lp for (i, lp) in enumerate(lplots_unique) if labels_unique[i] == ul]
                 for ul in ulabels
         ]
-
-        lplots, labels = mergedplots, ulabels
+        mergedplots, ulabels
+    else
+        lplots_unique, labels_unique
     end
 
-    lplots_with_overrides = map(lplots, labels) do plots, label
+    lplots_with_overrides = map(lplots_merged, labels_merged) do plots, label
         if label isa Pair
             plots => LegendOverride(label[2])
         else
             plots
         end
     end
-    labels = [label isa Pair ? label[1] : label for label in labels]
+    final_labels = [label isa Pair ? label[1] : label for label in labels_merged]
 
-    return lplots_with_overrides, labels
+    return lplots_with_overrides, final_labels
 end
 
 get_plots(p::AbstractPlot) = [p]
