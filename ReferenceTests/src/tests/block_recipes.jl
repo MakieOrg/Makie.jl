@@ -33,7 +33,7 @@ function Makie.initialize_block!(cr::AllBlocks)
     Box(gl[2, :], height = 20)
     sl = Makie.Slider(gl[3, 1])
     Label(gl[3, 2], map(v -> "$v", sl.value))
-    Toggle(gl[3, 3])
+    Toggle(gl[3, 3], toggleduration = 0.01)
     IntervalSlider(gl[4, 1])
     Textbox(gl[4, 2:3])
 
@@ -57,7 +57,7 @@ BLOCK_UPDATES = let
         # not settable
         Colorbar => :colormap,
         # avoid
-        Axis3 => :zoommode,
+        Axis3 => :zoommode, Toggle => :toggleduration,
     ]
     N = 0
     scene = Scene()
@@ -183,7 +183,6 @@ end
 
     st = Makie.Stepper(fig)
     Makie.step!(st)
-    # display(fig)
 
     # Step 2 - add a plot, block and change a complex recipe attribute
 
@@ -248,7 +247,7 @@ end
         Box(gl[2, :], height = 20; BLOCK_UPDATES[Box]...)
         sl = Makie.Slider(gl[3, 1]; BLOCK_UPDATES[Makie.Slider]...)
         Label(gl[3, 2]; BLOCK_UPDATES[Label]...)
-        Toggle(gl[3, 3]; BLOCK_UPDATES[Toggle]...)
+        Toggle(gl[3, 3], toggleduration = 0.01; BLOCK_UPDATES[Toggle]...)
         IntervalSlider(gl[4, 1]; BLOCK_UPDATES[IntervalSlider]...)
         Textbox(gl[4, 2:3]; BLOCK_UPDATES[Textbox]...)
 
