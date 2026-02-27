@@ -580,9 +580,15 @@ function initialize_block!(ax::Axis; palette = nothing)
     if fl == finallimits[]
         notify(finallimits)
     end
+
+    # Needed to fully initialize layouting for some reason...
+    notify(ComputePipeline.get_observable!(ax.xlabelpadding))
+    notify(ComputePipeline.get_observable!(ax.ylabelpadding))
+
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, finallimits)
     map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
+
     return ax
 end
 
