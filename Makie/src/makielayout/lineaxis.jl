@@ -351,7 +351,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
     attrs[:actual_ticklabelspace] = 0.0f0
     actual_ticklabelspace = attrs[:actual_ticklabelspace]
 
-    onany(parent, ticklabel_ideal_space, ticklabelspace) do idealspace, space
+    onany(parent, ticklabel_ideal_space, ticklabelspace, update = true) do idealspace, space
         s = if space == automatic
             idealspace
         elseif space isa Symbol
