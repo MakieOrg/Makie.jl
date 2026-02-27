@@ -563,8 +563,35 @@ means the attribute only accepts values of the given type (and its subtypes).
 If no type is given `Any` is used.
 """
 struct BlockAttributeConvert{Target} end
+struct MultiBlockAttributeConvert{T}
+    converts::T
+end
+
+Base.eltype(::BlockAttributeConvert{T}) where {T} = T
+union_to_tuple(u::Union) = (u.a, union_to_tuple(u.b)...)
+union_to_tuple(T) = (T,)
+
+function BlockAttributeConvert(Target::Union)
+    converts = map(T -> BlockAttributeConvert{T}(), union_to_tuple(Target))
+    return MultiBlockAttributeConvert{typeof(converts)}(converts)
+end
+BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
 
 (::BlockAttributeConvert{<:Any})(key, x) = x
+function (mbac::MultiBlockAttributeConvert)(key, x)
+    y = x
+    for bac in mbac.converts
+        x isa eltype(bac) && return x
+        try
+            _y = bac(key, x)
+            if _y isa eltype(bac)
+                y = _y
+            end
+        catch e
+        end
+    end
+    return y
+end
 (::BlockAttributeConvert{T})(key, x) where {T <: Number} = T(x)
 (::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
 (::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
@@ -597,8 +624,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     typedict = attribute_types(T)
     for (key, attrib) in attributes
         type = get(typedict, key, Any)
-        add_input!(BlockAttributeConvert{type}(), graph, key, attrib)
-        converted = BlockAttributeConvert{type}()(nothing, to_value(attrib))
+        convert_attr = BlockAttributeConvert(type)
+        add_input!(convert_attr, graph, key, attrib)
+        converted = convert_attr(nothing, to_value(attrib))
         try
             ComputePipeline.unsafe_init!(graph[key], Ref{type}(converted))
         catch e
