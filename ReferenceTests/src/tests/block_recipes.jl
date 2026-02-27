@@ -212,6 +212,10 @@ end
     tbox = cr.blocks[14]
     notify(tbox.tellheight)
 
+    # wait for Toggle to finish
+    colorbuffer(fig)
+    sleep(0.5)
+
     Makie.step!(st)
 
     st
