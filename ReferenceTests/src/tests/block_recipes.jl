@@ -45,7 +45,7 @@ BLOCK_UPDATES = let
     block_types = [
         Axis, Axis3, PolarAxis,
         Legend, Colorbar, Menu, Makie.Button, Makie.Checkbox,
-        Box, Makie.Slider, Label, Toggle, IntervalSlider, Textbox
+        Box, Makie.Slider, Label, Toggle, IntervalSlider, Textbox,
     ]
     settings = Dict()
     skipped = Symbol[]
