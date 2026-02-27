@@ -2,11 +2,12 @@ using InteractiveUtils: clipboard
 
 function _reset_to_stored(cursorindex, tbox)
     cursorindex[] = 0
-    return if isnothing(tbox.stored_string[])
+    if isnothing(tbox.stored_string[])
         tbox.displayed_string[] = tbox.placeholder[]
     else
         tbox.displayed_string[] = tbox.stored_string[]
     end
+    return
 end
 
 function _insertchar!(c, index, displayed_chars, tbox, cursorindex)
@@ -65,6 +66,9 @@ function initialize_block!(tbox::Textbox)
     displayed_is_valid = lift(topscene, tbox.displayed_string, tbox.validator, ignore_equal_values = true) do str, validator
         return validate_textbox(str, validator)::Bool
     end
+
+    # update displayed string when placeholder changes
+    on(_ -> _reset_to_stored(cursorindex, tbox), tbox.placeholder)
 
     hovering = Observable(false)
     realbordercolor = Observable{RGBAf}()
