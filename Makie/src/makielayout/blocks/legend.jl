@@ -55,7 +55,7 @@ function initialize_block!(leg::Legend; entrygroups)
     scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
     leg.scene = scene
     # the rectangle in which the legend is drawn when margins are removed
-    legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
+    legendrect = lift(blockscene, legend_area, leg.margin, ignore_equal_values = true) do la, lm
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
@@ -192,13 +192,19 @@ function initialize_block!(leg::Legend; entrygroups)
         return
     end
 
-    onany(blockscene, update_grid, leg.margin) do _, margin
+    # Split these to filter out duplicate updates
+    determinedsize = map(blockscene, update_grid, legendrect, ignore_equal_values = true) do _, _
+        # legendrect influences grid (?)
         if manipulating_grid[]
             return
         end
-        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
-        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
-        if !any(isnothing.((w, h)))
+        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), NaN32)
+        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), NaN32)
+        return w, h
+    end
+    on(blockscene, determinedsize, update = true) do (w, h)
+        margin = leg.margin[] # updates of margin trigger legendrect which triggers determinedsize
+        if !any(isnan.((w, h)))
             leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
         end
         return
@@ -208,7 +214,7 @@ function initialize_block!(leg::Legend; entrygroups)
     onany(
         blockscene, leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap,
         leg.titlegap,
-        leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign
+        leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign,
     ) do args...
         relayout()
         return
@@ -386,6 +392,7 @@ function initialize_block!(leg::Legend; entrygroups)
 
     setfield!(leg, :entrygroups, entry_groups)
     notify(entry_groups)
+    notify(ComputePipeline.get_observable!(leg.padding))
 
     return
 end

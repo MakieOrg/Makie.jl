@@ -206,6 +206,10 @@ function initialize_block!(m::Menu; default = 1)
     was_pressed_options = Ref(false)
     was_pressed_button = Ref(false)
 
+    SELECT_INACTIVE_COLOR = 1
+    SELECT_HOVER_COLOR = 2
+    color_selector = Observable(SELECT_INACTIVE_COLOR)
+
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
         mp = screen_relative(menuscene, position)
         # track if we have been inside menu/options to clean up if we haven't been
@@ -247,7 +251,7 @@ function initialize_block!(m::Menu; default = 1)
                     end
                     return Consume(true)
                 else # HOVER
-                    selectionpoly.color = m.cell_color_hover[]
+                    color_selector[] = SELECT_HOVER_COLOR
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -267,13 +271,18 @@ function initialize_block!(m::Menu; default = 1)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false
-            selectionpoly.color = m.selection_cell_color_inactive[]
+            color_selector[] = SELECT_INACTIVE_COLOR
         end
         # if mouse got over anything else, we close the menu
         if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press
             m.is_open[] = false
         end
         return Consume(false)
+    end
+
+    onany(color_selector, m.selection_cell_color_inactive, m.cell_color_hover) do idx, colors...
+        selectionpoly.color = colors[idx]
+        return
     end
 
     on(blockscene, menuscene.events.scroll; priority = 61) do (x, y)
@@ -294,11 +303,11 @@ function initialize_block!(m::Menu; default = 1)
         old_selection = m.selection[]
         old_selected_text = selected_text[]
         should_search = m.i_selected[] > 0
-        m.i_selected.val = 0
 
-        new_i = 0 # default to nothing selected
         # if there is a current selection, check if it still exists in the new options
         if should_search
+            new_i = 0 # default to nothing selected
+
             for (i, o) in enumerate(options)
                 # if one of the new options is equivalent to the old options, we choose it for continuity
                 if old_selection == optionvalue(o) && old_selected_text == optionlabel(o)
@@ -306,10 +315,10 @@ function initialize_block!(m::Menu; default = 1)
                     break
                 end
             end
-        end
 
-        # trigger eventual selection actions
-        m.i_selected[] = new_i
+            # trigger eventual selection actions
+            m.i_selected = new_i
+        end
     end
     symbol_pos = lift(blockscene, selectionarea, m.textpadding) do sa, tp
         return mean(rightline(sa)) - Point2f(tp[2], 0)
@@ -355,7 +364,7 @@ function initialize_block!(m::Menu; default = 1)
         end
         m.i_selected[] = i
     end
-    notify(m.is_open)
+    notify(ComputePipeline.get_observable!(m.is_open))
 
     # trigger bbox
     notify(m.layoutobservables.suggestedbbox)

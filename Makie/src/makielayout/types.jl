@@ -842,7 +842,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Format for ticks."
         tickformat = Makie.automatic
         "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
-        ticklabelspace = Makie.automatic
+        ticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -2422,3 +2422,17 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container
