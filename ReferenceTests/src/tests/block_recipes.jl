@@ -214,7 +214,7 @@ end
 
     # wait for Toggle to finish
     colorbuffer(fig)
-    sleep(0.5)
+    sleep(0.1)
 
     Makie.step!(st)
 

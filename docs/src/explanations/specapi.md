@@ -423,7 +423,7 @@ function Makie.convert_arguments(::Type{<:Makie.Block}, multidata::MultiData)
         )
         plotsym = multidata.dim_distribution_plot_type
 
-        # We place the distibution axes in a 1 wide/tall GridLayout of fixed
+        # We place the distribution axes in a 1 wide/tall GridLayout of fixed
         # height/width, each with on plot
         column_axes = map(enumerate(multidata.sets)) do (i, data)
             color = colors[mod1(i, end)]
