@@ -61,6 +61,10 @@ end
 
 hasparent(computed::Computed) = isdefined(computed, :parent)
 getparent(computed::Computed) = hasparent(computed) ? computed.parent : nothing
+function Base.eltype(computed::Computed)
+    isdefined(computed, :value) || computed[]
+    return eltype(computed.value)
+end
 
 struct ResolveException{E <: Exception} <: Exception
     start::Computed
@@ -455,25 +459,7 @@ function get_observable!(c::Computed; use_deepcopy = true)
     end
 end
 
-function Observables.on(f, x::Computed; kwargs...)
-    obs = get_observable!(x)
-    return on(f, obs; kwargs...)
-end
-
-function Observables.onany(f, arg1::Computed, args::Union{Observable, Computed}...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    @assert all(obs -> obs isa Observable, obsies) "Failed to create Observables for all entries"
-    return onany(f, obsies...; kwargs...)
-end
-function Observables.map!(f, target::Observable, args::Computed...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, args)
-    return map!(f, target, obsies...; kwargs...)
-end
-function Observables.map(f, arg1::Computed, args...; kwargs...)
-    obsies = map(x -> x isa Computed ? get_observable!(x) : x, (arg1, args...))
-    return map(f, obsies...; kwargs...)
-end
-
+include("observables_compat.jl")
 
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
@@ -1915,7 +1901,12 @@ function unsafe_init!(node::Computed, value)
         node.value = value isa RefValue ? value : RefValue(value)
     end
 
-    edge = node.parent
+    return unsafe_init!(node.parent)
+end
+
+function unsafe_init!(edge::ComputeEdge)
+    # We can only mark the edge as initialized if all the outputs have been
+    # initialized
     if !all(is_initialized, edge.outputs)
         return false
     end
@@ -1932,6 +1923,16 @@ function unsafe_init!(node::Computed, value)
         foreach(comp -> comp.dirty = false, edge.outputs)
         return true
     end
+end
+
+function unsafe_init!(input::Input)
+    input.dirty = false
+    input.output.dirty = true
+    for edge in input.dependents
+        mark_input_dirty!(input, edge)
+    end
+    input.output.dirty = false
+    return true
 end
 
 function TypedEdge_no_call(edge::ComputeEdge)

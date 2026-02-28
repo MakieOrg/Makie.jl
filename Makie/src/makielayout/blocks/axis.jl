@@ -242,17 +242,15 @@ function initialize_block!(ax::Axis; palette = nothing)
     # When the transform function (xscale, yscale) of a plot changes we
     # 1. communicate this change to plots (barplot needs this to make bars
     #    compatible with the new transform function/scale)
-    onany(blockscene, ax.xscale, ax.yscale) do xsc, ysc
+    onany(blockscene, ax.xscale, ax.yscale, update = true) do xsc, ysc
         scene.transformation.transform_func[] = (xsc, ysc)
         return
     end
 
     # 2. Update the limits of the plot
-    onany(blockscene, scene.transformation.transform_func, priority = -1) do _
+    onany(blockscene, scene.transformation.transform_func, priority = -1, update = true) do _
         reset_limits!(ax)
     end
-
-    notify(ax.xscale)
 
     # 3. Update the view onto the plot (camera matrices)
     onany(
@@ -550,7 +548,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet
     )
     # trigger first protrusions with one of the observables
-    notify(ax.title)
+    # notify(ax.title)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
@@ -578,13 +576,19 @@ function initialize_block!(ax::Axis; palette = nothing)
     # their initial value as they need to be triggered at least once to correctly set up
     # projection matrices etc.
     fl = finallimits[]
-    notify(ax.limits)
+    notify(ComputePipeline.get_observable!(ax.limits))
     if fl == finallimits[]
         notify(finallimits)
     end
+
+    # Needed to fully initialize layouting for some reason...
+    notify(ComputePipeline.get_observable!(ax.xlabelpadding))
+    notify(ComputePipeline.get_observable!(ax.ylabelpadding))
+
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, finallimits)
     map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
+
     return ax
 end
 
@@ -906,7 +910,13 @@ Reset manually specified limits of `la` to an automatically determined rectangle
 The argument `la` defaults to `current_axis()`.
 """
 function autolimits!(ax::Axis)
-    ax.limits[] = (nothing, nothing)
+    # The compute graph will throw away same value updates, so we need to force
+    # the underlying observable to trigger with this:
+    if ax.limits[] == (nothing, nothing)
+        notify(ax.limits)
+    else
+        ax.limits = (nothing, nothing)
+    end
     return
 end
 function autolimits!()
@@ -1243,12 +1253,12 @@ function Makie.xlims!(ax::Axis, xlims)
     end
 
     mlims = convert_limit_attribute(ax.limits[])
-    ax.limits.val = (xlims, mlims[2])
+    ax.limits = (xlims, mlims[2])
 
     # update xlims for linked axes
     for xlink in ax.xaxislinks
         xlink_mlims = convert_limit_attribute(xlink.limits[])
-        xlink.limits.val = (xlims, xlink_mlims[2])
+        xlink.limits = (xlims, xlink_mlims[2])
     end
 
     reset_limits!(ax, yauto = false)
@@ -1268,12 +1278,12 @@ function Makie.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
     mlims = convert_limit_attribute(ax.limits[])
-    ax.limits.val = (mlims[1], ylims)
+    ax.limits = (mlims[1], ylims)
 
     # update ylims for linked axes
     for ylink in ax.yaxislinks
         ylink_mlims = convert_limit_attribute(ylink.limits[])
-        ylink.limits.val = (ylink_mlims[1], ylims)
+        ylink.limits = (ylink_mlims[1], ylims)
     end
 
     reset_limits!(ax, xauto = false)
