@@ -679,14 +679,15 @@ update!(graph, first_node = 2)
 update!(graph, :first_node => 2)
 ```
 """
-update!(attr::ComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in kwargs])
-update!(attr::ComputeGraph, dict::Dict{Symbol}) = _update!(attr, dict)
-update!(attr::ComputeGraph, pairs::Pair{Symbol}...) = _update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in pairs])
-update!(attr::ComputeGraph, pairs::AbstractVector{<:Pair{Symbol}}) = _update!(attr, pairs)
+update!(attr::AbstractComputeGraph; kwargs...) = update!(attr, [Pair{Symbol, Any}(k, v) for (k, v) in kwargs])
+update!(attr::AbstractComputeGraph, dict::Dict) = _update!(attr, dict)
+update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, [Pair(k, v) for (k, v) in pairs])
+update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(attr, pairs)
 
 function _update!(attr::ComputeGraph, values)
     return lock(attr.lock) do
-        for (key, value) in values
+        for (_key, value) in values
+            key = merged_key(_key)
             if haskey(attr.inputs, key)
                 _setproperty!(attr, key, value)
             else
@@ -892,6 +893,12 @@ function Base.setindex!(attr::ComputeGraphView, value, key::Symbol)
     else
         error("Can't set $merged as it is an incomplete path to a compute node.")
     end
+end
+
+function _update!(view::ComputeGraphView, values)
+    root = merged_key(view.nested_trace.keys)
+    new_values = [Pair(merged_key(root, k), v) for (k, v) in values]
+    return _update!(view.parent, new_values)
 end
 
 # function Base.setindex!(attr::AbstractComputeGraph, g::ComputeGraph, key::Symbol)

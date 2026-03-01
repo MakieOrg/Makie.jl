@@ -1234,6 +1234,46 @@ using ComputePipeline: ComputeGraphView
         @test graph.a.c.double_b[] == 2 * graph.a.b[]
     end
 
+    @testset "Update" begin
+        update!(graph, (:a, :a, :a) => 10)
+        @test graph.a.a.a[] == 10
+        update!(graph, Dict((:a, :a, :b) => 10))
+        @test graph.a.a.b[] == 10
+        update!(graph, [(:a, :b) => 10])
+        @test graph.a.b[] == 10
+
+        update!(graph.a, (:a, :a) => 12)
+        @test graph.a.a.a[] == 12
+        update!(graph.a, Dict((:a, :b) => 12))
+        @test graph.a.a.b[] == 12
+        update!(graph.a, [(:a, :a) => 12])
+        @test graph.a.a.a[] == 12
+
+        update!(graph.a, :b => 12)
+        @test graph.a.b[] == 12
+        update!(graph.a, Dict(:b => 10))
+        @test graph.a.b[] == 10
+        update!(graph.a, [:b => 9])
+        @test graph.a.b[] == 9
+        update!(graph.a, b = 13)
+        @test graph.a.b[] == 13
+
+        update!(graph.a.c, :a => 12)
+        @test graph.a.c.a[] == 12
+        update!(graph.a.c, Dict(:a => 10))
+        @test graph.a.c.a[] == 10
+        update!(graph.a.c, [:a => 9])
+        @test graph.a.c.a[] == 9
+        update!(graph.a.c, a = 21)
+        @test graph.a.c.a[] == 21
+
+        update!(graph.b.a, a = 10)
+        graph.b.a.a[] == 11
+
+        graph.b.a.b = 9
+        @test graph.b.a.b[] == 10
+    end
+
     # Node is either part of a nesting chain or a value
     @testset "Restrictions" begin
         add_input!(graph, :a, :y, 1)
