@@ -2,7 +2,7 @@ using GeometryBasics, Hikari
 using Colors, FileIO
 using RayMakie
 using Makie
-using ImageShow
+using ImageShow, LinearAlgebra
 
 # ============================================================================
 # Caustic Glass Scene - Demonstrates SPPM rendering for caustics
@@ -17,8 +17,13 @@ begin
     # ========================================================================
     # Setup lighting
     # ========================================================================
+    sun_dir = normalize(Vec3f(0.4f0, 0.5f0, 0.85f0))
     lights = [
-        PointLight(RGBf(1500, 1500, 1500), Vec3f(-15, 3, 5)),
+        PointLight(RGBf(15000, 15000, 15000), Vec3f(15, 3, 5)),
+        Makie.SunSkyLight(
+                sun_dir,
+                turbidity=2.5f0,           # Clear sky
+        ),
     ]
 
     ax = Scene(; size=(1024, 1024), lights=lights, ambient=RGBf(0.02, 0.02, 0.02))
@@ -56,13 +61,12 @@ begin
 end
 using AMDGPU
 # Render with SPPM (good for caustics)
-RayMakie.activate!(backend=AMDGPU.ROCBackend(),
-    exposure=0.6f0,
+RayMakie.activate!(device=AMDGPU.ROCBackend(),
     tonemap=:aces,
     gamma=2.2f0,
-    sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
+    sensor=Hikari.FilmSensor(iso=100)
 )
-integrator = Hikari.VolPath(samples=100, max_depth=30)
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator, max_component_value=10000f0)
+integrator = Hikari.VolPath(samples=10, max_depth=30)
+img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 # save(joinpath(@__DIR__, "caustic_glass.png"), img)
 img
