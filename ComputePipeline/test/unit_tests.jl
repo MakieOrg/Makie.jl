@@ -1157,6 +1157,20 @@ using ComputePipeline: ComputeGraphView
         @test haskey(graph.a, :b)
         @test !haskey(graph.a, :d)
         @test !haskey(graph.a, :d, :a, :e)
+
+        N = length(graph.nesting.keytables)
+        empty_view = ComputeGraphView(graph, :b)
+        @test empty_view.nested_trace.keys == [:b]
+        @test empty_view.nested_trace.next_index == N + 1
+        @test length(graph.nesting.keytables) == N + 1
+        @test isempty(graph.nesting.keytables[N + 1])
+
+        empty_view2 = ComputeGraphView(graph.b, :a)
+        @test empty_view2.nested_trace.keys == [:b, :a]
+        @test empty_view2.nested_trace.next_index == N + 2
+        @test length(graph.nesting.keytables) == N + 2
+        @test graph.nesting.keytables[N + 1][:a] == N + 2
+        @test isempty(graph.nesting.keytables[N + 2])
     end
 
     @testset "Access" begin

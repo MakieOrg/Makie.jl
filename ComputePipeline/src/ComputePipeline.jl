@@ -211,7 +211,9 @@ end
 
 add_key!(tree::NestedSearchTree, args...) = add_key!(tree, args)
 add_key!(tree::NestedSearchTree, args::Tuple) = add_key!(tree, 1, args)
-function add_key!(tree::NestedSearchTree, level, args::Tuple)
+add_path!(tree::NestedSearchTree, args...) = add_path!(tree, args)
+add_path!(tree::NestedSearchTree, args::Tuple) = add_key!(tree, 1, args, false)
+function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to_value = true)
     key_to_insert = first(args)
     tail = Base.tail(args)
     if has_key_in_level(tree, level, key_to_insert)
@@ -235,12 +237,19 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple)
         end
 
         if isempty(tail)
-            tree.keytables[level][key_to_insert] = -1
+            if points_to_value
+                tree.keytables[level][key_to_insert] = -1
+            else
+                next_level = length(tree.keytables) + 1
+                @assert length(tree.keytables) == next_level - 1
+                tree.keytables[level][key_to_insert] = next_level
+                push!(tree.keytables, Dict{Symbol, Int}())
+            end
             return
         else
-            next_index = length(tree.keytables) + 1
-            tree.keytables[level][key_to_insert] = next_index
-            add_key!(tree, next_index, tail)
+            next_level = length(tree.keytables) + 1
+            tree.keytables[level][key_to_insert] = next_level
+            add_key!(tree, next_level, tail)
             return
         end
     end
@@ -716,9 +725,38 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     return attr[key]
 end
 
+"""
+    struct ComputeGraphView
+
+A `ComputeGraphView` represents a nested ComputedGraph. It is returned when
+accessing the parent of a nested node within a ComputeGraph.
+"""
 struct ComputeGraphView <: AbstractComputeGraph
     parent::ComputeGraph
     nested_trace::TemporarySearchResult
+end
+
+"""
+    ComputeGraphView(parent, key::Symbol)
+
+Manually creates a view into a ComputeGraph.
+"""
+function ComputeGraphView(parent::ComputeGraph, key::Symbol)
+    if !haskey(parent, key)
+        add_path!(parent.nesting, key)
+    end
+    return parent[key]
+end
+
+function ComputeGraphView(view::ComputeGraphView, key::Symbol)
+    if !haskey(view, key)
+        add_key!(
+            to_graph(view).nesting,
+            view.nested_trace.next_index,
+            (key,), false
+        )
+    end
+    return view[key]
 end
 
 to_graph(g::ComputeGraph) = g
@@ -855,6 +893,13 @@ function Base.setindex!(attr::ComputeGraphView, value, key::Symbol)
         error("Can't set $merged as it is an incomplete path to a compute node.")
     end
 end
+
+# function Base.setindex!(attr::AbstractComputeGraph, g::ComputeGraph, key::Symbol)
+#     if !(isempty(g.inputs) && isempty(g.outputs))
+#         error("graph[key] = ComputeGraph() is only allowed with empty ComputeGraphs")
+#     end
+#     return ComputeGraphView(attr, key)
+# end
 
 isdirty(input::Input) = input.dirty
 
