@@ -838,7 +838,7 @@ function (cc::CycleConvert)(value)
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
                 add_input!(attr, k, get(kwargs, k, nothing)) do key, value
-                    palettes = attr.palettes[]
+                    palettes = to_value(attr.palettes)
                     if value isa Cycled
                         value = get_cycle_attribute(palettes, key, value.i, plotcycle)
                     end
@@ -849,7 +849,7 @@ function (cc::CycleConvert)(value)
                             return value
                         end
                     end
-                    pos = attr.cycle_index[]
+                    pos = to_value(attr.cycle_index)
                     cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
                     return convert_attribute(cyc, Key{key}(), Key{name}())
                 end

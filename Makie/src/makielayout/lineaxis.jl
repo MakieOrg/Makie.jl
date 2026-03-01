@@ -1,5 +1,10 @@
-function LineAxis(parent::Scene, graph::AbstractComputeGraph; @nospecialize(kwargs...))
-    attrs = mergeleft!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+# the hyphen which is usually used to store negative number strings
+# is shorter than the dedicated minus in most fonts, the minus glyph
+# looks more balanced with numbers, especially in superscripts or subscripts
+const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
+
+function LineAxis(parent::Scene; @nospecialize(kwargs...))
+    attrs = mergeleft!(OAttributes(kwargs), generic_plot_attributes(LineAxis))
 
     # Attributes() maps all typed observables to Observable{Any}. This means
     # any typed Observable that's passed to LineAxis will not actually arrive
@@ -12,7 +17,13 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph; @nospecialize(kwar
         attrs[:ticklabelspace] = ComputePipeline.get_observable!(attrs[:ticklabelspace])
     end
 
-    return LineAxis(parent, graph, attrs)
+    la = LineAxis(parent, attrs)
+
+    for (k, v) in pairs(attrs)
+        v isa Union{Observable, Computed} || error("bad: $k => $v")
+    end
+
+    return la
 end
 
 function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float32}, Bool}
@@ -376,11 +387,8 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         return ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
     end
 
-    map!(
-        adjust_ticklabel_placement, graph,
-        [:tickpositions, :horizontal, flipped, spinewidth, :tickspace, ticklabelpad],
-        :ticklabel_position
-    )
+    attrs[:actual_ticklabelspace] = Observable(0.0f0)
+    actual_ticklabelspace = attrs[:actual_ticklabelspace]
 
     map!(
         calculate_real_ticklabel_align, graph,

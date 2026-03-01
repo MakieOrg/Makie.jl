@@ -59,9 +59,9 @@ attrsyms(cycle::Cycle) = keys(cycle.attribute_lookup)
 palettesyms(cycle::Cycle) = cycle.palette_keys
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    palette_idx = cycle.attribute_lookup[attribute]
-    palette_key = cycle.palette_keys[palette_idx]
-    palette = to_value(palettes[palette_key])
+    cyclepalettes = [to_value(palettes[sym]) for sym in palettesyms(cycle)]
+    isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
+    palette = cyclepalettes[isym]
     if cycle.covary
         return palette[mod1(index, length(palette))]
     else
