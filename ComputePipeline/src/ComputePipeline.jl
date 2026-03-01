@@ -1085,7 +1085,7 @@ end
 
 function add_input!(conversion_func, attr::ComputeGraphView, args...)
     combined = (attr.nested_trace.keys..., Base.front(args)...)
-    return add_input!(conversion_func, attr, combined, last(args))
+    return add_input!(conversion_func, attr.parent, combined, last(args))
 end
 
 function add_input!(conversion_func, attr::ComputeGraph, keys::Tuple, value)

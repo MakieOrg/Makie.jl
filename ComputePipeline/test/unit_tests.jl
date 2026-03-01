@@ -1125,6 +1125,21 @@ using ComputePipeline: ComputeGraphView
         @test graph[Symbol("a.b")][] == 3
         @test graph[Symbol("a.c.a")][] == 4
 
+        f(k, v) = v + 1
+        add_input!(f, graph, :b, :a, :a, 1)
+        add_input!(f, graph, (:b, :a, :b), 2)
+        add_input!(f, graph.b, :b, 3)
+        add_input!(f, graph.b, :c, :a, 4)
+
+        @test haskey(graph.inputs, Symbol("b.a.a"))
+        @test haskey(graph.inputs, Symbol("b.a.b"))
+        @test haskey(graph.inputs, Symbol("b.b"))
+        @test haskey(graph.inputs, Symbol("b.c.a"))
+        @test graph[Symbol("b.a.a")][] == 2
+        @test graph[Symbol("b.a.b")][] == 3
+        @test graph[Symbol("b.b")][] == 4
+        @test graph[Symbol("b.c.a")][] == 5
+
         add_constant!(graph, :a, :const1, 0)
         @test graph.a.const1[] == 0
         add_constant!(graph, (:a, :const2), 0)
@@ -1159,14 +1174,14 @@ using ComputePipeline: ComputeGraphView
         @test !haskey(graph.a, :d, :a, :e)
 
         N = length(graph.nesting.keytables)
-        empty_view = ComputeGraphView(graph, :b)
-        @test empty_view.nested_trace.keys == [:b]
+        empty_view = ComputeGraphView(graph, :c)
+        @test empty_view.nested_trace.keys == [:c]
         @test empty_view.nested_trace.next_index == N + 1
         @test length(graph.nesting.keytables) == N + 1
         @test isempty(graph.nesting.keytables[N + 1])
 
-        empty_view2 = ComputeGraphView(graph.b, :a)
-        @test empty_view2.nested_trace.keys == [:b, :a]
+        empty_view2 = ComputeGraphView(graph.c, :a)
+        @test empty_view2.nested_trace.keys == [:c, :a]
         @test empty_view2.nested_trace.next_index == N + 2
         @test length(graph.nesting.keytables) == N + 2
         @test graph.nesting.keytables[N + 1][:a] == N + 2
