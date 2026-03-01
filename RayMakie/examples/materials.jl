@@ -230,4 +230,7 @@ img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 # OpenCL: 23.625098 seconds (1.01 M allocations: 134.024 MiB, 0.16% gc time)
 # Array: 26.235557 seconds (957.16 M allocations: 94.225 GiB, 44.58% gc time)
 
-img
+#=
+Benchmarks with:
+add https://github.com/SimonDanisch/Abacus.jl#sd/vk Hikari#master Raycore#sd/multitype-vec Makie#sd/hikari
+=#
