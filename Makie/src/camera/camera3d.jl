@@ -112,9 +112,10 @@ The camera position and orientation can also be adjusted via the functions
 - `zoom!(scene, zoom_step)` will change the zoom level of the scene without translating or rotating the scene. `zoom_step` applies multiplicatively to `cam.zoom_mult` which is used as a multiplier to the fov (perspective projection) or width and height (orthographic projection).
 """
 function Camera3D(scene::Scene; kwargs...)
-    overwrites = Attributes(kwargs)
+    # TODO: use ComputeGraph?
+    overwrites = OAttributes(kwargs)
 
-    controls = Attributes(
+    controls = OAttributes(
         # Keyboard controls
         # Translations
         up_key = Keyboard.r,
@@ -149,7 +150,7 @@ function Camera3D(scene::Scene; kwargs...)
 
     replace!(controls, :Camera3D, scene, overwrites)
 
-    settings = Attributes(
+    settings = OAttributes(
         keyboard_rotationspeed = 1.0,
         keyboard_translationspeed = 0.5,
         keyboard_zoomspeed = 1.0,
