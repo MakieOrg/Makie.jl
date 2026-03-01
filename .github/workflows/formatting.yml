@@ -5,6 +5,7 @@ on:
       - 'master'
       - 'release-'
       - ff/breaking-0.25
+      - ff/nested-compute-graph
     tags:
       - '*'
   pull_request:
