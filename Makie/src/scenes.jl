@@ -289,15 +289,15 @@ function Scene(;
     global_theme = merge_without_obs!(copy(theme), current_default_theme())
     m_theme = merge_without_obs!(Attributes(theme_kw), global_theme)
 
-    bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
+    bg = Observable{RGBAf}(to_color(to_value(m_theme.backgroundcolor)); ignore_equal_values = true)
 
     wasnothing = isnothing(viewport)
     scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
-            m_theme.resolution[]
+            to_value(m_theme.resolution)
         else
-            m_theme.size[]
+            to_value(m_theme.size)
         end
         Observable(Recti(0, 0, sz); ignore_equal_values = true)
     else
@@ -311,19 +311,20 @@ function Scene(;
         haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
 
         if haskey(m_theme, :lights)
-            copyto!(_lights, m_theme.lights[])
+            copyto!(_lights, to_value(m_theme.lights))
         else
             haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")
             haskey(m_theme, :light_color) || error("Theme must contain `light_color::RGBf` or an explicit `lights::Vector`!")
             haskey(m_theme, :camera_relative_light) || @warn("Theme should contain `camera_relative_light::Bool`.")
 
             if haskey(m_theme, :ambient)
-                push!(_lights, AmbientLight(m_theme[:ambient][]))
+                push!(_lights, AmbientLight(to_value(m_theme[:ambient])))
             end
 
             push!(
                 _lights, DirectionalLight(
-                    m_theme[:light_color][], m_theme[:light_direction][],
+                    to_value(m_theme[:light_color]),
+                    to_value(m_theme[:light_direction]),
                     to_value(get(m_theme, :camera_relative_light, false))
                 )
             )

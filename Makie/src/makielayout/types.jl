@@ -27,7 +27,7 @@ to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
 to_cycle_single(pair::Pair{Vector{Symbol}, Symbol}) = pair
 
 function get_cycle_attribute(palettes, attribute::Symbol, index::Int, cycle::Cycle)
-    cyclepalettes = [palettes[sym][] for sym in palettesyms(cycle)]
+    cyclepalettes = [to_value(palettes[sym]) for sym in palettesyms(cycle)]
     isym = findfirst(syms -> attribute in syms, attrsyms(cycle))
     palette = cyclepalettes[isym]
     if cycle.covary

@@ -275,7 +275,7 @@ end
 
     xs = 0:9        # data
     ys = zeros(10)
-    colors = Makie.DEFAULT_PALETTES.color[]
+    colors = Makie.DEFAULT_PALETTES.color
     plots = map(1:N) do i # plot lines
         lines!(
             ax,
@@ -1808,7 +1808,7 @@ end
 @reference_test "Clip planes - CairoMakie overrides" begin
     f = Figure()
     a = Axis(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(1, 0, 0), 0)]
+    a.scene.theme[:clip_planes] = [Plane3f(Vec3f(1, 0, 0), 0)]
     xlims!(a, -3.5, 3.5)
     ylims!(a, -3.5, 3.5)
 

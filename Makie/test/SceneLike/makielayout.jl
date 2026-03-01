@@ -388,6 +388,9 @@ end
     @test Set(ax3.yaxislinks) == Set([ax1, ax2])
 end
 
+# TODO: We should check nested attributes too...
+# copy_listeners(attr::Attributes) =
+copy_listeners(::Any) = Pair{Symbol, Any}[]
 copy_listeners(obs::Observable) = copy(obs.listeners)
 function iterate_observable_fields(f, x::T) where {T}
     for (fieldname, fieldtype) in zip(fieldnames(T), fieldtypes(T))
