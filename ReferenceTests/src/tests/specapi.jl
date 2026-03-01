@@ -381,17 +381,17 @@ end
     end
 
     st = Makie.Stepper(fig)
-    step!(st)
+    sync_step!(st)
 
     t.active[] = true
-    step!(st)
+    sync_step!(st)
 
     m2.i_selected[] = 2
-    step!(st)
+    sync_step!(st)
 
     m1.i_selected[] = 2
-    step!(st)
+    sync_step!(st)
 
     t.active[] = false
-    step!(st)
+    sync_step!(st)
 end
