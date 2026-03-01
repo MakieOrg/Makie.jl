@@ -923,7 +923,7 @@ update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, [Pair(k, v)
 update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(attr, pairs)
 
 function _update!(attr::ComputeGraph, values)
-    @lock GLOBAL_LOCK begin
+    return lock(attr.lock) do
         for (_key, value) in values
             key = merged_key(_key)
             if haskey(attr.inputs, key)
@@ -1132,6 +1132,12 @@ function Base.setindex!(attr::ComputeGraphView, value, key::Symbol)
     else
         error("Can't set $merged as it is an incomplete path to a compute node.")
     end
+end
+
+function _update!(view::ComputeGraphView, values)
+    root = merged_key(view.nested_trace.keys)
+    new_values = [Pair(merged_key(root, k), v) for (k, v) in values]
+    return _update!(view.parent, new_values)
 end
 
 # function Base.setindex!(attr::AbstractComputeGraph, g::ComputeGraph, key::Symbol)
