@@ -4,7 +4,6 @@ using RayMakie
 using Makie
 using ImageShow
 using pocl_jll, OpenCL, AMDGPU
-
 # ============================================================================
 # Material Gallery Scene - Reorganized with interesting materials in front
 # ============================================================================
@@ -206,17 +205,29 @@ end
 
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
+using pocl_jll, OpenCL, KernelAbstractions, Abacus
+device = OpenCL.OpenCLBackend()
+device = AMDGPU.ROCBackend()
+device = KernelAbstractions.CPU()
+device = Abacus.AbacusBackend()
 RayMakie.activate!(
-    backend=AMDGPU.ROCBackend(),
+    device=device,
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,
     sensor=sensor
 )
-nsamples = 1000
+nsamples = 10
 integrator = Hikari.VolPath(samples=nsamples, max_depth=50)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
-save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
-# Array: 23s (10 samples)
-# ROCarray:1.4s
+img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+
+# save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
+# Benchmark 10 samples
+# ROCarray: 1.685820 seconds (822.75 k allocations: 62.698 MiB, 2 lock conflicts)
+# Abacus: 12.221356 seconds (1.49 M allocations: 200.444 MiB)
+# OpenCL: 23.625098 seconds (1.01 M allocations: 134.024 MiB, 0.16% gc time)
+# Array: 26.235557 seconds (957.16 M allocations: 94.225 GiB, 44.58% gc time)
+
 img

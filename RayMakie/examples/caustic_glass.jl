@@ -18,7 +18,12 @@ begin
     # Setup lighting
     # ========================================================================
     lights = [
-        PointLight(RGBf(1500, 1500, 1500), Vec3f(-15, 3, 5)),
+        Makie.SunSkyLight(
+            Vec3f(0.4, -0.3, 0.7);           # sun direction (late afternoon)
+            intensity=1.0f0,
+            turbidity=3.0f0,
+            ground_enabled=false,             # pure sky dome, no ground plane
+        ),
     ]
 
     ax = Scene(; size=(1024, 1024), lights=lights, ambient=RGBf(0.02, 0.02, 0.02))
@@ -55,8 +60,12 @@ begin
     update_cam!(ax, cam)
 end
 using AMDGPU
+using Abacus
 # Render with SPPM (good for caustics)
-RayMakie.activate!(backend=AMDGPU.ROCBackend(),
+
+RayMakie.activate!(
+    device=AMDGPU.ROCBackend(),
+    # device=Abacus.VulkanBackend(),
     exposure=0.6f0,
     tonemap=:aces,
     gamma=2.2f0,
