@@ -8,8 +8,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     println(io, "Computed:")
-    extra = computed.name == computed.fullname ? "" : " (:$(computed.fullname))"
-    println(io, "  name = :", computed.name, extra)
+    println(io, "  name = :", computed.name)
     if hasparent(computed)
         if computed.parent isa Input
             println(io, "  parent = ", computed.parent)
@@ -176,8 +175,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", input::Input)
     println(io, "Input:")
-    extra = input.name == input.fullname ? "" : " (:$(input.fullname))"
-    println(io, "  name:     :", input.name, extra)
+    println(io, "  name:     :", input.name)
     println(io, "  value:    ", input.value)
     f, loc = edge_callback_to_string(input)
     print(io, "  callback: $f")
@@ -279,23 +277,23 @@ function collect_dirty(computed::Computed, marked = Set{Symbol}())
 end
 function collect_dirty(edge::ComputeEdge, marked = Set{Symbol}())
     if !edge.got_resolved[] || any(edge.inputs_dirty)
-        foreach(output -> push!(marked, output.fullname), edge.outputs)
+        foreach(output -> push!(marked, output.name), edge.outputs)
         foreach(input -> collect_dirty(input, marked), edge.inputs)
     end
     return marked
 end
 function collect_dirty(edge::Input, marked = Set{Symbol}())
-    edge.dirty && push!(marked, edge.fullname)
+    edge.dirty && push!(marked, edge.name)
     return marked
 end
 
 # Error handling tools
 function trace_error(io::IO, computed::Computed)
     print(io, "Failed to resolve ")
-    printstyled(io, "$(computed.fullname):\n", color = :red)
+    printstyled(io, "$(computed.name):\n", color = :red)
     if hasparent(computed)
         marked = collect_dirty(computed)
-        push!(marked, computed.fullname)
+        push!(marked, computed.name)
         trace_error(io, computed.parent, marked)
     end
     return
@@ -311,7 +309,7 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
     if isdirty(edge)
         print(io, "[ComputeEdge] ")
 
-        outputs = join((output.fullname for output in edge.outputs), ", ")
+        outputs = join((output.name for output in edge.outputs), ", ")
         printstyled(io, outputs, color = :red)
 
         func = edge_callback_name(edge.callback, "")
@@ -320,7 +318,7 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         N = length(edge.inputs)
         was_dirty = false
         for i in eachindex(edge.inputs)
-            name = edge.inputs[i].fullname
+            name = edge.inputs[i].name
             c = ifelse(was_dirty, :light_black, ifelse(name in marked, :red, :light_green))
             was_dirty |= name in marked # only mark first unresolved input
             printstyled(io, name, color = c)
@@ -330,12 +328,12 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
 
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
 
-        idx = findfirst(computed -> computed.fullname in marked, edge.inputs)
+        idx = findfirst(computed -> computed.name in marked, edge.inputs)
         if idx === nothing # All resolved
             print(io, "  with edge inputs:")
             ioc = IOContext(io, :limit => true)
             for input in edge.inputs
-                print(io, "\n    ", input.fullname, " = ")
+                print(io, "\n    ", input.name, " = ")
                 show(ioc, input.value[])
             end
             println(io)
@@ -363,19 +361,19 @@ function trace_inputs!(computed::Computed, root_inputs)
     return
 end
 function trace_inputs!(input::Input, root_inputs)
-    push!(root_inputs, input.fullname)
+    push!(root_inputs, input.name)
     return
 end
 
 function trace_error(io::IO, edge::Input, marked = nothing)
     print(io, "[Input] ")
     if edge.dirty
-        printstyled(io, edge.fullname, color = :red)
+        printstyled(io, edge.name, color = :red)
         func = edge_callback_name(edge.f, "")
         println(io, " = ", func, '(', edge.value, ")")
         printstyled(io, "  @ $(edge_callback_location(edge))\n", color = :light_black)
     else
-        printstyled(io, "$(edge.fullname)\n", color = :green)
+        printstyled(io, "$(edge.name)\n", color = :green)
     end
     return
 end

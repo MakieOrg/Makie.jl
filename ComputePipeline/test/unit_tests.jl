@@ -768,13 +768,13 @@ end
     @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
 
     # add_input!() processes this, so we need to check more manually
-    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy, :dummy)
-    @test_throws ErrorException ComputePipeline.Input(graph, :e, :e, graph.a, identity, graph.dummy)
+    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
+    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
 
-    @test_throws ErrorException ComputePipeline.Computed(:f. :f, Ref(Ref(graph.a)))
-    @test_throws ErrorException ComputePipeline.Computed(:g. :g, Ref(graph.a))
-    @test_throws ErrorException ComputePipeline.Computed(:h. :h, Ref(Ref(graph.inputs[:a])))
-    @test_throws ErrorException ComputePipeline.Computed(:i. :i, Ref(graph.inputs[:a]))
+    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
+    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
+    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
+    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
 
     map!(x -> graph.a, graph, :a, :j)
     @test_throws ResolveException{ErrorException} graph.j[]
@@ -1125,23 +1125,15 @@ using ComputePipeline: ComputeGraphView
         @test graph[Symbol("a.b")][] == 3
         @test graph[Symbol("a.c.a")][] == 4
 
-        @test graph.outputs[Symbol("a.a.a")].fullname == Symbol("a.a.a")
-        @test graph.outputs[Symbol("a.a.b")].fullname == Symbol("a.a.b")
-        @test graph.outputs[Symbol("a.b")].fullname == Symbol("a.b")
-        @test graph.outputs[Symbol("a.c.a")].fullname == Symbol("a.c.a")
-        @test graph.outputs[Symbol("a.a.a")].name == :a
-        @test graph.outputs[Symbol("a.a.b")].name == :b
-        @test graph.outputs[Symbol("a.b")].name == :b
-        @test graph.outputs[Symbol("a.c.a")].name == :a
+        @test graph.outputs[Symbol("a.a.a")].name == Symbol("a.a.a")
+        @test graph.outputs[Symbol("a.a.b")].name == Symbol("a.a.b")
+        @test graph.outputs[Symbol("a.b")].name == Symbol("a.b")
+        @test graph.outputs[Symbol("a.c.a")].name == Symbol("a.c.a")
 
-        @test graph.inputs[Symbol("a.a.a")].fullname == Symbol("a.a.a")
-        @test graph.inputs[Symbol("a.a.b")].fullname == Symbol("a.a.b")
-        @test graph.inputs[Symbol("a.b")].fullname == Symbol("a.b")
-        @test graph.inputs[Symbol("a.c.a")].fullname == Symbol("a.c.a")
-        @test graph.inputs[Symbol("a.a.a")].name == :a
-        @test graph.inputs[Symbol("a.a.b")].name == :b
-        @test graph.inputs[Symbol("a.b")].name == :b
-        @test graph.inputs[Symbol("a.c.a")].name == :a
+        @test graph.inputs[Symbol("a.a.a")].name == Symbol("a.a.a")
+        @test graph.inputs[Symbol("a.a.b")].name == Symbol("a.a.b")
+        @test graph.inputs[Symbol("a.b")].name == Symbol("a.b")
+        @test graph.inputs[Symbol("a.c.a")].name == Symbol("a.c.a")
 
         f(k, v) = v + 1
         add_input!(f, graph, :b, :a, :a, 1)
@@ -1252,17 +1244,18 @@ using ComputePipeline: ComputeGraphView
         @test graph.a.c.double_b[] == 2 * graph.a.b[]
 
         # names used for callbacks
-        add_input!((k, v) -> k === :c, graph, :c, 1)
-        add_input!((k, v) -> k === :a, graph, :d, :a, 1)
-        add_input!((k, v) -> k === :c, graph, :d, :b, :c, 1)
+        add_input!((k, v) -> k === Symbol(:c), graph, :c, 1)
+        add_input!((k, v) -> k === Symbol(:d, :(.), :a), graph, :d, :a, 1)
+        add_input!((k, v) -> k === Symbol("d.b.c"), graph, :d, :b, :c, 1)
         @test graph.c[]
         @test graph.d.a[]
         @test graph.d.b.c[]
 
         register_computation!(graph, [(:a, :a, :b), :x], [(:a, :a, :n), :m]) do args, changed, cached
-            ks = isnothing(cached) ? (true, true) : (haskey(cached, :n), haskey(cached, :m))
+            ks = isnothing(cached) ? (true, true) : (haskey(cached, Symbol("a.a.n")), haskey(cached, :m))
+            aab = Symbol("a.a.b")
             return (
-                haskey(args, :b) && haskey(changed, :b) && ks[1],
+                haskey(args, aab) && haskey(changed, aab) && ks[1],
                 haskey(args, :x) && haskey(changed, :x) && ks[2],
             )
         end

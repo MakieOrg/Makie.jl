@@ -27,7 +27,6 @@
                 @test haskey(parent.outputs, name)
 
                 x = parent.inputs[name]
-                @test x.fullname === name
                 @test x.name === name
                 @test x.value == val
                 @test x.output === parent.outputs[name]
@@ -44,7 +43,6 @@
             @test length(parent.outputs) == 6
 
             for name in [:pin1, :pin2, :pin3, :pout1, :pout2, :pout3]
-                @test parent.outputs[name].fullname === name
                 @test parent.outputs[name].name === name
             end
         end
@@ -115,7 +113,6 @@
                 @test haskey(graph.outputs, name)
 
                 x = graph.inputs[name]
-                @test x.fullname === name
                 @test x.name === name
                 @test x.value == val
                 @test x.output === graph.outputs[name]
@@ -139,7 +136,6 @@
             @test length(graph.outputs) == 12
 
             for name in output_names
-                @test graph.outputs[name].fullname === name
                 @test graph.outputs[name].name === name
             end
         end
