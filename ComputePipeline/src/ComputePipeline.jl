@@ -34,6 +34,7 @@ the name the node was created with. Its value is returned by `graph[:name][]`
 which also runs any pending updates.
 """
 mutable struct Computed
+    fullname::Symbol
     name::Symbol
     # if a parent edge got resolved and updated this computed, dirty is temporarily true
     # so that the edges dependents can update their inputs accordingly
@@ -42,17 +43,17 @@ mutable struct Computed
     value::RefValue
     parent::AbstractEdge
     parent_idx::Int # index of parent.outputs this value refers to
-    Computed(name) = new(name, false)
-    function Computed(name, value::RefValue)
+    Computed(fullname, name) = new(fullname, name, false)
+    function Computed(fullname, name, value::RefValue)
         validate_node_value(value)
-        return new(name, false, value)
+        return new(fullname, name, false, value)
     end
-    function Computed(name, value::RefValue, parent::AbstractEdge, idx::Integer)
+    function Computed(fullname, name, value::RefValue, parent::AbstractEdge, idx::Integer)
         validate_node_value(value)
-        return new(name, false, value, parent, idx)
+        return new(fullname, name, false, value, parent, idx)
     end
-    function Computed(name, edge::AbstractEdge, idx::Integer)
-        p = new(name, false)
+    function Computed(fullname, name, edge::AbstractEdge, idx::Integer)
+        p = new(fullname, name, false)
         p.parent = edge
         p.parent_idx = idx
         return p
@@ -132,7 +133,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
     if result isa Tuple
 
         if !all(is_node_value_valid, result)
-            invalid_results = [output.name => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
+            invalid_results = [output.fullname => value for (output, value) in zip(edge.outputs, result) if !is_node_value_valid(value)]
             strings = map(kv -> "$(kv[1]) = ::$(typeof(kv[2]))", invalid_results)
             str = join(strings, ", ")
             error("Edge callback returned invalid types for outputs: [$str]")
@@ -177,6 +178,7 @@ state of the compute graph.
 """
 mutable struct Input{T} <: AbstractEdge
     graph::T
+    fullname::Symbol
     name::Symbol
     value::Any
     f::Function
@@ -188,9 +190,9 @@ end
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, value, f, output)
+function Input(graph, fullname, name, value, f, output)
     validate_node_value(value)
-    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, fullname, name, value, f, output, true, ComputeEdge[])
 end
 
 
@@ -462,7 +464,7 @@ end
 function get_observable!(c::Computed; use_deepcopy = true)
     if hasparent(c)
         p = getparent(c)
-        return get_observable!(p.graph, c.name; use_deepcopy = use_deepcopy)
+        return get_observable!(p.graph, c.fullname; use_deepcopy = use_deepcopy)
     else
         error("Cannot get observable for Computed without parent")
     end
@@ -562,7 +564,7 @@ function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
     # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
     g = edge.graph
     for output in edge.outputs
-        push!(g.onchange.val, output.name)
+        push!(g.onchange.val, output.fullname)
         g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
     end
 
@@ -597,7 +599,7 @@ function resolve!(input::Input)
 end
 
 function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
-    push!(input.graph.onchange.val, input.name)
+    push!(input.graph.onchange.val, input.fullname)
     if !(input.graph.onchange in obs_to_update)
         push!(obs_to_update, input.graph.onchange)
     end
@@ -1101,7 +1103,8 @@ function add_input!(conversion_func, attr::ComputeGraph, keys::Tuple, value)
 end
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
-    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+    local_name = Symbol(last(split(string(key), '.')))
+    return _add_input!(InputFunctionWrapper(local_name, conversion_func), attr, key, value)
 end
 
 function handle_nested_keys(attr::ComputeGraph, names::Tuple)
@@ -1145,8 +1148,9 @@ function _add_input!(func, attr::ComputeGraph, key::Symbol, value)
         error("Cannot attach input with name $key - already exists!")
     end
 
-    output = Computed(key)
-    input = Input(attr, key, value, func, output)
+    local_name = Symbol(last(split(string(key), '.')))
+    output = Computed(key, local_name)
+    input = Input(attr, key, local_name, value, func, output)
     output.parent = input
     output.parent_idx = 1
     # Needs to be Any, since input can change type
@@ -1484,8 +1488,8 @@ function assert_same_computation(@nospecialize(f), attr::ComputeGraph, inputs, o
     if length(e.inputs) != length(inputs) || e.inputs != inputs
         error(
             "Cannot register computation: Outputs already have a parent compute edge with different inputs.\n" *
-                "   New: (" * join([n.name for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
-                "   Old: (" * join([n.name for n in e.inputs], ", ") * ") -> (" * join([n.name for n in e.outputs], ", ") * ")"
+                "   New: (" * join([n.fullname for n in inputs], ", ") * ") -> (" * join(outputs, ", ") * ")\n" *
+                "   Old: (" * join([n.fullname for n in e.inputs], ", ") * ") -> (" * join([n.fullname for n in e.outputs], ", ") * ")"
         )
     end
 
@@ -1538,7 +1542,8 @@ function register_computation!(f, attr::ComputeGraph, inputs::Vector{Computed}, 
     # use order of namedtuple, which should not change!
     for (i, symbol) in enumerate(outputs)
         # create an uninitialized Ref, which gets replaced by the correctly strictly typed Ref on first resolve
-        value = get!(attr.outputs, symbol, Computed(symbol))
+        local_name = Symbol(last(split(string(symbol), '.')))
+        value = get!(attr.outputs, symbol, Computed(symbol, local_name))
         value.parent = new_edge
         value.parent_idx = i
         value.dirty = true
@@ -1866,7 +1871,7 @@ function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
 
     # Delete output nodes of this edge
     for computed in edge.outputs
-        k = computed.name
+        k = computed.fullname
         @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
         delete!(attr.outputs, k)
     end
@@ -1881,7 +1886,7 @@ function unsafe_delete!(attr::ComputeGraph, edge::Input)
     end
 
     # Delete output node of this edge
-    k = edge.name
+    k = edge.fullname
     @assert haskey(attr.outputs, k) && attr.outputs[k] === edge.output
     delete!(attr.outputs, k)
 
@@ -1914,7 +1919,7 @@ end
 unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::Input) = nothing
 function unsafe_disconnect_parent_graph_nodes!(attr::ComputeGraph, edge::ComputeEdge)
     for input in edge.inputs
-        if !haskey(attr.outputs, input.name) || !(input in values(attr.outputs))
+        if !haskey(attr.outputs, input.fullname) || !(input in values(attr.outputs))
             unsafe_atomic_delete!(edge)
         end
     end

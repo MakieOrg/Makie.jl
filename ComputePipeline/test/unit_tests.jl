@@ -768,13 +768,13 @@ end
     @test_throws ErrorException add_input!(graph, :d, graph.inputs[:a])
 
     # add_input!() processes this, so we need to check more manually
-    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy)
-    @test_throws ErrorException ComputePipeline.Input(graph, :e, graph.a, identity, graph.dummy)
+    graph.outputs[:dummy] = ComputePipeline.Computed(:dummy, :dummy)
+    @test_throws ErrorException ComputePipeline.Input(graph, :e, :e, graph.a, identity, graph.dummy)
 
-    @test_throws ErrorException ComputePipeline.Computed(:f, Ref(Ref(graph.a)))
-    @test_throws ErrorException ComputePipeline.Computed(:g, Ref(graph.a))
-    @test_throws ErrorException ComputePipeline.Computed(:h, Ref(Ref(graph.inputs[:a])))
-    @test_throws ErrorException ComputePipeline.Computed(:i, Ref(graph.inputs[:a]))
+    @test_throws ErrorException ComputePipeline.Computed(:f. :f, Ref(Ref(graph.a)))
+    @test_throws ErrorException ComputePipeline.Computed(:g. :g, Ref(graph.a))
+    @test_throws ErrorException ComputePipeline.Computed(:h. :h, Ref(Ref(graph.inputs[:a])))
+    @test_throws ErrorException ComputePipeline.Computed(:i. :i, Ref(graph.inputs[:a]))
 
     map!(x -> graph.a, graph, :a, :j)
     @test_throws ResolveException{ErrorException} graph.j[]
@@ -1125,6 +1125,24 @@ using ComputePipeline: ComputeGraphView
         @test graph[Symbol("a.b")][] == 3
         @test graph[Symbol("a.c.a")][] == 4
 
+        @test graph.outputs[Symbol("a.a.a")].fullname == Symbol("a.a.a")
+        @test graph.outputs[Symbol("a.a.b")].fullname == Symbol("a.a.b")
+        @test graph.outputs[Symbol("a.b")].fullname == Symbol("a.b")
+        @test graph.outputs[Symbol("a.c.a")].fullname == Symbol("a.c.a")
+        @test graph.outputs[Symbol("a.a.a")].name == :a
+        @test graph.outputs[Symbol("a.a.b")].name == :b
+        @test graph.outputs[Symbol("a.b")].name == :b
+        @test graph.outputs[Symbol("a.c.a")].name == :a
+
+        @test graph.inputs[Symbol("a.a.a")].fullname == Symbol("a.a.a")
+        @test graph.inputs[Symbol("a.a.b")].fullname == Symbol("a.a.b")
+        @test graph.inputs[Symbol("a.b")].fullname == Symbol("a.b")
+        @test graph.inputs[Symbol("a.c.a")].fullname == Symbol("a.c.a")
+        @test graph.inputs[Symbol("a.a.a")].name == :a
+        @test graph.inputs[Symbol("a.a.b")].name == :b
+        @test graph.inputs[Symbol("a.b")].name == :b
+        @test graph.inputs[Symbol("a.c.a")].name == :a
+
         f(k, v) = v + 1
         add_input!(f, graph, :b, :a, :a, 1)
         add_input!(f, graph, (:b, :a, :b), 2)
@@ -1135,10 +1153,10 @@ using ComputePipeline: ComputeGraphView
         @test haskey(graph.inputs, Symbol("b.a.b"))
         @test haskey(graph.inputs, Symbol("b.b"))
         @test haskey(graph.inputs, Symbol("b.c.a"))
-        @test graph[Symbol("b.a.a")][] == 2
-        @test graph[Symbol("b.a.b")][] == 3
-        @test graph[Symbol("b.b")][] == 4
-        @test graph[Symbol("b.c.a")][] == 5
+        @test graph.b.a.a[] == 2
+        @test graph.b.a.b[] == 3
+        @test graph.b.b[] == 4
+        @test graph.b.c.a[] == 5
 
         add_constant!(graph, :a, :const1, 0)
         @test graph.a.const1[] == 0
@@ -1232,6 +1250,27 @@ using ComputePipeline: ComputeGraphView
             return (x * 2,)
         end
         @test graph.a.c.double_b[] == 2 * graph.a.b[]
+
+        # names used for callbacks
+        add_input!((k, v) -> k === :c, graph, :c, 1)
+        add_input!((k, v) -> k === :a, graph, :d, :a, 1)
+        add_input!((k, v) -> k === :c, graph, :d, :b, :c, 1)
+        @test graph.c[]
+        @test graph.d.a[]
+        @test graph.d.b.c[]
+
+        register_computation!(graph, [(:a, :a, :b), :x], [(:a, :a, :n), :m]) do args, changed, cached
+            ks = isnothing(cached) ? (true, true) : (haskey(cached, :n), haskey(cached, :m))
+            return (
+                haskey(args, :b) && haskey(changed, :b) && ks[1],
+                haskey(args, :x) && haskey(changed, :x) && ks[2],
+            )
+        end
+        @test graph.a.a.n[]
+        @test graph.m[]
+        graph.a.a.b[] = 99
+        @test graph.a.a.n[]
+        @test graph.m[]
     end
 
     @testset "Update" begin
