@@ -10,7 +10,6 @@ using ImageCore: RGBA, RGB, clamp01nan
 import Makie.Observables
 using Adapt
 using Makie.ComputePipeline: register_computation!
-
 # Include Overlay rasterization module
 include("overlay/Overlay.jl")
 using .Overlay
@@ -343,7 +342,8 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
         diagonal=1.0f0, scale=1.0f0,
     )
 
-    hikari_scene = Hikari.Scene(backend=ka_backend)
+    hw_accel = integrator isa Hikari.VolPath && integrator.hw_accel === true
+    hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=hw_accel)
     _init_lights!(hikari_scene, rscene, integrator)
 
     # Convert film to GPU if backend is not Array

@@ -3,42 +3,34 @@ using Colors, FileIO
 using RayMakie
 using Makie
 using ImageShow
-using pocl_jll, OpenCL, AMDGPU
-# ============================================================================
-# Material Gallery Scene - Reorganized with interesting materials in front
-# ============================================================================
+using AMDGPU
+using Lava
 
-begin
-    # ========================================================================
-    # Helper: Generate Perlin noise texture
-    # ========================================================================
-    function make_perlin_texture(resolution::Int; scale=4.0, bias=0.5, contrast=1.0)
-        tex = Matrix{Float32}(undef, resolution, resolution)
-        for j in 1:resolution, i in 1:resolution
-            u, v = (i - 0.5) / resolution, (j - 0.5) / resolution
-            n = Hikari.fbm3d(u * scale, v * scale, 0.0; octaves=4, persistence=0.5)
-            tex[i, j] = Float32(clamp(bias + contrast * n, 0, 1))
-        end
-        tex
+function make_perlin_texture(resolution::Int; scale=4.0, bias=0.5, contrast=1.0)
+    tex = Matrix{Float32}(undef, resolution, resolution)
+    for j in 1:resolution, i in 1:resolution
+        u, v = (i - 0.5) / resolution, (j - 0.5) / resolution
+        n = Hikari.fbm3d(u * scale, v * scale, 0.0; octaves=4, persistence=0.5)
+        tex[i, j] = Float32(clamp(bias + contrast * n, 0, 1))
     end
+    return tex
+end
 
-    function make_perlin_rgb_texture(resolution::Int; scale=4.0, base_color=(1.0, 1.0, 1.0), variation=0.3)
-        tex = Matrix{Hikari.RGBSpectrum}(undef, resolution, resolution)
-        for j in 1:resolution, i in 1:resolution
-            u, v = (i - 0.5) / resolution, (j - 0.5) / resolution
-            n = Hikari.fbm3d(u * scale, v * scale, 0.0; octaves=4)
-            n2 = Hikari.fbm3d(u * scale + 5.3, v * scale - 2.1, 0.0; octaves=3)
-            r = Float32(clamp(base_color[1] + variation * n, 0, 1))
-            g = Float32(clamp(base_color[2] + variation * n2, 0, 1))
-            b = Float32(clamp(base_color[3] + variation * (n + n2) * 0.5, 0, 1))
-            tex[i, j] = Hikari.RGBSpectrum(r, g, b, 1f0)
-        end
-        tex
+function make_perlin_rgb_texture(resolution::Int; scale=4.0, base_color=(1.0, 1.0, 1.0), variation=0.3)
+    tex = Matrix{Hikari.RGBSpectrum}(undef, resolution, resolution)
+    for j in 1:resolution, i in 1:resolution
+        u, v = (i - 0.5) / resolution, (j - 0.5) / resolution
+        n = Hikari.fbm3d(u * scale, v * scale, 0.0; octaves=4)
+        n2 = Hikari.fbm3d(u * scale + 5.3, v * scale - 2.1, 0.0; octaves=3)
+        r = Float32(clamp(base_color[1] + variation * n, 0, 1))
+        g = Float32(clamp(base_color[2] + variation * n2, 0, 1))
+        b = Float32(clamp(base_color[3] + variation * (n + n2) * 0.5, 0, 1))
+        tex[i, j] = Hikari.RGBSpectrum(r, g, b, 1.0f0)
     end
+    return tex
+end
 
-    # ========================================================================
-    # Setup lighting
-    # ========================================================================
+function create_scene()
     lights = [
         PointLight(RGBf(60, 60, 60), Vec3f(8, 8, 10)),
         PointLight(RGBf(20, 20, 20), Vec3f(-2, -6, 3)),
@@ -46,10 +38,6 @@ begin
 
     ax = Scene(; size=(1200, 900), lights=lights, ambient=RGBf(0.02, 0.02, 0.025))
     cam3d!(ax)
-
-    # ========================================================================
-    # Define materials - organized by visual interest
-    # ========================================================================
 
     # --- Glass and transparent materials (front row) ---
     glass = Hikari.Dielectric(Kt=(1, 1, 1), index=1.5)
@@ -201,15 +189,14 @@ begin
     cam.upvector[] = Vec3f(0, 0, 1)
     cam.fov[] = 42
     update_cam!(ax, cam)
+    return ax
 end
 
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
-using pocl_jll, OpenCL, KernelAbstractions, Abacus
-device = OpenCL.OpenCLBackend()
 device = AMDGPU.ROCBackend()
-device = KernelAbstractions.CPU()
-device = Abacus.AbacusBackend()
+device = Lava.LavaBackend()
+# device = KernelAbstractions.CPU()
 RayMakie.activate!(
     device=device,
     exposure=0.6f0,
@@ -218,13 +205,16 @@ RayMakie.activate!(
     sensor=sensor
 )
 nsamples = 10
-integrator = Hikari.VolPath(samples=nsamples, max_depth=50)
+ax = create_scene()
+integrator = Hikari.VolPath(samples=nsamples, max_depth=50, hw_accel=false)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 
 # save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
 # Benchmark 10 samples
+# Lava HW:  1.063923 seconds (3.38 M allocations: 184.093 MiB, 1.56% gc time)
+# Lava: 1.349905 seconds (1.45 M allocations: 278.549 MiB, 4.80% gc time)
 # ROCarray: 1.685820 seconds (822.75 k allocations: 62.698 MiB, 2 lock conflicts)
 # Abacus: 12.221356 seconds (1.49 M allocations: 200.444 MiB)
 # OpenCL: 23.625098 seconds (1.01 M allocations: 134.024 MiB, 0.16% gc time)

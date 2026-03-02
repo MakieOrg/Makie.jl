@@ -13,6 +13,7 @@ KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
 Hikari = {path = "../Hikari"}
