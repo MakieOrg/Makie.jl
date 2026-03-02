@@ -752,7 +752,7 @@ end
 function ComputeGraphView(view::ComputeGraphView, key::Symbol)
     if !haskey(view, key)
         add_key!(
-            to_graph(view).nesting,
+            root(view).nesting,
             view.nested_trace.next_index,
             (key,), false
         )
@@ -760,8 +760,8 @@ function ComputeGraphView(view::ComputeGraphView, key::Symbol)
     return view[key]
 end
 
-to_graph(g::ComputeGraph) = g
-to_graph(v::ComputeGraphView) = v.parent
+root(g::ComputeGraph) = g
+root(v::ComputeGraphView) = v.parent
 
 function Base.show(io::IO, view::ComputeGraphView)
     trace = view.nested_trace
@@ -1432,12 +1432,12 @@ function register_computation!(f, attr::AbstractComputeGraph, inputs::Vector, ou
     added_nesting, _outputs = handle_nested_outputs(attr, outputs)
 
     try
-        register_computation!(f, to_graph(attr), _inputs, _outputs)
+        register_computation!(f, root(attr), _inputs, _outputs)
     catch e
         # If we fail to create the computation we remove the nesting information
         # we added
         for name in added_nesting
-            cleanup_nested_key!(to_graph(attr), name)
+            cleanup_nested_key!(root(attr), name)
         end
         rethrow(e)
     end
@@ -1778,12 +1778,12 @@ function map_latest!(f, attr::AbstractComputeGraph, inputs::Vector, outputs::Vec
     added_nesting, _outputs = handle_nested_outputs(attr, outputs)
 
     try
-        map_latest!(f, to_graph(attr), _inputs, _outputs; kwargs...)
+        map_latest!(f, root(attr), _inputs, _outputs; kwargs...)
     catch e
         # If we fail to create the computation we remove the nesting information
         # we added
         for name in added_nesting
-            cleanup_nested_key!(to_graph(attr), name)
+            cleanup_nested_key!(root(attr), name)
         end
         rethrow(e)
     end
