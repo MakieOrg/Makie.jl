@@ -360,7 +360,7 @@ end
     Label(fig[1, 1], "Main plot type", tellwidth = false)
     m1 = Menu(fig[2, 1], options = [:Scatter, :Lines])
     Label(fig[1, 2][1, 1], "Distribution plot type", tellwidth = false)
-    t = Toggle(fig[1, 2][1, 2])
+    t = Toggle(fig[1, 2][1, 2], toggleduration = 0.01)
     m2 = Menu(fig[2, 2], options = [:Hist, :Density])
 
     # Dynamic description of the axis layout
@@ -384,6 +384,9 @@ end
     sync_step!(st)
 
     t.active[] = true
+    # wait for toggle animation
+    colorbuffer(fig)
+    sleep(0.1)
     sync_step!(st)
 
     m2.i_selected[] = 2
@@ -393,5 +396,10 @@ end
     sync_step!(st)
 
     t.active[] = false
+    # wait for toggle animation
+    colorbuffer(fig)
+    sleep(0.1)
     sync_step!(st)
+
+    st
 end
