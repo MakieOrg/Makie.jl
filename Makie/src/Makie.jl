@@ -46,6 +46,7 @@ using Downloads
 using ShaderAbstractions
 using Dates
 using ComputePipeline
+import ProgressMeter
 
 import Unitful
 import UnicodeFun
@@ -340,7 +341,7 @@ export plot!, plot
 export abline! # until deprecation removal
 
 export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
-export VideoStream, recordframe!, record, Record
+export VideoStream, recordframe!, record, record_longrunning, Record
 export save, colorbuffer
 
 # colormap stuff from PlotUtils, and showgradients
@@ -427,7 +428,7 @@ export arrows, arrows!
 
 export AbstractLight, get_lights, set_lights!, set_light!, set_ambient_light!, push_light!
 export set_shading_algorithm!, set_directional_light!
-export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, RectLight, SSAO
+export AmbientLight, PointLight, DirectionalLight, SpotLight, EnvironmentLight, SunSkyLight, RectLight, SSAO
 export FastPixel
 export update!
 export Ann

@@ -893,10 +893,13 @@ end
 function register_mesh_decomposition!(attr)
     # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
     map!(attr, :mesh, [:positions, :faces, :normals, :texturecoordinates]) do merged
-        pos = coordinates(merged)
-        faces = decompose(GLTriangleFace, merged)
-        normies = normals(merged)
-        texturecoords = texturecoordinates(merged)
+        # For MetaMesh, decompose the inner mesh directly to avoid
+        # iterating over views (slow and triggers deprecation warnings).
+        m = merged isa GeometryBasics.MetaMesh ? merged.mesh : merged
+        pos = coordinates(m)
+        faces = decompose(GLTriangleFace, m)
+        normies = normals(m)
+        texturecoords = texturecoordinates(m)
         return (pos, faces, normies, texturecoords)
     end
 

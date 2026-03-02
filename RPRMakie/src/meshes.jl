@@ -1,9 +1,10 @@
 function extract_material(matsys, plot)
     if haskey(plot, :material) && !isnothing(to_value(plot.material))
-        if plot.material isa Attributes
-            return RPR.Material(matsys, Dict(map(((k, v),) -> k => to_value(v), plot.material)))
+        mat_value = to_value(plot.material)
+        if mat_value isa Attributes
+            return RPR.Material(matsys, Dict(map(((k, v),) -> k => to_value(v), mat_value)))
         else
-            return plot.material[]
+            return mat_value
         end
     else
         return RPR.DiffuseMaterial(matsys)
@@ -11,6 +12,28 @@ function extract_material(matsys, plot)
 end
 
 function mesh_material(context, matsys, plot, color_obs = plot.scaled_color)
+    material = extract_material(matsys, plot)
+
+    # Check if material already has a color attribute set
+    # If so, use that instead of the plot's color
+    mat_value = to_value(plot.material)
+    has_material_color = !isnothing(mat_value) &&
+                         mat_value isa Attributes &&
+                         haskey(mat_value, :color) &&
+                         !isnothing(to_value(mat_value[:color]))
+
+    # If material has its own color, use it and skip color mapping from plot
+    if has_material_color
+        material_color = mat_value[:color]
+        on(plot, material_color; update = true) do color
+            if !isnothing(color) && hasproperty(material, :color)
+                material.color = color
+            end
+        end
+        return material
+    end
+
+    # Otherwise, apply color mapping from plot attributes
     color = to_value(color_obs)
     color_signal = if color isa AbstractMatrix{<:Number}
         tex = RPR.ImageTextureMaterial(matsys)
@@ -37,7 +60,6 @@ function mesh_material(context, matsys, plot, color_obs = plot.scaled_color)
         error("Unsupported color type for RadeonProRender backend: $(typeof(color)) for $(typeof(plot))")
     end
 
-    material = extract_material(matsys, plot)
     on(plot, color_signal; update = true) do color
         if !isnothing(color) && hasproperty(material, :color)
             material.color = color

@@ -278,6 +278,7 @@ function Scene(;
         haskey(m_theme, :lightposition) && @warn("`lightposition` is deprecated. Set `light_direction` instead.")
 
         if haskey(m_theme, :lights)
+            resize!(_lights, length(m_theme.lights[]))
             copyto!(_lights, m_theme.lights[])
         else
             haskey(m_theme, :light_direction) || error("Theme must contain `light_direction::Vec3f` or an explicit `lights::Vector`!")

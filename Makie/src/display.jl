@@ -450,7 +450,7 @@ function get_sub_picture(image, format::ImageStorageFormat, rect)
     xmax, ymax = maximum(rect)
     start = size(image, 1) - ymax
     stop = size(image, 1) - ymin
-    return image[start:stop, xmin:xmax]
+    return image#[start:stop, xmin:xmax]
 end
 
 # Needs to be overloaded by backends, with fallback true

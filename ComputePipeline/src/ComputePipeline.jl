@@ -541,6 +541,7 @@ end
 
 Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key)
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
+Base.keys(attr::ComputeGraph) = keys(attr.outputs)
 
 function Base.getproperty(attr::ComputeGraph, key::Symbol)
     # more efficient to hardcode?

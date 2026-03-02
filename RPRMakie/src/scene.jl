@@ -243,6 +243,8 @@ mutable struct Screen <: Makie.MakieScreen
     cleared::Bool
 end
 
+Base.isopen(::RPRMakie.Screen) = true
+
 Base.size(screen::Screen) = screen.fb_size
 
 function Base.show(io::IO, ::MIME"image/png", screen::Screen)
@@ -326,7 +328,7 @@ function Makie.colorbuffer(screen::Screen; figure = nothing)
     r = reverse(reshape(data_1d, screen.fb_size), dims = 2)
     img = rotl90(r)
     return map(img) do color
-        RGB{Colors.N0f8}(mapc(x -> clamp(x, 0, 1), color))
+        RGB{Colors.N0f8}(mapc(x -> isfinite(x) ? clamp(x, 0f0, 1f0) : 0f0, color))
     end
 end
 

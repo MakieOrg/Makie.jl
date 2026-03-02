@@ -125,17 +125,70 @@ light_color(l::SpotLight) = l.color
 
 
 """
-    EnvironmentLight(intensity, image)
+    EnvironmentLight(intensity, image; rotation_angle=0f0, rotation_axis=Vec3f(0,1,0))
 
 An environment light that uses a spherical environment map to provide lighting.
 See: https://en.wikipedia.org/wiki/Reflection_mapping
 
+Rotation is specified as axis-angle (like pbrt's Rotate command):
+- `rotation_angle`: rotation angle in degrees
+- `rotation_axis`: axis to rotate around (default Y axis)
+
+Example: `EnvironmentLight(1.0, img; rotation_angle=10f0, rotation_axis=Vec3f(1,0,0))`
+rotates 10° around X axis (matching pbrt's "Rotate 10 1 0 0").
+
 Availability:
 - RPRMakie
+- RayMakie
 """
 struct EnvironmentLight <: AbstractLight
     intensity::Float32
     image::Matrix{RGBf}
+    rotation_angle::Float32
+    rotation_axis::Vec3f
+end
+
+function EnvironmentLight(intensity, image; rotation_angle=0f0, rotation_axis=Vec3f(0f0, 1f0, 0f0))
+    EnvironmentLight(Float32(intensity), Matrix{RGBf}(image), Float32(rotation_angle), Vec3f(rotation_axis))
+end
+
+"""
+    SunSkyLight(direction; intensity=1.0, turbidity=2.5, ground_albedo=RGBf(0.3), ground_enabled=true)
+
+A physically-based sun and sky lighting system using atmospheric scattering.
+Provides both directional sun illumination and a procedural sky background.
+
+# Arguments
+- `direction`: Direction TO the sun (Vec3f, will be normalized)
+- `intensity`: Sun intensity multiplier (default: 1.0)
+- `turbidity`: Atmospheric turbidity, 2.0=clear to 10.0=hazy (default: 2.5)
+- `ground_albedo`: Color of ground below horizon (default: RGBf(0.3))
+- `ground_enabled`: Whether to show ground plane below horizon (default: true)
+
+Availability:
+- RayMakie
+"""
+struct SunSkyLight <: AbstractLight
+    direction::Vec3f       # Direction TO the sun (normalized)
+    intensity::Float32     # Sun intensity multiplier
+    turbidity::Float32     # Atmospheric turbidity (2=clear, 10=hazy)
+    ground_albedo::RGBf    # Ground color below horizon
+    ground_enabled::Bool   # Whether to show ground plane below horizon
+end
+
+function SunSkyLight(direction::VecTypes{3};
+    intensity::Real = 1.0,
+    turbidity::Real = 2.5,
+    ground_albedo::Colorant = RGBf(0.3, 0.3, 0.3),
+    ground_enabled::Bool = true,
+)
+    SunSkyLight(
+        normalize(Vec3f(direction)),
+        Float32(intensity),
+        Float32(turbidity),
+        RGBf(ground_albedo),
+        ground_enabled,
+    )
 end
 
 """
@@ -312,9 +365,12 @@ function register_multi_light_computation(scene, MAX_LIGHTS, MAX_PARAMS)
         scene.compute, [:lights, :eye_to_world], [:N_lights, :light_types, :light_colors, :light_parameters]
     ) do (lights, iview), changed, cached
 
+        # Filter out unsupported light types (EnvironmentLight, SunSkyLight are backend-specific)
+        supported_lights = filter(l -> !(l isa EnvironmentLight || l isa SunSkyLight), lights)
+
         n_lights = 0
         n_params = 0
-        for light in lights
+        for light in supported_lights
             n = light_parameter_count(light)
             if n_lights + 1 > MAX_LIGHTS
                 @warn "Exceeded the maximum number of lights ($(n_lights + 1) > $MAX_LIGHTS). Skipping lights beyond number $n_lights."

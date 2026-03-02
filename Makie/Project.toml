@@ -1,7 +1,7 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 version = "0.24.8"
+authors = ["Simon Danisch", "Julius Krumbiegel"]
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -49,6 +49,7 @@ PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 PolygonOps = "647866c9-e3ac-4575-94e7-e3d426903924"
 PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RelocatableFolders = "05181044-ff0b-4ac5-8273-598c1e38db00"
@@ -67,6 +68,9 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [weakdeps]
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
+
+[sources]
+ComputePipeline = {path = "../ComputePipeline"}
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"
@@ -117,6 +121,7 @@ PlotUtils = "1.4.2"
 PolygonOps = "0.1.1"
 PrecompileTools = "1.0"
 Printf = "1.0, 1.6"
+ProgressMeter = "1.11.0"
 REPL = "1.0, 1.6"
 Random = "1.0, 1.6"
 RelocatableFolders = "0.1, 0.2, 0.3, 1.0"
@@ -133,6 +138,3 @@ TriplotBase = "=0.1.0"
 UnicodeFun = "0.4"
 Unitful = "1"
 julia = "1.10"
-
-[sources.ComputePipeline]
-path = "../ComputePipeline"
