@@ -4,7 +4,7 @@
 const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
-    attrs = mergeleft!(Attributes(kwargs), generic_plot_attributes(LineAxis))
+    attrs = mergeleft!(OAttributes(kwargs), generic_plot_attributes(LineAxis))
 
     # Attributes() maps all typed observables to Observable{Any}. This means
     # any typed Observable that's passed to LineAxis will not actually arrive
@@ -17,7 +17,13 @@ function LineAxis(parent::Scene; @nospecialize(kwargs...))
         attrs[:ticklabelspace] = ComputePipeline.get_observable!(attrs[:ticklabelspace])
     end
 
-    return LineAxis(parent, attrs)
+    la = LineAxis(parent, attrs)
+
+    for (k, v) in pairs(attrs)
+        v isa Union{Observable, Computed} || error("bad: $k => $v")
+    end
+
+    return la
 end
 
 function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float32}, Bool}
@@ -348,7 +354,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         return maxwidth
     end
 
-    attrs[:actual_ticklabelspace] = 0.0f0
+    attrs[:actual_ticklabelspace] = Observable(0.0f0)
     actual_ticklabelspace = attrs[:actual_ticklabelspace]
 
     onany(parent, ticklabel_ideal_space, ticklabelspace, update = true) do idealspace, space

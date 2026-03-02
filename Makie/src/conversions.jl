@@ -1470,11 +1470,11 @@ to_font(x::Vector{NativeFont}) = x
 
 function to_font(fonts::Attributes, s::Symbol)
     if haskey(fonts, s)
-        f = fonts[s][]
+        f = to_value(fonts[s])
         if f isa Symbol
             error("The value for font $(repr(s)) was Symbol $(repr(f)), which is not allowed. The value for a font in the fonts collection cannot be another Symbol and must be resolvable via `to_font(x)`.")
         end
-        return to_font(fonts[s][])
+        return to_font(to_value(fonts[s]))
     end
     error("The symbol $(repr(s)) is not present in the fonts collection:\n$fonts.")
 end

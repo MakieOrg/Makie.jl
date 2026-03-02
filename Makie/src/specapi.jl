@@ -1064,6 +1064,8 @@ function update_gridlayout!(
         if block isa Block
             disconnect!(block)
         elseif block isa GridLayout
+            # already removed?
+            isnothing(block.parent) && return
             i = findfirst(x -> x.content === block, block.parent.content)
             @assert !isnothing(i) "Could not find GridLayout() in its parent"
             GridLayoutBase.remove_from_gridlayout!(block.parent.content[i])

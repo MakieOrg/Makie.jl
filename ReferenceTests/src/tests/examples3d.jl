@@ -706,7 +706,7 @@ end
     # - test clipping of linesegments, mesh, surface, scatter, image, heatmap
     f = Figure()
     a = LScene(f[1, 1])
-    a.scene.theme[:clip_planes][] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
+    a.scene.theme[:clip_planes] = Makie.planes(Rect3f(Point3f(-0.75), Vec3f(1.5)))
     linesegments!(
         a, Rect3f(Point3f(-0.75), Vec3f(1.5)), clip_planes = Plane3f[],
         fxaa = true, transparency = false, linewidth = 3
@@ -757,7 +757,7 @@ end
 @reference_test "Clip planes - voxel" begin
     f = Figure()
     a = LScene(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-2, -1, -0.5), 0.1), Plane3f(Vec3f(-0.5, -1, -2), 0.1)]
+    a.scene.theme[:clip_planes] = [Plane3f(Vec3f(-2, -1, -0.5), 0.1), Plane3f(Vec3f(-0.5, -1, -2), 0.1)]
     r = -10:10
     p = voxels!(a, [cos(sin(x + y) + z) for x in r, y in r, z in r])
     f
@@ -809,7 +809,7 @@ end
 @reference_test "Clip planes - only data space" begin
     f = Figure()
     a = LScene(f[1, 1])
-    a.scene.theme[:clip_planes][] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
+    a.scene.theme[:clip_planes] = [Plane3f(Vec3f(-1, 0, 0), 0), Plane3f(Vec3f(-1, 0, 0), -100)]
 
     # verify that clipping is working
     wireframe!(a, Rect3f(Point3f(-1), Vec3f(2)), color = :green, linewidth = 5)

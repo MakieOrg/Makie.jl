@@ -67,7 +67,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
     legend = Attributes(),
     axis_type = automatic,
     camera = automatic,
-    limits = automatic,
+    limits = Observable{Any}(automatic),
     SSAO = Attributes(
         # enable = false,
         bias = 0.025f0,       # z threshold for occlusion
@@ -153,6 +153,9 @@ const MAKIE_DEFAULT_THEME = Attributes(
 const CURRENT_DEFAULT_THEME = deepcopy(MAKIE_DEFAULT_THEME)
 const THEME_LOCK = Base.ReentrantLock()
 
+value_or_obs_deepcopy(o::Observable{T}) where {T} = Observable{T}(o[])
+value_or_obs_deepcopy(x) = x
+
 # Basically like deepcopy but while merging it into another Attribute dict
 function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
@@ -162,7 +165,7 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
                 dict[key] = Attributes()
                 merge_without_obs!(dict[key], value)
             else
-                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                dict[key] = value_or_obs_deepcopy(value)
             end
         else
             current_value = result[key]
@@ -185,7 +188,7 @@ function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
                 dict[key] = Attributes()
                 merge_without_obs!(dict[key], value)
             else
-                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                dict[key] = value_or_obs_deepcopy(value)
             end
         else
             current_value = result[key]
@@ -197,7 +200,7 @@ function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
                     dict[key] = Attributes()
                     merge_without_obs!(dict[key], value)
                 else
-                    dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                    dict[key] = value_or_obs_deepcopy(value)
                 end
             end
         end
@@ -262,11 +265,11 @@ theme(::Nothing, key::Symbol; default = nothing) = theme(key; default)
 theme(::Nothing) = CURRENT_DEFAULT_THEME
 function theme(key::Symbol; default = nothing)
     if haskey(CURRENT_DEFAULT_THEME, key)
-        val = to_value(CURRENT_DEFAULT_THEME[key])
-        if val isa Union{NamedTuple, Attributes}
-            return val
+        val = CURRENT_DEFAULT_THEME[key]
+        if val isa Observable
+            return Observable{Any}(to_value(val))
         else
-            Observable{Any}(val)
+            return val
         end
     else
         return default

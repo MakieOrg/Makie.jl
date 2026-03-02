@@ -58,7 +58,7 @@ $(ATTRIBUTES)
     gridthickness = ntuple(x -> 1.0f0, Val(3))
     axislinewidth = ntuple(x -> 1.5f0, Val(3))
     tsize = 5 # in percent
-    return Attributes(
+    attr = Attributes(
         visible = true,
         showticks = (true, true, true),
         showaxis = (true, true, true),
@@ -74,7 +74,7 @@ $(ATTRIBUTES)
             rotation = axisnames_rotation3d,
             fontsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = lift(to_3tuple, theme(scene, :font)),
+            font = to_3tuple(theme(scene, :font)),
             gap = 3
         ),
 
@@ -88,7 +88,7 @@ $(ATTRIBUTES)
             fontsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = lift(to_3tuple, theme(scene, :font)),
+            font = to_3tuple(theme(scene, :font)),
         ),
 
         frame = Attributes(
@@ -98,6 +98,7 @@ $(ATTRIBUTES)
             axiscolor = (:black, :black, :black),
         )
     )
+    return attr
 end
 
 argument_dim_kwargs(::Type{<:Axis3D}) = tuple()
