@@ -972,7 +972,11 @@ function overwrite_plot_defaults!(updates, node::Computed, value::Attributes)
     error("Could not use theme default $value for $(node.name) due to inconsistent nesting")
 end
 
-function overwrite_plot_defaults!(updates, graph::AbstractComputeGraph, user_kw::Dict, plot_scene_theme::Attributes)
+function overwrite_plot_defaults!(
+        updates, graph::AbstractComputeGraph,
+        user_kw::Union{Dict, Attributes, NamedTuple},
+        plot_scene_theme::Attributes
+    )
     for (k, v) in plot_scene_theme
         if haskey(graph, k)
             if k === :fonts
