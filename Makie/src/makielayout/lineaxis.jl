@@ -402,8 +402,9 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     map!(
         build_label_with_unit_suffix, graph,
         [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
-        :label_with_suffix
+        :label_with_suffix, init = Ref{Any}("")
     )
+    ComputePipeline.mark_dirty!(graph.label_with_suffix)
 
     labeltext = text!(
         parent, graph.labelpos, text = graph.label_with_suffix,
@@ -579,9 +580,9 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(
         graph,
-        [labelvisible, :label_with_suffix, :ticklabelbbox, labelpadding],
+        [labelvisible, :label_with_suffix, :ticklabelbbox, labelpadding, :horizontal],
         :protrusion_labelspace
-    ) do visible, label, bbox, labelpadding
+    ) do visible, label, bbox, labelpadding, horizontal
         label_is_empty = iswhitespace(label)
         if label_is_empty || !visible
             return 0.0f0

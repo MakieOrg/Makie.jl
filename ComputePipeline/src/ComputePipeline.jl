@@ -491,6 +491,10 @@ function ComputeGraph()
 
         # update data
         for key in changeset
+            # task switches could cause the changeset to get mutated, so just
+            # intersect!() is not enough
+            haskey(graph.observables, key) || continue
+
             val = graph.outputs[key][]
             obs = graph.observables[key]
             # Trust the graph to discard equal values. This doesn't work for
@@ -498,7 +502,6 @@ function ComputeGraph()
             if !(key in graph.should_deepcopy)
                 obs.val = val
             elseif val != obs[] # treat in-place updates
-
                 obs.val = deepcopy(val)
             else # same value (with deepcopy), skip update
                 delete!(changeset, key)
@@ -507,11 +510,13 @@ function ComputeGraph()
 
         # trigger observables
         for key in changeset
+            haskey(graph.observables, key) || continue
             notify(graph.observables[key])
         end
 
-        # clear changeset after processing observables
         empty!(changeset)
+
+        # clear changeset after processing observables
         return Consume(false)
     end
 
