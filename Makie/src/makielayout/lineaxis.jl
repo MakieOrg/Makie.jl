@@ -295,7 +295,9 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # TODO: Does this propagate enough on same value updates?
     # make sure we update tick calculation when needed
     obs = needs_tick_update_observable(dim_convert)
-    on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+    if !isnothing(obs)
+        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+    end
 
     map!(
         calculate_real_ticklabel_align, graph,
