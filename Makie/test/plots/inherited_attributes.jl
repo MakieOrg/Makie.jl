@@ -101,7 +101,7 @@ end
         )
     ) do
         scatter(rand(Point3f, 10))
-    end;
+    end
     ax = a.scene[OldAxis]
     @test ax.padding[] == 0.3
     @test ax.ticks.gap[] == 12
