@@ -411,7 +411,8 @@ function initialize_block!(cb::Colorbar)
     end
 
     axis = LineAxis(
-        blockscene, endpoints = axispoints, flipped = cb.flipaxis,
+        blockscene, ComputePipeline.ComputeGraphView(cb.attributes, :axis),
+        endpoints = axispoints, flipped = cb.flipaxis,
         limits = lims, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
@@ -423,7 +424,7 @@ function initialize_block!(cb::Colorbar)
         ticklabelrotation = cb.ticklabelrotation,
         tickwidth = cb.tickwidth, tickcolor = cb.tickcolor, spinewidth = cb.spinewidth,
         ticklabelspace = cb.ticklabelspace, ticklabelcolor = cb.ticklabelcolor,
-        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = cb.flip_vertical_label,
+        spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
         minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale

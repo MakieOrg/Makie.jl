@@ -1,12 +1,10 @@
-function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
-    result = grid_obs[]
-    empty!(result) # reuse array for less allocations
+function gridline_points(offset::Point2f, tickpositions::Vector{Point2f})
+    result = Point2f[]
     for gridstart in tickpositions
         opposite_tickpos = gridstart .+ offset
         push!(result, gridstart, opposite_tickpos)
     end
-    notify(grid_obs)
-    return
+    return result
 end
 
 function process_axis_event(ax, event)
@@ -86,8 +84,7 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     return
 end
 
-
-function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposition, xaxisprotrusion, _, ax, subtitlet)
+function calculate_title_position(area, titlegap, align, xaxisposition, xaxisprotrusion, subtitle_height)
     local x::Float32 = if align === :center
         area.origin[1] + area.widths[1] / 2
     elseif align === :left
@@ -98,11 +95,7 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
         error("Title align $align not supported.")
     end
 
-    local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-        boundingbox(subtitlet, :data).widths[2] + subtitlegap
-    else
-        0.0f0
-    end
+    subtitlespace::Float32 = subtitle_height
 
     local yoffset::Float32 = top(area) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0.0f0) +
         subtitlespace
@@ -111,42 +104,17 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
 end
 
 function compute_protrusions(
-        title, titlesize, titlegap, titlevisible, spinewidth,
-        topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
-        xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition,
-        subtitle, subtitlevisible, subtitlesize, subtitlegap, titlelineheight, subtitlelineheight,
-        subtitlet, titlet
+        titleheight, subtitleheight,
+        xaxisposition, xaxisprotrusion,
+        yaxisposition, yaxisprotrusion,
     )
 
-    local left::Float32, right::Float32, bottom::Float32, top::Float32 = 0.0f0, 0.0f0, 0.0f0, 0.0f0
+    left::Float32 = ifelse(yaxisposition === :left, yaxisprotrusion, 0.0f0)
+    right::Float32 = ifelse(yaxisposition === :right, yaxisprotrusion, 0.0f0)
+    bottom::Float32 = ifelse(xaxisposition === :bottom, xaxisprotrusion, 0.0f0)
+    top::Float32 = ifelse(xaxisposition === :top, xaxisprotrusion, 0.0f0)
 
-    if xaxisposition === :bottom
-        bottom = xaxisprotrusion
-    else
-        top = xaxisprotrusion
-    end
-
-    titleheight = boundingbox(titlet, :data).widths[2] + titlegap
-    subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
-
-    titlespace = if !titlevisible || iswhitespace(title)
-        0.0f0
-    else
-        titleheight
-    end
-    subtitlespace = if !subtitlevisible || iswhitespace(subtitle)
-        0.0f0
-    else
-        subtitleheight
-    end
-
-    top += titlespace + subtitlespace
-
-    if yaxisposition === :left
-        left = yaxisprotrusion
-    else
-        right = yaxisprotrusion
-    end
+    top += titleheight + subtitleheight
 
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
@@ -183,6 +151,9 @@ function initialize_block!(ax::Axis; palette = nothing)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
+    # TODO: maybe use scenearea instead?
+    add_input!(ax.attributes, :viewport, scene.viewport)
+
     setfield!(scene, :float32convert, Float32Convert())
 
     if !isnothing(palette)
@@ -193,7 +164,10 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color = ax.backgroundcolor, inspectable = false, shading = NoShading, strokecolor = :transparent)
+    background = poly!(
+        blockscene, scenearea; color = ax.backgroundcolor, inspectable = false,
+        shading = NoShading, strokecolor = :transparent
+    )
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
@@ -202,42 +176,6 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.xaxislinks = Axis[]
     ax.yaxislinks = Axis[]
-
-    xgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    xgridlines = linesegments!(
-        blockscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
-        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xgridlines, 0, 0, -10)
-    elements[:xgridlines] = xgridlines
-
-    xminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    xminorgridlines = linesegments!(
-        blockscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
-        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xminorgridlines, 0, 0, -10)
-    elements[:xminorgridlines] = xminorgridlines
-
-    ygridnode = Observable(Point2f[]; ignore_equal_values = true)
-    ygridlines = linesegments!(
-        blockscene, ygridnode, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
-        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(ygridlines, 0, 0, -10)
-    elements[:ygridlines] = ygridlines
-
-    yminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    yminorgridlines = linesegments!(
-        blockscene, yminorgridnode, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
-        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(yminorgridlines, 0, 0, -10)
-    elements[:yminorgridlines] = yminorgridlines
 
     # When the transform function (xscale, yscale) of a plot changes we
     # 1. communicate this change to plots (barplot needs this to make bars
@@ -260,10 +198,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         update_axis_camera(scene, args...)
     end
 
-    xaxis_endpoints = lift(
-        blockscene, ax.xaxisposition, scene.viewport;
-        ignore_equal_values = true
-    ) do xaxisposition, area
+    map!(ax.attributes, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -273,10 +208,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(
-        blockscene, ax.yaxisposition, scene.viewport;
-        ignore_equal_values = true
-    ) do yaxisposition, area
+    map!(ax.attributes, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -286,69 +218,46 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xaxis_flipped = lift(x -> x === :top, blockscene, ax.xaxisposition; ignore_equal_values = true)
-    yaxis_flipped = lift(x -> x === :right, blockscene, ax.yaxisposition; ignore_equal_values = true)
+    map!(x -> x === :top, ax.attributes, :xaxisposition, :xaxis_flipped)
+    map!(x -> x === :right, ax.attributes, :yaxisposition, :yaxis_flipped)
 
-    xspinevisible = lift(
-        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-        ignore_equal_values = true
-    ) do xflip, bv, tv
-        xflip ? tv : bv
-    end
-    xoppositespinevisible = lift(
-        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-        ignore_equal_values = true
-    ) do xflip, bv, tv
-        xflip ? bv : tv
-    end
-    yspinevisible = lift(
-        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-        ignore_equal_values = true
-    ) do yflip, lv, rv
-        yflip ? rv : lv
-    end
-    yoppositespinevisible = lift(
-        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-        ignore_equal_values = true
-    ) do yflip, lv, rv
-        yflip ? lv : rv
-    end
-    xspinecolor = lift(
-        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-        ignore_equal_values = true
-    ) do xflip, bc, tc
-        xflip ? tc : bc
-    end
-    xoppositespinecolor = lift(
-        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-        ignore_equal_values = true
-    ) do xflip, bc, tc
-        xflip ? bc : tc
-    end
-    yspinecolor = lift(
-        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-        ignore_equal_values = true
-    ) do yflip, lc, rc
-        yflip ? rc : lc
-    end
-    yoppositespinecolor = lift(
-        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-        ignore_equal_values = true
-    ) do yflip, lc, rc
-        yflip ? lc : rc
-    end
+    map!(
+        (flip, bv, tv) -> ifelse(flip, (tv, bv), (bv, tv)),
+        ax.attributes,
+        [:xaxis_flipped, :bottomspinevisible, :topspinevisible],
+        [:xspinevisible, :xoppositespinevisible]
+    )
+    map!(
+        (flip, lv, rv) -> ifelse(flip, (rv, lv), (lv, rv)),
+        ax.attributes,
+        [:yaxis_flipped, :leftspinevisible, :rightspinevisible],
+        [:yspinevisible, :yoppositespinevisible]
+    )
+    map!(
+        (flip, bc, tc) -> ifelse(flip, (tc, bc), (bc, tc)),
+        ax.attributes,
+        [:xaxis_flipped, :bottomspinecolor, :topspinecolor],
+        [:xspinecolor, :xoppositespinecolor]
+    )
+    map!(
+        (flip, lc, rc) -> ifelse(flip, (rc, lc), (lc, rc)),
+        ax.attributes,
+        [:yaxis_flipped, :leftspinecolor, :rightspinecolor],
+        [:yspinecolor, :yoppositespinecolor]
+    )
 
     xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values = true)
     ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values = true)
 
     xaxis = LineAxis(
-        blockscene, endpoints = xaxis_endpoints, limits = xlims,
-        flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
+        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
+        endpoints = ax.xaxis_endpoints, limits = xlims,
+        flipped = ax.xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, dim_convert = ax.dim1_conversion, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
-        ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
+        ticksvisible = ax.xticksvisible, spinevisible = ax.xspinevisible, spinecolor = ax.xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
@@ -360,13 +269,14 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.xaxis = xaxis
 
     yaxis = LineAxis(
-        blockscene, endpoints = yaxis_endpoints, limits = ylims,
-        flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
+        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
+        endpoints = ax.yaxis_endpoints, limits = ylims,
+        flipped = ax.yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
-        ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
+        ticksvisible = ax.yticksvisible, spinevisible = ax.yspinevisible, spinecolor = ax.yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
         tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
@@ -377,9 +287,10 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
-        ignore_equal_values = true
+    map!(
+        ax.attributes,
+        [:viewport, :spinewidth, :xaxisposition],
+        :xoppositelinepoints
     ) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
@@ -394,9 +305,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
-        ignore_equal_values = true
+    map!(
+        ax.attributes,
+        [:viewport, :spinewidth, :yaxisposition],
+        :yoppositelinepoints
     ) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
@@ -411,89 +323,149 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-        scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+    map!(
+        mirror_xticks, ax.attributes,
+        [(:xaxis, :tickpositions), :xticksize, :xtickalign, :viewport, :xaxisposition, :spinewidth],
+        :xticksmirrored_points
     )
+    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
     xticksmirrored_lines = linesegments!(
-        blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+        blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
     )
     translate!(xticksmirrored_lines, 0, 0, 10)
-    yticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-        scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_yticks, ax.attributes,
+        [(:yaxis, :tickpositions), :yticksize, :ytickalign, :viewport, :yaxisposition, :spinewidth],
+        :yticksmirrored_points
     )
+    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
     yticksmirrored_lines = linesegments!(
-        blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+        blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
     )
     translate!(yticksmirrored_lines, 0, 0, 10)
-    xminorticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-        ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_xticks, ax.attributes,
+        [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :viewport, :xaxisposition, :spinewidth],
+        :xminorticksmirrored
     )
+    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
     xminorticksmirrored_lines = linesegments!(
-        blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+        blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
     )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
-    yminorticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-        ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_yticks, ax.attributes,
+        [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :viewport, :yaxisposition, :spinewidth],
+        :yminorticksmirrored
     )
+    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
     yminorticksmirrored_lines = linesegments!(
-        blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+        blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
     )
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
     xoppositeline = linesegments!(
-        blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
+        blockscene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
+        visible = ax.xoppositespinevisible, color = ax.xoppositespinecolor,
+        inspectable = false,
         linestyle = nothing
     )
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(
-        blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
+        blockscene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
+        visible = ax.yoppositespinevisible, color = ax.yoppositespinecolor,
+        inspectable = false,
         linestyle = nothing
     )
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-    onany(blockscene, xaxis.tickpositions, scene.viewport) do tickpos, area
+    map!(
+        ax.attributes,
+        [(:xaxis, :tickpositions), :xaxisposition, :viewport],
+        :xgrid_points
+    ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
-        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
-        update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
+        local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
+        return gridline_points(Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.tickpositions, scene.viewport) do tickpos, area
+    map!(
+        ax.attributes,
+        [(:yaxis, :tickpositions), :yaxisposition, :viewport],
+        :ygrid_points
+    ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
-        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
-        update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
+        local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
+        return gridline_points(Point2f(offset, 0), tickpos)
     end
 
-    onany(blockscene, xaxis.minortickpositions, scene.viewport) do tickpos, area
-        local pxheight::Float32 = height(scene.viewport[])
-        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
-        update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
+    map!(
+        ax.attributes,
+        [(:xaxis, :minortickpositions), :xaxisposition, :viewport],
+        :xminorgrid_points
+    ) do tickpos, axispos, area
+        local pxheight::Float32 = height(area)
+        local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
+        return gridline_points(Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.minortickpositions, scene.viewport) do tickpos, area
-        local pxwidth::Float32 = width(scene.viewport[])
-        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
-        update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
+    map!(
+        ax.attributes,
+        [(:yaxis, :minortickpositions), :yaxisposition, :viewport],
+        :yminorgrid_points
+    ) do tickpos, axispos, area
+        local pxwidth::Float32 = width(area)
+        local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
+        return gridline_points(Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(
-        blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
-        xaxis.protrusion;
-        ignore_equal_values = true
-    ) do a,
-            titlegap, align, xaxisposition, xaxisprotrusion
+    xgridlines = linesegments!(
+        blockscene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
+        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xgridlines, 0, 0, -10)
+    elements[:xgridlines] = xgridlines
+
+    xminorgridlines = linesegments!(
+        blockscene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
+        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xminorgridlines, 0, 0, -10)
+    elements[:xminorgridlines] = xminorgridlines
+
+    ygridlines = linesegments!(
+        blockscene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
+        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(ygridlines, 0, 0, -10)
+    elements[:ygridlines] = ygridlines
+
+    yminorgridlines = linesegments!(
+        blockscene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
+        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(yminorgridlines, 0, 0, -10)
+    elements[:yminorgridlines] = yminorgridlines
+
+    map!(
+        ax.attributes,
+        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
+        :subtitlepos
+    ) do a, titlegap, align, xaxisposition, xaxisprotrusion
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
@@ -503,16 +475,15 @@ function initialize_block!(ax::Axis; palette = nothing)
         return Point2f(x, yoffset)
     end
 
-    titlealignnode = lift(blockscene, ax.titlealign; ignore_equal_values = true) do align
-        (align, :bottom)
-    end
+    map!(align -> (align, :bottom), ax.attributes, :titlealign, :titlealign_tuple)
 
     subtitlet = text!(
-        blockscene, subtitlepos,
+        blockscene,
+        ax.subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
         fontsize = ax.subtitlesize,
-        align = titlealignnode,
+        align = ax.titlealign_tuple,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
         lineheight = ax.subtitlelineheight,
@@ -520,17 +491,27 @@ function initialize_block!(ax::Axis; palette = nothing)
         inspectable = false
     )
 
-    titlepos = lift(
-        calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
-        ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values = true
+    subtitle_bbox = register_raw_string_boundingboxes!(subtitlet)
+    map!(
+        ax.attributes, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
+    ) do bboxes, visible, gap
+        bb = reduce(update_boundingbox, bboxes, init = Rect3f())
+        height = widths(bb)[2]
+        return isfinite(height) && visible ? Float32(height + gap) : 0.0f0
+    end
+
+    map!(
+        calculate_title_position, ax.attributes,
+        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
+        :titlepos
     )
 
     titlet = text!(
-        blockscene, titlepos,
+        blockscene, ax.titlepos,
         text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
-        align = titlealignnode,
+        align = ax.titlealign_tuple,
         font = ax.titlefont,
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
@@ -539,16 +520,26 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     elements[:title] = titlet
 
+    title_bbox = register_raw_string_boundingboxes!(titlet)
     map!(
-        compute_protrusions, blockscene, ax.layoutobservables.protrusions, ax.title, ax.titlesize,
-        ax.titlegap, ax.titlevisible, ax.spinewidth,
-        ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-        xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
-        ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
-        ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet
+        ax.attributes, [title_bbox, :titlevisible, :titlegap], :title_height
+    ) do bboxes, visible, gap
+        bb = reduce(update_boundingbox, bboxes, init = Rect3f())
+        height = widths(bb)[2]
+        return isfinite(height) && visible ? Float32(height + gap) : 0.0f0
+    end
+
+    map!(
+        compute_protrusions, ax.attributes,
+        [
+            :title_height, :subtitle_height,
+            :xaxisposition, (:xaxis, :protrusion),
+            :yaxisposition, (:yaxis, :protrusion),
+        ],
+        :layout_protrusions
     )
-    # trigger first protrusions with one of the observables
-    # notify(ax.title)
+
+    connect!(ax.layoutobservables.protrusions, ax.layout_protrusions)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
@@ -581,9 +572,9 @@ function initialize_block!(ax::Axis; palette = nothing)
         notify(finallimits)
     end
 
-    # Needed to fully initialize layouting for some reason...
-    notify(ComputePipeline.get_observable!(ax.xlabelpadding))
-    notify(ComputePipeline.get_observable!(ax.ylabelpadding))
+    # # Needed to fully initialize layouting for some reason...
+    # notify(ComputePipeline.get_observable!(ax.xlabelpadding))
+    # notify(ComputePipeline.get_observable!(ax.ylabelpadding))
 
     # Add them last, so we skip all the internal iterations from above!
     add_input!(ax.scene.compute, :axis_limits, finallimits)
@@ -602,6 +593,8 @@ function add_axis_limits!(plot)
     return
 end
 
+mirror_xticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :x, ap, sw)
+mirror_yticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :y, ap, sw)
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)
     a = viewport
     if side === :x
@@ -1081,8 +1074,8 @@ function timed_ticklabelspace_reset(
         prev_xticklabelspace[] = ax.xticklabelspace[]
         prev_yticklabelspace[] = ax.yticklabelspace[]
 
-        ax.xticklabelspace = Float64(ax.xaxis.attributes.actual_ticklabelspace[])
-        ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
+        ax.xticklabelspace = Float64(ax.attributes.xaxis.actual_ticklabelspace[])
+        ax.yticklabelspace = Float64(ax.attributes.yaxis.actual_ticklabelspace[])
     end
 
     return reset_timer[] = Timer(threshold_sec) do t

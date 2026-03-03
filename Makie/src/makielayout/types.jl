@@ -164,11 +164,11 @@ mutable struct LineAxis
     protrusion::Observable{Float32}
     attributes::Attributes
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{Any}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
+    tickpositions::Observable{Vector{Point2f}} # <--
+    # tickvalues::Observable{Vector{Float32}}
+    # ticklabels::Observable{Vector{Any}}
+    minortickpositions::Observable{Vector{Point2f}} # <--
+    # minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
