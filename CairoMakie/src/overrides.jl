@@ -140,8 +140,48 @@ function draw_poly(scene::Scene, screen::Screen, poly, shapes::Vector{<:Union{Re
     space = poly.space[]::Symbol
     planes = poly.clip_planes[]::Vector{Plane3f}
 
+    # Check for non-linear transform (e.g. PolarAxis)
+    tf = Makie.transform_func(scene)
+    is_linear = (tf === identity || tf == (identity, identity))
+    is_nonlinear = !is_linear
+
     projected_shapes = map(shapes) do shape
-        clipped = clip_shape(planes, shape, space, model)
+        # [FIX START]
+        # If we have a Rect2 in a non-linear plot, we must tessellate it
+        # into a BezierPath so it curves correctly during projection.
+        shape_to_process = if is_nonlinear && shape isa Rect2
+            x, y = minimum(shape)
+            w, h = widths(shape)
+            steps = 30 # smooth curve resolution
+
+            # Build a path with subsampled edges
+            commands = Any[
+                MoveTo(Point2f(x, y))
+            ]
+
+            # Bottom edge (x varies)
+            for i in 1:steps
+                push!(commands, LineTo(Point2f(x + w * (i/steps), y)))
+            end
+
+            # Right edge
+            push!(commands, LineTo(Point2f(x + w, y + h)))
+
+            # Top edge (x varies, reversed)
+            for i in 1:steps
+                push!(commands, LineTo(Point2f(x + w * (1 - i/steps), y + h)))
+            end
+
+            # Close shape
+            push!(commands, ClosePath())
+
+            BezierPath(commands)
+        else
+            shape
+        end
+        # [FIX END]
+
+        clipped = clip_shape(planes, shape_to_process, space, model)
         return project_shape(poly, space, clipped, model)
     end
 
