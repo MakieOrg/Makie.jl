@@ -238,9 +238,11 @@ function extract_attributes!(body)
 end
 
 # intercept all block constructors and divert to _block(T, ...)
-function (::Type{T})(args...; kwargs...) where {T <: Block}
-    return _block(T, args...; kwargs...)
+# Convert kwargs to Dict early to avoid repeated splatting overhead
+function (::Type{T})(figlike, args...; kwargs...) where {T <: Block}
+    return _block(T, figlike, Any[args...], Dict{Symbol, Any}(kwargs))
 end
+
 
 can_be_current_axis(x) = false
 
@@ -248,22 +250,47 @@ get_top_parent(gp::GridLayout) = GridLayoutBase.top_parent(gp)
 get_top_parent(gp::GridPosition) = GridLayoutBase.top_parent(gp.layout)
 get_top_parent(gp::GridSubposition) = get_top_parent(gp.parent)
 
+# GridPosition method
 function _block(
         T::Type{<:Block},
-        gp::Union{GridPosition, GridSubposition}, args...; kwargs...
+        gp::Union{GridPosition, GridSubposition},
+        args::Vector{Any},
+        kwdict::Dict{Symbol, Any}
     )
-
     top_parent = get_top_parent(gp)
     if top_parent === nothing
         error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
     end
-    b = gp[] = _block(T, top_parent, args...; kwargs...)
+    b = gp[] = _block(T, top_parent, args, kwdict, nothing)
     return b
 end
 
+# GridPosition method with bbox and kwdict_complete (used by Legend constructor)
+function _block(
+        T::Type{<:Block},
+        gp::Union{GridPosition, GridSubposition},
+        args,
+        kwdict::Dict,
+        bbox;
+        kwdict_complete = false
+    )
+    top_parent = get_top_parent(gp)
+    if top_parent === nothing
+        error("Found nothing as the top parent of this GridPosition. A GridPosition or GridSubposition needs to be connected to the top layout of a Figure, Scene or comparable object, either directly or through nested GridLayouts in order to plot into it.")
+    end
+    b = gp[] = _block(T, top_parent, args, kwdict, bbox; kwdict_complete)
+    return b
+end
 
-function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args...; bbox = nothing, kwargs...)
-    return _block(T, fig_or_scene, Any[args...], Dict{Symbol, Any}(kwargs), bbox)
+# Figure/Scene method
+function _block(
+        T::Type{<:Block},
+        fig_or_scene::Union{Figure, Scene},
+        args::Vector{Any},
+        kwdict::Dict{Symbol, Any}
+    )
+    bbox = pop!(kwdict, :bbox, nothing)
+    return _block(T, fig_or_scene, args, kwdict, bbox)
 end
 
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})

@@ -61,6 +61,28 @@ fig
 ```
 
 
+## Colorbar Inside An Axis
+
+You can place a colorbar inside an axis using the `Colorbar(ax, plot; position=...)` constructor or the `axiscolorbar` function. This is useful for overlay positioning, especially with 3D plots.
+
+```@figure
+fig, ax, pl = scatter(rand(30), rand(30), color=rand(30), markersize=12)
+
+# Create colorbar inside axis at right-top
+Colorbar(ax, pl; position=:rt, label="Values")
+fig
+```
+
+Position symbols follow the same convention as legend: `:lt` (left-top), `:rt` (right-top), `:lb` (left-bottom), `:rb` (right-bottom), etc.
+
+The `axiscolorbar` function provides the same functionality:
+
+```@figure
+fig, ax, pl = scatter(rand(30), rand(30), color=rand(30), markersize=12)
+axiscolorbar(ax, pl; position=:lt, label="Values")
+fig
+```
+
 ### Experimental Categorical support
 
 !!! warning

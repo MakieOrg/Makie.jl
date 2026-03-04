@@ -34,6 +34,7 @@ include("blocks/legend.jl")
 include("blocks/scene.jl")
 include("blocks/menu.jl")
 include("blocks/textbox.jl")
+# Gui block implementation is in GUI/hovermenu.jl (type definition remains in types.jl)
 
 export Axis
 export Axis3
@@ -43,7 +44,7 @@ export SliderGrid
 export IntervalSlider
 export Button
 export Checkbox
-export Colorbar
+export Colorbar, axiscolorbar
 export Label
 export Box
 export Toggle
@@ -52,6 +53,7 @@ export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export Menu
 export Textbox
+export HoverMenu
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!, rlims!, thetalims!
