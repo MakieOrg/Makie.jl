@@ -190,14 +190,15 @@ mutable struct Input{T} <: AbstractEdge
     output::Computed
     dirty::Bool
     dependents::Vector{ComputeEdge{T}}
+    force_update::Bool
 end
 
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, value, f, output)
+function Input(graph, name, value, f, output, force_update = false)
     validate_node_value(value)
-    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[], force_update)
 end
 
 
@@ -660,7 +661,9 @@ end
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     # Skip if the value is the same as before
-    is_same(input.value, value) && return value
+    if !input.force_update && is_same(input.value, value)
+        return value
+    end
     # can't notify observables immediately here, because update may call this
     # multiple times for a synchronized update (would cause desync)
     mark_dirty!(input)
