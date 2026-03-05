@@ -146,17 +146,24 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
         outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
-            edge.outputs[i].value = v # initialize to fully typed RefValue
-            return v
+            if isdefined(edge.outputs[i], :value)
+                edge.outputs[i][] = v[] # set value of existing node
+            else
+                edge.outputs[i].value = v # initialize to fully typed RefValue
+            end
+            return edge.outputs[i].value
         end
         foreach(node -> node.dirty = true, edge.outputs)
 
     elseif isnothing(result)
 
         outputs = ntuple(length(edge.outputs)) do i
-            v = RefValue(nothing)
-            edge.outputs[i].value = v # initialize to fully typed RefValue
-            return v
+            if isdefined(edge.outputs[i], :value)
+                edge.outputs[i][] = nothing
+            else
+                edge.outputs[i].value = RefValue(nothing)
+            end
+            return edge.outputs[i].value
         end
         foreach(node -> node.dirty = false, edge.outputs)
 
@@ -2010,6 +2017,15 @@ function TypedEdge_no_call(edge::ComputeEdge)
     end
 
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
+end
+
+function set_type!(node::Computed, T::Type)
+    if isdefined(node, :value)
+        error("Node already initialized.")
+    else
+        node.value = Ref{T}()
+    end
+    return
 end
 
 include("io.jl")

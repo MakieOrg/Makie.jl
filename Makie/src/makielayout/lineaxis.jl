@@ -402,9 +402,9 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     map!(
         build_label_with_unit_suffix, graph,
         [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
-        :label_with_suffix, init = Ref{Any}("")
+        :label_with_suffix
     )
-    ComputePipeline.mark_dirty!(graph.label_with_suffix)
+    ComputePipeline.set_type!(graph.label_with_suffix, Any)
 
     labeltext = text!(
         parent, graph.labelpos, text = graph.label_with_suffix,
