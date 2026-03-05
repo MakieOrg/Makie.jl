@@ -47,7 +47,7 @@ function draw_atomic(scene::Scene, screen::Screen, plot::Text)
     inputs = [
         :text_blocks, :font_per_char, :glyphindices, :marker_offset, :text_rotation,
         :text_scales, :text_strokewidth, :text_strokecolor, :markerspace,
-        :text_color,
+        :text_color, :glowwidth, :glowcolor,
         :positions_in_markerspace, :projectionview, :eye_to_clip, :cam_view, :resolution,
         :transform_marker, :size_model, :unclipped_indices,
     ]
@@ -126,6 +126,9 @@ function draw_text(ctx, attr::NamedTuple)
     text_color = attr.text_color
     markerspace = attr.markerspace
     valid_indices = attr.unclipped_indices
+    glowwidth = attr.glowwidth
+    glowcolor = attr.glowcolor
+    glow_r, glow_g, glow_b, glow_a = rgbatuple(glowcolor)
     size_model = attr.size_model
     cam = (
         resolution = attr.resolution,
@@ -138,6 +141,36 @@ function draw_text(ctx, attr::NamedTuple)
         Cairo.save(ctx)  # Block save
 
         glyph_pos = positions[block_idx]
+
+        # Glow pass: build combined glyph path once, stroke with decreasing widths
+        if glowwidth > 0 && glow_a > 0
+            Cairo.save(ctx)
+            for glyph_idx in glyph_indices
+                glyph_idx in valid_indices || continue
+                glyph = glyphindices[glyph_idx]
+                glyph == 0 && continue
+                gp3 = glyph_pos .+ size_model * marker_offset[glyph_idx]
+                any(isnan, gp3) && continue
+                scale = Makie.sv_getindex(text_scales, glyph_idx)
+                rotation = Makie.sv_getindex(text_rotation, glyph_idx)
+                pos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
+                cairoface = set_ft_font(ctx, font_per_char[glyph_idx])
+                set_font_matrix(ctx, mat)
+                glyph_path(ctx, glyph, pos...)
+                cairo_font_face_destroy(cairoface)
+            end
+            n_layers = max(1, round(Int, glowwidth))
+            Cairo.set_source_rgba(ctx, glow_r, glow_g, glow_b, glow_a / n_layers)
+            Cairo.set_line_join(ctx, Cairo.CAIRO_LINE_JOIN_ROUND)
+            Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+            for i in n_layers:-1:2
+                Cairo.set_line_width(ctx, 2.0 * glowwidth * i / n_layers)
+                Cairo.stroke_preserve(ctx)
+            end
+            Cairo.set_line_width(ctx, 2.0 * glowwidth / n_layers)
+            Cairo.stroke(ctx)
+            Cairo.restore(ctx)
+        end
 
         for glyph_idx in glyph_indices
             glyph_idx in valid_indices || continue
