@@ -627,21 +627,26 @@ function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
-        computed.value[] = value
-        mark_dirty!(computed)
-        update_observables!(computed)
+        @lock computed.parent.graph.lock begin
+            computed.value[] = value
+            mark_dirty!(computed)
+            update_observables!(computed)
+        end
         return value
     end
 end
 
-function Base.setindex!(input::Input, value)
-    if is_same(input.value, value)
+Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
+function _setindex!(input::Input, value, force_update = false)
+    if !force_update && is_same(input.value, value)
         # Skip if the value is the same as before
         return value
     end
-    input.value = value
-    mark_dirty!(input)
-    update_observables!(input)
+    @lock input.graph.lock begin
+        input.value = value
+        mark_dirty!(input)
+        update_observables!(input)
+    end
     return value
 end
 
@@ -657,11 +662,11 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
-    return lock(attr.lock) do
+    @lock attr.lock begin
         _setproperty!(attr, key, value)
-        foreach(notify, attr.obs_to_update)
-        return value
+        update_observables!(attr)
     end
+    return value
 end
 
 """
