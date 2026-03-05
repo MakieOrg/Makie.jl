@@ -522,9 +522,9 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
-        x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        result_type = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
-        return result_type === :Tuple ? x : (x,)
+        val = convert_arguments(P, dim_converted...; convert_kwargs...)
+        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+        return rtype === :Tuple ? val : (val,)
     end
 
     # If dim converts didn't do anything we can use the previous result of
@@ -616,6 +616,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
     inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
+
     delete!(inputs, :cycle)
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(
@@ -658,6 +659,12 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             end
         end
     end
+
+    # this is handled through plot.kw, not plot.attributes. Keeping it in the
+    # compute graph may cause double application of user set transformations,
+    # e.g. #4789
+    delete!(inputs, :transformation)
+
     for (k, v) in inputs
         # primitives use convert_attributes, recipe plots don't
         if !haskey(attr.outputs, k)
@@ -738,6 +745,7 @@ end
 
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
         # This should keep user_args[1] unchanged, in case they get reused.
@@ -778,24 +786,33 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Scene, plot::Plot)
+# Count cycling position of `plot` among the top-level plots in `plot_iter`.
+# PlotList entries are expanded into their children so they participate in cycling.
+function _cycle_position(plot::Plot, plot_iter)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
-    for p in scene.plots
-        p === plot && return pos
-        if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
-            is_cycling = any(syms) do x
-                return haskey(p.attributes.inputs, x) && isnothing(p.attributes.inputs[x].value)
-            end
-            if is_cycling
-                pos += 1
+    for p in plot_iter
+        children = p isa PlotList ? p.plots : (p,)
+        for cp in children
+            cp === plot && return pos
+            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
+                is_cycling = any(syms) do x
+                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
+                end
+                if is_cycling
+                    pos += 1
+                end
             end
         end
     end
     # not inserted yet
     return pos
+end
+
+function plot_cycle_index(scene::Scene, plot::Plot)
+    return _cycle_position(plot, scene.plots)
 end
 
 # For recipes we use the recipes position?

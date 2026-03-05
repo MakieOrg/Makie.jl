@@ -232,7 +232,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axislinewidth, axiscolors,
-        ttextcolor, trotation, tfontsize, talign, tfont, tgap,
+        ttextcolor, trotation, tfontsize_raw, talign, tfont, tgap,
         padding,
     ) = args3d # splat to names
 
@@ -249,7 +249,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, fonts
     origin = Point{N, Float32}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
-    tfontsize = (%) .* tfontsize
+    tfontsize = (%) .* tfontsize_raw
     axisnames_size = (%) .* axisnames_size
 
     # index of the direction in which ticks and labels are drawn
