@@ -1,0 +1,1365 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../css/makie.css" rel="stylesheet"/>
+    <link href="../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://files.stork-search.net/releases/v1.4.2/basic.css" rel="stylesheet"/>
+    <title>
+      Inspecting Data
+    </title>
+    <script src="../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../..">
+                <img src="../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="..">
+                    Documentation
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../api/">
+                    API
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../news/">
+                    News
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <div class="stork-wrapper">
+              <input class="stork-input" data-stork="makiesearch" placeholder="Search documentation"/>
+              <div class="stork-output" data-stork="makiesearch-output"></div>
+            </div>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/blocks">
+                        Blocks &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/slidergrid">
+                            SliderGrid
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/blocks/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ablines">
+                            ablines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contour3d">
+                            contour3d
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/ecdf">
+                            ecdfplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hexbin">
+                            hexbin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvlines">
+                            hlines and vlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/hvspan">
+                            hspan and vspan
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/pie">
+                            pie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/qqplot">
+                            qqplot and qqnorm
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rainclouds">
+                            rainclouds
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/spy">
+                            spy
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tooltip">
+                            tooltip
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/tricontourf">
+                            tricontourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/waterfall">
+                            waterfall
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/aspect-tutorial">
+                        Aspect ratio and size control tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../tutorials/scenes">
+                        Scene tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../backends">
+                        Backends
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/cairomakie">
+                            CairoMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/glmakie">
+                            GLMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/rprmakie">
+                            RPRMakie
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../backends/wglmakie">
+                            WGLMakie
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../blocks">
+                        Blocks
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../figure_size">
+                        Exporting a Figure with physical dimensions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../headless">
+                        Headless
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a class="active" href="">
+                        Inspecting Data
+                      </a>
+                    </div>
+                    <ul class="page-content">
+                      <li>
+                        <a href="#inspecting_data">
+                          Inspecting Data
+                        </a>
+                      </li>
+                      <li>
+                        <ul>
+                          <li>
+                            <a href="#custom_text">
+                              Custom text
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#extending_datainspector">
+                              Extending
+                              <code>
+                                DataInspector
+                              </code>
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#per-plot_show_data">
+                              Per-plot
+                              <code>
+                                show_data
+                              </code>
+                            </a>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-19" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-19">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../transparency">
+                        Basic transparency
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../api">
+                    API
+                  </a>
+                </div>
+              </li>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../news">
+                    News
+                  </a>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="inspecting_data">
+            <a class="header-anchor" href="#inspecting_data">
+              Inspecting Data
+            </a>
+          </h1>
+          <p>
+            Makie provides a data inspection tool via
+            <code>
+              DataInspector(x)
+            </code>
+            where x can be a figure, axis or scene. With it you get a floating tooltip with relevant information for various plots by hovering over one of its elements.
+          </p>
+          <p>
+            By default the inspector will be able to pick any plot other than
+            <code>
+              text
+            </code>
+            and
+            <code>
+              volume
+            </code>
+            based plots. If you wish to ignore a plot, you can set its attribute
+            <code>
+              plot.inspectable[] = false
+            </code>
+            . With that the next closest plot (in range) will be picked.
+          </p>
+          <div class="docstring">
+            <div class="doc-header" id="DataInspector">
+              <a href="#DataInspector">
+                DataInspector
+              </a>
+            </div>
+            <div class="doc-content">
+              <pre><code>DataInspector(figure_axis_or_scene = current_figure(); kwargs...)</code>              </pre>
+              <p>
+                Creates a data inspector which will show relevant information in a tooltip when you hover over a plot.
+              </p>
+              <p>
+                This functionality can eb disabled on a per-plot basis by setting
+                <code>
+                  plot.inspectable[] = false
+                </code>
+                . The displayed text can be adjusted by setting
+                <code>
+                  plot.inspector_label
+                </code>
+                to a function
+                <code>
+                  (plot, index, position) -&gt; "my_label"
+                </code>
+                returning a label. See Makie documentation for more detail.
+              </p>
+              <h3>
+                Keyword Arguments:
+              </h3>
+              <ul>
+                <li>
+                  <p>
+                    <code>
+                      range = 10
+                    </code>
+                    : Controls the snapping range for selecting an element of a plot.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      priority = 100
+                    </code>
+                    : The priority of creating a tooltip on a mouse movement or   scrolling event.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      enabled = true
+                    </code>
+                    : Disables inspection of plots when set to false. Can also be   adjusted with
+                    <code>
+                      enable!(inspector)
+                    </code>
+                    and
+                    <code>
+                      disable!(inspector)
+                    </code>
+                    .
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      indicator_color = :red
+                    </code>
+                    : Color of the selection indicator.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      indicator_linewidth = 2
+                    </code>
+                    : Linewidth of the selection indicator.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      indicator_linestyle = nothing
+                    </code>
+                    : Linestyle of the selection indicator
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      enable_indicators = true)
+                    </code>
+                    : Enables or disables indicators
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    <code>
+                      depth = 9e3
+                    </code>
+                    : Depth value of the tooltip. This should be high so that the   tooltip is always in front.
+                  </p>
+                </li>
+                <li>
+                  <p>
+                    and all attributes from
+                    <code>
+                      Tooltip
+                    </code>
+                  </p>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <h2 id="custom_text">
+            <a class="header-anchor" href="#custom_text">
+              Custom text
+            </a>
+          </h2>
+          <p>
+            The text that
+            <code>
+              DataInspector
+            </code>
+            displays can be adjusted on a per-plot basis  through the
+            <code>
+              inspector_label
+            </code>
+            attribute. It should hold a function
+            <code>
+              (plot, index, position) -&gt; "my_string"
+            </code>
+            , where
+            <code>
+              plot
+            </code>
+            is the plot whose label is getting adjusted,
+            <code>
+              index
+            </code>
+            is the index returned by
+            <code>
+              pick
+            </code>
+            (see events  documentation) and
+            <code>
+              position
+            </code>
+            is the position of the inspected object.
+          </p>
+          <pre><code class="language-julia">lbls = ["Type A", "Type B"]
+fig, ax, p = scatter(
+    rand(10), color = rand(1:2, 10), colormap = [:red, :blue],
+    inspector_label = (self, i, p) -&gt; lbls[self.color[][i]]
+)
+DataInspector(fig)
+fig</code>          </pre>
+          <h2 id="extending_datainspector">
+            <a class="header-anchor" href="#extending_datainspector">
+              Extending
+              <code>
+                DataInspector
+              </code>
+            </a>
+          </h2>
+          <p>
+            The inspector implements tooltips for primitive plots and a few non-primitive  plots (i.e. recipes). All other plots fall back to tooltips of one of their  child plots.
+          </p>
+          <p>
+            For example a
+            <code>
+              poly
+            </code>
+            consists of a
+            <code>
+              mesh
+            </code>
+            and a
+            <code>
+              wireframe
+            </code>
+            plot, where
+            <code>
+              wireframe
+            </code>
+            is implemented as
+            <code>
+              lines
+            </code>
+            . Since neither
+            <code>
+              poly
+            </code>
+            nor
+            <code>
+              wireframe
+            </code>
+            has  a specialized
+            <code>
+              show_data
+            </code>
+            method, DataInspector uses either
+            <code>
+              mesh
+            </code>
+            or
+            <code>
+              lines
+            </code>
+            to generate the tooltip.
+          </p>
+          <p>
+            While this means that most plots have a tooltip it also means many may not have  a fitting one. If you wish to implement a more fitting tooltip for a new plot  type you can do so by extending
+          </p>
+          <pre><code class="language-julia">function show_data(inspector::DataInspector, my_plot::MyPlot, idx, primitive_child::SomePrimitive)
+    ...
+end</code>          </pre>
+          <p>
+            Here
+            <code>
+              my_plot
+            </code>
+            is the plot you want to create a custom tooltip for,
+            <code>
+              primitive_child
+            </code>
+            is one of the primitives your plot is made from (scatter,  text, lines, linesegments, mesh, surface, volume, image or heatmap) and
+            <code>
+              idx
+            </code>
+            is the index into that primitive plot. The latter two are the result from
+            <code>
+              pick_sorted
+            </code>
+            at the current mouseposition. In general you will need to adjust
+            <code>
+              idx
+            </code>
+            to be useful for
+            <code>
+              MyPlot
+            </code>
+            .
+          </p>
+          <p>
+            Let's take a look at the
+            <code>
+              BarPlot
+            </code>
+            method, which also powers
+            <code>
+              hist
+            </code>
+            . It contains two primitive plots -
+            <code>
+              Mesh
+            </code>
+            and
+            <code>
+              Lines
+            </code>
+            . The
+            <code>
+              idx
+            </code>
+            from picking a
+            <code>
+              Mesh
+            </code>
+            is based on vertices, of which there are four per rectangle. From
+            <code>
+              Lines
+            </code>
+            we get an index based on the end point of a line. To draw the outline of a rectangle as is done in barplot, we need 5 points and a separator totaling 6.  We thus implement
+          </p>
+          <pre><code class="language-julia">import Makie: show_data
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Lines)
+    return show_barplot(inspector, plot, div(idx-1, 6)+1)
+end
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
+    return show_barplot(inspector, plot, div(idx-1, 4)+1)
+end</code>          </pre>
+          <p>
+            to map the primitive
+            <code>
+              idx
+            </code>
+            to one identifying the bars in
+            <code>
+              BarPlot
+            </code>
+            . With this  we can now get the position of the hovered bar with
+            <code>
+              plot[1][][idx]
+            </code>
+            . To align  the tooltip to the selection we need to compute the relevant position in screen  space and update the tooltip position.
+          </p>
+          <pre><code class="language-julia">using Makie: parent_scene, shift_project, update_tooltip_alignment!, position2string
+
+function show_barplot(inspector::DataInspector, plot::BarPlot, idx)
+    # Get the tooltip plot
+    tt = inspector.plot
+
+    # Get the scene BarPlot lives in
+    scene = parent_scene(plot)
+
+    # Get the hovered data-space position
+    pos = plot[1][][idx]
+    # project to screen space and shift it to be correct on the root scene
+    proj_pos = shift_project(scene, to_ndim(Point3f, pos, 0))
+    # anchor the tooltip at the projected position
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    # Update the final text of the tooltip.
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    else
+        tt.text[] = position2string(pos)
+    end
+    # Show the tooltip
+    tt.visible[] = true
+
+    # return true to indicate that we have updated the tooltip
+    return true
+end</code>          </pre>
+          <p>
+            Next we want to mark the rectangle we are hovering. In this case we can use the rectangles which
+            <code>
+              BarPlot
+            </code>
+            passes to
+            <code>
+              Poly
+            </code>
+            , i.e.
+            <code>
+              plot.plots[1][1][][idx]
+            </code>
+            . The
+            <code>
+              DataInspector
+            </code>
+            contains some functionality for keeping track of temporary plots, so we can plot the indicator to the same
+            <code>
+              scene
+            </code>
+            that
+            <code>
+              BarPlot
+            </code>
+            uses. Doing so results in
+          </p>
+          <pre><code class="language-julia">using Makie:
+    parent_scene, shift_project, update_tooltip_alignment!, position2string,
+    clear_temporary_plots!
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx)
+    # inspector.attributes holds some attributes relevant to indicators and is
+    # used as a cache for indicator observables
+    a = inspector.attributes
+    tt = inspector.plot
+    scene = parent_scene(plot)
+
+    pos = plot[1][][idx]
+    proj_pos = shift_project(scene, plot, to_ndim(Point3f, pos, 0))
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    # We only want to mark the rectangle if that setting is enabled
+    if a.enable_indicators[]
+        # Get the relevant rectangle
+        bbox = plot.plots[1][1][][idx]
+
+        # If we haven't yet created an indicator create it
+        if inspector.selection != plot
+            # clear old indicators
+            clear_temporary_plots!(inspector, plot)
+
+            # Create the new indicator using some settings from `DataInspector`.
+            p = wireframe!(
+                scene, bbox, model = plot.model[], color = a.indicator_color,
+                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
+                visible = a.indicator_visible, inspectable = false
+            )
+
+            # tooltips are pushed forward a certain amount to make sure they're
+            # drown on top of other things. This indicator should also be pushed
+            # forward that much
+            translate!(p, Vec3f(0, 0, a.depth[]))
+
+            # Keep track of the indicator plot
+            push!(inspector.temp_plots, p)
+
+        # If we have already created an indicator plot we just need to update 
+        # it. In this case we only need to update the rectangle.
+        elseif !isempty(inspector.temp_plots)
+            p = inspector.temp_plots[1]
+            p[1][] = bbox
+        end
+
+        # Moving away from a plot will automatically set this to false, so we 
+        # always need to set it to true.
+        a.indicator_visible[] = true
+    end
+
+    if haskey(plot, :inspector_label)
+        tt.text[] = plot[:inspector_label][](plot, idx, pos)
+    else
+        tt.text[] = position2string(pos)
+    end
+    tt.visible[] = true
+
+    return true
+end</code>          </pre>
+          <p>
+            which finishes the implementation of a custom tooltip for
+            <code>
+              BarPlot
+            </code>
+            .
+          </p>
+          <h2 id="per-plot_show_data">
+            <a class="header-anchor" href="#per-plot_show_data">
+              Per-plot
+              <code>
+                show_data
+              </code>
+            </a>
+          </h2>
+          <p>
+            It is also possible to replace a call to
+            <code>
+              show_data
+            </code>
+            on a per-plot basis via  the
+            <code>
+              inspector_hover
+            </code>
+            attribute. DataInspector assumes this to be a function
+            <code>
+              (inspector, this_plot, index, hovered_child) -&gt; Bool
+            </code>
+            . You can also set up  custom clean up with
+            <code>
+              plot.inspector_clear = (inspector, plot) -&gt; ...
+            </code>
+            which is  called whenever the plot is deselected.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: December 02, 2022. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.18.4, GLMakie: v0.7.4, CairoMakie: v0.9.4, WGLMakie: v0.7.4
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../libs/navbar.js"></script>
+    <script src="https://files.stork-search.net/releases/v1.4.2/stork.js"></script>
+    <img id="stork-library-path-placeholder" src="../../libs/stork" style="display:none"/>
+    <script>
+      storkfolder = document.querySelector("#stork-library-path-placeholder").src;
+      stork.register("makiesearch", `${storkfolder}/index.st`);
+        </script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>

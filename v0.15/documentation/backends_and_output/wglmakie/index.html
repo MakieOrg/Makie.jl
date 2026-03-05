@@ -1,0 +1,1149 @@
+<!DOCTYPE html><HTML lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <link href="../../../libs/highlight/github.min.css" rel="stylesheet"/>
+    <link href="../../../css/franklin.css" rel="stylesheet"/>
+    <link href="../../../css/minimal-mistakes.css" rel="stylesheet"/>
+    <link href="../../../css/makie.css" rel="stylesheet"/>
+    <link href="../../../assets/icon_transparent.png" rel="icon"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/>
+    <title>
+      JSServe and WGLMakie
+    </title>
+    <script src="../../../siteinfo.js" type="text/javascript"></script>
+    <script src="../../../libs/warner.js" type="text/javascript"></script>
+    <script src="/versions.js" type="text/javascript"></script>
+  </head>
+  <body class="layout--single">
+    <div class="site-container">
+      <div class="masthead">
+        <div class="masthead__inner-wrap">
+          <div class="masthead__menu">
+            <nav class="greedy-nav" id="site-nav">
+              <a class="title-icon" href="../../..">
+                <img src="../../../assets/makie_logo_transparent.svg"/>
+              </a>
+              <ul class="visible-links">
+                <li class="masthead__menu-item">
+                  <a href="https://github.com/JuliaPlots/Makie.jl">
+                    <img class="masthead-icon" src="../../../assets/GitHub-Mark-64px.png"/>
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../examples/">
+                    Examples
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../../../tutorials/">
+                    Tutorials
+                  </a>
+                </li>
+                <li class="masthead__menu-item">
+                  <a href="../..">
+                    Documentation
+                  </a>
+                </li>
+              </ul>
+              <button class="greedy-nav__toggle" type="button">
+                <span class="visually-hidden">
+                  Toggle menu
+                </span>
+                <div class="navicon"></div>
+              </button>
+              <ul class="hidden-links hidden"></ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div id="main" role="main">
+        <div id="overlay"></div>
+        <div id="navbar-container">
+          <div id="navbar">
+            <form action="../../../search/index.html" id="lunrSearchForm" name="lunrSearchForm">
+              <input class="search-input" name="q" placeholder="Search docs" type="text"/>
+            </form>
+            <h1>
+              Navigation
+            </h1>
+            <ul>
+              <li>
+                <div class="tocitem-container">
+                  <a href="../../..">
+                    Home
+                  </a>
+                </div>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-2" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-2">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../examples">
+                    Examples
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-1">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../examples/layoutables">
+                        Layoutables &amp; Widgets
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/axis">
+                            Axis
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/axis3">
+                            Axis3
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/box">
+                            Box
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/button">
+                            Button
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/colorbar">
+                            Colorbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/gridlayout">
+                            GridLayout
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/intervalslider">
+                            IntervalSlider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/label">
+                            Label
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/legend">
+                            Legend
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/lscene">
+                            LScene
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/menu">
+                            Menu
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/slider">
+                            Slider
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/textbox">
+                            Textbox
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/layoutables/toggle">
+                            Toggle
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-2-2">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../../examples/plotting_functions">
+                        Plotting functions
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/abline">
+                            abline!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/arrows">
+                            arrows
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/band">
+                            band
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/barplot">
+                            barplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/boxplot">
+                            boxplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/contour">
+                            contour
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/contourf">
+                            contourf
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/crossbar">
+                            crossbar
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/density">
+                            density
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/errorbars">
+                            errorbars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/heatmap">
+                            heatmap
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/hist">
+                            hist
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/hvlines">
+                            hlines! and vlines!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/hvspan">
+                            hspan! and vspan!
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/image">
+                            image
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/lines">
+                            lines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/linesegments">
+                            linesegments
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/mesh">
+                            mesh
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/meshscatter">
+                            meshscatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/poly">
+                            poly
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/rangebars">
+                            rangebars
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/scatter">
+                            scatter
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/scatterlines">
+                            scatterlines
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/series">
+                            series
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/stairs">
+                            stairs
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/stem">
+                            stem
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/streamplot">
+                            streamplot
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/surface">
+                            surface
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/text">
+                            text
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/violin">
+                            violin
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/volume">
+                            volume
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/volumeslices">
+                            volumeslices
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../../examples/plotting_functions/wireframe">
+                            wireframe
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input class="collapse-toggle" id="menuitem-3" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-3">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../../../tutorials">
+                    Tutorials
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/basic-tutorial">
+                        Basic Tutorial
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../../tutorials/layout-tutorial">
+                        Layout Tutorial
+                      </a>
+                    </div>
+                  </li>
+                </ul>
+              </li>
+              <li>
+                <input checked="" class="collapse-toggle" id="menuitem-4" type="checkbox"/>
+                <div class="tocitem-container">
+                  <label class="tocexpander" for="menuitem-4">
+                    <i class="docs-chevron"></i>
+                  </label>
+                  <a href="../..">
+                    Documentation
+                  </a>
+                </div>
+                <ul>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../api_reference">
+                        API reference
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../animation">
+                        Animations
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input checked="" class="collapse-toggle" id="menuitem-4-3" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-3">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="..">
+                        Backends &amp; Output
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../figure_size">
+                            Exporting a Figure with physical dimensions
+                          </a>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="tocitem-container">
+                          <a class="active" href="">
+                            JSServe and WGLMakie
+                          </a>
+                        </div>
+                        <ul class="page-content">
+                          <li>
+                            <a href="#jsserve_and_wglmakie">
+                              JSServe and WGLMakie
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#record_a_statemap">
+                                  Record a statemap
+                                </a>
+                              </li>
+                              <li>
+                                <a href="#execute_javascript_directly">
+                                  Execute Javascript directly
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <a href="#plutoijulia">
+                              Pluto/IJulia
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#styling">
+                                  Styling
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                          <li>
+                            <a href="#export">
+                              Export
+                            </a>
+                          </li>
+                          <li>
+                            <a href="#troubleshooting">
+                              Troubleshooting
+                            </a>
+                          </li>
+                          <li>
+                            <ul>
+                              <li>
+                                <a href="#plots_dont_display_in_safari">
+                                  Plots don't display in Safari
+                                </a>
+                              </li>
+                            </ul>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../cameras">
+                        Cameras
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../colors">
+                        Colors
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../events">
+                        Events
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../faq">
+                        Frequently Asked Questions
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../figure">
+                        Figures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../inspector">
+                        Inspecting Data
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../latex">
+                        LaTeX
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../layoutables">
+                        Layoutables
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../layouting">
+                        How layouts work
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../lighting">
+                        Lighting
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../news">
+                        News
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../nodes">
+                        Observables &amp; Interaction
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../plot_method_signatures">
+                        Plot Method Signatures
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../recipes">
+                        Plot Recipes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../remote">
+                        Remote servers
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="tocitem-container">
+                      <a href="../../scenes">
+                        Scenes
+                      </a>
+                    </div>
+                  </li>
+                  <li>
+                    <input class="collapse-toggle" id="menuitem-4-20" type="checkbox"/>
+                    <div class="tocitem-container">
+                      <label class="tocexpander" for="menuitem-4-20">
+                        <i class="docs-chevron"></i>
+                      </label>
+                      <a href="../../theming">
+                        Theming
+                      </a>
+                    </div>
+                    <ul>
+                      <li>
+                        <div class="tocitem-container">
+                          <a href="../../theming/predefined_themes">
+                            Predefined themes
+                          </a>
+                        </div>
+                      </li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="franklin-content">
+          <h1 id="jsserve_and_wglmakie">
+            <a class="header-anchor" href="#jsserve_and_wglmakie">
+              JSServe and WGLMakie
+            </a>
+          </h1>
+          <p>
+            You can use JSServe and WGLMakie in Pluto, IJulia, Webpages and Documenter to create interactive apps and dashboards, serve them on live webpages, or export them to static HTML.
+          </p>
+          <p>
+            This tutorial will run through the different modes and what kind of limitations to expect.
+          </p>
+          <p>
+            First, one should use the new Page mode for anything that displays multiple outputs, like Pluto/IJulia/Documenter. This creates a single entry point, to connect to the Julia process and load dependencies. For Documenter, the page needs to be set to
+            <code>
+              exportable=true, offline=true
+            </code>
+            . Exportable has the effect of inlining all data &amp; js dependencies, so that everything can be loaded in a single HTML object.
+            <code>
+              offline=true
+            </code>
+            will make the Page not even try to connect to a running Julia process, which makes sense for the kind of static export we do in Documenter.
+          </p>
+          <pre><code class="language-julia">using JSServe
+Page(exportable=true, offline=true)</code>          </pre>
+          <p>
+            After the page got displayed by the frontend, we can start with creating plots and JSServe Apps:
+          </p>
+          <pre><code class="language-julia">using WGLMakie
+WGLMakie.activate!()
+# Set the default resolution to something that fits the Documenter theme
+set_theme!(resolution=(800, 400))
+scatter(1:4, color=1:4)</code>          </pre>
+          <p>
+            As you can see, the output is completely static, because we don't have a running Julia server, as it would be the case with e.g. Pluto. To make the plot interactive, we will need to write more parts of WGLMakie in JS, which is an ongoing effort. As you can see, the interactivity already keeps working for 3D:
+          </p>
+          <pre><code class="language-julia">N = 60
+function xy_data(x, y)
+    r = sqrt(x^2 + y^2)
+    r == 0.0 ? 1f0 : (sin(r)/r)
+end
+l = range(-10, stop = 10, length = N)
+z = Float32[xy_data(x, y) for x in l, y in l]
+surface(
+    -1..1, -1..1, z,
+    colormap = :Spectral
+)</code>          </pre>
+          <p>
+            There are a couple of ways to keep interacting with Plots in a static export.
+          </p>
+          <h2 id="record_a_statemap">
+            <a class="header-anchor" href="#record_a_statemap">
+              Record a statemap
+            </a>
+          </h2>
+          <p>
+            JSServe allows to record a statemap for all widgets, that satisfy the following interface:
+          </p>
+          <pre><code class="language-julia"># must be true to be found inside the DOM
+is_widget(x) = true
+# Updating the widget isn't dependant on any other state (only thing supported right now)
+is_independant(x) = true
+# The values a widget can iterate
+function value_range end
+# updating the widget with a certain value (usually an observable)
+function update_value!(x, value) end</code>          </pre>
+          <p>
+            Currently, only sliders overload the interface:
+          </p>
+          <pre><code class="language-julia">using Observables
+
+App() do session::Session
+    n = 10
+    index_slider = Slider(1:n)
+    volume = rand(n, n, n)
+    slice = map(index_slider) do idx
+        return volume[:, :, idx]
+    end
+    fig = Figure()
+    ax, cplot = contour(fig[1, 1], volume)
+    rectplot = linesegments!(ax, Rect(-1, -1, 12, 12), linewidth=2, color=:red)
+    on(index_slider) do idx
+        translate!(rectplot, 0,0,idx)
+    end
+    heatmap(fig[1, 2], slice)
+    slider = DOM.div("z-index: ", index_slider, index_slider.value)
+    return JSServe.record_states(session, DOM.div(slider, fig))
+end</code>          </pre>
+          <h2 id="execute_javascript_directly">
+            <a class="header-anchor" href="#execute_javascript_directly">
+              Execute Javascript directly
+            </a>
+          </h2>
+          <p>
+            JSServe makes it easy to build whole HTML and JS applications. You can for example directly register javascript function that get run on change.
+          </p>
+          <pre><code class="language-julia">using JSServe: onjs
+
+app = App() do session::Session
+    s1 = Slider(1:100)
+    slider_val = DOM.p(s1[]) # initialize with current value
+    # call the `on_update` function whenever s1.value changes in JS:
+    onjs(session, s1.value, js"""function on_update(new_value) {
+        //interpolating of DOM nodes and other Julia values work mostly as expected:
+        const p_element = $(slider_val)
+        p_element.innerText = new_value
+    }
+    """)
+
+    return DOM.div("slider 1: ", s1, slider_val)
+end</code>          </pre>
+          <p>
+            One can also interpolate plots into JS and update those via JS. The problem is, that there isn't an amazing interface yet. The returned object is directly a THREE object, with all plot attributes converted into Javascript types. The good news is, all attributes should be in either
+            <code>
+              three_scene.material.uniforms
+            </code>
+            , or
+            <code>
+              three_scene.geometry.attributes
+            </code>
+            . Going forward, we should create an API in WGLMakie, that makes it as easy as in Julia:
+            <code>
+              plot.attribute = value
+            </code>
+            . But while this isn't in place, logging the the returned object makes it pretty easy to figure out what to do - btw, the JS console + logging is amazing and makes it very easy to play around with the object once logged.
+          </p>
+          <pre><code class="language-julia">using JSServe: onjs, evaljs, on_document_load
+
+app = App() do session::Session
+    s1 = Slider(1:100)
+    slider_val = DOM.p(s1[]) # initialize with current value
+
+    fig, ax, splot = scatter(1:4)
+
+    # With on_document_load one can run JS after everything got loaded.
+    # This is an alternative to `evaljs`, which we can't use here,
+    # since it gets run asap, which means the plots won't be found yet.
+
+    on_document_load(session, js"""
+        const plots = $(splot)
+        const scatter_plot = plots[0]
+        // open the console with ctr+shift+i, to inspect the values
+        // tip - you can right click on the log and store the actual variable as a global, and directly interact with it to change the plot.
+        console.log(scatter_plot)
+        console.log(scatter_plot.material.uniforms)
+        console.log(scatter_plot.geometry.attributes)
+    """)
+
+    # with the above, we can find out that the positions are stored in `offset`
+    # (*sigh*, this is because threejs special cases `position` attributes so it can't be used)
+    # Now, lets go and change them when using the slider :)
+    onjs(session, s1.value, js"""function on_update(new_value) {
+        const plots = $(splot)
+        const scatter_plot = plots[0]
+
+        // change first point x + y value
+        scatter_plot.geometry.attributes.offset.array[0] = (new_value/100) * 4
+        scatter_plot.geometry.attributes.offset.array[1] = (new_value/100) * 4
+        // this always needs to be set of geometry attributes after an update
+        scatter_plot.geometry.attributes.offset.needsUpdate = true
+    }
+    """)
+    # and for got measures, add a slider to change the color:
+    color_slider = Slider(LinRange(0, 1, 100))
+    onjs(session, color_slider.value, js"""function on_update(hue) {
+        const plot = $(splot)[0]
+        const color = new THREE.Color()
+        color.setHSL(hue, 1.0, 0.5)
+        plot.material.uniforms.color.value.x = color.r
+        plot.material.uniforms.color.value.y = color.g
+        plot.material.uniforms.color.value.z = color.b
+    }""")
+
+    markersize = Slider(1:100)
+    onjs(session, markersize.value, js"""function on_update(size) {
+        const plot = $(splot)[0]
+        plot.material.uniforms.markersize.value.x = size
+        plot.material.uniforms.markersize.value.y = size
+    }""")
+    return DOM.div(s1, color_slider, markersize, fig)
+end</code>          </pre>
+          <p>
+            This summarizes the current state of interactivity with WGLMakie inside static pages.
+          </p>
+          <h1 id="plutoijulia">
+            <a class="header-anchor" href="#plutoijulia">
+              Pluto/IJulia
+            </a>
+          </h1>
+          <p>
+            Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running. Which brings us to setting up Pluto/IJulia sessions! The return value of your first cell must be the return value of the function
+            <code>
+              Page
+            </code>
+            . For example, your first cell can be
+          </p>
+          <pre><code class="language-julia">begin
+	using JSServe
+	Page()
+end</code>          </pre>
+          <p>
+            As is common with files meant to be shared, you might wish to set up a temporary directory so as to not pollute other people's environment. The following code will also be a valid first cell.
+          </p>
+          <pre><code class="language-julia">begin
+	using Pkg
+	Pkg.activate(mktempdir())
+
+	Pkg.add("JSServe")
+	using JSServe
+	Page()
+end</code>          </pre>
+          <p>
+            If you're accessing the notebook from another PC, you must set:
+          </p>
+          <pre><code class="language-julia">begin
+	using JSServe
+	Page(listen_url="0.0.0.0")
+end</code>          </pre>
+          <p>
+            For more advanced setups consult the
+            <code>
+              ?Page
+            </code>
+            docs and
+            <code>
+              JSServe.configure_server!
+            </code>
+            .
+          </p>
+          <h2 id="styling">
+            <a class="header-anchor" href="#styling">
+              Styling
+            </a>
+          </h2>
+          <p>
+            You may have noticed, styling isn't really amazing right now. The good news is, that one can use the whole mighty power of the CSS/HTML universe. If it wasn't clear so far, JSServe allows to load arbitrary css, and
+            <code>
+              DOM.xxx
+            </code>
+            wraps all existing HTML tags.
+          </p>
+          <pre><code class="language-julia">using Colors
+using JSServe: rows
+
+App() do session::Session
+
+    hue_slider = Slider(0:360)
+    color_swatch = DOM.div(class="h-6 w-6 p-2 m-2 rounded shadow")
+
+    onjs(session, hue_slider.value, js"""function (hue){
+        $(color_swatch).style.backgroundColor = "hsl(" + hue + ",60%,50%)"
+    }""")
+
+    return DOM.div(JSServe.TailwindCSS, rows(hue_slider, color_swatch))
+end</code>          </pre>
+          <p>
+            Tailwind is quite a amazing and has a great documentation especially for CSS beginners: https://tailwindcss.com/docs/
+          </p>
+          <p>
+            Note, that JSServe.TailwindCSS is nothing but:
+          </p>
+          <pre><code class="language-julia">TailwindCSS = JSServe.Asset("/path/to/tailwind.min.css")</code>          </pre>
+          <p>
+            So any other CSS file can be used.
+          </p>
+          <p>
+            It's also pretty easy to make reusable blocks from styled elements. E.g. the
+            <code>
+              rows
+            </code>
+            function above is nothing but:
+          </p>
+          <pre><code class="language-julia">rows(args...; class="") = DOM.div(args..., class=class * " flex flex-row")</code>          </pre>
+          <p>
+            It would be more correct to define it as:
+          </p>
+          <pre><code class="language-julia">rows(args...; class="") = DOM.div(JSServe.TailwindCSS, args..., class=class * " flex flex-row")</code>          </pre>
+          <p>
+            JSServe will then make sure, that
+            <code>
+              JSServe.TailwindCSS
+            </code>
+            is loaded, and will only load it once!
+          </p>
+          <p>
+            Finally, lets create a styled, reusable card componenent:
+          </p>
+          <pre><code class="language-julia">using Markdown
+
+struct GridCard
+    elements::Any
+end
+
+GridCard(elements...) = GridCard(elements)
+
+function JSServe.jsrender(card::GridCard)
+    return DOM.div(JSServe.TailwindCSS, card.elements..., class="rounded-lg p-2 m-2 shadow-lg grid auto-cols-max grid-cols-2 gap-4")
+end
+
+App() do session::Session
+    # We can now use this wherever we want:
+    fig = Figure(resolution=(200, 200))
+    contour(fig[1,1], rand(4,4))
+    card = GridCard(
+        Slider(1:100),
+        DOM.h1("hello"),
+        DOM.img(src="https://julialang.org/assets/infra/logo.svg"),
+        fig
+    )
+    # Markdown creates a DOM as well, and you can interpolate
+    # arbitrary jsrender'able elements in there:
+    return md"""
+
+    # Wow, Markdown works as well?
+
+    $(card)
+
+    """
+end</code>          </pre>
+          <p>
+            Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with JSServe + WGLMakie.
+          </p>
+          <h1 id="export">
+            <a class="header-anchor" href="#export">
+              Export
+            </a>
+          </h1>
+          <p>
+            Documenter just renders the plots + Page as html, so if you want to inline WGLMakie/JSServe objects into your own page, one can just use something like this:
+          </p>
+          <pre><code class="language-julia">using WGLMakie, JSServe
+
+using WGLMakie, JSServe
+WGLMakie.activate!()
+
+open("index.html", "w") do io
+    println(io, """
+    &lt;html&gt;
+        &lt;head&gt;
+        &lt;/head&gt;
+        &lt;body&gt;
+    """)
+    # before doing anything else,
+    # make sure the Page setup code gets rendered as HTML
+    show(io, MIME"text/html"(), Page(exportable=true, offline=true))
+    # Then, you can just inline plots or whatever you want :)
+    show(io, MIME"text/html"(), scatter(1:4))
+    show(io, MIME"text/html"(), surface(rand(4, 4)))
+    # or anything else from JSServe, or that can be displayed as html:
+    show(io, MIME"text/html"(), JSServe.Slider(1:3))
+    println(io, """
+        &lt;/body&gt;
+    &lt;/html&gt;
+    """)
+end</code>          </pre>
+          <h1 id="troubleshooting">
+            <a class="header-anchor" href="#troubleshooting">
+              Troubleshooting
+            </a>
+          </h1>
+          <h2 id="plots_dont_display_in_safari">
+            <a class="header-anchor" href="#plots_dont_display_in_safari">
+              Plots don't display in Safari
+            </a>
+          </h2>
+          <p>
+            Safari users may need to
+            <a href="https://discussions.apple.com/thread/8655829">
+              enable
+            </a>
+            WebGL.
+          </p>
+          <div class="page-foot">
+            <div class="copyright">
+              © Makie.jl. Last modified: October 16, 2021. Website built with
+              <a href="https://github.com/tlienart/Franklin.jl">
+                Franklin.jl
+              </a>
+              and the
+              <a href="https://julialang.org">
+                Julia programming language
+              </a>
+              .
+              <p>
+                These docs were autogenerated using Makie: v0.15.3, GLMakie: v0.4.7, CairoMakie: v0.6.6, WGLMakie: v0.4.7
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="page__footer">
+        <footer>
+          <div class="page__footer-follow">
+            <ul class="social-icons">
+              <li>
+                <a href="https://twitter.com/MakiePlots" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-twitter-square"></i>
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a href="https://github.com/JuliaPlots/Makie.jl" rel="nofollow noopener noreferrer">
+                  <i aria-hidden="true" class="fab fa-fw fa-github"></i>
+                  GitHub
+                </a>
+              </li>
+            </ul>
+          </div>
+          <div class="page__footer-copyright">
+            © Makie.jl. Powered by
+            <a href="https://github.com/tlienart/Franklin.jl">
+              Franklin
+            </a>
+            &amp;
+            <a href="https://mademistakes.com/work/minimal-mistakes-jekyll-theme/" rel="nofollow">
+              Minimal Mistakes
+            </a>
+            .
+          </div>
+        </footer>
+      </div>
+    </div>
+    <script src="../../../libs/navbar.js"></script>
+    <script src="../../../libs/lunr/lunr.min.js"></script>
+    <script src="../../../libs/lunr/lunr_index.js"></script>
+    <script src="../../../libs/lunr/lunrclient.min.js"></script>
+    <script crossorigin="anonymous" defer="" integrity="sha384-DJ25uNYET2XCl5ZF++U8eNxPWqcKohUUBUpKGlNLMchM7q4Wjg2CUpjHLaL8yYPH" src="https://use.fontawesome.com/releases/v5.8.2/js/all.js"></script>
+    <script src="../../../libs/highlight/highlight.pack.js"></script>
+    <script>hljs.initHighlightingOnLoad();hljs.configure({tabReplace: '    '});    </script>
+    <script data-cf-beacon="{&quot;token&quot;: &quot;1d64fe1c797349838c82c16b692ff9b2&quot;}" defer="" src="https://static.cloudflareinsights.com/beacon.min.js"></script>
+  </body>
+</HTML>
