@@ -22,7 +22,16 @@ It is most commonly used as part of the `boxplot`.
     orientation = :vertical
 
     # box and dodging
-    "(Unscaled) width of the box."
+    """
+    Sets the (unscaled) width of the crossbar. When `dodge` is used, width can be a
+    single value or a vector of `n_dodge` values. As a single value it specifies the
+    combined width of all dodged elements in a single category/x value. As multiple values
+    it specifies the relative width of each of the dodged elements times the total width:
+    that is, `mean(width)` will comprise the full width of each category/x value. Variable
+    dodge widths can be useful when combining multiple elements (e.g. crossbars and violins)
+    in the same figure at different dodge positions: each plot element would correspond to a
+    distinct dodge index in this case.
+    """
     width = automatic
     """
     Dodge can be used to separate crossbars drawn at the same `x` positions. For this
@@ -38,7 +47,11 @@ It is most commonly used as part of the `boxplot`.
     n_dodge = automatic
     "Size of the gap between crossbars. The modified width is `width * (1 - gap)`."
     gap = 0.2
-    "Sets the gap between dodged crossbars relative to the size of them."
+    """
+    Sets the gap between dodged crossbars relative to their size. Can be a single
+    number or `n_dodge - 1` numbers to indicate a different gap between
+    each dodged element.
+    """
     dodge_gap = 0.03
 
     "Sets the outline linewidth of crossbars."
