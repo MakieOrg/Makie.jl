@@ -998,7 +998,7 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; merge = false, unique = false, kwargs...)
+    Legend(fig_or_scene, axis::Union{AbstractAxis, AbstractScene, AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}}}, title = nothing; merge = false, unique = false, kwargs...)
 
 Create a single-group legend with all plots from `axis` that have the
 attribute `label` set.
