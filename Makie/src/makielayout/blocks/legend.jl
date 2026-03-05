@@ -1008,7 +1008,7 @@ If `unique` is `true`, all plot objects with the same plot type and label will b
 """
 function Legend(
     fig_or_scene,
-    axes::AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}},
+    axis::Union{AbstractAxis, AbstractScene, AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}}},
     title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
@@ -1016,7 +1016,7 @@ function Legend(
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots = filter(reduce(vcat, get_plots.(ax), init=AbstractPlot[])) do plot
+    lplots_init = filter(reduce(vcat, get_plots.(ax), init=AbstractPlot[])) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
