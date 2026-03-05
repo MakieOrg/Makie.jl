@@ -281,9 +281,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2d}
-    finallimits::Observable{Rect2d}
-    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -786,7 +783,8 @@ end
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
         if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+            ax.localxlimits[] = (left(newlims), right(newlims))
+            ax.localylimits[] = (bottom(newlims), top(newlims))
         end
         return
     end

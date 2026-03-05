@@ -59,13 +59,12 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
+function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
-    tlims = Makie.apply_transform(t, lims)
-    camera = scene.camera
+    tlims = Makie.apply_transform(tf, lims)
 
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
@@ -74,14 +73,11 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
-    projection = Makie.orthographicprojection(
+    return Makie.orthographicprojection(
         Float32,
         leftright...,
         bottomtop..., nearclip, farclip
     )
-
-    Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
-    return
 end
 
 function calculate_title_position(area, titlegap, align, xaxisposition, xaxisprotrusion, subtitle_height)
@@ -124,26 +120,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    # initialize either with user limits, or pick defaults based on scales
-    # so that we don't immediately error
-    targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values = true)
-    setfield!(ax, :targetlimits, targetlimits)
-    setfield!(ax, :finallimits, finallimits)
-
-    on(blockscene, targetlimits) do lims
-        # this should validate the targetlimits before anything else happens with them
-        # so there should be nothing before this lifting `targetlimits`
-        # we don't use finallimits because that's one step later and you
-        # already shouldn't set invalid targetlimits (even if they could
-        # theoretically be adjusted to fit somehow later?)
-        # and this way we can error pretty early
-        validate_limits_for_scales(lims, ax.xscale[], ax.yscale[])
-    end
-
-    scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
-
-    scene = Scene(blockscene, viewport = scenearea, visible = false)
+    scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
+    add_input!(ax.attributes, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
@@ -151,10 +129,13 @@ function initialize_block!(ax::Axis; palette = nothing)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
-    # TODO: maybe use scenearea instead?
-    add_input!(ax.attributes, :viewport, scene.viewport)
-
     setfield!(scene, :float32convert, Float32Convert())
+
+    initialize_limit_computations!(ax)
+
+    add_input!(ax.attributes, :computedbbox, ax.layoutobservables.computedbbox)
+    map!(calculate_scenearea, ax.attributes, [:computedbbox, :finallimits, :aspect], :scenearea)
+    connect!(scene.viewport, ax.scenearea)
 
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
@@ -165,38 +146,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
     background = poly!(
-        blockscene, scenearea; color = ax.backgroundcolor, inspectable = false,
+        blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
         shading = NoShading, strokecolor = :transparent
     )
     translate!(background, 0, 0, -100)
     elements[:background] = background
-
-    block_limit_linking = Observable(false)
-    setfield!(ax, :block_limit_linking, block_limit_linking)
-
-    ax.xaxislinks = Axis[]
-    ax.yaxislinks = Axis[]
-
-    # When the transform function (xscale, yscale) of a plot changes we
-    # 1. communicate this change to plots (barplot needs this to make bars
-    #    compatible with the new transform function/scale)
-    onany(blockscene, ax.xscale, ax.yscale, update = true) do xsc, ysc
-        scene.transformation.transform_func[] = (xsc, ysc)
-        return
-    end
-
-    # 2. Update the limits of the plot
-    onany(blockscene, scene.transformation.transform_func, priority = -1, update = true) do _
-        reset_limits!(ax)
-    end
-
-    # 3. Update the view onto the plot (camera matrices)
-    onany(
-        blockscene, scene.transformation.transform_func, finallimits,
-        ax.xreversed, ax.yreversed; priority = -2
-    ) do args...
-        update_axis_camera(scene, args...)
-    end
 
     map!(ax.attributes, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
@@ -246,12 +200,12 @@ function initialize_block!(ax::Axis; palette = nothing)
         [:yspinecolor, :yoppositespinecolor]
     )
 
-    xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values = true)
-    ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values = true)
+    map!(xlimits, ax.attributes, :finallimits, :finalxlimits)
+    map!(ylimits, ax.attributes, :finallimits, :finalylimits)
 
     xaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
-        endpoints = ax.xaxis_endpoints, limits = xlims,
+        endpoints = ax.xaxis_endpoints, limits = ax.finalxlimits,
         flipped = ax.xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
@@ -270,7 +224,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     yaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
-        endpoints = ax.yaxis_endpoints, limits = ylims,
+        endpoints = ax.yaxis_endpoints, limits = ax.finalylimits,
         flipped = ax.yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
@@ -547,37 +501,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     register_events!(ax, scene)
 
-    # these are the user defined limits
-    on(blockscene, ax.limits) do _
-        reset_limits!(ax)
-    end
-
-    # these are the limits that we try to target, but they can be changed for correct aspects
-    on(blockscene, targetlimits) do tlims
-        update_linked_limits!(block_limit_linking, ax.xaxislinks, ax.yaxislinks, tlims)
-    end
-
-    # compute limits that adhere to the limit aspect ratio whenever the targeted
-    # limits or the scene size change, because both influence the displayed ratio
-    onany(blockscene, scene.viewport, targetlimits) do pxa, lims
-        adjustlimits!(ax)
-    end
-
-    # trigger limit pipeline once, with manual finallimits if they haven't changed from
-    # their initial value as they need to be triggered at least once to correctly set up
-    # projection matrices etc.
-    fl = finallimits[]
-    notify(ComputePipeline.get_observable!(ax.limits))
-    if fl == finallimits[]
-        notify(finallimits)
-    end
-
     # # Needed to fully initialize layouting for some reason...
     # notify(ComputePipeline.get_observable!(ax.xlabelpadding))
     # notify(ComputePipeline.get_observable!(ax.ylabelpadding))
 
     # Add them last, so we skip all the internal iterations from above!
-    add_input!(ax.scene.compute, :axis_limits, finallimits)
+    add_input!(ax.scene.compute, :axis_limits, ax.attributes.finallimits)
     map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
 
     return ax
@@ -592,6 +521,401 @@ function add_axis_limits!(plot)
     add_input!(plot.attributes, :axis_limits_transformed, scene.compute.axis_limits_transformed)
     return
 end
+
+################################################################################
+# Limits
+
+function add_attributes!(T::Type{<:Axis}, graph, attributes)
+    limits = pop!(attributes, :limits)
+    add_input!((k, v) -> Ref{Any}(convert_limit_attribute(v)), graph, :limits, limits)
+    # ComputePipeline.set_type!(graph.limits, Any) TODO:
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
+make_limit_update_explit(x::ComputePipeline.ExplicitUpdate) = x
+make_limit_update_explit(x::Nothing) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{Nothing, <:Any}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{<:Any, Nothing}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{Nothing, Nothing}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple) = ComputePipeline.ExplicitUpdate(x, :auto)
+
+unwrap_explicit_update(x) = x
+unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
+
+function initialize_limit_computations!(ax)
+    attr = ax.attributes
+
+    # Propagate same value updates, e.g. (nothing, nothing) -> (nothing, nothing)
+    attr.inputs[:limits].force_update = true
+
+    # For plot boundingboxes in (x/y)limits -> local(x/y)limits we need the
+    # transform_func observable of plots to be up to date. To guarantee that we
+    # update it here, in the computation, so that the Observable will be update
+    # before any computation depending on transform_func runs
+    # (This is important for ticks which need finallimits to be up to date with
+    # the user set (x/y)scale. This requires the path from limits -> finallimits
+    # to be purely ComputeGraph computations.)
+    map!(attr, [:xscale, :yscale], :transform_func) do transform_func...
+        ax.scene.transformation.transform_func[] = transform_func
+        return transform_func
+    end
+    ComputePipeline.set_type!(attr.transform_func, Any)
+
+    map!(attr, :transform_func, :inverse_transform_func) do tf
+        itf = inverse_transform(tf)
+        # nothing is uses to discard updates so we need something else here
+        return isnothing(itf) ? :nothing : itf
+    end
+    ComputePipeline.set_type!(attr.inverse_transform_func, Any)
+
+
+    # (x/y)lims!() need to be able to set limits across one dimension without
+    # affecting the limits of the other. To do that we need to mark one dimnesion
+    # as an update to discard and the other as a normal update with ExplicitUpdate.
+    # To avoid showing this to the user when fetching ax.limits[] we add another
+    # input here, where (x/y)lims!() can mark which dimension to deny
+    add_input!(attr, :_limit_update_rule, (:force, :force))
+
+    register_computation!(
+        attr, [:limits, :_limit_update_rule], [:xlimits, :ylimits],
+    ) do (limits, rule), changed, cached
+        if changed._limit_update_rule
+            # The update comes from (x/y)lims!() which explicitly set update rules
+            xlims = ComputePipeline.ExplicitUpdate(limits[1], rule[1])
+            ylims = ComputePipeline.ExplicitUpdate(limits[2], rule[2])
+            return xlims, ylims
+        else
+            # force propagation of nothing, compare for numbers
+            x = make_limit_update_explit.(limits)
+            return x
+        end
+    end
+    ComputePipeline.set_type!(attr.xlimits, Any)
+    ComputePipeline.set_type!(attr.ylimits, Any)
+
+
+    map!(
+        attr,
+        [:xlimits, :transform_func, :inverse_transform_func, :xautolimitmargin],
+        :localxlimits
+    ) do xlims, tf, itf, xautolimitmargin
+        return calculate_local_limits_from_plots(
+            ax, unwrap_explicit_update(xlims), 1, tf, itf, xautolimitmargin
+        )
+    end
+
+    map!(
+        attr,
+        [:ylimits, :transform_func, :inverse_transform_func, :yautolimitmargin],
+        :localylimits
+    ) do ylims, tf, itf, yautolimitmargin
+        return calculate_local_limits_from_plots(
+            ax, unwrap_explicit_update(ylims), 2, tf, itf, yautolimitmargin
+        )
+    end
+
+    setfield!(ax, :xaxislinks, Axis[])
+    setfield!(ax, :yaxislinks, Axis[])
+
+    #=
+    Limit linking needs immediate updates. Consider linked ax1, ax2. If both
+    axes are updated before the backend pulls, the order in whcih the backend
+    pulls updates will determine whose limits are the "newest".
+    So whenever the user sets limits, or interacts with an axis we need that
+    change to be communicated to all linked axes asap. We make sure this happens
+    by adding an (unused) observable output to shared(x/y)limits here. This will
+    evaluate shared(x/y)limits whenever its input local(x/y)limits changes,
+    running the linked axis update in its callback. Note that the callback must
+    update shared(x/y)limits and not local(x/y)limits to not cause a feedback
+    loop.
+    Interactions must read from shared(x/y)limits of a dependent to get
+    up-to-date limits with linked axes, and update local(x/y)limits to trigger
+    the linked axis updates.
+    Note for refactoring - exiting and reentering the compute graph between
+    (x/y)scale and finallimits will cause ticks to update with the old
+    finallimits and the new (x/y)scale if (x/y)scale changes.
+    =#
+
+    map!(attr, [:localxlimits, :xscale], :sharedxlimits) do lims, xscale
+        if !validate_limits_for_scale(lims, xscale)
+            error("Invalid x-limits $lims for scale $(xscale) which is defined on the interval $(defined_interval(xscale))")
+        end
+
+        for link in ax.xaxislinks
+            link.sharedxlimits[] = lims
+        end
+        return lims
+    end
+    ComputePipeline.get_observable!(attr.sharedxlimits)
+
+    map!(attr, [:localylimits, :yscale], :sharedylimits) do lims, yscale
+        if !validate_limits_for_scale(lims, yscale)
+            error("Invalid y-limits $lims for scale $(yscale) which is defined on the interval $(defined_interval(yscale))")
+        end
+
+        for link in ax.yaxislinks
+            link.sharedylimits[] = lims
+        end
+        return lims
+    end
+    ComputePipeline.get_observable!(attr.sharedylimits)
+
+    map!(attr, [:sharedxlimits, :sharedylimits], :targetlimits) do xlims, ylims
+        return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+    end
+
+    map!(
+        adjustlimits, attr,
+        [:targetlimits, :autolimitaspect, :viewport, :xautolimitmargin, :yautolimitmargin],
+        :finallimits
+    )
+
+    map!(
+        attr,
+        [:transform_func, :finallimits, :xreversed, :yreversed],
+        :projectionmatrix
+    ) do tf, lims, xrev, yrev
+        return calculate_axis_projection_matrix(ax.scene, tf, lims, xrev, yrev)
+    end
+
+    # TODO: This could directly update scene.compute if we deprecate Camera
+    idm = Makie.Mat4f(Makie.I)
+    on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
+
+    #=
+                limits                  normalize structure, entrypoint, xlims!(), ylims!(),
+                |    |                  reset_limits!(), autolimits!(), LimitReset
+                ↓    ↓
+          xlimits    ylimits            unwrap, force nothing propagation
+            ↓           ↓
+     localxlimits    localylimits       mix in plot based limits, validation, target for interactions
+            ↓           ↓
+    sharedxlimits    sharedylimits      updates linked axes sharedlimits as a side effect
+            ↓           ↓                   |- either is a source for interactions
+            targetlimits                to Rect2d
+                  ↓
+  viewport → finallimits → viewport     aspect, margins
+                  ↓
+          projectionmatrix              update f32convert, calculate camera matrix
+                  ↓
+         camera observables
+    =#
+
+    return
+end
+
+function getlimits(ax::Axis, dim, tf = ax.scene.transform_func, itf = inverse_transform(tf))
+    # find all plots that don't have exclusion attributes set
+    # for this dimension
+    if !(dim in (1, 2))
+        error("Dimension $dim not allowed. Only 1 or 2.")
+    end
+
+    function exclude(plot)
+        # only use plots with autolimits = true
+        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
+        # only if they use data coordinates
+        is_data_space(plot) || return true
+        # only use visible plots for limits
+        return !to_value(get(plot, :visible, true))
+    end
+
+    # get all data limits, without the excluded plots
+    if (itf === nothing) || (itf === :nothing)
+        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
+        bb = data_limits(ax.scene, exclude)
+    else
+        # get limits with transform_func and model applied
+        bb = boundingbox(ax.scene, exclude)
+        # then undo transform_func so that ticks can handle transform_func
+        # without ignoring translations, scaling or rotations from model
+        try
+            bb = apply_transform(itf, bb)
+        catch e
+            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
+            bb = data_limits(ax.scene, exclude)
+        end
+    end
+
+    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
+    isfinite_rect(bb, dim) || return nothing
+
+    # otherwise start with the first box
+    mini, maxi = minimum(bb), maximum(bb)
+    return (mini[dim], maxi[dim])
+end
+
+function autolimits(
+        ax::Axis, dim::Integer,
+        tf = ax.scene.transform_func, itf = inverse_transform(tf),
+        margin = ax.attributes[(:xautolimitmargin, :yautolimitmargin)[dim]][]
+    )
+    # try getting x limits for the axis and then union them with linked axes
+    lims = getlimits(ax, dim, tf, itf)
+
+    if isnothing(lims)
+        return defaultlimits(tf[dim])
+    else
+        return expandlimits(lims, margin[1], margin[2], tf[dim])
+    end
+end
+
+# TODO: Is this supposed to be public api?
+# autolimits is quite different now. may return nothing, no linking, no validate
+# xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
+# yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
+
+# Basically `reset_limits!()` without x/y/zauto = false
+function calculate_local_limits_from_plots(ax, user_limits, idx, tf, itf, margin)
+    lims = if isnothing(user_limits) || user_limits[1] === nothing || user_limits[2] === nothing
+        l = autolimits(ax, idx, tf, itf, margin)
+        if user_limits === nothing
+            l
+        else
+            lo = user_limits[1] === nothing ? l[1] : user_limits[1]
+            hi = user_limits[2] === nothing ? l[2] : user_limits[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(user_limits...))
+    end
+
+    # Could not determine limits from plots, so discard the update by returning nothing
+    isnothing(lims) && return lims
+
+    if !(lims[1] <= lims[2])
+        dim = (:x, :y, :z)[idx]
+        error("Invalid $dim-limits as $(dim)lims[1] <= $(dim)lims[2] is not met for $lims.")
+    end
+
+    return lims
+end
+
+function calculate_local_limits(ax, user_limits, tf, itf)
+    lims = map(user_limits, eachindex(user_limits)) do lims, idx
+        calculate_local_limits(ax, lims, idx, tf, itf)
+    end
+
+    bb = Rect(Vecf(first.(lims)), Vecf(last.(lims) .- first.(lims)))
+    return bb
+end
+
+function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yautolimitmargin)
+    # in the simplest case, just update the final limits with the target limits
+    if isnothing(autolimitaspect) || width(viewport) == 0 || height(viewport) == 0
+        return limits
+    end
+
+    xlims = (left(limits), right(limits))
+    ylims = (bottom(limits), top(limits))
+
+    viewport_aspect = width(viewport) / height(viewport)
+    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
+    aspect_ratio = data_aspect / viewport_aspect
+
+    correction_factor = autolimitaspect / aspect_ratio
+
+    if correction_factor > 1
+        # need to go wider
+        marginsum = sum(xautolimitmargin)
+        ratios = (marginsum == 0) ? (0.5, 0.5) : (xautolimitmargin ./ marginsum)
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
+    elseif correction_factor < 1
+        # need to go taller
+        marginsum = sum(yautolimitmargin)
+        ratios = (marginsum == 0) ? (0.5, 0.5) : (yautolimitmargin ./ marginsum)
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
+    end
+
+    return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+end
+
+function xlims!(ax::Axis, xlims)
+    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
+    reversed = false
+    if length(xlims) != 2
+        error("Invalid xlims length of $(length(xlims)), must be 2.")
+    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
+        error("Can't set x limits to the same value $(xlims[1]).")
+    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
+        xlims = reverse(xlims)
+        reversed = true
+    end
+
+    # update xlims if they changed, keep ylims
+    update!(
+        ax.attributes,
+        limits = (xlims, ax.limits[][2]),
+        _limit_update_rule = (:auto, :deny),
+        xreversed = reversed
+    )
+
+    return nothing
+end
+
+function Makie.ylims!(ax::Axis, ylims)
+    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
+    reversed = false
+    if length(ylims) != 2
+        error("Invalid ylims length of $(length(ylims)), must be 2.")
+    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
+        error("Can't set y limits to the same value $(ylims[1]).")
+    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
+        ylims = reverse(ylims)
+        reversed = true
+    end
+
+    # update ylims if they changed, keep xlims
+    update!(
+        ax.attributes,
+        limits = (ax.limits[][1], ylims),
+        _limit_update_rule = (:deny, :auto),
+        yreversed = reversed
+    )
+
+    return nothing
+end
+
+function autolimits!(ax::Axis)
+    ax.limits = (nothing, nothing)
+    return
+end
+
+function reset_limits!(ax::Axis; xauto = true, yauto = true)
+    # (x/y)auto = true means that we reset back to automatic limits for each
+    # dimension with `nothing`. I.e. we trigger a standard update of limits
+    # (x/y)auto = false means we keep whatever limits we currently have for
+    # every nothing in limits
+
+    prev_sharedxlimits = ax.sharedxlimits[]
+    prev_sharedylimits = ax.sharedylimits[]
+
+    ax.limits = ax.limits[]
+
+    # recover previous limits for each *auto = false
+    # Writes to local limits to re-trigger axis linking
+    if !xauto
+        current_sharedxlimits = ax.sharedxlimits[]
+        ax.localxlimits[] = ifelse.(
+            isnothing.(unwrap_explicit_update(ax.xlimits[])),
+            prev_sharedxlimits, current_sharedxlimits
+        )
+    end
+
+    if !yauto
+        current_sharedylimits = ax.sharedylimits[]
+        ax.localylimits[] = ifelse.(
+            isnothing.(unwrap_explicit_update(ax.ylimits[])),
+            prev_sharedylimits, current_sharedylimits
+        )
+    end
+
+    return
+end
+
+
+################################################################################
 
 mirror_xticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :x, ap, sw)
 mirror_yticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :y, ap, sw)
@@ -621,6 +945,7 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
     return points
 end
 
+# TODO: This is not relevant to Axis anymore
 """
     reset_limits!(ax; xauto = true, yauto = true)
 
@@ -723,11 +1048,17 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
 end
 
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    _convert_single_limit(x) = x
+    _convert_single_limit(x::Nothing) = x
     _convert_single_limit(x::Interval) = endpoints(x)
+    _convert_single_limit(x::VecTypes{2}) = (x[1], x[2])
+    function _convert_single_limit(x::AbstractArray)
+        length(x) == 2 || error("Each dimension of limits must have 2 values, the minimum and maximum.")
+        return (x[1], x[2])
+    end
     return map(_convert_single_limit, lims)
 end
 
+validate_limits_for_scales(lims::Rect, tf::Tuple) = validate_limits_for_scales(lims, tf...)
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
     mi = minimum(lims)
     ma = maximum(lims)
@@ -803,97 +1134,8 @@ function expandlimits(lims, margin_low, margin_high, scale)
     return lims
 end
 
-function getlimits(la::Axis, dim)
-    # find all plots that don't have exclusion attributes set
-    # for this dimension
-    if !(dim in (1, 2))
-        error("Dimension $dim not allowed. Only 1 or 2.")
-    end
-
-    function exclude(plot)
-        # only use plots with autolimits = true
-        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
-        # only if they use data coordinates
-        is_data_space(plot) || return true
-        # only use visible plots for limits
-        return !to_value(get(plot, :visible, true))
-    end
-
-    # get all data limits, minus the excluded plots
-    tf = la.scene.transformation.transform_func[]
-    itf = inverse_transform(tf)
-    if itf === nothing
-        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
-        bb = data_limits(la.scene, exclude)
-    else
-        # get limits with transform_func and model applied
-        bb = boundingbox(la.scene, exclude)
-        # then undo transform_func so that ticks can handle transform_func
-        # without ignoring translations, scaling or rotations from model
-        try
-            bb = apply_transform(itf, bb)
-        catch e
-            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
-            bb = data_limits(la.scene, exclude)
-        end
-    end
-
-    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isfinite_rect(bb, dim) || return nothing
-
-    # otherwise start with the first box
-    mini, maxi = minimum(bb), maximum(bb)
-    return (mini[dim], maxi[dim])
-end
-
 getxlimits(la::Axis) = getlimits(la, 1)
 getylimits(la::Axis) = getlimits(la, 2)
-
-function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
-
-    thisxlims = xlimits(tlims)
-    thisylims = ylimits(tlims)
-
-    # only change linked axis if not prohibited from doing so because
-    # we're currently being updated by another axis' link
-    return if !block_limit_linking[]
-
-        bothlinks = intersect(xaxislinks, yaxislinks)
-        xlinks = setdiff(xaxislinks, yaxislinks)
-        ylinks = setdiff(yaxislinks, xaxislinks)
-
-        for link in bothlinks
-            otherlims = link.targetlimits[]
-            if tlims != otherlims
-                link.block_limit_linking[] = true
-                link.targetlimits[] = tlims
-                link.block_limit_linking[] = false
-            end
-        end
-
-        for xlink in xlinks
-            otherlims = xlink.targetlimits[]
-            otherxlims = limits(otherlims, 1)
-            otherylims = limits(otherlims, 2)
-            if thisxlims != otherxlims
-                xlink.block_limit_linking[] = true
-                xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
-                xlink.block_limit_linking[] = false
-            end
-        end
-
-        for ylink in ylinks
-            otherlims = ylink.targetlimits[]
-            otherxlims = limits(otherlims, 1)
-            otherylims = limits(otherlims, 2)
-            if thisylims != otherylims
-                ylink.block_limit_linking[] = true
-                ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
-                ylink.block_limit_linking[] = false
-            end
-        end
-    end
-end
 
 """
     autolimits!()
@@ -902,57 +1144,11 @@ end
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
 The argument `la` defaults to `current_axis()`.
 """
-function autolimits!(ax::Axis)
-    # The compute graph will throw away same value updates, so we need to force
-    # the underlying observable to trigger with this:
-    if ax.limits[] == (nothing, nothing)
-        notify(ax.limits)
-    else
-        ax.limits = (nothing, nothing)
-    end
-    return
-end
 function autolimits!()
     curr_ax = current_axis()
     isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
     return autolimits!(curr_ax)
 end
-
-function autolimits(ax::Axis, dim::Integer)
-    # try getting x limits for the axis and then union them with linked axes
-    lims = getlimits(ax, dim)
-
-    links = dim == 1 ? ax.xaxislinks : ax.yaxislinks
-    for link in links
-        if isnothing(lims)
-            lims = getlimits(link, dim)
-        else
-            newlims = getlimits(link, dim)
-            if !isnothing(newlims)
-                lims = limitunion(lims, newlims)
-            end
-        end
-    end
-
-    dimsym = dim == 1 ? :x : :y
-    scale = getproperty(ax, Symbol(dimsym, :scale))[]
-    margin = getproperty(ax, Symbol(dimsym, :autolimitmargin))[]
-    if !isnothing(lims)
-        if !validate_limits_for_scale(lims, scale)
-            error("Found invalid $(dimsym)-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
-        end
-        lims = expandlimits(lims, margin[1], margin[2], scale)
-    end
-
-    # if no limits have been found, use the targetlimits directly
-    if isnothing(lims)
-        lims = limits(ax.targetlimits[], dim)
-    end
-    return lims
-end
-
-xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
-yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
 
 """
     linkaxes!(a::Axis, others...)
@@ -968,58 +1164,10 @@ function linkaxes!(a::Axis, others...)
     return linkaxes!([a, others...])
 end
 
-function adjustlimits!(la)
-    asp = la.autolimitaspect[]
-    target = la.targetlimits[]
-    area = la.scene.viewport[]
-
-    # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp) || width(area) == 0 || height(area) == 0
-        la.finallimits[] = target
-        return
-    end
-
-    xlims = (left(target), right(target))
-    ylims = (bottom(target), top(target))
-
-    size_aspect = width(area) / height(area)
-    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
-
-    aspect_ratio = data_aspect / size_aspect
-
-    correction_factor = asp / aspect_ratio
-
-    if correction_factor > 1
-        # need to go wider
-
-        marginsum = sum(la.xautolimitmargin[])
-        ratios = if marginsum == 0
-            (0.5, 0.5)
-        else
-            (la.xautolimitmargin[] ./ marginsum)
-        end
-
-        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
-    elseif correction_factor < 1
-        # need to go taller
-
-        marginsum = sum(la.yautolimitmargin[])
-        ratios = if marginsum == 0
-            (0.5, 0.5)
-        else
-            (la.yautolimitmargin[] ./ marginsum)
-        end
-        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
-    end
-
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-    la.finallimits[] = bbox
-    return
-end
-
 linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
 
 function linkaxes!(dir::Symbol, axes::Vector{Axis})
+    (length(axes) < 2) && return
     all_links = Set{Axis}(axes)
     for ax in axes
         links = dir === :x ? ax.xaxislinks : ax.yaxislinks
@@ -1037,7 +1185,14 @@ function linkaxes!(dir::Symbol, axes::Vector{Axis})
             end
         end
     end
-    reset_limits!(first(axes))
+    if links_changed
+        ax = first(axes)
+        if dir === :x
+            ax.localxlimits[] = ax.sharedxlimits[]
+        else
+            ax.localylimits[] = ax.sharedylimits[]
+        end
+    end
     return
 end
 
@@ -1229,59 +1384,8 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     return
 end
 
-Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
-Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
-
-function Makie.xlims!(ax::Axis, xlims)
-    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
-    if length(xlims) != 2
-        error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
-        error("Can't set x limits to the same value $(xlims[1]).")
-    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
-        xlims = reverse(xlims)
-        ax.xreversed[] = true
-    else
-        ax.xreversed[] = false
-    end
-
-    mlims = convert_limit_attribute(ax.limits[])
-    ax.limits = (xlims, mlims[2])
-
-    # update xlims for linked axes
-    for xlink in ax.xaxislinks
-        xlink_mlims = convert_limit_attribute(xlink.limits[])
-        xlink.limits = (xlims, xlink_mlims[2])
-    end
-
-    reset_limits!(ax, yauto = false)
-    return nothing
-end
-
-function Makie.ylims!(ax::Axis, ylims)
-    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
-    if length(ylims) != 2
-        error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
-        error("Can't set y limits to the same value $(ylims[1]).")
-    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
-        ylims = reverse(ylims)
-        ax.yreversed[] = true
-    else
-        ax.yreversed[] = false
-    end
-    mlims = convert_limit_attribute(ax.limits[])
-    ax.limits = (mlims[1], ylims)
-
-    # update ylims for linked axes
-    for ylink in ax.yaxislinks
-        ylink_mlims = convert_limit_attribute(ylink.limits[])
-        ylink.limits = (ylink_mlims[1], ylims)
-    end
-
-    reset_limits!(ax, xauto = false)
-    return nothing
-end
+xlims!(ax::Axis, xlims::Interval) = xlims!(ax, endpoints(xlims))
+ylims!(ax::Axis, ylims::Interval) = ylims!(ax, endpoints(ylims))
 
 """
     xlims!(ax, low, high)
