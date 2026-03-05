@@ -300,8 +300,23 @@ function create_shader(scene::Scene, plot::Scatter)
     return create_wgl_renderobject(scatter_program, attr, inputs)
 end
 
+function _preferred_wgl_screen(scene::Scene)
+    isempty(scene.current_screens) && return nothing
+    fallback = nothing
+    for screen in scene.current_screens
+        parentmodule(typeof(screen)) === WGLMakie || continue
+        fallback = screen
+        sess = getfield(screen, :session)
+        isnothing(sess) && continue
+        if Bonito.root_session(sess).connection isa Bonito.NoConnection
+            return screen
+        end
+    end
+    return fallback
+end
+
 function get_atlas_tracker(f, scene::Scene)
-    screen = Makie.getscreen(scene, WGLMakie)
+    screen = _preferred_wgl_screen(scene)
     if isnothing(screen) || isnothing(screen.session)
         @warn "No session found, returning empty atlas tracker"
         # TODO, it's not entirely clear in which case this can happen,
@@ -309,6 +324,11 @@ function get_atlas_tracker(f, scene::Scene)
         return f(Set{UInt32}())
     end
     session = screen.session
+    if Bonito.root_session(session).connection isa Bonito.NoConnection
+        # Offline/static exports must embed atlas updates independent of previous
+        # interactive renders, so avoid reusing session-level glyph tracking.
+        return f(Set{UInt32}())
+    end
     atlas = Bonito.get_metadata(session, :wglmakie_scene_atlas, nothing)
     if isnothing(atlas)
         atlas = Set{UInt32}()
