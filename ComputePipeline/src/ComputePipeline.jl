@@ -476,8 +476,6 @@ function get_observable!(c::Computed; use_deepcopy = true)
     end
 end
 
-include("observables_compat.jl")
-
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
@@ -966,18 +964,18 @@ function set_result!(edge::TypedEdge, result)
     return set_result!(edge, rem, 1, next_val)
 end
 
-is_same(@nospecialize(a), @nospecialize(b)) = false
-is_same(a::Symbol, b::Symbol) = a == b
-function is_same(a::T, b::T) where {T}
+is_same(@nospecialize(old), @nospecialize(new)) = false
+is_same(old::Symbol, new::Symbol) = old == new
+function is_same(old::T, new::T) where {T}
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`
-        return a === b
+        return old === new
     else
         # For mutable types, we can only compare them if they're not pointing to the same  object
         # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
-        same_object = a === b
-        return same_object ? false : isequal(a, b)
+        same_object = old === new
+        return same_object ? false : isequal(old, new)
     end
 end
 
@@ -2032,6 +2030,8 @@ function set_type!(node::Computed, T::Type)
 end
 
 include("io.jl")
+include("observables_compat.jl")
+include("utils.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph
