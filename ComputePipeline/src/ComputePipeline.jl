@@ -486,15 +486,15 @@ function ComputeGraph()
         Observables.ObserverFunction[], Observable[]
     )
 
-    on(graph.onchange) do changeset
-        intersect!(changeset, keys(graph.observables))
+    on(graph.onchange) do _changeset
+        # notifying observables may cause further updates to onchange which may
+        # corrupt state before we finish here. So copy changeset here and
+        # immediately prepare onchange for the next call
+        changeset = intersect(_changeset, keys(graph.observables))
+        empty!(_changeset)
 
         # update data
         for key in changeset
-            # task switches could cause the changeset to get mutated, so just
-            # intersect!() is not enough
-            haskey(graph.observables, key) || continue
-
             val = graph.outputs[key][]
             obs = graph.observables[key]
             # Trust the graph to discard equal values. This doesn't work for
@@ -510,11 +510,8 @@ function ComputeGraph()
 
         # trigger observables
         for key in changeset
-            haskey(graph.observables, key) || continue
             notify(graph.observables[key])
         end
-
-        empty!(changeset)
 
         # clear changeset after processing observables
         return Consume(false)
