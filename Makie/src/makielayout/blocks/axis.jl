@@ -603,9 +603,10 @@ function initialize_limit_computations!(ax)
         lims = calculate_local_limits_from_plots(
             ax, unwrap_explicit_update(xlims), 1, tf, itf, xautolimitmargin
         )
+        flims = Float64.(lims)
         # make sure this can reset sharedlimits even if this is reset to the same
         # value (The update rules have already been applied in the previous step)
-        return ComputePipeline.ExplicitUpdate(lims, :force)
+        return ComputePipeline.ExplicitUpdate(flims, :force)
     end
     ComputePipeline.set_type!(attr.localxlimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
 
@@ -617,7 +618,8 @@ function initialize_limit_computations!(ax)
         lims = calculate_local_limits_from_plots(
             ax, unwrap_explicit_update(ylims), 2, tf, itf, yautolimitmargin
         )
-        return ComputePipeline.ExplicitUpdate(lims, :force)
+        flims = Float64.(lims)
+        return ComputePipeline.ExplicitUpdate(flims, :force)
     end
     ComputePipeline.set_type!(attr.localylimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
 
