@@ -1841,7 +1841,7 @@ function attribute_examples(::Type{Axis})
                     yticks = [-100, -10, 0, 10, 100]
                 )
 
-                ax3 = Axis(f[1, 1],
+                ax3 = Axis(f[3, 1],
                     yscale = Makie.pseudolog10,
                     title = "Pseudolog scale with LogTicks",
                     yticks = LogTicks(-2:2)

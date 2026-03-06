@@ -619,24 +619,14 @@ function push_without_add!(scene::Scene, plot)
     return
 end
 
-function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
-    cycle = plot.cycle[]
-    isnothing(cycle) && return 0
-    syms = [s for ps in attrsyms(cycle) for s in ps]
-    pos = 1
-    for p in specs
-        p === spec && return pos
-        if haskey(p.kwargs, :cycle) && !isnothing(p.kwargs[:cycle]) && plotfunc(p) === plotfunc(spec)
-            is_cycling = any(syms) do x
-                return haskey(p.kwargs, x) && isnothing(p[x])
-            end
-            if is_cycling
-                pos += 1
-            end
-        end
-    end
-    # not inserted yet
-    return pos
+# PlotList children each get their own cycle position (unlike other recipes
+# where children inherit the recipe's position). The plotlist may not be in
+# scene.plots yet during initial creation, so we chain it onto the iterator;
+# the identity short-circuit in _cycle_position prevents double-counting
+# if it IS already there.
+function plot_cycle_index(parent::PlotList, plot::Plot)
+    scene = get_scene(parent)
+    return _cycle_position(plot, Iterators.flatten((scene.plots, (parent,))))
 end
 
 function diff_plotlist!(
@@ -658,16 +648,16 @@ function diff_plotlist!(
         if !isnothing(plotlist)
             merge!(plotspec.kwargs, plotlist.kw)
         end
+        # Use plotlist as parent so connect_plot! computes the correct
+        # cycle_index via plot_cycle_index(::PlotList, ::Plot).
+        parent = isnothing(plotlist) ? scene : plotlist
         if isnothing(reused_plot)
-            # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-            # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
-            # But we want the scene to only contain one PlotList item with the newly created
-            # Plots from the plotlist to only appear as children of the PlotList recipe
-            # - so we dont push it to the scene if there's a plotlist.
-            # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
             plot_obj = to_plot_object(plotspec)
-            connect_plot!(scene, plot_obj)
+            # connect_plot! sets cycle_index correctly via plot_cycle_index(parent, plot).
+            # We don't push to scene.plots when there's a plotlist — the scene should
+            # only contain the PlotList itself, to avoid e.g. double legend entries.
+            connect_plot!(parent, plot_obj)
             if !isnothing(plotlist)
                 push!(plotlist.plots, plot_obj)
             else
@@ -677,11 +667,9 @@ function diff_plotlist!(
             new_plots[plotspec] = plot_obj
         else
             @debug("updating old plot with spec")
-            # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
-            # Update the position of the plot!
-            pos = plot_cycle_index(plotspecs, plotspec, reused_plot)
+            pos = plot_cycle_index(parent, reused_plot)
             if pos != reused_plot.cycle_index[]
                 reused_plot.cycle_index = pos
             end
