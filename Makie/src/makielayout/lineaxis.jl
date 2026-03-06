@@ -414,15 +414,23 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         markerspace = :data, inspectable = false
     )
 
+    _labelbbox = register_raw_string_boundingboxes!(labeltext)
+    add_input!(graph, :labelbbox, Rect2d())
+    labelbbox = map(_labelbbox) do bbs
+        bb = Rect2d(bbs[1])
+        update!(graph, :labelbbox => bb)
+        return bb
+    end
+
     # translate axis labels on explicit rotations
     # in order to prevent plot and axis overlap
-    onany(parent, labelrotation, flipped, graph.horizontal) do labelrotation, flipped, horizontal
+    onany(parent, labelrotation, flipped, graph.horizontal, labelbbox) do labelrotation, flipped, horizontal, bb
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0.0f0, 0.0f0
         else
             # There is only one string here and if we only case about widths
             # we don't need to include positions through a higher level bbox function
-            wx, wy = widths(string_boundingboxes(labeltext)[1])
+            wx, wy = widths(bb)
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0.0f0, Float32(sign * 0.5f0 * wy)
@@ -580,7 +588,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(
         graph,
-        [labelvisible, :label_with_suffix, :ticklabelbbox, labelpadding, :horizontal],
+        [labelvisible, :label_with_suffix, :labelbbox, labelpadding, :horizontal],
         :protrusion_labelspace
     ) do visible, label, bbox, labelpadding, horizontal
         label_is_empty = iswhitespace(label)

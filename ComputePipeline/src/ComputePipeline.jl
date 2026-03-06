@@ -864,6 +864,9 @@ function Base.getindex(attr::ComputeGraph, key::Symbol)
     end
 end
 
+function Base.propertynames(attr::ComputeGraphView)
+    return collect(keys(attr.parent.nesting.keytables[attr.nested_trace.next_index]))
+end
 function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     hasfield(ComputeGraphView, key) && return getfield(attr, key)
     return getindex(attr, key)
