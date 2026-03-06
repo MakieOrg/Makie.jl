@@ -65,9 +65,8 @@ end
 @testset "Axis limits basics" begin
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))
-    # ax.targetlimits[] = BBox(0, 10, 0, 20)
-    ax.localxlimits[] = (0, 10)
-    ax.localylimits[] = (0, 20)
+    ax.localxlimits[] = (0.0, 10.0)
+    ax.localylimits[] = (0.0, 20.0)
     @test ax.finallimits[] == BBox(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
     xlims!(ax, -10, 10)
