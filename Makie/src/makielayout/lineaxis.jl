@@ -424,12 +424,12 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     # translate axis labels on explicit rotations
     # in order to prevent plot and axis overlap
-    onany(parent, labelrotation, flipped, graph.horizontal, labelbbox) do labelrotation, flipped, horizontal, bb
+    onany(
+        parent, labelrotation, flipped, graph.horizontal, labelbbox, update = true
+    ) do labelrotation, flipped, horizontal, bb
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0.0f0, 0.0f0
         else
-            # There is only one string here and if we only case about widths
-            # we don't need to include positions through a higher level bbox function
             wx, wy = widths(bb)
             sign::Int = flipped ? 1 : -1
             if horizontal
