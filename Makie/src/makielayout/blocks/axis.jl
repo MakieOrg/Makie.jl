@@ -600,20 +600,26 @@ function initialize_limit_computations!(ax)
         [:xlimits, :transform_func, :inverse_transform_func, :xautolimitmargin],
         :localxlimits
     ) do xlims, tf, itf, xautolimitmargin
-        return calculate_local_limits_from_plots(
+        lims = calculate_local_limits_from_plots(
             ax, unwrap_explicit_update(xlims), 1, tf, itf, xautolimitmargin
         )
+        # make sure this can reset sharedlimits even if this is reset to the same
+        # value (The update rules have already been applied in the previous step)
+        return ComputePipeline.ExplicitUpdate(lims, :force)
     end
+    ComputePipeline.set_type!(attr.localxlimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
 
     map!(
         attr,
         [:ylimits, :transform_func, :inverse_transform_func, :yautolimitmargin],
         :localylimits
     ) do ylims, tf, itf, yautolimitmargin
-        return calculate_local_limits_from_plots(
+        lims = calculate_local_limits_from_plots(
             ax, unwrap_explicit_update(ylims), 2, tf, itf, yautolimitmargin
         )
+        return ComputePipeline.ExplicitUpdate(lims, :force)
     end
+    ComputePipeline.set_type!(attr.localylimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
 
     setfield!(ax, :xaxislinks, Axis[])
     setfield!(ax, :yaxislinks, Axis[])
@@ -637,7 +643,8 @@ function initialize_limit_computations!(ax)
     finallimits and the new (x/y)scale if (x/y)scale changes.
     =#
 
-    map!(attr, [:localxlimits, :xscale], :sharedxlimits) do lims, xscale
+    map!(attr, [:localxlimits, :xscale], :sharedxlimits) do _lims, xscale
+        lims = unwrap_explicit_update(_lims)
         if !validate_limits_for_scale(lims, xscale)
             error("Invalid x-limits $lims for scale $(xscale) which is defined on the interval $(defined_interval(xscale))")
         end
@@ -651,7 +658,8 @@ function initialize_limit_computations!(ax)
     end
     ComputePipeline.get_observable!(attr.sharedxlimits)
 
-    map!(attr, [:localylimits, :yscale], :sharedylimits) do lims, yscale
+    map!(attr, [:localylimits, :yscale], :sharedylimits) do _lims, yscale
+        lims = unwrap_explicit_update(_lims)
         if !validate_limits_for_scale(lims, yscale)
             error("Invalid y-limits $lims for scale $(yscale) which is defined on the interval $(defined_interval(yscale))")
         end
