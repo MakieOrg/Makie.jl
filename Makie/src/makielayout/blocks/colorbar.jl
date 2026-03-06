@@ -451,7 +451,10 @@ function initialize_block!(cb::Colorbar)
             end
         end
 
-        cb.layoutobservables.protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        rs = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        if rs != cb.layoutobservables.protrusions[]
+            cb.layoutobservables.protrusions[] = rs
+        end
     end
 
     # trigger protrusions with one of the attributes
