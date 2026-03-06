@@ -971,6 +971,12 @@ function update_axis_links!(gridspec, all_layoutables)
         unique!(ax.yaxislinks)
     end
 
+    # trigger linking of axes
+    for (spec, ax) in axes
+        ax.localxlimits[] = ax.sharedxlimits[]
+        ax.localylimits[] = ax.sharedylimits[]
+    end
+
     return
 end
 
