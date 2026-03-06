@@ -643,6 +643,8 @@ function initialize_limit_computations!(ax)
         end
 
         for link in ax.xaxislinks
+            link === ax && continue
+            # The world ends if this runs with link being this Axis
             link.sharedxlimits[] = lims
         end
         return lims
@@ -655,6 +657,7 @@ function initialize_limit_computations!(ax)
         end
 
         for link in ax.yaxislinks
+            link === ax && continue
             link.sharedylimits[] = lims
         end
         return lims
