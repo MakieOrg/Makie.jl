@@ -941,6 +941,22 @@ function replace_links!(axis_links::Vector, new_links::Set)
     return true
 end
 
+function linked_limit_union(ax::Axis)
+    x0, x1 = ax.sharedxlimits[]
+    y0, y1 = ax.sharedylimits[]
+    for other in ax.xaxislinks
+        a, b = other.sharedxlimits[]
+        x0 = min(x0, a)
+        x1 = max(x1, b)
+    end
+    for other in ax.yaxislinks
+        a, b = other.sharedylimits[]
+        y0 = min(y0, a)
+        y1 = max(y1, b)
+    end
+    return (x0, x1), (y0, y1)
+end
+
 function update_axis_links!(gridspec, all_layoutables)
     # axes that should be linked
     axes = Dict{BlockSpec, Axis}()
@@ -973,8 +989,9 @@ function update_axis_links!(gridspec, all_layoutables)
 
     # trigger linking of axes
     for (spec, ax) in axes
-        ax.localxlimits[] = ax.sharedxlimits[]
-        ax.localylimits[] = ax.sharedylimits[]
+        xlims, ylims = linked_limit_union(ax)
+        ax.localxlimits[] = xlims
+        ax.localylimits[] = ylims
     end
 
     return
