@@ -122,10 +122,8 @@ end
 @reference_test "deletion and observable args" begin
     obs = Observable(1:5)
     f, ax, pl = scatter(obs; markersize = 150)
-    s = display(f)
-    # So, for GLMakie it will be 2, since we register an additional listener for
-    # State changes for the on demand renderloop
-    @test length(obs.listeners) in (1, 2)
+    display(f)
+    @test length(obs.listeners) in 1
     delete!(ax, pl)
     @test length(obs.listeners) == 0
     # ugh, hard to synchronize this with WGLMakie, so, we need to sleep for now to make sure the change makes it to the browser
