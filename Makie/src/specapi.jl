@@ -941,7 +941,7 @@ function replace_links!(axis_links::Vector, new_links::Set)
     return true
 end
 
-function linked_limit_union(ax::Axis)
+function linked_limit_union(ax)
     x0, x1 = ax.sharedxlimits[]
     y0, y1 = ax.sharedylimits[]
     for other in ax.xaxislinks
