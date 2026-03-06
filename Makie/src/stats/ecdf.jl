@@ -20,13 +20,13 @@ function convert_arguments(P::Type{<:Plot}, ecdf::StatsBase.ECDF; npoints = 10_0
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
 
-function convert_arguments(P::Type{<:Plot}, x::AbstractVector, ecdf::StatsBase.ECDF)
+function convert_arguments(P::Type{<:Plot}, x::RealVector, ecdf::StatsBase.ECDF)
     ptype = plottype(P, Stairs)
     kwargs = ptype <: Stairs ? (; step = :post) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, x, ecdf(x)); kwargs...)
 end
 
-function convert_arguments(P::Type{<:Plot}, x0::AbstractInterval, ecdf::StatsBase.ECDF)
+function convert_arguments(P::Type{<:Plot}, x0::AbstractInterval{<:Real}, ecdf::StatsBase.ECDF)
     xmin, xmax = extrema(x0)
     z = ecdf_xvalues(ecdf, Inf)
     n = length(z)
@@ -49,11 +49,13 @@ If `weights` for the values are provided, a weighted ECDF is plotted.
     documented_attributes(Stairs)...
 end
 
+argument_dims(::Type{<:ECDFPlot}, x) = (1,)
+
 used_attributes(::Type{<:ECDFPlot}, ::AbstractVector) = (:npoints, :weights)
 
 function Makie.convert_arguments(
         ::Type{<:ECDFPlot},
-        x::AbstractVector;
+        x::RealVector;
         npoints = 10_000,
         weights = StatsBase.Weights(Float64[]),
     )

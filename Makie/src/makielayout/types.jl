@@ -301,6 +301,33 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         """
         dim2_conversion = nothing
 
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
+        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
+        use_short_x_units::Bool = true
+        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
+        use_short_y_units::Bool = true
+
         """
         The content of the x axis label.
         The value can be any non-vector-valued object that the `text` primitive supports.
@@ -815,7 +842,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Format for ticks."
         tickformat = Makie.automatic
         "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
-        ticklabelspace = Makie.automatic
+        ticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -1383,52 +1410,38 @@ end
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MarkerElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct PolyElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct ImageElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
 end
 
 struct MeshScatterElement <: LegendElement
-    plots::Vector{Plot}
     attributes::Attributes
-end
-
-function get_plots(le::LegendElement)
-    if hasfield(typeof(le), :plots)
-        return le.plots
-    else
-        @warn """LegendElements should now keep track of the plots they represent in a `plots` field.
-        This can be `nothing` or a `Vector{Plot}`. Without this, the Legend won't be able to
-        toggle visibility of the associated plots. The `plots` field is missing in: $(le)
-        """
-        return Plot[]
-    end
 end
 
 struct LegendEntry
+    plots::Vector{AbstractPlot}
     elements::Vector{LegendElement}
     attributes::Attributes
-end
 
+    function LegendEntry(plots::Vector, elements::Vector, attr::Attributes)
+        return new(plots, elements, attr)
+    end
+end
 
 const EntryGroup = Tuple{Any, Vector{LegendEntry}}
 
@@ -1757,6 +1770,47 @@ end
         Global state for the z dimension conversion.
         """
         dim3_conversion = nothing
+
+        "Controls whether the x dim_convert is shown in ticklabels."
+        x_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in ticklabels."
+        y_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in ticklabels."
+        z_unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the x dim_convert is shown in the xlabel."
+        x_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the y dim_convert is shown in the ylabel."
+        y_unit_in_label::Union{Bool, Automatic} = automatic
+        "Controls whether the z dim_convert is shown in the zlabel."
+        z_unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the xlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        xlabel_suffix = "[{}]"
+        """
+        Formatter for the ylabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        ylabel_suffix = "[{}]"
+        """
+        Formatter for the zlabel suffix generated from dim_converts. Can be a
+        Format.jl format string or a callback function acting acting on the
+        string or rich text generated from the dim convert.
+        Can also be a plain String replacing an active dim_convert label.
+        """
+        zlabel_suffix = "[{}]"
+        "Switches between short and long x units, e.g. \"s\" vs \"Second\""
+        use_short_x_units::Bool = true
+        "Switches between short and long y units, e.g. \"s\" vs \"Second\""
+        use_short_y_units::Bool = true
+        "Switches between short and long z units, e.g. \"s\" vs \"Second\""
+        use_short_z_units::Bool = true
+
         "The height setting of the scene."
         height = nothing
         "The width setting of the scene."
@@ -2368,3 +2422,17 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container

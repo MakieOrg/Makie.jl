@@ -4,10 +4,9 @@ function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(blockscene, ax.protrusions) do prot
+    on(blockscene, ax.protrusions, update = true) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
-    notify(ax.protrusions)
 
     finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
@@ -118,19 +117,66 @@ function initialize_block!(ax::Axis3)
         return
     end
 
+    x_dim_convert_updater = needs_tick_update_observable(ax.dim1_conversion)
+    y_dim_convert_updater = needs_tick_update_observable(ax.dim2_conversion)
+    z_dim_convert_updater = needs_tick_update_observable(ax.dim3_conversion)
+
     ticknode_1 = Observable{Any}()
-    map!(scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[1], ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
+    map!(
+        scene, ticknode_1, finallimits, ax.xticks, ax.xtickformat, ax.x_unit_in_ticklabel,
+        x_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[1]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[1], maximum(lims)[1], should_show)
     end
 
     ticknode_2 = Observable{Any}()
-    map!(scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[2], ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
+    map!(
+        scene, ticknode_2, finallimits, ax.yticks, ax.ytickformat, ax.y_unit_in_ticklabel,
+        y_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[2]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[2], maximum(lims)[2], should_show)
     end
 
     ticknode_3 = Observable{Any}()
-    map!(scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat) do lims, ticks, format
-        get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
+    map!(
+        scene, ticknode_3, finallimits, ax.zticks, ax.ztickformat, ax.z_unit_in_ticklabel,
+        z_dim_convert_updater
+    ) do lims, ticks, format, show_unit, _
+        dc = ax.scene.conversions[3]
+        should_show = show_dim_convert_in_ticklabel(dc, show_unit)
+        get_ticks(dc, ticks, identity, format, minimum(lims)[3], maximum(lims)[3], should_show)
+    end
+
+    xlabel_node = Observable{Any}()
+    map!(
+        xlabel_node, ax.xlabel, ax.xlabel_suffix, ax.x_unit_in_label, ax.use_short_x_units,
+        x_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        dc = ax.scene.conversions[1]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+    end
+
+    ylabel_node = Observable{Any}()
+    map!(
+        ylabel_node, ax.ylabel, ax.ylabel_suffix, ax.y_unit_in_label, ax.use_short_y_units,
+        y_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        dc = ax.scene.conversions[2]
+        return build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+    end
+
+    zlabel_node = Observable{Any}()
+    map!(
+        zlabel_node, ax.zlabel, ax.zlabel_suffix, ax.z_unit_in_label, ax.use_short_z_units,
+        z_dim_convert_updater, update = true
+    ) do label, formatter, show_unit_in_label, use_short_unit, _
+        dc = ax.scene.conversions[3]
+        x = build_label_with_unit_suffix(dc, formatter, label, show_unit_in_label, use_short_unit)
+        return x
     end
 
     add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
@@ -156,12 +202,18 @@ function initialize_block!(ax::Axis3)
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
-    xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
-    zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+    xticks, xticklabels, xlabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, xlabel_node
+    )
+    yticks, yticklabels, ylabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, ylabel_node
+    )
+    zticks, zticklabels, zlabel = add_ticks_and_ticklabels!(
+        blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed, zlabel_node
+    )
 
     titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
@@ -210,11 +262,11 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits) do lims
+    on(scene, ax.limits, update = true) do lims
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    on(scene, ax.targetlimits, update = true) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -241,9 +293,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
-
-    # in case the user set limits already
-    notify(ax.limits)
 
     return
 end
@@ -588,7 +637,10 @@ function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, tick
     return gridline1, gridline2, framelines
 end
 
-function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth, xreversed, yreversed, zreversed)
+function add_ticks_and_ticklabels!(
+        topscene, ax, dim::Int, limits, ticknode, miv, min1, min2, azimuth,
+        xreversed, yreversed, zreversed, label
+    )
 
     attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
@@ -692,7 +744,8 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
     onany(
         topscene,
         topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
-        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign),
+        xreversed, yreversed, zreversed, update = true
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -765,11 +818,10 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
 
         return
     end
-    notify(attr(:labelalign))
 
-    label = text!(
+    labelplot = text!(
         topscene, label_position,
-        text = attr(:label),
+        text = label,
         color = attr(:labelcolor),
         fontsize = attr(:labelsize),
         font = attr(:labelfont),
@@ -780,7 +832,7 @@ function add_ticks_and_ticklabels!(topscene, ax, dim::Int, limits, ticknode, miv
         space = :pixel
     )
 
-    return ticks, ticklabels_text, label
+    return ticks, ticklabels_text, labelplot
 end
 
 function dim3point(dim1, dim2, dim3, v1, v2, v3)
@@ -1033,7 +1085,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, mlims[2], mlims[3])
+    ax.limits = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     return nothing
 end
@@ -1051,7 +1103,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], ylims, mlims[3])
+    ax.limits = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     return nothing
 end
@@ -1069,7 +1121,7 @@ function Makie.zlims!(ax::Axis3, zlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], mlims[2], zlims)
+    ax.limits = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     return nothing
 end

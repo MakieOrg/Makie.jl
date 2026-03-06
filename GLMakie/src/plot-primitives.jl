@@ -38,9 +38,10 @@ using Makie.ComputePipeline
 
 function missing_uniforms(robj, inputs, input2name)
     inputset = Set([get(input2name, k, k) for k in inputs])
+    vertexarray = robj.variants[:main]
     uniformset = union(
-        keys(robj.vertexarray.program.uniformloc),
-        Symbol.(collect(keys(robj.vertexarray.buffers))),
+        keys(vertexarray.program.uniformloc),
+        Symbol.(collect(keys(vertexarray.buffers))),
         [:visible]
     )
     skip = [:objectid]
@@ -63,7 +64,7 @@ function flag_float64(robj)
         AbstractArray{<:VecTypes{N, Float64}} where {N},
         Observable,
     }
-    for (k, v) in robj.vertexarray.buffers
+    for (k, v) in robj.buffers
         v isa banned_types && error("$k in vertexarray is a banned type $(typeof(v))")
     end
     for (k, v) in robj.uniforms
@@ -76,6 +77,18 @@ end
 ### Generic (more or less)
 ################################################################################
 
+struct RenderObjectUpdater <: Function
+    screen::Screen
+    robj::RenderObject
+    gl_names::Dict{Symbol, Symbol}
+end
+
+function (updater::RenderObjectUpdater)(args::NamedTuple, changed::NamedTuple, last)
+    update_robjs!(updater.robj, args, changed, updater.gl_names)
+    updater.screen.requires_update = true
+    return (updater.robj,)
+end
+
 function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Dict{Symbol, Symbol})
     for name in keys(args)
         changed[name] || continue
@@ -85,26 +98,25 @@ function update_robjs!(robj, args::NamedTuple, changed::NamedTuple, gl_names::Di
         if name === :visible
             robj.visible = value
         elseif gl_name === :indices || gl_name === :faces
-            if robj.vertexarray.indices isa GLAbstraction.GPUArray
-                GLAbstraction.update!(robj.vertexarray.indices, value)
+            if robj.indices isa GLAbstraction.GPUArray
+                GLAbstraction.update!(robj.indices, value)
             else
-                robj.vertexarray.indices = value
+                robj.indices = value
             end
         elseif gl_name === :instances
-            # TODO: Is this risky since postprocessors are variable?
-            robj.postrenderfunction.n_instances[] = value
+            robj.instances = value
         elseif haskey(robj.uniforms, gl_name)
             if robj.uniforms[gl_name] isa GLAbstraction.GPUArray
                 GLAbstraction.update!(robj.uniforms[gl_name], value)
             else
                 converted = GLAbstraction.gl_convert(robj.context, value)
                 if typeof(robj.uniforms[gl_name]) !== typeof(converted)
-                    @error("Uniforms can not change their type. uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))")
+                    @error("Uniforms can not change their type.\n  uniforms[$gl_name]::$(typeof(robj.uniforms[gl_name])) = $name = $converted::$(typeof(converted))\n  in robj $(robj.id)")
                 end
                 robj.uniforms[gl_name] = converted
             end
-        elseif haskey(robj.vertexarray.buffers, string(gl_name))
-            GLAbstraction.update!(robj.vertexarray.buffers[string(gl_name)], value)
+        elseif haskey(robj.buffers, gl_name)
+            GLAbstraction.update!(robj.buffers[gl_name], value)
         else
             # println("Could not update ", name)
         end
@@ -120,15 +132,17 @@ function add_color_attributes!(screen, attr, data, color, colormap, colornorm)
     interp = attr.color_mapping_type[] === Makie.continuous ? :linear : :nearest
     data[:color_map] = needs_mapping ? Texture(screen.glscreen, colormap, minfilter = interp) : nothing
 
+    target = ifelse(needs_mapping, :intensity, :color)
     if _color isa Matrix{RGBAf} || _color isa ShaderAbstractions.Sampler
         data[:image] = _color
         data[:color] = RGBAf(1, 1, 1, 1)
+        target = :image
     else
         data[:color] = _color
     end
     data[:intensity] = intensity
     data[:color_norm] = colornorm
-    return nothing
+    return target
 end
 
 function add_color_attributes_lines!(screen, attr, data, color, colormap, colornorm)
@@ -196,11 +210,11 @@ end
 
 function construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
     data = Dict{Symbol, Any}(
-        :ssao => attr[:ssao][],
         :fxaa => attr[:fxaa][],
-        :transparency => attr[:transparency][],
         :overdraw => attr[:overdraw][],
         :num_clip_planes => 0, # default for in-shader resolution of clip planes
+        # TODO: integrate this into the OIT Render Stage
+        :oit_scale => screen.config.transparency_weight_scale,
     )
 
     if haskey(attr, :shading)
@@ -241,24 +255,50 @@ function register_robj!(constructor!, screen, scene, plot, inputs, uniforms, inp
         error("Duplicate robj inputs detected in $merged_inputs: $duplicates")
     end
 
-    register_computation!(attr, merged_inputs, [:gl_renderobject]) do args, changed, last
-        if isnothing(last)
-            # Generate complex defaults
-            # TODO: Should we add an initializer in ComputePipeline to extract this?
-            # That would simplify this code and remove attr, uniforms from the enclosed variables here
-            _robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
-        else
-            _robj = last.gl_renderobject
-            update_robjs!(_robj, args, changed, input2glname)
-            # names = ([k for (k, v) in pairs(changed) if v])
-            # @info "updating robj $(robj.id) due to changes in: $names"
-        end
-        screen.requires_update = true
-        return (_robj,)
+    robj = let
+        args = NamedTuple(map(key -> key => getproperty(attr, key)[], merged_inputs))
+        robj = construct_robj(constructor!, screen, scene, attr, args, uniforms, input2glname)
+        initialize_renderobject!(screen, robj, plot)
+        robj
     end
-    robj = attr[:gl_renderobject][]
+
+    # Filter out unused inputs and static attributes to prevent overwrite
+    always_keep = Set([:visible, :indices, :faces, :instances, :fxaa])
+    filter!(merged_inputs) do name
+        glname = get(input2glname, name, name)
+        if in(glname, always_keep)
+            return true
+        elseif any(kv -> (kv[1] !== name) && (kv[2] === name), input2glname)
+            # something else is overwriting a direct passthrough
+            # (e.g. color -> image for scatter)
+            return false
+        elseif haskey(robj.buffers, glname)
+            return true
+        elseif haskey(robj.uniforms, glname)
+            is_static = isnothing(robj[glname])
+            return !is_static
+        else
+            return false
+        end
+    end
+
+    # TODO: clean this up
+    # allows `constructor!` to remove inputs by making their name not appear in
+    # uniforms so the filter above deletes it. This then removes the mapping
+    # so it's not carried around with the callback
+    filter!(p -> p[2] !== :unused, input2glname)
 
     flag_float64(robj)
+
+    register_computation!(
+        RenderObjectUpdater(screen, robj, input2glname),
+        attr, merged_inputs, [:gl_renderobject]
+    )
+
+    ComputePipeline.unsafe_init!(attr.gl_renderobject, robj)
+
+    # Initialize node (this is required for visible checks)
+    attr.gl_renderobject[]
 
     screen.cache2plot[robj.id] = plot
     screen.cache[objectid(plot)] = robj
@@ -285,14 +325,13 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, Makie.get_texture_atlas()) : nothing
     data[:shape] = marker_shape
 
-    add_color_attributes!(screen, attr, data, color, colormap, colornorm)
+    colortarget = add_color_attributes!(screen, attr, data, color, colormap, colornorm)
 
     # Correct the name mapping
-    if !isnothing(get(data, :intensity, nothing))
-        input2glname[:scaled_color] = :intensity
-    end
-    if !isnothing(get(data, :image, nothing))
-        input2glname[:scaled_color] = :image
+    if attr[:marker][] isa Union{AbstractMatrix, AbstractVector{<:AbstractMatrix}}
+        input2glname[:scaled_color] = :unused
+    else
+        input2glname[:scaled_color] = colortarget
     end
 
     if fast_pixel
@@ -396,7 +435,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :sdf_marker_shape => :shape,
         :sdf_uv => :uv_offset_width,
         :gl_markerspace => :markerspace,
-        :quad_scale => :scale, :gl_image => :image,
+        :quad_scale => :scale,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
         :glowcolor => :glow_color, :glowwidth => :glow_width,
         :model_f32c => :model, :transform_marker => :scale_primitive,
@@ -506,18 +545,13 @@ function assemble_meshscatter_robj!(data, screen::Screen, attr, args, input2glna
         data[:uv_transform] = args.packed_uv_transform
     end
 
-    add_color_attributes!(screen, attr, data, args.scaled_color, args.alpha_colormap, args.scaled_colorrange)
+    colortarget = add_color_attributes!(
+        screen, attr, data, args.scaled_color, args.alpha_colormap,
+        args.scaled_colorrange
+    )
 
     # Correct the name mapping
-    if !isnothing(get(data, :intensity, nothing))
-        input2glname[:scaled_color] = :intensity
-    end
-    if !isnothing(get(data, :image, nothing))
-        input2glname[:scaled_color] = :image
-    end
-    if !isnothing(get(data, :color, nothing))
-        input2glname[:scaled_color] = :color
-    end
+    input2glname[:scaled_color] = colortarget
 
     return draw_mesh_particle(screen, data)
 end
@@ -1064,9 +1098,6 @@ function assemble_mesh_robj!(data, screen::Screen, attr, args, input2glname)
         args.alpha_colormap,
         args.scaled_colorrange
     )
-
-    data[:normals] === nothing && delete!(data, :normals)
-    data[:texturecoordinates] === nothing && delete!(data, :texturecoordinates)
 
     return draw_mesh(screen, data)
 end
