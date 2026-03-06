@@ -2207,6 +2207,75 @@ end
     st
 end
 
+@reference_test "LinePattern in recipes" begin
+    lp_diag = Makie.LinePattern(
+        direction = Vec2f(1, 1),
+        width = 1.1f0,
+        tilesize = (10, 10),
+        linecolor = (:black, 0.9),
+        backgroundcolor = (:gold, 0.25),
+    )
+    lp_horiz = Makie.LinePattern(
+        direction = Vec2f(1, 0),
+        width = 1.0f0,
+        tilesize = (8, 8),
+        linecolor = (:navy, 0.9),
+        backgroundcolor = (:skyblue, 0.3),
+    )
+    lp_cross = Makie.LinePattern(
+        direction = [Vec2f(1, 1), Vec2f(1, -1)],
+        width = 1.0f0,
+        tilesize = (10, 10),
+        linecolor = (:purple, 0.85),
+        backgroundcolor = (:plum, 0.25),
+    )
+
+    f = Figure(size = (900, 700))
+
+    ax_poly = Axis(f[1, 1], title = "poly")
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.05, 0.05), (0.45, 0.08), (0.35, 0.35), (0.48, 0.58), (0.28, 0.88),
+            (0.12, 0.62), (0.02, 0.45), (0.16, 0.28), (0.05, 0.05),
+        ],
+        color = lp_diag,
+    )
+    poly!(
+        ax_poly,
+        Point2f[
+            (0.58, 0.1), (0.92, 0.1), (0.92, 0.3), (0.76, 0.3), (0.76, 0.9),
+            (0.58, 0.9), (0.58, 0.1),
+        ],
+        color = lp_horiz,
+    )
+    xlims!(ax_poly, 0, 1)
+    ylims!(ax_poly, 0, 1)
+
+    ax_bar = Axis(f[1, 2], title = "barplot")
+    barplot!(ax_bar, 1:4, [2, 4, 3, 5], color = lp_horiz)
+
+    ax_band = Axis(f[2, 1], title = "band")
+    x = range(0, 2pi, length = 80)
+    y = 0.5 .* sin.(x)
+    band!(ax_band, x, y .- 0.2, y .+ 0.2, color = lp_cross)
+
+    ax_text = Axis(f[2, 2], title = "textlabel")
+    textlabel!(
+        ax_text,
+        Point2f(0.5, 0.5),
+        text = "LinePattern",
+        background_color = lp_diag,
+        cornerradius = 8,
+        cornervertices = 10,
+        padding = 8,
+    )
+    xlims!(ax_text, 0, 1)
+    ylims!(ax_text, 0, 1)
+
+    f
+end
+
 @reference_test "Transformed 2D Arrows" begin
     ps = [Point2f(i, 2^i) for i in 1:10]
     vs = [Vec2f(1, 100) for _ in 1:10]
