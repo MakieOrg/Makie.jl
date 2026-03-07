@@ -623,15 +623,13 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         return needs_gap ? ticklabelspace + pad : 0.0f0
     end
 
-    map!(+, graph, [:protrusion_labelspace, :protrusion_tickspace, :protrusion_ticklabelgap], :protrusion)
-    protrusion = ComputePipeline.get_observable!(graph.protrusion)
+    map!(
+        +, graph,
+        [:protrusion_labelspace, :protrusion_tickspace, :protrusion_ticklabelgap],
+        :protrusion
+    )
 
-    # TODO:
-    tickpositions = ComputePipeline.get_observable!(graph.tickpositions)
-    minortickpositions = ComputePipeline.get_observable!(graph.minortickpositions)
-
-    return LineAxis(parent, protrusion, attrs, decorations, tickpositions, minortickpositions)
-    # return LineAxis(parent, protrusion, attrs, decorations)
+    return LineAxis(parent, attrs, graph, decorations)
 end
 
 function tight_ticklabel_spacing!(la::LineAxis)

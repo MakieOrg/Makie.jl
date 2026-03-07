@@ -432,7 +432,7 @@ function initialize_block!(cb::Colorbar)
 
     cb.axis = axis
 
-    onany(blockscene, axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
+    onany(blockscene, cb.attributes.axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
 
         left, right, top, bottom = 0.0f0, 0.0f0, 0.0f0, 0.0f0
