@@ -300,150 +300,6 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     end
 
     map!(
-        calculate_real_ticklabel_align, graph,
-        [ticklabelalign, :horizontal, flipped, ticklabelrotation],
-        :realticklabelalign
-    )
-
-    add_input!((k, r) -> Rect2f(r), graph, :ticklabelbbox, Rect3d())
-
-    map!(graph, [:horizontal, :ticklabelbbox], :ticklabel_ideal_space) do horizontal, bbox
-        maxwidth = horizontal ? height(bbox) : width(bbox)
-        # not finite until the plot is created
-        # Note: This used to be `isfinite(maxwidth) && visible` - probably not needed?
-        return isfinite(maxwidth) ? maxwidth : zero(maxwidth)
-    end
-
-    register_computation!(
-        graph,
-        [:ticklabel_ideal_space, ticklabelspace],
-        [:actual_ticklabelspace]
-    ) do (idealspace, space), changed, cached
-        actual_ticklabelspace = isnothing(cached) ? 0.0f0 : cached[1]
-        if space == automatic
-            return (idealspace,)
-        elseif space isa Symbol
-            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
-            return (max(idealspace, actual_ticklabelspace),)
-        else
-            return (space,)
-        end
-    end
-
-    map!(graph, [ticksvisible, ticksize, tickalign], :tickspace) do ticksvisible, ticksize, tickalign
-        return ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
-    end
-
-    map!(
-        graph,
-        [spinewidth, :tickspace, ticklabelsvisible, :actual_ticklabelspace, ticklabelpad, labelpadding],
-        :labelgap
-    ) do spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelpadding
-
-        return spinewidth + tickspace +
-            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0.0f0) +
-            labelpadding
-    end
-
-    map!(
-        graph,
-        [:position, :extents, :horizontal, flipped, :labelgap],
-        :labelpos
-    ) do position, extents, horizontal, flipped, labelgap
-        # fullgap = tickspace[] + labelgap
-        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
-
-        x_or_y = flipped ? position + labelgap : position - labelgap
-
-        return horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
-    end
-
-    map!(
-        graph,
-        [labelrotation, :horizontal, flipped, flip_vertical_label],
-        :labelalign
-    ) do labelrotation, horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
-        return if labelrotation isa Automatic
-            if horizontal
-                (:center, flipped ? :bottom : :top)
-            else
-                (
-                    :center, if flipped
-                        flip_vertical_label ? :bottom : :top
-                    else
-                        flip_vertical_label ? :top : :bottom
-                    end,
-                )
-            end
-        else
-            (:center, :center)
-        end::NTuple{2, Symbol}
-    end
-
-
-    map!(
-        graph,
-        [labelrotation, :horizontal, flip_vertical_label],
-        :labelrot
-    ) do labelrotation, horizontal::Bool, flip_vertical_label::Bool
-        return if labelrotation isa Automatic
-            if horizontal
-                0.0f0
-            else
-                (flip_vertical_label ? -0.5f0 : 0.5f0) * π
-            end
-        else
-            Float32(labelrotation)
-        end::Float32
-    end
-
-
-    # label + dim convert suffix
-    map!(
-        build_label_with_unit_suffix, graph,
-        [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
-        :label_with_suffix
-    )
-    ComputePipeline.set_type!(graph.label_with_suffix, Any)
-
-    labeltext = text!(
-        parent, graph.labelpos, text = graph.label_with_suffix,
-        fontsize = labelsize, color = labelcolor,
-        visible = labelvisible,
-        align = graph.labelalign, rotation = graph.labelrot, font = labelfont,
-        markerspace = :data, inspectable = false
-    )
-
-    _labelbbox = register_raw_string_boundingboxes!(labeltext)
-    add_input!(graph, :labelbbox, Rect2d())
-    labelbbox = map(_labelbbox) do bbs
-        bb = Rect2d(bbs[1])
-        update!(graph, :labelbbox => bb)
-        return bb
-    end
-
-    # translate axis labels on explicit rotations
-    # in order to prevent plot and axis overlap
-    onany(
-        parent, labelrotation, flipped, graph.horizontal, labelbbox, update = true
-    ) do labelrotation, flipped, horizontal, bb
-        xs::Float32, ys::Float32 = if labelrotation isa Automatic
-            0.0f0, 0.0f0
-        else
-            wx, wy = widths(bb)
-            sign::Int = flipped ? 1 : -1
-            if horizontal
-                0.0f0, Float32(sign * 0.5f0 * wy)
-            else
-                Float32(sign * 0.5f0 * wx), 0.0f0
-            end
-        end
-        translate!(labeltext, xs, ys, 0.0f0)
-    end
-
-    decorations[:labeltext] = labeltext
-
-    map!(
         graph,
         # TODO: Why was :pos_extents_horizontal in here?
         [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel],
@@ -472,6 +328,24 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(
         graph,
+        [:tickvalues, minorticks, minorticksvisible, minorticksused, scale, limits],
+        :minortickvalues,
+        init = Float64[]
+    ) do values, ticks, visible, used, scale, limits
+        if visible || used
+            return get_minor_tickvalues(ticks, scale, values, limits...)
+        else
+            return nothing
+        end
+    end
+    ComputePipeline.mark_dirty!(graph.minortickvalues)
+
+    ######################################
+    ### Ticks
+    ######################################
+
+    map!(
+        graph,
         [:tickvalues, scale, :position, :extents, :horizontal, limits, reversed],
         :tickpositions
     ) do tickvalues, scale, position, extents_uncorrected, horizontal, limits, reversed
@@ -493,41 +367,9 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     end
 
     map!(
-        graph,
-        [:tickvalues, minorticks, minorticksvisible, minorticksused, scale, limits],
-        :minortickvalues,
-        init = Float64[]
-    ) do values, ticks, visible, used, scale, limits
-        if visible || used
-            return get_minor_tickvalues(ticks, scale, values, limits...)
-        else
-            return nothing
-        end
-    end
-    ComputePipeline.mark_dirty!(graph.minortickvalues)
-
-    map!(
-        compute_minor_ticks, graph,
-        [limits, :position, :extents, :horizontal, :minortickvalues, scale, reversed],
-        :minortickpositions
-    )
-
-    map!(
-        adjust_ticklabel_placement, graph,
-        [:tickpositions, :horizontal, flipped, spinewidth, :tickspace, ticklabelpad],
-        :ticklabel_position
-    )
-
-    map!(
         calculated_aligned_ticks, graph,
         [:horizontal, flipped, :tickpositions, tickalign, ticksize, spinewidth],
         :ticksnode
-    )
-
-    map!(
-        calculated_aligned_ticks, graph,
-        [:horizontal, flipped, :minortickpositions, minortickalign, minorticksize, spinewidth],
-        :minorticksnode
     )
 
     ticklines = linesegments!(
@@ -537,12 +379,32 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
 
+    ######################################
+    ### Minor Ticks
+    ######################################
+
+    map!(
+        compute_minor_ticks, graph,
+        [limits, :position, :extents, :horizontal, :minortickvalues, scale, reversed],
+        :minortickpositions
+    )
+
+    map!(
+        calculated_aligned_ticks, graph,
+        [:horizontal, flipped, :minortickpositions, minortickalign, minorticksize, spinewidth],
+        :minorticksnode
+    )
+
     minorticklines = linesegments!(
         parent, graph.minorticksnode, linewidth = minortickwidth, color = minortickcolor,
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
     translate!(minorticklines, 0, 0, 10)
+
+    ######################################
+    ### Axis Line
+    ######################################
 
     map!(
         create_linepoints, graph,
@@ -554,15 +416,28 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         parent, graph.linepoints, linewidth = spinewidth, visible = spinevisible,
         color = spinecolor, inspectable = false, linestyle = nothing
     )
-
     translate!(decorations[:axisline], 0, 0, 20)
 
-    # trigger whole pipeline once to fill tickpositions and tickstrings
-    # etc to avoid empty ticks bug #69
-    # notify(limits)
+    ######################################
+    ### Tick Labels
+    ######################################
 
-    # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
-    # we need to have the tickstrings populated once before adding the annotations
+    map!(graph, [ticksvisible, ticksize, tickalign], :tickspace) do ticksvisible, ticksize, tickalign
+        return ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    end
+
+    map!(
+        adjust_ticklabel_placement, graph,
+        [:tickpositions, :horizontal, flipped, spinewidth, :tickspace, ticklabelpad],
+        :ticklabel_position
+    )
+
+    map!(
+        calculate_real_ticklabel_align, graph,
+        [ticklabelalign, :horizontal, flipped, ticklabelrotation],
+        :realticklabelalign
+    )
+
     ticklabels_plot = text!(
         parent,
         graph.ticklabel_position,
@@ -580,11 +455,142 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     decorations[:ticklabels] = ticklabels_plot
 
     ticklabels_bbox = register_raw_string_boundingboxes!(ticklabels_plot)
-    on(ticklabels_bbox, update = true) do bbs
-        bb = reduce(update_boundingbox, bbs, init = Rect3f())
-        update!(graph, :ticklabelbbox => bb)
-        return
+    map!(graph, ticklabels_bbox, :ticklabelbbox) do bbs
+        return reduce(update_boundingbox, bbs, init = Rect3f())
     end
+
+    ######################################
+    ### Axis Labels
+    ######################################
+
+    map!(graph, [:horizontal, :ticklabelbbox], :ticklabel_ideal_space) do horizontal, bbox
+        maxwidth = horizontal ? height(bbox) : width(bbox)
+        # not finite until the plot is created
+        # Note: This used to be `isfinite(maxwidth) && visible` - probably not needed?
+        return isfinite(maxwidth) ? maxwidth : zero(maxwidth)
+    end
+
+    register_computation!(
+        graph,
+        [:ticklabel_ideal_space, ticklabelspace],
+        [:actual_ticklabelspace]
+    ) do (idealspace, space), changed, cached
+        actual_ticklabelspace = isnothing(cached) ? 0.0f0 : cached[1]
+        if space == automatic
+            return (idealspace,)
+        elseif space isa Symbol
+            space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
+            return (max(idealspace, actual_ticklabelspace),)
+        else
+            return (space,)
+        end
+    end
+
+    map!(
+        graph,
+        [labelrotation, :horizontal, flip_vertical_label],
+        :labelrot
+    ) do labelrotation, horizontal::Bool, flip_vertical_label::Bool
+        return if labelrotation isa Automatic
+            if horizontal
+                0.0f0
+            else
+                (flip_vertical_label ? -0.5f0 : 0.5f0) * π
+            end
+        else
+            Float32(labelrotation)
+        end::Float32
+    end
+
+    map!(
+        graph,
+        [labelrotation, :horizontal, flipped, flip_vertical_label],
+        :labelalign
+    ) do labelrotation, horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
+        return if labelrotation isa Automatic
+            if horizontal
+                (:center, flipped ? :bottom : :top)
+            else
+                (
+                    :center, if flipped
+                        flip_vertical_label ? :bottom : :top
+                    else
+                        flip_vertical_label ? :top : :bottom
+                    end,
+                )
+            end
+        else
+            (:center, :center)
+        end::NTuple{2, Symbol}
+    end
+
+    map!(
+        graph,
+        [spinewidth, :tickspace, ticklabelsvisible, :actual_ticklabelspace, ticklabelpad, labelpadding],
+        :labelgap
+    ) do spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelpadding
+
+        return spinewidth + tickspace +
+            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0.0f0) +
+            labelpadding
+    end
+
+    map!(
+        graph,
+        [:position, :extents, :horizontal, flipped, :labelgap],
+        :labelpos
+    ) do position, extents, horizontal, flipped, labelgap
+        # fullgap = tickspace[] + labelgap
+        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
+
+        x_or_y = flipped ? position + labelgap : position - labelgap
+
+        return horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
+    end
+
+    # label + dim convert suffix
+    map!(
+        build_label_with_unit_suffix, graph,
+        [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
+        :label_with_suffix
+    )
+    ComputePipeline.set_type!(graph.label_with_suffix, Any)
+
+    labeltext = text!(
+        parent, graph.labelpos, text = graph.label_with_suffix,
+        fontsize = labelsize, color = labelcolor,
+        visible = labelvisible,
+        align = graph.labelalign, rotation = graph.labelrot, font = labelfont,
+        markerspace = :data, inspectable = false
+    )
+
+    _labelbbox = register_raw_string_boundingboxes!(labeltext)
+    map!(bbs -> Rect2d(bbs[1]), graph, _labelbbox, :labelbbox)
+
+    # translate axis labels on explicit rotations
+    # in order to prevent plot and axis overlap
+    onany(
+        parent, labelrotation, flipped, graph.horizontal, graph.labelbbox, update = true
+    ) do labelrotation, flipped, horizontal, bb
+        xs::Float32, ys::Float32 = if labelrotation isa Automatic
+            0.0f0, 0.0f0
+        else
+            wx, wy = widths(bb)
+            sign::Int = flipped ? 1 : -1
+            if horizontal
+                0.0f0, Float32(sign * 0.5f0 * wy)
+            else
+                Float32(sign * 0.5f0 * wx), 0.0f0
+            end
+        end
+        translate!(labeltext, xs, ys, 0.0f0)
+    end
+
+    decorations[:labeltext] = labeltext
+
+    ######################################
+    ### Protrusions
+    ######################################
 
     map!(
         graph,
