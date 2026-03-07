@@ -36,39 +36,9 @@ function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float
     end
 end
 
-
-function calculate_protrusion(
-        horizontal, labeltext, ticklabel_position,
-        ticksvisible::Bool, label, labelvisible::Bool, labelpadding::Number,
-        tickspace::Number, ticklabelsvisible::Bool,
-        actual_ticklabelspace::Number, ticklabelpad::Number, _...
-    )
-
-    label_is_empty::Bool = iswhitespace(label)
-
-    real_labelsize::Float32 = if label_is_empty
-        0.0f0
-    else
-        # TODO: This can probably be
-        #   widths(fast_string_boundingboxes(labeltext)[1])
-        # to skip positions? (This only runs for axis labels)
-        widths(boundingbox(labeltext, :data))[horizontal[] ? 2 : 1]
-    end
-
-    labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0.0f0
-
-    _tickspace::Float32 = (ticksvisible && !isempty(ticklabel_position[])) ? tickspace : 0.0f0
-
-    needs_gap = (ticklabelsvisible && actual_ticklabelspace > 0)
-    ticklabelgap::Float32 = needs_gap ? actual_ticklabelspace + ticklabelpad : 0.0f0
-
-    return _tickspace + ticklabelgap + labelspace
-end
-
-
 function create_linepoints(
         position::Float32, extents::NTuple{2, Float32}, horizontal::Bool,
-        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}},
+        spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}},
         tickpositions::Vector{Point2f}, tickwidth::Number
     )
 
@@ -221,17 +191,6 @@ function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_i
         return isempty(label) ? suffix : rich("$label ", suffix)
     else
         return label
-    end
-end
-
-macro make_computed(graph, key)
-    return quote
-        if !haskey($(esc(graph)), $(QuoteNode(key)))
-            # if !isa($(esc(key)), Computed)
-            #     println("Added: ", $(QuoteNode(key)), "::", typeof($(esc(key))))
-            # end
-            add_input!($(esc(graph)), $(QuoteNode(key)), $(esc(key)))
-        end
     end
 end
 
@@ -408,7 +367,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 
     map!(
         create_linepoints, graph,
-        [:position, :extents, :horizontal, flipped, spinewidth, trimspine, :tickpositions, tickwidth],
+        [:position, :extents, :horizontal, spinewidth, trimspine, :tickpositions, tickwidth],
         :linepoints
     )
 
@@ -633,24 +592,8 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
 end
 
 function tight_ticklabel_spacing!(la::LineAxis)
-
-    horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
-        true
-    elseif la.attributes.endpoints[][1][1] == la.attributes.endpoints[][2][1]
-        false
-    else
-        error("endpoints not on a horizontal or vertical line")
-    end
-
-    tls = la.elements[:ticklabels]
-    maxwidth = if horizontal
-        # height
-        tls.visible[] ? height(Rect2f(boundingbox(tls, :data))) : 0.0f0
-    else
-        # width
-        tls.visible[] ? width(Rect2f(boundingbox(tls, :data))) : 0.0f0
-    end
-    la.attributes.ticklabelspace = maxwidth
+    maxwidth = la.graph.ticklabel_ideal_space[]
+    la.attributes.ticklabelspace[] = maxwidth
     return Float64(maxwidth)
 end
 
