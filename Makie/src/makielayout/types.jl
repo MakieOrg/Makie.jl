@@ -161,14 +161,9 @@ IntervalsBetween(n) = IntervalsBetween(n, true)
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
     attributes::Attributes
+    graph::ComputePipeline.ComputeGraphView
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{Any}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
@@ -281,9 +276,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2d}
-    finallimits::Observable{Rect2d}
-    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -786,7 +778,8 @@ end
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
         if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+            ax.localxlimits[] = (left(newlims), right(newlims))
+            ax.localylimits[] = (bottom(newlims), top(newlims))
         end
         return
     end

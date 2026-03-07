@@ -146,17 +146,24 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
         outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
-            edge.outputs[i].value = v # initialize to fully typed RefValue
-            return v
+            if isdefined(edge.outputs[i], :value)
+                edge.outputs[i][] = v[] # set value of existing node
+            else
+                edge.outputs[i].value = v # initialize to fully typed RefValue
+            end
+            return edge.outputs[i].value
         end
         foreach(node -> node.dirty = true, edge.outputs)
 
     elseif isnothing(result)
 
         outputs = ntuple(length(edge.outputs)) do i
-            v = RefValue(nothing)
-            edge.outputs[i].value = v # initialize to fully typed RefValue
-            return v
+            if isdefined(edge.outputs[i], :value)
+                edge.outputs[i][] = nothing
+            else
+                edge.outputs[i].value = RefValue(nothing)
+            end
+            return edge.outputs[i].value
         end
         foreach(node -> node.dirty = false, edge.outputs)
 
@@ -183,14 +190,15 @@ mutable struct Input{T} <: AbstractEdge
     output::Computed
     dirty::Bool
     dependents::Vector{ComputeEdge{T}}
+    force_update::Bool
 end
 
 Base.setproperty!(::Input, ::Symbol, ::Observable) = error("Setting the value of an ::Input to an Observable is not allowed")
 Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of an ::Input to a Computed is not allowed")
 
-function Input(graph, name, value, f, output)
+function Input(graph, name, value, f, output, force_update = false)
     validate_node_value(value)
-    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[])
+    return Input{ComputeGraph}(graph, name, value, f, output, true, ComputeEdge[], force_update)
 end
 
 
@@ -468,8 +476,6 @@ function get_observable!(c::Computed; use_deepcopy = true)
     end
 end
 
-include("observables_compat.jl")
-
 # ComputeEdge(f) = ComputeEdge(f, Computed[])
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
@@ -486,8 +492,12 @@ function ComputeGraph()
         Observables.ObserverFunction[], Observable[]
     )
 
-    on(graph.onchange) do changeset
-        intersect!(changeset, keys(graph.observables))
+    on(graph.onchange) do _changeset
+        # notifying observables may cause further updates to onchange which may
+        # corrupt state before we finish here. So copy changeset here and
+        # immediately prepare onchange for the next call
+        changeset = intersect(_changeset, keys(graph.observables))
+        empty!(_changeset)
 
         # update data
         for key in changeset
@@ -498,7 +508,6 @@ function ComputeGraph()
             if !(key in graph.should_deepcopy)
                 obs.val = val
             elseif val != obs[] # treat in-place updates
-
                 obs.val = deepcopy(val)
             else # same value (with deepcopy), skip update
                 delete!(changeset, key)
@@ -511,7 +520,6 @@ function ComputeGraph()
         end
 
         # clear changeset after processing observables
-        empty!(changeset)
         return Consume(false)
     end
 
@@ -625,28 +633,35 @@ function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
         return setindex!(computed.parent, value)
     else
-        computed.value[] = value
-        mark_dirty!(computed)
-        update_observables!(computed)
+        @lock computed.parent.graph.lock begin
+            computed.value[] = value
+            mark_dirty!(computed)
+            update_observables!(computed)
+        end
         return value
     end
 end
 
-function Base.setindex!(input::Input, value)
-    if is_same(input.value, value)
+Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
+function _setindex!(input::Input, value, force_update = false)
+    if !force_update && is_same(input.value, value)
         # Skip if the value is the same as before
         return value
     end
-    input.value = value
-    mark_dirty!(input)
-    update_observables!(input)
+    @lock input.graph.lock begin
+        input.value = value
+        mark_dirty!(input)
+        update_observables!(input)
+    end
     return value
 end
 
 function _setproperty!(attr::ComputeGraph, key::Symbol, value)
     input = attr.inputs[key]
     # Skip if the value is the same as before
-    is_same(input.value, value) && return value
+    if !input.force_update && is_same(input.value, value)
+        return value
+    end
     # can't notify observables immediately here, because update may call this
     # multiple times for a synchronized update (would cause desync)
     mark_dirty!(input)
@@ -655,11 +670,11 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
 end
 
 function Base.setproperty!(attr::ComputeGraph, key::Symbol, value)
-    return lock(attr.lock) do
+    @lock attr.lock begin
         _setproperty!(attr, key, value)
-        foreach(notify, attr.obs_to_update)
-        return value
+        update_observables!(attr)
     end
+    return value
 end
 
 """
@@ -849,6 +864,9 @@ function Base.getindex(attr::ComputeGraph, key::Symbol)
     end
 end
 
+function Base.propertynames(attr::ComputeGraphView)
+    return collect(keys(attr.parent.nesting.keytables[attr.nested_trace.next_index]))
+end
 function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     hasfield(ComputeGraphView, key) && return getfield(attr, key)
     return getindex(attr, key)
@@ -949,18 +967,18 @@ function set_result!(edge::TypedEdge, result)
     return set_result!(edge, rem, 1, next_val)
 end
 
-is_same(@nospecialize(a), @nospecialize(b)) = false
-is_same(a::Symbol, b::Symbol) = a == b
-function is_same(a::T, b::T) where {T}
+is_same(@nospecialize(old), @nospecialize(new)) = false
+is_same(old::Symbol, new::Symbol) = old == new
+function is_same(old::T, new::T) where {T}
     if isbitstype(T)
         # We can compare immutable isbits type per value with `===`
-        return a === b
+        return old === new
     else
         # For mutable types, we can only compare them if they're not pointing to the same  object
         # If they are the same, we have to give up since we can't test if they got mutated in-between
         # Otherwise we can compare by equivalence
-        same_object = a === b
-        return same_object ? false : isequal(a, b)
+        same_object = old === new
+        return same_object ? false : isequal(old, new)
     end
 end
 
@@ -2005,7 +2023,18 @@ function TypedEdge_no_call(edge::ComputeEdge)
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
+function set_type!(node::Computed, T::Type)
+    if isdefined(node, :value)
+        error("Node already initialized.")
+    else
+        node.value = Ref{T}()
+    end
+    return
+end
+
 include("io.jl")
+include("observables_compat.jl")
+include("utils.jl")
 
 export Computed, ComputeEdge
 export ComputeGraph

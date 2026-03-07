@@ -332,8 +332,9 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         if idx === nothing # All resolved
             print(io, "  with edge inputs:")
             ioc = IOContext(io, :limit => true)
-            for input in edge.inputs
-                print(io, "\n    ", input.name, " = ")
+            for (input, dirty) in zip(edge.inputs, edge.inputs_dirty)
+                c = ifelse(dirty, :normal, :light_black)
+                printstyled(io, "\n    ", input.name, " = ", color = c)
                 show(ioc, input.value[])
             end
             println(io)
