@@ -576,6 +576,7 @@ function initialize_limit_computations!(ax)
     # To avoid showing this to the user when fetching ax.limits[] we add another
     # input here, where (x/y)lims!() can mark which dimension to deny
     add_input!(attr, :_limit_update_rule, (:force, :force))
+    attr.inputs[:_limit_update_rule].force_update = true
 
     register_computation!(
         attr, [:limits, :_limit_update_rule], [:xlimits, :ylimits],
@@ -860,7 +861,7 @@ function xlims!(ax::Axis, xlims)
     update!(
         ax.attributes,
         limits = (xlims, ax.limits[][2]),
-        _limit_update_rule = (:auto, :deny),
+        _limit_update_rule = (:force, :deny),
         xreversed = reversed
     )
 
@@ -883,7 +884,7 @@ function Makie.ylims!(ax::Axis, ylims)
     update!(
         ax.attributes,
         limits = (ax.limits[][1], ylims),
-        _limit_update_rule = (:deny, :auto),
+        _limit_update_rule = (:deny, :force),
         yreversed = reversed
     )
 
