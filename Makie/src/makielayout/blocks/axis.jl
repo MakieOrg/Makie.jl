@@ -579,49 +579,22 @@ function initialize_limit_computations!(ax)
     attr.inputs[:_limit_update_rule].force_update = true
 
     register_computation!(
-        attr, [:limits, :_limit_update_rule], [:xlimits, :ylimits],
-    ) do (limits, rule), changed, cached
+        attr,
+        [:limits, :_limit_update_rule, :transform_func, :inverse_transform_func, :xautolimitmargin, :yautolimitmargin],
+        [:localxlimits, :localylimits],
+    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, cached
+        lims = calculate_local_limits(ax, limits, tf, itf, xmargins, ymargins)
         if changed._limit_update_rule
             # The update comes from (x/y)lims!() which explicitly set update rules
-            xlims = ComputePipeline.ExplicitUpdate(limits[1], rule[1])
-            ylims = ComputePipeline.ExplicitUpdate(limits[2], rule[2])
+            xlims = ComputePipeline.ExplicitUpdate(lims[1], rule[1])
+            ylims = ComputePipeline.ExplicitUpdate(lims[2], rule[2])
             return xlims, ylims
         else
             # force propagation of nothing, compare for numbers
-            x = make_limit_update_explit.(limits)
-            return x
+            return ComputePipeline.ExplicitUpdate.(lims, :force)
         end
     end
-    ComputePipeline.set_type!(attr.xlimits, Any)
-    ComputePipeline.set_type!(attr.ylimits, Any)
-
-
-    map!(
-        attr,
-        [:xlimits, :transform_func, :inverse_transform_func, :xautolimitmargin],
-        :localxlimits
-    ) do xlims, tf, itf, xautolimitmargin
-        lims = calculate_local_limits_from_plots(
-            ax, unwrap_explicit_update(xlims), 1, tf, itf, xautolimitmargin
-        )
-        flims = Float64.(lims)
-        # make sure this can reset sharedlimits even if this is reset to the same
-        # value (The update rules have already been applied in the previous step)
-        return ComputePipeline.ExplicitUpdate(flims, :force)
-    end
     ComputePipeline.set_type!(attr.localxlimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
-
-    map!(
-        attr,
-        [:ylimits, :transform_func, :inverse_transform_func, :yautolimitmargin],
-        :localylimits
-    ) do ylims, tf, itf, yautolimitmargin
-        lims = calculate_local_limits_from_plots(
-            ax, unwrap_explicit_update(ylims), 2, tf, itf, yautolimitmargin
-        )
-        flims = Float64.(lims)
-        return ComputePipeline.ExplicitUpdate(flims, :force)
-    end
     ComputePipeline.set_type!(attr.localylimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
 
     setfield!(ax, :xaxislinks, Axis[])
@@ -719,100 +692,83 @@ function initialize_limit_computations!(ax)
     return
 end
 
-function getlimits(ax::Axis, dim, tf = ax.scene.transform_func, itf = inverse_transform(tf))
-    # find all plots that don't have exclusion attributes set
-    # for this dimension
-    if !(dim in (1, 2))
-        error("Dimension $dim not allowed. Only 1 or 2.")
-    end
+function get_limits(ax::Axis, tf, itf)
+    x0, x1, y0, y1 = (Inf, -Inf, Inf, -Inf)
+    for plot in ax.scene.plots
+        update_x = to_value(get(plot, :xautolimits, true))
+        update_y = to_value(get(plot, :yautolimits, true))
+        if is_data_space(plot) && to_value(get(plot, :visible, true)) && (update_x || update_y)
+            if (itf === nothing) || (itf === :nothing)
+                @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
+                mini, maxi = extrema(Rect2d(data_limits(ax)))
+            else
+                # get limits with transform_func and model applied
+                bb = boundingbox(plot)
+                # then undo transform_func so that ticks can handle transform_func
+                # without ignoring translations, scaling or rotations from model
+                try
+                    bb = apply_transform(itf, bb)
+                catch e
+                    @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
+                    bb = data_limits(ax.scene, exclude)
+                end
+                mini, maxi = extrema(Rect2d(bb))
+            end
 
-    function exclude(plot)
-        # only use plots with autolimits = true
-        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
-        # only if they use data coordinates
-        is_data_space(plot) || return true
-        # only use visible plots for limits
-        return !to_value(get(plot, :visible, true))
-    end
-
-    # get all data limits, without the excluded plots
-    if (itf === nothing) || (itf === :nothing)
-        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
-        bb = data_limits(ax.scene, exclude)
-    else
-        # get limits with transform_func and model applied
-        bb = boundingbox(ax.scene, exclude)
-        # then undo transform_func so that ticks can handle transform_func
-        # without ignoring translations, scaling or rotations from model
-        try
-            bb = apply_transform(itf, bb)
-        catch e
-            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
-            bb = data_limits(ax.scene, exclude)
+            x0 = ifelse(update_x && isfinite(mini[1]), min(x0, mini[1]), x0)
+            x1 = ifelse(update_x && isfinite(maxi[1]), max(x1, maxi[1]), x1)
+            y0 = ifelse(update_y && isfinite(mini[2]), min(y0, mini[2]), y0)
+            y1 = ifelse(update_y && isfinite(maxi[2]), max(y1, maxi[2]), y1)
         end
     end
-
-    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isfinite_rect(bb, dim) || return nothing
-
-    # otherwise start with the first box
-    mini, maxi = minimum(bb), maximum(bb)
-    return (mini[dim], maxi[dim])
+    return (x0, x1), (y0, y1)
 end
 
 function autolimits(
-        ax::Axis, dim::Integer,
+        ax::Axis,
         tf = ax.scene.transform_func, itf = inverse_transform(tf),
-        margin = ax.attributes[(:xautolimitmargin, :yautolimitmargin)[dim]][]
+        xmargin = ax.xautolimitmargin, ymargin = ax.yautolimitmargin
     )
     # try getting x limits for the axis and then union them with linked axes
-    lims = getlimits(ax, dim, tf, itf)
+    xlims, ylims = get_limits(ax, tf, itf)
 
-    if isnothing(lims)
-        return defaultlimits(tf[dim])
+    xlims = if xlims[1] < xlims[2]
+        expandlimits(xlims, xmargin..., tf[1])
     else
-        return expandlimits(lims, margin[1], margin[2], tf[dim])
+        defaultlimits(tf[1])
     end
+
+    ylims = if ylims[1] < ylims[2]
+        expandlimits(ylims, ymargin..., tf[2])
+    else
+        defaultlimits(tf[2])
+    end
+
+    return xlims, ylims
 end
 
-# TODO: Is this supposed to be public api?
-# autolimits is quite different now. may return nothing, no linking, no validate
-# xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
-# yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
+function calculate_local_limits(ax, (user_xlims, user_ylims), tf, itf, xmargins, ymargins)
+    # Skip boundingbox calls (in autolimits -> getlimits) if user provides full limits
+    if isnothing(user_xlims) || isnothing(user_ylims) || any(isnothing, user_xlims) || any(isnothing, user_ylims)
+        auto_xlims, auto_ylims = autolimits(ax, tf, itf, xmargins, ymargins)
 
-# Basically `reset_limits!()` without x/y/zauto = false
-function calculate_local_limits_from_plots(ax, user_limits, idx, tf, itf, margin)
-    lims = if isnothing(user_limits) || user_limits[1] === nothing || user_limits[2] === nothing
-        l = autolimits(ax, idx, tf, itf, margin)
-        if user_limits === nothing
-            l
+        xlims = if isnothing(user_xlims)
+            auto_xlims
         else
-            lo = user_limits[1] === nothing ? l[1] : user_limits[1]
-            hi = user_limits[2] === nothing ? l[2] : user_limits[2]
-            (lo, hi)
+            something.(user_xlims, auto_xlims)
         end
+
+        ylims = if isnothing(user_ylims)
+            auto_ylims
+        else
+            something.(user_ylims, auto_ylims)
+        end
+
+        return Float64.(xlims), Float64.(ylims)
     else
-        convert(Tuple{Float64, Float64}, tuple(user_limits...))
+        return Float64.(user_xlims), Float64.(user_ylims)
     end
 
-    # Could not determine limits from plots, so discard the update by returning nothing
-    isnothing(lims) && return lims
-
-    if !(lims[1] <= lims[2])
-        dim = (:x, :y, :z)[idx]
-        error("Invalid $dim-limits as $(dim)lims[1] <= $(dim)lims[2] is not met for $lims.")
-    end
-
-    return lims
-end
-
-function calculate_local_limits(ax, user_limits, tf, itf)
-    lims = map(user_limits, eachindex(user_limits)) do lims, idx
-        calculate_local_limits(ax, lims, idx, tf, itf)
-    end
-
-    bb = Rect(Vecf(first.(lims)), Vecf(last.(lims) .- first.(lims)))
-    return bb
 end
 
 function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yautolimitmargin)
