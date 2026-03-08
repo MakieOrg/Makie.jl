@@ -1358,8 +1358,8 @@ end
 
         add_input!(graph, :normal, 1)
         add_input!(graph, :forced, 1, force_update = true)
-        add_input!((k, v) -> v+1, graph, :normalf, 1)
-        add_input!((k, v) -> v+1, graph, :forcedf, 1, force_update = true)
+        add_input!((k, v) -> v + 1, graph, :normalf, 1)
+        add_input!((k, v) -> v + 1, graph, :forcedf, 1, force_update = true)
 
         @test graph.normal.parent.force_update == false
         @test graph.forced.parent.force_update == true
@@ -1369,7 +1369,7 @@ end
         function record_metrics(args, changed, cached)
             metrics = isnothing(cached) ? Tuple{Bool, Int}[] : cached[1]
             push!(metrics, (changed[1], args[1]))
-            return (metrics, )
+            return (metrics,)
         end
 
         register_computation!(record_metrics, graph, [:normal], [:normal_metrics])
@@ -1407,8 +1407,14 @@ end
         evaled = Symbol[]
 
         # passhtrough
-        map!(x -> begin push!(evaled, :normal2); x end, graph, :normal, :normal2)
-        map!(x -> begin push!(evaled, :forced2); x end, graph, :forced, :forced2)
+        map!(graph, :normal, :normal2) do x
+            push!(evaled, :normal2)
+            return x
+        end
+        map!(graph, :forced, :forced2) do x
+            push!(evaled, :forced2)
+            return x
+        end
         ComputePipeline.set_type!(graph.normal2, Any)
         ComputePipeline.set_type!(graph.forced2, Any)
 

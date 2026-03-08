@@ -1104,8 +1104,7 @@ function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
         error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
     end
 
-    tlims =
-    Rect3f(
+    tlims = Rect3f(
         Vec3f(xlims[1], ylims[1], zlims[1]),
         Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
     )
