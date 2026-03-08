@@ -546,11 +546,19 @@ end
 
 isdirty(edge::ComputeEdge) = !edge.got_resolved[]
 
-# Note:
-# GLMakie may mark an unresolved renderobject as resolved to avoid repeated
-# errors from repeatedly pulling it. This requires us to not shortcut mark_dirty!()
-# Without that, we should be able to skip mark_dirty for any child/dependent that
-# is already dirty
+# [Rules]:
+# after mark_dirty!():
+#   any input dirty => all outputs dirty
+# after resolve!(): any output
+#   any output resolved => all inputs resolved
+#   <=> !(all outputs dirty) => !(any input dirty)
+#   => any input dirty => all outputs dirty
+# edge.got_resolved[] encodes this:
+#   resolve!() sets it to true when resolving all edge inputs & outputs
+#   mark_dirty!() sets it to false to mark all edge outputs dirty
+# As long as every other action preserves these rules we can:
+# 1. stop resolving inputs when edge.got_resolved[] == true
+# 2. stop mark_dirty!() when edge.got_resolved[] == false
 
 """
     mark_resolved!(computed)
@@ -563,20 +571,29 @@ function mark_resolved!(computed::Computed)
     hasparent(computed) && mark_resolved!(computed.parent)
     return
 end
-mark_resolved!(edge::ComputeEdge) = edge.got_resolved[] = true
-mark_resolved!(edge::Input) = edge.is_dirty = true
+function mark_resolved!(edge::ComputeEdge)
+    if !edge.got_resolved[]
+        edge.got_resolved[] = true
+        # Follow the [Rules]:
+        foreach(resolve!, edge.inputs)
+    end
+    return
+end
+mark_resolved!(edge::Input) = edge.dirty = true
 
 function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
-    # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
-    g = edge.graph
-    for output in edge.outputs
-        push!(g.onchange.val, output.name)
-        g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
-    end
+    if true # edge.got_resolved[] # because of [Rules]
+        # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
+        g = edge.graph
+        for output in edge.outputs
+            push!(g.onchange.val, output.name)
+            g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
+        end
 
-    edge.got_resolved[] = false
-    for dep in edge.dependents
-        mark_dirty!(dep, obs_to_update)
+        edge.got_resolved[] = false
+        for dep in edge.dependents
+            mark_dirty!(dep, obs_to_update)
+        end
     end
     return
 end
@@ -930,8 +947,10 @@ isdirty(input::Input) = input.dirty
 
 Base.getindex(computed::Computed) = resolve!(computed)
 
+# After resolving a parent edge, inform the dependent edge about the nodes the
+# parent updated.
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
-    @assert parent.got_resolved[] # parent should only call this after resolve!
+    @assert parent.got_resolved[]
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
@@ -1023,7 +1042,7 @@ function _resolve!(computed::Computed)
 end
 
 function resolve!(edge::ComputeEdge)
-    isdirty(edge) || return false
+    isdirty(edge) || return false # because of [Rules]
     return lock(edge.graph.lock) do
         # Resolve inputs first
         foreach(_resolve!, edge.inputs)
@@ -1982,7 +2001,7 @@ function unsafe_init!(edge::ComputeEdge)
     end
 
     return lock(edge.graph.lock) do
-        # Resolve inputs first
+        # Follow the [Rules]:
         foreach(_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
