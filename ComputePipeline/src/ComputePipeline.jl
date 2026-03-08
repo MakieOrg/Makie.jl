@@ -405,6 +405,7 @@ struct ComputeGraph <: AbstractComputeGraph
     nesting::NestedSearchTree
 
     onchange::Observable{Set{Symbol}}
+    obs_to_notify::Set{Symbol}
     observables::Dict{Symbol, Observable}
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
@@ -488,18 +489,19 @@ function ComputeGraph()
     graph = ComputeGraph(
         Dict{Symbol, ComputeEdge}(), Dict{Symbol, Computed}(), Base.ReentrantLock(),
         NestedSearchTree(),
-        Observable(Set{Symbol}()), Dict{Symbol, Observable}(), Set{Symbol}(),
+        Observable(Set{Symbol}()), Set{Symbol}(),
+        Dict{Symbol, Observable}(), Set{Symbol}(),
         Observables.ObserverFunction[], Observable[]
     )
 
-    on(graph.onchange) do _changeset
-        # notifying observables may cause further updates to onchange which may
-        # corrupt state before we finish here. So copy changeset here and
-        # immediately prepare onchange for the next call
-        changeset = intersect(_changeset, keys(graph.observables))
-        empty!(_changeset)
+    on(graph.onchange) do changeset
+        # Remove node names not backed by observables
+        intersect!(changeset, keys(graph.observables))
 
-        # update data
+        obs_to_notify = graph.obs_to_notify
+
+        # update values without triggering observables and add all updated names
+        # to obs_to_notify
         for key in changeset
             val = graph.outputs[key][]
             obs = graph.observables[key]
@@ -507,19 +509,30 @@ function ComputeGraph()
             # anything updated in-place
             if !(key in graph.should_deepcopy)
                 obs.val = val
+                push!(obs_to_notify, key)
             elseif val != obs[] # treat in-place updates
                 obs.val = deepcopy(val)
+                push!(obs_to_notify, key)
             else # same value (with deepcopy), skip update
-                delete!(changeset, key)
+                # delete!(changeset, key)
             end
         end
 
-        # trigger observables
-        for key in changeset
+        # Clear the changeset now so that if notify causes the graph to update
+        # again, the already processed names are not processed again.
+        empty!(changeset)
+
+        # trigger observables from obs_to_notify.
+        # Separating this from changeset allows notify to cause another
+        # on(onchange) to trigger without issues.
+        # - value setting & empty!(changeset) doesn't delete from obs_to_notify
+        # - the inner on(onchange) adds to the obs_to_notify Set, so no notifies
+        #   don't duplicate
+        while !isempty(obs_to_notify)
+            key = pop!(obs_to_notify)
             notify(graph.observables[key])
         end
 
-        # clear changeset after processing observables
         return Consume(false)
     end
 
@@ -756,6 +769,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :outputs && return getfield(attr, :outputs)
     key === :nesting && return getfield(attr, :nesting)
     key === :onchange && return getfield(attr, :onchange)
+    key === :obs_to_notify && return getfield(attr, :obs_to_notify)
     key === :observables && return getfield(attr, :observables)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
     key === :obs_to_update && return getfield(attr, :obs_to_update)

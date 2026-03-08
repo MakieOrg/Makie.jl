@@ -583,6 +583,42 @@ end
             @test g.observables[:out2][] == Float32[6, 7, 2, 3, 1]
             @test g.observables[:zipped][] == tuple.(Float32[2, 3, 6, 7, 1], Float32[6, 7, 2, 3, 1])
         end
+
+        @testset "Recursive Loop" begin
+            graph = ComputeGraph()
+            add_input!(graph, :input, 0)
+            map!(x -> (x, x), graph, :input, [:out1, :out2])
+
+            triggered = Symbol[]
+            on(graph.out1) do x
+                push!(triggered, :obs1)
+                if isodd(x)
+                    graph.input = x + 1
+                end
+                return
+            end
+            on(graph.out2) do x
+                push!(triggered, :obs2)
+                if isodd(x)
+                    graph.input = x + 1
+                end
+                return
+            end
+
+            @test graph.input[] == 0
+            @test isempty(triggered)
+
+            graph.input = 1
+            # one obs should trigger the 1 + 1
+            # this causes out1, out2 to update and be marked as changed
+            # this triggers on(onchange) again (from inside on(onchange))
+            # this should update obs1.val and obs2.val and then mark both as outdated
+            # and then trigger all that are marked outdated, which should not contain copies
+            # so it should trigger both here, with neither updating the graph
+            # we should then step back to the original on(onchange)
+            # which should not have anything left to process as the inner on(onchange) processed everything
+            @test triggered == [:obs1, :obs1, :obs2] || triggered == [:obs2, :obs2, :ob1]
+        end
     end
 
     @testset "map and on" begin
