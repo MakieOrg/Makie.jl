@@ -670,25 +670,6 @@ function initialize_limit_computations!(ax)
     idm = Makie.Mat4f(Makie.I)
     on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
 
-    #=
-                limits                  normalize structure, entrypoint, xlims!(), ylims!(),
-                |    |                  reset_limits!(), autolimits!(), LimitReset
-                ↓    ↓
-          xlimits    ylimits            unwrap, force nothing propagation
-            ↓           ↓
-     localxlimits    localylimits       mix in plot based limits, validation, target for interactions
-            ↓           ↓
-    sharedxlimits    sharedylimits      updates linked axes sharedlimits as a side effect
-            ↓           ↓                   |- either is a source for interactions
-            targetlimits                to Rect2d
-                  ↓
-  viewport → finallimits → viewport     aspect, margins
-                  ↓
-          projectionmatrix              update f32convert, calculate camera matrix
-                  ↓
-         camera observables
-    =#
-
     return
 end
 
@@ -913,103 +894,6 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
         end
     end
     return points
-end
-
-# TODO: This is not relevant to Axis anymore
-"""
-    reset_limits!(ax; xauto = true, yauto = true)
-
-Resets the axis limits depending on the value of `ax.limits`.
-If one of the two components of limits is nothing,
-that value is either copied from the targetlimits if `xauto` or `yauto` is false,
-respectively, or it is determined automatically from the plots in the axis.
-If one of the components is a tuple of two numbers, those are used directly.
-"""
-function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
-    mlims = convert_limit_attribute(ax.limits[])
-
-    if ax isa Axis
-        mxlims, mylims = mlims::Tuple{Any, Any}
-    elseif ax isa Axis3
-        mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
-    else
-        error()
-    end
-
-    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
-        l = if xauto
-            xautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
-        end
-        if mxlims === nothing
-            l
-        else
-            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
-            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float64, Float64}, tuple(mxlims...))
-    end
-    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
-        l = if yauto
-            yautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
-        end
-        if mylims === nothing
-            l
-        else
-            lo = mylims[1] === nothing ? l[1] : mylims[1]
-            hi = mylims[2] === nothing ? l[2] : mylims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float64, Float64}, tuple(mylims...))
-    end
-
-    if ax isa Axis3
-        zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
-            l = if zauto
-                zautolimits(ax)
-            else
-                minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
-            end
-            if mzlims === nothing
-                l
-            else
-                lo = mzlims[1] === nothing ? l[1] : mzlims[1]
-                hi = mzlims[2] === nothing ? l[2] : mzlims[2]
-                (lo, hi)
-            end
-        else
-            convert(Tuple{Float32, Float32}, tuple(mzlims...))
-        end
-    end
-
-    if !(xlims[1] <= xlims[2])
-        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
-    end
-    if !(ylims[1] <= ylims[2])
-        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
-    end
-    if ax isa Axis3
-        if !(zlims[1] <= zlims[2])
-            error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
-        end
-    end
-
-    tlims = if ax isa Axis
-        BBox(xlims..., ylims...)
-    elseif ax isa Axis3
-        Rect3f(
-            Vec3f(xlims[1], ylims[1], zlims[1]),
-            Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
-        )
-    end
-    ax.targetlimits[] = tlims
-    return nothing
 end
 
 # this is so users can do limits = (left, right, bottom, top)
