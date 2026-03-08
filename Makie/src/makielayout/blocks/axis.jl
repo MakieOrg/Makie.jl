@@ -540,9 +540,6 @@ make_limit_update_explit(x::Tuple{<:Any, Nothing}) = ComputePipeline.ExplicitUpd
 make_limit_update_explit(x::Tuple{Nothing, Nothing}) = ComputePipeline.ExplicitUpdate(x, :force)
 make_limit_update_explit(x::Tuple) = ComputePipeline.ExplicitUpdate(x, :auto)
 
-unwrap_explicit_update(x) = x
-unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
-
 function initialize_limit_computations!(ax)
     attr = ax.attributes
 

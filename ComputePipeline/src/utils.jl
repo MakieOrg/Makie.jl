@@ -19,6 +19,8 @@ Wraps a value in ComputeGraph to mark its update strategy. Can be:
 - `:auto`: propagate update if `is_same(previous_data, new_data)` is false
 
 Unmarked data uses `:auto`.
+
+See also [`unwrap_explicit_update`](@ref)
 """
 function ExplicitUpdate(data::T, rule::Symbol = :auto) where {T}
     return ExplicitUpdate{T}(data, rule)
@@ -34,3 +36,14 @@ function is_same(old, new::ExplicitUpdate)
         return new.rule == :deny
     end
 end
+
+"""
+    unwrap_explicit_update(x)
+
+Returns the value contained in an ExplicitUpdate `x` if one is passed. Otherwise
+return `x`.
+"""
+unwrap_explicit_update(x) = x
+unwrap_explicit_update(x::ComputePipeline.ExplicitUpdate) = x.data
+
+export ExplicitUpdate, unwrap_explicit_update

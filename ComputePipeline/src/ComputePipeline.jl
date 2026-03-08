@@ -895,7 +895,7 @@ function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     return getindex(attr, key)
 end
 
-function Base.getindex(attr::ComputeGraphView, key1::Symbol, key2::Symbol, keys::Symbol...)
+function Base.getindex(attr::AbstractComputeGraph, key1::Symbol, key2::Symbol, keys::Symbol...)
     return getindex(getindex(attr, key1), key2, keys...)
 end
 
@@ -1110,7 +1110,34 @@ add_input!
 # add_input!([func, ], attr, key, val) handles value based processing
 # _add_input!(func, attr, key, val) handles node insertion
 
-add_input!(attr::ComputeGraph, args...) = add_input!(attr, Base.front(args), last(args))
+# Since attr.input return the Computed node after the Input it's convenient to
+# have this work with Computed
+"""
+    enable_forced_updates!(input)
+
+Sets `input.forced_update = true` which makes the `Input` propagate same value
+updates to the `Computed` node they connect to. To further propagate same
+value updates through `ComputeEdge`s, wrap the values to propagate in
+`ExplicitUpdate(value, :force)`.
+"""
+function enable_forced_updates!(node::Computed)
+    input = node.parent
+    input isa Input || error("Forced updates are only implemented for Inputs. Use ExplicitUpdate(data, :force) otherwise.")
+    enable_forced_updates!(input)
+    return
+end
+function enable_forced_updates!(input::Input)
+    input.force_update = true
+    return
+end
+
+function add_input!(attr::ComputeGraph, args...; force_update = false)
+    add_input!(attr, Base.front(args), last(args))
+    if force_update
+        enable_forced_updates!(getindex(attr, Base.front(args)...).parent)
+    end
+    return attr
+end
 
 function add_input!(attr::ComputeGraphView, args...)
     combined = (attr.nested_trace.keys..., Base.front(args)...)
@@ -1136,8 +1163,12 @@ end
 (x::InputFunctionWrapper)(v) = x.user_func(x.key, v)
 (x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1]),)
 
-function add_input!(conversion_func, attr::ComputeGraph, args...)
-    return add_input!(conversion_func, attr, Base.front(args), last(args))
+function add_input!(conversion_func, attr::ComputeGraph, args...; force_update = false)
+    add_input!(conversion_func, attr, Base.front(args), last(args))
+    if force_update
+        enable_forced_updates!(getindex(attr, Base.front(args)...).parent)
+    end
+    return attr
 end
 
 function add_input!(conversion_func, attr::ComputeGraphView, args...)
