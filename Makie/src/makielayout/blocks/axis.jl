@@ -779,70 +779,90 @@ function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yauto
     return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
 end
 
-function xlims!(ax::Axis, xlims)
-    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
+function prepare_user_lims(ax, _lims, idx)
+    dim = ("x", "y")[idx]
+    lims = map(x -> convert_dim_value(ax, idx, x), _lims)
     reversed = false
-    if length(xlims) != 2
-        error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
-        error("Can't set x limits to the same value $(xlims[1]).")
-    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
-        xlims = reverse(xlims)
+    if length(lims) != 2
+        error("Invalid $(dim)lims length of $(length(lims)), must be 2.")
+    elseif lims[1] == lims[2] && lims[1] !== nothing
+        error("Can't set $dim limits to the same value $(lims[1]).")
+    elseif all(x -> x isa Real, lims) && lims[1] > lims[2]
+        lims = reverse(lims)
         reversed = true
     end
+    return lims, reversed
+end
 
+function update_xlims_locally!(ax, xlims, xreversed)
     # update xlims if they changed, keep ylims
     update!(
         ax.attributes,
         limits = (xlims, ax.limits[][2]),
         _limit_update_rule = (:force, :deny),
-        xreversed = reversed
+        xreversed = xreversed
     )
-
-    for link in ax.xaxislinks
-        link === ax && continue
-        update!(
-            link.attributes,
-            limits = (xlims, link.limits[][2]),
-            _limit_update_rule = (:force, :deny),
-            xreversed = reversed
-        )
-    end
-
-    return nothing
+    return
 end
 
-function Makie.ylims!(ax::Axis, ylims)
-    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
-    reversed = false
-    if length(ylims) != 2
-        error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
-        error("Can't set y limits to the same value $(ylims[1]).")
-    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
-        ylims = reverse(ylims)
-        reversed = true
-    end
-
+function update_ylims_locally!(ax, ylims, yreversed)
     # update ylims if they changed, keep xlims
     update!(
         ax.attributes,
         limits = (ax.limits[][1], ylims),
         _limit_update_rule = (:deny, :force),
-        yreversed = reversed
+        yreversed = yreversed
     )
+    return
+end
+
+function xlims!(ax::Axis, _xlims)
+    xlims, reversed = prepare_user_lims(ax, _xlims, 1)
+    update_xlims_locally!(ax, xlims, reversed)
+
+    for link in ax.xaxislinks
+        link === ax && continue
+        update_xlims_locally!(link, xlims, reversed)
+    end
+
+    return
+end
+
+function Makie.ylims!(ax::Axis, _ylims)
+    ylims, reversed = prepare_user_lims(ax, _ylims, 1)
+    update_ylims_locally!(ax, ylims, reversed)
 
     for link in ax.yaxislinks
         link === ax && continue
-        update!(
-            link.attributes,
-            limits = (link.limits[][1], ylims),
-            _limit_update_rule = (:deny, :force),
-            yreversed = reversed
-        )
+        update_ylims_locally!(link, ylims, reversed)
     end
 
-    return nothing
+    return
+end
+
+function _limits!(ax, lims)
+    xlims, xreversed = prepare_user_lims(ax, lims[1], 1)
+    ylims, yreversed = prepare_user_lims(ax, lims[2], 2)
+
+    # update xlims if they changed, keep ylims
+    update!(
+        ax.attributes,
+        limits = (xlims, ylims),
+        xreversed = xreversed,
+        yreversed = yreversed
+    )
+
+    for link in ax.xaxislinks
+        link === ax && continue
+        update_xlims_locally!(link, xlims, xreversed)
+    end
+
+    for link in ax.yaxislinks
+        link === ax && continue
+        update_ylims_locally!(link, ylims, yreversed)
+    end
+
+    return
 end
 
 function autolimits!(ax::Axis)
@@ -1352,8 +1372,7 @@ Set the axis limits to `xlims` and `ylims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, xlims, ylims)
-    Makie.xlims!(ax, xlims)
-    return Makie.ylims!(ax, ylims)
+    return _limits!(ax, (xlims, ylims))
 end
 
 """
@@ -1363,8 +1382,7 @@ Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, x1, x2, y1, y2)
-    Makie.xlims!(ax, x1, x2)
-    return Makie.ylims!(ax, y1, y2)
+    return _limits!(ax, ((x1, x2), (y1, y2)))
 end
 
 """
@@ -1376,8 +1394,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis, rect::Rect2)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
-    Makie.xlims!(ax, xmin, xmax)
-    return Makie.ylims!(ax, ymin, ymax)
+    return _limits!(ax, ((xmin, xmax), (ymin, ymax)))
 end
 
 function limits!(args::Union{Nothing, Real, HyperRectangle}...)
