@@ -1314,3 +1314,341 @@ using ComputePipeline: ComputeGraphView
         @test_throws ErrorException add_input!(graph, :a, :z, 1)
     end
 end
+
+@testset "ExplicitUpdate and force_update" begin
+
+    @testset "forced Input update propagation" begin
+        graph = ComputeGraph()
+
+        add_input!(graph, :normal, 1)
+        add_input!(graph, :forced, 1, force_update = true)
+        add_input!((k, v) -> v+1, graph, :normalf, 1)
+        add_input!((k, v) -> v+1, graph, :forcedf, 1, force_update = true)
+
+        @test graph.normal.parent.force_update == false
+        @test graph.forced.parent.force_update == true
+        @test graph.normalf.parent.force_update == false
+        @test graph.forcedf.parent.force_update == true
+
+        function record_metrics(args, changed, cached)
+            metrics = isnothing(cached) ? Tuple{Bool, Int}[] : cached[1]
+            push!(metrics, (changed[1], args[1]))
+            return (metrics, )
+        end
+
+        register_computation!(record_metrics, graph, [:normal], [:normal_metrics])
+        register_computation!(record_metrics, graph, [:forced], [:forced_metrics])
+        register_computation!(record_metrics, graph, [:normalf], [:normalf_metrics])
+        register_computation!(record_metrics, graph, [:forcedf], [:forcedf_metrics])
+
+        @test graph.normal_metrics[] == [(true, 1)]
+        @test graph.forced_metrics[] == [(true, 1)]
+        @test graph.normalf_metrics[] == [(true, 2)]
+        @test graph.forcedf_metrics[] == [(true, 2)]
+
+        update!(graph, :normal => 1, :forced => 1, :normalf => 1, :forcedf => 1)
+
+        @test graph.normal_metrics[] == [(true, 1)]
+        @test graph.forced_metrics[] == [(true, 1), (true, 1)]
+        @test graph.normalf_metrics[] == [(true, 2)]
+        @test graph.forcedf_metrics[] == [(true, 2), (true, 2)]
+
+        update!(graph, :normal => 2, :forced => 2, :normalf => 2, :forcedf => 2)
+
+        @test graph.normal_metrics[] == [(true, 1), (true, 2)]
+        @test graph.forced_metrics[] == [(true, 1), (true, 1), (true, 2)]
+        @test graph.normalf_metrics[] == [(true, 2), (true, 3)]
+        @test graph.forcedf_metrics[] == [(true, 2), (true, 2), (true, 3)]
+    end
+
+    @testset "ExplicitUpdate" begin
+        graph = ComputeGraph()
+        add_input!(graph, :normal, 1)
+        add_input!(graph, :forced, 1, force_update = true)
+        ComputePipeline.set_type!(graph.normal, Any)
+        ComputePipeline.set_type!(graph.forced, Any)
+
+        evaled = Symbol[]
+
+        # passhtrough
+        map!(x -> begin push!(evaled, :normal2); x end, graph, :normal, :normal2)
+        map!(x -> begin push!(evaled, :forced2); x end, graph, :forced, :forced2)
+        ComputePipeline.set_type!(graph.normal2, Any)
+        ComputePipeline.set_type!(graph.forced2, Any)
+
+        # Check that set_type!() works
+        @test isdefined(graph.normal, :value) && (graph.normal.value isa Base.RefValue{Any})
+        @test isdefined(graph.normal2, :value) && (graph.normal2.value isa Base.RefValue{Any})
+        @test isdefined(graph.forced, :value) && (graph.forced.value isa Base.RefValue{Any})
+        @test isdefined(graph.forced2, :value) && (graph.forced2.value isa Base.RefValue{Any})
+
+        # set in computation
+        for source in (:normal, :forced)
+            for mode in (:deny, :auto, :force)
+                next = Symbol("$(mode)_$(source)")
+                final = Symbol("$(mode)_$(source)2")
+                map!(graph, source, next) do x
+                    push!(evaled, next)
+                    return ExplicitUpdate(unwrap_explicit_update(x), mode)
+                end
+                map!(graph, next, final) do x
+                    push!(evaled, final)
+                    return x
+                end
+            end
+        end
+
+        # These should always trigger.
+        # input.forced -> output.forced always marks output.forced dirty
+        # output.forced -> (name in always) always runs but may not propagate further
+        always = [:forced2, :deny_forced, :auto_forced, :force_forced]
+
+        # Normal value, not repeated
+        @test isempty(evaled)
+        @test graph.normal[] == 1
+        @test graph.normal2[] == 1
+        @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+        @test graph.force_normal[] == ExplicitUpdate(1, :force)
+        @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+        @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+        @test graph.forced[] == 1
+        @test graph.forced2[] == 1
+        @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+        @test graph.force_forced[] == ExplicitUpdate(1, :force)
+        @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+        @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+        @test evaled == [
+            :normal2,
+            :deny_normal, :auto_normal, :force_normal,
+            :deny_normal2, :auto_normal2, :force_normal2,
+            always...,
+            :deny_forced2, :auto_forced2, :force_forced2,
+        ]
+        empty!(evaled)
+
+        # Check that set_type!() did not get reset/overwritten
+        @test graph.normal.value isa Base.RefValue{Any}
+        @test graph.normal2.value isa Base.RefValue{Any}
+        @test graph.forced.value isa Base.RefValue{Any}
+        @test graph.forced2.value isa Base.RefValue{Any}
+
+        @testset "equal value updates" begin
+            # Normal value, repeated
+            update!(graph, :normal => 1, :forced => 1)
+            @test isempty(evaled)
+            @test graph.normal[] == 1
+            @test graph.normal2[] == 1
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == 1
+            @test graph.forced2[] == 1
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [always..., :force_forced2]
+            empty!(evaled)
+
+            # forced update
+            # should get through Input, triggering first layer of nodes
+            # second layer depends on settings of those updates
+            update!(graph, :normal => ExplicitUpdate(1, :force), :forced => ExplicitUpdate(1, :force))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force)
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :force)
+            @test graph.forced2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :force_normal2,
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+
+            # auto update - should behave like same value update without ExplicitUpdate
+            update!(graph, :normal => ExplicitUpdate(1, :auto), :forced => ExplicitUpdate(1, :auto))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force) # same inner value, no update
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :auto) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(1, :force) # same value with :auto, no update
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+
+            # deny update - also same as equal value update as those deny
+            update!(graph, :normal => ExplicitUpdate(1, :deny), :forced => ExplicitUpdate(1, :deny))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force) # update denied
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :deny) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(1, :force) # update denied
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+        end
+
+        @testset "Changed value updates" begin
+            # Normal value, changed
+            update!(graph, :normal => 2, :forced => 2)
+            @test isempty(evaled)
+            @test graph.normal[] == 2
+            @test graph.normal2[] == 2
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny) # update denied by wrapping
+            @test graph.auto_normal[] == ExplicitUpdate(2, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(2, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(2, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(2, :force)
+            @test graph.forced[] == 2
+            @test graph.forced2[] == 2
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny) # update denied by wrapping
+            @test graph.auto_forced[] == ExplicitUpdate(2, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(2, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(2, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(2, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # forced update, same as above as different values update
+            update!(graph, :normal => ExplicitUpdate(3, :force), :forced => ExplicitUpdate(3, :force))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(3, :force)
+            @test graph.normal2[] == ExplicitUpdate(3, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(3, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(3, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(3, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(3, :force)
+            @test graph.forced[] == ExplicitUpdate(3, :force)
+            @test graph.forced2[] == ExplicitUpdate(3, :force)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(3, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(3, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(3, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(3, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # auto update - should behave like same value update without ExplicitUpdate
+            update!(graph, :normal => ExplicitUpdate(4, :auto), :forced => ExplicitUpdate(4, :auto))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(4, :auto)
+            @test graph.normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(4, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(4, :force)
+            @test graph.forced[] == ExplicitUpdate(4, :auto)
+            @test graph.forced2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(4, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(4, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(4, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # deny update - also same as equal value update as those deny
+            update!(graph, :normal => ExplicitUpdate(5, :deny), :forced => ExplicitUpdate(5, :deny))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(4, :auto) # update denied
+            @test graph.normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(4, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(4, :force)
+            @test graph.forced[] == ExplicitUpdate(5, :deny) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(4, :auto) # update denied
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(5, :auto) # Input forces these to run so that
+            @test graph.force_forced[] == ExplicitUpdate(5, :force) # :deny doesn't act before it gets replace
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(5, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(5, :force)
+            @test evaled == [
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+        end
+    end
+end
