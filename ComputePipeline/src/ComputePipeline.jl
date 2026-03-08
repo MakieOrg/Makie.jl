@@ -605,6 +605,12 @@ function mark_dirty!(computed::Computed)
 end
 
 function resolve!(input::Input)
+    return @lock input.graph.lock begin
+        locked_resolve!(input)
+    end
+end
+
+function locked_resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
     if isdefined(input.output, :value) && isassigned(input.output.value)
@@ -1003,7 +1009,7 @@ end
 
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve
-function resolve!(edge::TypedEdge)
+function locked_resolve!(edge::TypedEdge)
     if any(edge.inputs_dirty) # only call if inputs changed
         dirty = _get_named_change(edge.inputs, edge.inputs_dirty)
         vals = map(getindex, edge.outputs)
@@ -1026,39 +1032,46 @@ function resolve!(edge::TypedEdge)
     return
 end
 
+function locked_resolve!(computed::Computed)
+    if hasparent(computed)
+        locked_resolve!(computed.parent)
+    end
+    return
+end
+
+function locked_resolve!(edge::ComputeEdge)
+    isdirty(edge) || return false # because of [Rules]
+    # Resolve inputs first
+    foreach(locked_resolve!, edge.inputs)
+    if !isassigned(edge.typed_edge)
+        # constructor does first resolve to determine fully typed outputs
+        edge.typed_edge[] = TypedEdge(edge)
+    else
+        locked_resolve!(edge.typed_edge[])
+    end
+    edge.got_resolved[] = true
+    fill!(edge.inputs_dirty, false)
+    for dep in edge.dependents
+        mark_input_dirty!(edge, dep)
+    end
+    foreach(comp -> comp.dirty = false, edge.outputs)
+    return true
+end
+
 function resolve!(computed::Computed)
     try
-        return _resolve!(computed)
+        if hasparent(computed)
+            resolve!(computed.parent)
+        end
+        return computed.value[]
     catch e
         rethrow(ResolveException(computed, e))
     end
 end
 
-function _resolve!(computed::Computed)
-    if hasparent(computed)
-        resolve!(computed.parent)
-    end
-    return computed.value[]
-end
-
 function resolve!(edge::ComputeEdge)
-    isdirty(edge) || return false # because of [Rules]
-    return lock(edge.graph.lock) do
-        # Resolve inputs first
-        foreach(_resolve!, edge.inputs)
-        if !isassigned(edge.typed_edge)
-            # constructor does first resolve to determine fully typed outputs
-            edge.typed_edge[] = TypedEdge(edge)
-        else
-            resolve!(edge.typed_edge[])
-        end
-        edge.got_resolved[] = true
-        fill!(edge.inputs_dirty, false)
-        for dep in edge.dependents
-            mark_input_dirty!(edge, dep)
-        end
-        foreach(comp -> comp.dirty = false, edge.outputs)
-        return true
+    return @lock edge.graph.lock begin
+        locked_resolve!(edge)
     end
 end
 
@@ -1215,7 +1228,7 @@ function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     return TypedEdge(f, inputs, edge.inputs_dirty, inputs, edge.outputs)
 end
 
-function resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
+function locked_resolve!(edge::TypedEdge{IT, OT, typeof(compute_identity)}) where {IT, OT}
     # outputs are identical to inputs, so just copy the input state. To be safe
     # don't overwrite any `dirty = true` state with false (maybe a problem if
     # the input gets resolved?)
@@ -2002,7 +2015,7 @@ function unsafe_init!(edge::ComputeEdge)
 
     return lock(edge.graph.lock) do
         # Follow the [Rules]:
-        foreach(_resolve!, edge.inputs)
+        foreach(locked_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
         edge.got_resolved[] = true
         fill!(edge.inputs_dirty, false)
