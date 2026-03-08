@@ -781,7 +781,7 @@ end
 
 function prepare_user_lims(ax, _lims, idx)
     dim = ("x", "y")[idx]
-    lims = map(x -> convert_dim_value(ax, idx, x), _lims)
+    lims = map(x -> convert_dim_value(ax, idx, x), _convert_single_limit(_lims))
     reversed = false
     if length(lims) != 2
         error("Invalid $(dim)lims length of $(length(lims)), must be 2.")
@@ -829,7 +829,7 @@ function xlims!(ax::Axis, _xlims)
 end
 
 function Makie.ylims!(ax::Axis, _ylims)
-    ylims, reversed = prepare_user_lims(ax, _ylims, 1)
+    ylims, reversed = prepare_user_lims(ax, _ylims, 2)
     update_ylims_locally!(ax, ylims, reversed)
 
     for link in ax.yaxislinks
@@ -938,14 +938,15 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
     return (lims[1:2], lims[3:4])
 end
 
+_convert_single_limit(x::Nothing) = x
+_convert_single_limit(x::Interval) = endpoints(x)
+_convert_single_limit(x::VecTypes{2}) = (x[1], x[2])
+function _convert_single_limit(x::AbstractArray)
+    length(x) == 2 || error("Each dimension of limits must have 2 values, the minimum and maximum.")
+    return (x[1], x[2])
+end
+
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    _convert_single_limit(x::Nothing) = x
-    _convert_single_limit(x::Interval) = endpoints(x)
-    _convert_single_limit(x::VecTypes{2}) = (x[1], x[2])
-    function _convert_single_limit(x::AbstractArray)
-        length(x) == 2 || error("Each dimension of limits must have 2 values, the minimum and maximum.")
-        return (x[1], x[2])
-    end
     return map(_convert_single_limit, lims)
 end
 
