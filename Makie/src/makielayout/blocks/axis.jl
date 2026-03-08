@@ -799,6 +799,16 @@ function xlims!(ax::Axis, xlims)
         xreversed = reversed
     )
 
+    for link in ax.xaxislinks
+        link === ax && continue
+        update!(
+            link.attributes,
+            limits = (xlims, link.limits[][2]),
+            _limit_update_rule = (:force, :deny),
+            xreversed = reversed
+        )
+    end
+
     return nothing
 end
 
@@ -821,6 +831,16 @@ function Makie.ylims!(ax::Axis, ylims)
         _limit_update_rule = (:deny, :force),
         yreversed = reversed
     )
+
+    for link in ax.yaxislinks
+        link === ax && continue
+        update!(
+            link.attributes,
+            limits = (link.limits[][1], ylims),
+            _limit_update_rule = (:deny, :force),
+            yreversed = reversed
+        )
+    end
 
     return nothing
 end
