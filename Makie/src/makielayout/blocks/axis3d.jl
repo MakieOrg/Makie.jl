@@ -1,5 +1,14 @@
 struct Axis3Camera <: AbstractCamera end
 
+function add_attributes!(T::Type{<:Axis3}, graph, attributes)
+    limits = pop!(attributes, :limits)
+    add_input!(graph, :limits, limits)
+    ComputePipeline.set_type!(graph.limits, Any)
+    graph.inputs[:limits].force_update = true
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
@@ -262,7 +271,8 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits, update = true) do lims
+    limits_obs = ComputePipeline.get_observable!(ax.attributes, :limits, use_deepcopy = false)
+    on(scene, limits_obs, update = true) do lims
         reset_limits!(ax)
     end
 
