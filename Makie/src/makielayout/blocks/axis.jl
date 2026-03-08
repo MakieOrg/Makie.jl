@@ -732,13 +732,13 @@ function autolimits(
     # try getting x limits for the axis and then union them with linked axes
     xlims, ylims = get_limits(ax, tf, itf)
 
-    xlims = if xlims[1] < xlims[2]
+    xlims = if xlims[1] <= xlims[2]
         expandlimits(xlims, xmargin..., tf[1])
     else
         defaultlimits(tf[1])
     end
 
-    ylims = if ylims[1] < ylims[2]
+    ylims = if ylims[1] <= ylims[2]
         expandlimits(ylims, ymargin..., tf[2])
     else
         defaultlimits(tf[2])
