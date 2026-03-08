@@ -613,7 +613,7 @@ end
 function locked_resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
-    if isdefined(input.output, :value) && isassigned(input.output.value)
+    if isdefined(input.output, :value)
         input.output.value[] = deref(value)
     else
         input.output.value = value isa RefValue ? value : RefValue(value)
