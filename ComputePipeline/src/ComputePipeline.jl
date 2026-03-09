@@ -503,6 +503,9 @@ function ComputeGraph()
         # update values without triggering observables and add all updated names
         # to obs_to_notify
         for key in changeset
+            # Still necessary?
+            haskey(graph.observables, key) || continue
+
             val = graph.outputs[key][]
             obs = graph.observables[key]
             # Trust the graph to discard equal values. This doesn't work for
