@@ -2100,6 +2100,16 @@ function TypedEdge_no_call(edge::ComputeEdge)
     return TypedEdge(edge.callback, inputs, edge.inputs_dirty, outputs, edge.outputs)
 end
 
+"""
+    set_type!(node::Computed, type)
+
+Initialize a compute graph `node` to the given `type`.
+
+```
+map!(x -> rand([1, 1.0, "1"]), graph, :input, :output)
+set_type!(graph.output, Union{Int, Float64, String})
+```
+"""
 function set_type!(node::Computed, T::Type)
     if isdefined(node, :value)
         error("Node already initialized.")

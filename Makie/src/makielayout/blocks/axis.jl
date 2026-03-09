@@ -828,7 +828,7 @@ function xlims!(ax::Axis, _xlims)
     return
 end
 
-function Makie.ylims!(ax::Axis, _ylims)
+function ylims!(ax::Axis, _ylims)
     ylims, reversed = prepare_user_lims(ax, _ylims, 2)
     update_ylims_locally!(ax, ylims, reversed)
 
