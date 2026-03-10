@@ -285,19 +285,17 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         return tickvalues_unfiltered[indices], tickstrings_unfiltered[indices]
     end
 
-    map!(
+    register_computation!(
         graph,
         [:tickvalues, minorticks, minorticksvisible, minorticksused, scale, limits],
-        :minortickvalues,
-        init = Float64[]
-    ) do values, ticks, visible, used, scale, limits
+        [:minortickvalues,]
+    ) do (values, ticks, visible, used, scale, limits), changed, cached
         if visible || used
-            return get_minor_tickvalues(ticks, scale, values, limits...)
+            return (get_minor_tickvalues(ticks, scale, values, limits...),)
         else
-            return nothing
+            return isnothing(cached) ? (Float64[],) : nothing
         end
     end
-    ComputePipeline.mark_dirty!(graph.minortickvalues)
 
     ######################################
     ### Ticks

@@ -604,15 +604,8 @@ function _add_attributes!(T::Type{<:Block}, graph::AbstractComputeGraph, attribu
     typedict = attribute_types(T)
     for (key, attrib) in attributes
         type = get(typedict, key, Any)
-        convert_attr = BlockAttributeConvert(type)
-        add_input!(convert_attr, graph, key, attrib)
-        converted = convert_attr(nothing, to_value(attrib))
-        try
-            ComputePipeline.unsafe_init!(graph[key], Ref{type}(converted))
-        catch e
-            @info "Failed to initialize Attribute $key with converted value $converted (input $attrib) to a type $type."
-            rethrow(e)
-        end
+        add_input!(BlockAttributeConvert(type), graph, key, attrib)
+        ComputePipeline.set_type!(graph[key], type)
     end
     return
 end
