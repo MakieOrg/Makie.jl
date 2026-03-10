@@ -598,7 +598,7 @@ end
 mark_resolved!(edge::Input) = edge.dirty = true
 
 function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
-    if true # edge.got_resolved[] # because of [Rules]
+    if edge.got_resolved[] # because of [Rules]
         # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
         g = edge.graph
         for output in edge.outputs
