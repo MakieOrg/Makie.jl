@@ -226,6 +226,7 @@ end
         limits!(ax, 2, 3, 2, 3)
     end
     sleep(0.1)
+    synchronize() # WGLMakie
     img2 = rotr90(colorbuffer(f; update = false))
     large = hcat(img2, img1)
     s = Scene(; size = size(large))
