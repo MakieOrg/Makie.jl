@@ -1128,10 +1128,14 @@ end
 # If we start from an input we only need to lock this graph because we wont climb to another
 lock_all_parent_graphs!(edge::Input) = lock(edge.graph.lock)
 lock_all_parent_graphs!(edge::ComputeEdge) = lock_all_parent_graphs!(edge.graph)
-function lock_all_parent_graphs!(graph::ComputeGraph)
+function lock_all_parent_graphs!(graph::ComputeGraph, locked = ComputeGraph[])
     # recurse up first so we lock top to bottom
+    in(graph, locked) && return
+    push!(locked, graph)
     @lock graph.parent_graphs_lock begin
-        foreach(lock_all_parent_graphs!, graph.parent_graphs)
+        for parent in graph.parent_graphs
+            lock_all_parent_graphs!(parent, locked)
+        end
     end
     lock(graph.lock)
     return
@@ -1139,9 +1143,13 @@ end
 
 unlock_all_parent_graphs!(edge::Input) = unlock(edge.graph.lock)
 unlock_all_parent_graphs!(edge::ComputeEdge) = unlock_all_parent_graphs!(edge.graph)
-function unlock_all_parent_graphs!(graph::ComputeGraph)
+function unlock_all_parent_graphs!(graph::ComputeGraph, locked = ComputeGraph[])
+    in(graph, locked) && return
+    push!(locked, graph)
     @lock graph.parent_graphs_lock begin
-        foreach(unlock_all_parent_graphs!, graph.parent_graphs)
+        for parent in graph.parent_graphs
+            unlock_all_parent_graphs!(parent, locked)
+        end
     end
     unlock(graph.lock)
     return
