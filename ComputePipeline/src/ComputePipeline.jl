@@ -101,7 +101,6 @@ struct ComputeEdge{T} <: AbstractEdge
     typed_edge::RefValue{TypedEdge}
 end
 
-
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     return ComputeEdge{ComputeGraph}(
         graph, f, [input], [true], [output], RefValue(false),
@@ -610,9 +609,16 @@ function mark_resolved!(edge::ComputeEdge)
     end
     return
 end
-mark_resolved!(edge::Input) = edge.dirty = true
+mark_resolved!(edge::Input) = edge.dirty = false
 
 function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
+    @lock edge.graph.lock begin
+        locked_mark_dirty!(edge, obs_to_update)
+    end
+    return
+end
+
+function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
     if edge.got_resolved[] # because of [Rules]
         # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
         g = edge.graph
@@ -623,7 +629,7 @@ function mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
 
         edge.got_resolved[] = false
         for dep in edge.dependents
-            mark_dirty!(dep, obs_to_update)
+            locked_mark_dirty!(dep, obs_to_update)
         end
     end
     return
@@ -632,13 +638,15 @@ end
 function mark_dirty!(computed::Computed)
     computed.dirty = true
     hasparent(computed) || return
-    return mark_dirty!(computed.parent)
+    mark_dirty!(computed.parent)
+    return
 end
 
 function resolve!(input::Input)
-    return @lock input.graph.lock begin
+    @lock input.graph.lock begin
         locked_resolve!(input)
     end
+    return
 end
 
 function locked_resolve!(input::Input)
@@ -659,6 +667,12 @@ function locked_resolve!(input::Input)
 end
 
 function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
+    @lock input.graph.lock begin
+        locked_mark_dirty!(input, obs_to_update)
+    end
+    return
+end
+function locked_mark_dirty!(input::Input, obs_to_update::Vector{Observable})
     push!(input.graph.onchange.val, input.name)
     if !(input.graph.onchange in obs_to_update)
         push!(obs_to_update, input.graph.onchange)
@@ -666,7 +680,7 @@ function mark_dirty!(input::Input, obs_to_update::Vector{Observable})
 
     input.dirty = true
     for edge in input.dependents
-        mark_dirty!(edge, obs_to_update)
+        locked_mark_dirty!(edge, obs_to_update)
     end
     return
 end
