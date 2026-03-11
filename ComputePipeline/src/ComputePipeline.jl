@@ -399,6 +399,9 @@ graph[:derived_node][]
 ```
 """
 struct ComputeGraph <: AbstractComputeGraph
+    parent_graphs::Vector{ComputeGraph}
+    parent_graphs_lock::ReentrantLock
+
     inputs::Dict{Symbol, Input}
     outputs::Dict{Symbol, Computed}
     lock::ReentrantLock
@@ -487,7 +490,8 @@ end
 
 function ComputeGraph()
     graph = ComputeGraph(
-        Dict{Symbol, ComputeEdge}(), Dict{Symbol, Computed}(), Base.ReentrantLock(),
+        ComputeGraph[], ReentrantLock(),
+        Dict{Symbol, ComputeEdge}(), Dict{Symbol, Computed}(), ReentrantLock(),
         NestedSearchTree(),
         Observable(Set{Symbol}()), Set{Symbol}(),
         Dict{Symbol, Observable}(), Set{Symbol}(),
@@ -584,14 +588,25 @@ longer try to update. This will be undone the next time any (recursive) input
 to the node is updated.
 """
 function mark_resolved!(computed::Computed)
-    hasparent(computed) && mark_resolved!(computed.parent)
+    if hasparent(computed)
+        try
+            mark_resolved!(computed.parent)
+        catch e
+            rethrow(ResolveException(computed, e))
+        end
+    end
     return
 end
 function mark_resolved!(edge::ComputeEdge)
     if !edge.got_resolved[]
         edge.got_resolved[] = true
         # Follow the [Rules]:
-        foreach(resolve!, edge.inputs)
+        try
+            lock_all_parent_graphs!(edge)
+            foreach(locked_resolve!, edge.inputs)
+        finally
+            unlock_all_parent_graphs!(edge)
+        end
     end
     return
 end
@@ -771,6 +786,8 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :nesting && return getfield(attr, :nesting)
+    key === :parent_graphs && return getfield(attr, :parent_graphs)
+    key === :parent_graphs_lock && return getfield(attr, :parent_graphs_lock)
     key === :onchange && return getfield(attr, :onchange)
     key === :obs_to_notify && return getfield(attr, :obs_to_notify)
     key === :observables && return getfield(attr, :observables)
@@ -1075,23 +1092,69 @@ function locked_resolve!(edge::ComputeEdge)
     return true
 end
 
-function resolve!(computed::Computed)
-    try
-        if hasparent(computed)
-            resolve!(computed.parent)
-        end
-        return computed.value[]
-    catch e
-        rethrow(ResolveException(computed, e))
+# resolve!() and update!() / setproperty!() must not mix. If they do, resolve!()
+# might be working with older values and mark a result as resolved when newer
+# values have been set by update!()/setproperty!()
+# update!()/setproperty!() currently only locks their local (top level) graph.
+# With this, resolve!() traces all inputs and locks every involved graph before
+# computing anything. This way every involved graph is locked during resolve
+# and update!()/setproperty!() can only run before or after.
+# Note that unlocking a top level graph once resolve!() is done with it is not
+# OK with the current locking behavior of update!()/setproperty!(). In that case
+# update!()/setproperty!() can intercept resolve!(), marking everything dirty
+# which resolve!() then overwrites, marking nodes as clean with old results.
+# Note as well recursively locking both functions, e.g.
+#   resolve!(edge) = lock(edge.graph.lock) do resolve!(edge.inputs) end
+# requires both update!()/setproperty!() and resolve!() to lock and unlock in
+# the same order to prevent deadlocks. They also must (?) also keep their locks
+# until a graph has been fully updated/resolved. This is difficult in practice
+# because of the different recursion direction of update!()/setproperty!() (down)
+# and resolve!() (up).
+
+# If we start from an input we only need to lock this graph because we wont climb to another
+lock_all_parent_graphs!(edge::Input) = lock(edge.graph.lock)
+lock_all_parent_graphs!(edge::ComputeEdge) = lock_all_parent_graphs!(edge.graph)
+function lock_all_parent_graphs!(graph::ComputeGraph)
+    # recurse up first so we lock top to bottom
+    @lock graph.parent_graphs_lock begin
+        foreach(lock_all_parent_graphs!, graph.parent_graphs)
     end
+    lock(graph.lock)
+    return
+end
+
+unlock_all_parent_graphs!(edge::Input) = unlock(edge.graph.lock)
+unlock_all_parent_graphs!(edge::ComputeEdge) = unlock_all_parent_graphs!(edge.graph)
+function unlock_all_parent_graphs!(graph::ComputeGraph)
+    @lock graph.parent_graphs_lock begin
+        foreach(unlock_all_parent_graphs!, graph.parent_graphs)
+    end
+    unlock(graph.lock)
+    return
+end
+
+function resolve!(computed::Computed)
+    if hasparent(computed)
+        try
+            resolve!(computed.parent)
+        catch e
+            rethrow(ResolveException(computed, e))
+        end
+    end
+    return computed.value[]
 end
 
 function resolve!(edge::ComputeEdge)
-    return @lock edge.graph.lock begin
-        locked_resolve!(edge)
+    if !edge.got_resolved[]
+        try
+            lock_all_parent_graphs!(edge)
+            locked_resolve!(edge)
+        finally
+            unlock_all_parent_graphs!(edge)
+        end
     end
+    return
 end
-
 
 """
     add_input!([callback], compute_graph, name::Symbol, value)
@@ -1299,6 +1362,7 @@ function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
+    attach_parent!(attr, value)
     register_computation!(compute_identity, attr, [value], [key])
     return attr
 end
@@ -1308,8 +1372,29 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
+    attach_parent!(attr, value)
     register_computation!(InputFunctionWrapper(key, conversion_func), attr, [value], [key])
     return attr
+end
+
+function attach_parent!(graph::ComputeGraph, computed::Computed)
+    if hasparent(computed)
+        parent = computed.parent.graph
+        if parent !== graph && !in(parent, graph.parent_graphs)
+            @lock graph.parent_graphs_lock begin
+                push!(graph.parent_graphs, parent)
+                # The order needs to be consistent to avoid deadlocks.
+                # Consider Graphs (a, b) -> c, (b, a) -> d
+                # lock_all_parent_graphs!(c) locks a
+                # task switch
+                # lock_all_parent_graphs!(d) locks b
+                # lock_all_parent_graphs!(d) can't lock a - already locked
+                # lock_all_parent_graphs!(c) can't lock b - already locked
+                sort!(graph.parent_graphs, by = objectid)
+            end
+        end
+    end
+    return
 end
 
 
