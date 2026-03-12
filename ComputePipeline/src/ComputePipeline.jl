@@ -375,7 +375,7 @@ function ComputeGraph()
         #   don't duplicate
         while !isempty(obs_to_notify)
             key = pop!(obs_to_notify)
-            notify(graph.observables[key])
+            @async notify(graph.observables[key])
         end
 
         return Consume(false)
@@ -1919,11 +1919,11 @@ If `recursive = true` all child nodes of the selected node are deleted. If
 If either exists without the respective option being true an error will be thrown.
 """
 function Base.delete!(attr::ComputeGraph, key::Symbol; force::Bool = false, recursive::Bool = false)
-    return lock(attr.lock) do
-        haskey(attr.outputs, key) || throw(KeyError(key))
+    haskey(attr.outputs, key) || throw(KeyError(key))
+    @lock attr.lock begin
         _delete!(attr, attr.outputs[key], force, recursive)
-        return attr
     end
+    return attr
 end
 
 function _delete!(attr::ComputeGraph, node::Computed, force::Bool, recursive::Bool)
