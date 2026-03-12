@@ -358,7 +358,7 @@ end
         @test contains(s, "Input:\n  name:     :in2\n  value:    2\n  callback: identity(::Int64) @ ")
         @test contains(s, "\n  output:   ↻ Computed(:in2, #undef)\n  dependents:\n    ↻ ComputeEdge(foo2(…), 2 inputs, 2 outputs, 2 dependents)")
 
-        @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = ComputeEdge(compute_identity(…), 1 input, 1 output, 1 dependent) @ output 1\n  value = 1\n  dirty = false"
+        @test sprint(show, m, graph[:in1]) == "Computed:\n  name = :in1\n  parent = ComputeEdge(forward_inputs(…), 1 input, 1 output, 1 dependent) @ output 1\n  value = 1\n  dirty = false"
         @test sprint(show, m, graph[:in2]) == "Computed:\n  name = :in2\n  parent = Input(:in2, 2)\n  value = #undef\n  dirty = true"
 
         # regex needed for 1.6 which uses "NameTuple{(), Tuple{}}" instead o "@NamedTuple{}"
@@ -507,8 +507,16 @@ end
         @testset "Graph Connector Node" begin
             @test haskey(parent.outputs, :parent_node)
             @test haskey(graph.outputs, :in1)
-            @test !isempty(parent.outputs[:parent_node].parent.dependents)
-            @test isempty(graph.outputs[:in1].parent.dependents)
+            @test haskey(graph.input_bus, objectid(parent))
+            connector = graph.input_bus[objectid(parent)]
+            @test connector.inputs == [parent.parent_node]
+            @test connector.outputs == [graph.in1]
+            @test connector.dirty[]
+            @test !connector.should_resolve_now[]
+            @test isempty(connector.dependents) # because no callback
+            @test parent.outputs[:parent_node].parent.dependents == [connector]
+            @test graph.outputs[:in1].parent == connector
+
 
             @test_throws KeyError delete!(graph, :parent_node)
 
@@ -516,16 +524,22 @@ end
             @test haskey(parent.outputs, :parent_node)
             @test !haskey(graph.outputs, :in1)
             @test isempty(parent.outputs[:parent_node].parent.dependents)
+            @test isempty(graph.input_bus)
 
             add_input!(graph, :in1, parent.parent_node)
             register_computation!(foo, graph, [:in1], [:output])
 
             @test haskey(parent.outputs, :parent_node)
             @test haskey(graph.outputs, :in1)
-            @test haskey(graph.outputs, :output)
-            @test !isempty(parent.outputs[:parent_node].parent.dependents)
-            @test !isempty(graph.outputs[:in1].parent.dependents)
-            @test isempty(graph.outputs[:output].parent.dependents)
+            @test haskey(graph.input_bus, objectid(parent))
+            connector = graph.input_bus[objectid(parent)]
+            @test connector.inputs == [parent.parent_node]
+            @test connector.outputs == [graph.in1]
+            @test connector.dirty[]
+            @test !connector.should_resolve_now[]
+            @test connector.dependents == [graph.output.parent]
+            @test parent.outputs[:parent_node].parent.dependents == [connector]
+            @test graph.outputs[:in1].parent == connector
 
             @test_throws ErrorException delete!(graph, :in1)
 
@@ -534,8 +548,24 @@ end
             @test !haskey(graph.outputs, :in1)
             @test !haskey(graph.outputs, :output)
             @test isempty(parent.outputs[:parent_node].parent.dependents)
+            @test isempty(graph.input_bus)
 
-            # TODO:: Anything special for graph barriers?
+            add_input!((k, v) -> v, graph, :in1, parent.parent_node)
+
+            @test haskey(parent.outputs, :parent_node)
+            @test haskey(graph.outputs, :pre_callback_in1)
+            @test haskey(graph.outputs, :in1)
+            @test haskey(graph.input_bus, objectid(parent))
+            connector = graph.input_bus[objectid(parent)]
+            @test connector.inputs == [parent.parent_node]
+            @test connector.outputs == [graph.pre_callback_in1]
+            @test connector.dirty[]
+            @test !connector.should_resolve_now[]
+            @test connector.dependents == [graph.in1.parent] # input callback
+            @test parent.outputs[:parent_node].parent.dependents == [connector]
+            @test graph.outputs[:pre_callback_in1].parent == connector
+
+            # TODO: Anything special for graph barriers?
         end
     end
 
@@ -836,7 +866,7 @@ end
     @test e3.inputs == [graph1.a1, graph2.a2]
 end
 
-@testset "compute_identity" begin
+@testset "forward_inputs" begin
     graph1 = ComputeGraph()
     add_input!(graph1, :a1, Ref{Any}(1))
     map!(x -> Ref{Any}(x), graph1, :a1, :b1)
@@ -847,10 +877,11 @@ end
     @test graph2.b1.value isa Ref{Any}
 
     edge = graph2.b1.parent
-    @test edge.callback == ComputePipeline.compute_identity
+    @test edge.callback == ComputePipeline.forward_inputs
     @test length(edge.inputs) == length(edge.outputs)
     for (in, out) in zip(edge.inputs, edge.outputs)
-        @test in.value === out.value
+        @test in.value[] == out.value[]
+        @test eltype(in.value) == eltype(out.value)
         @test !ComputePipeline.isdirty(in)
         @test !ComputePipeline.isdirty(out)
     end
@@ -858,7 +889,8 @@ end
     update!(graph1, a1 = 5.0)
 
     for (in, out) in zip(edge.inputs, edge.outputs)
-        @test in.value === out.value
+        @test in.value[] == out.value[] # did not pull the 5.0 in
+        @test eltype(in.value) == eltype(out.value)
         @test ComputePipeline.isdirty(in)
         @test ComputePipeline.isdirty(out)
     end
@@ -866,7 +898,8 @@ end
     graph1.b1[]
 
     for (in, out) in zip(edge.inputs, edge.outputs)
-        @test in.value === out.value
+        @test in.value[] != out.value[] # pulled in input
+        @test eltype(in.value) == eltype(out.value)
         @test !ComputePipeline.isdirty(in)
         @test ComputePipeline.isdirty(out)
     end
@@ -874,7 +907,8 @@ end
     graph2.b1[]
 
     for (in, out) in zip(edge.inputs, edge.outputs)
-        @test in.value === out.value
+        @test in.value[] == out.value[] # pulled output
+        @test eltype(in.value) == eltype(out.value)
         @test !ComputePipeline.isdirty(in)
         @test !ComputePipeline.isdirty(out)
     end
