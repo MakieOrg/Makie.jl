@@ -511,8 +511,7 @@ end
             connector = graph.input_bus[objectid(parent)]
             @test connector.inputs == [parent.parent_node]
             @test connector.outputs == [graph.in1]
-            @test connector.dirty[]
-            @test !connector.should_resolve_now[]
+            @test !connector.got_resolved[]
             @test isempty(connector.dependents) # because no callback
             @test parent.outputs[:parent_node].parent.dependents == [connector]
             @test graph.outputs[:in1].parent == connector
@@ -535,8 +534,7 @@ end
             connector = graph.input_bus[objectid(parent)]
             @test connector.inputs == [parent.parent_node]
             @test connector.outputs == [graph.in1]
-            @test connector.dirty[]
-            @test !connector.should_resolve_now[]
+            @test !connector.got_resolved[]
             @test connector.dependents == [graph.output.parent]
             @test parent.outputs[:parent_node].parent.dependents == [connector]
             @test graph.outputs[:in1].parent == connector
@@ -559,8 +557,7 @@ end
             connector = graph.input_bus[objectid(parent)]
             @test connector.inputs == [parent.parent_node]
             @test connector.outputs == [graph.pre_callback_in1]
-            @test connector.dirty[]
-            @test !connector.should_resolve_now[]
+            @test !connector.got_resolved[]
             @test connector.dependents == [graph.in1.parent] # input callback
             @test parent.outputs[:parent_node].parent.dependents == [connector]
             @test graph.outputs[:pre_callback_in1].parent == connector

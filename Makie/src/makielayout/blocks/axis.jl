@@ -627,6 +627,7 @@ function initialize_limit_computations!(ax)
             # The world ends if this runs with link being this Axis
             link.sharedxlimits[] = lims
         end
+
         return lims
     end
     ComputePipeline.get_observable!(attr.sharedxlimits)
@@ -641,6 +642,7 @@ function initialize_limit_computations!(ax)
             link === ax && continue
             link.sharedylimits[] = lims
         end
+
         return lims
     end
     ComputePipeline.get_observable!(attr.sharedylimits)
