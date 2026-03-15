@@ -82,7 +82,9 @@ mutable struct Screen <: Makie.MakieScreen
     config::ScreenConfig
 
     function Screen(scene, state, config)
-        new(scene, state, RayMakieState[], nothing, config)
+        s = new(scene, state, RayMakieState[], nothing, config)
+        finalizer(close, s)
+        return s
     end
 end
 
@@ -150,12 +152,36 @@ end
 # Track whether screen is open for resource management
 const _open_screens = Set{UInt}()
 
+# Flush GPU deferred frees — Lava-specific, no-op for other backends
+function _flush_gpu!()
+    mod = parentmodule(typeof(KernelAbstractions.allocate))  # KA always loaded
+    lava = get(Base.loaded_modules, Base.PkgId(Base.UUID("dab5e104-5754-42e4-af51-5044c2e3a8e0"), "Lava"), nothing)
+    lava === nothing && return
+    try
+        getfield(lava, :vk_flush!)()
+        getfield(lava, :flush_deferred_frees!)()
+    catch
+    end
+end
+
 function Base.isopen(screen::Screen)
     return objectid(screen) in _open_screens || screen.state !== nothing
 end
 
 function cleanup!(state::RayMakieState)
     Hikari.free!(state.film)
+
+    # Free integrator state (work queues, pixel buffers — bulk of GPU memory)
+    if state.integrator_state !== nothing
+        Hikari.free!(state.integrator_state)
+        state.integrator_state = nothing
+    end
+
+    # Free GPU arrays used for colorbuffer/overlay
+    finalize(state.colorbuffer_tmp)
+    finalize(state.overlay_buffer)
+    finalize(state.depth_flipped)
+
     return nothing
 end
 
@@ -166,15 +192,38 @@ Release all GPU resources held by the screen, including the integrator state,
 film, and preserved GPU arrays. Call this when done rendering to free GPU memory.
 """
 function Base.close(screen::Screen)
+    # Idempotent — safe to call from finalizer or explicit close
+    isempty(screen.scene_states) && screen.state === nothing && return nothing
+
+    # Step 1: Mark all states as closed FIRST — prevents delete_trace_robj! from
+    # resolving Observables (which triggers ComputePipeline re-evaluation on freed GPU data)
+    for ss in screen.scene_states
+        ss.closed = true
+    end
+
+    # Step 2: Free ALL GPU resources — both integrator/film (cleanup!) and
+    # hikari scene data (TLAS, materials, lights, media via _free_state_gpu!)
     for ss in screen.scene_states
         cleanup!(ss)
+        if ss.hikari_scene !== nothing
+            _free_state_gpu!(ss)
+        end
     end
     empty!(screen.scene_states)
     screen.state = nothing
 
+    # Free the output buffer
+    if screen.output_buffer !== nothing
+        finalize(screen.output_buffer)
+        screen.output_buffer = nothing
+    end
+
     close(screen.config.integrator)
 
     delete!(_open_screens, objectid(screen))
+
+    # Flush deferred frees so GPU memory is actually released now
+    _flush_gpu!()
 
     return nothing
 end
@@ -206,6 +255,18 @@ Screen(scene::Scene, config::ScreenConfig, ::Makie.ImageStorageFormat) = Screen(
 function Makie.apply_screen_config!(screen::Screen, config::ScreenConfig, scene::Scene, args...)
     if screen.config.device !== config.device
         return Screen(scene, config)
+    end
+
+    old_int = screen.config.integrator
+    new_int = config.integrator
+
+    # If the integrator object changed, close the old one's caches and mark dirty
+    if old_int !== new_int
+        close(old_int)
+        for ss in screen.scene_states
+            ss.integrator_state = nothing
+            ss.needs_film_clear = true
+        end
     end
 
     screen.config = config
@@ -304,7 +365,14 @@ function _postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     if !isempty(tlas.instances)
         lights = scene_state.hikari_scene.lights
         has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-        adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
+        # Use cached adapted scene from VolPath integrator (avoids re-uploading ~30 MiB per render)
+        integrator = config.integrator
+        cached = integrator isa Hikari.VolPath ? integrator._adapted_scene_cache : nothing
+        if cached !== nothing
+            adapted_scene = cached[2]
+        else
+            adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
+        end
         Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
     else
         fill!(film.depth, Float32(1e30))  # all overlays pass depth test
@@ -601,13 +669,22 @@ end
 function Base.delete!(screen::Screen, scene::Scene)
     screen.scene === scene || return
     for ss in screen.scene_states
-        _free_state_gpu!(ss)
+        ss.closed && continue  # Already freed by close(screen)
+        ss.closed = true
+        cleanup!(ss)           # Free integrator state, colorbuffer, overlay, depth
+        _free_state_gpu!(ss)   # Free hikari scene (TLAS, materials, lights, media)
     end
     empty!(screen.scene_states)
     screen.state = nothing
+    # Also close the integrator to free its caches
+    close(screen.config.integrator)
+    # Flush deferred frees so GPU memory is actually released
+    # (this can be called from Scene GC finalizer via @async)
+    _flush_gpu!()
 end
 
 function _free_state_gpu!(state::RayMakieState)
+    state.hikari_scene === nothing && return
     Raycore.free!(state.hikari_scene.accel)
     Hikari.free!(state.film)
     for set in (state.hikari_scene.lights, state.hikari_scene.materials, state.hikari_scene.media)
@@ -615,6 +692,7 @@ function _free_state_gpu!(state::RayMakieState)
         Raycore.free!(set)
     end
     finalize(state.hikari_scene.media_interfaces)
+    state.hikari_scene = nothing
 end
 
 Makie.backend_showable(::Type{Screen}, ::Union{MIME"image/jpeg", MIME"image/png"}) = true

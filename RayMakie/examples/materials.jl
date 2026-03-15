@@ -3,8 +3,8 @@ using Colors, FileIO
 using RayMakie
 using Makie
 using ImageShow
-using AMDGPU
 using Lava
+using CUDA
 
 function make_perlin_texture(resolution::Int; scale=4.0, bias=0.5, contrast=1.0)
     tex = Matrix{Float32}(undef, resolution, resolution)
@@ -194,7 +194,7 @@ end
 
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
-device = AMDGPU.ROCBackend()
+device = CUDA.CUDABackend()
 device = Lava.LavaBackend()
 # device = KernelAbstractions.CPU()
 RayMakie.activate!(
@@ -206,21 +206,62 @@ RayMakie.activate!(
 )
 nsamples = 10
 ax = create_scene()
-integrator = Hikari.VolPath(samples=nsamples, max_depth=50, hw_accel=false)
+integrator = Hikari.VolPath(samples=nsamples, max_depth=50, hw_accel=true)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
+img
+ax = nothing
 
 # save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
 # Benchmark 10 samples
-# Lava HW:  1.063923 seconds (3.38 M allocations: 184.093 MiB, 1.56% gc time)
-# Lava: 1.349905 seconds (1.45 M allocations: 278.549 MiB, 4.80% gc time)
-# ROCarray: 1.685820 seconds (822.75 k allocations: 62.698 MiB, 2 lock conflicts)
+# Lava 7900xtx hw:  1.063923 seconds (3.38 M allocations: 184.093 MiB, 1.56% gc time)
+# Lava 7900xtx: 1.349905 seconds (1.45 M allocations: 278.549 MiB, 4.80% gc time)
+# Lava 3070m hw: 1.682083 secoRecommendations (ordered by expected impact)
+#=
+  High impact:
+
+  1. Inline queue routing into RT shaders — Instead of the extract→trace→reconstruct pattern, have the raygen shader read directly from the work queue and the closest-hit shader write directly to output queues. This eliminates the
+   intermediate RTRay/RTHitResult buffers and the extra compute kernel. This is a significant refactor but is the single biggest architectural difference from pbrt-v4.
+  2. Single-launch shadow rays with media — Instead of 4 rounds of RT+compute, implement a raygen shader that loops internally (trace → check hit → handle medium transition → trace again). Vulkan RT supports calling traceRayEXT
+  from within raygen shaders in a loop, just like OptiX's optixTrace().
+
+  Medium impact:
+
+  3. Alpha textures in any-hit shader — Requires texture sampling support in Lava's RT shaders (Phase 2 work anyway). Until then, scenes with cutout geometry take the slow path.
+  4. Ray flags — Use gl_RayFlagsOpaqueEXT when no any-hit needed, gl_RayFlagsTerminateOnFirstHitEXT for shadow rays (easy win).
+
+nds (1.60 M allocations: 135.306 MiB, 1.11% gc time)
+# ROCarray 7900xtx: 1.685820 seconds (822.75 k allocations: 62.698 MiB, 2 lock conflicts)
+# Lava 3070m:  1.546421 seconds (806.15 k allocations: 100.501 MiB, 1.36% gc time)
+# CUDA 3070m: 1.767812 seconds (1.23 M allocations: 57.798 MiB, 1.04% gc time)
 # Abacus: 12.221356 seconds (1.49 M allocations: 200.444 MiB)
 # OpenCL: 23.625098 seconds (1.01 M allocations: 134.024 MiB, 0.16% gc time)
 # Array: 26.235557 seconds (957.16 M allocations: 94.225 GiB, 44.58% gc time)
-
 #=
 Benchmarks with:
 add https://github.com/SimonDanisch/Abacus.jl#sd/vk Hikari#master Raycore#sd/multitype-vec Makie#sd/hikari
+
+
+ Info: Lava: initialized Vulkan device with RT
+│   device = "NVIDIA GeForce RTX 3070 Laptop GPU"
+│   queue_family = 0x00000000
+│   handle_size = 0x00000020
+│   max_recursion = 0x0000001f
+│   validation = true
+└   debug_utils = true
+
+Lava hw_accel=false
+152.691834 seconds (484.70 M allocations: 20.000 GiB, 3.56% gc time, 77.72% compilation time: 1% of which was recompilation)
+  2.438812 seconds (1.59 M allocations: 137.244 MiB, 16.58% gc time, 0.14% compilation time)
+  2.236804 seconds (1.59 M allocations: 137.193 MiB, 16.25% gc time, 0.21% compilation time)
+Lava hw_accel=true
+ 24.346725 seconds (81.08 M allocations: 2.587 GiB, 8.57% gc time, 33.13% compilation time: <1% of which was recompilation)
+  2.433334 seconds (3.38 M allocations: 190.531 MiB, 16.42% gc time)
+  2.478928 seconds (3.38 M allocations: 190.537 MiB, 16.16% gc time)
+CUDA:
+113.600948 seconds (245.80 M allocations: 10.745 GiB, 2.13% gc time, 1 lock conflict, 50.61% compilation time: <1% of which was recompilation)
+  1.817287 seconds (1.22 M allocations: 57.380 MiB, 2.05% gc time)
+  1.768847 seconds (1.22 M allocations: 57.342 MiB, 1 lock conflict)
+=#
 =#

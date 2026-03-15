@@ -37,6 +37,8 @@ mutable struct RayMakieState
     integrator_state::Any
     # True for 2D scenes: only overlay rendering, no ray tracing
     overlay_only::Bool
+    # Lifecycle: true after close(screen) — prevents operations on freed GPU resources
+    closed::Bool
 end
 
 # Helper to get TLAS from state
@@ -360,7 +362,7 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
     # depth_flipped is unused (kernels flip index instead), but struct field still exists
     depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(rscene, film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, false)
+    state = RayMakieState(rscene, film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, false, false)
     on(rscene, rscene.camera.projectionview) do _
         state.needs_film_clear = true
     end
@@ -389,7 +391,7 @@ function _create_overlay_only_state(root_scene::Makie.Scene, screen)
     overlay_buffer = Overlay.create_overlay_buffer(ka_backend, film_size)
     depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(root_scene, film, nothing, nothing, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, true)
+    state = RayMakieState(root_scene, film, nothing, nothing, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, true, false)
     return state
 end
 
@@ -535,12 +537,23 @@ end
 
 function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     haskey(plot.attributes, :trace_renderobject) || return
+
+    # If all scene states are closed (screen was close()'d), GPU resources are already freed.
+    # Do NOT resolve the Observable — it triggers ComputePipeline re-evaluation which would
+    # try to push! into freed GPU arrays. Just remove the attribute key and return.
+    all_closed = all(ss -> ss.closed, screen.scene_states)
+    if isempty(screen.scene_states) || all_closed
+        delete!(plot.attributes, :trace_renderobject, force=true, recursive=true)
+        return
+    end
+
     robj = plot.attributes[:trace_renderobject][]
     isnothing(robj) && return
 
     # Find which scene state owns this plot
     pscene = Makie.parent_scene(plot)
     for ss in screen.scene_states
+        ss.closed && continue
         if _scene_contains(ss.makie_scene, pscene)
             tlas = ss.hikari_scene.accel
             if hasproperty(robj, :handles)

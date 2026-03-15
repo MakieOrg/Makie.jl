@@ -49,3 +49,8 @@ end
 end
 
 end
+
+# GPU caching/GC/correctness tests (require Lava/Vulkan device)
+if haskey(ENV, "RAYMAKIE_GPU_TESTS") || try using Lava; Lava.vk_context(); true catch; false end
+    include("test_caching_gc_correctness.jl")
+end
