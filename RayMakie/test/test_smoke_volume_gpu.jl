@@ -45,7 +45,7 @@ let
 
     # Activate with ROCArray backend
     RayMakie.activate!(
-        backend=AMDGPU.ROCBackend(),
+        device=AMDGPU.ROCBackend(),
         exposure=0.5f0,
         tonemap=nothing,
         gamma=2.2f0,

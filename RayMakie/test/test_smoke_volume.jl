@@ -43,7 +43,7 @@ let
 
     # Test with Array backend first
     RayMakie.activate!(
-        backend=Raycore.KA.CPU(),
+        device=Raycore.KA.CPU(),
         exposure=1f0,
         tonemap=nothing,
         gamma=2.2f0,

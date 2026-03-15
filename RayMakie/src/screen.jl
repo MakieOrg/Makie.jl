@@ -12,7 +12,7 @@ const VolPath = Hikari.VolPath
 Configuration for RayMakie rendering.
 
 * `integrator`: The integrator to use for rendering (default: `VolPath()`)
-  - `VolPath(; samples_per_pixel=64, max_depth=8)` - Volumetric path tracing
+  - `VolPath(; samples=64, max_depth=8)` - Volumetric path tracing
   - `FastWavefront(; samples=4)` - GPU-optimized wavefront path tracing
 * `exposure`: Exposure multiplier for postprocessing (default: 1.0)
 * `tonemap`: Tonemapping method (default: :aces)
@@ -319,12 +319,13 @@ function render!(screen::Screen)
         Hikari.fill_aux_buffers!(state.film, adapted_scene, camera)
     end
 
-    # Render one sample (incremental — accumulates across calls)
-    Hikari.render!(integrator, state.hikari_scene, state.film, camera)
-
-    # Save back integrator state (may have been newly created)
+    # Render: VolPath uses render!() for one sample, SamplerIntegrators use functor call
     if integrator isa Hikari.VolPath
+        Hikari.render!(integrator, state.hikari_scene, state.film, camera)
+        # Save back integrator state (may have been newly created)
         state.integrator_state = integrator.state
+    else
+        integrator(state.hikari_scene, state.film, camera)
     end
 
     return state.film
@@ -574,9 +575,13 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     end
 
     # Render each scene for the configured number of samples
+    # VolPath uses an outer loop (each render! = 1 sample), while SamplerIntegrators
+    # (Whitted etc.) handle all samples internally in a single render! call.
+    integrator = screen.config.integrator
+    n_outer = integrator isa Hikari.VolPath ? Int(integrator.samples_per_pixel) : 1
     for scene_state in screen.scene_states
         screen.state = scene_state
-        for _ in 1:screen.config.integrator.samples_per_pixel
+        for _ in 1:n_outer
             render!(screen)
         end
     end

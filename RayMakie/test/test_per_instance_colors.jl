@@ -54,7 +54,7 @@ function test_per_instance_colors()
 
     # Render
     screen = RayMakie.Screen(scene;
-        integrator=RayMakie.Whitted(samples_per_pixel=4, max_depth=2)
+        integrator=Hikari.Whitted(samples=4, max_depth=2)
     )
 
     println("Rendering...")

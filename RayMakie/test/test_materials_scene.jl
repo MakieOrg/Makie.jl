@@ -55,7 +55,7 @@ function create_test_materials_scene(; size=(400, 300))
     # Place spheres in grid
     sphere_radius = 0.25f0
     spacing = 0.7f0
-    nrows, ncols = size(materials)
+    nrows, ncols = Base.size(materials)
 
     for i in CartesianIndices(materials)
         row, col = Tuple(i)
@@ -87,7 +87,7 @@ Test rendering the materials scene with the given backend.
 """
 function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
     RayMakie.activate!(
-        backend=backend,
+        device=backend,
         exposure=0.5f0,
         tonemap=nothing,
         gamma=2.2f0,
@@ -104,7 +104,7 @@ end
 @testset "Materials Scene Rendering" begin
     @testset "CPU Array backend" begin
         img = test_render_materials(backend=Raycore.KA.CPU(), samples=1)
-        @test size(img) == (400, 300)
+        @test size(img) == (300, 400)
         @test eltype(img) <: Colorant
     end
 end
