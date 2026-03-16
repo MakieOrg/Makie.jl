@@ -15,7 +15,6 @@
 - Added stack and dodge handling to `hist` [#5340](https://github.com/MakieOrg/Makie.jl/pull/5340)
 - Fixed edge-like `hist` bins not working [#5493](https://github.com/MakieOrg/Makie.jl/pull/5493)
 
-
 ## [0.24.8] - 2025-12-04
 
 - Introduce `ComputePipeline.map_latest!` for slow computations inside computegraph and add init kw for map! and map_latest! [#5417](https://github.com/MakieOrg/Makie.jl/pull/5417).
