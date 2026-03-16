@@ -442,6 +442,7 @@ mark_resolved!(edge::Input) = edge.dirty = false
 function mark_dirty!(computed::Computed)
     hasparent(computed) || return
     mark_dirty!(computed, computed.parent.graph.obs_to_update)
+    return
 end
 function mark_dirty!(computed::Computed, obs_to_update)
     hasparent(computed) || return
@@ -459,6 +460,7 @@ function mark_dirty!(x, obs_to_update)
     @lock GLOBAL_LOCK begin
         locked_mark_dirty!(x, obs_to_update)
     end
+    return
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})

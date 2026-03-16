@@ -288,7 +288,7 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     register_computation!(
         graph,
         [:tickvalues, minorticks, minorticksvisible, minorticksused, scale, limits],
-        [:minortickvalues,]
+        [:minortickvalues]
     ) do (values, ticks, visible, used, scale, limits), changed, cached
         if visible || used
             return (get_minor_tickvalues(ticks, scale, values, limits...),)
