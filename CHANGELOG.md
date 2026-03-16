@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
+
 ## [0.24.9] - 2026-03-04
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)

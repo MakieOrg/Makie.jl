@@ -243,6 +243,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return nothing
         elseif colorrange === automatic
             return autorange
+        elseif first(colorrange) == automatic
+            return Vec2f((first(autorange), last(colorrange)))
+        elseif last(colorrange) == automatic
+            return Vec2f((first(colorrange), last(autorange)))
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end
