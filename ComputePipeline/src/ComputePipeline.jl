@@ -103,14 +103,12 @@ struct ComputeEdge{T} <: AbstractEdge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
     dependents::Vector{ComputeEdge{T}}
     typed_edge::RefValue{TypedEdge}
-
-    is_input_bus::Bool
 end
 
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     return ComputeEdge{ComputeGraph}(
         graph, f, [input], [true], [output], RefValue(false),
-        ComputeEdge[], RefValue{TypedEdge}(), false
+        ComputeEdge[], RefValue{TypedEdge}()
     )
 end
 
@@ -238,7 +236,6 @@ graph[:derived_node][]
 struct ComputeGraph <: AbstractComputeGraph
     inputs::Dict{Symbol, Input}
     outputs::Dict{Symbol, Computed}
-    input_bus::Dict{UInt64, ComputeEdge{ComputeGraph}}
     nesting::NestedSearchTree
     onchange::Observable{Set{Symbol}}
     obs_to_notify::Set{Symbol}
@@ -317,14 +314,13 @@ end
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
         graph, f, inputs, fill(true, length(inputs)), Computed[],
-        RefValue(false), ComputeEdge[], RefValue{TypedEdge}(), false
+        RefValue(false), ComputeEdge[], RefValue{TypedEdge}()
     )
 end
 
 function ComputeGraph()
     graph = ComputeGraph(
         Dict{Symbol, Input}(), Dict{Symbol, Computed}(),
-        Dict{UInt64, ComputeEdge{ComputeGraph}}(),
         NestedSearchTree(),
         Observable(Set{Symbol}()), Set{Symbol}(),
         Dict{Symbol, Observable}(), Set{Symbol}(),
@@ -620,7 +616,6 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :inputs && return getfield(attr, :inputs)
     key === :outputs && return getfield(attr, :outputs)
     key === :nesting && return getfield(attr, :nesting)
-    key === :input_bus && return getfield(attr, :input_bus)
     key === :onchange && return getfield(attr, :onchange)
     key === :obs_to_notify && return getfield(attr, :obs_to_notify)
     key === :observables && return getfield(attr, :observables)
@@ -1130,7 +1125,9 @@ function add_inputs!(conversion_func, attr::ComputeGraph; kw...)
     return attr
 end
 
-compute_identity(inputs, changed, cached) = values(inputs)
+compute_identity(inputs::NamedTuple, ::NamedTuple, @nospecialize(cached)) = values(inputs)
+compute_identity(arg) = arg
+compute_identity(args...) = args
 
 function TypedEdge(edge::ComputeEdge, f::typeof(compute_identity), inputs)
     if length(inputs) != length(edge.outputs)
@@ -1166,7 +1163,10 @@ This does not create a settable input, meaning you cannot use
 connected node.
 """
 function add_input!(attr::ComputeGraph, key::Symbol, value::Computed)
-    add_to_input_bus!(attr, key, value)
+    if haskey(attr.outputs, key)
+        error("Cannot attach throughput with name $key - already exists!")
+    end
+    register_computation!(compute_identity, attr, [value], [key])
     return attr
 end
 
@@ -1175,102 +1175,8 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
-    middleman = Symbol(:pre_callback_, key)
-    add_to_input_bus!(attr, middleman, value)
-    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [middleman], [key])
+    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [value], [key])
     return attr
-end
-
-function forward_inputs(args, changed, @nospecialize(cached))
-    return ifelse.(values(changed), values(args), nothing)
-end
-
-function TypedEdge(edge::ComputeEdge, f::typeof(forward_inputs), inputs)
-    if length(inputs) != length(edge.outputs)
-        error("A `forward_inputs` callback requires the length of inputs and outputs to match.")
-    end
-
-    for i in eachindex(values(inputs))
-        if isdefined(edge.outputs[i], :value)
-            edge.outputs[i].value[] = inputs[i][]
-        else
-            edge.outputs[i].value = Ref{eltype(inputs[i])}(inputs[i][])
-        end
-        edge.outputs[i].dirty = true
-    end
-
-    return TypedEdge(
-        f, inputs, edge.inputs_dirty, [n.value for n in edge.outputs], edge.outputs
-    )
-end
-
-function add_to_input_bus!(graph::ComputeGraph, key::Symbol, source::Computed)
-    hasparent(source) || error("Cannot use a compute node without a parent as an input.")
-    if source.parent.graph === graph
-        error("A compute node can only act as an input in a graph if it is not part of that graph.")
-    end
-    if haskey(graph.outputs, key)
-        error("Cannot attach throughput with name $key - already exists!")
-    end
-
-    output = Computed(key)
-    graph.outputs[key] = output
-
-    # preserve user set type
-    if isdefined(source, :value)
-        output.value = Ref{eltype(source.value)}()
-    end
-
-    id = objectid(source.parent.graph)
-    if haskey(graph.input_bus, id)
-        edge = graph.input_bus[id]
-
-        # Probably doesn't need a lock because we just append?
-        push!(edge.inputs, source)
-        push!(edge.inputs_dirty, true) # this is internal resolve!() state, meaningless here
-        push!(edge.outputs, output)
-
-        # This only runs if the bus has been resolved at least once. Typically
-        # throughputs will be added before that
-        if isassigned(edge.typed_edge)
-            prev = edge.typed_edge[]
-            # The same source could be passed along to multiple nodes of this graph,
-            # so we may need to alias names here...
-            name = if source.name in keys(prev.inputs)
-                Symbol(source.name, length(prev.inputs) + 1)
-            else
-                source.name
-            end
-            val = source[]
-            output.value = Ref{eltype(source.value)}(val)
-            edge.typed_edge[] = TypedEdge(
-                forward_inputs,
-                merge(prev.inputs, (name => source.value,)),
-                prev.inputs_dirty,
-                tuple(values(prev.outputs)..., output.value),
-                prev.output_nodes
-            )
-        end
-    else
-        edge = ComputeEdge{ComputeGraph}(
-            graph, forward_inputs,
-            [source], [true],
-            [output],
-            Ref(false),
-            ComputeEdge{ComputeGraph}[],
-            Ref{TypedEdge}(),
-            true
-        )
-        # helper node to find the edge. Should never be resolved
-        graph.input_bus[id] = edge
-    end
-
-    output.parent = edge
-    output.parent_idx = length(edge.outputs)
-
-    push!(source.parent.dependents, edge)
-
-    return
 end
 
 # Note: These don't work with add_input!(attr, key1, key2, ..., value)
@@ -1910,13 +1816,6 @@ function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive
 end
 
 function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
-    # TODO: This should have some special casing to remove nodes from the bus.
-    # I.e. filter from inputs and outputs, regenerate TypedEdge similar to creation process
-    if edge.is_input_bus
-        id = findfirst(e -> e === edge, pairs(attr.input_bus))
-        delete!(attr.input_bus, id)
-    end
-
     # all dependents become invalid as their parent computation no longer runs
     for dependent in edge.dependents
         unsafe_delete!(attr, dependent)

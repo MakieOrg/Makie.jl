@@ -100,8 +100,8 @@
 
             @test length(e1.dependents) == 2
             @test length(e2.dependents) == 1
-            @test e1.dependents[1] === graph.outputs[:trans1].parent.inputs[1].parent
-            @test e1.dependents[2] === graph.outputs[:trans3].parent.inputs[1].parent
+            @test e1.dependents[1] === graph.outputs[:trans1].parent
+            @test e1.dependents[2] === graph.outputs[:trans3].parent
             @test e2.dependents[1] === graph.outputs[:trans2].parent
         end
 
@@ -133,7 +133,7 @@
         ]
 
         @testset "Outputs" begin
-            @test length(graph.outputs) == 14
+            @test length(graph.outputs) == 12
 
             for name in output_names
                 @test graph.outputs[name].name === name
@@ -149,17 +149,17 @@
 
             @test edges[5].callback === InputFunctionWrapper(:trans1, to_int)
             @test edges[5].dependents == [edges[12]]
-            @test edges[5].inputs == [graph.outputs[:pre_callback_trans1]]
+            @test edges[5].inputs == [parent.outputs[:pout1]]
             @test edges[5].outputs == [graph.outputs[:trans1]]
 
-            @test edges[6].callback === ComputePipeline.forward_inputs
-            @test edges[6].dependents == [edges[5], edges[7]]
-            @test edges[6].inputs == [parent.outputs[:pout2], parent.outputs[:pout1], parent.outputs[:pout3]]
-            @test edges[6].outputs == [graph.outputs[:trans2], graph.outputs[:pre_callback_trans1], graph.outputs[:pre_callback_trans3]]
+            @test edges[6].callback === ComputePipeline.compute_identity
+            @test isempty(edges[6].dependents)
+            @test edges[6].inputs == [parent.outputs[:pout2]]
+            @test edges[6].outputs == [graph.outputs[:trans2]]
 
             @test edges[7].callback === InputFunctionWrapper(:trans3, to_int)
             @test edges[7].dependents == [edges[12]]
-            @test edges[7].inputs == [graph.outputs[:pre_callback_trans3]]
+            @test edges[7].inputs == [parent.outputs[:pout3]]
             @test edges[7].outputs == [graph.outputs[:trans3]]
 
             @test edges[8].callback === reflect_inputs
@@ -256,7 +256,7 @@
                 @test !isdirty(v)
             end
             for key in keys(graph.outputs)
-                @test isdirty(graph.outputs[key]) == (key == :discard10)
+                @test isdirty(graph.outputs[key]) == in(key, (:trans2, :discard10))
             end
 
             update!(graph, in1 = 11)
