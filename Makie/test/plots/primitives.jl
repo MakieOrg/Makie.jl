@@ -96,7 +96,7 @@ end
     @test sc.colormap[] == :jet
 end
 
-@test "adaptive colorrange one end" begin
+@testset "adaptive colorrange one end" begin
     colorrange = (30, Makie.automatic)
     f, ax, sl = heatmap(reshape(1:100, 10,10), colorrange = colorrange);
     @test sl.scaled_colorrange[] == Vec2f(30,100)
