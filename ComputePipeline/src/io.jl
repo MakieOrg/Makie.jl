@@ -276,7 +276,7 @@ function collect_dirty(computed::Computed, marked = Set{Symbol}())
     return marked
 end
 function collect_dirty(edge::ComputeEdge, marked = Set{Symbol}())
-    if edge.dirty[] || any(edge.inputs_dirty)
+    if isdirty(edge) || any(edge.inputs_dirty)
         foreach(output -> push!(marked, output.name), edge.outputs)
         foreach(input -> collect_dirty(input, marked), edge.inputs)
     end
