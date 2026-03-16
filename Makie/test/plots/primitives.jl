@@ -98,12 +98,12 @@ end
 
 @testset "adaptive colorrange one end" begin
     colorrange = (30, Makie.automatic)
-    f, ax, sl = heatmap(reshape(1:100, 10,10), colorrange = colorrange);
-    @test sl.scaled_colorrange[] == Vec2f(30,100)
-    f, ax, sl = heatmap(reshape(1:100, 10,10), colorrange = (Makie.automatic, 30));
-    @test sl.scaled_colorrange[] == Vec2f(1,30)
-    f, ax, sl = heatmap(reshape(1:100, 10,10), colorrange =(Makie.automatic, Makie.automatic));
-    @test sl.scaled_colorrange[] == Vec2f(1,100)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = colorrange)
+    @test sl.scaled_colorrange[] == Vec2f(30, 100)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, 30))
+    @test sl.scaled_colorrange[] == Vec2f(1, 30)
+    f, ax, sl = heatmap(reshape(1:100, 10, 10), colorrange = (Makie.automatic, Makie.automatic))
+    @test sl.scaled_colorrange[] == Vec2f(1, 100)
 end
 
 @recipe MaybeDict (data,) begin
