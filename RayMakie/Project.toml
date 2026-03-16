@@ -16,8 +16,8 @@ Raycore = "afc56b53-c9a9-482a-a956-d1d800e05559"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [sources]
-Hikari = {path = "../Hikari"}
-Raycore = {path = "../Raycore"}
+Hikari = {url = "https://github.com/JuliaGraphics/Hikari.jl", rev = "sd/vk-hw-accel"}
+Raycore = {url = "https://github.com/JuliaGeometry/Raycore.jl", rev = "sd/multitype-vec"}
 
 [compat]
 Adapt = "4.4.0"
