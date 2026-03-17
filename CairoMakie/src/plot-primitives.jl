@@ -10,7 +10,7 @@
 function cairo_draw(screen::Screen, scene::Scene)
     # So animations based on tick events can finish
     screen.last_render_time = Makie.next_tick!(
-        events(scene).tick, Makie.RegularRenderTick, screen.creation_time, screen.last_render_time
+        events(scene).tick, Makie.OneTimeRenderTick, screen.creation_time, screen.last_render_time
     )
 
     Cairo.save(screen.context)
