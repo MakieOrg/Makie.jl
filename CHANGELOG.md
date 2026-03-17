@@ -13,21 +13,43 @@
   - Added `force_dimconverts` as a generic plot keyword argument. This can be set to `false` to allow a numeric plot to plot in a scene with fixed dim converts. (E.g. for axis decorations.)
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
-  - **Breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
+  - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
 - Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
   - Fixed issues with tooltips reading `inspector_label` from the wrong plot
-  - (Probably) fixed issues with tooltips reporting positions of the wrong space
-  - Broke up `show_data` into multiple parts:
+  - Fixed issues with tooltips reporting positions of the wrong space
+  - **breaking** Broke up `show_data` into multiple parts:
     - `get_accessor()` which produces picking information for a higher level plot
     - `get_tooltip_position()` which extracts the position using that information
     - `get_default_tooltip_label()` which generates a default label from picking information
     - `update_indicator_plot!()` for drawing indicator plots
   - Added functionality for persistent tooltips
+- Added a system to simulate nesting in compute graphs to allow for nested attributes.
+  - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
+- Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)
+- Reworked `Block/@Block` infrastructure to support complex/block recipes. The infrastructure mostly mirrors the `@recipe` infrastructure from plots: [#5465](https://github.com/MakieOrg/Makie.jl/pull/5465)
+  - The names (and types) of converted arguments can be defined in `@Block MyBlock (arg1::Vector, arg2)`.
+  - Like traditional blocks, attributes are defined in a `@attribute begin ... end` block within `@Block`. Names defined outside this will be added as fields instead.
+  - `convert_arguments(::Type{MyBlock}, args...)` can be defined as a conversion between user passed arguments and converted arugments. Note that blocks are not parametric types so `<:MyBlock` is not needed
+  - Similarly `conversion_trait(::Type{MyBlock})` can also be defined
+  - Attribute converts rely on methods of `(::BlockAttributeConvert{Type}(name::Symbol, user_input))`.
+  - `initialize_block!(b::MyBlock)` is used to initialize the recipe with blocks and plots analogously to `plot!(p::MyPlot)`. The parent block `b::MyBlock` should be treated like a figure here, e.g. `Axis(b[1, 1])`
+  - After defining the block, it can be added to a figure like any other block `mb = MyBlock(fig[1, 1])`.
+  - The blocks within `MyBlock` can be accessed via the layout `mb.layout`, `mb.blocks` or `mb[i, j]`.
+- Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+  - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
+  - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
+- Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 
 ## Unreleased
 
+## [0.24.9] - 2026-03-04
+
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
+- Fixed cycling not working in `PlotList`s [#5541](https://github.com/MakieOrg/Makie.jl/pull/5541)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+
 - Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
 - Reduced file size of PDF and SVG files from CairoMakie containing mesh-based plots [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446)
 - Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
@@ -1012,7 +1034,8 @@ All other changes are collected [in this PR](https://github.com/MakieOrg/Makie.j
 - Fixed rendering of `heatmap`s with one or more reversed ranges in CairoMakie, as in `heatmap(1:10, 10:-1:1, rand(10, 10))` [#1100](https://github.com/MakieOrg/Makie.jl/pull/1100).
 - Fixed volume slice recipe and added docs for it [#1123](https://github.com/MakieOrg/Makie.jl/pull/1123).
 
-[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...HEAD
+[Unreleased]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.9...HEAD
+[0.24.9]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.8...v0.24.9
 [0.24.8]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.7...v0.24.8
 [0.24.7]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.6...v0.24.7
 [0.24.6]: https://github.com/MakieOrg/Makie.jl/compare/v0.24.5...v0.24.6

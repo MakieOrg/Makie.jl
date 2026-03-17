@@ -161,14 +161,9 @@ IntervalsBetween(n) = IntervalsBetween(n, true)
 
 mutable struct LineAxis
     parent::Scene
-    protrusion::Observable{Float32}
     attributes::Attributes
+    graph::ComputePipeline.ComputeGraphView
     elements::Dict{Symbol, Any}
-    tickpositions::Observable{Vector{Point2f}}
-    tickvalues::Observable{Vector{Float32}}
-    ticklabels::Observable{Vector{Any}}
-    minortickpositions::Observable{Vector{Point2f}}
-    minortickvalues::Observable{Vector{Float32}}
 end
 
 struct LimitReset end
@@ -281,9 +276,6 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
-    targetlimits::Observable{Rect2d}
-    finallimits::Observable{Rect2d}
-    block_limit_linking::Observable{Bool}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
@@ -786,7 +778,8 @@ end
 function RectangleZoom(ax::Axis; kw...)
     return RectangleZoom(ax; kw...) do newlims
         if !(0 in widths(newlims))
-            ax.targetlimits[] = newlims
+            ax.localxlimits[] = (left(newlims), right(newlims))
+            ax.localylimits[] = (bottom(newlims), top(newlims))
         end
         return
     end
@@ -842,7 +835,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Format for ticks."
         tickformat = Makie.automatic
         "The space reserved for the tick labels. Can be set to `Makie.automatic` to automatically determine the space needed, `:max_auto` to only ever grow to fit the current ticklabels, or a specific value."
-        ticklabelspace = Makie.automatic
+        ticklabelspace::Union{Makie.Automatic, Symbol, Float64} = Makie.automatic
         "The gap between tick labels and tick marks."
         ticklabelpad = 3.0f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
@@ -2422,3 +2415,17 @@ end
         reset_axis_orientation::Bool = false
     end
 end
+
+"""
+An empty block which does nothing on its own. It is used as a target for
+`Block(::BlockSpec)` and `Block(::GridLayoutSpec)`. It can also be used as a
+container for an inner `GridLayout()`, i.e. as an alternative to
+
+```julia
+gl = fig[i, j] = GridLayout()
+SomeBlock(gl[1, 1], ...)
+# or
+SomeBlock(fig[i, j][1, 1], ...)
+```
+"""
+@Block Container

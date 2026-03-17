@@ -122,3 +122,150 @@ update!(graph, input1 = 2); # prints 4
 
 obs2 = ComputePipeline.get_observable!(graph, :output)
 ```
+
+## Nesting
+
+As of ComputePipeline@0.1.7 compute graphs can simulate nesting.
+A nested input can be created by either specifying multiple names or a tuple of names corresponding to nesting layers in `add_input!()`:
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :nested, :input1, 1)
+add_input!(graph, (:nested, :input2), 2)
+```
+
+These nodes can then by accessed like a nested structure:
+
+```julia
+graph.nested # ::ComputeGraphView which acts like a nested ::ComputeGraph in graph
+graph.nested[] # returns the same for compat with Attributes in Makie
+graph.nested.input1
+```
+
+And then can be used to define computations:
+
+```julia
+# creates graph.output
+map!(+, graph, [(:nested, :input1), (:nested, :input2)], :output)
+
+# creates graph.nested.output
+map!(-, graph, [(:nested, :input1), (:nested, :input2)], (:nested, :output))
+```
+
+The nested view of the compute graph can also be used as an input for `add_input!()`, `add_constant!()`, `map!()` and `register_computation!()`. This will cause all Symbols and Tuples to be evaluated relative to the nested view. (This requires the nesting to be established first.)
+
+```julia
+add_input!(graph.nested, :input3, 3)
+add_constant(graph.nested, :constant, 0)
+# graph.nested.input3 -> graph.nested.output1
+map!(x -> 2x, graph.nested, :input3, :output1)
+```
+
+## Explicit Initialization
+
+The content of a compute node can be initialized explicitly with `ComputePipeline.unsafe_init!(node, value)`.
+Alternatively, you can check the type of the `cached` value given in `register_computation!()` to detect the initializing call:
+
+```julia
+register_computation!(graph, [:input], [:output]) do (input,), changed, cached
+    if isnothing(cached) # initialization
+        return (Float64[input],)
+    else # post initialization
+        buffer = cached.input # or cached[1]
+        push!(buffer, input)
+        return (buffer,)
+    end
+end
+```
+
+Similarly, the type of a compute node can be initialized explicitly with `ComputePipeline.set_type!(node, type)` or at runtime by returning a `Ref{type}(value)`:
+
+```julia
+map!(graph, :input, :output) do input
+    value = rand([1, 1.0, "1"])
+    return Ref{Union{Int, Float64, String}}(value)
+end
+```
+
+## Controlling Update Propagation
+
+The compute graph will try to avoid propagating updates to the same value.
+To do this, it calls `ComputePipeline.is_same(old, new)` for every output of a computation and only propagates updates where this function returns `false`.
+The default implementation looks like this:
+
+```julia
+is_same(@nospecialize(old), @nospecialize(new)) = false
+function is_same(old::T, new::T) where {T}
+    if isbitstype(T)
+        return old === new
+    else
+        # object might be mutated which can't be detected if old === new
+        same_object = old === new
+        return same_object ? false : isequal(old, new)
+    end
+end
+```
+
+If you want your own type to behave differently from the default implementation, you can add a method to `is_same`.
+
+If you want to control whether a specific value propagates, you can wrap it in `ExplicitUpdate(value, update_rule)`.
+The `update_rule` can be set to `:force` to force propagation (`is_same` return false), `:deny` to deny propagation (`is_same` return true) or `:auto` to use the default behavior, comparing the value in the wrapper to the previous value.
+Note that `ExplicitUpdate` will not be removed automatically to allow callbacks to see the update rule of an input.
+You can use `unwrap_explicit_update` to remove it.
+
+For input nodes there is also option to always force values to propagate by setting `force_update = true` in `add_input!()`, or by calling `ComputePipeline.enable_forced_updates!(input_node)`.
+This can be useful if you want to hide `ExplicitUpdate` from the input/user layer of the graph.
+
+```julia
+graph = ComputeGraph()
+add_input!(graph, :input, 5, force_update = true)
+
+map!(graph, :input, [:force, :auto, :deny]) do input
+    return (
+        ExplicitUpdate(input, :force),
+        ExplicitUpdate(input, :auto),
+        ExplicitUpdate(input, :deny),
+    )
+end
+
+register_computation!(graph, [:force], [:force_output]) do args, changed, cached
+    return (isnothing(cached) ? 1 : cached[1] + 1, )
+end
+register_computation!(graph, [:auto], [:auto_output]) do args, changed, cached
+    return (isnothing(cached) ? 1 : cached[1] + 1, )
+end
+register_computation!(graph, [:deny], [:deny_output]) do args, changed, cached
+    return (isnothing(cached) ? 1 : cached[1] + 1, )
+end
+
+# all will update once
+graph.force[] # ExplicitUpdate(5, :force)
+graph.auto[] # ExplicitUpdate(5, :auto)
+graph.deny[] # ExplicitUpdate(5, :deny)
+graph.force_output[] # 1
+graph.auto_output[] # 1
+graph.deny_output[] # 1
+
+# When updating to the same value only the force node
+# will trigger further updates
+update!(graph, :input => 5)
+graph.force[] # set to ExplicitUpdate(5, :force)
+graph.auto[] # retained ExplicitUpdate(5, :auto)
+graph.deny[] # retained ExplicitUpdate(5, :deny)
+graph.force_output[] # 2
+graph.auto_output[] # 1
+graph.deny_output[] # 1
+
+# For a different value auto -> auto_output will also update
+# deny -> deny_output will never update
+update!(graph, :input => 2)
+graph.force[] # set to ExplicitUpdate(2, :force)
+graph.auto[] # set to ExplicitUpdate(2, :auto)
+graph.deny[] # retained ExplicitUpdate(5, :deny)
+graph.force_output[] # 3
+graph.auto_output[] # 2
+graph.deny_output[] # 1
+```
+
+Note that if you want a node to work with plain values and values wrapped in `ExplicitUpdate` you will need to initialize its type to a union.
+For example `set_type!(node, Union{Int64, ExplicitUpdate{Int64}})`.

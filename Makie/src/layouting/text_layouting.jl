@@ -1,56 +1,5 @@
 using FreeTypeAbstraction: hadvance, leftinkbound, inkwidth, get_extent, ascender, descender
 
-one_attribute_per_char(attribute, string) = [attribute for char in string]
-
-function one_attribute_per_char(font::NativeFont, string)
-    return [find_font_for_char(char, font) for char in string]
-end
-
-function attribute_per_char(string, attribute)
-    n_words = 0
-    if attribute isa GeometryBasics.StaticVector
-        return one_attribute_per_char(attribute, string)
-    elseif attribute isa AbstractVector
-        if length(attribute) == length(string)
-            return attribute
-        else
-            n_words = length(split(string, r"\s+"))
-            if length(attribute) == n_words
-                i = 1
-                return map(collect(string)) do char
-                    f = attribute[i]
-                    char == "\n" && (i += 1)
-                    return f
-                end
-            end
-        end
-    else
-        return one_attribute_per_char(attribute, string)
-    end
-    error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
-end
-
-
-"""
-    layout_text(
-        string::AbstractString, fontsize::Union{AbstractVector, Number},
-        font, align, rotation, justification, lineheight, word_wrap_width
-    )
-
-Compute a GlyphCollection for a `string` given fontsize, font, align, rotation, model, justification, and lineheight.
-"""
-function layout_text(
-        string::AbstractString, fontsize::Union{AbstractVector, Number}, fonts, align, justification, lineheightword_wrap_width
-    )
-    # TODO, somehow some unicode symbols don't get rendered if we dont have one font per char
-    # Which is really odd
-    return glyph_collection(
-        string, fontperchar, fontsize, align[1], align[2],
-        lineheight, justification, word_wrap_width
-    )
-end
-
-
 function justification2float(justification, halign)
     if justification === automatic
         if halign === :left || halign == 0

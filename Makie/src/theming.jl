@@ -98,9 +98,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         visible = true,
         start_renderloop = false,
         pdf_version = nothing
-    ),
-
-    GLMakie = Attributes(
+    ), GLMakie = Attributes(
         # Renderloop
         renderloop = automatic,
         pause_renderloop = false,
@@ -132,9 +130,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         # maximum number of lights with shading = MultiLightShading
         max_lights = 64,
         max_light_parameters = 5 * 64
-    ),
-
-    WGLMakie = Attributes(
+    ), WGLMakie = Attributes(
         framerate = 30.0,
         resize_to = nothing,
         # DEPRECATED in favor of resize_to
@@ -162,7 +158,12 @@ function merge_without_obs!(result::Attributes, theme::Attributes)
     dict = attributes(result)
     for (key, value) in theme
         if !haskey(dict, key)
-            dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
@@ -177,17 +178,27 @@ end
 
 # Same as above, but second argument gets priority so, `merge_without_obs_reverse!(Attributes(a=22), Attributes(a=33)) -> Attributes(a=33)`
 function merge_without_obs_reverse!(result::Attributes, priority::Attributes)
-    result_dict = attributes(result)
+    dict = attributes(result)
     for (key, value) in priority
-        if !haskey(result_dict, key)
-            result_dict[key] = Observable{Any}(to_value(value)) # the deepcopy part for observables
+        if !haskey(dict, key)
+            if value isa Attributes
+                dict[key] = Attributes()
+                merge_without_obs!(dict[key], value)
+            else
+                dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+            end
         else
             current_value = result[key]
             if value isa Attributes && current_value isa Attributes
                 # if nested attribute, we merge recursively
                 merge_without_obs_reverse!(current_value, value)
             else
-                result_dict[key] = Observable{Any}(to_value(value))
+                if value isa Attributes
+                    dict[key] = Attributes()
+                    merge_without_obs!(dict[key], value)
+                else
+                    dict[key] = node_any(to_value(value)) # the deepcopy part for observables
+                end
             end
         end
     end
@@ -210,9 +221,9 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        new_theme = merge!(Theme(kwargs), new_theme)
-        merge!(CURRENT_DEFAULT_THEME, new_theme)
+        resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+        resolved_theme = mergeleft!(Theme(kwargs), resolved_theme)
+        merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
     return
 end
@@ -285,7 +296,7 @@ update_theme!(Theme(colormap=:greys))
 """
 function update_theme!(with_theme = Attributes(); kwargs...)
     return lock(THEME_LOCK) do
-        new_theme = merge!(with_theme, Attributes(kwargs))
+        new_theme = mergeleft!(with_theme, Attributes(kwargs))
         _update_attrs!(CURRENT_DEFAULT_THEME, new_theme)
         return
     end

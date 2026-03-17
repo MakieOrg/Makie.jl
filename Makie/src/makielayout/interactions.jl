@@ -231,6 +231,8 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     # use vertical zoom
     zoom = event.y
 
+    # Note: This must read from shared(x/y)limits or targetlimits to pull in the
+    # correct limits when axes are linked
     tlimits = ax.targetlimits
     xzoomlock = ax.xzoomlock
     yzoomlock = ax.yzoomlock
@@ -286,20 +288,23 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             Rectd(newxorigin, newyorigin, newxwidth, newywidth)
         end
         inv_transf = Makie.inverse_transform(transf)
-        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+        new_bb = Makie.apply_transform(inv_transf, newrect_trans)
+        # Note: And it must write to an input of shared(x/y) limits to correctly
+        # update other linked axes
+        ax.localxlimits[] = (left(new_bb), right(new_bb))
+        ax.localylimits[] = (bottom(new_bb), top(new_bb))
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
     return Consume(true)
 end
 
-function process_interaction(dp::DragPan, event::MouseEvent, ax)
+function process_interaction(dp::DragPan, event::MouseEvent, ax::Axis)
 
     if event.type !== to_drag_event(ax.panbutton[])
         return Consume(false)
     end
 
-    tlimits = ax.targetlimits
     xpanlock = ax.xpanlock
     ypanlock = ax.ypanlock
     xpankey = ax.xpankey
@@ -321,20 +326,13 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
             0.5 .+ 0.5
     end
 
-    xscale = ax.xscale[]
-    yscale = ax.yscale[]
-
-    transf = (xscale, yscale)
-    tlimits_trans = Makie.apply_transform(transf, tlimits[])
+    # Note: This must read from shared(x/y)limits or targetlimits to pull in the
+    # correct limits when axes are linked
+    bb = ax.targetlimits[]
+    transf = ax.transform_func[]
+    tlimits_trans = Makie.apply_transform(transf, bb)
 
     movement_frac = mp_axfraction .- mp_axfraction_prev
-
-    xscale = ax.xscale[]
-    yscale = ax.yscale[]
-
-    transf = (xscale, yscale)
-    tlimits_trans = Makie.apply_transform(transf, tlimits[])
-
     xori, yori = tlimits_trans.origin .- movement_frac .* widths(tlimits_trans)
 
     if xpanlock[] || ispressed(scene, ypankey[])
@@ -345,11 +343,16 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
         yori = tlimits_trans.origin[2]
     end
 
+    # TODO: unnecessary now?
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
-    inv_transf = Makie.inverse_transform(transf)
+    inv_transf = ax.inverse_transform_func[]
     newrect_trans = Rectd(Vec2(xori, yori), widths(tlimits_trans))
-    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+    new_bb = Makie.apply_transform(inv_transf, newrect_trans)
+    # Note: And it must write to an input of shared(x/y) limits to correctly
+    # update other linked axes
+    ax.localxlimits[] = (left(new_bb), right(new_bb))
+    ax.localylimits[] = (bottom(new_bb), top(new_bb))
 
     return Consume(true)
 end

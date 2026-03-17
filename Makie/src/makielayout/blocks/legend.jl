@@ -55,7 +55,7 @@ function initialize_block!(leg::Legend; entrygroups)
     scene = Scene(blockscene, blockscene.viewport, camera = campixel!)
     leg.scene = scene
     # the rectangle in which the legend is drawn when margins are removed
-    legendrect = lift(blockscene, legend_area, leg.margin) do la, lm
+    legendrect = lift(blockscene, legend_area, leg.margin, ignore_equal_values = true) do la, lm
         enlarge(la, -lm[1], -lm[2], -lm[3], -lm[4])
     end
 
@@ -81,25 +81,7 @@ function initialize_block!(leg::Legend; entrygroups)
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
-
-    on(blockscene, leg.padding) do p
-        grid.alignmode = Outside(p...)
-        relayout()
-        return
-    end
-
     update_grid = Observable(true)
-    onany(blockscene, update_grid, leg.margin) do _, margin
-        if manipulating_grid[]
-            return
-        end
-        w = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col())
-        h = GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row())
-        if !any(isnothing.((w, h)))
-            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
-        end
-        return
-    end
 
     # these arrays store all the plot objects that the legend entries need
     titletexts = Optional{Label}[]
@@ -109,7 +91,7 @@ function initialize_block!(leg::Legend; entrygroups)
     entryshades = [Box[]]
     entryhalfshades = [Box[]]
 
-    function relayout()
+    relayout = () -> begin
         manipulating_grid[] = true
 
         rowcol(n) = ((n - 1) ÷ leg.nbanks[] + 1, (n - 1) % leg.nbanks[] + 1)
@@ -204,10 +186,35 @@ function initialize_block!(leg::Legend; entrygroups)
         return
     end
 
+    on(blockscene, leg.padding) do p
+        grid.alignmode = Outside(p...)
+        relayout()
+        return
+    end
+
+    # Split these to filter out duplicate updates
+    determinedsize = map(blockscene, update_grid, legendrect, ignore_equal_values = true) do _, _
+        # legendrect influences grid (?)
+        if manipulating_grid[]
+            return
+        end
+        w = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Col()), NaN32)
+        h = something(GridLayoutBase.determinedirsize(grid, GridLayoutBase.Row()), NaN32)
+        return w, h
+    end
+    on(blockscene, determinedsize, update = true) do (w, h)
+        margin = leg.margin[] # updates of margin trigger legendrect which triggers determinedsize
+        if !any(isnan.((w, h)))
+            leg.layoutobservables.autosize[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
+        end
+        return
+    end
+
+
     onany(
         blockscene, leg.nbanks, leg.titleposition, leg.rowgap, leg.colgap, leg.patchlabelgap, leg.groupgap,
         leg.titlegap,
-        leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign
+        leg.titlevisible, leg.orientation, leg.gridshalign, leg.gridsvalign,
     ) do args...
         relayout()
         return
@@ -283,7 +290,7 @@ function initialize_block!(leg::Legend; entrygroups)
             for (i, entry) in enumerate(entries)
 
                 # fill missing entry attributes with those carried by the legend
-                merge!(entry.attributes, preset_attrs)
+                mergeleft!(entry.attributes, preset_attrs)
 
                 isnothing(entry.label[]) && continue
 
@@ -385,6 +392,7 @@ function initialize_block!(leg::Legend; entrygroups)
 
     setfield!(leg, :entrygroups, entry_groups)
     notify(entry_groups)
+    notify(ComputePipeline.get_observable!(leg.padding))
 
     return
 end
@@ -413,7 +421,7 @@ end
 
 
 function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
     fracpoints = attrs.markerpoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
@@ -431,7 +439,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Observable{Re
 end
 
 function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
 
     fracpoints = attrs.linepoints
@@ -446,7 +454,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
 end
 
 function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attrs = element.attributes
     fracpoints = attrs.polypoints
     points = lift((bb, fp) -> fractionpoint.(Ref(bb), fp), scene, bbox, fracpoints)
@@ -461,7 +469,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Observable{Rect
 end
 
 function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     lims = map(scene, bbox, attr.limits) do bb, lims
         x0, y0 = minimum(bb)
@@ -480,7 +488,7 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
 end
 
 function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     plt = meshscatter!(
         scene, attr.position,
@@ -491,7 +499,7 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
-    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rot = Quaternionf(-0.17591983, -0.42470822, -0.82047325, 0.33985117)
     rotate!(plt, rot)
 
     on(scene, bbox, update = true) do bb
@@ -506,7 +514,7 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
 end
 
 function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
-    merge!(element.attributes, defaultattrs)
+    mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     plt = mesh!(
         scene, attr.mesh,
@@ -516,7 +524,7 @@ function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect
     )
 
     # from Makie.decompose_translation_scale_rotation_matrix(Makie.lookat_basis(Vec3f(1), Vec3f(0), Vec3f(0,0,1)))
-    rot = Quaternionf(- 0.17591983, - 0.42470822, - 0.82047325, 0.33985117)
+    rot = Quaternionf(-0.17591983, -0.42470822, -0.82047325, 0.33985117)
     rotate!(plt, rot)
 
     on(scene, bbox, update = true) do bb
@@ -612,10 +620,7 @@ function apply_legend_override!(le::T, override::LegendOverride) where {T <: Leg
 end
 
 function LegendEntry(label, contentelement, override::Attributes, legend; kwargs...)
-    attrs = Attributes(; label)
-
-    kwargattrs = Attributes(kwargs)
-    merge!(attrs, kwargattrs)
+    attrs = mergeleft!(Attributes(; label), Attributes(kwargs))
 
     elems = legendelements(contentelement, legend, override)
     if isempty(elems)
@@ -626,10 +631,7 @@ end
 
 
 function LegendEntry(label, content, legend; kwargs...)
-    attrs = Attributes(label = label)
-
-    kwargattrs = Attributes(kwargs)
-    merge!(attrs, kwargattrs)
+    attrs = mergeleft!(Attributes(label = label), Attributes(kwargs))
 
     function get_plots(x)
         plots = AbstractPlot[]
@@ -1036,18 +1038,19 @@ function Legend(fig_or_scene, axis::Union{Axis, Axis3, Scene, LScene}, title = n
 end
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
-    lplots = filter(get_plots(ax)) do plot
+    lplots_init = filter(get_plots(ax)) do plot
         haskey(plot.attributes, :label) ||
             plot isa PlotList && any(x -> haskey(x.attributes, :label), plot.plots)
     end
-    labels = map(lplots) do l
+
+    labels_init = map(lplots_init) do l
         l.label[]
     end
 
-    if any(x -> x isa AbstractVector, labels)
+    lplots_flat, labels_flat = if any(x -> x isa AbstractVector, labels_init)
         _lplots = []
         _labels = []
-        for (lplot, label) in zip(lplots, labels)
+        for (lplot, label) in zip(lplots_init, labels_init)
             if label isa AbstractVector
                 for lab in label
                     push!(_lplots, lplot)
@@ -1058,37 +1061,40 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
                 push!(_labels, label)
             end
         end
-        lplots = _lplots
-        labels = _labels
+        _lplots, _labels
+    else
+        lplots_init, labels_init
     end
 
     # filter out plots with same plot type and label
-    if unique
-        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots, labels))
-        lplots = first.(plots_labels)
-        labels = last.(plots_labels)
+    lplots_unique, labels_unique = if unique
+        plots_labels = Base.unique(((p, l),) -> (typeof(p), l), zip(lplots_flat, labels_flat))
+        first.(plots_labels), last.(plots_labels)
+    else
+        lplots_flat, labels_flat
     end
 
-    if merge
-        ulabels = Base.unique(labels)
+    lplots_merged, labels_merged = if merge
+        ulabels = Base.unique(labels_unique)
         mergedplots = [
-            [lp for (i, lp) in enumerate(lplots) if labels[i] == ul]
+            [lp for (i, lp) in enumerate(lplots_unique) if labels_unique[i] == ul]
                 for ul in ulabels
         ]
-
-        lplots, labels = mergedplots, ulabels
+        mergedplots, ulabels
+    else
+        lplots_unique, labels_unique
     end
 
-    lplots_with_overrides = map(lplots, labels) do plots, label
+    lplots_with_overrides = map(lplots_merged, labels_merged) do plots, label
         if label isa Pair
             plots => LegendOverride(label[2])
         else
             plots
         end
     end
-    labels = [label isa Pair ? label[1] : label for label in labels]
+    final_labels = [label isa Pair ? label[1] : label for label in labels_merged]
 
-    return lplots_with_overrides, labels
+    return lplots_with_overrides, final_labels
 end
 
 get_plots(p::AbstractPlot) = [p]

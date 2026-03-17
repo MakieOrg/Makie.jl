@@ -1,13 +1,21 @@
 struct Axis3Camera <: AbstractCamera end
 
+function add_attributes!(T::Type{<:Axis3}, graph, attributes)
+    limits = pop!(attributes, :limits)
+    add_input!(graph, :limits, limits)
+    ComputePipeline.set_type!(graph.limits, Any)
+    graph.inputs[:limits].force_update = true
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
 
-    on(blockscene, ax.protrusions) do prot
+    on(blockscene, ax.protrusions, update = true) do prot
         ax.layoutobservables.protrusions[] = to_protrusions(prot)
     end
-    notify(ax.protrusions)
 
     finallimits = Observable(Rect3d(Vec3d(0.0), Vec3d(100.0)))
     setfield!(ax, :finallimits, finallimits)
@@ -32,8 +40,8 @@ function initialize_block!(ax::Axis3)
     # or the other way around
     connect_conversions!(scene.conversions, ax)
 
-    cam = Axis3Camera()
-    cameracontrols!(scene, cam)
+    axis_cam = Axis3Camera()
+    cameracontrols!(scene, axis_cam)
     scene.theme.clip_planes = map(scene, scene.transformation.model, ax.finallimits, ax.clip) do model, lims, clip
         if clip
             _planes = planes(lims)
@@ -95,25 +103,25 @@ function initialize_block!(ax::Axis3)
     end
 
     onany(scene, viewport_scaling, matrices) do viewport, (model, view, proj, lookat, eyepos)
-        cam = camera(scene)
-        Makie.set_proj_view!(cam, proj, view)
+        cam1 = camera(scene)
+        Makie.set_proj_view!(cam1, proj, view)
         scene.transformation.model[] = model
 
         viewdir = normalize(lookat - eyepos)
         up = Vec3d(0, 0, 1)
         u_z = -viewdir
         u_x = normalize(cross(up, u_z))
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam1.eyeposition[] = eyepos
+        cam1.upvector[] = cross(u_z, u_x)
+        cam1.view_direction[] = viewdir
 
         # We mirror the camera to the blockscene with adjusted viewport scaling
-        cam = camera(blockscene)
-        Makie.set_proj_view!(cam, viewport * proj, view)
+        cam2 = camera(blockscene)
+        Makie.set_proj_view!(cam2, viewport * proj, view)
         blockscene.transformation.model[] = model
-        cam.eyeposition[] = eyepos
-        cam.upvector[] = cross(u_z, u_x)
-        cam.view_direction[] = viewdir
+        cam2.eyeposition[] = eyepos
+        cam2.upvector[] = cross(u_z, u_x)
+        cam2.view_direction[] = viewdir
 
         return
     end
@@ -263,11 +271,12 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits) do lims
+    limits_obs = ComputePipeline.get_observable!(ax.attributes, :limits, use_deepcopy = false)
+    on(scene, limits_obs, update = true) do lims
         reset_limits!(ax)
     end
 
-    on(scene, ax.targetlimits) do lims
+    on(scene, ax.targetlimits, update = true) do lims
         # adjustlimits!(ax)
         # we have no aspect constraints here currently, so just update final limits
         ax.finallimits[] = lims
@@ -294,9 +303,6 @@ function initialize_block!(ax::Axis3)
     register_interaction!(ax, :scrollzoom, ScrollZoom(0.05, NaN))
     register_interaction!(ax, :translation, DragPan(NaN))
     register_interaction!(ax, :cursorfocus, FocusOnCursor(length(ax.scene.plots)))
-
-    # in case the user set limits already
-    notify(ax.limits)
 
     return
 end
@@ -412,9 +418,9 @@ function projectionmatrix(viewmatrix, limits, radius, fov, width, height, protru
             projpoints = Ref(pm * viewmatrix) .* to_ndim.(Point4d, points, 1)
 
             # convert to effective viewport
-            w = w / width; h = h / height
-            maxx = maximum(x -> abs(x[1] / (w * x[4])), projpoints)
-            maxy = maximum(x -> abs(x[2] / (h * x[4])), projpoints)
+            w_eff = w / width; h_eff = h / height
+            maxx = maximum(x -> abs(x[1] / (w_eff * x[4])), projpoints)
+            maxy = maximum(x -> abs(x[2] / (h_eff * x[4])), projpoints)
 
             # normalization to map max x/y to 1 in effective viewport
             ratio_x = 1.0 / maxx
@@ -509,8 +515,7 @@ end
 
 function add_gridlines_and_frames!(topscene, overlay, ax, dim::Int, limits, ticknode, miv, min1, min2, xreversed, yreversed, zreversed)
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -647,8 +652,7 @@ function add_ticks_and_ticklabels!(
         xreversed, yreversed, zreversed, label
     )
 
-    dimsym(sym) = Symbol(string((:x, :y, :z)[dim]) * string(sym))
-    attr(sym) = getproperty(ax, dimsym(sym))
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim], sym))
 
     dpoint = (v, v1, v2) -> dimpoint(dim, v, v1, v2)
     d1 = dim1(dim)
@@ -724,7 +728,7 @@ function add_ticks_and_ticklabels!(
         return Tuple{Any, Point2f}[(ticklabs[i], points[i]) for i in 1:N]
     end
 
-    align = lift(topscene, miv, min1, min2) do mv, m1, m2
+    tick_align = lift(topscene, miv, min1, min2) do mv, m1, m2
         if dim == 1
             (mv ⊻ m1 ? :right : :left, m2 ? :top : :bottom)
         elseif dim == 2
@@ -735,7 +739,7 @@ function add_ticks_and_ticklabels!(
     end
 
     ticklabels_text = text!(
-        topscene, labels_positions, align = align,
+        topscene, labels_positions, align = tick_align,
         color = attr(:ticklabelcolor), fontsize = attr(:ticklabelsize),
         font = attr(:ticklabelfont), visible = attr(:ticklabelsvisible),
         space = :pixel, inspectable = false
@@ -750,7 +754,8 @@ function add_ticks_and_ticklabels!(
     onany(
         topscene,
         topscene.viewport, topscene.camera.projectionview, limits, miv, min1, min2,
-        attr(:labeloffset), attr(:labelrotation), attr(:labelalign), xreversed, yreversed, zreversed
+        attr(:labeloffset), attr(:labelrotation), attr(:labelalign),
+        xreversed, yreversed, zreversed, update = true
     ) do pxa, pv, lims, miv, min1, min2, labeloffset, lrotation, lalign, xrev, yrev, zrev
 
         rev1 = (xrev, yrev, zrev)[d1]
@@ -823,7 +828,6 @@ function add_ticks_and_ticklabels!(
 
         return
     end
-    notify(attr(:labelalign))
 
     labelplot = text!(
         topscene, label_position,
@@ -853,14 +857,9 @@ function dim3point(dim1, dim2, dim3, v1, v2, v3)
     end
 end
 
+
 function add_panel!(topscene, ax, dim1, dim2, dim3, limits, min3)
-
-    dimsym(sym) = Symbol(
-        string((:x, :y, :z)[dim1]) *
-            string((:x, :y, :z)[dim2]) * string(sym)
-    )
-    attr(sym) = getproperty(ax, dimsym(sym))
-
+    attr(sym) = getproperty(ax, Symbol((:x, :y, :z)[dim1], (:x, :y, :z)[dim2], sym))
     rect = lift(limits) do lims
         mi = minimum(lims)
         ma = maximum(lims)
@@ -1031,6 +1030,88 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any})
 end
 
 
+"""
+    reset_limits!(ax; xauto = true, yauto = true)
+
+Resets the axis limits depending on the value of `ax.limits`.
+If one of the two components of limits is nothing,
+that value is either copied from the targetlimits if `xauto` or `yauto` is false,
+respectively, or it is determined automatically from the plots in the axis.
+If one of the components is a tuple of two numbers, those are used directly.
+"""
+function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
+    mlims = convert_limit_attribute(ax.limits[])
+
+    mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
+
+    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
+        l = if xauto
+            xautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
+        end
+        if mxlims === nothing
+            l
+        else
+            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
+            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
+    end
+    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
+        l = if yauto
+            yautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
+        end
+        if mylims === nothing
+            l
+        else
+            lo = mylims[1] === nothing ? l[1] : mylims[1]
+            hi = mylims[2] === nothing ? l[2] : mylims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
+    end
+
+    zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
+        l = if zauto
+            zautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
+        end
+        if mzlims === nothing
+            l
+        else
+            lo = mzlims[1] === nothing ? l[1] : mzlims[1]
+            hi = mzlims[2] === nothing ? l[2] : mzlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float32, Float32}, tuple(mzlims...))
+    end
+
+    if !(xlims[1] <= xlims[2])
+        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
+    end
+    if !(ylims[1] <= ylims[2])
+        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+    end
+    if !(zlims[1] <= zlims[2])
+        error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
+    end
+
+    tlims = Rect3f(
+        Vec3f(xlims[1], ylims[1], zlims[1]),
+        Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+    )
+    ax.targetlimits[] = tlims
+    return nothing
+end
+
 function xautolimits(ax::Axis3)
     xlims = getlimits(ax, 1)
 
@@ -1096,7 +1177,7 @@ function Makie.xlims!(ax::Axis3, xlims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (xlims, mlims[2], mlims[3])
+    ax.limits = (xlims, mlims[2], mlims[3])
     reset_limits!(ax, yauto = false, zauto = false)
     return nothing
 end
@@ -1114,7 +1195,7 @@ function Makie.ylims!(ax::Axis3, ylims::Tuple{Union{Real, Nothing}, Union{Real, 
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], ylims, mlims[3])
+    ax.limits = (mlims[1], ylims, mlims[3])
     reset_limits!(ax, xauto = false, zauto = false)
     return nothing
 end
@@ -1132,7 +1213,7 @@ function Makie.zlims!(ax::Axis3, zlims)
     end
     mlims = convert_limit_attribute(ax.limits[])
 
-    ax.limits.val = (mlims[1], mlims[2], zlims)
+    ax.limits = (mlims[1], mlims[2], zlims)
     reset_limits!(ax, xauto = false, yauto = false)
     return nothing
 end

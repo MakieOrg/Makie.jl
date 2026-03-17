@@ -48,7 +48,8 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "SSAO:")
     println(io, "    radius: ", ssao.radius[])
     println(io, "    bias:   ", ssao.bias[])
-    return println(io, "    blur:   ", ssao.blur[])
+    println(io, "    blur:   ", ssao.blur[])
+    return
 end
 
 function SSAO(; radius = nothing, bias = nothing, blur = nothing)
@@ -136,6 +137,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -179,6 +181,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
@@ -281,17 +292,19 @@ function Scene(;
     bg = Observable{RGBAf}(to_color(m_theme.backgroundcolor[]); ignore_equal_values = true)
 
     wasnothing = isnothing(viewport)
-    if wasnothing
+    scene_viewport = if wasnothing
         sz = if haskey(m_theme, :resolution)
             @warn "Found `resolution` in the theme when creating a `Scene`. The `resolution` keyword for `Scene`s and `Figure`s has been deprecated. Use `Figure(; size = ...` or `Scene(; size = ...)` instead, which better reflects that this is a unitless size and not a pixel resolution. The key could also come from `set_theme!` calls or related theming functions."
             m_theme.resolution[]
         else
             m_theme.size[]
         end
-        viewport = Observable(Recti(0, 0, sz); ignore_equal_values = true)
+        Observable(Recti(0, 0, sz); ignore_equal_values = true)
+    else
+        viewport
     end
 
-    cam = camera isa Camera ? camera : Camera(viewport)
+    cam = camera isa Camera ? camera : Camera(scene_viewport)
     _lights = lights isa Automatic ? AbstractLight[] : lights
 
     if lights isa Automatic
@@ -325,7 +338,7 @@ function Scene(;
         clear = convert(Observable{Bool}, clear)
     end
     scene = Scene(
-        parent, events, viewport, clear, cam, camera_controls,
+        parent, events, scene_viewport, clear, cam, camera_controls,
         transformation, plots, m_theme,
         children, current_screens, bg, visible, ssao, _lights;
         deregister_callbacks = deregister_callbacks
@@ -334,8 +347,8 @@ function Scene(;
 
     if wasnothing
         on(events.window_area, priority = typemax(Int)) do w_area
-            if !any(x -> x ≈ 0.0, widths(w_area)) && viewport[] != w_area
-                viewport[] = w_area
+            if !any(x -> x ≈ 0.0, widths(w_area)) && scene_viewport[] != w_area
+                scene_viewport[] = w_area
             end
             return Consume(false)
         end
@@ -362,7 +375,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -370,7 +383,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,
@@ -735,7 +748,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+struct FigureBlock
+    figure::Figure
+    block::Block
+end
+
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)

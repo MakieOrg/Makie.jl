@@ -27,6 +27,7 @@ function Base.insert!(screen::Screen, scene::Scene, @nospecialize(x::Plot))
             insert!(screen, scene, x)
         end
     end
+    screen.requires_update = true
     return
 end
 

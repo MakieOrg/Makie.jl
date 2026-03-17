@@ -402,6 +402,10 @@ surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
 surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j - 1) / (N - 1)
 surface_y(ys, i, j, N) = ys[j]
 surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
+function _ray_transform_point(p, tf)
+    xy = Makie.apply_transform(tf, Point2d(p))
+    return Point3d(xy[1], xy[2], p[3])
+end
 
 function surface_pos(xs, ys, zs, i, j)
     N, M = size(zs)

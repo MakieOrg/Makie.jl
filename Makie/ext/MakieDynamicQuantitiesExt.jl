@@ -37,7 +37,9 @@ function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, 
     return tick_vals, labels
 end
 
-M.get_label_suffix(conversion::M.DQConversion) = unit_string(conversion.quantity[])
+function M.get_label_suffix(conversion::M.DQConversion)
+    return conversion.quantity[] isa M.Automatic ? "" : unit_string(conversion.quantity[])
+end
 
 function M.convert_dim_value(conversion::M.DQConversion, attr, values, last_values)
     if conversion.quantity[] isa M.Automatic

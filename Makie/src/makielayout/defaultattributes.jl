@@ -68,7 +68,12 @@ function generic_plot_attributes(::Type{LineAxis})
         minortickwidth = 1.0f0,
         minortickcolor = :black,
         minorticks = Makie.automatic,
+        minorticksused = false,
         scale = identity,
+        unit_in_ticklabel = true,
+        suffix_formatter = "",
+        unit_in_label = false,
+        use_short_unit = true,
     )
 end
 
@@ -93,12 +98,14 @@ function extractattributes(attributes::Attributes, typ::Type)
     return extracted
 end
 
-function extractattributes(leg::Legend, typ::Type)
+function extractattributes(attributes::ComputeGraph, typ::Type)
     extracted = Attributes()
     for name in attributenames(typ)
-        if hasproperty(leg, name)
-            extracted[name] = getproperty(leg, name)
+        if haskey(attributes, name)
+            extracted[name] = ComputePipeline.get_observable!(attributes[name])
         end
     end
     return extracted
 end
+
+extractattributes(leg::Legend, typ::Type) = extractattributes(leg.attributes, typ)

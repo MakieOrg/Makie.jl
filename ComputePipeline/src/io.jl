@@ -24,11 +24,15 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
     return print(io, "\n  dirty = ", isdirty(computed))
 end
 
+_edge_callback_name(f::Function) = "$(nameof(f))"
+_edge_callback_name(f::InputFunctionWrapper) = "(::InputFunctionWrapper(:$(f.key), $(_edge_callback_name(f.user_func))))"
+_edge_callback_name(f::MapFunctionWrapper) = "(::MapFunctionWrapper($(_edge_callback_name(f.user_func))))"
+_edge_callback_name(functor) = "$(repr(functor))"
 
-edge_callback_name(f::Function, call = "(…)") = "$(nameof(f))$call"
-edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "(::InputFunctionWrapper(:$(f.key), $(nameof(f.user_func))))$call"
-edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "(::MapFunctionWrapper($(nameof(f.user_func))))$call"
-edge_callback_name(functor, call = "(…)") = "(::$(nameof(functor)))$call"
+edge_callback_name(f::Function, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
+edge_callback_name(functor, call = "(…)") = "$(_edge_callback_name(functor))$call"
 
 
 # This should mirror the inputs and outputs a ComputeEdge callback uses
@@ -272,7 +276,7 @@ function collect_dirty(computed::Computed, marked = Set{Symbol}())
     return marked
 end
 function collect_dirty(edge::ComputeEdge, marked = Set{Symbol}())
-    if !edge.got_resolved[] || any(edge.inputs_dirty)
+    if isdirty(edge) || any(edge.inputs_dirty)
         foreach(output -> push!(marked, output.name), edge.outputs)
         foreach(input -> collect_dirty(input, marked), edge.inputs)
     end
@@ -328,8 +332,9 @@ function trace_error(io::IO, edge::ComputeEdge, marked)
         if idx === nothing # All resolved
             print(io, "  with edge inputs:")
             ioc = IOContext(io, :limit => true)
-            for input in edge.inputs
-                print(io, "\n    ", input.name, " = ")
+            for (input, dirty) in zip(edge.inputs, edge.inputs_dirty)
+                c = ifelse(dirty, :normal, :light_black)
+                printstyled(io, "\n    ", input.name, " = ", color = c)
                 show(ioc, input.value[])
             end
             println(io)

@@ -178,19 +178,15 @@ end
 
 plottype(p::PlotSpec) = symbol_to_plot(p.type)
 
-function Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec)
-    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
-    kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
-    return
-end
+Base.show(io::IO, ::MIME"text/plain", spec::PlotSpec) = show(io, spec)
 
 function Base.show(io::IO, spec::PlotSpec)
     args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, " = ", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    println(io, "S.", spec.type, "($args; $kws)")
+    print(io, "S.", spec.type, "($args; $kws)")
     return
 end
+
 ####################
 #### BlockSpec
 
@@ -232,6 +228,17 @@ function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], k
         end
         return BlockSpec(typ, attr, plots)
     end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", spec::BlockSpec)
+    kws = join([string(k, "::", typeof(v)) for (k, v) in spec.kwargs], ", ")
+    print(io, "S.", spec.type, "(; $kws)")
+    return
+end
+
+function Base.show(io::IO, spec::BlockSpec)
+    print(io, "S.", spec.type, "(…)")
+    return
 end
 
 ######################
@@ -422,6 +429,26 @@ rangeunion(r1, r2::UnitRange) = min(r1.start, r2.start):max(r1.stop, r2.stop)
 rangeunion(r1, r2::Int) = min(r1.start, r2):max(r1.stop, r2)
 rangeunion(r1, ::Colon) = r1
 
+Base.show(io::IO, ::MIME"text/plain", spec::GridLayoutSpec) = grid_layout_spec_print(io, spec)
+Base.show(io::IO, ::GridLayoutSpec) = print(io, "S.GridLayout()")
+
+function grid_layout_spec_print(io, spec::GridLayoutSpec, tab = 0)
+    print(io, "S.GridLayout()")
+    grid_layout_spec_print(io, spec.content, tab)
+    return
+end
+
+function grid_layout_spec_print(io, content_list::Vector, tab = 0)
+    N = length(content_list)
+    for (i, (pos, content)) in enumerate(content_list)
+        print(io, "\n", "  "^tab, (i == N ? " ┗━ " : " ┣━ "), pos, " => ")
+        grid_layout_spec_print(io, content, tab + 1)
+    end
+    return
+end
+
+grid_layout_spec_print(io, content, tab) = print(io, content)
+
 
 """
 See documentation for specapi.
@@ -592,24 +619,14 @@ function push_without_add!(scene::Scene, plot)
     return
 end
 
-function plot_cycle_index(specs, spec::PlotSpec, plot::Plot)
-    cycle = plot.cycle[]
-    isnothing(cycle) && return 0
-    syms = [s for ps in attrsyms(cycle) for s in ps]
-    pos = 1
-    for p in specs
-        p === spec && return pos
-        if haskey(p.kwargs, :cycle) && !isnothing(p.kwargs[:cycle]) && plotfunc(p) === plotfunc(spec)
-            is_cycling = any(syms) do x
-                return haskey(p.kwargs, x) && isnothing(p[x])
-            end
-            if is_cycling
-                pos += 1
-            end
-        end
-    end
-    # not inserted yet
-    return pos
+# PlotList children each get their own cycle position (unlike other recipes
+# where children inherit the recipe's position). The plotlist may not be in
+# scene.plots yet during initial creation, so we chain it onto the iterator;
+# the identity short-circuit in _cycle_position prevents double-counting
+# if it IS already there.
+function plot_cycle_index(parent::PlotList, plot::Plot)
+    scene = get_scene(parent)
+    return _cycle_position(plot, Iterators.flatten((scene.plots, (parent,))))
 end
 
 function diff_plotlist!(
@@ -631,16 +648,16 @@ function diff_plotlist!(
         if !isnothing(plotlist)
             merge!(plotspec.kwargs, plotlist.kw)
         end
+        # Use plotlist as parent so connect_plot! computes the correct
+        # cycle_index via plot_cycle_index(::PlotList, ::Plot).
+        parent = isnothing(plotlist) ? scene : plotlist
         if isnothing(reused_plot)
-            # Create new plot, store it into our `cached_plots` dictionary
             @debug("Creating new plot for spec")
-            # This is all pretty much `push!(scene, plot)` / `plot!(scene, plotobject)`
-            # But we want the scene to only contain one PlotList item with the newly created
-            # Plots from the plotlist to only appear as children of the PlotList recipe
-            # - so we dont push it to the scene if there's a plotlist.
-            # This avoids e.g. double legend entries, due to having the children + plotlist in the same scene without being nested.
             plot_obj = to_plot_object(plotspec)
-            connect_plot!(scene, plot_obj)
+            # connect_plot! sets cycle_index correctly via plot_cycle_index(parent, plot).
+            # We don't push to scene.plots when there's a plotlist — the scene should
+            # only contain the PlotList itself, to avoid e.g. double legend entries.
+            connect_plot!(parent, plot_obj)
             if !isnothing(plotlist)
                 push!(plotlist.plots, plot_obj)
             else
@@ -650,11 +667,9 @@ function diff_plotlist!(
             new_plots[plotspec] = plot_obj
         else
             @debug("updating old plot with spec")
-            # Delete the plots from reusable_plots, so that we don't reuse it multiple times!
             delete!(reusable_plots, old_spec)
             deleteat!(reusable_plots_sorted, idx)
-            # Update the position of the plot!
-            pos = plot_cycle_index(plotspecs, plotspec, reused_plot)
+            pos = plot_cycle_index(parent, reused_plot)
             if pos != reused_plot.cycle_index[]
                 reused_plot.cycle_index = pos
             end
@@ -665,6 +680,36 @@ function diff_plotlist!(
     return new_plots
 end
 
+# Cache plots here so that we aren't re-creating plots every time;
+# if a plot still exists from last time, update it accordingly.
+# If the plot is removed from `plotspecs`, we'll delete it from here
+# and re-create it if it ever returns.
+function _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
+    specs = ifelse(isa(plotspecs, PlotSpec), [plotspecs], plotspecs)
+    # Global list of observables that need updating
+    # Updating them all at once in the end avoids problems with triggering updates while updating
+    # And at some point we may be able to optimize notify(list_of_observables)
+    # diff_plotlist! deletes all plots that get reused from unused_plots
+    # so, this will become our list of unused plots!
+    diff_plotlist!(scene, specs, plotlist, unused_plots, new_plots)
+    # Next, delete all plots that we haven't used
+    # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
+    if own_plots
+        for (_, plot) in unused_plots
+            if !isnothing(plotlist)
+                filter!(x -> x !== plot, plotlist.plots)
+            end
+            delete!(scene, plot)
+        end
+        # Transfer all new plots into unused_plots for the next update!
+        @assert !any(x -> x in unused_plots, new_plots)
+        empty!(unused_plots)
+        merge!(unused_plots, new_plots)
+        empty!(new_plots)
+    end
+    return
+end
+
 function update_plotspecs!(
         scene::Scene, list_of_plotspecs::Observable,
         plotlist::Union{Nothing, PlotList} = nothing,
@@ -672,39 +717,10 @@ function update_plotspecs!(
         new_plots = IdDict{PlotSpec, Plot}(),
         own_plots = true
     )
-    # Cache plots here so that we aren't re-creating plots every time;
-    # if a plot still exists from last time, update it accordingly.
-    # If the plot is removed from `plotspecs`, we'll delete it from here
-    # and re-create it if it ever returns.
-    update_plotlist(spec::PlotSpec) = update_plotlist([spec])
-    function update_plotlist(plotspecs)
-        # Global list of observables that need updating
-        # Updating them all at once in the end avoids problems with triggering updates while updating
-        # And at some point we may be able to optimize notify(list_of_observables)
-        # diff_plotlist! deletes all plots that get reused from unused_plots
-        # so, this will become our list of unused plots!
-        diff_plotlist!(scene, plotspecs, plotlist, unused_plots, new_plots)
-        # Next, delete all plots that we haven't used
-        # TODO, we could just hide them, until we reach some max_plots_to_be_cached, so that we re-create less plots.
-        if own_plots
-            for (_, plot) in unused_plots
-                if !isnothing(plotlist)
-                    filter!(x -> x !== plot, plotlist.plots)
-                end
-                delete!(scene, plot)
-            end
-            # Transfer all new plots into unused_plots for the next update!
-            @assert !any(x -> x in unused_plots, new_plots)
-            empty!(unused_plots)
-            merge!(unused_plots, new_plots)
-            empty!(new_plots)
-        end
-        return
-    end
     l = Base.ReentrantLock()
     on(scene, list_of_plotspecs; update = true) do plotspecs
-        lock(l) do
-            update_plotlist(plotspecs)
+        @lock l begin
+            _update_plotlist(plotspecs, scene, plotlist, unused_plots, new_plots, own_plots)
         end
         return
     end
@@ -913,6 +929,22 @@ function replace_links!(axis_links::Vector, new_links::Set)
     return true
 end
 
+function linked_limit_union(ax)
+    x0, x1 = ax.sharedxlimits[]
+    y0, y1 = ax.sharedylimits[]
+    for other in ax.xaxislinks
+        a, b = other.sharedxlimits[]
+        x0 = min(x0, a)
+        x1 = max(x1, b)
+    end
+    for other in ax.yaxislinks
+        a, b = other.sharedylimits[]
+        y0 = min(y0, a)
+        y1 = max(y1, b)
+    end
+    return (x0, x1), (y0, y1)
+end
+
 function update_axis_links!(gridspec, all_layoutables)
     # axes that should be linked
     axes = Dict{BlockSpec, Axis}()
@@ -941,6 +973,13 @@ function update_axis_links!(gridspec, all_layoutables)
     for (spec, ax) in axes
         unique!(ax.xaxislinks)
         unique!(ax.yaxislinks)
+    end
+
+    # trigger linking of axes
+    for (spec, ax) in axes
+        xlims, ylims = linked_limit_union(ax)
+        ax.localxlimits[] = xlims
+        ax.localylimits[] = ylims
     end
 
     return
@@ -1035,9 +1074,15 @@ function update_gridlayout!(
         # disconnect! all unused layoutables, so they dont show up anymore
         if block isa Block
             disconnect!(block)
+        elseif block isa GridLayout
+            isnothing(block.parent) && return
+            i = findfirst(x -> x.content === block, block.parent.content)
+            @assert !isnothing(i) "Could not find GridLayout() in its parent"
+            GridLayoutBase.remove_from_gridlayout!(block.parent.content[i])
         end
         return
     end
+
     layouts_to_update = Set{GridLayout}([target_layout])
     for (_, (content, _)) in new_layoutables
         if content isa GridLayout
@@ -1047,6 +1092,7 @@ function update_gridlayout!(
             push!(layouts_to_update, gc.parent)
         end
     end
+
     for l in layouts_to_update
         l.block_updates = false
         GridLayoutBase.update!(l)
@@ -1067,6 +1113,11 @@ function update_gridlayout!(
 end
 
 function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_obs::Observable{GridLayoutSpec})
+    add_layout_updater!(get_topscene(fig), get_layout!(fig), layout_obs)
+    return fig
+end
+
+function add_layout_updater!(parent_scene::Scene, layout::GridLayout, layout_obs::Observable{GridLayoutSpec})
     # Global list of all layoutables. The LayoutableKey includes a nesting, so that we can keep even nested layouts in one global list.
     # Vector of Pairs should allow to have an identical key without overwriting the previous value
     unused_layoutables = Pair{LayoutableKey, Tuple{Layoutable, Observable{Vector{PlotSpec}}}}[]
@@ -1074,14 +1125,13 @@ function update_fig!(fig::Union{Figure, GridPosition, GridSubposition}, layout_o
     sizehint!(unused_layoutables, 50)
     sizehint!(new_layoutables, 50)
     l = Base.ReentrantLock()
-    layout = get_layout!(fig)
-    on(get_topscene(fig), layout_obs; update = true) do layout_spec
+    on(parent_scene, layout_obs; update = true) do layout_spec
         lock(l) do
             update_gridlayout!(layout, layout_spec, unused_layoutables, new_layoutables)
             return
         end
     end
-    return fig
+    return nothing
 end
 
 args_preferred_axis(::GridLayoutSpec) = FigureOnly

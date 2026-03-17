@@ -175,15 +175,15 @@ module Aggregation
                 out[i, j] = update(op, out[i, j], z)
             end
         end
-
         mini, maxi = Inf, -Inf
-        map!(pixelbuffer, aggbuffer) do x
-            final_value = value(op, x)
+
+        for i in eachindex(pixelbuffer, aggbuffer)
+            final_value = value(op, aggbuffer[i])
             if isfinite(final_value)
                 mini = min(final_value, mini)
                 maxi = max(final_value, maxi)
             end
-            return final_value
+            pixelbuffer[i] = final_value
         end
         c.data_extrema = (mini, maxi)
         return c
@@ -476,7 +476,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
 end
 
 data_limits(p::DataShader)::Rect3d = p.data_limits[]
-boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
+function boundingbox(p::DataShader, space::Symbol = :data)::Rect3d
+    return apply_transform_and_model(p, p.data_limits[])
+end
 
 function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
     pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)

@@ -148,15 +148,15 @@ function connect_conversions!(new_conversions::DimConversions, ax::AbstractAxis)
         if hasproperty(ax, dim_sym)
             # merge
             ax_conversion = getproperty(ax, dim_sym)
-            new_conversions[i] = ax_conversion
+            new_conversions[i] = ComputePipeline.get_observable!(ax_conversion, use_deepcopy = false)
             # update in case new_conversions has a new conversion
-            getproperty(ax, dim_sym)[] = new_conversions[i]
-            deregister = nothing
+            setproperty!(ax, dim_sym, new_conversions[i])
+            deregister = Ref{Any}(nothing)
             # if the conversion changes, update the axis as well.
             # This should only ever happen once, since conversions are mutable after setting it to a new value
-            deregister = on(dim_observable(new_conversions, i)) do val
-                getproperty(ax, dim_sym)[] = val
-                off(deregister)
+            deregister[] = on(dim_observable(new_conversions, i)) do val
+                setproperty!(ax, dim_sym, new_conversions[i])
+                off(deregister[])
             end
         end
     end
@@ -181,21 +181,25 @@ end
 =#
 needs_tick_update_observable(x) = nothing
 
+function needs_tick_update_observable(conversion::ComputePipeline.Computed)
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+end
+
 function needs_tick_update_observable(conversion::Observable)
     if isnothing(conversion[])
         # At any point, conversion may change from nothing to an actual AbstractDimConversion
         # so we need to listen for that change and then listen to the updates from that conversion.
         # This should only ever happen once, since you can only change a conversion once, IFF it was nothing.
         tick_update = Observable{Any}(nothing)
-        deregister = nothing
-        deregister = on(conversion) do conversion
+        deregister = Ref{Any}(nothing)
+        deregister[] = on(conversion) do conversion
             if !isnothing(conversion)
                 obs = needs_tick_update_observable(conversion)
                 if !isnothing(obs)
                     connect!(tick_update, obs)
                 end
                 # this one doesn't need to listen anymore, since this update can only happen once
-                off(deregister)
+                off(deregister[])
             end
         end
         return tick_update
