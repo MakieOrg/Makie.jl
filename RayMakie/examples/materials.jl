@@ -211,8 +211,6 @@ img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img
-ax = nothing
-
 # save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
 # Benchmark 10 samples
 # Lava 7900xtx hw:  1.063923 seconds (3.38 M allocations: 184.093 MiB, 1.56% gc time)

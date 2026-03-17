@@ -581,8 +581,17 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
     n_outer = integrator isa Hikari.VolPath ? Int(integrator.samples_per_pixel) : 1
     for scene_state in screen.scene_states
         screen.state = scene_state
-        for _ in 1:n_outer
+        # Always clear film at the start of colorbuffer — ensures correct accumulation
+        # and prevents DEVICE_LOST from 10K+ dispatches piling up without a flush.
+        scene_state.needs_film_clear = true
+        for i in 1:n_outer
             render!(screen)
+            # Synchronize every 8 samples to prevent command buffer overflow.
+            # Each sample generates ~170 dispatches; without sync, a 64-sample
+            # render accumulates 11K+ dispatches → GPU timeout → DEVICE_LOST.
+            if i % 8 == 0 && i < n_outer
+                KernelAbstractions.synchronize(screen.config.device)
+            end
         end
     end
 
