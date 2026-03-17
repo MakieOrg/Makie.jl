@@ -1,5 +1,14 @@
 struct Axis3Camera <: AbstractCamera end
 
+function add_attributes!(T::Type{<:Axis3}, graph, attributes)
+    limits = pop!(attributes, :limits)
+    add_input!(graph, :limits, limits)
+    ComputePipeline.set_type!(graph.limits, Any)
+    graph.inputs[:limits].force_update = true
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
 function initialize_block!(ax::Axis3)
 
     blockscene = ax.blockscene
@@ -262,7 +271,8 @@ function initialize_block!(ax::Axis3)
 
     ax.interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    on(scene, ax.limits, update = true) do lims
+    limits_obs = ComputePipeline.get_observable!(ax.attributes, :limits, use_deepcopy = false)
+    on(scene, limits_obs, update = true) do lims
         reset_limits!(ax)
     end
 
@@ -1019,6 +1029,88 @@ function convert_limit_attribute(lims::Tuple{Any, Any, Any})
     return map(_convert_single_limit, lims)
 end
 
+
+"""
+    reset_limits!(ax; xauto = true, yauto = true)
+
+Resets the axis limits depending on the value of `ax.limits`.
+If one of the two components of limits is nothing,
+that value is either copied from the targetlimits if `xauto` or `yauto` is false,
+respectively, or it is determined automatically from the plots in the axis.
+If one of the components is a tuple of two numbers, those are used directly.
+"""
+function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
+    mlims = convert_limit_attribute(ax.limits[])
+
+    mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
+
+    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
+        l = if xauto
+            xautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
+        end
+        if mxlims === nothing
+            l
+        else
+            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
+            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mxlims...))
+    end
+    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
+        l = if yauto
+            yautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
+        end
+        if mylims === nothing
+            l
+        else
+            lo = mylims[1] === nothing ? l[1] : mylims[1]
+            hi = mylims[2] === nothing ? l[2] : mylims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float64, Float64}, tuple(mylims...))
+    end
+
+    zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
+        l = if zauto
+            zautolimits(ax)
+        else
+            minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
+        end
+        if mzlims === nothing
+            l
+        else
+            lo = mzlims[1] === nothing ? l[1] : mzlims[1]
+            hi = mzlims[2] === nothing ? l[2] : mzlims[2]
+            (lo, hi)
+        end
+    else
+        convert(Tuple{Float32, Float32}, tuple(mzlims...))
+    end
+
+    if !(xlims[1] <= xlims[2])
+        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
+    end
+    if !(ylims[1] <= ylims[2])
+        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+    end
+    if !(zlims[1] <= zlims[2])
+        error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
+    end
+
+    tlims = Rect3f(
+        Vec3f(xlims[1], ylims[1], zlims[1]),
+        Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+    )
+    ax.targetlimits[] = tlims
+    return nothing
+end
 
 function xautolimits(ax::Axis3)
     xlims = getlimits(ax, 1)

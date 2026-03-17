@@ -1,12 +1,10 @@
-function update_gridlines!(grid_obs::Observable{Vector{Point2f}}, offset::Point2f, tickpositions::Vector{Point2f})
-    result = grid_obs[]
-    empty!(result) # reuse array for less allocations
+function gridline_points(offset::Point2f, tickpositions::Vector{Point2f})
+    result = Point2f[]
     for gridstart in tickpositions
         opposite_tickpos = gridstart .+ offset
         push!(result, gridstart, opposite_tickpos)
     end
-    notify(grid_obs)
-    return
+    return result
 end
 
 function process_axis_event(ax, event)
@@ -61,13 +59,12 @@ function register_events!(ax, scene)
     return
 end
 
-function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
+function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yrev::Bool)
     nearclip = -10_000f0
     farclip = 10_000f0
 
     # we are computing transformed camera position, so this isn't space dependent
-    tlims = Makie.apply_transform(t, lims)
-    camera = scene.camera
+    tlims = Makie.apply_transform(tf, lims)
 
     update_limits!(scene.float32convert, tlims) # update float32 scaling
     lims32 = f32_convert(scene.float32convert, tlims)  # get scaled limits
@@ -76,18 +73,14 @@ function update_axis_camera(scene::Scene, t, lims, xrev::Bool, yrev::Bool)
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
-    projection = Makie.orthographicprojection(
+    return Makie.orthographicprojection(
         Float32,
         leftright...,
         bottomtop..., nearclip, farclip
     )
-
-    Makie.set_proj_view!(camera, projection, Makie.Mat4f(Makie.I))
-    return
 end
 
-
-function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposition, xaxisprotrusion, _, ax, subtitlet)
+function calculate_title_position(area, titlegap, align, xaxisposition, xaxisprotrusion, subtitle_height)
     local x::Float32 = if align === :center
         area.origin[1] + area.widths[1] / 2
     elseif align === :left
@@ -98,11 +91,7 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
         error("Title align $align not supported.")
     end
 
-    local subtitlespace::Float32 = if ax.subtitlevisible[] && !iswhitespace(ax.subtitle[])
-        boundingbox(subtitlet, :data).widths[2] + subtitlegap
-    else
-        0.0f0
-    end
+    subtitlespace::Float32 = subtitle_height
 
     local yoffset::Float32 = top(area) + titlegap + (xaxisposition === :top ? xaxisprotrusion : 0.0f0) +
         subtitlespace
@@ -111,42 +100,17 @@ function calculate_title_position(area, titlegap, subtitlegap, align, xaxisposit
 end
 
 function compute_protrusions(
-        title, titlesize, titlegap, titlevisible, spinewidth,
-        topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
-        xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition,
-        subtitle, subtitlevisible, subtitlesize, subtitlegap, titlelineheight, subtitlelineheight,
-        subtitlet, titlet
+        titleheight, subtitleheight,
+        xaxisposition, xaxisprotrusion,
+        yaxisposition, yaxisprotrusion,
     )
 
-    local left::Float32, right::Float32, bottom::Float32, top::Float32 = 0.0f0, 0.0f0, 0.0f0, 0.0f0
+    left::Float32 = ifelse(yaxisposition === :left, yaxisprotrusion, 0.0f0)
+    right::Float32 = ifelse(yaxisposition === :right, yaxisprotrusion, 0.0f0)
+    bottom::Float32 = ifelse(xaxisposition === :bottom, xaxisprotrusion, 0.0f0)
+    top::Float32 = ifelse(xaxisposition === :top, xaxisprotrusion, 0.0f0)
 
-    if xaxisposition === :bottom
-        bottom = xaxisprotrusion
-    else
-        top = xaxisprotrusion
-    end
-
-    titleheight = boundingbox(titlet, :data).widths[2] + titlegap
-    subtitleheight = boundingbox(subtitlet, :data).widths[2] + subtitlegap
-
-    titlespace = if !titlevisible || iswhitespace(title)
-        0.0f0
-    else
-        titleheight
-    end
-    subtitlespace = if !subtitlevisible || iswhitespace(subtitle)
-        0.0f0
-    else
-        subtitleheight
-    end
-
-    top += titlespace + subtitlespace
-
-    if yaxisposition === :left
-        left = yaxisprotrusion
-    else
-        right = yaxisprotrusion
-    end
+    top += titleheight + subtitleheight
 
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
@@ -156,26 +120,8 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements = Dict{Symbol, Any}()
     ax.elements = elements
 
-    # initialize either with user limits, or pick defaults based on scales
-    # so that we don't immediately error
-    targetlimits = Observable{Rect2d}(defaultlimits(ax.limits[], ax.xscale[], ax.yscale[]))
-    finallimits = Observable{Rect2d}(targetlimits[]; ignore_equal_values = true)
-    setfield!(ax, :targetlimits, targetlimits)
-    setfield!(ax, :finallimits, finallimits)
-
-    on(blockscene, targetlimits) do lims
-        # this should validate the targetlimits before anything else happens with them
-        # so there should be nothing before this lifting `targetlimits`
-        # we don't use finallimits because that's one step later and you
-        # already shouldn't set invalid targetlimits (even if they could
-        # theoretically be adjusted to fit somehow later?)
-        # and this way we can error pretty early
-        validate_limits_for_scales(lims, ax.xscale[], ax.yscale[])
-    end
-
-    scenearea = sceneareanode!(ax.layoutobservables.computedbbox, finallimits, ax.aspect)
-
-    scene = Scene(blockscene, viewport = scenearea, visible = false)
+    scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
+    add_input!(ax.attributes, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
@@ -185,6 +131,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     setfield!(scene, :float32convert, Float32Convert())
 
+    initialize_limit_computations!(ax)
+
+    add_input!(ax.attributes, :computedbbox, ax.layoutobservables.computedbbox)
+    map!(calculate_scenearea, ax.attributes, [:computedbbox, :finallimits, :aspect], :scenearea)
+    connect!(scene.viewport, ax.scenearea)
+
     if !isnothing(palette)
         # Backwards compatibility for when palette was part of axis!
         palette_attr = palette isa Attributes ? palette : Attributes(palette)
@@ -193,77 +145,14 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     # TODO: replace with mesh, however, CairoMakie needs a poly path for this signature
     # so it doesn't rasterize the scene
-    background = poly!(blockscene, scenearea; color = ax.backgroundcolor, inspectable = false, shading = NoShading, strokecolor = :transparent)
+    background = poly!(
+        blockscene, ax.viewport; color = ax.backgroundcolor, inspectable = false,
+        shading = NoShading, strokecolor = :transparent
+    )
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
-    block_limit_linking = Observable(false)
-    setfield!(ax, :block_limit_linking, block_limit_linking)
-
-    ax.xaxislinks = Axis[]
-    ax.yaxislinks = Axis[]
-
-    xgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    xgridlines = linesegments!(
-        blockscene, xgridnode, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
-        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xgridlines, 0, 0, -10)
-    elements[:xgridlines] = xgridlines
-
-    xminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    xminorgridlines = linesegments!(
-        blockscene, xminorgridnode, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
-        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(xminorgridlines, 0, 0, -10)
-    elements[:xminorgridlines] = xminorgridlines
-
-    ygridnode = Observable(Point2f[]; ignore_equal_values = true)
-    ygridlines = linesegments!(
-        blockscene, ygridnode, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
-        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(ygridlines, 0, 0, -10)
-    elements[:ygridlines] = ygridlines
-
-    yminorgridnode = Observable(Point2f[]; ignore_equal_values = true)
-    yminorgridlines = linesegments!(
-        blockscene, yminorgridnode, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
-        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
-    )
-    # put gridlines behind the zero plane so they don't overlay plots
-    translate!(yminorgridlines, 0, 0, -10)
-    elements[:yminorgridlines] = yminorgridlines
-
-    # When the transform function (xscale, yscale) of a plot changes we
-    # 1. communicate this change to plots (barplot needs this to make bars
-    #    compatible with the new transform function/scale)
-    onany(blockscene, ax.xscale, ax.yscale, update = true) do xsc, ysc
-        scene.transformation.transform_func[] = (xsc, ysc)
-        return
-    end
-
-    # 2. Update the limits of the plot
-    onany(blockscene, scene.transformation.transform_func, priority = -1, update = true) do _
-        reset_limits!(ax)
-    end
-
-    # 3. Update the view onto the plot (camera matrices)
-    onany(
-        blockscene, scene.transformation.transform_func, finallimits,
-        ax.xreversed, ax.yreversed; priority = -2
-    ) do args...
-        update_axis_camera(scene, args...)
-    end
-
-    xaxis_endpoints = lift(
-        blockscene, ax.xaxisposition, scene.viewport;
-        ignore_equal_values = true
-    ) do xaxisposition, area
+    map!(ax.attributes, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -273,10 +162,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yaxis_endpoints = lift(
-        blockscene, ax.yaxisposition, scene.viewport;
-        ignore_equal_values = true
-    ) do yaxisposition, area
+    map!(ax.attributes, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -286,100 +172,79 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xaxis_flipped = lift(x -> x === :top, blockscene, ax.xaxisposition; ignore_equal_values = true)
-    yaxis_flipped = lift(x -> x === :right, blockscene, ax.yaxisposition; ignore_equal_values = true)
+    map!(x -> x === :top, ax.attributes, :xaxisposition, :xaxis_flipped)
+    map!(x -> x === :right, ax.attributes, :yaxisposition, :yaxis_flipped)
 
-    xspinevisible = lift(
-        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-        ignore_equal_values = true
-    ) do xflip, bv, tv
-        xflip ? tv : bv
-    end
-    xoppositespinevisible = lift(
-        blockscene, xaxis_flipped, ax.bottomspinevisible, ax.topspinevisible;
-        ignore_equal_values = true
-    ) do xflip, bv, tv
-        xflip ? bv : tv
-    end
-    yspinevisible = lift(
-        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-        ignore_equal_values = true
-    ) do yflip, lv, rv
-        yflip ? rv : lv
-    end
-    yoppositespinevisible = lift(
-        blockscene, yaxis_flipped, ax.leftspinevisible, ax.rightspinevisible;
-        ignore_equal_values = true
-    ) do yflip, lv, rv
-        yflip ? lv : rv
-    end
-    xspinecolor = lift(
-        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-        ignore_equal_values = true
-    ) do xflip, bc, tc
-        xflip ? tc : bc
-    end
-    xoppositespinecolor = lift(
-        blockscene, xaxis_flipped, ax.bottomspinecolor, ax.topspinecolor;
-        ignore_equal_values = true
-    ) do xflip, bc, tc
-        xflip ? bc : tc
-    end
-    yspinecolor = lift(
-        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-        ignore_equal_values = true
-    ) do yflip, lc, rc
-        yflip ? rc : lc
-    end
-    yoppositespinecolor = lift(
-        blockscene, yaxis_flipped, ax.leftspinecolor, ax.rightspinecolor;
-        ignore_equal_values = true
-    ) do yflip, lc, rc
-        yflip ? lc : rc
-    end
+    map!(
+        (flip, bv, tv) -> ifelse(flip, (tv, bv), (bv, tv)),
+        ax.attributes,
+        [:xaxis_flipped, :bottomspinevisible, :topspinevisible],
+        [:xspinevisible, :xoppositespinevisible]
+    )
+    map!(
+        (flip, lv, rv) -> ifelse(flip, (rv, lv), (lv, rv)),
+        ax.attributes,
+        [:yaxis_flipped, :leftspinevisible, :rightspinevisible],
+        [:yspinevisible, :yoppositespinevisible]
+    )
+    map!(
+        (flip, bc, tc) -> ifelse(flip, (tc, bc), (bc, tc)),
+        ax.attributes,
+        [:xaxis_flipped, :bottomspinecolor, :topspinecolor],
+        [:xspinecolor, :xoppositespinecolor]
+    )
+    map!(
+        (flip, lc, rc) -> ifelse(flip, (rc, lc), (lc, rc)),
+        ax.attributes,
+        [:yaxis_flipped, :leftspinecolor, :rightspinecolor],
+        [:yspinecolor, :yoppositespinecolor]
+    )
 
-    xlims = lift(xlimits, blockscene, finallimits; ignore_equal_values = true)
-    ylims = lift(ylimits, blockscene, finallimits; ignore_equal_values = true)
+    map!(xlimits, ax.attributes, :finallimits, :finalxlimits)
+    map!(ylimits, ax.attributes, :finallimits, :finalylimits)
 
     xaxis = LineAxis(
-        blockscene, endpoints = xaxis_endpoints, limits = xlims,
-        flipped = xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
+        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
+        endpoints = ax.xaxis_endpoints, limits = ax.finalxlimits,
+        flipped = ax.xaxis_flipped, ticklabelrotation = ax.xticklabelrotation,
         ticklabelalign = ax.xticklabelalign, labelsize = ax.xlabelsize,
         labelpadding = ax.xlabelpadding, ticklabelpad = ax.xticklabelpad, labelvisible = ax.xlabelvisible,
         label = ax.xlabel, labelfont = ax.xlabelfont, labelrotation = ax.xlabelrotation, ticklabelfont = ax.xticklabelfont, ticklabelcolor = ax.xticklabelcolor, labelcolor = ax.xlabelcolor, tickalign = ax.xtickalign,
         ticklabelspace = ax.xticklabelspace, dim_convert = ax.dim1_conversion, ticks = ax.xticks, tickformat = ax.xtickformat, ticklabelsvisible = ax.xticklabelsvisible,
-        ticksvisible = ax.xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = ax.spinewidth,
+        ticksvisible = ax.xticksvisible, spinevisible = ax.xspinevisible, spinecolor = ax.xspinecolor, spinewidth = ax.spinewidth,
         ticklabelsize = ax.xticklabelsize, trimspine = ax.xtrimspine, ticksize = ax.xticksize,
         reversed = ax.xreversed, tickwidth = ax.xtickwidth, tickcolor = ax.xtickcolor,
         minorticksvisible = ax.xminorticksvisible, minortickalign = ax.xminortickalign, minorticksize = ax.xminorticksize, minortickwidth = ax.xminortickwidth, minortickcolor = ax.xminortickcolor, minorticks = ax.xminorticks, scale = ax.xscale,
         minorticksused = ax.xminorgridvisible,
         unit_in_ticklabel = ax.x_unit_in_ticklabel, unit_in_label = ax.x_unit_in_label,
-        label_suffix = ax.xlabel_suffix, use_short_unit = ax.use_short_x_units
+        suffix_formatter = ax.xlabel_suffix, use_short_unit = ax.use_short_x_units
     )
 
     ax.xaxis = xaxis
 
     yaxis = LineAxis(
-        blockscene, endpoints = yaxis_endpoints, limits = ylims,
-        flipped = yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
+        blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :yaxis),
+        endpoints = ax.yaxis_endpoints, limits = ax.finalylimits,
+        flipped = ax.yaxis_flipped, ticklabelrotation = ax.yticklabelrotation,
         ticklabelalign = ax.yticklabelalign, labelsize = ax.ylabelsize,
         labelpadding = ax.ylabelpadding, ticklabelpad = ax.yticklabelpad, labelvisible = ax.ylabelvisible,
         label = ax.ylabel, labelfont = ax.ylabelfont, labelrotation = ax.ylabelrotation, ticklabelfont = ax.yticklabelfont, ticklabelcolor = ax.yticklabelcolor, labelcolor = ax.ylabelcolor, tickalign = ax.ytickalign,
         ticklabelspace = ax.yticklabelspace, dim_convert = ax.dim2_conversion, ticks = ax.yticks, tickformat = ax.ytickformat, ticklabelsvisible = ax.yticklabelsvisible,
-        ticksvisible = ax.yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = ax.spinewidth,
+        ticksvisible = ax.yticksvisible, spinevisible = ax.yspinevisible, spinecolor = ax.yspinecolor, spinewidth = ax.spinewidth,
         trimspine = ax.ytrimspine, ticklabelsize = ax.yticklabelsize, ticksize = ax.yticksize, flip_vertical_label = ax.flip_ylabel, reversed = ax.yreversed, tickwidth = ax.ytickwidth,
         tickcolor = ax.ytickcolor,
         minorticksvisible = ax.yminorticksvisible, minortickalign = ax.yminortickalign, minorticksize = ax.yminorticksize, minortickwidth = ax.yminortickwidth, minortickcolor = ax.yminortickcolor, minorticks = ax.yminorticks, scale = ax.yscale,
         minorticksused = ax.yminorgridvisible,
         unit_in_ticklabel = ax.y_unit_in_ticklabel, unit_in_label = ax.y_unit_in_label,
-        label_suffix = ax.ylabel_suffix, use_short_unit = ax.use_short_y_units
+        suffix_formatter = ax.ylabel_suffix, use_short_unit = ax.use_short_y_units
     )
 
     ax.yaxis = yaxis
 
-    xoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.xaxisposition;
-        ignore_equal_values = true
+    map!(
+        ax.attributes,
+        [:viewport, :spinewidth, :xaxisposition],
+        :xoppositelinepoints
     ) do r, sw, xaxpos
         if xaxpos === :top
             y = bottom(r)
@@ -394,9 +259,10 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    yoppositelinepoints = lift(
-        blockscene, scene.viewport, ax.spinewidth, ax.yaxisposition;
-        ignore_equal_values = true
+    map!(
+        ax.attributes,
+        [:viewport, :spinewidth, :yaxisposition],
+        :yoppositelinepoints
     ) do r, sw, yaxpos
         if yaxpos === :right
             x = left(r)
@@ -411,89 +277,149 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    xticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.tickpositions, ax.xticksize, ax.xtickalign,
-        scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+    map!(
+        mirror_xticks, ax.attributes,
+        [(:xaxis, :tickpositions), :xticksize, :xtickalign, :viewport, :xaxisposition, :spinewidth],
+        :xticksmirrored_points
     )
+    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
     xticksmirrored_lines = linesegments!(
-        blockscene, xticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xticksvisible)),
+        blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
     )
     translate!(xticksmirrored_lines, 0, 0, 10)
-    yticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.tickpositions, ax.yticksize, ax.ytickalign,
-        scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_yticks, ax.attributes,
+        [(:yaxis, :tickpositions), :yticksize, :ytickalign, :viewport, :yaxisposition, :spinewidth],
+        :yticksmirrored_points
     )
+    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
     yticksmirrored_lines = linesegments!(
-        blockscene, yticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yticksvisible)),
+        blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
     )
     translate!(yticksmirrored_lines, 0, 0, 10)
-    xminorticksmirrored = lift(
-        mirror_ticks, blockscene, xaxis.minortickpositions, ax.xminorticksize,
-        ax.xminortickalign, scene.viewport, :x, ax.xaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_xticks, ax.attributes,
+        [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :viewport, :xaxisposition, :spinewidth],
+        :xminorticksmirrored
     )
+    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
     xminorticksmirrored_lines = linesegments!(
-        blockscene, xminorticksmirrored, visible = @lift($(ax.xticksmirrored) && $(ax.xminorticksvisible)),
+        blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
     )
     translate!(xminorticksmirrored_lines, 0, 0, 10)
-    yminorticksmirrored = lift(
-        mirror_ticks, blockscene, yaxis.minortickpositions, ax.yminorticksize,
-        ax.yminortickalign, scene.viewport, :y, ax.yaxisposition[], ax.spinewidth
+
+    map!(
+        mirror_yticks, ax.attributes,
+        [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :viewport, :yaxisposition, :spinewidth],
+        :yminorticksmirrored
     )
+    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
     yminorticksmirrored_lines = linesegments!(
-        blockscene, yminorticksmirrored, visible = @lift($(ax.yticksmirrored) && $(ax.yminorticksvisible)),
+        blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
     )
     translate!(yminorticksmirrored_lines, 0, 0, 10)
 
     xoppositeline = linesegments!(
-        blockscene, xoppositelinepoints, linewidth = ax.spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
+        blockscene, ax.xoppositelinepoints, linewidth = ax.spinewidth,
+        visible = ax.xoppositespinevisible, color = ax.xoppositespinecolor,
+        inspectable = false,
         linestyle = nothing
     )
     elements[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
 
     yoppositeline = linesegments!(
-        blockscene, yoppositelinepoints, linewidth = ax.spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
+        blockscene, ax.yoppositelinepoints, linewidth = ax.spinewidth,
+        visible = ax.yoppositespinevisible, color = ax.yoppositespinecolor,
+        inspectable = false,
         linestyle = nothing
     )
     elements[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
-    onany(blockscene, xaxis.tickpositions, scene.viewport) do tickpos, area
+    map!(
+        ax.attributes,
+        [(:xaxis, :tickpositions), :xaxisposition, :viewport],
+        :xgrid_points
+    ) do tickpos, axispos, area
         local pxheight::Float32 = height(area)
-        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
-        update_gridlines!(xgridnode, Point2f(0, offset), tickpos)
+        local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
+        return gridline_points(Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.tickpositions, scene.viewport) do tickpos, area
+    map!(
+        ax.attributes,
+        [(:yaxis, :tickpositions), :yaxisposition, :viewport],
+        :ygrid_points
+    ) do tickpos, axispos, area
         local pxwidth::Float32 = width(area)
-        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
-        update_gridlines!(ygridnode, Point2f(offset, 0), tickpos)
+        local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
+        return gridline_points(Point2f(offset, 0), tickpos)
     end
 
-    onany(blockscene, xaxis.minortickpositions, scene.viewport) do tickpos, area
-        local pxheight::Float32 = height(scene.viewport[])
-        local offset::Float32 = ax.xaxisposition[] === :bottom ? pxheight : -pxheight
-        update_gridlines!(xminorgridnode, Point2f(0, offset), tickpos)
+    map!(
+        ax.attributes,
+        [(:xaxis, :minortickpositions), :xaxisposition, :viewport],
+        :xminorgrid_points
+    ) do tickpos, axispos, area
+        local pxheight::Float32 = height(area)
+        local offset::Float32 = axispos === :bottom ? pxheight : -pxheight
+        return gridline_points(Point2f(0, offset), tickpos)
     end
 
-    onany(blockscene, yaxis.minortickpositions, scene.viewport) do tickpos, area
-        local pxwidth::Float32 = width(scene.viewport[])
-        local offset::Float32 = ax.yaxisposition[] === :left ? pxwidth : -pxwidth
-        update_gridlines!(yminorgridnode, Point2f(offset, 0), tickpos)
+    map!(
+        ax.attributes,
+        [(:yaxis, :minortickpositions), :yaxisposition, :viewport],
+        :yminorgrid_points
+    ) do tickpos, axispos, area
+        local pxwidth::Float32 = width(area)
+        local offset::Float32 = axispos === :left ? pxwidth : -pxwidth
+        return gridline_points(Point2f(offset, 0), tickpos)
     end
 
-    subtitlepos = lift(
-        blockscene, scene.viewport, ax.titlegap, ax.titlealign, ax.xaxisposition,
-        xaxis.protrusion;
-        ignore_equal_values = true
-    ) do a,
-            titlegap, align, xaxisposition, xaxisprotrusion
+    xgridlines = linesegments!(
+        blockscene, ax.xgrid_points, linewidth = ax.xgridwidth, visible = ax.xgridvisible,
+        color = ax.xgridcolor, linestyle = ax.xgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xgridlines, 0, 0, -10)
+    elements[:xgridlines] = xgridlines
+
+    xminorgridlines = linesegments!(
+        blockscene, ax.xminorgrid_points, linewidth = ax.xminorgridwidth, visible = ax.xminorgridvisible,
+        color = ax.xminorgridcolor, linestyle = ax.xminorgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xminorgridlines, 0, 0, -10)
+    elements[:xminorgridlines] = xminorgridlines
+
+    ygridlines = linesegments!(
+        blockscene, ax.ygrid_points, linewidth = ax.ygridwidth, visible = ax.ygridvisible,
+        color = ax.ygridcolor, linestyle = ax.ygridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(ygridlines, 0, 0, -10)
+    elements[:ygridlines] = ygridlines
+
+    yminorgridlines = linesegments!(
+        blockscene, ax.yminorgrid_points, linewidth = ax.yminorgridwidth, visible = ax.yminorgridvisible,
+        color = ax.yminorgridcolor, linestyle = ax.yminorgridstyle, inspectable = false
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(yminorgridlines, 0, 0, -10)
+    elements[:yminorgridlines] = yminorgridlines
+
+    map!(
+        ax.attributes,
+        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
+        :subtitlepos
+    ) do a, titlegap, align, xaxisposition, xaxisprotrusion
 
         align_factor = halign2num(align, "Horizontal title align $align not supported.")
         x = a.origin[1] + align_factor * a.widths[1]
@@ -503,16 +429,15 @@ function initialize_block!(ax::Axis; palette = nothing)
         return Point2f(x, yoffset)
     end
 
-    titlealignnode = lift(blockscene, ax.titlealign; ignore_equal_values = true) do align
-        (align, :bottom)
-    end
+    map!(align -> (align, :bottom), ax.attributes, :titlealign, :titlealign_tuple)
 
     subtitlet = text!(
-        blockscene, subtitlepos,
+        blockscene,
+        ax.subtitlepos,
         text = ax.subtitle,
         visible = ax.subtitlevisible,
         fontsize = ax.subtitlesize,
-        align = titlealignnode,
+        align = ax.titlealign_tuple,
         font = ax.subtitlefont,
         color = ax.subtitlecolor,
         lineheight = ax.subtitlelineheight,
@@ -520,17 +445,27 @@ function initialize_block!(ax::Axis; palette = nothing)
         inspectable = false
     )
 
-    titlepos = lift(
-        calculate_title_position, blockscene, scene.viewport, ax.titlegap, ax.subtitlegap,
-        ax.titlealign, ax.xaxisposition, xaxis.protrusion, ax.subtitlelineheight, ax, subtitlet; ignore_equal_values = true
+    subtitle_bbox = register_raw_string_boundingboxes!(subtitlet)
+    map!(
+        ax.attributes, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
+    ) do bboxes, visible, gap
+        bb = reduce(update_boundingbox, bboxes, init = Rect3f())
+        height = widths(bb)[2]
+        return isfinite(height) && visible ? Float32(height + gap) : 0.0f0
+    end
+
+    map!(
+        calculate_title_position, ax.attributes,
+        [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
+        :titlepos
     )
 
     titlet = text!(
-        blockscene, titlepos,
+        blockscene, ax.titlepos,
         text = ax.title,
         visible = ax.titlevisible,
         fontsize = ax.titlesize,
-        align = titlealignnode,
+        align = ax.titlealign_tuple,
         font = ax.titlefont,
         color = ax.titlecolor,
         lineheight = ax.titlelineheight,
@@ -539,16 +474,26 @@ function initialize_block!(ax::Axis; palette = nothing)
     )
     elements[:title] = titlet
 
+    title_bbox = register_raw_string_boundingboxes!(titlet)
     map!(
-        compute_protrusions, blockscene, ax.layoutobservables.protrusions, ax.title, ax.titlesize,
-        ax.titlegap, ax.titlevisible, ax.spinewidth,
-        ax.topspinevisible, ax.bottomspinevisible, ax.leftspinevisible, ax.rightspinevisible,
-        xaxis.protrusion, yaxis.protrusion, ax.xaxisposition, ax.yaxisposition,
-        ax.subtitle, ax.subtitlevisible, ax.subtitlesize, ax.subtitlegap,
-        ax.titlelineheight, ax.subtitlelineheight, subtitlet, titlet
+        ax.attributes, [title_bbox, :titlevisible, :titlegap], :title_height
+    ) do bboxes, visible, gap
+        bb = reduce(update_boundingbox, bboxes, init = Rect3f())
+        height = widths(bb)[2]
+        return isfinite(height) && visible ? Float32(height + gap) : 0.0f0
+    end
+
+    map!(
+        compute_protrusions, ax.attributes,
+        [
+            :title_height, :subtitle_height,
+            :xaxisposition, (:xaxis, :protrusion),
+            :yaxisposition, (:yaxis, :protrusion),
+        ],
+        :layout_protrusions
     )
-    # trigger first protrusions with one of the observables
-    # notify(ax.title)
+
+    connect!(ax.layoutobservables.protrusions, ax.layout_protrusions)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
@@ -556,37 +501,12 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     register_events!(ax, scene)
 
-    # these are the user defined limits
-    on(blockscene, ax.limits) do _
-        reset_limits!(ax)
-    end
-
-    # these are the limits that we try to target, but they can be changed for correct aspects
-    on(blockscene, targetlimits) do tlims
-        update_linked_limits!(block_limit_linking, ax.xaxislinks, ax.yaxislinks, tlims)
-    end
-
-    # compute limits that adhere to the limit aspect ratio whenever the targeted
-    # limits or the scene size change, because both influence the displayed ratio
-    onany(blockscene, scene.viewport, targetlimits) do pxa, lims
-        adjustlimits!(ax)
-    end
-
-    # trigger limit pipeline once, with manual finallimits if they haven't changed from
-    # their initial value as they need to be triggered at least once to correctly set up
-    # projection matrices etc.
-    fl = finallimits[]
-    notify(ComputePipeline.get_observable!(ax.limits))
-    if fl == finallimits[]
-        notify(finallimits)
-    end
-
-    # Needed to fully initialize layouting for some reason...
-    notify(ComputePipeline.get_observable!(ax.xlabelpadding))
-    notify(ComputePipeline.get_observable!(ax.ylabelpadding))
+    # # Needed to fully initialize layouting for some reason...
+    # notify(ComputePipeline.get_observable!(ax.xlabelpadding))
+    # notify(ComputePipeline.get_observable!(ax.ylabelpadding))
 
     # Add them last, so we skip all the internal iterations from above!
-    add_input!(ax.scene.compute, :axis_limits, finallimits)
+    add_input!(ax.scene.compute, :axis_limits, ax.attributes.finallimits)
     map!(apply_transform, ax.scene.compute, [:transform_func, :axis_limits], :axis_limits_transformed)
 
     return ax
@@ -602,6 +522,393 @@ function add_axis_limits!(plot)
     return
 end
 
+################################################################################
+# Limits
+
+function add_attributes!(T::Type{<:Axis}, graph, attributes)
+    limits = pop!(attributes, :limits)
+    add_input!((k, v) -> convert_limit_attribute(v), graph, :limits, limits)
+    ComputePipeline.set_type!(graph.limits, Any)
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
+make_limit_update_explit(x::ComputePipeline.ExplicitUpdate) = x
+make_limit_update_explit(x::Nothing) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{Nothing, <:Any}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{<:Any, Nothing}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple{Nothing, Nothing}) = ComputePipeline.ExplicitUpdate(x, :force)
+make_limit_update_explit(x::Tuple) = ComputePipeline.ExplicitUpdate(x, :auto)
+
+function initialize_limit_computations!(ax)
+    attr = ax.attributes
+
+    # Propagate same value updates, e.g. (nothing, nothing) -> (nothing, nothing)
+    attr.inputs[:limits].force_update = true
+
+    # For plot boundingboxes in (x/y)limits -> local(x/y)limits we need the
+    # transform_func observable of plots to be up to date. To guarantee that we
+    # update it here, in the computation, so that the Observable will be update
+    # before any computation depending on transform_func runs
+    # (This is important for ticks which need finallimits to be up to date with
+    # the user set (x/y)scale. This requires the path from limits -> finallimits
+    # to be purely ComputeGraph computations.)
+    map!(attr, [:xscale, :yscale], :transform_func) do transform_func...
+        ax.scene.transformation.transform_func[] = transform_func
+        return transform_func
+    end
+    ComputePipeline.set_type!(attr.transform_func, Any)
+
+    map!(attr, :transform_func, :inverse_transform_func) do tf
+        itf = inverse_transform(tf)
+        # nothing is uses to discard updates so we need something else here
+        return isnothing(itf) ? :nothing : itf
+    end
+    ComputePipeline.set_type!(attr.inverse_transform_func, Any)
+
+
+    # (x/y)lims!() need to be able to set limits across one dimension without
+    # affecting the limits of the other. To do that we need to mark one dimnesion
+    # as an update to discard and the other as a normal update with ExplicitUpdate.
+    # To avoid showing this to the user when fetching ax.limits[] we add another
+    # input here, where (x/y)lims!() can mark which dimension to deny
+    add_input!(attr, :_limit_update_rule, (:force, :force))
+    attr.inputs[:_limit_update_rule].force_update = true
+
+    register_computation!(
+        attr,
+        [:limits, :_limit_update_rule, :transform_func, :inverse_transform_func, :xautolimitmargin, :yautolimitmargin],
+        [:localxlimits, :localylimits],
+    ) do (limits, rule, tf, itf, xmargins, ymargins), changed, cached
+        lims = calculate_local_limits(ax, limits, tf, itf, xmargins, ymargins)
+        if changed._limit_update_rule
+            # The update comes from (x/y)lims!() which explicitly set update rules
+            xlims = ComputePipeline.ExplicitUpdate(lims[1], rule[1])
+            ylims = ComputePipeline.ExplicitUpdate(lims[2], rule[2])
+            return xlims, ylims
+        else
+            # force propagation of nothing, compare for numbers
+            return ComputePipeline.ExplicitUpdate.(lims, :force)
+        end
+    end
+    ComputePipeline.set_type!(attr.localxlimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
+    ComputePipeline.set_type!(attr.localylimits, Union{Tuple{Float64, Float64}, ComputePipeline.ExplicitUpdate{Tuple{Float64, Float64}}})
+
+    setfield!(ax, :xaxislinks, Axis[])
+    setfield!(ax, :yaxislinks, Axis[])
+
+    #=
+    Limit linking needs immediate updates. Consider linked ax1, ax2. If both
+    axes are updated before the backend pulls, the order in whcih the backend
+    pulls updates will determine whose limits are the "newest".
+    So whenever the user sets limits, or interacts with an axis we need that
+    change to be communicated to all linked axes asap. We make sure this happens
+    by adding an (unused) observable output to shared(x/y)limits here. This will
+    evaluate shared(x/y)limits whenever its input local(x/y)limits changes,
+    running the linked axis update in its callback. Note that the callback must
+    update shared(x/y)limits and not local(x/y)limits to not cause a feedback
+    loop.
+    Interactions must read from shared(x/y)limits of a dependent to get
+    up-to-date limits with linked axes, and update local(x/y)limits to trigger
+    the linked axis updates.
+    Note for refactoring - exiting and reentering the compute graph between
+    (x/y)scale and finallimits will cause ticks to update with the old
+    finallimits and the new (x/y)scale if (x/y)scale changes.
+    =#
+
+    map!(attr, [:localxlimits, :xscale], :sharedxlimits) do _lims, xscale
+        lims = unwrap_explicit_update(_lims)
+        if !validate_limits_for_scale(lims, xscale)
+            error("Invalid x-limits $lims for scale $(xscale) which is defined on the interval $(defined_interval(xscale))")
+        end
+
+        for link in ax.xaxislinks
+            link === ax && continue
+            # The world ends if this runs with link being this Axis
+            link.sharedxlimits[] = lims
+        end
+
+        return lims
+    end
+    ComputePipeline.get_observable!(attr.sharedxlimits)
+
+    map!(attr, [:localylimits, :yscale], :sharedylimits) do _lims, yscale
+        lims = unwrap_explicit_update(_lims)
+        if !validate_limits_for_scale(lims, yscale)
+            error("Invalid y-limits $lims for scale $(yscale) which is defined on the interval $(defined_interval(yscale))")
+        end
+
+        for link in ax.yaxislinks
+            link === ax && continue
+            link.sharedylimits[] = lims
+        end
+
+        return lims
+    end
+    ComputePipeline.get_observable!(attr.sharedylimits)
+
+    map!(attr, [:sharedxlimits, :sharedylimits], :targetlimits) do xlims, ylims
+        return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+    end
+
+    map!(
+        adjustlimits, attr,
+        [:targetlimits, :autolimitaspect, :viewport, :xautolimitmargin, :yautolimitmargin],
+        :finallimits
+    )
+
+    map!(
+        attr,
+        [:transform_func, :finallimits, :xreversed, :yreversed],
+        :projectionmatrix
+    ) do tf, lims, xrev, yrev
+        return calculate_axis_projection_matrix(ax.scene, tf, lims, xrev, yrev)
+    end
+
+    # TODO: This could directly update scene.compute if we deprecate Camera
+    idm = Makie.Mat4f(Makie.I)
+    on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
+
+    return
+end
+
+function get_limits(ax::Axis, tf, itf)
+    x0, x1, y0, y1 = (Inf, -Inf, Inf, -Inf)
+    for plot in ax.scene.plots
+        update_x = to_value(get(plot, :xautolimits, true))
+        update_y = to_value(get(plot, :yautolimits, true))
+        if is_data_space(plot) && to_value(get(plot, :visible, true)) && (update_x || update_y)
+            if (itf === nothing) || (itf === :nothing)
+                @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
+                mini, maxi = extrema(Rect2d(data_limits(ax)))
+            else
+                # get limits with transform_func and model applied
+                bb = boundingbox(plot)
+                # then undo transform_func so that ticks can handle transform_func
+                # without ignoring translations, scaling or rotations from model
+                try
+                    bb = apply_transform(itf, bb)
+                catch e
+                    @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
+                    bb = data_limits(ax.scene, exclude)
+                end
+                mini, maxi = extrema(Rect2d(bb))
+            end
+
+            x0 = ifelse(update_x && isfinite(mini[1]), min(x0, mini[1]), x0)
+            x1 = ifelse(update_x && isfinite(maxi[1]), max(x1, maxi[1]), x1)
+            y0 = ifelse(update_y && isfinite(mini[2]), min(y0, mini[2]), y0)
+            y1 = ifelse(update_y && isfinite(maxi[2]), max(y1, maxi[2]), y1)
+        end
+    end
+    return (x0, x1), (y0, y1)
+end
+
+function autolimits(
+        ax::Axis,
+        tf = ax.scene.transform_func, itf = inverse_transform(tf),
+        xmargin = ax.xautolimitmargin, ymargin = ax.yautolimitmargin
+    )
+    # try getting x limits for the axis and then union them with linked axes
+    xlims, ylims = get_limits(ax, tf, itf)
+
+    xlims = if xlims[1] <= xlims[2]
+        expandlimits(xlims, xmargin..., tf[1])
+    else
+        defaultlimits(tf[1])
+    end
+
+    ylims = if ylims[1] <= ylims[2]
+        expandlimits(ylims, ymargin..., tf[2])
+    else
+        defaultlimits(tf[2])
+    end
+
+    return xlims, ylims
+end
+
+function calculate_local_limits(ax, (user_xlims, user_ylims), tf, itf, xmargins, ymargins)
+    # Skip boundingbox calls (in autolimits -> getlimits) if user provides full limits
+    if isnothing(user_xlims) || isnothing(user_ylims) || any(isnothing, user_xlims) || any(isnothing, user_ylims)
+        auto_xlims, auto_ylims = autolimits(ax, tf, itf, xmargins, ymargins)
+
+        xlims = if isnothing(user_xlims)
+            auto_xlims
+        else
+            something.(user_xlims, auto_xlims)
+        end
+
+        ylims = if isnothing(user_ylims)
+            auto_ylims
+        else
+            something.(user_ylims, auto_ylims)
+        end
+
+        return Float64.(xlims), Float64.(ylims)
+    else
+        return Float64.(user_xlims), Float64.(user_ylims)
+    end
+
+end
+
+function adjustlimits(limits, autolimitaspect, viewport, xautolimitmargin, yautolimitmargin)
+    # in the simplest case, just update the final limits with the target limits
+    if isnothing(autolimitaspect) || width(viewport) == 0 || height(viewport) == 0
+        return limits
+    end
+
+    xlims = (left(limits), right(limits))
+    ylims = (bottom(limits), top(limits))
+
+    viewport_aspect = width(viewport) / height(viewport)
+    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
+    aspect_ratio = data_aspect / viewport_aspect
+
+    correction_factor = autolimitaspect / aspect_ratio
+
+    if correction_factor > 1
+        # need to go wider
+        marginsum = sum(xautolimitmargin)
+        ratios = (marginsum == 0) ? (0.5, 0.5) : (xautolimitmargin ./ marginsum)
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
+    elseif correction_factor < 1
+        # need to go taller
+        marginsum = sum(yautolimitmargin)
+        ratios = (marginsum == 0) ? (0.5, 0.5) : (yautolimitmargin ./ marginsum)
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
+    end
+
+    return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+end
+
+function prepare_user_lims(ax, _lims, idx)
+    dim = ("x", "y")[idx]
+    lims = map(x -> convert_dim_value(ax, idx, x), _convert_single_limit(_lims))
+    reversed = false
+    if length(lims) != 2
+        error("Invalid $(dim)lims length of $(length(lims)), must be 2.")
+    elseif lims[1] == lims[2] && lims[1] !== nothing
+        error("Can't set $dim limits to the same value $(lims[1]).")
+    elseif all(x -> x isa Real, lims) && lims[1] > lims[2]
+        lims = reverse(lims)
+        reversed = true
+    end
+    return lims, reversed
+end
+
+function update_xlims_locally!(ax, xlims, xreversed)
+    # update xlims if they changed, keep ylims
+    update!(
+        ax.attributes,
+        limits = (xlims, ax.limits[][2]),
+        _limit_update_rule = (:force, :deny),
+        xreversed = xreversed
+    )
+    return
+end
+
+function update_ylims_locally!(ax, ylims, yreversed)
+    # update ylims if they changed, keep xlims
+    update!(
+        ax.attributes,
+        limits = (ax.limits[][1], ylims),
+        _limit_update_rule = (:deny, :force),
+        yreversed = yreversed
+    )
+    return
+end
+
+function xlims!(ax::Axis, _xlims)
+    xlims, reversed = prepare_user_lims(ax, _xlims, 1)
+    update_xlims_locally!(ax, xlims, reversed)
+
+    for link in ax.xaxislinks
+        link === ax && continue
+        update_xlims_locally!(link, xlims, reversed)
+    end
+
+    return
+end
+
+function ylims!(ax::Axis, _ylims)
+    ylims, reversed = prepare_user_lims(ax, _ylims, 2)
+    update_ylims_locally!(ax, ylims, reversed)
+
+    for link in ax.yaxislinks
+        link === ax && continue
+        update_ylims_locally!(link, ylims, reversed)
+    end
+
+    return
+end
+
+function _limits!(ax, lims)
+    xlims, xreversed = prepare_user_lims(ax, lims[1], 1)
+    ylims, yreversed = prepare_user_lims(ax, lims[2], 2)
+
+    # update xlims if they changed, keep ylims
+    update!(
+        ax.attributes,
+        limits = (xlims, ylims),
+        xreversed = xreversed,
+        yreversed = yreversed
+    )
+
+    for link in ax.xaxislinks
+        link === ax && continue
+        update_xlims_locally!(link, xlims, xreversed)
+    end
+
+    for link in ax.yaxislinks
+        link === ax && continue
+        update_ylims_locally!(link, ylims, yreversed)
+    end
+
+    return
+end
+
+function autolimits!(ax::Axis)
+    ax.limits = (nothing, nothing)
+    return
+end
+
+function reset_limits!(ax::Axis; xauto = true, yauto = true)
+    # (x/y)auto = true means that we reset back to automatic limits for each
+    # dimension with `nothing`. I.e. we trigger a standard update of limits
+    # (x/y)auto = false means we keep whatever limits we currently have for
+    # every nothing in limits
+
+    prev_sharedxlimits = ax.sharedxlimits[]
+    prev_sharedylimits = ax.sharedylimits[]
+
+    ax.limits::Computed = ax.limits[]
+
+    # recover previous limits for each *auto = false
+    # Writes to local limits to re-trigger axis linking
+    if !xauto
+        current_sharedxlimits = ax.sharedxlimits[]
+        ax.localxlimits[]::Computed = ifelse.(
+            isnothing.(unwrap_explicit_update(ax.xlimits[])),
+            prev_sharedxlimits, current_sharedxlimits
+        )
+    end
+
+    if !yauto
+        current_sharedylimits = ax.sharedylimits[]
+        ax.localylimits[]::Computed = ifelse.(
+            isnothing.(unwrap_explicit_update(ax.ylimits[])),
+            prev_sharedylimits, current_sharedylimits
+        )
+    end
+
+    return
+end
+
+
+################################################################################
+
+mirror_xticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :x, ap, sw)
+mirror_yticks(tp, ts, ta, vp, ap, sw) = mirror_ticks(tp, ts, ta, vp, :y, ap, sw)
 function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axisposition, spinewidth)
     a = viewport
     if side === :x
@@ -628,113 +935,24 @@ function mirror_ticks(tickpositions, ticksize, tickalign, viewport, side, axispo
     return points
 end
 
-"""
-    reset_limits!(ax; xauto = true, yauto = true)
-
-Resets the axis limits depending on the value of `ax.limits`.
-If one of the two components of limits is nothing,
-that value is either copied from the targetlimits if `xauto` or `yauto` is false,
-respectively, or it is determined automatically from the plots in the axis.
-If one of the components is a tuple of two numbers, those are used directly.
-"""
-function reset_limits!(ax; xauto = true, yauto = true, zauto = true)
-    mlims = convert_limit_attribute(ax.limits[])
-
-    if ax isa Axis
-        mxlims, mylims = mlims::Tuple{Any, Any}
-    elseif ax isa Axis3
-        mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
-    else
-        error()
-    end
-
-    xlims = if isnothing(mxlims) || mxlims[1] === nothing || mxlims[2] === nothing
-        l = if xauto
-            xautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[1], maximum(ax.targetlimits[])[1]
-        end
-        if mxlims === nothing
-            l
-        else
-            lo = mxlims[1] === nothing ? l[1] : mxlims[1]
-            hi = mxlims[2] === nothing ? l[2] : mxlims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float64, Float64}, tuple(mxlims...))
-    end
-    ylims = if isnothing(mylims) || mylims[1] === nothing || mylims[2] === nothing
-        l = if yauto
-            yautolimits(ax)
-        else
-            minimum(ax.targetlimits[])[2], maximum(ax.targetlimits[])[2]
-        end
-        if mylims === nothing
-            l
-        else
-            lo = mylims[1] === nothing ? l[1] : mylims[1]
-            hi = mylims[2] === nothing ? l[2] : mylims[2]
-            (lo, hi)
-        end
-    else
-        convert(Tuple{Float64, Float64}, tuple(mylims...))
-    end
-
-    if ax isa Axis3
-        zlims = if isnothing(mzlims) || mzlims[1] === nothing || mzlims[2] === nothing
-            l = if zauto
-                zautolimits(ax)
-            else
-                minimum(ax.targetlimits[])[3], maximum(ax.targetlimits[])[3]
-            end
-            if mzlims === nothing
-                l
-            else
-                lo = mzlims[1] === nothing ? l[1] : mzlims[1]
-                hi = mzlims[2] === nothing ? l[2] : mzlims[2]
-                (lo, hi)
-            end
-        else
-            convert(Tuple{Float32, Float32}, tuple(mzlims...))
-        end
-    end
-
-    if !(xlims[1] <= xlims[2])
-        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
-    end
-    if !(ylims[1] <= ylims[2])
-        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
-    end
-    if ax isa Axis3
-        if !(zlims[1] <= zlims[2])
-            error("Invalid z-limits as zlims[1] <= zlims[2] is not met for $zlims.")
-        end
-    end
-
-    tlims = if ax isa Axis
-        BBox(xlims..., ylims...)
-    elseif ax isa Axis3
-        Rect3f(
-            Vec3f(xlims[1], ylims[1], zlims[1]),
-            Vec3f(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
-        )
-    end
-    ax.targetlimits[] = tlims
-    return nothing
-end
-
 # this is so users can do limits = (left, right, bottom, top)
 function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
     return (lims[1:2], lims[3:4])
 end
 
+_convert_single_limit(x::Nothing) = x
+_convert_single_limit(x::Interval) = endpoints(x)
+_convert_single_limit(x::VecTypes{2}) = (x[1], x[2])
+function _convert_single_limit(x::AbstractArray)
+    length(x) == 2 || error("Each dimension of limits must have 2 values, the minimum and maximum.")
+    return (x[1], x[2])
+end
+
 function convert_limit_attribute(lims::Tuple{Any, Any})
-    _convert_single_limit(x) = x
-    _convert_single_limit(x::Interval) = endpoints(x)
     return map(_convert_single_limit, lims)
 end
 
+validate_limits_for_scales(lims::Rect, tf::Tuple) = validate_limits_for_scales(lims, tf...)
 function validate_limits_for_scales(lims::Rect, xsc, ysc)
     mi = minimum(lims)
     ma = maximum(lims)
@@ -810,97 +1028,8 @@ function expandlimits(lims, margin_low, margin_high, scale)
     return lims
 end
 
-function getlimits(la::Axis, dim)
-    # find all plots that don't have exclusion attributes set
-    # for this dimension
-    if !(dim in (1, 2))
-        error("Dimension $dim not allowed. Only 1 or 2.")
-    end
-
-    function exclude(plot)
-        # only use plots with autolimits = true
-        to_value(get(plot, dim == 1 ? :xautolimits : :yautolimits, true)) || return true
-        # only if they use data coordinates
-        is_data_space(plot) || return true
-        # only use visible plots for limits
-        return !to_value(get(plot, :visible, true))
-    end
-
-    # get all data limits, minus the excluded plots
-    tf = la.scene.transformation.transform_func[]
-    itf = inverse_transform(tf)
-    if itf === nothing
-        @warn "Axis transformation $tf does not define an `inverse_transform()`. This may result in a bad choice of limits due to model transformations being ignored." maxlog = 1
-        bb = data_limits(la.scene, exclude)
-    else
-        # get limits with transform_func and model applied
-        bb = boundingbox(la.scene, exclude)
-        # then undo transform_func so that ticks can handle transform_func
-        # without ignoring translations, scaling or rotations from model
-        try
-            bb = apply_transform(itf, bb)
-        catch e
-            @warn "Failed to apply inverse transform $itf to bounding box $bb. Falling back on data_limits()." exception = e
-            bb = data_limits(la.scene, exclude)
-        end
-    end
-
-    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
-    isfinite_rect(bb, dim) || return nothing
-
-    # otherwise start with the first box
-    mini, maxi = minimum(bb), maximum(bb)
-    return (mini[dim], maxi[dim])
-end
-
 getxlimits(la::Axis) = getlimits(la, 1)
 getylimits(la::Axis) = getlimits(la, 2)
-
-function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
-
-    thisxlims = xlimits(tlims)
-    thisylims = ylimits(tlims)
-
-    # only change linked axis if not prohibited from doing so because
-    # we're currently being updated by another axis' link
-    return if !block_limit_linking[]
-
-        bothlinks = intersect(xaxislinks, yaxislinks)
-        xlinks = setdiff(xaxislinks, yaxislinks)
-        ylinks = setdiff(yaxislinks, xaxislinks)
-
-        for link in bothlinks
-            otherlims = link.targetlimits[]
-            if tlims != otherlims
-                link.block_limit_linking[] = true
-                link.targetlimits[] = tlims
-                link.block_limit_linking[] = false
-            end
-        end
-
-        for xlink in xlinks
-            otherlims = xlink.targetlimits[]
-            otherxlims = limits(otherlims, 1)
-            otherylims = limits(otherlims, 2)
-            if thisxlims != otherxlims
-                xlink.block_limit_linking[] = true
-                xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
-                xlink.block_limit_linking[] = false
-            end
-        end
-
-        for ylink in ylinks
-            otherlims = ylink.targetlimits[]
-            otherxlims = limits(otherlims, 1)
-            otherylims = limits(otherlims, 2)
-            if thisylims != otherylims
-                ylink.block_limit_linking[] = true
-                ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
-                ylink.block_limit_linking[] = false
-            end
-        end
-    end
-end
 
 """
     autolimits!()
@@ -909,57 +1038,11 @@ end
 Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
 The argument `la` defaults to `current_axis()`.
 """
-function autolimits!(ax::Axis)
-    # The compute graph will throw away same value updates, so we need to force
-    # the underlying observable to trigger with this:
-    if ax.limits[] == (nothing, nothing)
-        notify(ax.limits)
-    else
-        ax.limits = (nothing, nothing)
-    end
-    return
-end
 function autolimits!()
     curr_ax = current_axis()
     isnothing(curr_ax)  &&  throw(ArgumentError("Attempted to call `autolimits!` on `current_axis()`, but `current_axis()` returned nothing."))
     return autolimits!(curr_ax)
 end
-
-function autolimits(ax::Axis, dim::Integer)
-    # try getting x limits for the axis and then union them with linked axes
-    lims = getlimits(ax, dim)
-
-    links = dim == 1 ? ax.xaxislinks : ax.yaxislinks
-    for link in links
-        if isnothing(lims)
-            lims = getlimits(link, dim)
-        else
-            newlims = getlimits(link, dim)
-            if !isnothing(newlims)
-                lims = limitunion(lims, newlims)
-            end
-        end
-    end
-
-    dimsym = dim == 1 ? :x : :y
-    scale = getproperty(ax, Symbol(dimsym, :scale))[]
-    margin = getproperty(ax, Symbol(dimsym, :autolimitmargin))[]
-    if !isnothing(lims)
-        if !validate_limits_for_scale(lims, scale)
-            error("Found invalid $(dimsym)-limits $lims for scale $(scale) which is defined on the interval $(defined_interval(scale))")
-        end
-        lims = expandlimits(lims, margin[1], margin[2], scale)
-    end
-
-    # if no limits have been found, use the targetlimits directly
-    if isnothing(lims)
-        lims = limits(ax.targetlimits[], dim)
-    end
-    return lims
-end
-
-xautolimits(ax::Axis = current_axis()) = autolimits(ax, 1)
-yautolimits(ax::Axis = current_axis()) = autolimits(ax, 2)
 
 """
     linkaxes!(a::Axis, others...)
@@ -975,58 +1058,10 @@ function linkaxes!(a::Axis, others...)
     return linkaxes!([a, others...])
 end
 
-function adjustlimits!(la)
-    asp = la.autolimitaspect[]
-    target = la.targetlimits[]
-    area = la.scene.viewport[]
-
-    # in the simplest case, just update the final limits with the target limits
-    if isnothing(asp) || width(area) == 0 || height(area) == 0
-        la.finallimits[] = target
-        return
-    end
-
-    xlims = (left(target), right(target))
-    ylims = (bottom(target), top(target))
-
-    size_aspect = width(area) / height(area)
-    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
-
-    aspect_ratio = data_aspect / size_aspect
-
-    correction_factor = asp / aspect_ratio
-
-    if correction_factor > 1
-        # need to go wider
-
-        marginsum = sum(la.xautolimitmargin[])
-        ratios = if marginsum == 0
-            (0.5, 0.5)
-        else
-            (la.xautolimitmargin[] ./ marginsum)
-        end
-
-        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
-    elseif correction_factor < 1
-        # need to go taller
-
-        marginsum = sum(la.yautolimitmargin[])
-        ratios = if marginsum == 0
-            (0.5, 0.5)
-        else
-            (la.yautolimitmargin[] ./ marginsum)
-        end
-        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
-    end
-
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-    la.finallimits[] = bbox
-    return
-end
-
 linkaxes!(dir::Symbol, a::Axis, others...) = linkaxes!(dir, [a, others...])
 
 function linkaxes!(dir::Symbol, axes::Vector{Axis})
+    (length(axes) < 2) && return
     all_links = Set{Axis}(axes)
     for ax in axes
         links = dir === :x ? ax.xaxislinks : ax.yaxislinks
@@ -1044,7 +1079,14 @@ function linkaxes!(dir::Symbol, axes::Vector{Axis})
             end
         end
     end
-    reset_limits!(first(axes))
+    if links_changed
+        ax = first(axes)
+        if dir === :x
+            ax.localxlimits[] = ax.sharedxlimits[]
+        else
+            ax.localylimits[] = ax.sharedylimits[]
+        end
+    end
     return
 end
 
@@ -1081,8 +1123,8 @@ function timed_ticklabelspace_reset(
         prev_xticklabelspace[] = ax.xticklabelspace[]
         prev_yticklabelspace[] = ax.yticklabelspace[]
 
-        ax.xticklabelspace = Float64(ax.xaxis.attributes.actual_ticklabelspace[])
-        ax.yticklabelspace = Float64(ax.yaxis.attributes.actual_ticklabelspace[])
+        ax.xticklabelspace = Float64(ax.attributes.xaxis.actual_ticklabelspace[])
+        ax.yticklabelspace = Float64(ax.attributes.yaxis.actual_ticklabelspace[])
     end
 
     return reset_timer[] = Timer(threshold_sec) do t
@@ -1236,59 +1278,8 @@ function tight_ticklabel_spacing!(ax::Axis = current_axis())
     return
 end
 
-Makie.xlims!(ax::Axis, xlims::Interval) = Makie.xlims!(ax, endpoints(xlims))
-Makie.ylims!(ax::Axis, ylims::Interval) = Makie.ylims!(ax, endpoints(ylims))
-
-function Makie.xlims!(ax::Axis, xlims)
-    xlims = map(x -> convert_dim_value(ax, 1, x), xlims)
-    if length(xlims) != 2
-        error("Invalid xlims length of $(length(xlims)), must be 2.")
-    elseif xlims[1] == xlims[2] && xlims[1] !== nothing
-        error("Can't set x limits to the same value $(xlims[1]).")
-    elseif all(x -> x isa Real, xlims) && xlims[1] > xlims[2]
-        xlims = reverse(xlims)
-        ax.xreversed[] = true
-    else
-        ax.xreversed[] = false
-    end
-
-    mlims = convert_limit_attribute(ax.limits[])
-    ax.limits = (xlims, mlims[2])
-
-    # update xlims for linked axes
-    for xlink in ax.xaxislinks
-        xlink_mlims = convert_limit_attribute(xlink.limits[])
-        xlink.limits = (xlims, xlink_mlims[2])
-    end
-
-    reset_limits!(ax, yauto = false)
-    return nothing
-end
-
-function Makie.ylims!(ax::Axis, ylims)
-    ylims = map(x -> convert_dim_value(ax, 2, x), ylims)
-    if length(ylims) != 2
-        error("Invalid ylims length of $(length(ylims)), must be 2.")
-    elseif ylims[1] == ylims[2] && ylims[1] !== nothing
-        error("Can't set y limits to the same value $(ylims[1]).")
-    elseif all(x -> x isa Real, ylims) && ylims[1] > ylims[2]
-        ylims = reverse(ylims)
-        ax.yreversed[] = true
-    else
-        ax.yreversed[] = false
-    end
-    mlims = convert_limit_attribute(ax.limits[])
-    ax.limits = (mlims[1], ylims)
-
-    # update ylims for linked axes
-    for ylink in ax.yaxislinks
-        ylink_mlims = convert_limit_attribute(ylink.limits[])
-        ylink.limits = (ylink_mlims[1], ylims)
-    end
-
-    reset_limits!(ax, xauto = false)
-    return nothing
-end
+xlims!(ax::Axis, xlims::Interval) = xlims!(ax, endpoints(xlims))
+ylims!(ax::Axis, ylims::Interval) = ylims!(ax, endpoints(ylims))
 
 """
     xlims!(ax, low, high)
@@ -1384,8 +1375,7 @@ Set the axis limits to `xlims` and `ylims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, xlims, ylims)
-    Makie.xlims!(ax, xlims)
-    return Makie.ylims!(ax, ylims)
+    return _limits!(ax, (xlims, ylims))
 end
 
 """
@@ -1395,8 +1385,7 @@ Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, x1, x2, y1, y2)
-    Makie.xlims!(ax, x1, x2)
-    return Makie.ylims!(ax, y1, y2)
+    return _limits!(ax, ((x1, x2), (y1, y2)))
 end
 
 """
@@ -1408,8 +1397,7 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis, rect::Rect2)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
-    Makie.xlims!(ax, xmin, xmax)
-    return Makie.ylims!(ax, ymin, ymax)
+    return _limits!(ax, ((xmin, xmax), (ymin, ymax)))
 end
 
 function limits!(args::Union{Nothing, Real, HyperRectangle}...)

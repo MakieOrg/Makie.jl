@@ -3,7 +3,7 @@
 # looks more balanced with numbers, especially in superscripts or subscripts
 const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
 
-function LineAxis(parent::Scene; @nospecialize(kwargs...))
+function LineAxis(parent::Scene, graph::AbstractComputeGraph; @nospecialize(kwargs...))
     attrs = mergeleft!(Attributes(kwargs), generic_plot_attributes(LineAxis))
 
     # Attributes() maps all typed observables to Observable{Any}. This means
@@ -17,7 +17,7 @@ function LineAxis(parent::Scene; @nospecialize(kwargs...))
         attrs[:ticklabelspace] = ComputePipeline.get_observable!(attrs[:ticklabelspace])
     end
 
-    return LineAxis(parent, attrs)
+    return LineAxis(parent, graph, attrs)
 end
 
 function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float32}, Bool}
@@ -36,42 +36,11 @@ function calculate_horizontal_extends(endpoints)::Tuple{Float32, NTuple{2, Float
     end
 end
 
-
-function calculate_protrusion(
-        closure_args,
-        ticksvisible::Bool, label, labelvisible::Bool, labelpadding::Number, tickspace::Number, ticklabelsvisible::Bool,
-        actual_ticklabelspace::Number, ticklabelpad::Number, _...
-    )
-
-    horizontal, labeltext, ticklabel_annotation_obs = closure_args
-
-    label_is_empty::Bool = iswhitespace(label)
-
-    real_labelsize::Float32 = if label_is_empty
-        0.0f0
-    else
-        # TODO: This can probably be
-        #   widths(fast_string_boundingboxes(labeltext)[1])
-        # to skip positions? (This only runs for axis labels)
-        widths(boundingbox(labeltext, :data))[horizontal[] ? 2 : 1]
-    end
-
-    labelspace::Float32 = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0.0f0
-
-    _tickspace::Float32 = (ticksvisible && !isempty(ticklabel_annotation_obs[])) ? tickspace : 0.0f0
-
-    ticklabelgap::Float32 = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0.0f0
-
-    return _tickspace + ticklabelgap + labelspace
-end
-
-
 function create_linepoints(
-        pos_ext_hor,
-        flipped::Bool, spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}}, tickpositions::Vector{Point2f}, tickwidth::Number
+        position::Float32, extents::NTuple{2, Float32}, horizontal::Bool,
+        spine_width::Number, trimspine::Union{Bool, Tuple{Bool, Bool}},
+        tickpositions::Vector{Point2f}, tickwidth::Number
     )
-
-    (position::Float32, extents::NTuple{2, Float32}, horizontal::Bool) = pos_ext_hor
 
     if trimspine isa Bool
         trimspine = (trimspine, trimspine)
@@ -112,7 +81,7 @@ end
 
 function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
     hor = horizontal[]::Bool
-    if al isa Automatic
+    return if al isa Automatic
         if rot == 0 || !(rot isa Real)
             if hor
                 (:center, fl ? :bottom : :top)
@@ -145,7 +114,7 @@ function calculate_real_ticklabel_align(al, horizontal, fl::Bool, rot::Number)
             end
         end
     elseif al isa NTuple{2, Symbol}
-        return al
+        al
     else
         error("Align needs to be a NTuple{2, Symbol}.")
     end
@@ -153,45 +122,25 @@ end
 
 max_auto_ticklabel_spacing!(ax) = nothing
 
-
-function update_ticklabel_node(
-        closure_args,
-        ticklabel_annotation_obs::Observable,
-        labelgap::Number, flipped::Bool, tickpositions::Vector{Point2f}, tickstrings
+function adjust_ticklabel_placement(
+        tickpositions, horizontal, flipped,
+        spinewidth, tickspace, ticklabelpad
     )
-    # tickspace is always updated before labelgap
-    # tickpositions are always updated before tickstrings
-    # so we don't need to lift those
+    ticklabelgap = spinewidth + tickspace + ticklabelpad
 
-    horizontal, spinewidth, tickspace, ticklabelpad, tickvalues = closure_args
-
-    nticks = length(tickvalues[])
-
-    ticklabelgap::Float32 = spinewidth[] + tickspace[] + ticklabelpad[]
-
-    shift = if horizontal[]
+    shift = if horizontal
         Point2f(0.0f0, flipped ? ticklabelgap : -ticklabelgap)
     else
         Point2f(flipped ? ticklabelgap : -ticklabelgap, 0.0f0)
     end
     # reuse already allocated array
-    result = ticklabel_annotation_obs[]
-    empty!(result)
-    for i in 1:min(length(tickstrings), length(tickpositions))
-        pos = tickpositions[i]
-        str = tickstrings[i]
-        push!(result, (str, pos .+ shift))
-    end
-    # notify of the changes
-    notify(ticklabel_annotation_obs)
-    return
+    return Point2f[pos .+ shift for pos in tickpositions]
 end
 
-function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observable{Bool}, tickpositions, tickalign, ticksize, spinewidth)
-    result = tick_obs[]
-    empty!(result) # reuse allocated array
-    sign::Int = flipped[] ? -1 : 1
-    if horizontal[]
+function calculated_aligned_ticks(horizontal, flipped, tickpositions, tickalign, ticksize, spinewidth)
+    result = Point2f[]
+    sign = ifelse(flipped, -1, 1)
+    if horizontal
         for tp in tickpositions
             tstart = tp + sign * Point2f(0.0f0, tickalign * ticksize - 0.5f0 * spinewidth)
             tend = tstart + sign * Point2f(0.0f0, -ticksize)
@@ -204,56 +153,17 @@ function update_tick_obs(tick_obs, horizontal::Observable{Bool}, flipped::Observ
             push!(result, tstart, tend)
         end
     end
-    notify(tick_obs)
-    return
+    return result
 end
 
 # if labels are given manually, it's possible that some of them are outside the displayed limits
 # we only check approximately because we want to keep ticks on the frame
 is_within_limits(tv, limits) = (limits[1] - 100eps(limits[1]) < tv) && (tv < limits[2] + 100eps(limits[2]))
 
-function update_tickpos_string(closure_args, tickvalues_labels_unfiltered, reversed::Bool, scale)
-
-    tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits_obs = closure_args
-    limits = limits_obs[]::NTuple{2, Float64}
-
-    tickvalues_unfiltered, tickstrings_unfiltered = tickvalues_labels_unfiltered
-
-    position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal[]
-
-    extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
-
-    px_o = extents[1]
-    px_width = extents[2] - extents[1]
-
-    lim_o = limits[1]
-    lim_w = limits[2] - limits[1]
-
-    i_values_within_limits = findall(tv -> is_within_limits(tv, limits), tickvalues_unfiltered)
-
-    tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
-
-    tickvalues_scaled = scale.(tickvalues[])
-
-    tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
-
-    tick_scenecoords = px_o .+ px_width .* tick_fractions
-
-    tickpos = if horizontal
-        [Point2f(x, position) for x in tick_scenecoords]
-    else
-        [Point2f(position, y) for y in tick_scenecoords]
-    end
-
-    # now trigger updates
-    tickpositions[] = tickpos
-    tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
-    return
-end
-
-function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_extents_horizontal, minortickvalues_unfiltered, scale, reversed::Bool)
-    position::Float32, extents_uncorrected::NTuple{2, Float32}, horizontal::Bool = pos_extents_horizontal
-
+function compute_minor_ticks(
+        limits, position, extents_uncorrected, horizontal, minortickvalues_unfiltered,
+        scale, reversed::Bool
+    )
     extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
 
     px_o = extents[1]
@@ -267,13 +177,11 @@ function update_minor_ticks(minortickpositions, limits::NTuple{2, Float64}, pos_
 
     tick_scenecoords = px_o .+ px_width .* tick_fractions
 
-    minortickpositions[] = if horizontal
-        [Point2f(x, position) for x in tick_scenecoords]
+    if horizontal
+        return [Point2f(x, position) for x in tick_scenecoords]
     else
-        [Point2f(position, y) for y in tick_scenecoords]
+        return [Point2f(position, y) for y in tick_scenecoords]
     end
-
-    return
 end
 
 function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_in_label, use_short_units)
@@ -286,123 +194,276 @@ function build_label_with_unit_suffix(dim_convert, formatter, label, show_unit_i
     end
 end
 
-function LineAxis(parent::Scene, attrs::Attributes)
+function _extract_computed(graph::ComputePipeline.AbstractComputeGraph, dictlike, name)
+    entry = dictlike[name]
+    root = ComputePipeline.root(graph)
+    if (entry isa ComputePipeline.Computed) && (entry.parent.graph == root)
+        return entry
+    elseif entry isa Union{Attributes, ComputePipeline.AbstractComputeGraph}
+        error("$name::$(typeof(entry)) is not supported in @extract_computed")
+    else
+        # to_recipe_attribute does Ref{Any} wrapping (in case types can change)
+        add_input!(to_recipe_attribute, graph, name, entry)
+        return graph[name]
+    end
+end
+
+"""
+    @extract_computed source graph (name1, name2, ...)
+
+Extracts entries with the given names from `source` and makes them available as
+variables with the same name. If the entry is a compute node from (the root
+parent of) `graph` it will be written to the variable directly with
+`name1 = source[:name1]`. Otherwise it will be added to `graph` with
+`add_input!(graph, :name1, source[:name1])` and the added node will be used
+instead with `name1 = graph[:name1]`.
+
+Note that this does not imply that `graph[:name1]` exists. It implies that
+`:name1` exists somewhere in the root parent of graph, which might be a
+(different) nested sub graph from `graph`. To be safe, pass `name1` instead of
+`:name1` to computations when using this macro.
+"""
+macro extract_computed(attrs, graph, names)
+    define_func = quote
+        extract_computed(dictlike, name) = _extract_computed($(esc(graph)), dictlike, name)
+    end
+    expr = extract_expr(:extract_computed, attrs, names)
+    pushfirst!(expr.args, define_func)
+    return expr
+end
+
+function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     decorations = Dict{Symbol, Any}()
 
-    @extract attrs (
-        endpoints, ticksize, tickwidth,
-        tickcolor, tickalign, dim_convert, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
-        ticklabelspace, ticklabelpad, labelpadding,
-        ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
-        labelfont, ticklabelfont, ticklabelcolor,
-        labelrotation, labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
-        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks,
+    @extract_computed attrs graph (
+        endpoints, limits, flipped, scale, dim_convert,
+        ticksize, tickwidth, tickcolor, tickalign, ticks, tickformat, ticksvisible,
+        ticklabelalign, ticklabelrotation, ticklabelspace, ticklabelpad,
+        ticklabelsize, ticklabelsvisible, ticklabelfont, ticklabelcolor,
+        spinewidth, spinecolor, spinevisible,
+        label, labelsize, labelcolor, labelpadding, labelfont, labelrotation, labelvisible,
+        trimspine, flip_vertical_label, reversed,
+        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor,
+        minorticks, minorticksused,
+        unit_in_ticklabel, suffix_formatter, unit_in_label, use_short_unit,
     )
-    minorticksused = get(attrs, :minorticksused, Observable(false))
 
-    pos_extents_horizontal = lift(calculate_horizontal_extends, parent, endpoints; ignore_equal_values = true)
-    horizontal = lift(x -> x[3], parent, pos_extents_horizontal)
-    # Tuple constructor converts more than `convert(NTuple{2, Float32}, x)` but we still need the conversion to Float32 tuple:
-    limits = lift(x -> convert(NTuple{2, Float64}, Tuple(x)), parent, attrs.limits; ignore_equal_values = true)
-    flipped = lift(x -> convert(Bool, x), parent, attrs.flipped; ignore_equal_values = true)
+    map!(calculate_horizontal_extends, graph, endpoints, [:position, :extents, :horizontal])
 
-    ticksnode = Observable(Point2f[]; ignore_equal_values = true)
+    # TODO: Does this have side effects on Axis, plots?
+    # TODO: Does this propagate enough on same value updates?
+    # make sure we update tick calculation when needed
+    obs = needs_tick_update_observable(dim_convert)
+    if !isnothing(obs)
+        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+    end
+
+    map!(
+        graph,
+        # TODO: Why was :pos_extents_horizontal in here?
+        [dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel],
+        [:tickvalues_unfiltered, :tickstrings_unfiltered],
+    ) do dim_convert, limits, ticks, tickformat, scale, unit_in_ticklabel
+        should_show = show_dim_convert_in_ticklabel(dim_convert, unit_in_ticklabel)
+        vals, strs = get_ticks(dim_convert, ticks, scale, tickformat, limits..., should_show)
+        return vals, convert(Vector{Any}, strs)
+    end
+
+    map!(
+        graph,
+        [:tickvalues_unfiltered, limits],
+        :tick_indices_within_limits
+    ) do tickvalues_unfiltered, limits
+        return findall(tv -> is_within_limits(tv, limits), tickvalues_unfiltered)
+    end
+
+    map!(
+        graph,
+        [:tickvalues_unfiltered, :tickstrings_unfiltered, :tick_indices_within_limits],
+        [:tickvalues, :tickstrings],
+    ) do tickvalues_unfiltered, tickstrings_unfiltered, indices
+        return tickvalues_unfiltered[indices], tickstrings_unfiltered[indices]
+    end
+
+    register_computation!(
+        graph,
+        [:tickvalues, minorticks, minorticksvisible, minorticksused, scale, limits],
+        [:minortickvalues]
+    ) do (values, ticks, visible, used, scale, limits), changed, cached
+        if visible || used
+            return (get_minor_tickvalues(ticks, scale, values, limits...),)
+        else
+            return isnothing(cached) ? (Float64[],) : nothing
+        end
+    end
+
+    ######################################
+    ### Ticks
+    ######################################
+
+    map!(
+        graph,
+        [:tickvalues, scale, :position, :extents, :horizontal, limits, reversed],
+        :tickpositions
+    ) do tickvalues, scale, position, extents_uncorrected, horizontal, limits, reversed
+
+        # TODO: maybe move out?
+        extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
+        px_o = extents[1]
+        px_width = extents[2] - extents[1]
+        tickvalues_scaled = scale.(tickvalues)
+        tick_fractions = (tickvalues_scaled .- scale(limits[1])) ./ (scale(limits[2]) - scale(limits[1]))
+
+        tick_scenecoords = px_o .+ px_width .* tick_fractions
+
+        if horizontal
+            return [Point2f(x, position) for x in tick_scenecoords]
+        else
+            return [Point2f(position, y) for y in tick_scenecoords]
+        end
+    end
+
+    map!(
+        calculated_aligned_ticks, graph,
+        [:horizontal, flipped, :tickpositions, tickalign, ticksize, spinewidth],
+        :ticksnode
+    )
+
     ticklines = linesegments!(
-        parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
-        visible = ticksvisible, inspectable = false
+        parent, graph.ticksnode, linewidth = tickwidth, color = tickcolor,
+        linestyle = nothing, visible = ticksvisible, inspectable = false
     )
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
 
-    minorticksnode = Observable(Point2f[]; ignore_equal_values = true)
+    ######################################
+    ### Minor Ticks
+    ######################################
+
+    map!(
+        compute_minor_ticks, graph,
+        [limits, :position, :extents, :horizontal, :minortickvalues, scale, reversed],
+        :minortickpositions
+    )
+
+    map!(
+        calculated_aligned_ticks, graph,
+        [:horizontal, flipped, :minortickpositions, minortickalign, minorticksize, spinewidth],
+        :minorticksnode
+    )
+
     minorticklines = linesegments!(
-        parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
+        parent, graph.minorticksnode, linewidth = minortickwidth, color = minortickcolor,
         linestyle = nothing, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
     translate!(minorticklines, 0, 0, 10)
 
-    realticklabelalign = Observable{Tuple{Symbol, Symbol}}((:none, :none); ignore_equal_values = true)
+    ######################################
+    ### Axis Line
+    ######################################
 
     map!(
-        calculate_real_ticklabel_align, parent, realticklabelalign, ticklabelalign, horizontal, flipped,
-        ticklabelrotation
+        create_linepoints, graph,
+        [:position, :extents, :horizontal, spinewidth, trimspine, :tickpositions, tickwidth],
+        :linepoints
     )
 
-    ticklabel_annotation_obs = Observable(Tuple{Any, Point2f}[]; ignore_equal_values = true)
-    ticklabels_ref = Ref{Any}(nothing) # this gets overwritten later to be used in the below
-    ticklabel_ideal_space = Observable(0.0f0; ignore_equal_values = true)
+    decorations[:axisline] = linesegments!(
+        parent, graph.linepoints, linewidth = spinewidth, visible = spinevisible,
+        color = spinecolor, inspectable = false, linestyle = nothing
+    )
+    translate!(decorations[:axisline], 0, 0, 20)
 
-    map!(parent, ticklabel_ideal_space, ticklabel_annotation_obs, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
-        maxwidth = if pos_extents_horizontal[][3]
-            # height
-            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : height(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
-        else
-            # width
-            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : width(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
-        end
-        # in case there is no string in the annotations and the boundingbox comes back all NaN
-        if !isfinite(maxwidth)
-            maxwidth = zero(maxwidth)
-        end
-        return maxwidth
+    ######################################
+    ### Tick Labels
+    ######################################
+
+    map!(graph, [ticksvisible, ticksize, tickalign], :tickspace) do ticksvisible, ticksize, tickalign
+        return ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
     end
 
-    attrs[:actual_ticklabelspace] = 0.0f0
-    actual_ticklabelspace = attrs[:actual_ticklabelspace]
+    map!(
+        adjust_ticklabel_placement, graph,
+        [:tickpositions, :horizontal, flipped, spinewidth, :tickspace, ticklabelpad],
+        :ticklabel_position
+    )
 
-    onany(parent, ticklabel_ideal_space, ticklabelspace, update = true) do idealspace, space
-        s = if space == automatic
-            idealspace
+    map!(
+        calculate_real_ticklabel_align, graph,
+        [ticklabelalign, :horizontal, flipped, ticklabelrotation],
+        :realticklabelalign
+    )
+
+    ticklabels_plot = text!(
+        parent,
+        graph.ticklabel_position,
+        text = graph.tickstrings,
+        align = graph.realticklabelalign,
+        rotation = ticklabelrotation,
+        fontsize = ticklabelsize,
+        font = ticklabelfont,
+        color = ticklabelcolor,
+        visible = ticklabelsvisible,
+        markerspace = :data,
+        inspectable = false
+    )
+
+    decorations[:ticklabels] = ticklabels_plot
+
+    ticklabels_bbox = register_raw_string_boundingboxes!(ticklabels_plot)
+    map!(graph, ticklabels_bbox, :ticklabelbbox) do bbs
+        return reduce(update_boundingbox, bbs, init = Rect3f())
+    end
+
+    ######################################
+    ### Axis Labels
+    ######################################
+
+    map!(graph, [:horizontal, :ticklabelbbox], :ticklabel_ideal_space) do horizontal, bbox
+        maxwidth = horizontal ? height(bbox) : width(bbox)
+        # not finite until the plot is created
+        # Note: This used to be `isfinite(maxwidth) && visible` - probably not needed?
+        return isfinite(maxwidth) ? maxwidth : zero(maxwidth)
+    end
+
+    register_computation!(
+        graph,
+        [:ticklabel_ideal_space, ticklabelspace],
+        [:actual_ticklabelspace]
+    ) do (idealspace, space), changed, cached
+        actual_ticklabelspace = isnothing(cached) ? 0.0f0 : cached[1]
+        if space == automatic
+            return (idealspace,)
         elseif space isa Symbol
             space === :max_auto || error("Invalid ticklabel space $(repr(space)), may be automatic, :max_auto or a real number")
-            max(idealspace, actual_ticklabelspace[])
+            return (max(idealspace, actual_ticklabelspace),)
         else
-            space
-        end
-        if s != actual_ticklabelspace[]
-            actual_ticklabelspace[] = s
+            return (space,)
         end
     end
 
-    tickspace = Observable(0.0f0; ignore_equal_values = true)
-    map!(parent, tickspace, ticksvisible, ticksize, tickalign) do ticksvisible, ticksize, tickalign
-        ticksvisible ? max(0.0f0, ticksize * (1.0f0 - tickalign)) : 0.0f0
+    map!(
+        graph,
+        [labelrotation, :horizontal, flip_vertical_label],
+        :labelrot
+    ) do labelrotation, horizontal::Bool, flip_vertical_label::Bool
+        return if labelrotation isa Automatic
+            if horizontal
+                0.0f0
+            else
+                (flip_vertical_label ? -0.5f0 : 0.5f0) * π
+            end
+        else
+            Float32(labelrotation)
+        end::Float32
     end
 
-    labelgap = Observable(0.0f0; ignore_equal_values = true)
     map!(
-        parent, labelgap, spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
-        ticklabelpad, labelpadding
-    ) do spinewidth, tickspace, ticklabelsvisible,
-            actual_ticklabelspace, ticklabelpad, labelpadding
-
-        return spinewidth + tickspace +
-            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0.0f0) +
-            labelpadding
-    end
-
-    labelpos = Observable(Point2f(NaN); ignore_equal_values = true)
-
-    map!(
-        parent, labelpos, pos_extents_horizontal, flipped,
-        labelgap
-    ) do (position, extents, horizontal), flipped, labelgap
-        # fullgap = tickspace[] + labelgap
-        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
-
-        x_or_y = flipped ? position + labelgap : position - labelgap
-
-        return horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
-    end
-
-    # Initial values should be overwritten by map!. `ignore_equal_values` doesn't work right now without initial values
-    labelalign = Observable((:none, :none); ignore_equal_values = true)
-    map!(
-        parent, labelalign, labelrotation, horizontal, flipped,
-        flip_vertical_label
-    ) do labelrotation,
-            horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
+        graph,
+        [labelrotation, :horizontal, flipped, flip_vertical_label],
+        :labelalign
+    ) do labelrotation, horizontal::Bool, flipped::Bool, flip_vertical_label::Bool
         return if labelrotation isa Automatic
             if horizontal
                 (:center, flipped ? :bottom : :top)
@@ -420,53 +481,58 @@ function LineAxis(parent::Scene, attrs::Attributes)
         end::NTuple{2, Symbol}
     end
 
-    labelrot = Observable(0.0f0; ignore_equal_values = true)
     map!(
-        parent, labelrot, labelrotation, horizontal,
-        flip_vertical_label
-    ) do labelrotation,
-            horizontal::Bool, flip_vertical_label::Bool
-        return if labelrotation isa Automatic
-            if horizontal
-                0.0f0
-            else
-                (flip_vertical_label ? -0.5f0 : 0.5f0) * π
-            end
-        else
-            Float32(labelrotation)
-        end::Float32
+        graph,
+        [spinewidth, :tickspace, ticklabelsvisible, :actual_ticklabelspace, ticklabelpad, labelpadding],
+        :labelgap
+    ) do spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelpadding
+
+        return spinewidth + tickspace +
+            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0.0f0) +
+            labelpadding
+    end
+
+    map!(
+        graph,
+        [:position, :extents, :horizontal, flipped, :labelgap],
+        :labelpos
+    ) do position, extents, horizontal, flipped, labelgap
+        # fullgap = tickspace[] + labelgap
+        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
+
+        x_or_y = flipped ? position + labelgap : position - labelgap
+
+        return horizontal ? Point2f(middle, x_or_y) : Point2f(x_or_y, middle)
     end
 
     # label + dim convert suffix
-    # TODO probably make these mandatory
-    suffix_formatter = get(attrs, :label_suffix, Observable(""))
-    unit_in_label = get(attrs, :unit_in_label, Observable(false))
-    use_short_unit = get(attrs, :use_short_unit, Observable(true))
-
-    obs = needs_tick_update_observable(dim_convert) # make sure we update tick calculation when needed
-    label_with_suffix = Observable{Any}()
     map!(
-        label_with_suffix, label, suffix_formatter, unit_in_label, use_short_unit, obs, update = true
-    ) do label, formatter, show_unit_in_label, use_short_unit, _
-        return build_label_with_unit_suffix(dim_convert[], formatter, label, show_unit_in_label, use_short_unit)
-    end
+        build_label_with_unit_suffix, graph,
+        [dim_convert, suffix_formatter, label, unit_in_label, use_short_unit],
+        :label_with_suffix
+    )
+    ComputePipeline.set_type!(graph.label_with_suffix, Any)
 
     labeltext = text!(
-        parent, labelpos, text = label_with_suffix, fontsize = labelsize, color = labelcolor,
+        parent, graph.labelpos, text = graph.label_with_suffix,
+        fontsize = labelsize, color = labelcolor,
         visible = labelvisible,
-        align = labelalign, rotation = labelrot, font = labelfont,
+        align = graph.labelalign, rotation = graph.labelrot, font = labelfont,
         markerspace = :data, inspectable = false
     )
 
+    _labelbbox = register_raw_string_boundingboxes!(labeltext)
+    map!(bbs -> Rect2d(bbs[1]), graph, _labelbbox, :labelbbox)
+
     # translate axis labels on explicit rotations
     # in order to prevent plot and axis overlap
-    onany(parent, labelrotation, flipped, horizontal) do labelrotation, flipped, horizontal
+    onany(
+        parent, labelrotation, flipped, graph.horizontal, graph.labelbbox, update = true
+    ) do labelrotation, flipped, horizontal, bb
         xs::Float32, ys::Float32 = if labelrotation isa Automatic
             0.0f0, 0.0f0
         else
-            # There is only one string here and if we only case about widths
-            # we don't need to include positions through a higher level bbox function
-            wx, wy = widths(string_boundingboxes(labeltext)[1])
+            wx, wy = widths(bb)
             sign::Int = flipped ? 1 : -1
             if horizontal
                 0.0f0, Float32(sign * 0.5f0 * wy)
@@ -479,141 +545,53 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     decorations[:labeltext] = labeltext
 
-    tickvalues = Observable(Float64[]; ignore_equal_values = true)
-    unit_in_ticklabel = get(attrs, :unit_in_ticklabel, Observable(true))
+    ######################################
+    ### Protrusions
+    ######################################
 
-    tickvalues_labels_unfiltered = Observable{Tuple{Vector{Float64}, Vector{Any}}}()
     map!(
-        parent, tickvalues_labels_unfiltered, pos_extents_horizontal, obs, limits, ticks, tickformat,
-        attrs.scale, unit_in_ticklabel
-    ) do (position, extents, horizontal), _, limits, ticks, tickformat, scale, show_option
-        dc = dim_convert[]
-        should_show = show_dim_convert_in_ticklabel(dc, show_option)
-        return get_ticks(dim_convert[], ticks, scale, tickformat, limits..., should_show)
-    end
-
-    tickpositions = Observable(Point2f[]; ignore_equal_values = true)
-    tickstrings = Observable(Any[]; ignore_equal_values = false)
-
-    onany(
-        update_tickpos_string, parent,
-        Observable((tickstrings, tickpositions, tickvalues, pos_extents_horizontal, limits)),
-        tickvalues_labels_unfiltered, reversed, attrs.scale
-    )
-
-    minortickvalues = Observable(Float64[]; ignore_equal_values = true)
-    minortickpositions = Observable(Point2f[]; ignore_equal_values = true)
-
-    onany(parent, tickvalues, minorticks, minorticksvisible, minorticksused) do tickvalues, minorticks, visible, used
-        if visible || used
-            minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
+        graph,
+        [labelvisible, :label_with_suffix, :labelbbox, labelpadding, :horizontal],
+        :protrusion_labelspace
+    ) do visible, label, bbox, labelpadding, horizontal
+        label_is_empty = iswhitespace(label)
+        if label_is_empty || !visible
+            return 0.0f0
+        else
+            real_labelsize = widths(bbox)[ifelse(horizontal, 2, 1)]
+            return real_labelsize + labelpadding
         end
-        return
     end
-
-    onany(parent, minortickvalues, limits, pos_extents_horizontal) do mtv, limits, peh
-        update_minor_ticks(minortickpositions, limits, peh, mtv, attrs.scale[], reversed[])
-    end
-
-    onany(
-        update_tick_obs, parent,
-        Observable(minorticksnode), Observable(horizontal), Observable(flipped),
-        minortickpositions, minortickalign, minorticksize, spinewidth
-    )
-
-    onany(
-        update_ticklabel_node, parent,
-        # we don't want to update on these, so we wrap them in an observable:
-        Observable((horizontal, spinewidth, tickspace, ticklabelpad, tickvalues)),
-        Observable(ticklabel_annotation_obs),
-        labelgap, flipped, tickpositions, tickstrings
-    )
-
-    onany(
-        update_tick_obs, parent,
-        Observable(ticksnode), Observable(horizontal), Observable(flipped),
-        tickpositions, tickalign, ticksize, spinewidth
-    )
-
-    linepoints = lift(
-        create_linepoints, parent, pos_extents_horizontal, flipped, spinewidth, trimspine,
-        tickpositions, tickwidth
-    )
-
-    decorations[:axisline] = linesegments!(
-        parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, inspectable = false, linestyle = nothing
-    )
-
-    translate!(decorations[:axisline], 0, 0, 20)
-
-    protrusion = Observable(0.0f0; ignore_equal_values = true)
 
     map!(
-        calculate_protrusion, parent, protrusion,
-        # we pass these as observables, to not trigger on them
-        Observable((horizontal, labeltext, ticklabel_annotation_obs)),
-        ticksvisible, label_with_suffix, labelvisible, labelpadding, tickspace,
-        ticklabelsvisible, actual_ticklabelspace, ticklabelpad,
-        # TODO: this can rely on a ...boundingbox_obs() function instead now
-        # we don't need these as arguments to calculate it, but we need to pass it because it
-        # indirectly influences the protrusion
-        labelfont, labelalign, labelrot, labelsize, ticklabelfont, tickalign
+        graph,
+        [ticklabelsvisible, :ticklabel_position, :tickspace],
+        :protrusion_tickspace
+    ) do visible, positions, tickspace
+        return (visible && !isempty(positions)) ? tickspace : 0.0f0
+    end
+
+    map!(
+        graph,
+        [ticklabelsvisible, :actual_ticklabelspace, ticklabelpad],
+        :protrusion_ticklabelgap
+    ) do visible, ticklabelspace, pad
+        needs_gap = (visible && ticklabelspace > 0)
+        return needs_gap ? ticklabelspace + pad : 0.0f0
+    end
+
+    map!(
+        +, graph,
+        [:protrusion_labelspace, :protrusion_tickspace, :protrusion_ticklabelgap],
+        :protrusion
     )
 
-    # trigger whole pipeline once to fill tickpositions and tickstrings
-    # etc to avoid empty ticks bug #69
-    notify(limits)
-
-    # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
-    # we need to have the ticklabel_annotation_obs populated once before adding the annotations
-    ticklabels_ref[] = text!(
-        parent,
-        ticklabel_annotation_obs,
-        align = realticklabelalign,
-        rotation = ticklabelrotation,
-        fontsize = ticklabelsize,
-        font = ticklabelfont,
-        color = ticklabelcolor,
-        visible = ticklabelsvisible,
-        markerspace = :data,
-        inspectable = false
-    )
-
-    decorations[:ticklabels] = ticklabels_ref[]
-
-    # HACKY: the ticklabels in the string need to be updated
-    # before other stuff is triggered by them, which accesses the
-    # ticklabel boundingbox (which needs to be updated already)
-    # so we move the new listener from text! to the front
-
-    pushfirst!(ticklabel_annotation_obs.listeners, pop!(ticklabel_annotation_obs.listeners))
-
-    # trigger calculation of ticklabel width once, now that it's not nothing anymore
-    # notify(ticklabelsvisible)
-
-    return LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
+    return LineAxis(parent, attrs, graph, decorations)
 end
 
 function tight_ticklabel_spacing!(la::LineAxis)
-
-    horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
-        true
-    elseif la.attributes.endpoints[][1][1] == la.attributes.endpoints[][2][1]
-        false
-    else
-        error("endpoints not on a horizontal or vertical line")
-    end
-
-    tls = la.elements[:ticklabels]
-    maxwidth = if horizontal
-        # height
-        tls.visible[] ? height(Rect2f(boundingbox(tls, :data))) : 0.0f0
-    else
-        # width
-        tls.visible[] ? width(Rect2f(boundingbox(tls, :data))) : 0.0f0
-    end
-    la.attributes.ticklabelspace = maxwidth
+    maxwidth = la.graph.ticklabel_ideal_space[]
+    la.attributes.ticklabelspace[] = maxwidth
     return Float64(maxwidth)
 end
 

@@ -1,3 +1,18 @@
+function add_attributes!(T::Type{<:PolarAxis}, graph, attributes)
+    rlimits = pop!(attributes, :rlimits)
+    add_input!(graph, :rlimits, rlimits)
+    ComputePipeline.set_type!(graph.rlimits, Any)
+    graph.inputs[:rlimits].force_update = true
+
+    thetalimits = pop!(attributes, :thetalimits)
+    add_input!(graph, :thetalimits, thetalimits)
+    ComputePipeline.set_type!(graph.thetalimits, Any)
+    graph.inputs[:thetalimits].force_update = true
+
+    _add_attributes!(T, graph, attributes)
+    return
+end
+
 ################################################################################
 ### Main Block Initialization
 ################################################################################
@@ -218,7 +233,9 @@ function setup_camera_matrices!(po::PolarAxis)
     setfield!(po, :target_theta_0, map(Float32, po.theta_0))
     setfield!(po, :target_r0, Observable{Float32}(po.radius_at_origin[] isa Real ? po.radius_at_origin[] : 0.0f0))
     reset_limits!(po)
-    onany((_, _) -> reset_limits!(po), po.blockscene, po.rlimits, po.thetalimits)
+    rlimits_obs = ComputePipeline.get_observable!(po.attributes, :rlimits, use_deepcopy = false)
+    thetalimits_obs = ComputePipeline.get_observable!(po.attributes, :thetalimits, use_deepcopy = false)
+    onany((_, _) -> reset_limits!(po), po.blockscene, rlimits_obs, thetalimits_obs)
 
     # get cartesian bbox defined by axis limits
     data_bbox = map(

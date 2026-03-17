@@ -26,6 +26,12 @@
   - `initialize_block!(b::MyBlock)` is used to initialize the recipe with blocks and plots analogously to `plot!(p::MyPlot)`. The parent block `b::MyBlock` should be treated like a figure here, e.g. `Axis(b[1, 1])`
   - After defining the block, it can be added to a figure like any other block `mb = MyBlock(fig[1, 1])`.
   - The blocks within `MyBlock` can be accessed via the layout `mb.layout`, `mb.blocks` or `mb[i, j]`.
+- Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+  - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
+  - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
+- Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 
 ## Unreleased
 

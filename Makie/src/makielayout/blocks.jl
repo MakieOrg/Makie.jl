@@ -596,6 +596,20 @@ end
 (::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
 (::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
 
+function add_attributes!(T::Type{<:Block}, graph, attributes)
+    return _add_attributes!(T, graph, attributes)
+end
+
+function _add_attributes!(T::Type{<:Block}, graph::AbstractComputeGraph, attributes)
+    typedict = attribute_types(T)
+    for (key, attrib) in attributes
+        type = get(typedict, key, Any)
+        add_input!(BlockAttributeConvert(type), graph, key, attrib)
+        ComputePipeline.set_type!(graph[key], type)
+    end
+    return
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
@@ -621,19 +635,7 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     end
 
     graph = ComputeGraph()
-    typedict = attribute_types(T)
-    for (key, attrib) in attributes
-        type = get(typedict, key, Any)
-        convert_attr = BlockAttributeConvert(type)
-        add_input!(convert_attr, graph, key, attrib)
-        converted = convert_attr(nothing, to_value(attrib))
-        try
-            ComputePipeline.unsafe_init!(graph[key], Ref{type}(converted))
-        catch e
-            @info "Failed to initialize Attribute $key with converted value $converted (input $attrib) to a type $type."
-            rethrow(e)
-        end
-    end
+    add_attributes!(T, graph, attributes)
 
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields

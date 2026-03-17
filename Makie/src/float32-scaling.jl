@@ -129,7 +129,7 @@ function update_limits!(c::Float32Convert, mini::VecTypes{3, Float64}, maxi::Vec
 
     low = linscale(mini)
     high = linscale(maxi)
-    @assert all(low .<= high) # TODO: Axis probably does that
+    @assert all(low .<= high) "$low .<= $high must be true" # TODO: Axis probably does that
 
     delta = high - low
     max_eps = Float64(eps(Float32)) * max.(abs.(low), abs.(high))
