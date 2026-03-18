@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-
+- Fixed `bracket` not supporting `LaTeXString` text, which would render with dollar signs instead of mathematical notation [#5536](https://github.com/MakieOrg/Makie.jl/pull/5536)
 ## [0.24.9] - 2026-03-04
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
