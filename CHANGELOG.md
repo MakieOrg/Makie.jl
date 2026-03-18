@@ -44,7 +44,7 @@
 - **breaking** Changed the callback signature of ComputeGraph inputs from `callback(name, value)` to `callback(value)`. This changes `add_input!((name, val) -> ..., ...)` to `add_input!(val -> ..., ...)`. Note that you can be compatible with both by implementing multiple callback methods and capture `name` manually if you need it. [#5571](https://github.com/MakieOrg/Makie.jl/pull/5571)
 - Updated how documentation for plots is generated [#5389](https://github.com/MakieOrg/Makie.jl/pull/5389)
   - **minor breaking** This may lead to duplicate call signatures, attribute and argument information, and examples as those are now added automatically.
-- Improved rendering of LinePattern with CairoMakie [#5493](https://github.com/MakieOrg/Makie.jl/pull/5534)
+- Updated CairoMakie to allow LinePatterns to be vectorized [#5534](https://github.com/MakieOrg/Makie.jl/pull/5534)
 
 ## Unreleased
 
