@@ -820,3 +820,51 @@ end
     end
     f
 end
+
+@reference_test "Interactive Inset Axis" begin
+    x = 1:100
+    y = sin.(x .* 0.1) .+ 0.5 .* cos.(x .* 0.3)
+
+
+    fig = Figure(size = (600, 900))
+    # Easy case
+    a, p = lines(fig[1, 1], x, y)
+    zi = zoom_inset!(a, Rect2f(0, 0.2, 15, 0.5))
+
+    # transformed (func/log)
+    a, p = lines(fig[1, 2], x, y, axis = (xscale = log10,))
+    zi = zoom_inset!(
+        a, Rect2f(0.9, 0.2, 15, 0.5), halign = 0.3,
+        strokewidth = 4, strokecolor = :red
+    )
+
+    # transformed (model)
+    a, p = lines(fig[2, 1], x, y)
+    translate!(p, 1, 1, 0)
+    zi = zoom_inset!(
+        a, Rect2f(55, 1, 40, 1.5), rectcolor = (:yellow, 0.3),
+        inset_width = 0.6, inset_height = 0.6,
+        halign = 0.3, valign = 0.3
+    )
+
+    # transformed (both)
+    # The limits get weird with this because translate!() acts after log...
+    a, p = lines(fig[2, 2], x, y, axis = (xscale = log10,))
+    translate!(p, 1, 1, 0)
+    zi = zoom_inset!(a, Rect2f(550, 1, 400, 1.5), valign = 0.3, linecolor = :green, linestyle = nothing)
+
+    # different transform_funcs (this only works without model transformations
+    # as those would need to adjust to transform_func changes)
+    a, p = lines(fig[3, 2], x, y, axis = (xscale = log10,))
+    zi = zoom_inset!(a, Rect2f(0.9, 0.2, 15, 0.5))
+    zi.ax_inset.xscale[] = identity
+
+    # full overlap
+    a, p = lines(fig[3, 1], x, y)
+    zi = zoom_inset!(
+        a, Rect2f(60, 0.4, 10, 0.3),
+        halign = 0.75, valign = 0.75, inset_width = 0.5, inset_height = 0.5
+    )
+
+    fig
+end
