@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Updated CairoMakie to allow LinePatterns to be vectorized [#5493](https://github.com/MakieOrg/Makie.jl/pull/5534)
+
 ## [0.24.9] - 2026-03-04
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)

@@ -326,6 +326,7 @@ function plot!(plot::TextLabel{<:Tuple{<:AbstractVector{<:Point}}})
         overdraw = plot.overdraw,
         inspectable = plot.inspectable,
         space = :pixel, # TODO: variable markerspace
+        project_point3_to_2d = true,
         inspector_label = plot.inspector_label,
         inspector_clear = plot.inspector_clear,
         inspector_hover = plot.inspector_hover,

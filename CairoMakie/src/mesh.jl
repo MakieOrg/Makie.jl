@@ -47,8 +47,21 @@ function draw_mesh2D(scene, screen, attr::ComputeGraph)
     fs = attr.faces[]
     uv = attr.texturecoordinates[]
     uv_transform = attr.pattern_uv_transform[]
+    # FRAGILE: access the raw user-provided uv_transform before the compute graph
+    # converts LinePattern → Sampler. This depends on ComputeGraph internals.
+    raw_uv_transform = haskey(attr.inputs, :uv_transform) ? attr.inputs[:uv_transform].value : Makie.automatic
     if uv isa Vector{Vec2f} && to_value(uv_transform) !== nothing
         uv = map(uv -> uv_transform * to_ndim(Vec3f, uv, 1), uv)
+    end
+    # Check raw color before compute_colors, since the compute graph
+    # rasterizes AbstractPattern (including LinePattern) to a Sampler,
+    # losing the vector-drawable LinePattern struct.
+    color_attr = attr.color[]
+    # Only use vector hatch path for default uv_transform. If the user provides
+    # an explicit uv_transform, preserve existing rasterized pattern semantics.
+    if color_attr isa Makie.LinePattern && raw_uv_transform === Makie.automatic
+        offset = linepattern_offset(scene, attr.model[])
+        return draw_mesh2D(screen.context, color_attr, vs, fs, offset)
     end
     color = compute_colors(attr)
     cols = per_face_colors(color, nothing, fs, nothing, uv)
@@ -144,6 +157,26 @@ function draw_mesh2D(ctx::Cairo.CairoContext, pattern::Cairo.CairoPattern, vs::V
         Cairo.fill(ctx)
     end
     pattern_set_matrix(pattern, Cairo.CairoMatrix(1, 0, 0, 1, 0, 0))
+    return nothing
+end
+
+function draw_mesh2D(
+        ctx::Cairo.CairoContext, pattern::Makie.LinePattern, vs::Vector, fs::Vector{GLTriangleFace}, offset::VecTypes{2}
+    )
+    for i in eachindex(fs)
+        t1, t2, t3 = vs[fs[i]]
+
+        if isnan(t1) || isnan(t2) || isnan(t3)
+            continue
+        end
+
+        draw_linepattern_fill!(ctx, pattern, offset) do
+            Cairo.move_to(ctx, t1[1], t1[2])
+            Cairo.line_to(ctx, t2[1], t2[2])
+            Cairo.line_to(ctx, t3[1], t3[2])
+            Cairo.close_path(ctx)
+        end
+    end
     return nothing
 end
 
