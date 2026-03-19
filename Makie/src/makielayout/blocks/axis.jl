@@ -622,15 +622,20 @@ function initialize_limit_computations!(ax)
             error("Invalid x-limits $lims for scale $(xscale) which is defined on the interval $(defined_interval(xscale))")
         end
 
+        return lims
+    end
+
+    # Setting link.sharedxlimits will loop back to this axis, which causes state
+    # to be overwritten if it happens during resolve, i.e. in the callback above.
+    # Using a compute graph Observable to link limits is fine though
+    on(attr.sharedxlimits) do lims
         for link in ax.xaxislinks
             link === ax && continue
             # The world ends if this runs with link being this Axis
             link.sharedxlimits[] = lims
         end
-
-        return lims
+        return
     end
-    ComputePipeline.get_observable!(attr.sharedxlimits)
 
     map!(attr, [:localylimits, :yscale], :sharedylimits) do _lims, yscale
         lims = unwrap_explicit_update(_lims)
@@ -638,14 +643,16 @@ function initialize_limit_computations!(ax)
             error("Invalid y-limits $lims for scale $(yscale) which is defined on the interval $(defined_interval(yscale))")
         end
 
+        return lims
+    end
+
+    on(attr.sharedylimits) do lims
         for link in ax.yaxislinks
             link === ax && continue
             link.sharedylimits[] = lims
         end
-
-        return lims
+        return
     end
-    ComputePipeline.get_observable!(attr.sharedylimits)
 
     map!(attr, [:sharedxlimits, :sharedylimits], :targetlimits) do xlims, ylims
         return BBox(xlims[1], xlims[2], ylims[1], ylims[2])
@@ -1082,9 +1089,9 @@ function linkaxes!(dir::Symbol, axes::Vector{Axis})
     if links_changed
         ax = first(axes)
         if dir === :x
-            ax.localxlimits[] = ax.sharedxlimits[]
+            notify(ComputePipeline.get_observable!(ax.sharedxlimits))
         else
-            ax.localylimits[] = ax.sharedylimits[]
+            notify(ComputePipeline.get_observable!(ax.sharedylimits))
         end
     end
     return
