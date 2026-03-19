@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
+
 ## [0.24.9] - 2026-03-04
 
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
