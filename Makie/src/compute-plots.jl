@@ -522,9 +522,9 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
-        x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        result_type = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
-        return result_type === :Tuple ? x : (x,)
+        val = convert_arguments(P, dim_converted...; convert_kwargs...)
+        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+        return rtype === :Tuple ? val : (val,)
     end
 
     # If dim converts didn't do anything we can use the previous result of
@@ -786,24 +786,33 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Scene, plot::Plot)
+# Count cycling position of `plot` among the top-level plots in `plot_iter`.
+# PlotList entries are expanded into their children so they participate in cycling.
+function _cycle_position(plot::Plot, plot_iter)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
-    for p in scene.plots
-        p === plot && return pos
-        if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
-            is_cycling = any(syms) do x
-                return haskey(p.attributes.inputs, x) && isnothing(p.attributes.inputs[x].value)
-            end
-            if is_cycling
-                pos += 1
+    for p in plot_iter
+        children = p isa PlotList ? p.plots : (p,)
+        for cp in children
+            cp === plot && return pos
+            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
+                is_cycling = any(syms) do x
+                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
+                end
+                if is_cycling
+                    pos += 1
+                end
             end
         end
     end
     # not inserted yet
     return pos
+end
+
+function plot_cycle_index(scene::Scene, plot::Plot)
+    return _cycle_position(plot, scene.plots)
 end
 
 # For recipes we use the recipes position?
