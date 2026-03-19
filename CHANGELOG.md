@@ -31,6 +31,7 @@
 - Fixed GLMakie precompilation error with native Wayland in COSMIC compositor [#5453](https://github.com/MakieOrg/Makie.jl/pull/5453)
 - Translated  `annotation` to compute graph and fix resizing updates [#5448](https://github.com/MakieOrg/Makie.jl/pull/5448)
 - Improved handling of empty strings in text bounding boxes, fixing errors and broken layouting with empty strings in `Label`, `Menu` and `Textbox` [#5420](https://github.com/MakieOrg/Makie.jl/pull/5420)
+- Add dense lines method which displays a heatmap of time series data [#5461](https://github.com/MakieOrg/Makie.jl/pull/5461)
 
 ## [0.24.7] - 2025-11-18
 
