@@ -190,12 +190,12 @@ function draw_text(ctx, attr::NamedTuple)
             glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
 
             if !isempty(glyph_buffer) && (
-                font !== batch_font ||
-                color != batch_color ||
-                mat != batch_mat ||
-                strokewidth != batch_strokewidth ||
-                strokecolor != batch_strokecolor
-            )
+                    font !== batch_font ||
+                        color != batch_color ||
+                        mat != batch_mat ||
+                        strokewidth != batch_strokewidth ||
+                        strokecolor != batch_strokecolor
+                )
                 flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
             end
 
