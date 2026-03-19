@@ -97,7 +97,9 @@ struct ComputeEdge{T} <: AbstractEdge
     inputs_dirty::Vector{Bool}
 
     outputs::Vector{Computed}
-    got_resolved::RefValue{Bool}
+    should_resolve_now::RefValue{Bool}
+    dirty::RefValue{Bool}
+    lock::ReentrantLock
 
     # edges, that rely on outputs from this edge
     # Mainly needed for mark_dirty!(edge) to propagate to all dependents
@@ -107,7 +109,8 @@ end
 
 function ComputeEdge(f, graph::T, input::Computed, output::Computed) where {T}
     return ComputeEdge{ComputeGraph}(
-        graph, f, [input], [true], [output], RefValue(false),
+        graph, f, [input], [true], [output],
+        Ref(false), Ref(true), ReentrantLock(),
         ComputeEdge[], RefValue{TypedEdge}()
     )
 end
@@ -191,7 +194,9 @@ mutable struct Input{T} <: AbstractEdge
     value::Any
     f::Function
     output::Computed
+    should_resolve_now::Bool
     dirty::Bool
+    lock::ReentrantLock
     dependents::Vector{ComputeEdge{T}}
     force_update::Bool
 end
@@ -202,7 +207,8 @@ Base.setproperty!(::Input, ::Symbol, ::Computed) = error("Setting the value of a
 function Input(graph, name, value, f, output, force_update = false)
     validate_node_value(value)
     return Input{ComputeGraph}(
-        graph, name, value, f, output, true, ComputeEdge[], force_update
+        graph, name, value, f, output, false, true, ReentrantLock(),
+        ComputeEdge[], force_update
     )
 end
 
@@ -242,7 +248,7 @@ struct ComputeGraph <: AbstractComputeGraph
     observables::Dict{Symbol, Observable}
     should_deepcopy::Set{Symbol}
     observerfunctions::Vector{Observables.ObserverFunction}
-    obs_to_update::Vector{Observable}
+    onchange_obs_to_update::Vector{Observable}
 end
 
 validate_node_value(x) = nothing
@@ -314,7 +320,8 @@ end
 function ComputeEdge(f, graph::ComputeGraph, inputs::Vector{Computed})
     return ComputeEdge{ComputeGraph}(
         graph, f, inputs, fill(true, length(inputs)), Computed[],
-        RefValue(false), ComputeEdge[], RefValue{TypedEdge}()
+        Ref(false), Ref(true), ReentrantLock(),
+        ComputeEdge[], RefValue{TypedEdge}()
     )
 end
 
@@ -393,7 +400,7 @@ function isdirty(computed::Computed)
 end
 
 
-isdirty(edge::ComputeEdge) = !edge.got_resolved[]
+isdirty(edge::ComputeEdge) = edge.dirty[]
 
 # [Rules]:
 # after mark_dirty!():
@@ -427,12 +434,16 @@ function mark_resolved!(computed::Computed)
     return
 end
 function mark_resolved!(edge::ComputeEdge)
-    # Follow the [Rules]:
-    if !edge.got_resolved[]
-        @lock GLOBAL_LOCK begin
+    # Follow the [Rules] - resolve all parents
+    if edge.dirty[]
+        lock_before_resolve!(edge)
+        try
             foreach(locked_resolve!, edge.inputs)
-            edge.got_resolved[] = true
+            edge.should_resolve_now[] = false
             fill!(edge.inputs_dirty, false)
+        finally
+            foreach(unlock_input!, edge.inputs)
+            unlock(edge.lock)
         end
     end
     return
@@ -440,55 +451,82 @@ end
 mark_resolved!(edge::Input) = edge.dirty = false
 
 function mark_dirty!(computed::Computed)
-    hasparent(computed) || return
-    mark_dirty!(computed, computed.parent.graph.obs_to_update)
+    if hasparent(computed)
+        mark_dirty!(computed, computed.parent.graph.onchange_obs_to_update)
+    end
     return
 end
 function mark_dirty!(computed::Computed, obs_to_update)
-    hasparent(computed) || return
-    # This is called if we do not start mark_dirty!() from an Input. In this
-    # case we need to set `computed.dirty` so `resolve!()` knows the node has
-    # changed even though the computation has not marked it.
-    @lock GLOBAL_LOCK begin
-        computed.dirty = true
-        locked_mark_dirty!(computed.parent, obs_to_update)
+    if hasparent(computed)
+        parent = computed.parent
+        @lock GLOBAL_LOCK begin
+            @lock computed.parent.lock begin
+                computed.dirty = true
+            end
+            # TODO: Can we avoid marking the parent dirty?
+            # Note: Without the parent running computed.dirty doesn't get
+            # transferred to dependents in resolve!().
+            # TODO: Isn't writing to dirty risky without locking the edge?
+            # TODO: Can this be called from the same callstack as resolve!(),
+            # causing lock(edge.lock) to not block?
+            locked_mark_dirty!(parent, obs_to_update)
+
+            # push!(parent.graph.onchange.val, computed.name)
+            # if !(parent.graph.onchange in obs_to_update)
+            #     push!(obs_to_update, parent.graph.onchange)
+            # end
+            # for dependent in parent.dependents
+            #     locked_mark_dirty!(dependent, obs_to_update)
+            # end
+
+            # @lock parent.lock begin
+            #     computed.dirty = true
+            #     for dependent in parent.dependents
+            #         @lock dependent.lock begin
+            #             mark_input_dirty!(computed.parent, dependent)
+            #         end
+            #     end
+            #     computed.dirty = false
+            # end
+        end
     end
     return
 end
-mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.obs_to_update)
-function mark_dirty!(x, obs_to_update)
-    @lock GLOBAL_LOCK begin
-        locked_mark_dirty!(x, obs_to_update)
-    end
-    return
+mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.onchange_obs_to_update)
+function mark_dirty!(x, onchange_obs_to_update)
+    # lock_before_resolve!() is not allowed to run while mark_dirty!() runs
+    # lock GLOBAL_LOCK to prevent it
+    @lock GLOBAL_LOCK locked_mark_dirty!(x, onchange_obs_to_update)
 end
 
-function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
-    if edge.got_resolved[] # because of [Rules]
+function locked_mark_dirty!(edge::ComputeEdge, onchange_obs_to_update::Vector{Observable})
+    if !edge.dirty[] # because of [Rules]
         # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
         g = edge.graph
         for output in edge.outputs
             push!(g.onchange.val, output.name)
-            g.onchange in obs_to_update || push!(obs_to_update, g.onchange)
+            g.onchange in onchange_obs_to_update || push!(onchange_obs_to_update, g.onchange)
         end
 
-        edge.got_resolved[] = false
+        edge.dirty[] = true
         for dep in edge.dependents
-            locked_mark_dirty!(dep, obs_to_update)
+            locked_mark_dirty!(dep, onchange_obs_to_update)
         end
     end
     return
 end
 
-function locked_mark_dirty!(input::Input, obs_to_update::Vector{Observable})
-    push!(input.graph.onchange.val, input.name)
-    if !(input.graph.onchange in obs_to_update)
-        push!(obs_to_update, input.graph.onchange)
-    end
+function locked_mark_dirty!(input::Input, onchange_obs_to_update::Vector{Observable})
+    if !input.dirty
+        push!(input.graph.onchange.val, input.name)
+        if !(input.graph.onchange in onchange_obs_to_update)
+            push!(onchange_obs_to_update, input.graph.onchange)
+        end
 
-    input.dirty = true
-    for edge in input.dependents
-        locked_mark_dirty!(edge, obs_to_update)
+        input.dirty = true
+        for edge in input.dependents
+            locked_mark_dirty!(edge, onchange_obs_to_update)
+        end
     end
     return
 end
@@ -496,30 +534,34 @@ end
 update_observables!(comp::Computed) = update_observables!(comp.parent)
 update_observables!(edge::Input) = update_observables!(edge.graph)
 update_observables!(edge::ComputeEdge) = update_observables!(edge.graph)
-update_observables!(graph::ComputeGraph) = update_observables!(graph.obs_to_update)
-function update_observables!(obs_to_update::Vector{Observable})
-    foreach(notify, obs_to_update)
-    empty!(obs_to_update)
+update_observables!(graph::ComputeGraph) = update_observables!(graph.onchange_obs_to_update)
+function update_observables!(onchange_obs_to_update::Vector{Observable})
+    foreach(notify, onchange_obs_to_update)
+    empty!(onchange_obs_to_update)
     return
 end
 
 function Base.setindex!(computed::Computed, value)
     if computed.parent isa Input
         return setindex!(computed.parent, value)
-    else
+    elseif hasparent(computed)
         @lock GLOBAL_LOCK begin
-            computed.value[] = value
+            @lock computed.parent.lock begin
+                computed.value[] = value
+            end
+            # we don't need to keep the edge locked, but we do need to prevent
+            # lock_before_resolve!() from running, so keep the GLOBAL_LOCK locked
             mark_dirty!(computed)
         end
+        # TODO: Does this need to be locked too?
         update_observables!(computed)
+        return value
+    else
+        computed.value[] = value
         return value
     end
 end
 
-# Updating an Input doesn't corrupt state during resolve!(), so lock is not
-# necessary. If the Input has already resolved, input.output will have the old
-# value which will be used for all dependent computation. Otherwise input.output
-# will be resolved to the new value, which will be used for all dependent computations
 Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
 function _setindex!(input::Input, value, force_update = false)
     if !force_update && is_same(input.value, value)
@@ -527,7 +569,11 @@ function _setindex!(input::Input, value, force_update = false)
         return value
     end
     @lock GLOBAL_LOCK begin
-        input.value = value
+        @lock input.lock begin
+            input.value = value
+        end
+        # we don't need to keep the edge locked, but we do need to prevent
+        # lock_before_resolve!() from running, so keep the GLOBAL_LOCK locked
         mark_dirty!(input)
     end
     update_observables!(input)
@@ -541,9 +587,11 @@ function _setproperty!(attr::ComputeGraph, key::Symbol, value)
         return value
     end
     @lock GLOBAL_LOCK begin
-        # can't notify observables immediately here, because update may call this
-        # multiple times for a synchronized update (would cause desync)
-        input.value = value
+        @lock input.lock begin
+            input.value = value
+        end
+        # we don't need to keep the edge locked, but we do need to prevent
+        # lock_before_resolve!() from running, so keep the GLOBAL_LOCK locked
         mark_dirty!(input)
     end
     return value
@@ -577,25 +625,33 @@ update!(attr::AbstractComputeGraph, dict::Dict) = _update!(attr, dict)
 update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, [Pair(k, v) for (k, v) in pairs])
 update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(attr, pairs)
 
-# update!() updates multiple values in sync. resolve!() should not mix old and
-# new values. So this needs a lock.
-# Example (prevent this):
-# resolve!() processes input a (old)
-# task switch
-# update!() sets a, b
-# task switch
-# resolve!() processes input b (new) - out of sync with a (old)
-function _update!(attr::ComputeGraph, values)
+function _update!(attr::ComputeGraph, pairs)
+    # Checks first so we don't wait on locks just to error
+    keys = [merged_key(keylike) for (keylike, _) in pairs]
+    for k in keys
+        haskey(attr.inputs, k) || error("Attribute $k not found in ComputeGraph")
+    end
+
+    # don't allow lock_before_resolve!() to acquire input locks until we have
+    # acquired all the onces we will update
     @lock GLOBAL_LOCK begin
-        for (_key, value) in values
-            key = merged_key(_key)
-            if haskey(attr.inputs, key)
-                _setproperty!(attr, key, value)
-            else
-                error("Attribute $key not found in ComputeGraph")
-            end
+        # make sure resolve!() isn't still using the inputs we update here
+        for key in keys
+            lock(attr.inputs[key].lock)
         end
     end
+
+    try
+        # update
+        for (key, (_, value)) in zip(keys, pairs)
+            _setproperty!(attr, key, value)
+        end
+    finally
+        for key in keys
+            unlock(attr.inputs[key].lock)
+        end
+    end
+
     update_observables!(attr)
     return attr
 end
@@ -622,7 +678,7 @@ function Base.getproperty(attr::ComputeGraph, key::Symbol)
     key === :obs_to_notify && return getfield(attr, :obs_to_notify)
     key === :observables && return getfield(attr, :observables)
     key === :observerfunctions && return getfield(attr, :observerfunctions)
-    key === :obs_to_update && return getfield(attr, :obs_to_update)
+    key === :onchange_obs_to_update && return getfield(attr, :onchange_obs_to_update)
     key === :lock && return getfield(attr, :lock)
     key === :should_deepcopy && return getfield(attr, :should_deepcopy)
     return attr[key]
@@ -822,7 +878,7 @@ Base.getindex(computed::Computed) = resolve!(computed)
 # After resolving a parent edge, inform the dependent edge about the nodes the
 # parent updated.
 function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
-    @assert parent.got_resolved[]
+    @assert !parent.should_resolve_now[]
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
@@ -830,7 +886,7 @@ function mark_input_dirty!(parent::ComputeEdge, edge::ComputeEdge)
 end
 
 function mark_input_dirty!(parent::Input, edge::ComputeEdge)
-    @assert !parent.dirty # should got resolved
+    @assert !parent.should_resolve_now
     for i in eachindex(edge.inputs)
         edge.inputs_dirty[i] |= getfield(edge.inputs[i], :dirty)
     end
@@ -898,22 +954,28 @@ function locked_resolve!(edge::TypedEdge)
     return
 end
 
-# needs lock for multithreading? I.e. if another thread resolves a node that
-# sets inputs_dirty of the same dependent?
 function locked_resolve!(input::Input)
-    input.dirty || return
-    value = input.f(input.value)
-    if isdefined(input.output, :value)
-        input.output.value[] = deref(value)
-    else
-        input.output.value = value isa RefValue ? value : RefValue(value)
+    # See locked_resolve!(::ComputeEdge)
+    if input.should_resolve_now
+        try
+            value = input.f(input.value)
+            if isdefined(input.output, :value)
+                input.output.value[] = deref(value)
+            else
+                input.output.value = value isa RefValue ? value : RefValue(value)
+            end
+        catch e
+            input.dirty = true
+            rethrow(e)
+        finally
+            input.should_resolve_now = false
+            input.output.dirty = true
+            for edge in input.dependents
+                mark_input_dirty!(input, edge)
+            end
+            input.output.dirty = false
+        end
     end
-    input.dirty = false
-    input.output.dirty = true
-    for edge in input.dependents
-        mark_input_dirty!(input, edge)
-    end
-    input.output.dirty = false
     return
 end
 
@@ -924,20 +986,88 @@ function locked_resolve!(computed::Computed)
     return
 end
 
+function unlock_input!(c::Computed)
+    if hasparent(c)
+        unlock_input!(c.parent)
+    end
+    return
+end
+
+unlock_input!(e::AbstractEdge) = unlock(e.lock)
+
+
+reset_resolve_state!(c::Computed) = reset_resolve_state!(c.parent)
+function reset_resolve_state!(edge::Input)
+    if edge.should_resolve_now[]
+        edge.dirty = true
+        edge.should_resolve_now = false
+    end
+    unlock(edge.lock)
+    return
+end
+
+function reset_resolve_state!(edge::ComputeEdge)
+    if edge.should_resolve_now[]
+        foreach(reset_resolve_state!, edge.inputs)
+        edge.dirty[] = true
+        edge.should_resolve_now[] = false
+    end
+    unlock(edge.lock)
+    return
+end
+
 function locked_resolve!(edge::ComputeEdge)
-    edge.got_resolved[] && return
-    foreach(locked_resolve!, edge.inputs)
-    if !isassigned(edge.typed_edge)
-        edge.typed_edge[] = TypedEdge(edge)
-    else
-        locked_resolve!(edge.typed_edge[])
+    if edge.should_resolve_now[]
+        idx = 1
+        try
+            # resolve parents, which updates our inputs_dirty
+            while idx <= length(edge.inputs)
+                locked_resolve!(edge.inputs[idx])
+                idx += 1
+            end
+        catch e
+            # If one edge failed we need to unlock all of them and clean up state
+            # for the ones after the failing one (idx+1..end)
+            for i in eachindex(edge.inputs)
+                if i <= idx # these cleanup up their state and just need an unlock
+                    unlock_input!(edge.inputs[i])
+                else # these did not run at all so they need unlock + state cleanup
+                    reset_resolve_state!(edge.inputs[i])
+                end
+            end
+            # clear our state
+            edge.dirty[] = true
+            edge.should_resolve_now[] = false
+            # and rethrow
+            rethrow(e)
+        end
+
+        try
+            # run the callback, which uses our inputs_dirty and sets outputs.dirty
+            if !isassigned(edge.typed_edge)
+                edge.typed_edge[] = TypedEdge(edge)
+            else
+                locked_resolve!(edge.typed_edge[])
+            end
+        catch e
+            edge.dirty[] = true
+            rethrow(e)
+        finally
+            # stop protecting the input values this node used (if multiple edges use
+            # them they will be protected until all nodes stop protecting them)
+            foreach(unlock_input!, edge.inputs)
+            # prevent further visits to this node from running callbacks (for performance)
+            edge.should_resolve_now[] = false
+            # reset inputs_dirty for the next time the edge needs to resolve
+            fill!(edge.inputs_dirty, false)
+            # pass on the nodes changed by the callback to our dependents
+            for dep in edge.dependents
+                mark_input_dirty!(edge, dep)
+            end
+            # reset outputs.dirty for the next time the edge needs to resolve
+            foreach(comp -> comp.dirty = false, edge.outputs)
+        end
     end
-    edge.got_resolved[] = true
-    fill!(edge.inputs_dirty, false)
-    for dep in edge.dependents
-        mark_input_dirty!(edge, dep)
-    end
-    foreach(comp -> comp.dirty = false, edge.outputs)
     return
 end
 
@@ -952,9 +1082,57 @@ function resolve!(computed::Computed)
     return computed.value[]
 end
 
-function resolve!(edge::AbstractEdge)
+function lock_before_resolve!(x)
+    # Prevent other instances of lock_before_resolve!() from competing over edge
+    # locks. Also prevent mark_dirty!() from running during this, as changing
+    # edge.dirty can cause a later hits of the same edge to lock when earlier
+    # ones didn't.
     @lock GLOBAL_LOCK begin
+        _lock_before_resolve!(x)
+    end
+    return
+end
+
+function _lock_before_resolve!(edge::ComputeEdge)
+    # Lock every node that is dirty as well as their direct parents which carry
+    # the inputs to this node. If this edge is reached multiple times, it itself
+    # needs to be locked multiple times, but its parents don't. `locked_resolve!()`
+    # will not recompute the edge after the its first resolve, so it won't use
+    # the parents multiple times.
+    lock(edge.lock)
+    if edge.dirty[] && !edge.should_resolve_now[]
+        foreach(_lock_before_resolve!, edge.inputs)
+        edge.should_resolve_now[] = true
+        edge.dirty[] = false
+    end
+    return
+end
+
+function _lock_before_resolve!(edge::Input)
+    lock(edge.lock)
+    if edge.dirty && !edge.should_resolve_now
+        edge.should_resolve_now = true
+        edge.dirty = false
+    end
+    return
+end
+
+function _lock_before_resolve!(c::Computed)
+    # Not having a parent leaves the computed unprotected, which could cause
+    # it to desync during resolve!()... TODO: Maybe error?
+    if hasparent(c)
+        _lock_before_resolve!(c.parent)
+    end
+    return
+end
+
+function resolve!(edge::AbstractEdge)
+    lock_before_resolve!(edge)
+    try
         locked_resolve!(edge)
+    finally
+        # locks unlock in the dependents of an edge, so this one is still locked
+        unlock(edge.lock)
     end
     return
 end
@@ -1818,42 +1996,46 @@ function _delete!(attr::ComputeGraph, edge::AbstractEdge, force::Bool, recursive
 end
 
 function unsafe_delete!(attr::ComputeGraph, edge::ComputeEdge)
-    # all dependents become invalid as their parent computation no longer runs
-    for dependent in edge.dependents
-        unsafe_delete!(attr, dependent)
-    end
+    @lock edge.lock begin
+        # all dependents become invalid as their parent computation no longer runs
+        for dependent in edge.dependents
+            unsafe_delete!(attr, dependent)
+        end
 
-    # deregister this edge as a dependency of its parents
-    for computed in edge.inputs
-        @assert hasparent(computed)
-        parent_edge = computed.parent
-        filter!(e -> e !== edge, parent_edge.dependents)
-    end
+        # deregister this edge as a dependency of its parents
+        for computed in edge.inputs
+            @assert hasparent(computed)
+            parent_edge = computed.parent
+            filter!(e -> e !== edge, parent_edge.dependents)
+        end
 
-    # Delete output nodes of this edge
-    for computed in edge.outputs
-        k = computed.name
-        @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
-        delete!(attr.outputs, k)
+        # Delete output nodes of this edge
+        for computed in edge.outputs
+            k = computed.name
+            @assert haskey(attr.outputs, k) && attr.outputs[k] === computed
+            delete!(attr.outputs, k)
+        end
     end
 
     return attr
 end
 
 function unsafe_delete!(attr::ComputeGraph, edge::Input)
-    # all dependents become invalid as their parent computation no longer runs
-    for dependent in edge.dependents
-        unsafe_delete!(attr, dependent)
+    @lock edge.lock begin
+        # all dependents become invalid as their parent computation no longer runs
+        for dependent in edge.dependents
+            unsafe_delete!(attr, dependent)
+        end
+
+        # Delete output node of this edge
+        k = edge.name
+        @assert haskey(attr.outputs, k) && attr.outputs[k] === edge.output
+        delete!(attr.outputs, k)
+
+        # Delete Input
+        @assert haskey(attr.inputs, k) && attr.inputs[k] === edge
+        delete!(attr.inputs, k)
     end
-
-    # Delete output node of this edge
-    k = edge.name
-    @assert haskey(attr.outputs, k) && attr.outputs[k] === edge.output
-    delete!(attr.outputs, k)
-
-    # Delete Input
-    @assert haskey(attr.inputs, k) && attr.inputs[k] === edge
-    delete!(attr.inputs, k)
 
     return attr
 end
@@ -1930,14 +2112,18 @@ function unsafe_init!(edge::ComputeEdge)
     end
 
     # Follow the [Rules]:
-    @lock GLOBAL_LOCK begin
+    lock_before_resolve!(edge)
+    try
         foreach(locked_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
-        edge.got_resolved[] = true
+        edge.should_resolve_now[] = false
         for dep in edge.dependents
             mark_input_dirty!(edge, dep)
         end
         foreach(comp -> comp.dirty = false, edge.outputs)
+    finally
+        foreach(unlock_input!, edge.inputs)
+        unlock(edge.lock)
     end
     return true
 end
