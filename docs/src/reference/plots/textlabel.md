@@ -8,7 +8,6 @@ textlabel
 ## Examples
 
 ```@figure
-using CairoMakie
 using FileIO
 
 f, a, p = image(rotr90(load(assetpath("cow.png"))))
@@ -17,7 +16,6 @@ f
 ```
 
 ```@figure
-using CairoMakie
 using DelimitedFiles
 loc = readdlm(assetpath("airportlocations.csv"))
 
@@ -47,8 +45,6 @@ We want the text to fit inside the circle, so we want the text boundingbox to re
 We can choose this to be a square from `-sqrt(0.5) .. sqrt(0.5)` resulting in `shape_limits = Rect2f(-sqrt(0.5), -sqrt(0.5), sqrt(2), sqrt(2))`:
 
 ```@figure
-using CairoMakie
-
 ps = Point2f[
     (0, 0),
     (-1, -1), (1, -1),
@@ -77,7 +73,6 @@ If `shape_limits = Rect2f(0,0,1,1)` those are the origin and size of text boundi
 This can be used, for example, to construct a circle that more tightly fits the text bounding box:
 
 ```@figure
-using CairoMakie
 using GeometryBasics
 using LinearAlgebra
 

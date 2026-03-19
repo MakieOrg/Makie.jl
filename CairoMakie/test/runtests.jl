@@ -204,7 +204,11 @@ excludes = Set(
         "MetaMesh (Sponza)", # makes little sense without per pixel depth order
         "Mesh with 3d volume texture", # Not implemented yet
         "Volume absorption",
-        "DataInspector", "DataInspector 2", # No DataInspector without pick/interactivity
+        # No DataInspector without pick/interactivity
+        "DataInspector",
+        "DataInspector continued",
+        "DataInspector in log space",
+        "DataInspector persistent tooltips",
     ]
 )
 
@@ -261,9 +265,9 @@ end
         save(filename, f)
         tick = events(f).tick[]
         @test tick.state == Makie.OneTimeRenderTick
-        @test tick.count == 0
-        @test tick.time == 0.0
-        @test tick.delta_time == 0.0
+        @test tick.count == 1
+        @test 0.0 <= tick.time < 0.01
+        @test tick.delta_time ≈ tick.time rtol = 0.01
     finally
         rm(filename)
     end

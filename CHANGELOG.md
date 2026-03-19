@@ -14,6 +14,15 @@
 - Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
 - Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
   - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
+- Refactored `DataInspector` [#5241](https://github.com/MakieOrg/Makie.jl/pull/5241)
+  - Fixed issues with tooltips reading `inspector_label` from the wrong plot
+  - Fixed issues with tooltips reporting positions of the wrong space
+  - **breaking** Broke up `show_data` into multiple parts:
+    - `get_accessor()` which produces picking information for a higher level plot
+    - `get_tooltip_position()` which extracts the position using that information
+    - `get_default_tooltip_label()` which generates a default label from picking information
+    - `update_indicator_plot!()` for drawing indicator plots
+  - Added functionality for persistent tooltips
 - Added a system to simulate nesting in compute graphs to allow for nested attributes.
   - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
 - Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)

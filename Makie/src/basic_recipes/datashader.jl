@@ -714,7 +714,11 @@ function Makie.plot!(p::HeatmapShader)
 
     map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
-    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
+    map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange],
+        [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
+    ) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
@@ -749,6 +753,8 @@ function Makie.plot!(p::HeatmapShader)
         p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
         gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
+
+    notify(ComputePipeline.get_observable!(p.axis_limits))
 
     return p
 end
