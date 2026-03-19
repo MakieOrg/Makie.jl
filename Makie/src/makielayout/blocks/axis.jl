@@ -625,9 +625,9 @@ function initialize_limit_computations!(ax)
         return lims
     end
 
-    # Setting link.sharedxlimits will loop back to this axis, which causes state
-    # to be overwritten if it happens during resolve, i.e. in the callback above.
-    # Using a compute graph Observable to link limits is fine though
+    # Setting link.sharedxlimits will loop back to this axis, which causes a
+    # deadlock if it happens during resolve, i.e. in the callback above. Doing
+    # it here, as a compute graph Observable callback is fine though
     on(attr.sharedxlimits) do lims
         for link in ax.xaxislinks
             link === ax && continue

@@ -15,7 +15,7 @@ using Statistics: median
 Package = length(ARGS) > 0 ? ARGS[1] : "CairoMakie"
 n_samples = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 7
 # base_branch = length(ARGS) > 2 ? ARGS[3] : "master"
-base_branch = "master"
+base_branch = "ff/breaking-0.25"
 
 # Package = "CairoMakie"
 # n_samples = 2
