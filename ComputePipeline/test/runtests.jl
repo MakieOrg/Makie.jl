@@ -5,21 +5,17 @@ using Random
 using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException, map_latest!
 using ComputePipeline.Observables
 
-@testset "ComputePipeline.jl" begin
+# Use failfast to prevent deadlocks from keeping these tests running
+@testset "ComputePipeline.jl" failfast = true begin
     # Sanity check for CI
     @test ComputePipeline.ENABLE_COMPUTE_CHECKS
 
-    # Use failfast to prevent deadlocks from keeping these tests running
-    ts = @testset "Concurrency tests" failfast = true begin
+    @testset "Concurrency tests"  begin
         include("concurrency.jl")
     end
 
-    # And skip remaining tests if we fine any errors (possible deadlocks)
-    tc = Test.get_test_counts(ts)
-    if tc.errors == 0
+    @testset "general" failfast = false begin
         include("unit_tests.jl")
         include("system_tests.jl")
-    else
-        error("Skipped further tests due to errors in concurrency tests.")
     end
 end

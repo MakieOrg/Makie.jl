@@ -60,11 +60,11 @@ end
         # Node protection must continue until all accesses of the current
         # resolve!() are finished.
         graph.first = 5
-        @test fetch(task) == 1+1
+        @test fetch(task) == 1 + 1
         @test isdirty(graph.first.parent)
         @test isdirty(graph.middle.parent)
         @test isdirty(graph.output.parent)
-        @test graph.output[] == 5+5
+        @test graph.output[] == 5 + 5
     end
 
     @testset "Competing resolves" begin
