@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Switched from `FFMPEG_jll` to `FFMPEG_nogpl_jll`, removing GPL-licensed codecs. MP4 now uses AV1 (`libaom-av1`), MKV uses VP9 (`libvpx-vp9`). The `profile` and `pixel_format` options for `record`/`VideoStream` no longer have any effect. [#5562](https://github.com/MakieOrg/Makie.jl/pull/5562)
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 

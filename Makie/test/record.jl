@@ -51,13 +51,13 @@ mktempdir() do tempdir
 
             # kwarg => (value, (should_warn => format))
             warn_tests = [
-                (:compression, 20, ["mkv", "gif"], ["mp4", "webm"]),
-                (:profile, "high422", ["mkv", "webm", "gif"], ["mp4"]),
+                (:compression, 20, ["gif"], ["mkv", "mp4", "webm"]),
+                (:profile, "high422", ["mkv", "mp4", "webm", "gif"], String[]),
                 (
                     kwarg = :pixel_format,
                     value = "yuv420p",
-                    warn_fmts = ["mkv", "webm", "gif"],
-                    no_warn_fmts = ["mp4"],
+                    warn_fmts = ["mkv", "mp4", "webm", "gif"],
+                    no_warn_fmts = String[],
                 ),
             ]
 
