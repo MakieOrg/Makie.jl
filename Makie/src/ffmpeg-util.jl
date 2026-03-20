@@ -8,30 +8,25 @@
     * `"webm"` (smallest file size)
     * `"gif"`  (largest file size for the same quality)
 
-    `mp4` and `mk4` are marginally bigger than `webm`. `gif`s can be significantly (as much as
-    6x) larger with worse quality (due to the limited color palette) and only should be used
-    as a last resort, for playing in a context where videos aren't supported.
+    `mp4` (AV1 codec) and `mkv` (VP9 codec) are marginally bigger than `webm`. `gif`s can be
+    significantly (as much as 6x) larger with worse quality (due to the limited color palette)
+    and only should be used as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
 - `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
     smaller numbers giving higher quality and larger file sizes (lower compression), and
     higher numbers giving lower quality and smaller file sizes (higher compression). The
-    minimum value is `0` (lossless encoding).
-    - For `mp4`, `51` is the maximum. Note that `compression = 0` only works with `mp4` if
-      `profile = "high444"`.
-    - For `webm`, `63` is the maximum.
-    - `compression` has no effect on `mkv` and `gif` outputs.
-- `profile = "high422"`: A ffmpeg compatible profile. Currently only applies to `mp4`. If
-  you have issues playing a video, try `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (`-pix_fmt`). Currently only
-  applies to `mp4`. Defaults to `yuv444p` for `profile = "high444"`.
+    minimum value is `0` (lossless encoding) and `63` is the maximum.
+    - `compression` has no effect on `gif` outputs.
+- `profile = nothing`: Unused, kept for backwards compatibility.
+- `pixel_format = nothing`: Unused, kept for backwards compatibility.
 - `loop = 0`: Number of times the video is repeated, for a `gif` or `html` output. Defaults to `0`, which
   means infinite looping. A value of `-1` turns off looping, and a value of `n > 0`
   means `n` repetitions (i.e. the video is played `n+1` times) when supported by backend.
 
 !!! warning
-    `profile` and `pixel_format` are only used when `format` is `"mp4"`; a warning will be issued if `format`
-    is not `"mp4"` and those two arguments are not `nothing`. Similarly, `compression` is only
-    valid when `format` is `"mp4"` or `"webm"`.
+    `profile` and `pixel_format` are no longer used (they applied to the previously used `libx264`
+    codec). A warning will be issued if they are set to non-`nothing` values. `compression` is
+    valid for `"mkv"`, `"mp4"`, and `"webm"` formats.
 """
 struct VideoStreamOptions
     format::String
@@ -55,12 +50,7 @@ struct VideoStreamOptions
             framerate = round(Int, framerate)
         end
 
-        if format == "mp4"
-            (profile === nothing) && (profile = "high422")
-            (pixel_format === nothing) && (pixel_format = (profile == "high444" ? "yuv444p" : "yuv420p"))
-        end
-
-        if format in ("mp4", "webm")
+        if format in ("mkv", "mp4", "webm")
             (compression === nothing) && (compression = 20)
         end
 
@@ -68,9 +58,9 @@ struct VideoStreamOptions
 
         # items are name, value, allowed_formats
         allowed_kwargs = [
-            ("compression", compression, ("mp4", "webm")),
-            ("profile", profile, ("mp4",)),
-            ("pixel_format", pixel_format, ("mp4",)),
+            ("compression", compression, ("mkv", "mp4", "webm")),
+            ("profile", profile, ()),
+            ("pixel_format", pixel_format, ()),
         ]
 
         for (name, value, allowed_formats) in allowed_kwargs
@@ -126,10 +116,8 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
     # -vf: video filter for the output
     # -c:v, -c:a: video and audio codec, respectively
     # -b:v, -b:a: video and audio bitrate, respectively
-    # -crf: "constant rate factor", the lower the better the quality (0 is lossless, 51 is
+    # -crf: "constant rate factor", the lower the better the quality (0 is lossless, 63 is
     #   maximum compression)
-    # -pix_fmt: (mp4 only) the output pixel format
-    # -profile:v: (mp4 only) the output video profile
     # -an: no audio in output
     # -loop: (gif only) number of times to loop
     (format, framerate, compression, profile, pixel_format, loop) = (vso.format, vso.framerate, vso.compression, vso.profile, vso.pixel_format, vso.loop)
@@ -154,13 +142,17 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
         ffmpeg_prefix = `$ffmpeg_prefix -vf vflip`
     end
     ffmpeg_options = if format == "mkv"
-        `-an`
-    elseif format == "mp4"
-        `-profile:v $(profile)
+        `-c:v libvpx-vp9
          -crf $(compression)
-         -preset slow
-         -c:v libx264
-         -pix_fmt $(pixel_format)
+         -b:v 0
+         -an
+        `
+    elseif format == "mp4"
+        `-c:v libaom-av1
+         -crf $(compression)
+         -b:v 0
+         -cpu-used 8
+         -row-mt 1
          -an
         `
     elseif format == "webm"
@@ -283,7 +275,7 @@ function VideoStream(
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
     # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
-    process = open(pipeline(`$(FFMPEG_jll.ffmpeg()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
+    process = open(pipeline(`$(FFMPEG_nogpl_jll.ffmpeg()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
     result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
     finalizer(result) do x
@@ -341,10 +333,10 @@ function convert_video(input_path, output_path; video_options...)
     format = lstrip(typ, '.')
     vso = VideoStreamOptions(; format = format, input = input_path, rawvideo = false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
-    return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
+    return run(`$(FFMPEG_nogpl_jll.ffmpeg()) $cmd $output_path`)
 end
 
 function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
+    return run(`$(FFMPEG_nogpl_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
 end

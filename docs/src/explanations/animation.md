@@ -52,7 +52,7 @@ record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = fr
 
 ## File formats
 
-Video files are created with [`FFMPEG_jll.jl`](https://github.com/JuliaBinaryWrappers/FFMPEG_jll.jl).
+Video files are created with [`FFMPEG_nogpl_jll.jl`](https://github.com/JuliaBinaryWrappers/FFMPEG_nogpl_jll.jl).
 You can choose from the following file formats:
 
 - `.mkv` (the default, doesn't need to convert)

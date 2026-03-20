@@ -21,7 +21,7 @@ using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG_jll # get FFMPEG on any system!
+using FFMPEG_nogpl_jll
 using Observables
 using GeometryBasics
 using PlotUtils
