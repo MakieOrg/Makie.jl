@@ -1,0 +1,9 @@
+[deps]
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+ReferenceTests = "d37af2e0-5618-4e00-9939-d430db56ee94"
+SkiaMakie = "76793118-35c1-4747-aff5-edca4b36395e"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+ReferenceTests = {path = "../../ReferenceTests"}
+SkiaMakie = {path = ".."}
