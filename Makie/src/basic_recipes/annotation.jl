@@ -237,8 +237,10 @@ function plot!(p::Annotation)
     )
 
     # still without offset
+    # Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
+    _guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
     map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
-        return Rect2d.(bboxes) .+ px_pos
+        return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
 
     register_camera_matrix!(p, :data, :pixel)
