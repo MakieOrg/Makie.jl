@@ -8,12 +8,15 @@
 data   = [36, 12, 68, 5, 42, 27]
 colors = [:yellow, :orange, :red, :blue, :purple, :green]
 
-pie(
+f, ax, plt = pie(
     data, color = colors,
     radius = 4, inner_radius = 2,
     strokecolor = :white, strokewidth = 5,
-    axis = (autolimitaspect = 1, )
+    axis = (autolimitaspect = 1, ),
+    label = [string(c) => (; color = c) for c in colors]
 )
+leg = Legend(f[1,2], ax)
+f
 ```
 
 ### Non-normalized pie with offset

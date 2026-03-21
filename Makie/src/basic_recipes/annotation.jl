@@ -233,8 +233,10 @@ function plot!(p::Annotation)
     )
 
     # still without offset
+    # Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
+    _guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
     map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
-        return Rect2d.(bboxes) .+ px_pos
+        return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
 
     register_camera_matrix!(p, :data, :pixel)
@@ -937,8 +939,8 @@ function line_rectangle_intersection(p1::Point2, p2::Point2, rect::Rect2)
 
     # Helper function to find intersection of two line segments
     function segment_intersection(p1::Point2, p2::Point2, q1::Point2, q2::Point2)
-        x1, y1 = p1
-        x2, y2 = p2
+        local x1, y1 = p1
+        local x2, y2 = p2
         x3, y3 = q1
         x4, y4 = q2
 

@@ -62,88 +62,110 @@ pushfirst!(plots, "reference/plots/overview.md")
 pages = [
     "Home" => "index.md",
     "Reference" => [
-        "Blocks" => [
-            "reference/blocks/overview.md",
-            "reference/blocks/axis.md",
-            "reference/blocks/axis3.md",
-            "reference/blocks/box.md",
-            "reference/blocks/button.md",
-            "reference/blocks/checkbox.md",
-            "reference/blocks/colorbar.md",
-            "reference/blocks/gridlayout.md",
-            "reference/blocks/intervalslider.md",
-            "reference/blocks/label.md",
-            "reference/blocks/legend.md",
-            "reference/blocks/lscene.md",
-            "reference/blocks/menu.md",
-            "reference/blocks/polaraxis.md",
-            "reference/blocks/slider.md",
-            "reference/blocks/slidergrid.md",
-            "reference/blocks/textbox.md",
-            "reference/blocks/toggle.md",
-        ],
+        "Blocks" => joinpath.(
+            "reference", "blocks", [
+                "overview.md",
+                "axis.md",
+                "axis3.md",
+                "box.md",
+                "button.md",
+                "checkbox.md",
+                "colorbar.md",
+                "gridlayout.md",
+                "intervalslider.md",
+                "label.md",
+                "legend.md",
+                "lscene.md",
+                "menu.md",
+                "polaraxis.md",
+                "slider.md",
+                "slidergrid.md",
+                "textbox.md",
+                "toggle.md",
+            ]
+        ),
         "Plots" => plots,
-        "Generic Concepts" => [
-            "reference/generic/clip_planes.md",
-            "reference/generic/transformations.md",
-            "reference/generic/space.md",
-        ],
-        "Scene" => [
-            "reference/scene/lighting.md",
-            "reference/scene/matcap.md",
-            "reference/scene/SSAO.md",
-        ],
+        "Generic Concepts" => joinpath.(
+            "reference", "generic", [
+                "clip_planes.md",
+                "transformations.md",
+                "space.md",
+            ]
+        ),
+        "Scene" => joinpath.(
+            "reference", "scene", [
+                "lighting.md",
+                "matcap.md",
+                "SSAO.md",
+            ]
+        ),
     ],
-    "Tutorials" => [
-        "tutorials/getting-started.md",
-        "tutorials/aspect-tutorial.md",
-        "tutorials/layout-tutorial.md",
-        "tutorials/scenes.md",
-        "tutorials/wrap-existing-recipe.md",
-        "tutorials/pixel-perfect-rendering.md",
-        "tutorials/inset-plot-tutorial.md",
-    ],
+    "Tutorials" => joinpath.(
+        "tutorials", [
+            "getting-started.md",
+            "aspect-tutorial.md",
+            "layout-tutorial.md",
+            "scenes.md",
+            "wrap-existing-recipe.md",
+            "pixel-perfect-rendering.md",
+            "inset-plot-tutorial.md",
+        ]
+    ),
     "Explanations" => [
-        "Backends" => [
-            "explanations/backends/backends.md",
-            "explanations/backends/cairomakie.md",
-            "explanations/backends/glmakie.md",
-            "explanations/backends/rprmakie.md",
-            "explanations/backends/wglmakie.md",
-        ],
-        "explanations/animation.md",
-        "explanations/architecture.md",
-        "explanations/blocks.md",
-        "explanations/cameras.md",
-        "explanations/conversion_pipeline.md",
-        "explanations/colors.md",
-        "explanations/dim-converts.md",
-        "explanations/events.md",
-        "explanations/figure.md",
-        "explanations/faq.md",
-        "explanations/fonts.md",
-        "explanations/layouting.md",
-        "explanations/headless.md",
-        "explanations/inspector.md",
-        "explanations/latex.md",
-        "explanations/observables.md",
-        "explanations/plot_method_signatures.md",
-        "explanations/recipes.md",
-        "explanations/scenes.md",
-        "explanations/specapi.md",
-        "Theming" => [
-            "explanations/theming/themes.md",
-            "explanations/theming/predefined_themes.md",
-        ],
-        "explanations/transparency.md",
-        "explanations/compute-pipeline.md",
-        "explanations/transformations.md",
+        "Backends" => joinpath.(
+            "explanations", "backends", [
+                "backends.md",
+                "cairomakie.md",
+                "glmakie.md",
+                "rprmakie.md",
+                "wglmakie.md",
+            ]
+        ),
+        joinpath.(
+            "explanations", [
+                "animation.md",
+                "architecture.md",
+                "blocks.md",
+                "cameras.md",
+                "conversion_pipeline.md",
+                "colors.md",
+                "dim-converts.md",
+                "events.md",
+                "figure.md",
+                "faq.md",
+                "fonts.md",
+                "layouting.md",
+                "headless.md",
+                "inspector.md",
+                "latex.md",
+                "observables.md",
+                "plot_method_signatures.md",
+                "recipes.md",
+                "scenes.md",
+                "specapi.md",
+            ]
+        )...,
+        "Theming" => joinpath.(
+            "explanations", "theming", [
+                "themes.md",
+                "predefined_themes.md",
+            ]
+        ),
+        joinpath.(
+            "explanations", [
+                "transparency.md",
+                "compute-pipeline.md",
+                "transformations.md",
+            ]
+        )...,
     ],
-    "How-Tos" => [
-        "how-to/match-figure-size-font-sizes-and-dpi.md",
-        "how-to/draw-boxes-around-subfigures.md",
-        "how-to/save-figure-with-transparency.md",
-    ],
+    "How-Tos" => joinpath.(
+        "how-to", [
+            "match-figure-size-font-sizes-and-dpi.md",
+            "draw-boxes-around-subfigures.md",
+            "save-figure-with-transparency.md",
+        ]
+    ),
     "Resources" => [
         "API" => "api.md",
         "Changelog" => "changelog.md",

@@ -2358,6 +2358,7 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+convert_attribute(value, ::key"shininess") = Float32(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 

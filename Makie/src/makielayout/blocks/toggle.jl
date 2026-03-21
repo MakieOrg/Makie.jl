@@ -1,3 +1,51 @@
+function _toggle_endpoint(or, ms::Real, bbox::Rect, active::Bool)
+    theta = or == :horizontal ? 0 : (or == :vertical ? pi / 2 : or)
+    y, x = ifelse(active, -1, +1) .* sincos(theta)
+    _x = x > 0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
+    _y = y > 0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
+    return Point2f(_x, _y)
+end
+
+function _perform_toggle_animation(animating, button_endpoint_inactive, button_endpoint_active, buttonpos, framecolor, topscene, t, updatefunc)
+    if animating[]
+        return
+    end
+    animating[] = true
+
+    anim_posfrac = Animations.Animation(
+        [0, t.toggleduration[]],
+        !t.active[] ? [1.0, 0.0] : [0.0, 1.0],
+        Animations.sineio()
+    )
+
+    coloranim = Animations.Animation(
+        [0, t.toggleduration[]],
+        !t.active[] ? [t.framecolor_active[], t.framecolor_inactive[]] : [t.framecolor_inactive[], t.framecolor_active[]],
+        Animations.sineio()
+    )
+
+    tstart = topscene.events.tick[].time
+
+    updatefunc[] = on(topscene.events.tick) do tick
+        dt = tick.time - tstart
+        # request endpoint values in every frame if the layout changes during
+        # the animation
+        buttonpos[] = [
+            Animations.linear_interpolate(
+                anim_posfrac(dt),
+                button_endpoint_inactive[], button_endpoint_active[]
+            ),
+        ]
+        framecolor[] = coloranim(dt)
+        if dt >= t.toggleduration[]
+            Observables.off(updatefunc[])
+            updatefunc[] = nothing
+            animating[] = false
+        end
+    end
+    return
+end
+
 function initialize_block!(t::Toggle)
 
     topscene = t.blockscene
@@ -10,19 +58,13 @@ function initialize_block!(t::Toggle)
         t.layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-    xfun(x, bbox, ms) = x > 0 ? left(bbox) + ms / 2 : right(bbox) - ms / 2
-    yfun(y, bbox, ms) = y > 0 ? bottom(bbox) + ms / 2 : top(bbox) - ms / 2
 
     button_endpoint_inactive = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
-        theta = or == :horizontal ? 0 : or == :vertical ? pi / 2 : or
-        y, x = sincos(theta)
-        Point2f(xfun(x, bbox, ms), yfun(y, bbox, ms))
+        return _toggle_endpoint(or, ms, bbox, false)
     end
 
     button_endpoint_active = lift(topscene, t.orientation, t.markersize, t.layoutobservables.computedbbox) do or, ms, bbox
-        theta = or == :horizontal ? 0 : or == :vertical ? pi / 2 : or
-        y, x = sincos(theta)
-        Point2f(xfun(-x, bbox, ms), yfun(-y, bbox, ms))
+        return _toggle_endpoint(or, ms, bbox, true)
     end
 
     buttonvertices = lift(topscene, t.length, t.markersize, t.cornersegments) do len, ms, cs
@@ -70,53 +112,13 @@ function initialize_block!(t::Toggle)
 
     updatefunc = Ref{Any}(nothing)
 
-    function perform_toggle_animation()
-        if animating[]
-            return
-        end
-        animating[] = true
-
-        anim_posfrac = Animations.Animation(
-            [0, t.toggleduration[]],
-            !t.active[] ? [1.0, 0.0] : [0.0, 1.0],
-            Animations.sineio()
-        )
-
-        coloranim = Animations.Animation(
-            [0, t.toggleduration[]],
-            !t.active[] ? [t.framecolor_active[], t.framecolor_inactive[]] : [t.framecolor_inactive[], t.framecolor_active[]],
-            Animations.sineio()
-        )
-
-        tstart = topscene.events.tick[].time
-
-        updatefunc[] = on(topscene.events.tick) do tick
-            dt = tick.time - tstart
-            # request endpoint values in every frame if the layout changes during
-            # the animation
-            buttonpos[] = [
-                Animations.linear_interpolate(
-                    anim_posfrac(dt),
-                    button_endpoint_inactive[], button_endpoint_active[]
-                ),
-            ]
-            framecolor[] = coloranim(dt)
-            if dt >= t.toggleduration[]
-                Observables.off(updatefunc[])
-                updatefunc[] = nothing
-                animating[] = false
-            end
-        end
-        return
-    end
-
     onmouseleftclick(mouseevents) do event
         t.active[] = !t.active[]
         return Consume(true)
     end
 
     on(t.active) do active
-        perform_toggle_animation()
+        _perform_toggle_animation(animating, button_endpoint_inactive, button_endpoint_active, buttonpos, framecolor, topscene, t, updatefunc)
     end
 
     onmouseover(mouseevents) do event
