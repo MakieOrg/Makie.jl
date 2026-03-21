@@ -30,7 +30,7 @@ Plot a step histogram which shows the outline of the histogram.
 
 * `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
-@recipe StepHist (values,) begin
+@recipe StepHist (values::RealVector,) begin
     documented_attributes(Stairs)...
 
     """
@@ -57,6 +57,8 @@ Plot a step histogram which shows the outline of the histogram.
     "Scales the histogram by a common factor such that the largest bin reaches the given value."
     scale_to = nothing
 end
+
+argument_dims(::Type{<:StepHist}, vals) = (1,)
 
 function plot!(plot::StepHist)
 
@@ -87,7 +89,7 @@ Plot a histogram which draws bars whose height corresponds to the number of valu
 
 * `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
-@recipe Hist (values,) begin
+@recipe Hist (values::Union{RealVector, Vector{<:RealVector}},) begin
     """
     Sets the number of bins if set to an integer or the edges of bins if set to
     an sorted collection of real numbers.
@@ -144,6 +146,9 @@ function attribute_groups(::Type{<:Hist})
     push!(group, :over_background_color, :over_bar_color)
     return groups
 end
+
+argument_dim_kwargs(::Type{<:Hist}) = (:direction,)
+argument_dims(::Type{<:Hist}, vals; direction) = (ifelse(direction === :y, 1, 2),)
 
 function pick_hist_edges(vals, bins)
     if bins isa Int

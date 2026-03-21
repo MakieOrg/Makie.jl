@@ -11,7 +11,7 @@ It is most commonly used as part of the `boxplot`.
 - `xs, ys, ymins, ymaxs` Defines the x positions of each box with `xs`, the midline height with `ys`,
 and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an `AbstractVector{<:Real}`.
 """
-@recipe CrossBar (x, y, ymin, ymax) begin
+@recipe CrossBar (x::RealVector, y::RealVector, ymin::RealVector, ymax::RealVector) begin
     "Sets the color of the drawn boxes. These can be values for colormapping."
     color = @inherit patchcolor
 
@@ -73,6 +73,11 @@ and the limits of the box with `ymins` and `ymaxs`. Each argument is given as an
 
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
+end
+
+argument_dim_kwargs(::Type{<:CrossBar}) = (:orientation,)
+function argument_dims(::Type{<:CrossBar}, x, y, ymin, ymax; orientation)
+    return ifelse(orientation === :vertical, (1, 2, 2, 2), (2, 1, 1, 1))
 end
 
 function Makie.plot!(plot::CrossBar)

@@ -12,7 +12,7 @@ Draw a Tukey style boxplot consisting of 3 components:
 - an `errorbar` including values from the interquartile range extended by `range * iqr`
 - points marking outliers, that is, data outside the errorbar
 """
-@recipe BoxPlot (x, y) begin
+@recipe BoxPlot (x::RealVector, y::RealVector) begin
     filtered_attributes(CrossBar, exclude = (:notchmin, :notchmax, :show_midline, :midlinecolor, :midlinewidth))...
 
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."
@@ -88,6 +88,7 @@ end
 
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
+argument_dim_kwargs(::Type{<:BoxPlot}) = (:orientation,)
 
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v

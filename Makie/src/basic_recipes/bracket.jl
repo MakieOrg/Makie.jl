@@ -12,7 +12,7 @@ By default each label is rotated parallel to the line between the bracket points
 * `points12` An `AbstractVector{Tuple{<:VecTypes{2, <:Real}, <:VecTypes{2, <:Real}}}` containing
     the start and end points of the bracket as tuples `(startpoint, endpoint)`.
 """
-@recipe Bracket (positions,) begin
+@recipe Bracket (positions::Vector{<:Tuple{Point2{<:Real}, Point2{<:Real}}},) begin
     """
     The offset of the bracket perpendicular to the line from start to end point in screen units.
     The direction depends on the `orientation` attribute.
@@ -82,17 +82,14 @@ By default each label is rotated parallel to the line between the bracket points
     space = :data
 end
 
-function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1, T2}
+argument_dims(::Type{<:Bracket}, x1, y1, x2, y2) = (1, 2, 1, 2)
+
+function convert_arguments(::Type{<:Bracket}, point1::VecTypes{2, T1}, point2::VecTypes{2, T2}) where {T1 <: Real, T2 <: Real}
     return ([(Point2{float_type(T1)}(point1), Point2{float_type(T2)}(point2))],)
 end
 
-function convert_arguments(::Type{<:Bracket}, point1::AbstractVector{<:VecTypes{2}}, point2::AbstractVector{<:VecTypes{2}})
-    return (
-        tuple.(
-            convert_arguments(PointBased(), point1)[1],
-            convert_arguments(PointBased(), point2)[1]
-        ),
-    )
+function convert_arguments(::Type{<:Bracket}, point1::VecTypesVector{2, T1}, point2::VecTypesVector{2, T2}) where {T1 <: Real, T2 <: Real}
+    return (tuple.(Point2{float_type(T1)}.(point1), Point2{float_type(T2)}.(point2)),)
 end
 
 function convert_arguments(::Type{<:Bracket}, x1::Real, y1::Real, x2::Real, y2::Real)

@@ -7,11 +7,13 @@ automatically when the signal changes.
 * `signal::Union{Real, Point2}` is the signal to track. Can be a scalar value (plotted against
     time) or a `Point2` (plotted directly as x-y coordinates).
 """
-@recipe TimeSeries (signal,) begin
+@recipe TimeSeries (signal::Real,) begin
     "Number of tracked points."
     history = 100
     documented_attributes(Lines)...
 end
+
+argument_dims(::Type{<:TimeSeries}, signal) = (2,)
 
 signal2point(signal::Number, start) = Point2f(time() - start, signal)
 signal2point(signal::Point2, start) = signal

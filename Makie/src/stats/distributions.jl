@@ -35,7 +35,7 @@ Draw a Q-Q plot, comparing quantiles of two distributions.
     also be an abstract distribution or distribution type, e.g. `Normal(0, 1)` or `Normal`. The
     latter will be fit to the `y` sample.
 """
-@recipe QQPlot begin
+@recipe QQPlot (points::VecTypesVector{2, <:Real}, line::VecTypesVector{2, <:Real}) begin
     filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
     """
     The attribute `qqline` determines how to compute a fit line for the Q-Q plot.
@@ -69,7 +69,7 @@ See [`qqplot`](@ref) for more details on the `qqline` attribute and other option
 
 * `y::AbstractVector{<:Real}` is a sample to compare against the standard normal distribution.
 """
-@recipe QQNorm begin
+@recipe QQNorm (points::VecTypesVector{2, <:Real}, line::VecTypesVector{2, <:Real}) begin
     documented_attributes(QQPlot)...
 end
 
@@ -103,6 +103,9 @@ end
 maybefit(D::Type{<:Distribution}, y) = Distributions.fit(D, y)
 maybefit(x, _) = x
 
+argument_dims(::Type{<:QQPlot}, x, y) = (1, 2)
+argument_dims(::Type{<:QQNorm}, y) = (2,)
+
 function convert_arguments(
         ::Type{<:QQPlot}, points::AbstractVector{<:Point2},
         lines::AbstractVector{<:Point2}; qqline = :none
@@ -110,13 +113,13 @@ function convert_arguments(
     return (points, lines)
 end
 
-function convert_arguments(::Type{<:QQPlot}, x′, y; qqline = :none)
+function convert_arguments(::Type{<:QQPlot}, x′, y::RealVector; qqline = :none)
     x = maybefit(x′, y)
     points, line = fit_qqplot(x, y; qqline = qqline)
     return (points, line)
 end
 
-function convert_arguments(::Type{<:QQPlot}, y; qqline = :none, distribution = nothing)
+function convert_arguments(::Type{<:QQPlot}, y::RealVector; qqline = :none, distribution = nothing)
     if distribution === nothing
         throw(ArgumentError("When calling QQPlot with a single array argument, the `distribution` keyword argument must be provided"))
     end
@@ -125,8 +128,9 @@ function convert_arguments(::Type{<:QQPlot}, y; qqline = :none, distribution = n
     return (points, line)
 end
 
-convert_arguments(::Type{<:QQNorm}, y; qqline = :none) =
-    convert_arguments(QQPlot, Distributions.Normal(0, 1), y; qqline = qqline)
+function convert_arguments(::Type{<:QQNorm}, y; qqline = :none, distribution = Distributions.Normal(0, 1))
+    return convert_arguments(QQPlot, y; qqline = qqline, distribution = distribution)
+end
 
 used_attributes(::Type{<:QQNorm}, y) = (:qqline,)
 used_attributes(::Type{<:QQPlot}, x, y) = (:qqline,)

@@ -1,6 +1,39 @@
 # Changelog
 
+## Breaking
+
+- Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
+  - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
+  - **breaking** `UnitfulConversion` no longer rescales units and dropped the `units_in_label` option/field.
+  - **breaking** The dim converts interface has changed. See dim converts docs.
+  - Added `argument_dims()` and `argument_dim_kwargs()` to handle dim converts for various argument configurations, including point-like arguments, dimensionless arguments (i.e. not dim-convertible) and handling of attributes like `direction` and `orientation`.
+  - Updated almost every Makie recipe to work with dim converts.
+  - Added support for x/y/zlabel suffixes based on dim converts via Axis/Axis3 attributes.
+  - Adjusted conversion logic to avoid applying dim converts when `space != :data`, and allow early `convert_arguments()` application when dim converts are forced. (I.e. when the parent scene/Axis/etc. has set dim converts.)
+  - Added `force_dimconverts` as a generic plot keyword argument. This can be set to `false` to allow a numeric plot to plot in a scene with fixed dim converts. (E.g. for axis decorations.)
+- Reworked `barplot` to allow infinitely long bars in `Axis`, e.g. for log transforms [#5412](https://github.com/MakieOrg/Makie.jl/pull/5412)
+- Updated `Legend` to toggle visibility in the root plot associated with a legend entry instead of its child plots. This fixes issues with some recipes erroring when toggling visibility and avoids showing child plots which are hidden by the recipe. [#5209](https://github.com/MakieOrg/Makie.jl/pull/5209)
+  - **breaking** Custom implementations of `legendelements(::Plot, legend)` should no longer set `plots` in the `LegendElement`s they create. Custom `LegendElement` structs no longer need to contain `plots`.
+- Added a system to simulate nesting in compute graphs to allow for nested attributes.
+  - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
+- Fixed the precedence of keys in `Base.merge!` and `Base.merge` for `Attributes` arguments [#5332](https://github.com/MakieOrg/Makie.jl/pull/5332)
+- Reworked `Block/@Block` infrastructure to support complex/block recipes. The infrastructure mostly mirrors the `@recipe` infrastructure from plots: [#5465](https://github.com/MakieOrg/Makie.jl/pull/5465)
+  - The names (and types) of converted arguments can be defined in `@Block MyBlock (arg1::Vector, arg2)`.
+  - Like traditional blocks, attributes are defined in a `@attribute begin ... end` block within `@Block`. Names defined outside this will be added as fields instead.
+  - `convert_arguments(::Type{MyBlock}, args...)` can be defined as a conversion between user passed arguments and converted arugments. Note that blocks are not parametric types so `<:MyBlock` is not needed
+  - Similarly `conversion_trait(::Type{MyBlock})` can also be defined
+  - Attribute converts rely on methods of `(::BlockAttributeConvert{Type}(name::Symbol, user_input))`.
+  - `initialize_block!(b::MyBlock)` is used to initialize the recipe with blocks and plots analogously to `plot!(p::MyPlot)`. The parent block `b::MyBlock` should be treated like a figure here, e.g. `Axis(b[1, 1])`
+  - After defining the block, it can be added to a figure like any other block `mb = MyBlock(fig[1, 1])`.
+  - The blocks within `MyBlock` can be accessed via the layout `mb.layout`, `mb.blocks` or `mb[i, j]`.
+- Refactored `Axis` to use the compute graph [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+  - **minor breaking** Custom interactions that manipulated `ax.targetlimits` should now update `ax.localxlimits` and `ax.localylimits` instead and read from either `ax.targetlimits` or `sharedxlimits` and `sharedylimits`. Otherwise they will not correctly update linked axes.
+  - Redisplaying a figure after emptying an axis now resets its limits if they aren't set to specific values.
+- Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Updated how documentation for plots is generated [#5389](https://github.com/MakieOrg/Makie.jl/pull/5389)
+  - **minor breaking** This may lead to duplicate call signatures, attribute and argument information, and examples as those are now added automatically.
 
 ## Unreleased
 
@@ -12,6 +45,7 @@
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Fixed cycling not working in `PlotList`s [#5541](https://github.com/MakieOrg/Makie.jl/pull/5541)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)
+
 - Fixed issue with `transformation` being applied multiple times when set by a user in a recipe that passes applicable attributes to child plots [#5464](https://github.com/MakieOrg/Makie.jl/pull/5464)
 - Reduced file size of PDF and SVG files from CairoMakie containing mesh-based plots [#5446](https://github.com/MakieOrg/Makie.jl/pull/5446)
 - Fixed `arrows2d[!]` plot elements causing CairoMakie SVGs to be rasterized. [#5459](https://github.com/MakieOrg/Makie.jl/pull/#5459)
@@ -44,6 +78,7 @@
 - Fixed `xlims!`/`ylims!` not fully propagating to linked axis [#5239](https://github.com/MakieOrg/Makie.jl/pull/5239)
 - Added docstrings for undocumented plot attributes. Also fixed some missing attribute passthrough and expanded on the available attributes for recipes [#5294](https://github.com/MakieOrg/Makie.jl/pull/5294)
 - Added support for plotting units with DynamicQuantities.jl [#5280](https://github.com/MakieOrg/Makie.jl/pull/5280)
+- Refactored rendering in GLMakie to go through a series of steps abstracted by a render pipeline. This allows rendering to be adjusted from outside and should simplify introducing more post-processing options in the future. [#4689](https://github.com/MakieOrg/Makie.jl/pull/4689)
 - Adjusted compute nodes to keep unspecialized types when transitioning from one graph to another [#5302](https://github.com/MakieOrg/Makie.jl/pull/5302)
 - Added a section to the `CONTRIBUTING.md` about code formatting [#5337](https://github.com/MakieOrg/Makie.jl/pull/5337)
 - Fixed `depthsorting = true` in GLMakie `scatter` plots not sorting correctly depending on camera rotation [#5344](https://github.com/MakieOrg/Makie.jl/pull/5344)

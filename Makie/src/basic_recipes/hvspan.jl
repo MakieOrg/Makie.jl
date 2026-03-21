@@ -10,7 +10,7 @@ Draws horizontal bands spanning across an `Axis`.
 * `xmin, xmax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
     Can be a `Real` or `AbstractVector{<:Real}`
 """
-@recipe HSpan (low, high) begin
+@recipe HSpan (low::Union{Real, RealVector}, high::Union{Real, RealVector}) begin
     "The start of the bands in relative axis units (0 to 1) along the x dimension."
     xmin = 0
     "The end of the bands in relative axis units (0 to 1) along the x dimension."
@@ -30,13 +30,16 @@ Draws vertical bands spanning across an `Axis`.
 * `ymin, ymax` Attributes for setting the start and end positions of bands in relative (0 .. 1) space.
     Can be a `Real` or `AbstractVector{<:Real}`
 """
-@recipe VSpan (low, high) begin
+@recipe VSpan (low::Union{Real, RealVector}, high::Union{Real, RealVector}) begin
     "The start of the bands in relative axis units (0 to 1) along the y dimension."
     ymin = 0
     "The end of the bands in relative axis units (0 to 1) along the y dimension."
     ymax = 1
     documented_attributes(Poly)...
 end
+
+argument_dims(::Type{<:HSpan}, ylow, yhigh) = (2, 2)
+argument_dims(::Type{<:VSpan}, xlow, yhigh) = (1, 1)
 
 function Makie.plot!(p::Union{HSpan, VSpan})
     mi = p isa HSpan ? :xmin : :ymin

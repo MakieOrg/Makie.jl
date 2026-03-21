@@ -23,7 +23,7 @@ If you want to plot intervals from low to high values instead of relative errors
 * `xy_error_low_high` A `VecTypes{4, <:Real}` or `AbstractVector{<:VecTypes{4, <:Real}}` which sets
     the position together with `error_low` and `error_high`.
 """
-@recipe Errorbars (val_low_high::AbstractVector{<:Vec4},) begin
+@recipe Errorbars (val_low_high::AbstractVector{<:Vec{4, <:Real}},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -53,7 +53,7 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 * `val_low_highs` An `AbstractVector{<:VecTypes{3, <:Real}}` setting the x position, lower y position
     and upper y position of bars together. The coordinate interpretation will be swapped if `direction = :x`.
 """
-@recipe Rangebars (val_low_high::AbstractVector{<:Vec3},) begin
+@recipe Rangebars (val_low_high::AbstractVector{<:Vec{3, <:Real}},) begin
     documented_attributes(LineSegments)...
 
     "The width of the whiskers or line caps in screen units."
@@ -65,6 +65,40 @@ If you want to plot errors relative to a reference value, use `errorbars`.
 end
 
 ### conversions for errorbars
+
+argument_dim_kwargs(::Type{<:Union{Errorbars, Rangebars}}) = (:direction,)
+
+function argument_dims(::Type{<:Errorbars}, x, y, e; direction)
+    return ifelse(direction === :y, (1, 2, 2), (1, 2, 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, x, y, l, h; direction)
+    return ifelse(direction === :y, (1, 2, 2, 2), (1, 2, 1, 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, x, y, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, (1, 2, (2, 2)), (1, 2, (1, 1)))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, e; direction)
+    return ifelse(direction === :y, ((1, 2), 2), ((1, 2), 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, l, h; direction)
+    return ifelse(direction === :y, ((1, 2), 2, 2), ((1, 2), 1, 1))
+end
+
+function argument_dims(::Type{<:Errorbars}, xy::VecTypesVector{2}, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, ((1, 2), (2, 2)), ((1, 2), (1, 1)))
+end
+
+function argument_dims(::Type{<:Errorbars}, xye::VecTypesVector{3}; direction)
+    return ifelse(direction === :y, ((1, 2, 2),), ((1, 2, 1),))
+end
+
+function argument_dims(::Type{<:Errorbars}, xylh::VecTypesVector{4}; direction)
+    return ifelse(direction === :y, ((1, 2, 2, 2),), ((1, 2, 1, 1),))
+end
 
 function convert_arguments(::Type{<:Errorbars}, x::RealOrVec, y::RealOrVec, error_both::RealOrVec)
     T = float_type(x, y, error_both)
@@ -100,7 +134,7 @@ function convert_arguments(
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T}
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T}}, error_low::RealOrVec, error_high::RealOrVec) where {T <: Real}
     T_out = float_type(T, float_type(error_low, error_high))
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4{T_out}(x, y, el, eh)
@@ -108,7 +142,7 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1, T2}
+function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2, T1}}, error_low_high::AbstractVector{<:VecTypes{2, T2}}) where {T1 <: Real, T2 <: Real}
     T_out = float_type(T1, T2)
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4{T_out}(x, y, el, eh)
@@ -116,7 +150,7 @@ function convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2,
     return (xyerr,)
 end
 
-function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T}
+function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3, T}}) where {T <: Real}
     T_out = float_type(T)
     xyerr = broadcast(xy_error_both) do (x, y, e)
         Vec4{T_out}(x, y, e, e)
@@ -124,7 +158,27 @@ function convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:
     return (xyerr,)
 end
 
+function convert_arguments(::Type{<:Errorbars}, xy_low_high::VecTypesVector{4, T}) where {T <: Real}
+    T_out = float_type(T)
+    xyerr = broadcast(xy_low_high) do (x, y, l, h)
+        Vec4{T_out}(x, y, l, h)
+    end
+    return (xyerr,)
+end
+
 ### conversions for rangebars
+
+function argument_dims(::Type{<:Rangebars}, x, l, h; direction)
+    return ifelse(direction === :y, (1, 2, 2), (2, 1, 1))
+end
+
+function argument_dims(::Type{<:Rangebars}, x, lh::VecTypesVector{2}; direction)
+    return ifelse(direction === :y, (1, (2, 2)), (2, (1, 1)))
+end
+
+function argument_dims(::Type{<:Rangebars}, xlh::VecTypesVector{3}; direction)
+    return ifelse(direction === :y, ((1, 2, 2),), ((2, 1, 1),))
+end
 
 function convert_arguments(::Type{<:Rangebars}, val::RealOrVec, low::RealOrVec, high::RealOrVec)
     T = float_type(val, low, high)
@@ -135,7 +189,7 @@ end
 function convert_arguments(
         ::Type{<:Rangebars}, val::RealOrVec,
         low_high::AbstractVector{<:VecTypes{2, T}}
-    ) where {T}
+    ) where {T <: Real}
     T_out = float_type(float_type(val), T)
     T_out_ref = Ref{Type{T_out}}(T_out)  # for type-stable capture in the closure below
     val_low_high = broadcast(val, low_high) do val, (low, high)
@@ -144,16 +198,25 @@ function convert_arguments(
     return (val_low_high,)
 end
 
-Makie.convert_arguments(P::Type{<:Rangebars}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
-    convert_arguments(P, x, endpoints.(y))
+function convert_arguments(P::Type{<:Rangebars}, x::AbstractVector, y::AbstractVector{<:Interval})
+    return convert_arguments(P, x, endpoints.(y))
+end
+
+function convert_arguments(::Type{<:Rangebars}, x_low_high::VecTypesVector{3, T}) where {T <: Real}
+    T_out = float_type(T)
+    xlh = broadcast(x_low_high) do (x, l, h)
+        Vec3{T_out}(x, l, h)
+    end
+    return (xlh,)
+end
 
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4}}}})
+function Makie.plot!(plot::Errorbars{<:Tuple{AbstractVector{<:Vec{4, <:Real}}}})
     return _plot_bars!(plot)
 end
-function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3}}}})
+function Makie.plot!(plot::Rangebars{<:Tuple{AbstractVector{<:Vec{3, <:Real}}}})
     return _plot_bars!(plot)
 end
 

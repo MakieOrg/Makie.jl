@@ -16,6 +16,8 @@ to `stop_angle`.
     resolution = 361
 end
 
+argument_dims(::Type{<:Arc}, args...) = nothing
+
 function plot!(p::Arc)
     map!(p, [:origin, :radius, :start_angle, :stop_angle, :resolution], :positions) do origin, radius, start_angle, stop_angle, resolution
         return map(range(start_angle, stop = stop_angle, length = resolution)) do angle

@@ -13,7 +13,10 @@ Plots a band between lower and upper bounds.
     (x, y) or (x, y, z) coordinates of the lower and upper limits of the band respectively.
 * Setting `direction = :y` will reinterpret (x, y) as (y, x). (2D only)
 """
-@recipe Band (lowerpoints, upperpoints) begin
+@recipe Band (
+    lowerpoints::VecTypesVector{N, <:Real} where {N},
+    upperpoints::VecTypesVector{N, <:Real} where {N},
+) begin
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
@@ -26,11 +29,19 @@ Plots a band between lower and upper bounds.
     shading = NoShading
 end
 
-function convert_arguments(::Type{<:Band}, x, ylower, yupper)
+argument_dim_kwargs(::Type{<:Band}) = (:direction,)
+function argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
+    return direction === :x ? (1, 2, 2) : (2, 1, 1)
+end
+function argument_dims(::Type{<:Band}, lower::VecTypesVector{N}, upper::VecTypesVector{N}; direction) where {N}
+    return direction === :x ? ((1, 2), (1, 2)) : ((2, 1), (2, 1))
+end
+
+function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yupper::RealVector)
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
 end
 
-function convert_arguments(P::Type{<:Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval})
+function convert_arguments(P::Type{<:Band}, x::AbstractVector, y::AbstractVector{<:Interval})
     return convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
 end
 

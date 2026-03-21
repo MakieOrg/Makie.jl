@@ -288,13 +288,7 @@ All volume plots are derived from casting rays for each drawn pixel. These rays
 intersect with the volume data to derive some color, usually based on the given
 colormap. How exactly the color is derived depends on the algorithm used.
 """
-@recipe Volume (
-    x::EndPoints,
-    y::EndPoints,
-    z::EndPoints,
-    # TODO: consider using RGB{N0f8}, RGBA{N0f8} instead of Vec/RGB(A){Float32}
-    volume::AbstractArray{<:Union{Float32, Vec3f, RGB{Float32}, Vec4f, RGBA{Float32}}, 3},
-) begin
+@recipe Volume (x, y, z, volume) begin
     """
     Sets the volume algorithm that is used. Available algorithms are:
     * `:iso`: Shows an isovalue surface within the given float data. For this only samples within `isovalue - isorange .. isovalue + isorange` are included in the final color of a pixel.
@@ -322,6 +316,7 @@ colormap. How exactly the color is derived depends on the algorithm used.
     mixin_generic_plot_attributes()...
     mixin_shading_attributes()...
     mixin_colormap_attributes()...
+    backlight = 1.0
 end
 
 const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
@@ -329,7 +324,7 @@ const VecOrMat{T} = Union{AbstractVector{T}, AbstractMatrix{T}}
 """
 Plots a surface defined by a grid of vertices.
 """
-@recipe Surface (x::VecOrMat{<:FloatType}, y::VecOrMat{<:FloatType}, z::VecOrMat{<:FloatType}) begin
+@recipe Surface (x, y, z) begin
     "Can be set to an `Matrix{<: Union{Number, Colorant}}` to color surface independent of the `z` component. If `color=nothing`, it defaults to `color=z`. Can also be a `Makie.AbstractPattern`."
     color = nothing
     """
@@ -663,7 +658,12 @@ changes in patch releases.
     `ClosedInterval` or `Tuple{Real, Real}`, and `chunk` is a 3D array of voxel data. Each non-air
     voxel is rendered as a small cube.
 """
-@recipe Voxels (x, y, z, chunk) begin
+@recipe Voxels (
+    x::EndPoints{Float32},
+    y::EndPoints{Float32},
+    z::EndPoints{Float32},
+    chunk::Array{<:Real, 3},
+) begin
     "A function that controls which values in the input data are mapped to invisible (air) voxels."
     is_air = x -> isnothing(x) || ismissing(x) || isnan(x)
     """

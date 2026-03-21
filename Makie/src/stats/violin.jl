@@ -2,7 +2,7 @@
 Draws a violin plot which consists of pairs of density plots drawn side by side.
 The density pairs can be sourced from the same or from different data.
 """
-@recipe Violin (x, y) begin
+@recipe Violin (x::RealVector, y::RealVector) begin
     "Number of points used per density plot."
     npoints = 200
     "Boundary of the density estimation, determined automatically if `automatic`."
@@ -87,6 +87,7 @@ function attribute_groups(::Type{<:Violin})
 end
 
 conversion_trait(::Type{<:Violin}) = SampleBased()
+argument_dim_kwargs(::Type{<:Violin}) = (:orientation,)
 
 getuniquevalue(v, idxs) = v
 
