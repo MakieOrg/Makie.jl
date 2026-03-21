@@ -18,7 +18,7 @@ the 75% percentile) with a midline marking the median
 - `x`: positions of the categories
 - `y`: variables within the boxes
 """
-@recipe BoxPlot (x, y) begin
+@recipe BoxPlot (x::RealVector, y::RealVector) begin
     filtered_attributes(CrossBar, exclude = (:notchmin, :notchmax, :show_midline, :midlinecolor, :midlinewidth))...
 
     "Vector of statistical weights (length of data). By default, each observation has weight `1`."
@@ -64,6 +64,7 @@ the 75% percentile) with a midline marking the median
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
+argument_dim_kwargs(::Type{<:BoxPlot}) = (:orientation,)
 
 _cycle(v::AbstractVector, idx::Integer) = v[mod1(idx, length(v))]
 _cycle(v, idx::Integer) = v

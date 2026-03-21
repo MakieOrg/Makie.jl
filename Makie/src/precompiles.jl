@@ -25,13 +25,13 @@ let
         logo()
         f = Figure()
         ax = Axis(f[1, 1])
-        Makie.initialize_block!(ax)
         base_path = normpath(joinpath(dirname(pathof(Makie)), "..", "precompile"))
         shared_precompile = joinpath(base_path, "shared-precompile.jl")
         include(shared_precompile)
         # Cleanup globals to avoid serializing stale state (fonts, figures, tasks)
         # Note: __init__ doesn't run during precompilation, so we must always clean up here
         cleanup_globals()
+        generate_buffers(default_pipeline())
     end
     nothing
 end

@@ -12,45 +12,52 @@ function round_to_IRect2D(r::Rect{2})
     return Rect{2, Int}(newori, newwidth)
 end
 
+function calculate_scenearea(finalbbox, limits, aspect)
+    w = width(finalbbox)
+    h = height(finalbbox)
+
+    if w == 0 || h == 0
+        x = left(finalbbox) + 0.5f0 * w
+        y = bottom(finalbbox) + 0.5f0 * h
+        return round_to_IRect2D(Rect2f(x, y, 0, 0))
+    end
+
+    # as = mw / mh
+    viewport_aspect = w / h
+    mw, mh = w, h
+
+    if aspect isa AxisAspect
+        aspect = aspect.aspect
+    elseif aspect isa DataAspect
+        aspect = limits.widths[1] / limits.widths[2]
+    end
+
+    if !isnothing(aspect)
+        if viewport_aspect >= aspect
+            # too wide
+            mw *= aspect / viewport_aspect
+        else
+            # too high
+            mh *= viewport_aspect / aspect
+        end
+    end
+
+    restw = w - mw
+    resth = h - mh
+
+    # l = left(bbox) + alignment[1] * restw
+    # b = bottom(bbox) + alignment[2] * resth
+    l = left(finalbbox) + 0.5f0 * restw
+    b = bottom(finalbbox) + 0.5f0 * resth
+
+    newbbox = BBox(l, l + mw, b, b + mh)
+    @assert all(isfinite, (newbbox.widths..., newbbox.origin...))
+    return round_to_IRect2D(newbbox)
+end
+
 function sceneareanode!(finalbbox, limits, aspect)
     area_obs = Observable(Rect2i(); ignore_equal_values = true)
-    onany(finalbbox, limits, aspect; update = true) do bbox, limits, aspect
-        w = width(bbox)
-        h = height(bbox)
-        # as = mw / mh
-        as = w / h
-        mw, mh = w, h
-
-        if aspect isa AxisAspect
-            aspect = aspect.aspect
-        elseif aspect isa DataAspect
-            aspect = limits.widths[1] / limits.widths[2]
-        end
-
-        if !isnothing(aspect)
-            if as >= aspect
-                # too wide
-                mw *= aspect / as
-            else
-                # too high
-                mh *= as / aspect
-            end
-        end
-
-        restw = w - mw
-        resth = h - mh
-
-        # l = left(bbox) + alignment[1] * restw
-        # b = bottom(bbox) + alignment[2] * resth
-        l = left(bbox) + 0.5f0 * restw
-        b = bottom(bbox) + 0.5f0 * resth
-
-        newbbox = BBox(l, l + mw, b, b + mh)
-        if all(isfinite, (newbbox.widths..., newbbox.origin...))
-            area_obs[] = round_to_IRect2D(newbbox)
-        end
-        return
-    end
+    onany(calculate_scenearea, finalbbox, limits, aspect; update = true)
     return area_obs
 end
 
@@ -466,6 +473,17 @@ end
 
 function apply_format(value, formatstring::String)
     return Format.format(formatstring, value)
+end
+
+function apply_format(value::RichText, formatstring::String)
+    placeholder = "{PLACEHOLDER}"
+    formatted = Format.format(formatstring, placeholder)
+    if contains(formatted, placeholder)
+        pre, post = String.(split(formatted, placeholder))
+        return rich(pre, value, post)
+    else
+        return rich(formatted)
+    end
 end
 
 Makie.get_scene(ax::Axis) = ax.scene

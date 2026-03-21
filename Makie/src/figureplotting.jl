@@ -3,20 +3,19 @@ struct AxisPlot
     plot::AbstractPlot
 end
 
-struct FigureAxis
-    figure::Figure
-    axis::Any
-end
-
-
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
 
+Base.show(io::IO, fa::FigureBlock) = show(io, fa.figure)
+Base.show(io::IO, ::MIME"text/plain", fa::FigureBlock) = print(io, "FigureBlock()")
+
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(fa::FigureBlock, args...) = iterate((fa.figure, fa.block), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
 
 get_scene(ap::AxisPlot) = get_scene(ap.axis.scene)
-get_figure(fa::FigureAxis) = fa.figure
+get_scene(fa::FigureBlock) = get_scene(fa.figure.scene)
+get_figure(fa::FigureBlock) = fa.figure
 get_figure(fap::FigureAxisPlot) = fap.figure
 get_figure(fig::Figure) = fig
 get_figure(::Any) = nothing
@@ -104,7 +103,7 @@ function extract_attributes(dictlike, key)
     return to_dict(dictlike)
 end
 
-function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Dict)
+function create_axis_for_plot(figure::Union{Figure, Scene}, plot::AbstractPlot, attributes::Dict)
     axis_kw = extract_attributes(attributes, :axis)
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
@@ -213,7 +212,7 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, ::Nothing)
         return figure
     else
         figure[1, 1] = ax
-        return FigureAxis(figure, ax)
+        return FigureBlock(figure, ax)
     end
 end
 
@@ -279,12 +278,13 @@ function create_axis_like(plot::AbstractPlot, attributes::Dict, gsp::GridSubposi
     return ax
 end
 
-figurelike_return(fa::FigureAxis, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.axis, plot)
+figurelike_return(fa::FigureBlock, plot::AbstractPlot) = FigureAxisPlot(fa.figure, fa.block, plot)
 figurelike_return(ax::AbstractAxis, plot::AbstractPlot) = AxisPlot(ax, plot)
 figurelike_return!(::AbstractAxis, plot::AbstractPlot) = plot
 figurelike_return!(::Union{Plot, Scene}, plot::AbstractPlot) = plot
 
 update_state_before_display!(f::FigureAxisPlot) = update_state_before_display!(f.figure)
+update_state_before_display!(f::FigureBlock) = update_state_before_display!(f.figure)
 
 function update_state_before_display!(f::Figure)
     for c in f.content
@@ -331,6 +331,7 @@ default_plot_func(::typeof(plot), args) = plotfunc(plottype(map(to_value, args).
             end
         end
     end
+    get!(attributes, :force_dimconverts, true)
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     ax = create_axis_like(plot, figkws, figarg)
     plot!(ax, plot)
@@ -342,7 +343,7 @@ function set_axis_attributes!(T::Type{<:AbstractAxis}, attributes::Dict, plot::P
     isnothing(conversions) && return
     for i in 1:3
         key = Symbol("dim$(i)_conversion")
-        if hasfield(T, key)
+        if hasfield(T, key) || is_attribute(T, key)
             attributes[key] = conversions[i]
         end
     end
@@ -400,6 +401,7 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
     # inserts global state from axis into plot attributes if they exist
     get!(attributes, :dim_conversions, get_conversions(ax))
 
+    get!(attributes, :force_dimconverts, true)
     plot = Plot{default_plot_func(F, pargs)}(pargs, attributes)
     if ax isa Figure && !(plot isa PlotSpecPlot)
         error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
@@ -413,6 +415,7 @@ end
     if !isnothing(conversion)
         get!(attributes, :dim_conversions, conversion)
     end
+    get!(attributes, :force_dimconverts, scene isa Scene)
     plot = Plot{default_plot_func(F, args)}(args, attributes)
     plot!(scene, plot)
     return plot
@@ -430,7 +433,7 @@ function update_state_before_display!(ax::AbstractAxis)
     return
 end
 
-plot!(fa::FigureAxis, plot) = plot!(fa.axis, plot)
+plot!(fa::FigureBlock, plot) = plot!(fa.block, plot)
 
 
 function plot!(ax::AbstractAxis, plot::AbstractPlot)

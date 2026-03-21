@@ -348,7 +348,7 @@ end
         @test sprint(show, graph[:output2].parent) == "ComputeEdge(bar(…), 1 input, 1 output, 0 dependents)"
     end
 
-    @testset "brief show()" begin
+    @testset "long show()" begin
         m = MIME"text/plain"()
         @test sprint(show, m, parent) == "ComputeGraph():\n  Inputs:\n    :in1 => Input(:in1, 1)\n\n  Outputs:\n    :in1 => Computed(:in1, 1)"
         @test sprint(show, m, graph) == "ComputeGraph():\n  Inputs:\n    :in2 => Input(:in2, 2)\n\n  Outputs:\n    :added      => Computed(:added, #undef)\n    :in1        => Computed(:in1, 1)\n    :in2        => Computed(:in2, #undef)\n    :output     => Computed(:output, #undef)\n    :output2    => Computed(:output2, #undef)\n    :output3    => Computed(:output3, #undef)\n    :subtracted => Computed(:subtracted, #undef)"
@@ -582,6 +582,45 @@ end
             @test g.observables[:out1][] == Float32[2, 3, 6, 7, 1]
             @test g.observables[:out2][] == Float32[6, 7, 2, 3, 1]
             @test g.observables[:zipped][] == tuple.(Float32[2, 3, 6, 7, 1], Float32[6, 7, 2, 3, 1])
+        end
+
+        @testset "Recursive Loop" begin
+            graph = ComputeGraph()
+            add_input!(graph, :input, 0)
+            map!(x -> (x, x), graph, :input, [:out1, :out2])
+
+            triggered = Symbol[]
+            on(graph.out1) do x
+                push!(triggered, :obs1)
+                if isodd(x)
+                    graph.input = x + 1
+                end
+                return
+            end
+            on(graph.out2) do x
+                push!(triggered, :obs2)
+                if isodd(x)
+                    graph.input = x + 1
+                end
+                return
+            end
+
+            @test graph.input[] == 0
+            @test isempty(triggered)
+
+            graph.input = 1
+            # one obs should trigger the 1 + 1
+            # this causes out1, out2 to update and be marked as changed
+            # this triggers on(onchange) again (from inside on(onchange))
+            # this should update obs1.val and obs2.val and then mark both as outdated
+            # and then trigger all that are marked outdated, which should not contain copies
+            # so it should trigger both here, with neither updating the graph
+            # we should then step back to the original on(onchange)
+            # which should not have anything left to process as the inner on(onchange) processed everything
+            @test triggered == [:obs1, :obs1, :obs2] || triggered == [:obs2, :obs2, :ob1]
+            @test graph.input[] == 2
+            @test ComputePipeline.get_observable!(graph.out1)[] == 2
+            @test ComputePipeline.get_observable!(graph.out2)[] == 2
         end
     end
 
@@ -1102,5 +1141,559 @@ end
 
     @testset "error on double init" begin
         @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
+    end
+end
+
+using ComputePipeline: ComputeGraphView
+
+@testset "Nested graphs" begin
+    graph = ComputeGraph()
+
+    @testset "Inputs" begin
+        add_input!(graph, :a, :a, :a, 1)
+        add_input!(graph, (:a, :a, :b), 2)
+        add_input!(graph.a, :b, 3)
+        add_input!(graph.a, :c, :a, 4)
+
+        @test haskey(graph.inputs, Symbol("a.a.a"))
+        @test haskey(graph.inputs, Symbol("a.a.b"))
+        @test haskey(graph.inputs, Symbol("a.b"))
+        @test haskey(graph.inputs, Symbol("a.c.a"))
+        @test graph[Symbol("a.a.a")][] == 1
+        @test graph[Symbol("a.a.b")][] == 2
+        @test graph[Symbol("a.b")][] == 3
+        @test graph[Symbol("a.c.a")][] == 4
+
+        @test graph.outputs[Symbol("a.a.a")].name == Symbol("a.a.a")
+        @test graph.outputs[Symbol("a.a.b")].name == Symbol("a.a.b")
+        @test graph.outputs[Symbol("a.b")].name == Symbol("a.b")
+        @test graph.outputs[Symbol("a.c.a")].name == Symbol("a.c.a")
+
+        @test graph.inputs[Symbol("a.a.a")].name == Symbol("a.a.a")
+        @test graph.inputs[Symbol("a.a.b")].name == Symbol("a.a.b")
+        @test graph.inputs[Symbol("a.b")].name == Symbol("a.b")
+        @test graph.inputs[Symbol("a.c.a")].name == Symbol("a.c.a")
+
+        f(k, v) = v + 1
+        add_input!(f, graph, :b, :a, :a, 1)
+        add_input!(f, graph, (:b, :a, :b), 2)
+        add_input!(f, graph.b, :b, 3)
+        add_input!(f, graph.b, :c, :a, 4)
+
+        @test haskey(graph.inputs, Symbol("b.a.a"))
+        @test haskey(graph.inputs, Symbol("b.a.b"))
+        @test haskey(graph.inputs, Symbol("b.b"))
+        @test haskey(graph.inputs, Symbol("b.c.a"))
+        @test graph.b.a.a[] == 2
+        @test graph.b.a.b[] == 3
+        @test graph.b.b[] == 4
+        @test graph.b.c.a[] == 5
+
+        add_constant!(graph, :a, :const1, 0)
+        @test graph.a.const1[] == 0
+        add_constant!(graph, (:a, :const2), 0)
+        @test graph.a.const2[] == 0
+        add_constant!(graph.a, :const3, 0)
+        @test graph.a.const3[] == 0
+    end
+
+    @testset "Interfaces" begin
+        # a.a.a and a.a.b are one element in graph.a (graph.a.a)
+        @test length(graph.a) == 6
+        @test length(graph.a.a) == 2
+        v = collect(graph.a.a)
+        @test length(v) == 2
+        @test Pair(:a, graph.a.a.a) in v
+        @test Pair(:b, graph.a.a.b) in v
+
+        result1, state = iterate(graph.a.a)
+        result2, state = iterate(graph.a.a, state)
+        final = iterate(graph.a.a, state)
+        @test result1 in v
+        @test result2 in v
+        @test isnothing(final)
+
+        @test keys(graph.a.a) == Set([:a, :b])
+        @test haskey(graph.a, :a)
+        @test haskey(graph.a, :a, :a)
+        @test haskey(graph.a, :a, :b)
+        @test !haskey(graph.a, :a, :c)
+        @test haskey(graph.a, :b)
+        @test !haskey(graph.a, :d)
+        @test !haskey(graph.a, :d, :a, :e)
+
+        N = length(graph.nesting.keytables)
+        empty_view = ComputeGraphView(graph, :c)
+        @test empty_view.nested_trace.keys == [:c]
+        @test empty_view.nested_trace.next_index == N + 1
+        @test length(graph.nesting.keytables) == N + 1
+        @test isempty(graph.nesting.keytables[N + 1])
+
+        empty_view2 = ComputeGraphView(graph.c, :a)
+        @test empty_view2.nested_trace.keys == [:c, :a]
+        @test empty_view2.nested_trace.next_index == N + 2
+        @test length(graph.nesting.keytables) == N + 2
+        @test graph.nesting.keytables[N + 1][:a] == N + 2
+        @test isempty(graph.nesting.keytables[N + 2])
+    end
+
+    @testset "Access" begin
+        @test graph.a isa ComputeGraphView
+        @test graph.a.a isa ComputeGraphView
+        @test graph.a.a.a isa Computed
+        @test graph.a.a.a[] == 1
+        @test graph.a.a.b[] == 2
+        @test graph.a[].a[].a[] == 1
+    end
+
+    @testset "Compute/map!" begin
+        # nested nodes -> unnested node
+        map!((a, b) -> (a, b), graph, [graph.a.a.a, Symbol("a.a.b")], :x)
+        @test graph.x[] == (1, 2)
+
+        graph.a.a.a[] = 5
+        graph.a.a.b[] = -1
+        @test graph.a.a.a[] == 5
+        @test graph.a.a.b[] == -1
+        @test graph.x[] == (5, -1)
+
+        # working inside nested view, nested nodes -> nested node
+        map!(*, graph.a, [:b, (:c, :a)], :d)
+        @test graph.a.d[] == graph.a.b[] * graph.a.c.a[]
+
+        # direct node access should also work outside the view
+        map!((a, b) -> (b, a), graph.a, [:b, graph.x], [:swapped_x, :swapped_b], init = ((-1, -1), -2))
+        # wrong results from bad init (for testing)
+        @test graph.a.swapped_x[] == (-1, -1)
+        @test graph.a.swapped_b[] == -2
+        graph.a.b = 7
+        @test graph.a.swapped_x[] == graph.x[]
+        @test graph.a.swapped_b[] == graph.a.b[]
+
+        map!(x -> (x, -x), graph, (:a, :c, :a), [(:a, :c, :plus), (:a, :c, :minus)])
+        @test graph.a.c.minus[] == -graph.a.c.a[]
+        @test graph.a.c.plus[] == graph.a.c.a[]
+
+        map!(x -> 2x, graph, (:a, :c, :a), :double)
+        @test graph.double[] == 2graph.a.c.a[]
+
+        map_latest!(graph.a, [:b], [(:c, :double_b)]) do x
+            return (x * 2,)
+        end
+        @test graph.a.c.double_b[] == 2 * graph.a.b[]
+
+        # names used for callbacks
+        add_input!((k, v) -> k === Symbol(:c), graph, :c, 1)
+        add_input!((k, v) -> k === Symbol(:d, :(.), :a), graph, :d, :a, 1)
+        add_input!((k, v) -> k === Symbol("d.b.c"), graph, :d, :b, :c, 1)
+        @test graph.c[]
+        @test graph.d.a[]
+        @test graph.d.b.c[]
+
+        register_computation!(graph, [(:a, :a, :b), :x], [(:a, :a, :n), :m]) do args, changed, cached
+            ks = isnothing(cached) ? (true, true) : (haskey(cached, Symbol("a.a.n")), haskey(cached, :m))
+            aab = Symbol("a.a.b")
+            return (
+                haskey(args, aab) && haskey(changed, aab) && ks[1],
+                haskey(args, :x) && haskey(changed, :x) && ks[2],
+            )
+        end
+        @test graph.a.a.n[]
+        @test graph.m[]
+        graph.a.a.b[] = 99
+        @test graph.a.a.n[]
+        @test graph.m[]
+    end
+
+    @testset "Update" begin
+        update!(graph, (:a, :a, :a) => 10)
+        @test graph.a.a.a[] == 10
+        update!(graph, Dict((:a, :a, :b) => 10))
+        @test graph.a.a.b[] == 10
+        update!(graph, [(:a, :b) => 10])
+        @test graph.a.b[] == 10
+
+        update!(graph.a, (:a, :a) => 12)
+        @test graph.a.a.a[] == 12
+        update!(graph.a, Dict((:a, :b) => 12))
+        @test graph.a.a.b[] == 12
+        update!(graph.a, [(:a, :a) => 12])
+        @test graph.a.a.a[] == 12
+
+        update!(graph.a, :b => 12)
+        @test graph.a.b[] == 12
+        update!(graph.a, Dict(:b => 10))
+        @test graph.a.b[] == 10
+        update!(graph.a, [:b => 9])
+        @test graph.a.b[] == 9
+        update!(graph.a, b = 13)
+        @test graph.a.b[] == 13
+
+        update!(graph.a.c, :a => 12)
+        @test graph.a.c.a[] == 12
+        update!(graph.a.c, Dict(:a => 10))
+        @test graph.a.c.a[] == 10
+        update!(graph.a.c, [:a => 9])
+        @test graph.a.c.a[] == 9
+        update!(graph.a.c, a = 21)
+        @test graph.a.c.a[] == 21
+
+        update!(graph.b.a, a = 10)
+        graph.b.a.a[] == 11
+
+        graph.b.a.b = 9
+        @test graph.b.a.b[] == 10
+    end
+
+    # Node is either part of a nesting chain or a value
+    @testset "Restrictions" begin
+        add_input!(graph, :a, :y, 1)
+        @test_throws ErrorException add_input!(graph, :a, :y, :c, 1)
+        add_input!(graph, :a, :z, :a, 1)
+        @test_throws ErrorException add_input!(graph, :a, :z, 1)
+    end
+end
+
+@testset "ExplicitUpdate and force_update" begin
+
+    @testset "forced Input update propagation" begin
+        graph = ComputeGraph()
+
+        add_input!(graph, :normal, 1)
+        add_input!(graph, :forced, 1, force_update = true)
+        add_input!((k, v) -> v + 1, graph, :normalf, 1)
+        add_input!((k, v) -> v + 1, graph, :forcedf, 1, force_update = true)
+
+        @test graph.normal.parent.force_update == false
+        @test graph.forced.parent.force_update == true
+        @test graph.normalf.parent.force_update == false
+        @test graph.forcedf.parent.force_update == true
+
+        function record_metrics(args, changed, cached)
+            metrics = isnothing(cached) ? Tuple{Bool, Int}[] : cached[1]
+            push!(metrics, (changed[1], args[1]))
+            return (metrics,)
+        end
+
+        register_computation!(record_metrics, graph, [:normal], [:normal_metrics])
+        register_computation!(record_metrics, graph, [:forced], [:forced_metrics])
+        register_computation!(record_metrics, graph, [:normalf], [:normalf_metrics])
+        register_computation!(record_metrics, graph, [:forcedf], [:forcedf_metrics])
+
+        @test graph.normal_metrics[] == [(true, 1)]
+        @test graph.forced_metrics[] == [(true, 1)]
+        @test graph.normalf_metrics[] == [(true, 2)]
+        @test graph.forcedf_metrics[] == [(true, 2)]
+
+        update!(graph, :normal => 1, :forced => 1, :normalf => 1, :forcedf => 1)
+
+        @test graph.normal_metrics[] == [(true, 1)]
+        @test graph.forced_metrics[] == [(true, 1), (true, 1)]
+        @test graph.normalf_metrics[] == [(true, 2)]
+        @test graph.forcedf_metrics[] == [(true, 2), (true, 2)]
+
+        update!(graph, :normal => 2, :forced => 2, :normalf => 2, :forcedf => 2)
+
+        @test graph.normal_metrics[] == [(true, 1), (true, 2)]
+        @test graph.forced_metrics[] == [(true, 1), (true, 1), (true, 2)]
+        @test graph.normalf_metrics[] == [(true, 2), (true, 3)]
+        @test graph.forcedf_metrics[] == [(true, 2), (true, 2), (true, 3)]
+    end
+
+    @testset "ExplicitUpdate" begin
+        graph = ComputeGraph()
+        add_input!(graph, :normal, 1)
+        add_input!(graph, :forced, 1, force_update = true)
+        ComputePipeline.set_type!(graph.normal, Any)
+        ComputePipeline.set_type!(graph.forced, Any)
+
+        evaled = Symbol[]
+
+        # passhtrough
+        map!(graph, :normal, :normal2) do x
+            push!(evaled, :normal2)
+            return x
+        end
+        map!(graph, :forced, :forced2) do x
+            push!(evaled, :forced2)
+            return x
+        end
+        ComputePipeline.set_type!(graph.normal2, Any)
+        ComputePipeline.set_type!(graph.forced2, Any)
+
+        # Check that set_type!() works
+        @test isdefined(graph.normal, :value) && (graph.normal.value isa Base.RefValue{Any})
+        @test isdefined(graph.normal2, :value) && (graph.normal2.value isa Base.RefValue{Any})
+        @test isdefined(graph.forced, :value) && (graph.forced.value isa Base.RefValue{Any})
+        @test isdefined(graph.forced2, :value) && (graph.forced2.value isa Base.RefValue{Any})
+
+        # set in computation
+        for source in (:normal, :forced)
+            for mode in (:deny, :auto, :force)
+                next = Symbol("$(mode)_$(source)")
+                final = Symbol("$(mode)_$(source)2")
+                map!(graph, source, next) do x
+                    push!(evaled, next)
+                    return ExplicitUpdate(unwrap_explicit_update(x), mode)
+                end
+                map!(graph, next, final) do x
+                    push!(evaled, final)
+                    return x
+                end
+            end
+        end
+
+        # These should always trigger.
+        # input.forced -> output.forced always marks output.forced dirty
+        # output.forced -> (name in always) always runs but may not propagate further
+        always = [:forced2, :deny_forced, :auto_forced, :force_forced]
+
+        # Normal value, not repeated
+        @test isempty(evaled)
+        @test graph.normal[] == 1
+        @test graph.normal2[] == 1
+        @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+        @test graph.force_normal[] == ExplicitUpdate(1, :force)
+        @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+        @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+        @test graph.forced[] == 1
+        @test graph.forced2[] == 1
+        @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+        @test graph.force_forced[] == ExplicitUpdate(1, :force)
+        @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+        @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+        @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+        @test evaled == [
+            :normal2,
+            :deny_normal, :auto_normal, :force_normal,
+            :deny_normal2, :auto_normal2, :force_normal2,
+            always...,
+            :deny_forced2, :auto_forced2, :force_forced2,
+        ]
+        empty!(evaled)
+
+        # Check that set_type!() did not get reset/overwritten
+        @test graph.normal.value isa Base.RefValue{Any}
+        @test graph.normal2.value isa Base.RefValue{Any}
+        @test graph.forced.value isa Base.RefValue{Any}
+        @test graph.forced2.value isa Base.RefValue{Any}
+
+        @testset "equal value updates" begin
+            # Normal value, repeated
+            update!(graph, :normal => 1, :forced => 1)
+            @test isempty(evaled)
+            @test graph.normal[] == 1
+            @test graph.normal2[] == 1
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == 1
+            @test graph.forced2[] == 1
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [always..., :force_forced2]
+            empty!(evaled)
+
+            # forced update
+            # should get through Input, triggering first layer of nodes
+            # second layer depends on settings of those updates
+            update!(graph, :normal => ExplicitUpdate(1, :force), :forced => ExplicitUpdate(1, :force))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force)
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :force)
+            @test graph.forced2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :force_normal2,
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+
+            # auto update - should behave like same value update without ExplicitUpdate
+            update!(graph, :normal => ExplicitUpdate(1, :auto), :forced => ExplicitUpdate(1, :auto))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force) # same inner value, no update
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :auto) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(1, :force) # same value with :auto, no update
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+
+            # deny update - also same as equal value update as those deny
+            update!(graph, :normal => ExplicitUpdate(1, :deny), :forced => ExplicitUpdate(1, :deny))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(1, :force) # update denied
+            @test graph.normal2[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(1, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(1, :force)
+            @test graph.forced[] == ExplicitUpdate(1, :deny) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(1, :force) # update denied
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(1, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(1, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(1, :force)
+            @test evaled == [
+                always...,
+                :force_forced2,
+            ]
+            empty!(evaled)
+        end
+
+        @testset "Changed value updates" begin
+            # Normal value, changed
+            update!(graph, :normal => 2, :forced => 2)
+            @test isempty(evaled)
+            @test graph.normal[] == 2
+            @test graph.normal2[] == 2
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny) # update denied by wrapping
+            @test graph.auto_normal[] == ExplicitUpdate(2, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(2, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(2, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(2, :force)
+            @test graph.forced[] == 2
+            @test graph.forced2[] == 2
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny) # update denied by wrapping
+            @test graph.auto_forced[] == ExplicitUpdate(2, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(2, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(2, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(2, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # forced update, same as above as different values update
+            update!(graph, :normal => ExplicitUpdate(3, :force), :forced => ExplicitUpdate(3, :force))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(3, :force)
+            @test graph.normal2[] == ExplicitUpdate(3, :force)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(3, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(3, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(3, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(3, :force)
+            @test graph.forced[] == ExplicitUpdate(3, :force)
+            @test graph.forced2[] == ExplicitUpdate(3, :force)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(3, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(3, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(3, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(3, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # auto update - should behave like same value update without ExplicitUpdate
+            update!(graph, :normal => ExplicitUpdate(4, :auto), :forced => ExplicitUpdate(4, :auto))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(4, :auto)
+            @test graph.normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(4, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(4, :force)
+            @test graph.forced[] == ExplicitUpdate(4, :auto)
+            @test graph.forced2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(4, :auto)
+            @test graph.force_forced[] == ExplicitUpdate(4, :force)
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(4, :force)
+            @test evaled == [
+                :normal2,
+                :deny_normal, :auto_normal, :force_normal,
+                :auto_normal2, :force_normal2,
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+
+            # deny update - also same as equal value update as those deny
+            update!(graph, :normal => ExplicitUpdate(5, :deny), :forced => ExplicitUpdate(5, :deny))
+            @test isempty(evaled)
+            @test graph.normal[] == ExplicitUpdate(4, :auto) # update denied
+            @test graph.normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.deny_normal[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal[] == ExplicitUpdate(4, :force)
+            @test graph.deny_normal2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_normal2[] == ExplicitUpdate(4, :auto)
+            @test graph.force_normal2[] == ExplicitUpdate(4, :force)
+            @test graph.forced[] == ExplicitUpdate(5, :deny) # update forced by Input
+            @test graph.forced2[] == ExplicitUpdate(4, :auto) # update denied
+            @test graph.deny_forced[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced[] == ExplicitUpdate(5, :auto) # Input forces these to run so that
+            @test graph.force_forced[] == ExplicitUpdate(5, :force) # :deny doesn't act before it gets replace
+            @test graph.deny_forced2[] == ExplicitUpdate(1, :deny)
+            @test graph.auto_forced2[] == ExplicitUpdate(5, :auto)
+            @test graph.force_forced2[] == ExplicitUpdate(5, :force)
+            @test evaled == [
+                always...,
+                :auto_forced2, :force_forced2,
+            ]
+            empty!(evaled)
+        end
     end
 end

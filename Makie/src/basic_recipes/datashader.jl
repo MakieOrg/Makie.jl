@@ -476,7 +476,9 @@ function Makie.plot!(p::DataShader{<:Tuple{Dict{String, Vector{Point{2, Float32}
 end
 
 data_limits(p::DataShader)::Rect3d = p.data_limits[]
-boundingbox(p::DataShader, space::Symbol = :data)::Rect3d = apply_transform_and_model(p, p.data_limits[])
+function boundingbox(p::DataShader, space::Symbol = :data)::Rect3d
+    return apply_transform_and_model(p, p.data_limits[])
+end
 
 function convert_arguments(P::Type{<:Union{MeshScatter, Image, Surface, Contour, Contour3d}}, canvas::Canvas, operation = automatic, local_operation = identity)
     pixel = Aggregation.get_aggregation(canvas; operation = operation, local_operation = local_operation)
@@ -490,6 +492,7 @@ struct FakePlot <: AbstractPlot{Poly}
 end
 Base.getindex(x::FakePlot, key::Symbol) = getindex(getfield(x, :attributes), key)
 
+# This allows datashader to create multiple legend entries, one for each category
 function get_plots(plot::DataShader)
     return map(collect(plot._categories[])) do (name, color)
         return FakePlot(Attributes(; plot = plot, label = name, color = color))
@@ -497,7 +500,7 @@ function get_plots(plot::DataShader)
 end
 
 function legendelements(plot::FakePlot, legend)
-    return [PolyElement(; plots = plot.attributes.plot[], color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
+    return [PolyElement(; color = plot.attributes.color, strokecolor = legend.polystrokecolor, strokewidth = legend.polystrokewidth)]
 end
 
 # Sadly we must define the colorbar here and can't use the default fallback,
