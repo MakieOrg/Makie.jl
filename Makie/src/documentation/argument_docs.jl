@@ -112,6 +112,8 @@ function conversion_docs(PlotType)
     return Markdown.parse(str)
 end
 
+_extract_per_argument_types(types::DataType) = types.parameters
+_extract_per_argument_types(types::UnionAll) = _extract_per_argument_types(types.body)
 
 """
     format_argument_signature(::Type{PT}) where {PT<:Plot}
@@ -126,15 +128,11 @@ function format_argument_signature(::Type{PT}) where {PT <: Plot}
     isempty(arg_names) && return nothing
 
     # Get target types - try plot-specific first, then trait-based
-    arg_types = types_for_plot_arguments(PT)
-    if isnothing(arg_types)
-        CT = conversion_trait(PT)
-        arg_types = types_for_plot_arguments(CT)
-    end
+    arg_types = types_for_plot_arguments(PT, conversion_trait(PT))
     isnothing(arg_types) && return nothing
 
     # arg_types is a Tuple type, extract the parameter types
-    type_params = arg_types.parameters
+    type_params = _extract_per_argument_types(arg_types)
 
     # Match names with types
     if length(arg_names) != length(type_params)
