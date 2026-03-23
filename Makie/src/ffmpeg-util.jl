@@ -8,14 +8,16 @@
     * `"webm"` (smallest file size)
     * `"gif"`  (largest file size for the same quality)
 
-    `mp4` (AV1 codec) and `mkv` (VP9 codec) are marginally bigger than `webm`. `gif`s can be
+    `mp4` (MPEG-4 codec) and `mkv` (VP9 codec) are marginally bigger than `webm`. `gif`s can be
     significantly (as much as 6x) larger with worse quality (due to the limited color palette)
     and only should be used as a last resort, for playing in a context where videos aren't supported.
 - `framerate = 24`: The target framerate.
-- `compression = 20`: Controls the video compression via `ffmpeg`'s `-crf` option, with
-    smaller numbers giving higher quality and larger file sizes (lower compression), and
-    higher numbers giving lower quality and smaller file sizes (higher compression). The
-    minimum value is `0` (lossless encoding) and `63` is the maximum.
+- `compression`: Controls video compression quality, with smaller numbers giving higher
+    quality and larger file sizes, and higher numbers giving lower quality and smaller file sizes.
+    - For `mkv` and `webm` (VP9 codec): uses `ffmpeg`'s `-crf` option, range `0` (lossless) to
+      `63` (maximum compression), default `20`.
+    - For `mp4` (MPEG-4 codec): uses `ffmpeg`'s `-q:v` option, range `1` (best quality) to
+      `31` (worst quality), default `5`.
     - `compression` has no effect on `gif` outputs.
 - `profile = nothing`: Unused, kept for backwards compatibility.
 - `pixel_format = nothing`: Unused, kept for backwards compatibility.
@@ -26,7 +28,8 @@
 !!! warning
     `profile` and `pixel_format` are no longer used (they applied to the previously used `libx264`
     codec). A warning will be issued if they are set to non-`nothing` values. `compression` is
-    valid for `"mkv"`, `"mp4"`, and `"webm"` formats.
+    valid for `"mkv"`, `"mp4"`, and `"webm"` formats. Note that the valid range differs between
+    formats (see above).
 """
 struct VideoStreamOptions
     format::String
@@ -50,8 +53,10 @@ struct VideoStreamOptions
             framerate = round(Int, framerate)
         end
 
-        if format in ("mkv", "mp4", "webm")
+        if format in ("mkv", "webm")
             (compression === nothing) && (compression = 20)
+        elseif format == "mp4"
+            (compression === nothing) && (compression = 5)
         end
 
         (loop === nothing) && (loop = 0)
@@ -148,11 +153,8 @@ function to_ffmpeg_cmd(vso::VideoStreamOptions, xdim::Integer = 0, ydim::Integer
          -an
         `
     elseif format == "mp4"
-        `-c:v libaom-av1
-         -crf $(compression)
-         -b:v 0
-         -cpu-used 8
-         -row-mt 1
+        `-c:v mpeg4
+         -q:v $(compression)
          -an
         `
     elseif format == "webm"
