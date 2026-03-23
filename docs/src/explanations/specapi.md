@@ -300,7 +300,7 @@ on(sim; priority=-1) do x
     autolimits!(ax)
 end
 
-record(f, "interactive_specapi.mp4", framerate=1) do io
+record(f, "interactive_specapi.webm", framerate=1) do io
     pause = 0.1
     m.i_selected[] = 1
     for i in 1:4
@@ -329,7 +329,7 @@ nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./interactive_specapi.mp4" />
+<video autoplay loop muted playsinline controls src="./interactive_specapi.webm" />
 ```
 
 

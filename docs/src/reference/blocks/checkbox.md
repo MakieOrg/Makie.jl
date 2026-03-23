@@ -69,11 +69,11 @@ evts = [
     Wait(1.0),
 ]
 
-interaction_record(f, "checkbox_example.mp4", evts)
+interaction_record(f, "checkbox_example.webm", evts)
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline src="./checkbox_example.mp4" width="600"/>
+<video autoplay loop muted playsinline src="./checkbox_example.webm" width="600"/>
 ```
 
 ## Attributes

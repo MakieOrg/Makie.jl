@@ -476,7 +476,7 @@ stocknode = stockvalues
 
 fig, ax, sc = stockchart(timestamps, stocknode)
 
-record(fig, "stockchart_animation.mp4", 101:200,
+record(fig, "stockchart_animation.webm", 101:200,
         framerate = 30) do t
     # push a new timestamp
     push!(timestamps, t)
@@ -504,7 +504,7 @@ GLMakie.activate!() # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./stockchart_animation.mp4" />
+<video autoplay loop muted playsinline controls src="./stockchart_animation.webm" />
 ```
 
 ## [Projecting in Recipes](@id recipe_projections)

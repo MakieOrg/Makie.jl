@@ -50,11 +50,11 @@ events = [
     Wait(2.0),
 ]
 
-interaction_record(fig, "toggle_example.mp4", events)
+interaction_record(fig, "toggle_example.webm", events)
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline src="./toggle_example.mp4" width="600"/>
+<video autoplay loop muted playsinline src="./toggle_example.webm" width="600"/>
 ```
 
 

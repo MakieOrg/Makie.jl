@@ -134,14 +134,14 @@ gb_mesh = GeometryBasics.Mesh(points, _faces; uv = uv_buff, normal = _normals)
 
 f, ax, pl = mesh(gb_mesh,  color = rand(100, 100), colormap=:blues)
 wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
-record(f, "uv_mesh.mp4", LinRange(0, 1, 100)) do shift
+record(f, "uv_mesh.webm", LinRange(0, 1, 100)) do shift
     uv_buff[1:end] = gen_uv(shift)
 end
 nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./uv_mesh.mp4" />
+<video autoplay loop muted playsinline controls src="./uv_mesh.webm" />
 ```
 
 The uv coordinates that go out of bounds will get repeated per default.
@@ -159,14 +159,14 @@ color = Sampler(rotl90(data'), x_repeat=:mirrored_repeat,y_repeat=:repeat)
 f, ax, pl = mesh(gb_mesh,  color = color)
 wireframe!(ax, gb_mesh, color=(:black, 0.2), linewidth=2, transparency=true)
 
-record(f, "uv_mesh_mirror.mp4", LinRange(0, 1, 100)) do shift
+record(f, "uv_mesh_mirror.webm", LinRange(0, 1, 100)) do shift
     uv_buff[1:end] = gen_uv(shift)
 end
 nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./uv_mesh_mirror.mp4" />
+<video autoplay loop muted playsinline controls src="./uv_mesh_mirror.webm" />
 ```
 
 ### Volume Texture

@@ -69,7 +69,7 @@ fig, ax, l = lines(points, color = colors,
     axis = (; type = Axis3, protrusions = (0, 0, 0, 0),
               viewmode = :fit, limits = (-30, 30, -30, 30, 0, 50)))
 
-record(fig, "lorenz.mp4", 1:120) do frame
+record(fig, "lorenz.webm", 1:120) do frame
     for i in 1:50
         push!(points, step!(attractor))
         push!(colors, frame)
@@ -83,7 +83,7 @@ set_theme!() # hide
 :::
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./lorenz.mp4" style="max-height: 40vh;"/>
+<video autoplay loop muted playsinline controls src="./lorenz.webm" style="max-height: 40vh;"/>
 ```
 
 ## Installation

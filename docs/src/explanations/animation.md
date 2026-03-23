@@ -28,7 +28,7 @@ nframes = 30
 framerate = 30
 hue_iterator = range(0, 360, length=nframes)
 
-record(fig, "color_animation.mp4", hue_iterator;
+record(fig, "color_animation.webm", hue_iterator;
         framerate = framerate) do hue
     lineplot.color = HSV(hue, 1, 0.75)
 end
@@ -36,7 +36,7 @@ nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./color_animation.mp4" />
+<video autoplay loop muted playsinline controls src="./color_animation.webm" />
 ```
 
 Passing a function as the first argument is usually done with Julia's `do`-notation, which you might not be familiar with.
@@ -88,7 +88,7 @@ scatter!(xs, ys_2, color = :red, markersize = 15)
 framerate = 30
 timestamps = range(0, 2, step=1/framerate)
 
-record(fig, "time_animation.mp4", timestamps;
+record(fig, "time_animation.webm", timestamps;
         framerate = framerate) do t
     time[] = t
 end
@@ -96,7 +96,7 @@ nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./time_animation.mp4" />
+<video autoplay loop muted playsinline controls src="./time_animation.webm" />
 ```
 
 You can set most plot attributes equal to `Observable`s, so that you need only update
@@ -115,14 +115,14 @@ fig = lines(0..10, sin, color = color_observable)
 framerate = 30
 timestamps = range(0, 2, step=1/framerate)
 
-record(fig, "color_animation_2.mp4", timestamps; framerate = framerate) do t
+record(fig, "color_animation_2.webm", timestamps; framerate = framerate) do t
     time[] = t
 end
 nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./color_animation_2.mp4" />
+<video autoplay loop muted playsinline controls src="./color_animation_2.webm" />
 ```
 
 ## Appending data with Observables
@@ -142,7 +142,7 @@ limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
 
-record(fig, "append_animation.mp4", frames;
+record(fig, "append_animation.webm", frames;
         framerate = 30) do frame
     new_point = Point2f(frame, frame)
     points[] = push!(points[], new_point)
@@ -151,7 +151,7 @@ nothing # hide
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline controls src="./append_animation.mp4" />
+<video autoplay loop muted playsinline controls src="./append_animation.webm" />
 ```
 
 ## Animating a plot "live"
@@ -201,7 +201,7 @@ ymax = LinRange(1, -0.42, N)
 # If one doesn't need to record a video, a normal loop works as well.
 # Just don't forget to call `display(fig)` before the loop
 # and without record, one needs to insert a yield to yield to the render task
-record(fig, "heatmap_mandelbrot.mp4", 1:7:N) do i
+record(fig, "heatmap_mandelbrot.webm", 1:7:N) do i
     _x = LinRange(xmin[i], xmax[i], 200)
     _y = LinRange(ymin[i], ymax[i], 200)
     hm[1] = _x # update x coordinates
@@ -213,5 +213,5 @@ end
 ```
 
 ```@raw html
-<video loop muted playsinline controls src="./heatmap_mandelbrot.mp4" />
+<video loop muted playsinline controls src="./heatmap_mandelbrot.webm" />
 ```

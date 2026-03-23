@@ -381,11 +381,11 @@ _events = [
     Wait(1.5)
 ]
 
-interaction_record(fig, "legend_interaction_example.mp4", _events)
+interaction_record(fig, "legend_interaction_example.webm", _events)
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline src="./legend_interaction_example.mp4" width="600"/>
+<video autoplay loop muted playsinline src="./legend_interaction_example.webm" width="600"/>
 ```
 
 ## Attributes

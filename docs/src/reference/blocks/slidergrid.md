@@ -64,11 +64,11 @@ events = [
     Wait(0.5),
 ]
 
-interaction_record(fig, "slidergrid_example.mp4", events)
+interaction_record(fig, "slidergrid_example.webm", events)
 ```
 
 ```@raw html
-<video autoplay loop muted playsinline src="./slidergrid_example.mp4" width="600"/>
+<video autoplay loop muted playsinline src="./slidergrid_example.webm" width="600"/>
 ```
 
 ## Attributes
