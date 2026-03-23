@@ -49,7 +49,7 @@ macro reference_test(name, code)
                     CairoMakie = (; px_per_unit = 1),
                     GLMakie = (; scalefactor = 1, px_per_unit = 1),
                     WGLMakie = (; scalefactor = 1, px_per_unit = 1),
-                    SkiaMakie = (; px_per_unit = 1)
+                    SkiaMakie = (; px_per_unit = 1, pt_per_unit = 0.75, antialias = :best, visible = false, start_renderloop = false)
                 )
                 ReferenceTests.RNG.seed_rng!()
                 result = let
