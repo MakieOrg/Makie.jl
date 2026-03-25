@@ -201,6 +201,10 @@ function convert_arguments(::Type{<:Annotation}, v1::AbstractVector{<:Real}, v2:
     return Vec2d.(v1, v2), Point2d.(v3, v4)
 end
 
+# still without offset
+# Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
+_guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
+
 function plot!(p::Annotation)
     map!(default_automatic, p, [:textcolor, :color], :computed_textcolor)
 
@@ -229,9 +233,6 @@ function plot!(p::Annotation)
         output_name = :screenpoints_target, output_space = :pixel
     )
 
-    # still without offset
-    # Empty strings produce non-finite Rect3d() bounding boxes, replace with zero-size rects
-    _guard_nonfinite(bb) = isfinite_rect(bb) ? bb : Rect2d(0, 0, 0, 0)
     map!(p, [txt.raw_string_boundingboxes, p.screenpoints_target], :text_bbs) do bboxes, px_pos
         return _guard_nonfinite.(Rect2d.(bboxes)) .+ px_pos
     end
