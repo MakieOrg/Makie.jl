@@ -156,12 +156,44 @@ Plots text with backgrounds at set positions.
     depth_shift = 0.0
 end
 
-convert_arguments(::Type{<:TextLabel}, args...) = convert_arguments(Text, args...)
-convert_arguments(::Type{<:TextLabel}, x, y, z::AbstractArray{<:Real}) = convert_arguments(PointBased(), x, y, z)
-convert_arguments(::Type{<:TextLabel}, p::VecTypes, str) = ([(str, p)],)
-convert_arguments(::Type{<:TextLabel}, ps::AbstractVector{<:VecTypes}, strs::AbstractVector) = ([(str, p) for (str, p) in zip(strs, ps)],)
-convert_arguments(::Type{<:TextLabel}, x, y, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]),)
-convert_arguments(::Type{<:TextLabel}, x, y, z, strs) = (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]),)
+conversion_trait(::Type{<:TextLabel}) = PointBased()
+
+function convert_arguments(::Type{<:TextLabel}, p_strs::AbstractVector{<:Tuple{<:VecTypes, <:Any}})
+    return ([(str, Point(p)) for (p, str) in p_strs],)
+end
+function convert_arguments(::Type{<:TextLabel}, str_ps::AbstractVector{<:Tuple{<:Any, <:VecTypes}})
+    return ([(str, Point(p)) for (str, p) in str_ps],)
+end
+function convert_arguments(::Type{<:TextLabel}, p_str::Tuple{<:VecTypes, <:Any})
+    return convert_arguments(TextLabel, [(p_str[2], p_str[1])])
+end
+function convert_arguments(::Type{<:TextLabel}, str_p::Tuple{<:Any, <:VecTypes})
+    return convert_arguments(TextLabel, [str_p])
+end
+function convert_arguments(::Type{<:TextLabel}, str, p::VecTypes)
+    return convert_arguments(TextLabel, [(str, p)])
+end
+function convert_arguments(::Type{<:TextLabel}, p::VecTypes, str)
+    return convert_arguments(TextLabel, [(str, p)])
+end
+function convert_arguments(::Type{<:TextLabel}, ps::AbstractVector{<:VecTypes}, strs::AbstractVector)
+    return ([(str, p) for (str, p) in zip(strs, ps)],)
+end
+function convert_arguments(::Type{<:TextLabel}, x::Real, y::Real, str)
+    return ([(str, convert_arguments(PointBased(), x, y)[1])],)
+end
+function convert_arguments(::Type{<:TextLabel}, x::Real, y::Real, z::Real)
+    return convert_arguments(PointBased(), x, y, z)
+end
+function convert_arguments(::Type{<:TextLabel}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real})
+    return convert_arguments(PointBased(), x, y, z)
+end
+function convert_arguments(::Type{<:TextLabel}, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, strs::AbstractVector)
+    return (map(tuple, strs, convert_arguments(PointBased(), x, y)[1]),)
+end
+function convert_arguments(::Type{<:TextLabel}, x, y, z, strs)
+    return (map(tuple, strs, convert_arguments(PointBased(), x, y, z)[1]),)
+end
 
 function attribute_groups(::Type{<:TextLabel})
     groups = default_attribute_groups()
