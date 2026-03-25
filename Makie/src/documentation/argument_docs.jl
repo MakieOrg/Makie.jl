@@ -115,6 +115,21 @@ end
 _extract_per_argument_types(types::DataType) = types.parameters
 _extract_per_argument_types(types::UnionAll) = _extract_per_argument_types(types.body)
 
+function _simplify_inline_types(str::String)
+    lookup = Dict{String, String}()
+    for m in eachmatch(r"(var\"#s[0-9]+\")(<:[A-Za-z0-9]+)", str)
+        lookup[m.captures[1]] = m.captures[2]
+    end
+    for (var, type) in lookup
+        str = replace(str, " where $var$type" => "")
+        str = replace(str, " where {$var$type}" => "")
+        str = replace(str, "$var$type, " => "")
+        str = replace(str, ", $var$type" => "")
+        str = replace(str, var => type)
+    end
+    return str
+end
+
 """
     format_argument_signature(::Type{PT}) where {PT<:Plot}
 
@@ -151,6 +166,7 @@ function format_argument_signature(::Type{PT}) where {PT <: Plot}
         end
         # Clean up Union{A, B} to be more readable
         type_str = replace(type_str, r"Union\{([^}]+)\}" => s"Union{\1}")
+        type_str = _simplify_inline_types(type_str)
         push!(parts, "$name::$type_str")
     end
 
