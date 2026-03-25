@@ -18,7 +18,7 @@ however the cells are not restricted to a rectangular shape.
 * `vorn::VoronoiTessellation` where the tessellation from DelaunayTriangulation.jl is passed directly
     to define the voronoi cells explicitly.
 """
-@recipe Voronoiplot (input::Union{VecTypesVector{N, <:Real} where {N}, DelTri.VoronoiTessellation},) begin
+@recipe Voronoiplot (input::Union{PointVector{N, <:Real} where {N}, DelTri.VoronoiTessellation},) begin
     "Determines whether to plot the individual generators."
     show_generators = true
     "If true, then the Voronoi tessellation is smoothed into a centroidal tessellation."

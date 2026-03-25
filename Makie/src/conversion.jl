@@ -204,11 +204,11 @@ function types_for_plot_arguments(P::Type{<:Plot}, Trait::ConversionTrait)
 end
 
 function types_for_plot_arguments(::PointBased)
-    return Tuple{AbstractVector{<:Union{Point2{<:Real}, Point3{<:Real}}}}
+    return Tuple{Union{PointVector{2, <:Real}, PointVector{3, <:Real}}}
 end
 
 function types_for_plot_arguments(::PointBased2D)
-    return Tuple{AbstractVector{<:Point2}}
+    return Tuple{PointVector{2, <:Real}}
 end
 
 types_for_plot_arguments(::ImageLike) = Tuple{EndPoints{<:Real}, EndPoints{<:Real}, Matrix{<:Real}}

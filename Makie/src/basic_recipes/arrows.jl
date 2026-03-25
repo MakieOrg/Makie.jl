@@ -5,7 +5,7 @@
 struct ArrowLike <: ConversionTrait end
 
 function types_for_plot_arguments(::ArrowLike)
-    return Tuple{VecTypesVector{N, <:Real}, VecTypesVector{N, <:Real}} where {N}
+    return Tuple{PointVector{N, <:Real}, PointVector{N, <:Real}} where {N}
 end
 
 argument_dims(::ArrowLike, x, y, f) = (1, 2)

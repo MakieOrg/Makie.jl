@@ -14,8 +14,8 @@ Plots a band between lower and upper bounds.
 * Setting `direction = :y` will reinterpret (x, y) as (y, x). (2D only)
 """
 @recipe Band (
-    lowerpoints::VecTypesVector{N, <:Real} where {N},
-    upperpoints::VecTypesVector{N, <:Real} where {N},
+    lowerpoints::PointVector{N, <:Real} where {N},
+    upperpoints::PointVector{N, <:Real} where {N},
 ) begin
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."

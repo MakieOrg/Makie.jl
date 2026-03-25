@@ -11,8 +11,8 @@ Plots text with backgrounds at set positions.
 """
 @recipe TextLabel (
     positions::Union{
-        VecTypesVector{N, <:Real} where {N},
-        AbstractArray{<:Tuple{<:AbstractString, <:VecTypes{N, <:Real} where {N}}},
+        PointVector{N, <:Real} where {N},
+        AbstractArray{<:Tuple{<:AbstractString, <:Point{N, <:Real} where {N}}},
         AbstractArray{<:AbstractString},
         AbstractString,
     },
