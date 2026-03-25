@@ -442,8 +442,9 @@ function calculate_best_offsets!(
         center = minimum(bbox) .+ 0.5 .* widths(bbox)
         for i in eachindex(offset_bbs)
             bb_center = minimum(offset_bbs[i]) .+ 0.5 .* widths(offset_bbs[i])
-            v = normalize(center - bb_center)
-            offsets[i] = 0.1 * algorithm.repel * v
+            v = center - bb_center
+            n = norm(v)
+            offsets[i] = n > 0 ? (0.1 * algorithm.repel / n * v) : zero(eltype(offsets))
         end
     end
 
