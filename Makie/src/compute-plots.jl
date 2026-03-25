@@ -1074,6 +1074,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        elseif first(colorrange) == automatic
+            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+        elseif last(colorrange) == automatic
+            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
             return Vec2f(colorrange)
         end
