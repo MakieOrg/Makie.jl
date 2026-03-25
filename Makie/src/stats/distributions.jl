@@ -35,7 +35,7 @@ Draw a Q-Q plot, comparing quantiles of two distributions.
     also be an abstract distribution or distribution type, e.g. `Normal(0, 1)` or `Normal`. The
     latter will be fit to the `y` sample.
 """
-@recipe QQPlot (points::VecTypesVector{2, <:Real}, line::VecTypesVector{2, <:Real}) begin
+@recipe QQPlot (points::PointVector{2, <:Real}, line::PointVector{2, <:Real}) begin
     filtered_attributes(ScatterLines, exclude = (:joinstyle, :miter_limit))...
     """
     The attribute `qqline` determines how to compute a fit line for the Q-Q plot.
@@ -69,7 +69,7 @@ See [`qqplot`](@ref) for more details on the `qqline` attribute and other option
 
 * `y::AbstractVector{<:Real}` is a sample to compare against the standard normal distribution.
 """
-@recipe QQNorm (points::VecTypesVector{2, <:Real}, line::VecTypesVector{2, <:Real}) begin
+@recipe QQNorm (points::PointVector{2, <:Real}, line::PointVector{2, <:Real}) begin
     documented_attributes(QQPlot)...
 end
 
@@ -107,10 +107,10 @@ argument_dims(::Type{<:QQPlot}, x, y) = (1, 2)
 argument_dims(::Type{<:QQNorm}, y) = (2,)
 
 function convert_arguments(
-        ::Type{<:QQPlot}, points::AbstractVector{<:Point2},
-        lines::AbstractVector{<:Point2}; qqline = :none
+        ::Type{<:QQPlot}, points::VecTypesVector{2, <:Real},
+        lines::VecTypesVector{2, <:Real}; qqline = :none
     )
-    return (points, lines)
+    return (convert_arguments(PointBased(), points)[1], convert_arguments(PointBased(), lines)[1])
 end
 
 function convert_arguments(::Type{<:QQPlot}, x′, y::RealVector; qqline = :none)
