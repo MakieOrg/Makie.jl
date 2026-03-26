@@ -618,6 +618,9 @@ end
             # we should then step back to the original on(onchange)
             # which should not have anything left to process as the inner on(onchange) processed everything
             @test triggered == [:obs1, :obs1, :obs2] || triggered == [:obs2, :obs2, :ob1]
+            @test graph.input[] == 2
+            @test ComputePipeline.get_observable!(graph.out1)[] == 2
+            @test ComputePipeline.get_observable!(graph.out2)[] == 2
         end
     end
 

@@ -41,8 +41,13 @@
 - Fixed an issue where Observable outputs of compute nodes that cycle back into the compute graph could discard updates of other Observable outputs. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ComputePipeline.set_type!(node, type)` for initializing the type of a compute graph node [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
 - Added `ExplicitUpdate` wrapper to control update propagation for computations in the compute graph. Also added an option for forcefully propagate updates from input nodes. [#5546](https://github.com/MakieOrg/Makie.jl/pull/5546)
+- Updated how documentation for plots is generated [#5389](https://github.com/MakieOrg/Makie.jl/pull/5389)
+  - **minor breaking** This may lead to duplicate call signatures, attribute and argument information, and examples as those are now added automatically.
 
 ## Unreleased
+
+- CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
+- Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 
 ## [0.24.9] - 2026-03-04
 

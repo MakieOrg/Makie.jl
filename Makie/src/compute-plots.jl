@@ -1427,31 +1427,14 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
         :lowclip, :highclip, :nan_color, :color_mapping_type, :scaled_colorrange, :scaled_color,
     ]
 
-    register_computation!(attr, attributes, [:cb_colormapping, :cb_observables, :colormap_obs]) do args, changed, cached
-        dict = Dict(zip(attributes, values(args)))
-        N = ndims(dict[:raw_color])
-        Cin = typeof(dict[:raw_color])
-        Cout = typeof(dict[:scaled_color])
-        if isnothing(cached)
-            observables = map(attributes) do name
-                name === :colorscale ? Observable{Any}(dict[name]) : Observable(dict[name])
-            end
-            observable_dict = Dict(zip(attributes, observables))
-            cm = ColorMapping{N, Cin, Cout}(observables...)
-            return (cm, observable_dict, nothing)
-        else
-            observable_dict = cached.cb_observables
-            for (name, value, ischanged) in zip(attributes, args, changed)
-                if ischanged
-                    observable_dict[name][] = value
-                end
-            end
-            return (cached.cb_colormapping, nothing, nothing)
-        end
-    end
-    # Make sure this is not polling, but triggers on changes
-    ComputePipeline.get_observable!(attr, :colormap_obs)
-    return attr[:cb_colormapping][]
+    # keep it cached somewhere so we don't recreate it multiple times
+    return get!(attr.observables, :_ColorMapping_obs) do
+        N = ndims(attr[:raw_color][])
+        Cin = typeof(attr[:raw_color][])
+        Cout = typeof(attr[:scaled_color][])
+        observables = map(name -> ComputePipeline.get_observable!(attr[name]), attributes)
+        return Observable(ColorMapping{N, Cin, Cout}(observables...))
+    end[]
 end
 
 function register_world_normalmatrix!(attr, modelname = :model_f32c)

@@ -2,7 +2,7 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
-
+using Markdown
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -35,6 +35,7 @@ end
         include("isolated/render_pipeline.jl")
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
+        include("isolated/argument_docs.jl")
     end
 
     @testset "Plots" begin

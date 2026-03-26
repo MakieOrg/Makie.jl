@@ -1,9 +1,10 @@
 """
-    tooltip(positions, string)
-    tooltip(position, string)
-    tooltip(x, y, string)
+Creates a tooltip pointing at a position displaying a given string.
 
-Creates a tooltip pointing at `position` displaying the given `string
+## Arguments
+
+* `position` Creates a tooltip at a given `position` of type `VecTypes` (`Point`, `Vec` or `Tuple`).
+* `x, y` Creates a tooltip at the given `x` and `y` coordinates fo type `<:Real`.
 """
 @recipe Tooltip (
     positions::VecTypesVector{N, <:Real} where {N},
@@ -61,6 +62,15 @@ Creates a tooltip pointing at `position` displaying the given `string
 
     # Only used for DataInspector
     _formatter = nothing
+end
+
+function attribute_groups(::Type{<:Tooltip})
+    groups = default_attribute_groups()
+    attr = uncategorized_attributes(Text)
+    filter!(!=(:offset), attr)
+    push!(attr, :textcolor)
+    push!(groups, "Text" => attr)
+    return groups
 end
 
 function convert_arguments(::Type{<:Tooltip}, xy, str::AbstractString)
