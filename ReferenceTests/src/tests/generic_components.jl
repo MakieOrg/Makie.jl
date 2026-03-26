@@ -593,6 +593,12 @@ end
     for i in eachindex(mps)
         mp = mps[i]
 
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+        @test !di.dynamic_tooltip.visible[] # verify cleanup
+
         wait_for_data_inspector(scene, di, true) do
             e.mouseposition[] = mp
         end
@@ -606,12 +612,6 @@ end
             # if this is false we skipped a plot that uses indicators
             @test all(p -> !p.visible[], values(di.indicator_cache))
         end
-
-        # remove tooltip so we don't select it
-        wait_for_data_inspector(scene, di, false) do
-            e.mouseposition[] = (1.0, 1.0)
-        end
-        @test !di.dynamic_tooltip.visible[] # verify cleanup
     end
 
     st
@@ -767,7 +767,7 @@ end
 
     # One per plot, in order
     mpos = [
-        (82, 325), (116, 225),
+        (82, 325), (116, 325),
         (152, 350), (192, 350),
         (243, 380), (243, 270), (243, 230), (243, 180),
         (290, 325), (331, 325),
@@ -781,6 +781,11 @@ end
 
     for i in eachindex(mpos)
         mp = mpos[i]
+        # remove tooltip so we don't select it
+        wait_for_data_inspector(f.scene, di, false) do
+            e.mouseposition[] = (1.0, 1.0)
+        end
+
         @test !di.dynamic_tooltip.visible[] # verify cleanup
 
         wait_for_data_inspector(f.scene, di, true) do
@@ -795,11 +800,6 @@ end
         else
             # if this is false we skipped a plot that uses indicators
             @test all(p -> !p.visible[], values(di.indicator_cache))
-        end
-
-        # remove tooltip so we don't select it
-        wait_for_data_inspector(f.scene, di, false) do
-            e.mouseposition[] = (1.0, 1.0)
         end
     end
 
