@@ -72,7 +72,7 @@ function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yr
     right, top = maximum(lims32)
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
-  
+
     # CairoMakie relies on eyeposition for mesh, surface, ...
     # Technically the camera should be infinitely far away from the 0 plane
     # because there is no perspective projection
@@ -80,10 +80,10 @@ function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yr
     eyeposition = Point3f(center..., 1.0e12)
 
     return Makie.orthographicprojection(
-        Float32,
-        leftright...,
-        bottomtop..., nearclip, farclip
-    ), eyeposition
+            Float32,
+            leftright...,
+            bottomtop..., nearclip, farclip
+        ), eyeposition
 end
 
 function calculate_title_position(area, titlegap, align, xaxisposition, xaxisprotrusion, subtitle_height)
@@ -682,7 +682,7 @@ function initialize_limit_computations!(ax)
     idm = Makie.Mat4f(Makie.I)
     on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
     connect!(ax.scene.camera.eyeposition, attr.eyeposition)
-  
+
     return
 end
 
