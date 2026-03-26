@@ -1,22 +1,17 @@
 """
-    streamplot(f::function, xinterval, yinterval[, zinterval]; color = norm, kwargs...)
-    streamplot(f::function, rect; color = norm, kwargs...)
+Plot streamlines of a vector field function in a given bounding box.
 
-Plots streamlines of the function `f` in the given bounding box. A streamline is
-defined by matching its tangent vector with `f(p)` at any point `p`.
+A streamline is defined by matching its tangent vector with the vector field `f(p)` at any point `p`.
+The function `f` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
+and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a `Vec2f` or `Point3d`.
 
-`f` must either accept `f(::Point)` or `f(x::Number, y::Number[, z::Number])`
-and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a
-`Vec2f` or `Point3d`.
+## Arguments
 
-Example:
-```julia
-v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
-streamplot(v, -2..2, -2..2)
-```
-
-## Implementation
-See the function `Makie.streamplot_impl` for implementation details.
+* `f, bbox` where `f` is a function (either `pos::Point{D} -> direction::VecTypes{D}` or
+    `(x, y, [z]) -> direction`) which defines the tangent direction of the streamline at any point,
+    and `bbox` is a 2D or 3D `Rect` in which `f` is evaluated to generate streamlines.
+* `f, x, y, [z]` where `f` is the same kind of function and `x, y, [z]` define the boundingbox. Any
+    type implementing `extrema` is allowed for `x, y, [z]`.
 """
 @recipe StreamPlot (f, limits) begin
     """

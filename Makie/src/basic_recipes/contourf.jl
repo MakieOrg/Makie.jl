@@ -1,12 +1,6 @@
 """
-    contourf(xs, ys, zs; kwargs...)
-
-Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
-and vertical grid positions `ys`.
-
-`xs` and `ys` can be vectors for rectilinear grids
-or matrices for curvilinear grids,
-similar to how [`surface`](@ref) works.
+Plots a filled contour where each pixel in the grid defined by `xs` and `ys` is
+colored based on the level its `data` values map to.
 """
 @recipe Contourf (x, y, z) begin
     """
