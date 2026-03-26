@@ -1,7 +1,7 @@
 # Wrapper to allow and handle PlotElements with tooltips
 @recipe DataInspectorTooltip (elements::Vector{<:PlotElement},) begin
     documented_attributes(Tooltip)...
-end
+end false
 
 mutable struct DataInspector
     parent::Scene
