@@ -116,7 +116,7 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
-    # Cant type this, dont have the type yet
+    # Can't type this, don't have the type yet
     data_inspector::Any
 
     function Scene(

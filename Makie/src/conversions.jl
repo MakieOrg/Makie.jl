@@ -190,6 +190,20 @@ end
 #     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 # end
 
+################################################################################
+#                                PointBased2D                                  #
+################################################################################
+
+"""
+PointBased2D uses the same conversion methods as PointBased, so we delegate all
+convert_arguments calls to PointBased.
+"""
+convert_arguments(::PointBased2D, args...) = convert_arguments(PointBased(), args...)
+
+################################################################################
+#                               3D Rect conversions                            #
+################################################################################
+
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
 end
@@ -2404,3 +2418,5 @@ to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
 
 convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
+
+convert_attribute(x, ::key"inspector_label") = Ref{Any}(x)

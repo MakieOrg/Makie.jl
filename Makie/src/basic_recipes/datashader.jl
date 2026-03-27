@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<: Point})
+Data shader for large point datasets.
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
@@ -288,9 +288,15 @@ using Makie.StructArrays
 points = StructArray{Point2f}((x, y))
 datashader(points)
 ```
-Do pay attention though, that if x and y don't have a fast iteration/getindex implemented, this might be slower than just copying the data into a new array.
+Do pay attention though, that if x and y don't have a fast iteration/getindex implemented,
+this might be slower than just copying the data into a new array.
 
-For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto` or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+For best performance, use `method=Makie.AggThreads()` and make sure to start julia with `julia -tauto`
+or have the environment variable `JULIA_NUM_THREADS` set to the number of cores you have.
+
+## Arguments
+
+* `points` An `AbstractVector{<:Point}` containing the point data to visualize via aggregation.
 """
 @recipe DataShader (points,) begin
     """
@@ -714,12 +720,17 @@ function Makie.plot!(p::HeatmapShader)
 
     map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
-    map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
+    T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
+    map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :data_limits, :colorrange],
+        [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]
+    ) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
-            _img = Float32[val for _ in 1:1, _ in 1:1]
+            _img = [T(val) for _ in 1:1, _ in 1:1]
         else
             _img = img
         end
@@ -730,7 +741,7 @@ function Makie.plot!(p::HeatmapShader)
         p.attributes,
         [:image, :x, :y, :max_resolution, :slow_limits],
         [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
-        init = (p.x[], p.x[], fill(0.0f0, 2, 2), false)
+        init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
     ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
         isnothing(xe_ye_oimg) && return nothing
@@ -749,6 +760,8 @@ function Makie.plot!(p::HeatmapShader)
         p, p.lx_endpoints, p.ly_endpoints, p.limit_image;
         gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange, visible = p.l_visible,
     )
+
+    notify(ComputePipeline.get_observable!(p.axis_limits))
 
     return p
 end

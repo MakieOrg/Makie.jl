@@ -113,6 +113,34 @@ function draw_atomic_scatter(ctx, attr::NamedTuple)
     return
 end
 
+function flush_glyph_batch!(ctx, glyph_buffer, font, color, mat, strokewidth, strokecolor)
+    isempty(glyph_buffer) && return
+
+    cairoface = set_ft_font(ctx, font)
+    old_matrix = get_font_matrix(ctx)
+
+    Cairo.save(ctx)
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    set_font_matrix(ctx, mat)
+    show_glyphs(ctx, glyph_buffer)
+    Cairo.restore(ctx)
+
+    if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
+        Cairo.save(ctx)
+        set_font_matrix(ctx, mat)
+        glyphs_path(ctx, glyph_buffer)
+        Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+        Cairo.set_line_width(ctx, strokewidth)
+        Cairo.stroke(ctx)
+        Cairo.restore(ctx)
+    end
+
+    cairo_font_face_destroy(cairoface)
+    set_font_matrix(ctx, old_matrix)
+    empty!(glyph_buffer)
+    return
+end
+
 function draw_text(ctx, attr::NamedTuple)
     positions = attr.positions_in_markerspace
     text_blocks = attr.text_blocks
@@ -134,15 +162,20 @@ function draw_text(ctx, attr::NamedTuple)
         view = attr.cam_view,
     )
 
+    glyph_buffer = CairoGlyph[]
+
     for (block_idx, glyph_indices) in enumerate(text_blocks)
-        Cairo.save(ctx)  # Block save
+        Cairo.save(ctx)
 
         glyph_pos = positions[block_idx]
+        local batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor
 
         for glyph_idx in glyph_indices
             glyph_idx in valid_indices || continue
 
             glyph = glyphindices[glyph_idx]
+            glyph == 0 && continue
+
             offset = marker_offset[glyph_idx]
             font = font_per_char[glyph_idx]
             rotation = Makie.sv_getindex(text_rotation, glyph_idx)
@@ -151,44 +184,36 @@ function draw_text(ctx, attr::NamedTuple)
             strokecolor = Makie.sv_getindex(text_strokecolor, glyph_idx)
             scale = Makie.sv_getindex(text_scales, glyph_idx)
 
-            # Not renderable by font (e.g. '\n')
-            glyph == 0 && continue
-
-            # offsets and scale apply in markerspace
             gp3 = glyph_pos .+ size_model * offset
-
             any(isnan, gp3) && continue
 
             glyphpos, mat, _ = project_marker(cam, markerspace, Point3d(gp3), scale, rotation, size_model)
 
-            cairoface = set_ft_font(ctx, font)
-            old_matrix = get_font_matrix(ctx)
-
-            Cairo.save(ctx)  # Glyph save
-            Cairo.set_source_rgba(ctx, rgbatuple(color)...)
-
-            Cairo.save(ctx)  # Glyph rendering save
-            set_font_matrix(ctx, mat)
-            show_glyph(ctx, glyph, glyphpos...)
-            Cairo.restore(ctx)  # Glyph rendering restore
-
-            if strokewidth > 0 && strokecolor != RGBAf(0, 0, 0, 0)
-                Cairo.save(ctx)  # Stroke save
-                Cairo.move_to(ctx, glyphpos...)
-                set_font_matrix(ctx, mat)
-                glyph_path(ctx, glyph, glyphpos...)
-                Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-                Cairo.set_line_width(ctx, strokewidth)
-                Cairo.stroke(ctx)
-                Cairo.restore(ctx)  # Stroke restore
+            if !isempty(glyph_buffer) && (
+                    font !== batch_font ||
+                        color != batch_color ||
+                        mat != batch_mat ||
+                        strokewidth != batch_strokewidth ||
+                        strokecolor != batch_strokecolor
+                )
+                flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
             end
 
-            Cairo.restore(ctx)  # Glyph restore (matches glyph save above)
-            cairo_font_face_destroy(cairoface)
-            set_font_matrix(ctx, old_matrix)
+            if isempty(glyph_buffer)
+                batch_font = font
+                batch_color = color
+                batch_mat = mat
+                batch_strokewidth = strokewidth
+                batch_strokecolor = strokecolor
+            end
+
+            push!(glyph_buffer, CairoGlyph(glyph, glyphpos[1], glyphpos[2]))
         end
 
-        Cairo.restore(ctx)  # Block restore
+        if !isempty(glyph_buffer)
+            flush_glyph_batch!(ctx, glyph_buffer, batch_font, batch_color, batch_mat, batch_strokewidth, batch_strokecolor)
+        end
+        Cairo.restore(ctx)
     end
     return
 end

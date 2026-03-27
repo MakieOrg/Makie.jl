@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - ff/breaking-0.25
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -32,7 +31,7 @@ jobs:
         with:
           version: '1.11'
           arch: x64
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Benchmark
         env:
           GITHUB_TOKEN: ${{ secrets.BENCHMARK_KEY }}

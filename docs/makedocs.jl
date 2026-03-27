@@ -1,5 +1,3 @@
-ENV["JULIA_DEBUG"] = "Documenter"
-
 using Pkg
 cd(@__DIR__)
 Pkg.activate(".")
@@ -11,8 +9,6 @@ using GLMakie
 using WGLMakie
 using RPRMakie
 using Graphviz_jll
-
-##
 
 include("copy_changelog.jl")
 
@@ -41,6 +37,28 @@ unnest(vec::Vector) = collect(Iterators.flatten([unnest(el) for el in vec]))
 unnest(p::Pair) = p[2] isa String ? [p[2]] : unnest(p[2])
 unnest(s::String) = [s]
 
+
+plots_dir = joinpath(@__DIR__, "src/reference/plots")
+isdir(plots_dir) && rm(plots_dir; force = true, recursive = true)
+mkpath(plots_dir)
+plots = Makie.generate_plot_docs(plots_dir)
+filter!(p -> p != "timeseries", plots)
+plots = map(x -> "reference/plots/$(x).md", plots)
+
+open(joinpath(plots_dir, "overview.md"), "w") do file
+    content = """
+    # Overview
+
+    ```@example
+    using Markdown # hide
+    import ..MakieDocsHelpers # hide
+    MakieDocsHelpers.OverviewSection("plots") # hide
+    ```
+    """
+    println(file, content)
+end
+pushfirst!(plots, "reference/plots/overview.md")
+
 pages = [
     "Home" => "index.md",
     "Reference" => [
@@ -66,67 +84,7 @@ pages = [
                 "toggle.md",
             ]
         ),
-        "Plots" => joinpath.(
-            "reference", "plots", [
-                "overview.md",
-                "ablines.md",
-                "annotation.md",
-                "arc.md",
-                "arrows.md",
-                "band.md",
-                "barplot.md",
-                "boxplot.md",
-                "bracket.md",
-                "contour.md",
-                "contour3d.md",
-                "contourf.md",
-                "crossbar.md",
-                "datashader.md",
-                "dendrogram.md",
-                "density.md",
-                "ecdf.md",
-                "errorbars.md",
-                "heatmap.md",
-                "hexbin.md",
-                "hist.md",
-                "hlines.md",
-                "hspan.md",
-                "image.md",
-                "lines.md",
-                "linesegments.md",
-                "mesh.md",
-                "meshscatter.md",
-                "pie.md",
-                "poly.md",
-                "qqnorm.md",
-                "qqplot.md",
-                "rainclouds.md",
-                "rangebars.md",
-                "scatter.md",
-                "scatterlines.md",
-                "series.md",
-                "spy.md",
-                "stairs.md",
-                "stem.md",
-                "stephist.md",
-                "streamplot.md",
-                "surface.md",
-                "text.md",
-                "textlabel.md",
-                "tooltip.md",
-                "tricontourf.md",
-                "triplot.md",
-                "violin.md",
-                "vlines.md",
-                "volume.md",
-                "volumeslices.md",
-                "voronoiplot.md",
-                "voxels.md",
-                "vspan.md",
-                "waterfall.md",
-                "wireframe.md",
-            ]
-        ),
+        "Plots" => plots,
         "Generic Concepts" => joinpath.(
             "reference", "generic", [
                 "clip_planes.md",
@@ -178,7 +136,7 @@ pages = [
                 "fonts.md",
                 "layouting.md",
                 "headless.md",
-                "inspector.md",
+                "DataInspector.md",
                 "latex.md",
                 "observables.md",
                 "plot_method_signatures.md",
@@ -217,6 +175,10 @@ pages = [
         "devdocs/render_pipeline.md",
     ],
 ]
+
+##
+# Generate plot documentation from full_docs()
+
 
 function make_docs(; pages)
     empty!(MakieDocsHelpers.FIGURES)

@@ -7,7 +7,7 @@
         @test all(hi .>= (8, 8, 10))
     end
 
-    @testset "#1939 `merge` precendence for `Attributes`" begin
+    @testset "#1939 `merge` precedence for `Attributes`" begin
         # See https://github.com/MakieOrg/Makie.jl/issues/1939
         a1 = Attributes(a = 1, b = 2)
         a2 = Attributes(a = 4, c = 3)

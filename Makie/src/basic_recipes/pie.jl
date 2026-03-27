@@ -1,9 +1,17 @@
 """
-    pie(values; kwargs...)
-    pie(point, values; kwargs...)
-    pie(x, y, values; kwargs...)
+    pie([points], values; attributes...)
+    pie([xs, ys], values; attributes...)
 
 Creates a pie chart from the given `values`.
+
+## Arguments
+* `[points], values` The size of each circle sector is given by `values` as an `AbstractVector{<:Real}`.
+    If `normalize = false` the values are treated as opening angles, otherwise they are normalized to
+    fill a circle. `points` can be given optionally as a `VecTypes{2, <:Real}` (`Point`, `Vec` or `Tuple`)
+    or `AbstractVector{<.VecTypes{2, <:Real}}` to set the origin of each pie sector. To draw multiple
+    pie charts `normalize` should be `false`.
+* `[xs, ys], values` Alternatively, the origins of pie sectors can be specified per dimension with
+    `xs, ys` (each a `Real` or `AbstractVector{<:Real}`).
 """
 @recipe Pie (xs, ys, values) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
@@ -76,7 +84,7 @@ function plot!(plot::Pie)
                 push!(points, Point2(x, y))
             end
 
-            points
+            return points
         end
     end
 

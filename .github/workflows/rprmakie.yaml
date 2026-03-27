@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - ff/breaking-0.25
   push:
     tags:
       - '*'
@@ -37,7 +36,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |

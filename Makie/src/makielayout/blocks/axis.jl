@@ -73,11 +73,17 @@ function calculate_axis_projection_matrix(scene::Scene, tf, lims, xrev::Bool, yr
     leftright = xrev ? (right, left) : (left, right)
     bottomtop = yrev ? (top, bottom) : (bottom, top)
 
+    # CairoMakie relies on eyeposition for mesh, surface, ...
+    # Technically the camera should be infinitely far away from the 0 plane
+    # because there is no perspective projection
+    center = 0.5 * Point2f(left + right, bottom + top)
+    eyeposition = Point3f(center..., 1.0e12)
+
     return Makie.orthographicprojection(
-        Float32,
-        leftright...,
-        bottomtop..., nearclip, farclip
-    )
+            Float32,
+            leftright...,
+            bottomtop..., nearclip, farclip
+        ), eyeposition
 end
 
 function calculate_title_position(area, titlegap, align, xaxisposition, xaxisprotrusion, subtitle_height)
@@ -599,7 +605,7 @@ function initialize_limit_computations!(ax)
 
     #=
     Limit linking needs immediate updates. Consider linked ax1, ax2. If both
-    axes are updated before the backend pulls, the order in whcih the backend
+    axes are updated before the backend pulls, the order in which the backend
     pulls updates will determine whose limits are the "newest".
     So whenever the user sets limits, or interacts with an axis we need that
     change to be communicated to all linked axes asap. We make sure this happens
@@ -667,7 +673,7 @@ function initialize_limit_computations!(ax)
     map!(
         attr,
         [:transform_func, :finallimits, :xreversed, :yreversed],
-        :projectionmatrix
+        [:projectionmatrix, :eyeposition]
     ) do tf, lims, xrev, yrev
         return calculate_axis_projection_matrix(ax.scene, tf, lims, xrev, yrev)
     end
@@ -675,6 +681,7 @@ function initialize_limit_computations!(ax)
     # TODO: This could directly update scene.compute if we deprecate Camera
     idm = Makie.Mat4f(Makie.I)
     on(proj -> Makie.set_proj_view!(ax.scene.camera, proj, idm), attr.projectionmatrix, update = true)
+    connect!(ax.scene.camera.eyeposition, attr.eyeposition)
 
     return
 end

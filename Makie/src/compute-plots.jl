@@ -964,7 +964,7 @@ function overwrite_plot_defaults!(updates, node::Computed, value)
     return
 end
 
-# nesting missmatch
+# nesting mismatch
 function overwrite_plot_defaults!(updates, graph::ComputeGraphView, value)
     error("Could not use theme default $value for $graph due to inconsistent nesting")
 end
@@ -1014,22 +1014,48 @@ end
 
 register_camera!(scene::Scene, plot::Plot) = register_camera!(plot.attributes, scene.compute)
 
-function argument_error(PTrait, P, args, user_kw, converted)
+function argument_error(PTrait, P, attr, user_kw, converted)
+    args = attr.args[]
     used_attr = used_attributes(P, args...) # ensure that P is registered
     kw = Dict([k => v for (k, v) in user_kw if k in used_attr])
     kw_str = isempty(kw) ? "" : " and kw: $(kw)"
     kw_convert = isempty(kw) ? "" : "; kw..."
     conv_trait = PTrait isa NoConversion ? "" : " (With conversion trait $(PTrait))"
     types = types_for_plot_arguments(P, PTrait)
+    dim_converts_info = if haskey(attr, :arg_dims)
+        """
+        If the result contains dim convert related types, e.g. Unitful types, \
+        Dates types or Categorical values, the application of dim converts likely \
+        failed. Dim converts were called with
+            $(typeof(attr.dim_converted.parent.inputs[1][]))
+        which were mapped to dimensions $(attr.arg_dims[]). If this is not the \
+        correct mapping argument_dims(::Type{<:$(P)}, args...) may need to be \
+        implemented or convert_arguments(...) may need stricter typing to \
+        prevent early conversions.
+        """
+    else
+        defaults = default_theme(nothing, P)
+        space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+        """
+        (Dim converts were not applied. This happens if `space = $space` \
+        is not in data space or if the target type of the conversion is reachable \
+        without dim converts.)
+        """
+    end
     throw(
         ArgumentError(
             """
 
-                Conversion failed for $(P)$(conv_trait) with args:
-                    $(typeof(args)) $(kw_str)
-                Got converted to: $(typeof(converted))
-                $(P) requires to convert to argument types $(types), which convert_arguments didn't succeed in.
-                To fix this overload convert_arguments(P, args...$(kw_convert)) for $(P) or $(PTrait) and return an object of type $(types).`
+            Conversion failed for $(P)$(conv_trait) with args:
+                $(typeof(args)) $(kw_str)
+            Got converted to:
+                $(typeof(converted))
+            $(P) requires to convert to argument types
+                $(types),
+            which convert_arguments didn't succeed in. To fix this overload \
+            convert_arguments(P, args...$(kw_convert)) for Type{<:$(P)} or $(PTrait) \
+            and return an object of the correct type.
+            $dim_converts_info
             """
         )
     )
@@ -1080,7 +1106,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     converted = attr.converted[]
     PTrait = conversion_trait(P, attr.args[]...)
     if got_converted(P, PTrait, converted) == false
-        argument_error(PTrait, P, attr.args[], user_attributes, converted)
+        argument_error(PTrait, P, attr, user_attributes, converted)
     end
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
@@ -1282,7 +1308,6 @@ function calculated_attributes!(::Type{Image}, plot::Plot)
         maxi = Vec3d(last(x), last(y), 0)
         return decompose(Point2d, Rect2d(mini, maxi .- mini))
     end
-    Makie.register_position_transforms!(attr)
     return register_position_transforms!(attr)
 end
 
@@ -1428,7 +1453,7 @@ end
 
 # For precompilation we want a second resolve
 # Since that compiles a few more functions
-# TODO, make this unecessary by a better ComputeGraph implementation?
+# TODO, make this unnecessary by a better ComputeGraph implementation?
 second_resolve(fig::Figure, resolve_symbol) = second_resolve(Makie.get_scene(fig), resolve_symbol)
 second_resolve(fig, resolve_symbol) = second_resolve(fig.figure, resolve_symbol)
 function second_resolve(scene::Scene, resolve_symbol)

@@ -504,7 +504,7 @@ using Makie: generate_buffers, default_pipeline
                 @test allunique(unique_buffer_idxs)
                 @test mapping[pipeline.stageio2idx[(3, 1)]] in unique_buffer_idxs
                 @test mapping[pipeline.stageio2idx[(3, 1)]] == unique_buffer_idxs[picked_idx]
-                # ^ reuses Float32 buffer from conn1 (last in iteration 1, first in interation 2)
+                # ^ reuses Float32 buffer from conn1 (last in iteration 1, first in iteration 2)
 
                 check_lowered_representation(pipeline, buffers, mapping)
 

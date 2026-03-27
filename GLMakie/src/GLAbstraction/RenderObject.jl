@@ -23,15 +23,15 @@ function pack_bool(id, bool)
     return id + (bool ? highbit_mask : UInt32(0))
 end
 
-mutable struct RenderObject{IndexT, InstanceT}
+mutable struct RenderObject{IndexType, InstanceType}
     context # OpenGL context
     id::UInt32
     visible::Bool
 
     # data of the renderobject
     buffers::Dict{Symbol, GLBuffer}
-    indices::IndexT
-    instances::InstanceT
+    indices::IndexType
+    instances::InstanceType
     primitive::GLenum
 
     uniforms::Dict{Symbol, Any}
@@ -43,12 +43,12 @@ mutable struct RenderObject{IndexT, InstanceT}
     function RenderObject(
             context, visible,
             buffers::Dict{Symbol, GLBuffer},
-            indices::IndexT,
-            instances::InstanceT,
+            indices::IndexType,
+            instances::InstanceType,
             primitive::GLenum,
             uniforms::Dict{Symbol, Any},
             observables::Vector{Observable},
-        ) where {IndexT, InstanceT}
+        ) where {IndexType, InstanceType}
         fxaa = Bool(to_value(get!(uniforms, :fxaa, true)))
         RENDER_OBJECT_ID_COUNTER[] += one(UInt32)
         # Store fxaa in ID, so we can access it in the shader to create a mask
@@ -57,7 +57,7 @@ mutable struct RenderObject{IndexT, InstanceT}
         # But with this implementation, the fxaa flag can't be changed,
         # and since this is a UUID, it shouldn't matter
         id = pack_bool(RENDER_OBJECT_ID_COUNTER[], fxaa)
-        robj = new{IndexT, InstanceT}(
+        robj = new{IndexType, InstanceType}(
             context, id, to_value(visible),
             buffers, indices, instances, primitive,
             uniforms,
