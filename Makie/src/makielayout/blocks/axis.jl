@@ -605,7 +605,7 @@ function initialize_limit_computations!(ax)
 
     #=
     Limit linking needs immediate updates. Consider linked ax1, ax2. If both
-    axes are updated before the backend pulls, the order in whcih the backend
+    axes are updated before the backend pulls, the order in which the backend
     pulls updates will determine whose limits are the "newest".
     So whenever the user sets limits, or interacts with an axis we need that
     change to be communicated to all linked axes asap. We make sure this happens

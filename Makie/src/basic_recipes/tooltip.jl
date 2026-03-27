@@ -4,7 +4,7 @@ Creates a tooltip pointing at a position displaying a given string.
 ## Arguments
 
 * `position` Creates a tooltip at a given `position` of type `VecTypes` (`Point`, `Vec` or `Tuple`).
-* `x, y` Creates a tooltip at the given `x` and `y` coordinates fo type `<:Real`.
+* `x, y` Creates a tooltip at the given `x` and `y` coordinates of type `<:Real`.
 """
 @recipe Tooltip (
     positions::VecTypesVector{N, <:Real} where {N},

@@ -933,7 +933,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", b::Block)
     show(io, b)
     if !isnothing(b.layout) && !isempty(b.layout.content)
-        print(io, " containg ")
+        print(io, " containing ")
         show(io, MIME"text/plain"(), b.layout)
     end
     return

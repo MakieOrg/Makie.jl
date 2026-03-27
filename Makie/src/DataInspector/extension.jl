@@ -168,7 +168,7 @@ function get_accessor(plot::Band, idx, plot_stack)
         #   (ps[idx] + f * ps[idx+1]) .. (ps[idx + N + 1] + f * ps[idx + N])
         return InterpolatedAccessor(idx, idx + 1, 0.5, N)
     else
-        # interpolate to quad paramater
+        # interpolate to quad parameter
         f = point_in_quad_parameter(ps[idx], ps[idx + 1], ps[idx + N + 1], ps[idx + N], to_ndim(Point2d, pos, 0))
 
         return InterpolatedAccessor(idx, idx + 1, f, N)

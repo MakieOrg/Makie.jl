@@ -964,7 +964,7 @@ function overwrite_plot_defaults!(updates, node::Computed, value)
     return
 end
 
-# nesting missmatch
+# nesting mismatch
 function overwrite_plot_defaults!(updates, graph::ComputeGraphView, value)
     error("Could not use theme default $value for $graph due to inconsistent nesting")
 end
@@ -1453,7 +1453,7 @@ end
 
 # For precompilation we want a second resolve
 # Since that compiles a few more functions
-# TODO, make this unecessary by a better ComputeGraph implementation?
+# TODO, make this unnecessary by a better ComputeGraph implementation?
 second_resolve(fig::Figure, resolve_symbol) = second_resolve(Makie.get_scene(fig), resolve_symbol)
 second_resolve(fig, resolve_symbol) = second_resolve(fig.figure, resolve_symbol)
 function second_resolve(scene::Scene, resolve_symbol)

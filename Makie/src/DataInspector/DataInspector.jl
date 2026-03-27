@@ -304,7 +304,7 @@ function update_tooltip!(di::DataInspector, source_plot::Plot, source_index::Int
     element = pick_element(plot_stack(source_plot), source_index)
     isnothing(element) && return false
 
-    # If the plotelement did not change the tooltip wont change either
+    # If the plotelement did not change the tooltip won't change either
     di.last_plot_element == element && return true
     di.last_plot_element = element
 
@@ -603,7 +603,7 @@ function get_indicator_plot(di::DataInspector, PlotType)
 end
 
 ########################################
-### cachable indicator plots
+### cacheable indicator plots
 ########################################
 
 """

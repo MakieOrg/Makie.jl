@@ -549,7 +549,7 @@ end
     p = waterfall!(scene, [230, 240], [25, -15])
     translate!(p, 0, 190, 0)
 
-    # mouse positions for targetting each plot
+    # mouse positions for targeting each plot
     mps = [
         # 0..285 x 0..135 block
         (20, 20), (90, 20), (20, 40), (40, 30), (30, 60), (55, 50), (30, 100),
