@@ -768,7 +768,12 @@ end
 
     # One per plot, in order
     mpos = [
-        (82, 325), (116, 325),
+        # WGLMakie had a bug where invisible tooltips were still pickable.
+        # (116, 310) is inside the previous tooltip, to check that this doesn't
+        # happen anymore.
+        # TODO: If/once picking can fully ignore the tooltip, move it to (116, 325)
+        # to check that that is working too (no flicker when tooltip covers picked area)
+        (82, 325), (116, 310),
         (152, 350), (192, 350),
         (243, 380), (243, 270), (243, 230), (243, 180),
         (290, 325), (331, 325),
