@@ -413,6 +413,10 @@ macro recipe(Tsym::Symbol, args, attrblock)
     return create_recipe_expr(Tsym, args, attrblock)
 end
 
+macro recipe(Tsym::Symbol, args, attrblock, _export)
+    return create_recipe_expr(Tsym, args, attrblock, _export)
+end
+
 function types_for_plot_arguments end
 
 documented_attributes(_) = nothing
@@ -505,7 +509,7 @@ function argument_docs end
 # a @recipe, another empty `## Arguments` section will be added to the final
 # docstring. Any changes from the user-written docstring will not make it into
 # the new docstring. (Until Julia restart)
-function create_recipe_expr(Tsym, args, attrblock)
+function create_recipe_expr(Tsym, args, attrblock, _export = true)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -598,7 +602,10 @@ function create_recipe_expr(Tsym, args, attrblock)
         # Simple docstrings for mutating function and type
         @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $Tsym
         @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $funcname!_sym
-        export $PlotType, $funcname, $funcname!
+    end
+
+    if _export
+        push!(q.args, :(export $PlotType, $funcname, $funcname!))
     end
 
     if !isempty(syms)

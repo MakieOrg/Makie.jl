@@ -136,7 +136,7 @@ pages = [
                 "fonts.md",
                 "layouting.md",
                 "headless.md",
-                "inspector.md",
+                "DataInspector.md",
                 "latex.md",
                 "observables.md",
                 "plot_method_signatures.md",

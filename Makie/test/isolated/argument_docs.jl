@@ -9,6 +9,7 @@
         :ComputePlots,
         :Plot,
         :Arrows, # This is just a deprecated alias
+        :DataInspectorTooltip,
     ]
     plot_types = filter(names(Makie, all = true)) do name
         isdefined(Makie, name) || return false

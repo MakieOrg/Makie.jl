@@ -75,7 +75,12 @@ const _STRING_TO_SYMBOL_CACHE = Dict{String, Symbol}()
 cached_Symbol(str::SubString) = cached_Symbol(String(str))
 function cached_Symbol(str::String)
     if !haskey(_STRING_TO_SYMBOL_CACHE, str)
-        s = Symbol(str)
+        s = try
+            Symbol(str)
+        catch e
+            @info "Failed to create cached Symbol for \"$str\""
+            rethrow(e)
+        end
         _STRING_TO_SYMBOL_CACHE[str] = s
         return s
     else
