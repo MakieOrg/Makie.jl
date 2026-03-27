@@ -2,6 +2,7 @@
 @recipe DataInspectorTooltip (elements::Vector{<:PlotElement},) begin
     documented_attributes(Tooltip)...
 end false
+# false skips the export here
 
 mutable struct DataInspector
     parent::Scene
