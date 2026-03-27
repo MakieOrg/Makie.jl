@@ -5,17 +5,33 @@ using GeometryBasics: SVector
 using Makie: Observable, on, colorbuffer, to_value
 using Makie: Quaternionf
 using GeometryBasics: VecTypes
-using Colors: N0f8
+using Colors: N0f8, Colorant
 using ImageCore: RGBA, RGB, clamp01nan
 import Makie.Observables
+import Lava
+import Lava: GraphicsPipeline, Premultiplied, TriangleList, NoCull, DepthOff,
+             LavaFramebuffer, OffscreenTarget,
+             LavaTexture2D, LavaSampler, SampledTexture, bind_textures,
+             vk_context, ensure_active_batch!, transition_image!,
+             vertex_index, instance_index, set_position!, set_point_size!,
+             frag_coord_x, frag_coord_y, gfx_output, gfx_input,
+             gfx_output_flat, gfx_input_flat,
+             dFdx, dFdy,
+             emit_vertex!, end_primitive!, primitive_id_in,
+             sample_texture_2d, LavaArray, LavaBackend,
+             keep_data_alive!, BatchQueue,
+             allocate_batch_queue!,
+             LavaDeviceArray, GeometryConfig,
+             LineListAdjacency, LineList, TriangleStrip, PointList,
+             GfxTexture2D,
+             geom_input, geom_input_position
+import Lava.Vulkan
 using Adapt
 using Makie.ComputePipeline: register_computation!
-# Include Overlay rasterization module
-include("overlay/Overlay.jl")
-using .Overlay
 
-# Debug: capture overlay buffer for inspection
-const DEBUG_OVERLAY = Ref{Any}(nothing)
+# Overlay rasterization (included directly, no submodule)
+include("overlay/Overlay.jl")
+
 
 # =============================================================================
 # RayMakieState
@@ -27,10 +43,6 @@ mutable struct RayMakieState
     camera::Union{Observable, Nothing}
     hikari_scene::Union{Hikari.AbstractScene, Nothing}
     needs_film_clear::Bool
-    # Pre-allocated buffer for clamp01nan in colorbuffer (avoids per-frame GPU alloc)
-    colorbuffer_tmp::AbstractMatrix{RGB{Float32}}
-    # Overlay system for lines, scatter, text (on KA backend)
-    overlay_buffer::AbstractMatrix{RGBA{Float32}}
     # Pre-allocated flipped depth buffer for overlay rendering
     depth_flipped::AbstractMatrix{Float32}
     # Per-scene integrator state (e.g. VolPathState) — each scene accumulates independently
@@ -45,10 +57,54 @@ end
 get_tlas(state::RayMakieState) = state.hikari_scene.accel
 
 # =============================================================================
+# Legacy Overlay Render Objects (kept for backward compat during transition)
+# All new draw_atomic methods produce LavaRenderObject instead.
+# =============================================================================
+
+abstract type OverlayRenderObject end
+
+# =============================================================================
 # Plot conversion helpers (shared across plot types)
 # =============================================================================
 
 include("plots/common.jl")
+
+# =============================================================================
+# Raytrace vs overlay dispatch
+# =============================================================================
+
+"""
+    should_raytrace(camera_controls) -> Bool
+
+Determine from the camera type whether a scene should be raytraced.
+3D cameras → true, 2D/pixel cameras → false.
+"""
+should_raytrace(::Makie.AbstractCamera3D) = true
+should_raytrace(::Makie.Camera3D) = true
+should_raytrace(::Makie.Axis3Camera) = true
+should_raytrace(::Makie.OldCamera3D) = true
+should_raytrace(::Any) = false  # Camera2D, PixelCamera, RelativeCamera, EmptyCamera
+
+"""
+    should_raytrace(plot::Makie.Plot) -> Bool
+
+Determine from the plot type whether it should be raytraced.
+3D geometry → true, 2D overlays → false.
+"""
+should_raytrace(::Makie.Plot{Makie.mesh}) = true
+should_raytrace(::Makie.Plot{Makie.meshscatter}) = true
+should_raytrace(::Makie.Plot{Makie.surface}) = true
+should_raytrace(::Makie.Plot{Makie.volume}) = true
+should_raytrace(::Makie.Plot) = false  # scatter, lines, text, image, heatmap → overlay
+
+"""
+    should_raytrace(scene, plot) -> Bool
+
+A plot should be raytraced only if BOTH its scene has a 3D camera AND the
+plot type is a raytraceable primitive.
+"""
+should_raytrace(scene::Makie.Scene, plot::Makie.Plot) =
+    should_raytrace(scene.camera_controls) && should_raytrace(plot)
 
 # =============================================================================
 # Scene initialization and polling
@@ -67,9 +123,8 @@ function collect_renderable_scenes(scene::Makie.Scene)
     return result
 end
 
-function _is_3d_camera(cc)
-    return !(cc isa Makie.PixelCamera || cc isa Makie.EmptyCamera)
-end
+# Use should_raytrace(camera) for the 3D camera check
+_is_3d_camera(cc) = should_raytrace(cc)
 
 function _has_atomic_plots(scene::Makie.Scene)
     found = Ref(false)
@@ -249,6 +304,7 @@ function draw_atomic(screen, scene, plot::Makie.AbstractPlot)
 end
 
 include("plots/mesh.jl")
+include("plots/image.jl")
 include("plots/meshscatter.jl")
 include("plots/surface.jl")
 include("plots/volume.jl")
@@ -355,16 +411,20 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
     camera = to_trace_camera(rscene, film; screen_window)
 
     # Clear film when Makie camera changes (rotation, zoom, pan)
-    # Pre-allocate buffers
-    colorbuffer_tmp = similar(film.postprocess)
-    film_size = size(film.framebuffer)
-    overlay_buffer = Overlay.create_overlay_buffer(ka_backend, film_size)
     # depth_flipped is unused (kernels flip index instead), but struct field still exists
     depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(rscene, film, camera, hikari_scene, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, false, false)
-    on(rscene, rscene.camera.projectionview) do _
-        state.needs_film_clear = true
+    state = RayMakieState(rscene, film, camera, hikari_scene, false, depth_flipped, nothing, false, false)
+    # Guard: only clear film when the projection matrix actually changes.
+    # Makie's Observable fires on every notify(), even when the value is identical.
+    # Without this guard, GLMakie re-renders (triggered by overlay image updates)
+    # fire spurious projectionview notifications that reset accumulation every frame.
+    last_pv = Ref(copy(rscene.camera.projectionview[]))
+    on(rscene, rscene.camera.projectionview) do pv
+        if pv != last_pv[]
+            last_pv[] = copy(pv)
+            state.needs_film_clear = true
+        end
     end
     return state
 end
@@ -386,12 +446,9 @@ function _create_overlay_only_state(root_scene::Makie.Scene, screen)
     )
     film = Raycore.Adapt.adapt(ka_backend, film)
 
-    colorbuffer_tmp = similar(film.postprocess)
-    film_size = size(film.framebuffer)
-    overlay_buffer = Overlay.create_overlay_buffer(ka_backend, film_size)
     depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(root_scene, film, nothing, nothing, false, colorbuffer_tmp, overlay_buffer, depth_flipped, nothing, true, false)
+    state = RayMakieState(root_scene, film, nothing, nothing, false, depth_flipped, nothing, true, false)
     return state
 end
 
@@ -411,9 +468,9 @@ function _has_overlay_eligible_plots(scene::Makie.Scene)
     found = false
     for p in scene.plots
         Makie.for_each_atomic_plot(p) do ap
-            T = typeof(ap)
-            if T <: Makie.Plot{Makie.scatter} || T <: Makie.Plot{Makie.linesegments} ||
-               T <: Makie.Plot{Makie.lines} || T <: Makie.Plot{Makie.text}
+            # A plot is overlay-eligible if it shouldn't be raytraced in this scene,
+            # or if it's a plot type that always renders as overlay (scatter, lines, text, etc.)
+            if !should_raytrace(ap) || !should_raytrace(scene.camera_controls)
                 found = true
             end
         end
@@ -422,6 +479,8 @@ function _has_overlay_eligible_plots(scene::Makie.Scene)
 end
 
 function _collect_overlay!(result, scene::Makie.Scene)
+    # Skip invisible scenes
+    scene.visible[] || return
     # Collect scenes that directly own overlay-eligible plots
     if _has_overlay_eligible_plots(scene)
         push!(result, scene)
@@ -444,6 +503,9 @@ _is_overlay_plot(::Makie.Plot{Makie.scatter}) = true
 _is_overlay_plot(::Makie.Plot{Makie.linesegments}) = true
 _is_overlay_plot(::Makie.Plot{Makie.lines}) = true
 _is_overlay_plot(::Makie.Plot{Makie.text}) = true
+_is_overlay_plot(::Makie.Plot{Makie.image}) = true
+_is_overlay_plot(::Makie.Plot{Makie.heatmap}) = true
+_is_overlay_plot(::Makie.Plot{Makie.mesh}) = true
 _is_overlay_plot(::Makie.Plot) = false
 
 function init_scene!(screen, mscene::Makie.Scene)
@@ -466,7 +528,24 @@ function init_scene!(screen, mscene::Makie.Scene)
             end
 
             poll_all_plots(screen, rscene)
-            Raycore.sync!(state.hikari_scene.accel)
+            Hikari.sync!(state.hikari_scene)
+
+            # Center camera on data after geometry is built (Camera3D defaults to origin)
+            if rscene.camera_controls isa Makie.Camera3D
+                Makie.center!(rscene)
+                # Adjust near/far planes to encompass the scene
+                cc = rscene.camera_controls
+                bounds = state.hikari_scene.bounds[]
+                if bounds[1].p_min[1] < bounds[1].p_max[1]  # valid bounds
+                    eye = cc.eyeposition[]
+                    center = bounds[2].center
+                    radius = bounds[2].r
+                    dist = sqrt(sum((eye .- center).^2))
+                    cc.near[] = max(0.01, dist - radius * 2)
+                    cc.far[] = dist + radius * 2
+                end
+                state.needs_film_clear = true
+            end
         end
 
         # Process overlay-eligible scenes not covered by any renderable scene
@@ -505,7 +584,7 @@ function init_scene!(screen, mscene::Makie.Scene)
 
     # Pre-allocate full-figure output buffer on backend (height, width — Julia image convention)
     root_w, root_h = size(mscene)
-    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGB{Float32}, root_h, root_w)
+    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGBA{Float32}, root_h, root_w)
 
     # Set primary state (used by render_interactive and single-scene paths)
     screen.state = first(screen.scene_states)
@@ -517,6 +596,8 @@ end
 # poll_all_plots — trigger compute graph resolution for all registered plots
 # =============================================================================
 
+const POLL_ERROR_LOGGED = Set{UInt64}()
+
 function poll_all_plots(screen, mscene)
     Makie.for_each_atomic_plot(mscene) do p
         pp = Makie.parent_scene(p)
@@ -525,7 +606,11 @@ function poll_all_plots(screen, mscene)
             try
                 p[:trace_renderobject][]  # triggers resolution if dirty
             catch e
-                @error "RayMakie: failed to resolve trace_renderobject for $(typeof(p))" exception=(e, catch_backtrace())
+                oid = objectid(p)
+                if oid ∉ POLL_ERROR_LOGGED
+                    push!(POLL_ERROR_LOGGED, oid)
+                    @error "RayMakie: failed to resolve trace_renderobject for $(typeof(p))" exception=(e, catch_backtrace())
+                end
             end
         end
     end
@@ -554,6 +639,7 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     pscene = Makie.parent_scene(plot)
     for ss in screen.scene_states
         ss.closed && continue
+        ss.hikari_scene === nothing && continue
         if _scene_contains(ss.makie_scene, pscene)
             tlas = ss.hikari_scene.accel
             if hasproperty(robj, :handles)
@@ -574,8 +660,11 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     delete!(plot.attributes, :trace_renderobject, force=true, recursive=true)
 end
 
+# Standalone Vulkan viewer (GLFW + Lava swapchain, no GLMakie)
+include("vulkan_viewer.jl")
+
 # Export RayMakie-specific types
-export Screen, ScreenConfig, activate!, colorbuffer
+export Screen, ScreenConfig, activate!, colorbuffer, vulkan_viewer, wait_viewer
 
 # Re-export DenoiseConfig from Hikari for convenience
 const DenoiseConfig = Hikari.DenoiseConfig

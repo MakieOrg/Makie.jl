@@ -12,12 +12,78 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         return (color_to_texture(args.color, plot),)
     end
 
-    # 2. Everything → push to scene via Hikari
+    # 2. Everything → push to scene via Hikari (or overlay for 2D in overlay-only mode)
     register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals,
                                   :texturecoordinates, :trace_color_tex, :model_f32c],
                           [:trace_renderobject]) do args, changed, last
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
+
+        # Render as overlay if the scene/plot shouldn't be raytraced (2D cameras, 2D meshes)
+        if !should_raytrace(scene, plot) || isnothing(hikari_scene)
+            positions_3f = Vec3f[Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
+            faces_val = args.faces
+            pv = Mat4f(scene.camera.projectionview[])
+            model_mat = Mat4f(args.model_f32c)
+
+            # Flatten indexed mesh to per-vertex for non-indexed draw
+            flat_positions = Vec3f[positions_3f[f[j]] for f in faces_val for j in 1:3]
+
+            # Resolve per-vertex colors
+            raw_color = to_value(plot.color)
+            n_verts = length(positions_3f)
+            n_faces = length(faces_val)
+            flat_colors = if raw_color isa AbstractVector{<:Colorant}
+                if length(raw_color) == n_verts
+                    # Per-vertex colors — index by vertex
+                    Vec4f[let c = RGBA{Float32}(raw_color[f[j]])
+                        Vec4f(c.r, c.g, c.b, c.alpha)
+                    end for f in faces_val for j in 1:3]
+                else
+                    # Per-face/per-group colors — distribute across faces
+                    nc = length(raw_color)
+                    faces_per_color = max(1, n_faces ÷ nc)
+                    Vec4f[let ci = min(div(fi - 1, faces_per_color) + 1, nc)
+                        c = RGBA{Float32}(raw_color[ci])
+                        Vec4f(c.r, c.g, c.b, c.alpha)
+                    end for (fi, f) in enumerate(faces_val) for j in 1:3]
+                end
+            elseif raw_color isa Colorant
+                c = RGBA{Float32}(raw_color)
+                fill(Vec4f(c.r, c.g, c.b, c.alpha), length(flat_positions))
+            else
+                # Fallback: try mesh_overlay_color
+                c = mesh_overlay_color(plot, color_tex)
+                fill(Vec4f(c.r, c.g, c.b, c.alpha), length(flat_positions))
+            end
+
+            if !isnothing(last) && last.trace_renderobject isa LavaRenderObject
+                robj = last.trace_renderobject
+                update_buffer!(robj, :positions, flat_positions)
+                update_buffer!(robj, :colors, flat_colors)
+                robj.uniforms[:projectionview] = pv
+                robj.uniforms[:model] = model_mat
+                robj.vertex_count = length(flat_positions)
+                robj.visible = true
+                return (robj,)
+            end
+
+            pipeline = get_mesh_pipeline!(screen)
+            robj = LavaRenderObject(pipeline;
+                arg_names = (:positions, :colors, :projectionview, :model),
+                buffers = Dict{Symbol, Lava.LavaArray}(
+                    :positions => Lava.LavaArray(flat_positions),
+                    :colors => Lava.LavaArray(flat_colors),
+                ),
+                uniforms = Dict{Symbol, Any}(
+                    :projectionview => pv,
+                    :model => model_mat,
+                ),
+                vertex_count = length(flat_positions),
+                instances = 1,
+            )
+            return (robj,)
+        end
 
         if isnothing(last) || isnothing(last.trace_renderobject) ||
            changed.mesh || changed.positions_transformed_f32c || changed.faces ||
@@ -181,4 +247,17 @@ function update_trace_transform!(hikari_scene, state, robj, transform)
         Raycore.update_instance_transforms!(tlas, transforms, 1, idx)
     end
     state.needs_film_clear = true
+end
+
+# =============================================================================
+# 2D mesh overlay color extraction
+# =============================================================================
+
+function mesh_overlay_color(plot, color_tex)
+    c = to_value(plot.color)
+    try
+        return RGBA{Float32}(Makie.to_color(c))
+    catch
+        return RGBA{Float32}(1f0, 1f0, 1f0, 1f0)
+    end
 end

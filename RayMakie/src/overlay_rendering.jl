@@ -1,327 +1,179 @@
 # =============================================================================
-# Overlay Rendering
-# =============================================================================
-# Iterates all plots with overlay trace_renderobjects and dispatches to
-# KA rasterize kernels. No CPU for-loops that scalar-index GPU arrays.
-
-# Cached GPU atlas (module-level, avoids re-upload each frame when unchanged)
-const _CACHED_ATLAS = Ref{Any}(nothing)
-const _CACHED_ATLAS_SIZE = Ref{Int}(0)  # length(atlas.data) at last upload
-
-# =============================================================================
-# Main entry point
+# Overlay Rendering — draws LavaRenderObjects via Lava graphics pipeline
 # =============================================================================
 
-function render_overlays!(screen)
-    state = screen.state
-    film = state.film
-    overlay = state.overlay_buffer
-
-    # Clear overlay buffer
-    Overlay.clear_overlay!(overlay)
-
-    has_overlay = Ref(false)
-    depth_buf = film.depth  # bottom-up; rasterize kernels flip Y index internally
-
-    # Lazily prepare atlas GPU data (only if sprites exist)
-    gpu_atlas_ref = Ref{Any}(nothing)
-    atlas_w_ref = Ref{Int32}(Int32(0))
-    atlas_h_ref = Ref{Int32}(Int32(0))
-
-    if state.overlay_only
-        # Overlay-only: iterate ALL overlay-eligible scenes, each with its own
-        # viewport-remapped raster context rendering into the single root buffer.
-        root_scene = state.makie_scene
-        root_w, root_h = size(root_scene)
-        root_res = Vec2f(Float32(root_w), Float32(root_h))
-        overlay_scenes = collect_overlay_scenes(root_scene)
-
-        for rscene in overlay_scenes
-            ctx = _create_raster_context_remapped(rscene, root_res)
-            remap = _compute_viewport_remap(rscene, root_res)
-            _render_scene_overlay_plots!(
-                overlay, depth_buf, ctx, rscene, remap,
-                gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-            )
-        end
-    else
-        # Standard 3D: single scene with its own camera
-        scene = state.makie_scene
-        ctx = _create_raster_context(scene, film.resolution)
-        remap = Mat4f(I)
-        Makie.for_each_atomic_plot(scene) do p
-            _dispatch_overlay_plot!(
-                overlay, depth_buf, ctx, p, remap,
-                gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-            )
-        end
-    end
-
-    # Composite overlay onto postprocessed image
-    if has_overlay[]
-        DEBUG_OVERLAY[] = Array(overlay)
-        Overlay.composite!(film.postprocess, overlay)
-    end
-end
-
-# Render overlay plots for a single scene (direct plots only, not children)
-function _render_scene_overlay_plots!(
-    overlay, depth_buf, ctx, scene, remap::Mat4f,
-    gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-)
-    for p in scene.plots
-        Makie.for_each_atomic_plot(p) do ap
-            _dispatch_overlay_plot!(
-                overlay, depth_buf, ctx, ap, remap,
-                gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-            )
-        end
-    end
-end
-
-# Dispatch a single atomic plot to the appropriate overlay rasterizer
-function _dispatch_overlay_plot!(
-    overlay, depth_buf, ctx, p, remap::Mat4f,
-    gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-)
-    haskey(p, :trace_renderobject) || return nothing
-    p.visible[] || return nothing
-    robj = try
-        p[:trace_renderobject][]
-    catch e
-        @warn "RayMakie: failed to access trace_renderobject for $(typeof(p))" exception=(e, catch_backtrace())
-        return nothing
-    end
-    isnothing(robj) && return nothing
-    hasproperty(robj, :type) || return nothing
-
-    rtype = robj.type
-    if rtype === :linesegments
-        _render_overlay_linesegments!(overlay, depth_buf, ctx, robj)
-        has_overlay[] = true
-    elseif rtype === :lines
-        _render_overlay_lines!(overlay, depth_buf, ctx, robj)
-        has_overlay[] = true
-    elseif rtype === :sprite
-        # Lazily upload atlas on first sprite encounter
-        if isnothing(gpu_atlas_ref[])
-            gpu_atlas_ref[], atlas_w_ref[], atlas_h_ref[] = _get_gpu_atlas(overlay)
-        end
-        # Extract the marker-space matrices from the plot's camera attributes
-        # (matches GLMakie's sprites.geom uniforms: preprojection, projection, view).
-        # GLMakie: trans = (billboard ? projection : pview) * qmat(rotation)
-        # So marker_projection is projection when billboard, projectionview otherwise.
-        marker_proj = if robj.billboard
-            _get_marker_projection(p, remap)  # p[:projection]
-        else
-            _get_marker_pview(p, remap)        # p[:projectionview] = projection * view
-        end
-        preproj = _get_preprojection(p)
-        marker_pview = _get_marker_pview(p, remap)
-        _render_overlay_sprite!(
-            overlay, depth_buf, ctx, robj,
-            gpu_atlas_ref[], atlas_w_ref[], atlas_h_ref[],
-            marker_proj, preproj, marker_pview,
-        )
-        has_overlay[] = true
-    end
-    return nothing
-end
-
-# Extract the marker-space projection matrix from a plot's camera attributes,
-# applying the viewport remap for overlay-only mode.
-function _get_marker_projection(p, remap::Mat4f)
-    if haskey(p, :projection)
-        return Mat4f(remap * Mat4f(p[:projection][]))
-    else
-        return Mat4f(I)
-    end
-end
-
-# Extract preprojection (space → markerspace transform, e.g. data → pixel).
-# Does NOT need remap since it transforms between plot-local coordinate systems.
-function _get_preprojection(p)
-    if haskey(p, :preprojection)
-        return Mat4f(p[:preprojection][])
-    else
-        return Mat4f(I)
-    end
-end
-
-# Extract the marker-space projectionview (projection * view in markerspace),
-# applying the viewport remap. This is `pview` in sprites.geom.
-function _get_marker_pview(p, remap::Mat4f)
-    if haskey(p, :projectionview)
-        return Mat4f(remap * Mat4f(p[:projectionview][]))
-    else
-        return Mat4f(I)
-    end
+function render_overlays!(screen, bq, target; scenes=nothing)
+    render_overlays_gfx!(screen, bq, target; scenes)
 end
 
 # =============================================================================
-# Raster context creation
+# Helper: extract near/far from camera
 # =============================================================================
 
-function _create_raster_context(scene::Makie.Scene, resolution)
-    view_proj = Mat4f(scene.camera.projectionview[])
-    proj = Mat4f(scene.camera.projection[])
-    view_m = Mat4f(scene.camera.view[])
-    near, far = _extract_near_far(scene, proj)
-    return Overlay.RasterContext(
-        view_proj, proj, view_m, Vec2f(resolution);
-        px_per_unit=1f0, near=near, far=far,
-    )
-end
-
-# Compute the NDC remap matrix for a child scene's viewport within the root.
-# Maps child NDC → root NDC so that screen_x = (ndc_x * 0.5 + 0.5) * root_w
-# gives correct pixel positions in the root buffer.
-function _compute_viewport_remap(scene::Makie.Scene, root_resolution::Vec2f)
-    vp = Makie.viewport(scene)[]
-    vx, vy = Float32.(vp.origin)
-    vw, vh = Float32.(Makie.widths(vp))
-    rw, rh = root_resolution[1], root_resolution[2]
-    return Mat4f(
-        vw / rw,  0f0,      0f0, 0f0,
-        0f0,      vh / rh,  0f0, 0f0,
-        0f0,      0f0,      1f0, 0f0,
-        (vw + 2f0 * vx - rw) / rw, (vh + 2f0 * vy - rh) / rh, 0f0, 1f0,
-    )
-end
-
-# Create a raster context that remaps a child scene's camera into the root
-# viewport coordinate system. This allows rendering all scenes' overlays into
-# a single buffer (like OpenGL viewport rendering).
-function _create_raster_context_remapped(scene::Makie.Scene, root_resolution::Vec2f)
-    view_proj = Mat4f(scene.camera.projectionview[])
-    proj = Mat4f(scene.camera.projection[])
-    view_m = Mat4f(scene.camera.view[])
-    near, far = _extract_near_far(scene, proj)
-
-    remap = _compute_viewport_remap(scene, root_resolution)
-    remapped_vp = remap * view_proj
-    remapped_proj = remap * proj
-
-    return Overlay.RasterContext(
-        remapped_vp, remapped_proj, view_m, root_resolution;
-        px_per_unit=1f0, near=near, far=far,
-    )
-end
-
-function _extract_near_far(scene::Makie.Scene, proj::Mat4f)
+function extract_near_far(scene::Makie.Scene, proj::Mat4f)
     cc = scene.camera_controls
     if hasproperty(cc, :near) && hasproperty(cc, :far)
         near = Float32(cc.near[])
         far = Float32(cc.far[])
     else
-        # Extract near/far from projection matrix (OpenGL convention)
-        A = proj[3, 3]
-        B = proj[3, 4]
-        near = B / (A - 1f0)
-        far = B / (A + 1f0)
-        if !isfinite(near) || near <= 0f0
-            near = 0.1f0
-        end
-        if !isfinite(far) || far <= near
-            far = 1000f0
-        end
+        A = proj[3, 3]; B = proj[3, 4]
+        near = B / (A - 1f0); far = B / (A + 1f0)
+        (!isfinite(near) || near <= 0f0) && (near = 0.1f0)
+        (!isfinite(far) || far <= near) && (far = 1000f0)
     end
     return near, far
 end
 
 # =============================================================================
-# Atlas GPU upload (cached)
+# Sub-scene backgrounds (GPU fill)
 # =============================================================================
 
-function _get_gpu_atlas(overlay)
-    atlas = Makie.get_texture_atlas()
-    atlas_data = atlas.data
-    backend = KernelAbstractions.get_backend(overlay)
+function render_subscene_backgrounds!(postprocess, root_scene)
+    root_h, root_w = size(postprocess)
+    for child in root_scene.children
+        bg = to_value(child.backgroundcolor)
+        bg_rgba = RGBA{Float32}(bg)
+        (bg_rgba.r ≈ 1f0 && bg_rgba.g ≈ 1f0 && bg_rgba.b ≈ 1f0) && continue
+        bg_rgba.alpha < 0.01f0 && continue
+        vp = child.viewport[]
+        x0 = max(1, round(Int, vp.origin[1]) + 1)
+        x1 = min(root_w, round(Int, vp.origin[1] + vp.widths[1]))
+        y_top = root_h - round(Int, vp.origin[2] + vp.widths[2]) + 1
+        y_bot = root_h - round(Int, vp.origin[2])
+        y0 = max(1, y_top); y1 = min(root_h, y_bot)
+        bg_fill = RGBA{Float32}(bg_rgba.r * bg_rgba.alpha, bg_rgba.g * bg_rgba.alpha, bg_rgba.b * bg_rgba.alpha, 1f0)
+        bg_rgba.alpha ≈ 1f0 && (view(postprocess, y0:y1, x0:x1) .= Ref(bg_fill))
+    end
+end
 
-    # Check if atlas has changed (size changes when new glyphs are rasterized)
-    atlas_len = length(atlas_data)
-    if _CACHED_ATLAS_SIZE[] == atlas_len && !isnothing(_CACHED_ATLAS[])
-        gpu_atlas = _CACHED_ATLAS[]
-        # Verify backend matches (could change between renders)
-        if KernelAbstractions.get_backend(gpu_atlas) === backend
-            # Makie atlas is stored as data[x, y]: dim1=width(U), dim2=height(V)
-            aw = Int32(size(atlas_data, 1))
-            ah = Int32(size(atlas_data, 2))
-            return gpu_atlas, aw, ah
+# =============================================================================
+# Draw a single LavaRenderObject inside the active render pass
+# =============================================================================
+
+function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderObject, viewport, color_format, default_vp, default_sc)
+    batch = bq.active_batch
+    cmd = batch.cmd_buf
+
+    if viewport !== nothing
+        vx, vy, vw, vh = viewport
+        dvp = Vulkan.Viewport(vx, vy, vw, vh, 0f0, 1f0)
+        Vulkan.cmd_set_viewport(cmd, [dvp])
+        sc_y = vh < 0 ? Int32(floor(vy + vh)) : Int32(floor(vy))
+        sc_h = UInt32(ceil(abs(vh)))
+        dsc = Vulkan.Rect2D(
+            Vulkan.Offset2D(Int32(floor(vx)), sc_y),
+            Vulkan.Extent2D(UInt32(ceil(abs(vw))), sc_h))
+        Vulkan.cmd_set_scissor(cmd, [dsc])
+    else
+        Vulkan.cmd_set_viewport(cmd, [default_vp])
+        Vulkan.cmd_set_scissor(cmd, [default_sc])
+    end
+
+    args = build_args(robj)
+    tt = gfx_type_tuple(args)
+    ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
+    vert_shader, compiled = Lava._ensure_compiled_with_shader!(robj.pipeline,
+        robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
+        color_format=color_format, descriptor_set_layout=ds_layout)
+
+    if robj.bindings !== nothing
+        Vulkan.cmd_bind_descriptor_sets(cmd,
+            Vulkan.PIPELINE_BIND_POINT_GRAPHICS,
+            compiled.pipeline_layout, UInt32(0),
+            [robj.bindings.set], UInt32[])
+        push!(batch.data_refs, robj.bindings)
+    end
+
+    push_data = Lava.pack_gfx_args(args, vert_shader.push_info)
+
+    if haskey(robj.buffers, :indices)
+        ib = robj.buffers[:indices]
+        Lava.vk_draw_indexed_in_pass!(bq, compiled, length(ib);
+            push_data=push_data, indices_buffer=ib.buf[].buffer)
+    else
+        Lava.vk_draw_in_pass!(bq, compiled, robj.vertex_count;
+            push_data=push_data, instances=robj.instances)
+    end
+
+    push!(batch.data_refs, compiled)
+    for (_, buf) in robj.buffers
+        push!(batch.data_refs, buf)
+    end
+end
+
+# =============================================================================
+# Main render pass — collect and draw all LavaRenderObjects
+# =============================================================================
+
+"""
+    render_overlays_gfx!(screen, target; scenes=nothing)
+
+Render overlay plots (scatter, lines, text, mesh) via the Lava graphics pipeline
+directly onto `target` (a `WindowTarget` or `OffscreenTarget`).
+
+When `scenes` is provided, only plots from those scenes are rendered (used for
+uncovered overlay rendering). Otherwise, uses the current screen state's scene.
+"""
+function render_overlays_gfx!(screen, bq, target; scenes=nothing)
+    state = screen.state
+    scene = state.makie_scene
+
+    robjs = Tuple{LavaRenderObject, Any}[]
+
+    overlay_scenes = if scenes !== nothing
+        scenes
+    elseif state.overlay_only
+        collect_overlay_scenes(state.makie_scene)
+    else
+        [scene]
+    end
+
+    root_w, root_h = size(state.makie_scene)
+    for rscene in overlay_scenes
+        vp = Makie.viewport(rscene)[]
+        vp_y = Float32(root_h - vp.origin[2])
+        vp_rect = (Float32(vp.origin[1]), vp_y, Float32(vp.widths[1]), -Float32(vp.widths[2]))
+        for p in rscene.plots
+            Makie.for_each_atomic_plot(p) do ap
+                haskey(ap, :trace_renderobject) || return nothing
+                ap.visible[] || return nothing
+                robj = try ap[:trace_renderobject][] catch; return nothing end
+                robj isa LavaRenderObject && robj.visible && push!(robjs, (robj, vp_rect))
+            end
         end
     end
 
-    # Upload atlas to GPU
-    gpu_atlas = Adapt.adapt(backend, Float32.(atlas_data))
-    _CACHED_ATLAS[] = gpu_atlas
-    _CACHED_ATLAS_SIZE[] = atlas_len
+    isempty(robjs) && return
 
-    # Makie atlas is stored as data[x, y]: dim1=width(U), dim2=height(V)
-    aw = Int32(size(atlas_data, 1))
-    ah = Int32(size(atlas_data, 2))
-    return gpu_atlas, aw, ah
-end
+    # Render directly to target using the provided BatchQueue
 
-# =============================================================================
-# Per-type overlay rendering (dispatched from render_overlays!)
-# =============================================================================
-
-function _render_overlay_linesegments!(overlay, depth_buffer, ctx, robj)
-    effective_ctx = _apply_model_to_ctx(ctx, robj)
-    Overlay.rasterize_lines!(
-        overlay, depth_buffer, effective_ctx,
-        robj.positions, robj.style.color, robj.style.linewidth,
-        robj.buffers;
-        connect=false,
-    )
-end
-
-function _render_overlay_lines!(overlay, depth_buffer, ctx, robj)
-    effective_ctx = _apply_model_to_ctx(ctx, robj)
-    Overlay.rasterize_lines!(
-        overlay, depth_buffer, effective_ctx,
-        robj.positions, robj.style.color, robj.style.linewidth,
-        robj.buffers;
-        connect=true,
-    )
-end
-
-# Apply model_f32c from a renderobject to the raster context's view_proj.
-# This ensures positions_transformed_f32c are correctly projected when model
-# is not baked into positions (the common case for Axis3 etc.).
-function _apply_model_to_ctx(ctx, robj)
-    if !hasproperty(robj, :model)
-        return ctx
+    if target isa Lava.WindowTarget
+        win = target.window
+        w, h = Lava.size(win)
+        view = win.views[win.current_image_idx + 1]
+        image = win.images[win.current_image_idx + 1]
+    else
+        fb = target.fb
+        w, h = fb.width, fb.height
+        view = fb.color_view
+        image = fb.color_image
     end
-    model = robj.model
-    model == Mat4f(I) && return ctx
-    vp = ctx.view_proj * model
-    return Overlay.RasterContext(
-        vp, ctx.projection, ctx.view_mat, ctx.resolution;
-        px_per_unit=ctx.px_per_unit, near=ctx.near, far=ctx.far,
-    )
-end
 
-function _render_overlay_sprite!(
-    overlay, depth_buffer, ctx, robj, gpu_atlas, atlas_w, atlas_h,
-    marker_projection::Mat4f, preprojection::Mat4f, marker_pview::Mat4f,
-)
-    Overlay.rasterize_sprites!(
-        overlay, depth_buffer, ctx,
-        robj.positions,
-        robj.quad_offsets,
-        robj.quad_scales,
-        robj.marker_offsets,
-        robj.rotations,
-        robj.colors,
-        robj.uv_rects,
-        robj.shapes,
-        gpu_atlas, atlas_w, atlas_h;
-        billboard=robj.billboard,
-        scale_primitive=robj.scale_primitive,
-        model=robj.model,
-        marker_projection=marker_projection,
-        preprojection=preprojection,
-        marker_pview=marker_pview,
-    )
+    extent = Vulkan.Extent2D(UInt32(w), UInt32(h))
+    # No clear — overlays are alpha-blended on top of existing content
+    Lava.vk_begin_pass!(bq, view, image, extent; clear_color=nothing)
+
+    batch = bq.active_batch
+    cmd = batch.cmd_buf
+    vp = Vulkan.Viewport(0f0, Float32(h), Float32(w), -Float32(h), 0f0, 1f0)
+    Vulkan.cmd_set_viewport(cmd, [vp])
+    sc = Vulkan.Rect2D(Vulkan.Offset2D(0, 0), extent)
+    Vulkan.cmd_set_scissor(cmd, [sc])
+
+    fmt = target isa Lava.WindowTarget ? target.window.format : target.fb.color_format
+    for (robj, robj_vp) in robjs
+        draw_lava_renderobject!(screen, bq, robj, robj_vp, fmt, vp, sc)
+    end
+
+    Lava.vk_end_pass!(bq)
 end

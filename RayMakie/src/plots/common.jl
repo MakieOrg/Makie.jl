@@ -131,7 +131,7 @@ end
 
 # Convert color values to Hikari textures via multiple dispatch
 color_to_texture(color::AbstractMatrix{<:Number}, plot) = Hikari.Texture(to_spectrum(Makie.compute_colors(plot.attributes)))
-color_to_texture(color::AbstractMatrix{<:Colorant}, ::Any) = Hikari.Texture(to_spectrum(color))
+color_to_texture(color::AbstractMatrix{<:Colorant}, ::Any) = color isa Makie.LinePattern ? Hikari.ConstTexture(to_spectrum(RGBf(1,1,1))) : Hikari.Texture(to_spectrum(color))
 color_to_texture(color::AbstractVector{<:Colorant}, ::Any) = color  # handled in mesh.jl via build_vertex_color_texture
 color_to_texture(color::Colorant, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
 color_to_texture(color::Union{String,Symbol}, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))

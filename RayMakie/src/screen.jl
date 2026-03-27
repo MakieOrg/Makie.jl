@@ -48,10 +48,10 @@ struct ScreenConfig
     denoise_config::Union{Hikari.DenoiseConfig, Nothing}
 
     function ScreenConfig(integrator, exposure, tonemap, gamma, sensor, device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
-        actual_integrator = integrator isa Makie.Automatic ? VolPath() : integrator
+        actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
-        actual_device = device isa Makie.Automatic ? Raycore.KA.CPU() : device
+        actual_device = device isa Makie.Automatic ? Lava.LavaBackend() : device
         return new(actual_integrator, actual_exposure, tonemap, actual_gamma, sensor, actual_device, denoise, denoise_config)
     end
 end
@@ -78,14 +78,59 @@ mutable struct Screen <: Makie.MakieScreen
     scene::Union{Nothing, Scene}
     state::Union{Nothing, RayMakieState}
     scene_states::Vector{RayMakieState}
-    output_buffer::Union{Nothing, AbstractMatrix{RGB{Float32}}}
+    output_buffer::Union{Nothing, AbstractMatrix{RGBA{Float32}}}
     config::ScreenConfig
+    # Render loop (vulkan_viewer)
+    window::Any                 # Nothing or Lava.RenderWindow
+    rendertask::Union{Nothing, Task}
+    stop_renderloop::Threads.Atomic{Bool}
+    last_colorbuffer::Union{Nothing, Matrix{RGB{N0f8}}}
+    # Cached state for uncovered overlay rendering
+    uncovered_state::Union{Nothing, RayMakieState}
+    # Per-screen overlay caches
+    cached_atlas::Any
+    cached_atlas_size::Int
+    overlay_fb::Any
+    overlay_fb_size::Tuple{Int,Int}
+    gfx_atlas_tex::Any
+    gfx_atlas_sampler::Any
+    gfx_atlas_bindings::Any
+    gfx_atlas_size::Int
+    fb_readback_buf::Any
+    # Per-screen graphics BatchQueue — isolated from compute/transfer
+    gfx_bq::Any  # Lava.BatchQueue
+    # Per-screen graphics pipeline cache (no globals!)
+    gfx_pipelines::Dict{Symbol, GraphicsPipeline}
 
     function Screen(scene, state, config)
-        s = new(scene, state, RayMakieState[], nothing, config)
-        finalizer(close, s)
+        s = new(scene, state, RayMakieState[], nothing, config,
+                nothing, nothing, Threads.Atomic{Bool}(false), nothing,  # window, rendertask, stop, last_colorbuffer
+                nothing,           # uncovered_state
+                nothing, 0,        # cached_atlas
+                nothing, (0, 0),   # overlay_fb
+                nothing, nothing, nothing, 0,  # gfx_atlas
+                nothing,           # fb_readback_buf
+                nothing,           # gfx_bq
+                Dict{Symbol, GraphicsPipeline}()) # gfx_pipelines
+        # Only set the stop flag from the finalizer — never wait on tasks or
+        # touch GLFW from GC (runs during allocation, can't yield or call C libs safely).
+        finalizer(s -> (s.stop_renderloop[] = true), s)
         return s
     end
+end
+
+Base.wait(screen::Screen) = !isnothing(screen.rendertask) && wait(screen.rendertask)
+
+"""Get or create the screen's dedicated graphics BatchQueue."""
+function get_gfx_bq!(screen::Screen)
+    if screen.gfx_bq === nothing
+        screen.gfx_bq = Lava.allocate_batch_queue!()
+    end
+    return screen.gfx_bq::Lava.BatchQueue
+end
+
+function renderloop_running(screen::Screen)
+    return !screen.stop_renderloop[] && !isnothing(screen.rendertask) && !istaskdone(screen.rendertask)
 end
 
 function Base.show(io::IO, screen::Screen)
@@ -134,8 +179,6 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         film = Raycore.Adapt.adapt(ka_backend, film)
 
         state.film = film
-        state.colorbuffer_tmp = similar(film.postprocess)
-        state.overlay_buffer = Overlay.create_overlay_buffer(ka_backend, size(film.framebuffer))
 
         if !state.overlay_only && !isnothing(state.camera)
             state.camera = to_trace_camera(state.makie_scene, film; screen_window)
@@ -145,16 +188,12 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
         state.needs_film_clear = true
     end
 
-    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGB{Float32}, h, w)
+    screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGBA{Float32}, h, w)
     return nothing
 end
 
-# Track whether screen is open for resource management
-const _open_screens = Set{UInt}()
-
 # Flush GPU deferred frees — Lava-specific, no-op for other backends
-function _flush_gpu!()
-    mod = parentmodule(typeof(KernelAbstractions.allocate))  # KA always loaded
+function flush_gpu!()
     lava = get(Base.loaded_modules, Base.PkgId(Base.UUID("dab5e104-5754-42e4-af51-5044c2e3a8e0"), "Lava"), nothing)
     lava === nothing && return
     try
@@ -165,7 +204,7 @@ function _flush_gpu!()
 end
 
 function Base.isopen(screen::Screen)
-    return objectid(screen) in _open_screens || screen.state !== nothing
+    return screen.state !== nothing
 end
 
 function cleanup!(state::RayMakieState)
@@ -177,9 +216,6 @@ function cleanup!(state::RayMakieState)
         state.integrator_state = nothing
     end
 
-    # Free GPU arrays used for colorbuffer/overlay
-    finalize(state.colorbuffer_tmp)
-    finalize(state.overlay_buffer)
     finalize(state.depth_flipped)
 
     return nothing
@@ -192,7 +228,20 @@ Release all GPU resources held by the screen, including the integrator state,
 film, and preserved GPU arrays. Call this when done rendering to free GPU memory.
 """
 function Base.close(screen::Screen)
-    # Idempotent — safe to call from finalizer or explicit close
+    # Stop render loop if running
+    screen.stop_renderloop[] = true
+    if screen.rendertask !== nothing && !istaskdone(screen.rendertask)
+        try wait(screen) catch end
+        screen.rendertask = nothing
+    end
+    # Close GLFW window if open
+    if screen.window !== nothing
+        try
+            isopen(screen.window) && close(screen.window)
+        catch end
+        screen.window = nothing
+    end
+    # Idempotent — safe to call from explicit close
     isempty(screen.scene_states) && screen.state === nothing && return nothing
 
     # Step 1: Mark all states as closed FIRST — prevents delete_trace_robj! from
@@ -212,18 +261,17 @@ function Base.close(screen::Screen)
     empty!(screen.scene_states)
     screen.state = nothing
 
-    # Free the output buffer
+    # Free the output buffer and cached overlay buffers
     if screen.output_buffer !== nothing
         finalize(screen.output_buffer)
         screen.output_buffer = nothing
     end
+    # uncovered_overlay_buf and uncovered_depth_buf were removed from Screen struct
 
     close(screen.config.integrator)
 
-    delete!(_open_screens, objectid(screen))
-
     # Flush deferred frees so GPU memory is actually released now
-    _flush_gpu!()
+    flush_gpu!()
 
     return nothing
 end
@@ -339,18 +387,14 @@ function _postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     if scene_state.overlay_only
         # Overlay-only: fill postprocess with scene background color, set depth to max
         bg = scene_state.makie_scene.backgroundcolor[]
-        bg_rgb = RGB{Float32}(bg)
-        fill!(film.postprocess, bg_rgb)
+        fill!(film.postprocess, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
         fill!(film.depth, Float32(1e30))  # all overlays pass depth test
 
         # Poll compute graph for overlay data
         poll_all_plots(screen, scene_state.makie_scene)
 
-        # Render overlay plots
-        render_overlays!(screen)
-
-        # Copy to CPU
-        map!(clamp01nan, scene_state.colorbuffer_tmp, film.postprocess)
+        # Overlay rendering is done separately via render_overlays_to_target!
+        # after the output_buffer is blitted to the window.
         return
     end
 
@@ -383,7 +427,7 @@ function _postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     if config.denoise
         denoise_cfg = something(config.denoise_config, Hikari.DenoiseConfig())
         Hikari.denoise!(film; config=denoise_cfg)
-        copyto!(film.framebuffer, film.postprocess)
+        film.framebuffer .= RGB{Float32}.(film.postprocess)
     end
 
     # Postprocess (tonemap, gamma, exposure)
@@ -398,75 +442,41 @@ function _postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
         background = bg_rgb,
     )
 
-    # Render overlay plots (lines, scatter, text) via KA kernels
-    render_overlays!(screen)
+    # NOTE: Overlay rendering for 3D renderable scenes is intentionally skipped.
+    # The axis3D decorations (grid lines, spines) project through 3D perspective
+    # but lack depth testing against the raytraced geometry, causing opaque bands.
+    # These decorations are part of the 3D scene and render correctly via raytracing
+    # wireframe. Overlay-only scenes (2D Axis) handle overlays in their own path.
 
-    # Copy to CPU, clamping to [0,1]
-    map!(clamp01nan, scene_state.colorbuffer_tmp, film.postprocess)
+    # postprocess already writes clamped RGBA{Float32} — no extra copy needed
 end
 
 # Postprocess all scenes and composite into output buffer — shared by
 # colorbuffer() and interactive_window().
 function _postprocess_and_composite!(screen::Screen)
     bg = screen.scene.backgroundcolor[]
-    fill!(screen.output_buffer, RGB{Float32}(red(bg), green(bg), blue(bg)))
+    fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
     for scene_state in screen.scene_states
         _postprocess_scene_state!(screen, scene_state)
         _composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
 
-    # Render overlays for scenes not covered by any renderable scene state
-    # (e.g. Axis3 blockscene decorations: ticks, labels, grid lines).
-    renderable = [s.makie_scene for s in screen.scene_states if !s.overlay_only]
-    if !isempty(renderable)
-        uncovered = _find_uncovered_overlay_scenes(screen.scene, renderable)
-        if !isempty(uncovered)
-            _render_uncovered_overlays!(screen, uncovered)
-        end
-    end
-
     return Array(screen.output_buffer)
 end
 
-# Render overlay plots from scenes not covered by any renderable scene state
-# into a root-sized overlay buffer and composite onto output_buffer.
-function _render_uncovered_overlays!(screen::Screen, uncovered_scenes)
-    output = screen.output_buffer
-    root_scene = screen.scene
-    root_w, root_h = size(root_scene)
-    root_res = Vec2f(Float32(root_w), Float32(root_h))
-    ka_backend = screen.config.device
-
-    # Root-sized overlay and depth buffers
-    overlay_buf = Overlay.create_overlay_buffer(ka_backend, (root_h, root_w))
-    depth_buf = KernelAbstractions.allocate(ka_backend, Float32, root_h, root_w)
-    fill!(depth_buf, Float32(1e30))
-
-    # Transfer depth from each renderable scene state into root depth buffer
-    # so uncovered overlays are properly occluded by ray-traced geometry.
+# GPU-only variant: same as _postprocess_and_composite! but skips the CPU download.
+# Returns the GPU output_buffer directly (no Array() copy).
+function _postprocess_and_composite_gpu!(screen::Screen)
+    bg = screen.scene.backgroundcolor[]
+    fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
     for scene_state in screen.scene_states
-        scene_state.overlay_only && continue
-        _blit_depth_to_root!(depth_buf, scene_state, root_scene, ka_backend)
+        _postprocess_scene_state!(screen, scene_state)
+        _composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
+    # Sync after postprocess+composite to keep batch sizes manageable
+    KernelAbstractions.synchronize(screen.config.device)
 
-    has_overlay = Ref(false)
-    gpu_atlas_ref = Ref{Any}(nothing)
-    atlas_w_ref = Ref{Int32}(Int32(0))
-    atlas_h_ref = Ref{Int32}(Int32(0))
-
-    for uscene in uncovered_scenes
-        poll_all_plots(screen, uscene)
-        ctx = _create_raster_context_remapped(uscene, root_res)
-        remap = _compute_viewport_remap(uscene, root_res)
-        _render_scene_overlay_plots!(
-            overlay_buf, depth_buf, ctx, uscene, remap,
-            gpu_atlas_ref, atlas_w_ref, atlas_h_ref, has_overlay,
-        )
-    end
-
-    if has_overlay[]
-        Overlay.composite!(output, overlay_buf)
-    end
+    return screen.output_buffer
 end
 
 # Copy a renderable scene's film depth buffer into the root-sized depth buffer
@@ -518,7 +528,7 @@ function _blit_depth_to_root!(root_depth, scene_state, root_scene, backend)
     KernelAbstractions.synchronize(backend)
 end
 
-@kernel function _composite_kernel!(output, @Const(sub_image),
+@kernel function _scene_composite_kernel!(output, @Const(sub_image),
                                     dst_r0::Int32, dst_c0::Int32,
                                     src_r0::Int32, src_c0::Int32)
     ix, iy = @index(Global, NTuple)
@@ -529,8 +539,8 @@ end
     @inbounds output[dr, dc] = sub_image[sr, sc]
 end
 
-function _composite_scene!(output::AbstractMatrix{RGB{Float32}}, scene_state::RayMakieState, root_scene::Makie.Scene)
-    sub_image = scene_state.colorbuffer_tmp
+function _composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::RayMakieState, root_scene::Makie.Scene)
+    sub_image = scene_state.film.postprocess
     out_h, out_w = size(output)
     vh, vw = size(sub_image)
 
@@ -561,7 +571,7 @@ function _composite_scene!(output::AbstractMatrix{RGB{Float32}}, scene_state::Ra
 
     backend = KernelAbstractions.get_backend(output)
     ndrange = (dst_r1 - dst_r0 + 1, dst_c1 - dst_c0 + 1)
-    _composite_kernel!(backend)(
+    _scene_composite_kernel!(backend)(
         output, sub_image,
         Int32(dst_r0), Int32(dst_c0), Int32(src_r0), Int32(src_c0);
         ndrange=ndrange
@@ -569,34 +579,70 @@ function _composite_scene!(output::AbstractMatrix{RGB{Float32}}, scene_state::Ra
     KernelAbstractions.synchronize(backend)
 end
 
-function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing)
+function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing, clear=true)
     if isempty(screen.scene_states)
         display(screen, screen.scene; figure = figure)
+    end
+
+    # If the render loop is running (vulkan_viewer), return the last composited frame.
+    # The render loop updates screen.last_colorbuffer each frame.
+    if renderloop_running(screen)
+        buf = screen.last_colorbuffer
+        buf !== nothing && return format == Makie.GLNative ? Makie.jl_to_gl_format(buf) : buf
+        # No frame yet — fall through to render one
     end
 
     # Render each scene for the configured number of samples
     # VolPath uses an outer loop (each render! = 1 sample), while SamplerIntegrators
     # (Whitted etc.) handle all samples internally in a single render! call.
     integrator = screen.config.integrator
-    n_outer = integrator isa Hikari.VolPath ? Int(integrator.samples_per_pixel) : 1
+    samples = integrator.samples_per_pixel
     for scene_state in screen.scene_states
         screen.state = scene_state
         # Always clear film at the start of colorbuffer — ensures correct accumulation
-        # and prevents DEVICE_LOST from 10K+ dispatches piling up without a flush.
-        scene_state.needs_film_clear = true
-        for i in 1:n_outer
+        if clear
+            scene_state.needs_film_clear = true
+        end
+        for i in 1:samples
             render!(screen)
             # Synchronize every 8 samples to prevent command buffer overflow.
             # Each sample generates ~170 dispatches; without sync, a 64-sample
             # render accumulates 11K+ dispatches → GPU timeout → DEVICE_LOST.
-            if i % 8 == 0 && i < n_outer
+            if i % 8 == 0 && i < samples
                 KernelAbstractions.synchronize(screen.config.device)
             end
         end
     end
+    # Postprocess + composite into output_buffer
+    _postprocess_and_composite_gpu!(screen)
+    Lava.vk_flush!()
+    Lava.Vulkan.device_wait_idle(Lava.vk_context().device)
 
-    # Postprocess + composite (shared path)
-    result = _postprocess_and_composite!(screen)
+    # Blit to a temporary window, render overlays on top, readback
+    w, h = size(screen.output_buffer, 2), size(screen.output_buffer, 1)
+    win = Lava.RenderWindow(w, h; title="colorbuffer", vsync=false)
+    bq = get_gfx_bq!(screen)
+    Lava.acquire_next_image!(win)
+    Lava.blit!(bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
+    for scene_state in screen.scene_states
+        screen.state = scene_state
+        poll_all_plots(screen, scene_state.makie_scene)
+        render_overlays!(screen, bq, Lava.WindowTarget(win))
+    end
+    Lava.flush!(bq, Lava.vk_device())
+    Lava.Vulkan.device_wait_idle(Lava.vk_context().device)
+
+    # Readback swapchain image (BGRA bytes)
+    pixels = Lava.readback_window(win)
+    close(win)
+
+    # Convert BGRA UInt8 tuples → RGBA{Float32} matrix (row-major → column-major)
+    result = Matrix{RGBA{Float32}}(undef, h, w)
+    for col in 1:w, row in 1:h
+        p = pixels[col, row]
+        result[row, col] = RGBA{Float32}(p[3]/255f0, p[2]/255f0, p[1]/255f0, p[4]/255f0)
+    end
+
     if format == Makie.GLNative
         return Makie.jl_to_gl_format(result)
     else # JuliaNative
@@ -662,7 +708,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
 
     # Sync all affected TLAS
     for ss in screen.scene_states
-        Raycore.sync!(ss.hikari_scene.accel)
+        Hikari.sync!(ss.hikari_scene)
     end
     return screen
 end
@@ -694,7 +740,7 @@ function Base.delete!(screen::Screen, scene::Scene)
     close(screen.config.integrator)
     # Flush deferred frees so GPU memory is actually released
     # (this can be called from Scene GC finalizer via @async)
-    _flush_gpu!()
+    flush_gpu!()
 end
 
 function _free_state_gpu!(state::RayMakieState)
@@ -769,68 +815,35 @@ function interactive_window(fig::Makie.FigureLike; kwargs...)
     return interactive_window(Makie.get_scene(fig); kwargs...)
 end
 
-function interactive_window(root_scene::Makie.Scene;
-                            integrator=Hikari.VolPath(samples=1, max_depth=5),
-                            exposure=1.0f0, tonemap=:aces, gamma=1.2f0,
-                            sensor=nothing, device=Raycore.KA.CPU())
-
-    exposure_obs = convert(Observable, exposure)
-    tonemap_obs = convert(Observable, tonemap)
-    gamma_obs = convert(Observable, gamma)
-
-    config = ScreenConfig(integrator, Float32(exposure_obs[]), tonemap_obs[], gamma_obs[], sensor, device)
-    screen = Screen(nothing, nothing, config)
-    Base.display(screen, root_scene)
-
+function interactive_window(
+    root_scene::Makie.Scene; integrator=Hikari.VolPath(; samples=1, max_depth=5, hw_accel=true)
+)
+    screen = Base.display(root_scene; integrator=integrator, backend=RayMakie)
     # Create a pixel-camera overlay scene for the ray-traced image
     root_w, root_h = size(root_scene)
-    overlay_scene = Makie.Scene(root_scene; camera=Makie.campixel!)
-    dummy = fill(RGB{Float32}(0, 0, 0), root_h, root_w)
-    imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, uv_transform=(:rotr90, :flip_y), overdraw=true)
-    translate!(imgp, 0, 0, 10000)
+    overlay_scene = Makie.Scene(root_scene)
+    dummy = colorbuffer(screen)
+    imgp = image!(overlay_scene, -1..1, -1..1, dummy; visible=true, uv_transform=(:rotr90, :flip_y), overdraw=true)
+    # translate!(imgp, 0, 0, 10000)
     last_root_size = Ref((root_w, root_h))
     running = Threads.Atomic{Bool}(true)
-
     # Render thread — detects viewport changes and camera changes each frame
     Base.errormonitor(Threads.@spawn while running[]
+        @show Makie.isclosed(root_scene)
         Makie.isclosed(root_scene) && break
-
         # Detect viewport resize (same pattern as GLMakie's render_frame)
         cur_w, cur_h = size(root_scene)
         if (cur_w, cur_h) != last_root_size[]
             last_root_size[] = (cur_w, cur_h)
             resize!(screen, cur_w, cur_h)
-            imgp[1] = 0..cur_w
-            imgp[2] = 0..cur_h
-            imgp.visible = false
+            # imgp.visible = false
         end
-
-        # Hide overlay if any scene needs clearing (camera moved, data changed)
-        if any(ss -> ss.needs_film_clear, screen.scene_states)
-            imgp.visible = false
-        end
-
         # Update screen config from reactive observables
-        current_tonemap = tonemap_obs[]
-        tonemap_sym = current_tonemap isa Symbol ? current_tonemap : (isnothing(current_tonemap) ? nothing : Symbol(current_tonemap))
-        screen.config = ScreenConfig(
-            config.integrator, Float32(exposure_obs[]),
-            tonemap_sym, Float32(gamma_obs[]),
-            config.sensor, config.device, config.denoise, config.denoise_config,
-        )
-
-        # Render 1 sample per scene (each scene accumulates independently)
-        for ss in screen.scene_states
-            screen.state = ss
-            render!(screen)
-        end
-
         # Postprocess + composite (same path as colorbuffer)
-        result_cpu = _postprocess_and_composite!(screen)
+        result_cpu = @time colorbuffer(screen; clear=false)
         imgp[3] = result_cpu
         imgp.visible = true
-
-        sleep(1/30)
+        sleep(0.001)
     end)
 
     return (

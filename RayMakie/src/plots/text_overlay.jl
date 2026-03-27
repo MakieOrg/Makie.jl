@@ -1,97 +1,95 @@
-# =============================================================================
-# draw_atomic for Makie.text (overlay plot)
-# =============================================================================
-# Produces :sprite trace_renderobjects matching the unified sprite pipeline.
-# Each glyph becomes a DISTANCEFIELD sprite, matching GLMakie's text rendering
-# through sprites.vert → sprites.geom → distance_shape.frag.
+# draw_atomic for text — uses same scatter pipeline with text-specific conversions
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Plot{Makie.text})
     attr = plot.attributes
-    state = screen.state
-    backend = screen.config.device
+    haskey(attr, :sdf_uv) || return nothing
 
-    # Text plots must have sdf_uv (computed by register_text_computations!)
-    if !haskey(attr, :sdf_uv)
-        return nothing
-    end
-
-    # Register f32c_scale (same as scatter)
     Makie.add_computation!(attr, scene, Val(:meshscatter_f32c_scale))
 
-    deps = [
-        :per_char_positions_transformed_f32c,
-        :quad_offset, :quad_scale,
-        :marker_offset,
-        :text_rotation,
-        :text_color,
-        :sdf_uv,
-        :model_f32c, :f32c_scale, :transform_marker,
-    ]
+    # ── Text-specific conversions to vk_* names (same targets as scatter) ──
 
-    register_computation!(attr, deps, [:trace_renderobject]) do args, changed, last
-        positions_raw = args.per_char_positions_transformed_f32c
-        n = length(positions_raw)
+    # per_char_positions → vk_positions (element-wise via register_computation!)
+    Makie.ComputePipeline.register_computation!(attr,
+        [:per_char_positions_transformed_f32c], [:vk_positions]
+    ) do (pos,), changed, cached
+        return ([Vec3f(Makie.to_ndim(Point3f, p, 0f0)) for p in pos],)
+    end
+
+    # text_color → vk_colors
+    Makie.ComputePipeline.register_computation!(attr,
+        [:text_color], [:vk_colors]
+    ) do (tc,), changed, cached
+        if tc isa AbstractVector
+            return ([Vec4f(RGBA{Float32}(c).r, RGBA{Float32}(c).g, RGBA{Float32}(c).b, RGBA{Float32}(c).alpha) for c in tc],)
+        else
+            c = RGBA{Float32}(tc)
+            return ([Vec4f(c.r, c.g, c.b, c.alpha)],)
+        end
+    end
+
+    # text_rotation → vk_rotation (Vec4f from Quaternion)
+    haskey(attr, :vk_rotation) || Makie.ComputePipeline.register_computation!(attr,
+        [:text_rotation], [:vk_rotation]
+    ) do (rot,), changed, cached
+        if rot isa AbstractVector
+            return ([Vec4f(r[1], r[2], r[3], r[4]) for r in rot],)
+        else
+            q = Makie.to_rotation(rot)
+            return (Vec4f(q[1], q[2], q[3], q[4]),)
+        end
+    end
+
+    # stroke/glow from plot attrs → vk_stroke_color, vk_glow_color
+    Makie.ComputePipeline.register_computation!(attr,
+        [:per_char_positions_transformed_f32c], [:vk_stroke_color, :vk_glow_color]
+    ) do (pos,), changed, cached
+        n = length(pos)
+        sc = haskey(plot, :text_strokecolor) ? to_value(plot.text_strokecolor) : RGBAf(0,0,0,0)
+        sc_c = sc isa Colorant ? RGBA{Float32}(sc) : RGBA{Float32}(0,0,0,0)
+        gc = haskey(plot, :glowcolor) ? to_value(plot.glowcolor) : RGBAf(0,0,0,0)
+        gc_c = gc isa Colorant ? RGBA{Float32}(gc) : RGBA{Float32}(0,0,0,0)
+        return (fill(Vec4f(sc_c.r, sc_c.g, sc_c.b, sc_c.alpha), n),
+                fill(Vec4f(gc_c.r, gc_c.g, gc_c.b, gc_c.alpha), n))
+    end
+
+    # Constants
+    haskey(attr, :sdf_marker_shape) || Makie.ComputePipeline.add_constant!(attr, :sdf_marker_shape, Cint(3))
+    haskey(attr, :billboard) || Makie.ComputePipeline.add_constant!(attr, :billboard, true)
+    haskey(attr, :transform_marker) || Makie.ComputePipeline.add_constant!(attr, :transform_marker, false)
+
+    # Scalar conversions to vk_* (Int32)
+    Makie.ComputePipeline.map!(x -> Int32(x isa Bool ? x : false), attr, :transform_marker, :vk_transform_marker)
+    Makie.ComputePipeline.map!(x -> Int32(x isa Bool ? x : true), attr, :billboard, :vk_billboard)
+    Makie.ComputePipeline.map!(x -> Int32(x), attr, :sdf_marker_shape, :vk_sdf_marker_shape)
+
+    # Constants
+    haskey(attr, :vk_stroke_width) || Makie.ComputePipeline.add_constant!(attr, :vk_stroke_width,
+        Float32(haskey(plot, :strokewidth) ? to_value(plot.strokewidth) : 0f0))
+    haskey(attr, :vk_glow_width) || Makie.ComputePipeline.add_constant!(attr, :vk_glow_width, 0f0)
+    haskey(attr, :depth_shift) || Makie.ComputePipeline.add_constant!(attr, :depth_shift, 0f0)
+    haskey(attr, :px_per_unit) || Makie.ComputePipeline.add_constant!(attr, :px_per_unit, 1f0)
+
+    atlas = Makie.get_texture_atlas()
+    haskey(attr, :vk_atlas_width) || Makie.ComputePipeline.add_constant!(attr, :vk_atlas_width, Float32(size(atlas.data, 1)))
+
+    # ── Final robj — same pattern as scatter ──
+    deps = collect(SCATTER_ARG_NAMES)
+
+    register_computation!(attr, deps, [:trace_renderobject]) do args, changed, cached
+        n = length(args.vk_positions)
         n == 0 && return (nothing,)
 
-        # Per-element positions (handle both Point2f and Point3f)
-        positions = [Makie.to_ndim(Point3f, p, 0f0) for p in positions_raw]
+        if !isnothing(cached) && cached.trace_renderobject isa LavaRenderObject
+            robj = cached.trace_renderobject
+            update_robj!(robj, args, changed)
+            robj.vertex_count = n
+            robj.visible = true
+            return (robj,)
+        end
 
-        # Per-element quad geometry
-        quad_offsets = _sprite_broadcast_vec2f(args.quad_offset, n)
-        quad_scales = _sprite_broadcast_vec2f(args.quad_scale, n)
-
-        # Per-element marker offset
-        marker_offsets = _sprite_broadcast_vec3f(args.marker_offset, n)
-
-        # Per-element rotation (Quaternionf → Vec4f)
-        rotations = _sprite_broadcast_rotation(args.text_rotation, n)
-
-        # Per-element colors (text_color is already per-glyph)
-        colors = _text_resolve_colors(args.text_color, n)
-
-        # Per-element SDF UV
-        uv_rects = _sprite_broadcast_vec4f(args.sdf_uv, n)
-
-        # Shape = DISTANCEFIELD for all text glyphs
-        shapes = fill(UInt8(3), n)  # Overlay.DISTANCEFIELD
-
-        # Uniforms
-        is_transform_marker = args.transform_marker isa Bool ? args.transform_marker : false
-        model = Mat4f(args.model_f32c)
-
-        # Billboard flag: match GLMakie (billboard = markerspace == :pixel)
-        # Data markerspace (e.g. 3D LScene axis text) needs billboard=false
-        ms = haskey(plot, :markerspace) ? plot[:markerspace][] : :pixel
-        is_billboard = ms === :pixel
-
-        state.needs_film_clear = true
-        return ((
-            type = :sprite,
-            positions = Adapt.adapt(backend, positions),
-            quad_offsets = Adapt.adapt(backend, quad_offsets),
-            quad_scales = Adapt.adapt(backend, quad_scales),
-            marker_offsets = Adapt.adapt(backend, marker_offsets),
-            rotations = Adapt.adapt(backend, rotations),
-            colors = Adapt.adapt(backend, colors),
-            uv_rects = Adapt.adapt(backend, uv_rects),
-            shapes = Adapt.adapt(backend, shapes),
-            billboard = is_billboard,
-            scale_primitive = is_transform_marker,
-            model = model,
-        ),)
-    end
-end
-
-# =============================================================================
-# Text color helper
-# =============================================================================
-
-function _text_resolve_colors(text_color, n::Int)
-    if text_color isa AbstractVector
-        return [RGBA{Float32}(c) for c in text_color]
-    elseif text_color isa Colorant
-        return fill(RGBA{Float32}(text_color), n)
-    else
-        return fill(RGBA{Float32}(0f0, 0f0, 0f0, 1f0), n)
+        robj = construct_robj(get_scatter_pipeline!(screen), args, SCATTER_ARG_NAMES;
+                                      backend=screen.config.device, vertex_count=n)
+        robj.bindings = get_atlas_bindings(screen)
+        return (robj,)
     end
 end

@@ -4,7 +4,6 @@ using RayMakie
 using Makie
 using ImageShow
 using Lava
-using CUDA
 
 function make_perlin_texture(resolution::Int; scale=4.0, bias=0.5, contrast=1.0)
     tex = Matrix{Float32}(undef, resolution, resolution)
@@ -194,7 +193,6 @@ end
 
 # Render
 sensor = Hikari.FilmSensor(; iso=50, exposure_time=1.0, white_balance=0)
-device = CUDA.CUDABackend()
 device = Lava.LavaBackend()
 # device = KernelAbstractions.CPU()
 RayMakie.activate!(
@@ -204,13 +202,20 @@ RayMakie.activate!(
     gamma=2.2f0,
     sensor=sensor
 )
-nsamples = 10
-ax = create_scene()
-integrator = Hikari.VolPath(samples=nsamples, max_depth=50, hw_accel=true)
+nsamples = 1000
+ax = create_scene();
+RayMakie.vulkan_viewer(ax; sensor=sensor, exposure=0.6f0, tonemap=:aces, gamma=1.0f0)
+
+integrator = Hikari.VolPath(; samples=nsamples, max_depth=5, hw_accel=true)
+
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img
+screen = Makie.getscreen(ax)
+colorbuffer(screen; clear=false)
+
+
 # save(joinpath(@__DIR__, "materials-julia-$(nsamples)spp2.png"), img)
 # Benchmark 10 samples
 # Lava 7900xtx hw:  1.063923 seconds (3.38 M allocations: 184.093 MiB, 1.56% gc time)
