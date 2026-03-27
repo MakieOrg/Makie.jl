@@ -10,7 +10,7 @@ using ComputePipeline.Observables
     # Sanity check for CI
     @test ComputePipeline.ENABLE_COMPUTE_CHECKS
 
-    @testset "Concurrency tests"  begin
+    @testset "Concurrency tests" begin
         include("concurrency.jl")
     end
 
