@@ -72,12 +72,17 @@ function vulkan_viewer(root_scene::Makie.Scene;
 
     Base.display(screen, root_scene)
 
-    # Per-scene camera tracking
+    # Per-scene camera tracking — only for RT scenes.
+    # We track the Hikari camera parameters (derived from Makie's projectionview)
+    # rather than the projectionview observable directly, because Makie fires
+    # projectionview notifications on window_area changes even when the 3D camera
+    # hasn't moved (e.g. zooming a 2D scatter in another panel).
     for ss in screen.scene_states
+        ss.overlay_only && continue
         makie_scene = ss.makie_scene
         last_pv = Ref(copy(makie_scene.camera.projectionview[]))
         on(root_scene, makie_scene.camera.projectionview) do pv
-            if pv != last_pv[]
+            if !isapprox(pv, last_pv[])
                 last_pv[] = copy(pv)
                 ss.needs_film_clear = true
             end
@@ -115,7 +120,7 @@ function vulkan_viewer(root_scene::Makie.Scene;
 
                 screen.stop_renderloop[] && break
 
-                _postprocess_and_composite_gpu!(screen)
+                postprocess_and_composite_gpu!(screen)
 
                 Lava.vk_flush!()
                 Lava.Vulkan.device_wait_idle(ctx.device)
@@ -132,14 +137,6 @@ function vulkan_viewer(root_scene::Makie.Scene;
                     screen.state = ss
                     poll_all_plots(screen, ss.makie_scene)
                     render_overlays!(screen, present_bq, win_target)
-                end
-                # Also render overlays for scenes not covered by any scene state
-                renderable = [s.makie_scene for s in screen.scene_states if !s.overlay_only]
-                if !isempty(renderable)
-                    uncovered = _find_uncovered_overlay_scenes(screen.scene, renderable)
-                    if !isempty(uncovered)
-                        render_overlays!(screen, present_bq, win_target; scenes=uncovered)
-                    end
                 end
 
                 Lava.present_frame!(present_bq, win)

@@ -110,23 +110,7 @@ should_raytrace(scene::Makie.Scene, plot::Makie.Plot) =
 # Scene initialization and polling
 # =============================================================================
 
-"""
-    collect_renderable_scenes(scene::Makie.Scene) -> Vector{Makie.Scene}
-
-Walk the scene tree and return all scenes that have a 3D camera (not PixelCamera
-or EmptyCamera) and contain at least one atomic plot in their subtree.
-Each returned scene gets its own ray-tracing state (Film, TLAS, camera).
-"""
-function collect_renderable_scenes(scene::Makie.Scene)
-    result = Makie.Scene[]
-    _collect_renderable!(result, scene)
-    return result
-end
-
-# Use should_raytrace(camera) for the 3D camera check
-_is_3d_camera(cc) = should_raytrace(cc)
-
-function _has_atomic_plots(scene::Makie.Scene)
+function has_atomic_plots(scene::Makie.Scene)
     found = Ref(false)
     Makie.for_each_atomic_plot(scene) do _
         found[] = true
@@ -134,22 +118,11 @@ function _has_atomic_plots(scene::Makie.Scene)
     return found[]
 end
 
-function _collect_renderable!(result, scene::Makie.Scene)
-    if _is_3d_camera(scene.camera_controls) && _has_atomic_plots(scene)
-        push!(result, scene)
-        # Don't recurse into children — they're covered by for_each_atomic_plot
-        return
-    end
-    for child in scene.children
-        _collect_renderable!(result, child)
-    end
-end
-
 # Check if target is the same scene or a descendant of parent
-function _scene_contains(parent::Makie.Scene, target::Makie.Scene)
+function scene_contains(parent::Makie.Scene, target::Makie.Scene)
     parent === target && return true
     for child in parent.children
-        _scene_contains(child, target) && return true
+        scene_contains(child, target) && return true
     end
     return false
 end
@@ -184,13 +157,13 @@ end
 # =============================================================================
 
 # Whether an integrator uses spectral light transport (needs photometric normalization)
-_is_spectral_integrator(::Hikari.VolPath) = true
-_is_spectral_integrator(::Hikari.Integrator) = false
+is_spectral_integrator(::Hikari.VolPath) = true
+is_spectral_integrator(::Hikari.Integrator) = false
 
 function to_trace_light(light::Makie.AmbientLight, integrator)
     color = light.color isa Observable ? light.color[] : light.color
     rgb = RGB{Float32}(RGBf(color))
-    if _is_spectral_integrator(integrator)
+    if is_spectral_integrator(integrator)
         return Hikari.AmbientLight(rgb)
     else
         return Hikari.AmbientLight(Hikari.RGBSpectrum(rgb.r, rgb.g, rgb.b))
@@ -199,7 +172,7 @@ end
 
 function to_trace_light(light::Makie.PointLight, integrator)
     c = RGBf(light.color)
-    if _is_spectral_integrator(integrator)
+    if is_spectral_integrator(integrator)
         # Spectral path: PointLight(RGB{Float32}, position) creates RGBIlluminantSpectrum
         # with photometric normalization (scale = 1/spectrum_to_photometric), matching pbrt-v4
         return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
@@ -316,7 +289,7 @@ include("plots/text_overlay.jl")
 # init_scene! — create Hikari scene from Makie scene, call draw_atomic per plot
 # =============================================================================
 
-function _init_lights!(hikari_scene, rscene, integrator)
+function init_lights!(hikari_scene, rscene, integrator)
     makie_lights = Makie.get_lights(rscene)
     for light in makie_lights
         l = to_trace_light(light, integrator)
@@ -335,7 +308,7 @@ function _init_lights!(hikari_scene, rscene, integrator)
         ambient_color = rscene.compute[:ambient_color][]
         if ambient_color != RGBf(0, 0, 0)
             ambient_rgb = RGB{Float32}(ambient_color)
-            ambient_light = if _is_spectral_integrator(integrator)
+            ambient_light = if is_spectral_integrator(integrator)
                 Hikari.AmbientLight(ambient_rgb)
             else
                 Hikari.AmbientLight(Hikari.RGBSpectrum(ambient_rgb.r, ambient_rgb.g, ambient_rgb.b))
@@ -352,7 +325,7 @@ end
 # Compute Film resolution and NDC screen_window for a sub-scene viewport
 # clipped to the root figure bounds. Axis3 may request oversized viewports
 # that extend beyond the figure — we only render the visible sub-region.
-function _compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int)
+function compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int)
     vp = Makie.viewport(rscene)[]
     vp_w, vp_h = Makie.widths(vp)
     vx, vy = vp.origin
@@ -379,7 +352,7 @@ function _compute_scene_resolution(rscene::Makie.Scene, root_w::Int, root_h::Int
     return resolution, screen_window
 end
 
-function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene)
+function create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scene)
     ka_backend = screen.config.device
     integrator = screen.config.integrator
 
@@ -390,7 +363,7 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
         resolution = Point2f(Float32(root_w), Float32(root_h))
         screen_window = nothing
     else
-        resolution, screen_window = _compute_scene_resolution(rscene, root_w, root_h)
+        resolution, screen_window = compute_scene_resolution(rscene, root_w, root_h)
     end
 
     film = Hikari.Film(
@@ -402,7 +375,7 @@ function _create_scene_state(rscene::Makie.Scene, screen, root_scene::Makie.Scen
 
     hw_accel = integrator isa Hikari.VolPath && integrator.hw_accel === true
     hikari_scene = Hikari.Scene(backend=ka_backend, hw_accel=hw_accel)
-    _init_lights!(hikari_scene, rscene, integrator)
+    init_lights!(hikari_scene, rscene, integrator)
 
     # Convert film to GPU if backend is not Array
     film = Raycore.Adapt.adapt(ka_backend, film)
@@ -432,10 +405,10 @@ end
 # Create a lightweight overlay-only state (no ray-tracing scene, no camera).
 # Uses the ROOT scene's full viewport as the buffer — all overlay scenes render
 # into the same buffer using viewport-remapped projection matrices.
-function _create_overlay_only_state(root_scene::Makie.Scene, screen)
+function create_overlay_only_state(scene::Makie.Scene, screen)
     ka_backend = screen.config.device
 
-    root_w, root_h = size(root_scene)
+    root_w, root_h = size(scene)
     resolution = Point2f(Float32(root_w), Float32(root_h))
 
     film = Hikari.Film(
@@ -448,28 +421,35 @@ function _create_overlay_only_state(root_scene::Makie.Scene, screen)
 
     depth_flipped = KernelAbstractions.allocate(ka_backend, Float32, 1, 1)
 
-    state = RayMakieState(root_scene, film, nothing, nothing, false, depth_flipped, nothing, true, false)
+    state = RayMakieState(scene, film, nothing, nothing, false, depth_flipped, nothing, true, false)
     return state
 end
 
 """
-    collect_overlay_scenes(scene::Makie.Scene) -> Vector{Makie.Scene}
+    collect_overlay_scenes(scene) -> Vector{Scene}
 
-Walk the scene tree and return all scenes that contain at least one atomic plot,
-regardless of camera type. Used for overlay-only rendering when no 3D scenes exist.
+Walk the scene tree and return all visible scenes that contain overlay-eligible plots.
 """
 function collect_overlay_scenes(scene::Makie.Scene)
     result = Makie.Scene[]
-    _collect_overlay!(result, scene)
+    collect_overlay_scenes!(result, scene)
     return result
 end
 
-function _has_overlay_eligible_plots(scene::Makie.Scene)
+function collect_overlay_scenes!(result, scene::Makie.Scene)
+    scene.visible[] || return
+    if has_overlay_plots(scene)
+        push!(result, scene)
+    end
+    for child in scene.children
+        collect_overlay_scenes!(result, child)
+    end
+end
+
+function has_overlay_plots(scene::Makie.Scene)
     found = false
     for p in scene.plots
         Makie.for_each_atomic_plot(p) do ap
-            # A plot is overlay-eligible if it shouldn't be raytraced in this scene,
-            # or if it's a plot type that always renders as overlay (scatter, lines, text, etc.)
             if !should_raytrace(ap) || !should_raytrace(scene.camera_controls)
                 found = true
             end
@@ -478,65 +458,64 @@ function _has_overlay_eligible_plots(scene::Makie.Scene)
     return found
 end
 
-function _collect_overlay!(result, scene::Makie.Scene)
-    # Skip invisible scenes
-    scene.visible[] || return
-    # Collect scenes that directly own overlay-eligible plots
-    if _has_overlay_eligible_plots(scene)
+"""
+Collect ALL scenes in the tree that have atomic plots, regardless of camera type.
+"""
+function collect_all_scenes_with_plots(scene::Makie.Scene)
+    result = Makie.Scene[]
+    collect_all_with_plots!(result, scene)
+    return result
+end
+
+function collect_all_with_plots!(result, scene::Makie.Scene)
+    # Only collect scenes that directly own plots (not via children).
+    # A scene "directly owns" plots if scene.plots is non-empty.
+    has_own_plots = !isempty(scene.plots)
+    if has_own_plots
         push!(result, scene)
     end
+    # Always recurse into children — each child scene (Axis3, Axis, etc.)
+    # should be collected independently so it gets its own RayMakieState.
     for child in scene.children
-        _collect_overlay!(result, child)
+        collect_all_with_plots!(result, child)
     end
 end
-
-# Find overlay-eligible scenes not covered by any renderable scene.
-# A scene is "covered" if it is a descendant of (or equal to) a renderable scene.
-function _find_uncovered_overlay_scenes(root::Makie.Scene, renderable::Vector{Makie.Scene})
-    all_overlay = collect_overlay_scenes(root)
-    return filter(all_overlay) do s
-        !any(r -> _scene_contains(r, s), renderable)
-    end
-end
-
-_is_overlay_plot(::Makie.Plot{Makie.scatter}) = true
-_is_overlay_plot(::Makie.Plot{Makie.linesegments}) = true
-_is_overlay_plot(::Makie.Plot{Makie.lines}) = true
-_is_overlay_plot(::Makie.Plot{Makie.text}) = true
-_is_overlay_plot(::Makie.Plot{Makie.image}) = true
-_is_overlay_plot(::Makie.Plot{Makie.heatmap}) = true
-_is_overlay_plot(::Makie.Plot{Makie.mesh}) = true
-_is_overlay_plot(::Makie.Plot) = false
 
 function init_scene!(screen, mscene::Makie.Scene)
     ka_backend = screen.config.device
 
-    # Collect all renderable scenes (3D camera + has plots)
-    renderable = collect_renderable_scenes(mscene)
+    # Collect ALL scenes with plots — both 3D (raytraced) and 2D (overlay)
+    all_scenes = collect_all_scenes_with_plots(mscene)
 
     empty!(screen.scene_states)
 
-    if !isempty(renderable)
-        # Standard 3D ray-tracing path
-        for rscene in renderable
-            state = _create_scene_state(rscene, screen, mscene)
-            push!(screen.scene_states, state)
-            screen.state = state
+    for rscene in all_scenes
+        is_rt = should_raytrace(rscene.camera_controls)
 
-            Makie.for_each_atomic_plot(rscene) do p
-                haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
-            end
+        if is_rt
+            state = create_scene_state(rscene, screen, mscene)
+        else
+            state = create_overlay_only_state(rscene, screen)
+        end
+        push!(screen.scene_states, state)
+        screen.state = state
 
-            poll_all_plots(screen, rscene)
+        # Call draw_atomic on all plots — should_raytrace(scene, plot) decides RT vs overlay
+        Makie.for_each_atomic_plot(rscene) do p
+            haskey(p, :trace_renderobject) || draw_atomic(screen, rscene, p)
+        end
+
+        poll_all_plots(screen, rscene)
+
+        if is_rt
             Hikari.sync!(state.hikari_scene)
 
-            # Center camera on data after geometry is built (Camera3D defaults to origin)
+            # Center camera on data after geometry is built
             if rscene.camera_controls isa Makie.Camera3D
                 Makie.center!(rscene)
-                # Adjust near/far planes to encompass the scene
                 cc = rscene.camera_controls
                 bounds = state.hikari_scene.bounds[]
-                if bounds[1].p_min[1] < bounds[1].p_max[1]  # valid bounds
+                if bounds[1].p_min[1] < bounds[1].p_max[1]
                     eye = cc.eyeposition[]
                     center = bounds[2].center
                     radius = bounds[2].r
@@ -547,48 +526,17 @@ function init_scene!(screen, mscene::Makie.Scene)
                 state.needs_film_clear = true
             end
         end
-
-        # Process overlay-eligible scenes not covered by any renderable scene
-        # (e.g. Axis3 blockscene with EmptyCamera that holds decoration plots).
-        uncovered = _find_uncovered_overlay_scenes(mscene, renderable)
-        for uscene in uncovered
-            for p in uscene.plots
-                Makie.for_each_atomic_plot(p) do ap
-                    _is_overlay_plot(ap) || return nothing
-                    haskey(ap, :trace_renderobject) || draw_atomic(screen, uscene, ap)
-                end
-            end
-            poll_all_plots(screen, uscene)
-        end
-    else
-        # Overlay-only path: single state for root scene, all overlay scenes
-        # render into the same buffer via viewport-remapped projections.
-        state = _create_overlay_only_state(mscene, screen)
-        push!(screen.scene_states, state)
-        screen.state = state
-
-        overlay_scenes = collect_overlay_scenes(mscene)
-        for rscene in overlay_scenes
-            for p in rscene.plots
-                Makie.for_each_atomic_plot(p) do ap
-                    haskey(ap, :trace_renderobject) || draw_atomic(screen, rscene, ap)
-                end
-            end
-            poll_all_plots(screen, rscene)
-        end
     end
 
     if isempty(screen.scene_states)
         error("No renderable scenes found.")
     end
 
-    # Pre-allocate full-figure output buffer on backend (height, width — Julia image convention)
+    # Pre-allocate full-figure output buffer on backend
     root_w, root_h = size(mscene)
     screen.output_buffer = KernelAbstractions.allocate(ka_backend, RGBA{Float32}, root_h, root_w)
 
-    # Set primary state (used by render_interactive and single-scene paths)
     screen.state = first(screen.scene_states)
-
     return screen.state
 end
 
@@ -640,7 +588,7 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     for ss in screen.scene_states
         ss.closed && continue
         ss.hikari_scene === nothing && continue
-        if _scene_contains(ss.makie_scene, pscene)
+        if scene_contains(ss.makie_scene, pscene)
             tlas = ss.hikari_scene.accel
             if hasproperty(robj, :handles)
                 for h in robj.handles

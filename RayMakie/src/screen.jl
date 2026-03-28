@@ -169,7 +169,7 @@ function Base.resize!(screen::Screen, w::Int, h::Int)
             resolution = Point2f(Float32(w), Float32(h))
             screen_window = nothing
         else
-            resolution, screen_window = _compute_scene_resolution(state.makie_scene, w, h)
+            resolution, screen_window = compute_scene_resolution(state.makie_scene, w, h)
         end
 
         film = Hikari.Film(resolution;
@@ -251,11 +251,11 @@ function Base.close(screen::Screen)
     end
 
     # Step 2: Free ALL GPU resources — both integrator/film (cleanup!) and
-    # hikari scene data (TLAS, materials, lights, media via _free_state_gpu!)
+    # hikari scene data (TLAS, materials, lights, media via free_state_gpu!)
     for ss in screen.scene_states
         cleanup!(ss)
         if ss.hikari_scene !== nothing
-            _free_state_gpu!(ss)
+            free_state_gpu!(ss)
         end
     end
     empty!(screen.scene_states)
@@ -379,7 +379,7 @@ function render!(screen::Screen)
     return state.film
 end
 
-function _postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
+function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState)
     screen.state = scene_state
     film = scene_state.film
     config = screen.config
@@ -453,27 +453,30 @@ end
 
 # Postprocess all scenes and composite into output buffer — shared by
 # colorbuffer() and interactive_window().
-function _postprocess_and_composite!(screen::Screen)
+function postprocess_and_composite!(screen::Screen)
     bg = screen.scene.backgroundcolor[]
     fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
     for scene_state in screen.scene_states
-        _postprocess_scene_state!(screen, scene_state)
-        _composite_scene!(screen.output_buffer, scene_state, screen.scene)
+        scene_state.overlay_only && continue
+        postprocess_scene_state!(screen, scene_state)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
 
     return Array(screen.output_buffer)
 end
 
-# GPU-only variant: same as _postprocess_and_composite! but skips the CPU download.
+# GPU-only variant: same as postprocess_and_composite! but skips the CPU download.
 # Returns the GPU output_buffer directly (no Array() copy).
-function _postprocess_and_composite_gpu!(screen::Screen)
+function postprocess_and_composite_gpu!(screen::Screen)
     bg = screen.scene.backgroundcolor[]
     fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
     for scene_state in screen.scene_states
-        _postprocess_scene_state!(screen, scene_state)
-        _composite_scene!(screen.output_buffer, scene_state, screen.scene)
+        # Only RT scenes produce content in film.postprocess that needs compositing.
+        # Overlay-only scenes render directly to the window via render_overlays!.
+        scene_state.overlay_only && continue
+        postprocess_scene_state!(screen, scene_state)
+        composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
-    # Sync after postprocess+composite to keep batch sizes manageable
     KernelAbstractions.synchronize(screen.config.device)
 
     return screen.output_buffer
@@ -492,7 +495,7 @@ end
     @inbounds dst[dr, dc] = src[sr, sc]
 end
 
-function _blit_depth_to_root!(root_depth, scene_state, root_scene, backend)
+function blit_depth_to_root!(root_depth, scene_state, root_scene, backend)
     src_depth = scene_state.film.depth
     out_h, out_w = size(root_depth)
     vh, vw = size(src_depth)
@@ -539,7 +542,7 @@ end
     @inbounds output[dr, dc] = sub_image[sr, sc]
 end
 
-function _composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::RayMakieState, root_scene::Makie.Scene)
+function composite_scene!(output::AbstractMatrix{RGBA{Float32}}, scene_state::RayMakieState, root_scene::Makie.Scene)
     sub_image = scene_state.film.postprocess
     out_h, out_w = size(output)
     vh, vw = size(sub_image)
@@ -614,7 +617,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         end
     end
     # Postprocess + composite into output_buffer
-    _postprocess_and_composite_gpu!(screen)
+    postprocess_and_composite_gpu!(screen)
     Lava.vk_flush!()
     Lava.Vulkan.device_wait_idle(Lava.vk_context().device)
 
@@ -698,7 +701,7 @@ function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
         haskey(p, :trace_renderobject) && return
         pscene = Makie.parent_scene(p)
         for ss in screen.scene_states
-            if _scene_contains(ss.makie_scene, pscene)
+            if scene_contains(ss.makie_scene, pscene)
                 screen.state = ss
                 draw_atomic(screen, ss.makie_scene, p)
                 break
@@ -732,7 +735,7 @@ function Base.delete!(screen::Screen, scene::Scene)
         ss.closed && continue  # Already freed by close(screen)
         ss.closed = true
         cleanup!(ss)           # Free integrator state, colorbuffer, overlay, depth
-        _free_state_gpu!(ss)   # Free hikari scene (TLAS, materials, lights, media)
+        free_state_gpu!(ss)   # Free hikari scene (TLAS, materials, lights, media)
     end
     empty!(screen.scene_states)
     screen.state = nothing
@@ -743,7 +746,7 @@ function Base.delete!(screen::Screen, scene::Scene)
     flush_gpu!()
 end
 
-function _free_state_gpu!(state::RayMakieState)
+function free_state_gpu!(state::RayMakieState)
     state.hikari_scene === nothing && return
     Raycore.free!(state.hikari_scene.accel)
     Hikari.free!(state.film)
