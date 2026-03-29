@@ -533,7 +533,7 @@ end
 
 function add_attributes!(T::Type{<:Axis}, graph, attributes)
     limits = pop!(attributes, :limits)
-    add_input!((k, v) -> convert_limit_attribute(v), graph, :limits, limits)
+    add_input!(convert_limit_attribute, graph, :limits, limits)
     ComputePipeline.set_type!(graph.limits, Any)
     _add_attributes!(T, graph, attributes)
     return

@@ -17,7 +17,7 @@ graph = ComputeGraph()
 
 # add inputs
 add_input!(graph, :input1, 1)
-add_input!((key, value) -> Float32(value), graph, :input2, 2)
+add_input!(Float32, graph, :input2, 2)
 
 # add computations (edges + output nodes)
 register_computation!(graph, [:input1, :input2], [:output]) do inputs, changed, cached
@@ -27,7 +27,11 @@ end
 ```
 
 The two `add_input!()` calls create nodes with the names :input1 and :input2, holding the initial values 1 and 2 respectively.
-The second call also defines a conversion function that is applied to input data before placing it into the graph.
+The second call also defines a conversion function (`Float32`) that is applied to input data before placing it into the graph.
+
+!!! note
+    The callback signature for `add_input!()` changed in ComputePipeline 0.2 (Makie 0.25).
+    It is now called with `callback(value)` instead of `callback(input.name, value)`.
 
 The `register_computation!()` call refers to these two nodes by name and defines a computation on them.
 The result is stored in a new node called :output.
@@ -46,7 +50,7 @@ It also allows you to pass just one symbol as the input and/or output.
 ```julia
 graph = ComputeGraph()
 add_input!(graph, :input1, 1)
-add_input!((key, value) -> Float32(value), graph, :input2, 2)
+add_input!(Float32, graph, :input2, 2)
 
 map!((a, b) -> a + b, graph, [:input1, :input2], :output)
 map!((a, b) -> ([a, b], [b, a]), graph, [:input1, :input2], [:ab, :ba])

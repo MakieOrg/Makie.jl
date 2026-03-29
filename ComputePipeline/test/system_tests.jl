@@ -1,8 +1,10 @@
+using ComputePipeline: MapFunctionWrapper
+
 @testset "Full System Test" begin
     parent = ComputeGraph()
     add_input!(parent, :pin1, 1)
     add_input!(parent, :pin2, nothing)
-    f32(x) = Float32.(x) # wrong on purpose
+    f32() = 0.0f0 # wrong on purpose
     add_input!(f32, parent, :pin3, [1, 2, 3])
 
     foo1((i, v), changed, outputs) = (v .- i, v .+ i)
@@ -36,7 +38,7 @@
 
             @test parent.inputs[:pin1].f === identity
             @test parent.inputs[:pin2].f === identity
-            @test parent.inputs[:pin3].f === InputFunctionWrapper(:pin3, f32)
+            @test parent.inputs[:pin3].f === f32
         end
 
         @testset "Outputs" begin
@@ -68,12 +70,11 @@
 
     graph = ComputeGraph()
     add_input!(graph, :in1, 1)
-    to_float(k, v) = Float32(v)
-    add_input!(to_float, graph, :in2, 1)
+    add_input!(Float32, graph, :in2, 1)
     add_input!(graph, :in3, sin)
     add_input!(graph, :in4, :test)
     add_input!(graph, :trans2, parent[:pout2])
-    to_int(k, x) = Int64.(x)
+    to_int(x) = Int64.(x)
     add_input!(to_int, graph, :trans1, parent[:pout1])
     add_input!(to_int, graph, :trans3, parent[:pout3])
 
@@ -121,7 +122,7 @@
             end
 
             @test graph.inputs[:in1].f === identity
-            @test graph.inputs[:in2].f === InputFunctionWrapper(:in2, to_float)
+            @test graph.inputs[:in2].f === Float32
             @test graph.inputs[:in3].f === identity
             @test graph.inputs[:in4].f === identity
         end
@@ -147,7 +148,7 @@
                 @test edges[i] === graph.inputs[Symbol(:in, i)]
             end
 
-            @test edges[5].callback === InputFunctionWrapper(:trans1, to_int)
+            @test edges[5].callback === MapFunctionWrapper(to_int, true)
             @test edges[5].dependents == [edges[12]]
             @test edges[5].inputs == [parent.outputs[:pout1]]
             @test edges[5].outputs == [graph.outputs[:trans1]]
@@ -157,7 +158,7 @@
             @test edges[6].inputs == [parent.outputs[:pout2]]
             @test edges[6].outputs == [graph.outputs[:trans2]]
 
-            @test edges[7].callback === InputFunctionWrapper(:trans3, to_int)
+            @test edges[7].callback === MapFunctionWrapper(to_int, true)
             @test edges[7].dependents == [edges[12]]
             @test edges[7].inputs == [parent.outputs[:pout3]]
             @test edges[7].outputs == [graph.outputs[:trans3]]
@@ -216,7 +217,7 @@
     # graph & parent
     @test_throws ResolveException graph[:merged][] == [2, 4, 6]
     # needs to be in the same scope as previous f32 definition
-    f32(key, x) = Float32.(x)
+    f32(x) = Float32.(x)
 
     @testset "Updates continued" begin
 

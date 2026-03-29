@@ -25,12 +25,10 @@ function Base.show(io::IO, ::MIME"text/plain", computed::Computed)
 end
 
 _edge_callback_name(f::Function) = "$(nameof(f))"
-_edge_callback_name(f::InputFunctionWrapper) = "(::InputFunctionWrapper(:$(f.key), $(_edge_callback_name(f.user_func))))"
 _edge_callback_name(f::MapFunctionWrapper) = "(::MapFunctionWrapper($(_edge_callback_name(f.user_func))))"
 _edge_callback_name(functor) = "$(repr(functor))"
 
 edge_callback_name(f::Function, call = "(…)") = "$(_edge_callback_name(f))$call"
-edge_callback_name(f::InputFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
 edge_callback_name(f::MapFunctionWrapper, call = "(…)") = "$(_edge_callback_name(f))$call"
 edge_callback_name(functor, call = "(…)") = "$(_edge_callback_name(functor))$call"
 
@@ -50,8 +48,9 @@ function _get_named_data(collection, fallback)
 end
 
 # Get the function called by the edge with its input types
-# This skips over InputFunctionWrapper to give users more relevant function locations
-get_callback_info(edge::Input) = get_callback_info(edge.f, edge.value)
+function get_callback_info(edge::Input)
+    return get_callback_info(edge.f, edge.value)
+end
 function get_callback_info(edge::ComputeEdge)
     input = _get_named_inputs(edge)
     changed = NamedTuple{keys(input)}(ntuple(x -> true, length(keys(input))))
@@ -62,23 +61,9 @@ end
 # catch-all for the final user function being called.
 # could be:
 #   f(inputs, changed, cached) from register_computation!()
-#   f(key, input) from InputFunctionWrapper in Input
-#   f(input) from MapFunctionWrapper in map!()
+#   f(input) from MapFunctionWrapper in map!(), callbacks in Input
 # or some other syntax due to a wrapper created in another package
 get_callback_info(f, args...) = f, typeof.(args)
-
-# ComputeEdge with InputFunctionWrapper which drops changed and cached
-# from add_input!(f, key, ::Computed)
-function get_callback_info(f::InputFunctionWrapper, inputs, changed, outputs)
-    # if the edge inputs aren't initialized yet we fall back onto am empty namedtuple
-    return get_callback_info(f.user_func, f.key, length(inputs) > 0 ? inputs[1] : nothing)
-end
-
-# Input with InputFunctionWrapper adding Symbol to the callback
-# for add_input!(f, key, value)
-function get_callback_info(f::InputFunctionWrapper, input)
-    return get_callback_info(f.user_func, f.key, input)
-end
 
 # map!(f, attr, ...) call which drops changed, cached and NamedTuple
 # for add_input!(f, key, value)
@@ -91,7 +76,6 @@ get_callback_info(f::typeof(identity), arg) = f, (typeof(arg),)
 
 
 # Generate a string pointing to the location of the callback function in edge.
-# This skips over InputFunctionWrapper and MapFunctionWrapper to give more relevant locations
 function edge_callback_location(edge)
     f, arg_types = get_callback_info(edge)
     return edge_callback_location(f, arg_types)
@@ -106,7 +90,6 @@ function edge_callback_location(f, arg_types::Tuple)
 end
 
 # Generate a string with the edges callback function signature and location.
-# This skips over InputFunctionWrapper and MapFunctionWrapper to give more relevant locations
 function edge_callback_to_string(edge)
     f, arg_types = get_callback_info(edge)
     return edge_callback_to_string(f, arg_types)

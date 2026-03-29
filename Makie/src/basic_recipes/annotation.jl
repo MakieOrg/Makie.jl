@@ -270,6 +270,7 @@ function plot!(p::Annotation)
 
     add_input!(p.attributes, :viewport, parent_scene(p).compute[:viewport])
     add_input!(p.attributes, :__advance_optimization, 0)
+    p.attributes.inputs[:__advance_optimization].force_update = true
 
     # To make offsets accessible in plot attributes and get good synchronization
     # we create a compute node here and an Observable later
