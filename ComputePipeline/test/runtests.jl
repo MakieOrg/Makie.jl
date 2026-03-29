@@ -2,7 +2,7 @@ using ComputePipeline
 using Test
 using Random
 
-using ComputePipeline: InputFunctionWrapper, isdirty, ResolveException, map_latest!
+using ComputePipeline: isdirty, ResolveException, map_latest!
 using ComputePipeline.Observables
 
 # Use failfast to prevent deadlocks from keeping these tests running

@@ -189,7 +189,7 @@ mutable struct Input{T} <: AbstractEdge
     graph::T
     name::Symbol
     value::Any
-    f::Function
+    f::Any
     output::Computed
     dirty::Bool
     dependents::Vector{ComputeEdge{T}}
@@ -1165,7 +1165,7 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
-    register_computation!(conversion_func, attr, [value], [key])
+    map!(conversion_func, attr, value, key)
     return attr
 end
 

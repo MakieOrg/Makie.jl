@@ -1,3 +1,5 @@
+using ComputePipeline: MapFunctionWrapper
+
 @testset "Full System Test" begin
     parent = ComputeGraph()
     add_input!(parent, :pin1, 1)
@@ -146,7 +148,7 @@
                 @test edges[i] === graph.inputs[Symbol(:in, i)]
             end
 
-            @test edges[5].callback === to_int
+            @test edges[5].callback === MapFunctionWrapper(to_int, true)
             @test edges[5].dependents == [edges[12]]
             @test edges[5].inputs == [parent.outputs[:pout1]]
             @test edges[5].outputs == [graph.outputs[:trans1]]
@@ -156,7 +158,7 @@
             @test edges[6].inputs == [parent.outputs[:pout2]]
             @test edges[6].outputs == [graph.outputs[:trans2]]
 
-            @test edges[7].callback === to_int
+            @test edges[7].callback === MapFunctionWrapper(to_int, true)
             @test edges[7].dependents == [edges[12]]
             @test edges[7].inputs == [parent.outputs[:pout3]]
             @test edges[7].outputs == [graph.outputs[:trans3]]
