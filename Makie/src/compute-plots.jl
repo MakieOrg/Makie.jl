@@ -794,21 +794,21 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         for (k, p) in lookup
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                add_input!(attr, k, get(kwargs, k, nothing)) do value
                     palettes = attr.palettes[]
                     if value isa Cycled
-                        value = get_cycle_attribute(palettes, key, value.i, plotcycle)
+                        value = get_cycle_attribute(palettes, k, value.i, plotcycle)
                     end
                     if !isnothing(value)
                         if is_primitive
-                            return convert_attribute(value, Key{key}(), Key{name}())
+                            return convert_attribute(value, Key{k}(), Key{name}())
                         else
                             return to_recipe_attribute(nothing, value)
                         end
                     end
                     pos = attr.cycle_index[]
-                    cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
-                    return convert_attribute(cyc, Key{key}(), Key{name}())
+                    cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
+                    return convert_attribute(cyc, Key{k}(), Key{name}())
                 end
                 delete!(inputs, k)
             end

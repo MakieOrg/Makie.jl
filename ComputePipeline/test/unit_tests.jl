@@ -544,8 +544,8 @@ end
 @testset "Observables" begin
     @testset "Synchronization" begin
         g = ComputeGraph()
-        add_input!((k, x) -> Float32.(x), g, :input1, [0])
-        add_input!((k, x) -> Float32.(x), g, :input2, [1])
+        add_input!(x -> Float32.(x), g, :input1, [0])
+        add_input!(x -> Float32.(x), g, :input2, [1])
         register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x, y), changed, cached
             return ([x; y], [y; x])
         end
@@ -626,8 +626,8 @@ end
 
     @testset "map and on" begin
         g = ComputeGraph()
-        add_input!((k, x) -> Float64.(x), g, :input1, 0)
-        add_input!((k, x) -> Float64.(x), g, :input2, 4)
+        add_input!(x -> Float64.(x), g, :input1, 0)
+        add_input!(x -> Float64.(x), g, :input2, 4)
         register_computation!(g, [:input1, :input2], [:xy, :yx]) do (x, y), changed, cached
             return (x - y, y - x)
         end
@@ -1174,7 +1174,7 @@ using ComputePipeline: ComputeGraphView
         @test graph.inputs[Symbol("a.b")].name == Symbol("a.b")
         @test graph.inputs[Symbol("a.c.a")].name == Symbol("a.c.a")
 
-        f(k, v) = v + 1
+        f(v) = v + 1
         add_input!(f, graph, :b, :a, :a, 1)
         add_input!(f, graph, (:b, :a, :b), 2)
         add_input!(f, graph.b, :b, 3)
@@ -1282,14 +1282,6 @@ using ComputePipeline: ComputeGraphView
         end
         @test graph.a.c.double_b[] == 2 * graph.a.b[]
 
-        # names used for callbacks
-        add_input!((k, v) -> k === Symbol(:c), graph, :c, 1)
-        add_input!((k, v) -> k === Symbol(:d, :(.), :a), graph, :d, :a, 1)
-        add_input!((k, v) -> k === Symbol("d.b.c"), graph, :d, :b, :c, 1)
-        @test graph.c[]
-        @test graph.d.a[]
-        @test graph.d.b.c[]
-
         register_computation!(graph, [(:a, :a, :b), :x], [(:a, :a, :n), :m]) do args, changed, cached
             ks = isnothing(cached) ? (true, true) : (haskey(cached, Symbol("a.a.n")), haskey(cached, :m))
             aab = Symbol("a.a.b")
@@ -1361,8 +1353,8 @@ end
 
         add_input!(graph, :normal, 1)
         add_input!(graph, :forced, 1, force_update = true)
-        add_input!((k, v) -> v + 1, graph, :normalf, 1)
-        add_input!((k, v) -> v + 1, graph, :forcedf, 1, force_update = true)
+        add_input!(v -> v + 1, graph, :normalf, 1)
+        add_input!(v -> v + 1, graph, :forcedf, 1, force_update = true)
 
         @test graph.normal.parent.force_update == false
         @test graph.forced.parent.force_update == true
