@@ -126,7 +126,7 @@ end
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
 - `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
 - `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.
-- `alpha = 1.0` sets the alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied.
+- `alpha = 1.0` sets the alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5))`, will get multiplied.
 """
 function colormap_attributes!(attr, colormap)
     attr[:colormap] = colormap
@@ -171,7 +171,7 @@ function mixin_colormap_attributes(; kwargs...)
         highclip = automatic
         "The color for NaN values."
         nan_color = :transparent
-        "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5)`, will get multiplied."
+        "The alpha value of the colormap or color attribute. Multiple alphas like in `plot(alpha=0.2, color=(:red, 0.5))`, will get multiplied."
         alpha = 1.0
     end
     return filter_attributes!(attr; kwargs...)
