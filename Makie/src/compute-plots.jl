@@ -803,7 +803,7 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                         if is_primitive
                             return convert_attribute(value, Key{k}(), Key{name}())
                         else
-                            return to_recipe_attribute(nothing, value)
+                            return to_recipe_attribute(value)
                         end
                     end
                     pos = attr.cycle_index[]
@@ -828,7 +828,10 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
             elseif v isa Union{Attributes, NamedTuple}
                 add_input!(to_recipe_attribute, attr, k, v)
             else
+                # Probably better for performance because this more or less
+                # skips the callback
                 add_input!(attr, k, v)
+                ComputePipeline.set_type!(attr[k], Any)
             end
         end
     end

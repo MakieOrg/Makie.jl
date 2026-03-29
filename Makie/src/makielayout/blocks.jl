@@ -900,7 +900,7 @@ end
                 end
             else
                 TargetType = observable_type(fieldtype(T, key))
-                getfield(x, key)[] = BlockAttributeConvert{TargetType}()(nothing, value)
+                getfield(x, key)[] = BlockAttributeConvert{TargetType}()(value)
             end
         else
             setfield!(x, key, value)
