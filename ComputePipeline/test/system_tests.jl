@@ -4,7 +4,7 @@ using ComputePipeline: MapFunctionWrapper
     parent = ComputeGraph()
     add_input!(parent, :pin1, 1)
     add_input!(parent, :pin2, nothing)
-    f32() = 0f0 # wrong on purpose
+    f32() = 0.0f0 # wrong on purpose
     add_input!(f32, parent, :pin3, [1, 2, 3])
 
     foo1((i, v), changed, outputs) = (v .- i, v .+ i)

@@ -49,7 +49,7 @@ end
 
 # Get the function called by the edge with its input types
 function get_callback_info(edge::Input)
-    get_callback_info(edge.f, edge.value)
+    return get_callback_info(edge.f, edge.value)
 end
 function get_callback_info(edge::ComputeEdge)
     input = _get_named_inputs(edge)
