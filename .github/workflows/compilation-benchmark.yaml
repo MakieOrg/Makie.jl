@@ -6,7 +6,6 @@ on:
       - '*.md'
     branches:
       - master
-      - ff/breaking-0.25
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
