@@ -1035,18 +1035,6 @@ end
 
 add_input!(attr::ComputeGraph, key::Symbol, value) = _add_input!(identity, attr, key, value)
 
-# For cleaner printing and error tracking we do not use an anonymous function
-#   value -> conversion_function(key, value)
-# or
-#   (value,), changed, cached -> conversion_function(key, value)
-# but instead create an explicit wrapper here.
-struct InputFunctionWrapper{FT} <: Function
-    key::Symbol
-    user_func::FT
-end
-(x::InputFunctionWrapper)(v) = x.user_func(x.key, v)
-(x::InputFunctionWrapper)(inputs, changed, cached) = (x.user_func(x.key, inputs[1]),)
-
 function add_input!(conversion_func, attr::ComputeGraph, args...; force_update = false)
     add_input!(conversion_func, attr, Base.front(args), last(args))
     if force_update
@@ -1066,7 +1054,7 @@ function add_input!(conversion_func, attr::ComputeGraph, keys::Tuple, value)
 end
 
 function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value)
-    return _add_input!(InputFunctionWrapper(key, conversion_func), attr, key, value)
+    return _add_input!(conversion_func, attr, key, value)
 end
 
 function handle_nested_keys(attr::ComputeGraph, names::Tuple)
@@ -1177,7 +1165,7 @@ function add_input!(conversion_func, attr::ComputeGraph, key::Symbol, value::Com
     if haskey(attr.outputs, key)
         error("Cannot attach throughput with name $key - already exists!")
     end
-    register_computation!(InputFunctionWrapper(key, conversion_func), attr, [value], [key])
+    register_computation!(conversion_func, attr, [value], [key])
     return attr
 end
 

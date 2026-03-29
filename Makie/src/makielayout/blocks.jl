@@ -553,7 +553,7 @@ will generate a `converter = BlockAttributeConvert{RGBAf}()` and use it as a
 callback for the compute graph input `add_input!(converter, :attrib1, :black)`.
 Updating the input will then call
 ```julia
-(::BlockAttributeConvert{RGBAf})(key, x) = to_color(x)::RGBAf
+(::BlockAttributeConvert{RGBAf})(x) = to_color(x)::RGBAf
 ```
 before setting a compute node strictly typed to `RGBAf`.
 
@@ -576,13 +576,13 @@ function BlockAttributeConvert(Target::Union)
 end
 BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
 
-(::BlockAttributeConvert{<:Any})(key, x) = x
-function (mbac::MultiBlockAttributeConvert)(key, x)
+(::BlockAttributeConvert{<:Any})(x) = x
+function (mbac::MultiBlockAttributeConvert)(x)
     y = x
     for bac in mbac.converts
         x isa eltype(bac) && return x
         try
-            _y = bac(key, x)
+            _y = bac(x)
             if _y isa eltype(bac)
                 y = _y
             end
@@ -591,9 +591,9 @@ function (mbac::MultiBlockAttributeConvert)(key, x)
     end
     return y
 end
-(::BlockAttributeConvert{T})(key, x) where {T <: Number} = T(x)
-(::BlockAttributeConvert{<:RGBAf})(key, x) = to_color(x)::RGBAf
-(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(key, x) = to_font(x)
+(::BlockAttributeConvert{T})(x) where {T <: Number} = T(x)
+(::BlockAttributeConvert{<:RGBAf})(x) = to_color(x)::RGBAf
+(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(x) = to_font(x)
 
 function add_attributes!(T::Type{<:Block}, graph, attributes)
     return _add_attributes!(T, graph, attributes)
