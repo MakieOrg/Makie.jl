@@ -1,8 +1,3 @@
-function delay(k, v)
-    sleep(0.1)
-    return v
-end
-
 function delay(v)
     sleep(0.1)
     return v
@@ -340,7 +335,7 @@ end
         # the value has already passed to the callback, but may still result in
         # a deadlock or broken state due to mark_dirty!() running during resolve!()
         graph = ComputeGraph()
-        add_input!(graph, :a, 1) do k, v
+        add_input!(graph, :a, 1) do v
             graph.a = v+1
             return v
         end
@@ -509,7 +504,7 @@ end
     # Also these tests should be careful not to cause infinite loops...
     @testset "Set input from input" begin
         graph = ComputeGraph()
-        add_input!(graph, :a, 1) do k, v
+        add_input!(graph, :a, 1) do v
             if v == 1
                 graph.a = v+1
             end

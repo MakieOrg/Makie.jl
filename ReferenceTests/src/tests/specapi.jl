@@ -412,7 +412,7 @@ MyS() = MyS(1)
 
 function Makie.convert_arguments(ct::Type{<:AbstractPlot}, m::MyS)
     offset = (m.i - 1) * 2
-    [
+    return [
         Makie.to_plotspec(ct, (Point2f[(0 + offset, 0), (0.5 + offset, 0.5)],)),
         Makie.to_plotspec(ct, (Point2f[(0.5 + offset, 0.5), (1 + offset, 1)],)),
     ]
@@ -422,30 +422,30 @@ end
     fig = Figure()
 
     # Row 1: reference — plain calls without PlotSpecs
-    ax1r = Axis(fig[1, 1], title="plain")
+    ax1r = Axis(fig[1, 1], title = "plain")
     scatter!(ax1r, Point2f[(0, 0), (0.5, 0.5)])
     scatter!(ax1r, Point2f[(0.5, 0.5), (1, 1)])
 
-    ax2r = Axis(fig[1, 2], title="plain")
+    ax2r = Axis(fig[1, 2], title = "plain")
     scatter!(ax2r, Point2f[(0, 0), (0.5, 0.5)])
     scatter!(ax2r, Point2f[(0.5, 0.5), (1, 1)])
     scatter!(ax2r, Point2f[(2, 0), (2.5, 0.5)])
     scatter!(ax2r, Point2f[(2.5, 0.5), (3, 1)])
 
-    ax3r = Axis(fig[1, 3], title="plain")
+    ax3r = Axis(fig[1, 3], title = "plain")
     scatter!(ax3r, Point2f[(0, 0), (0.5, 0.5)])
     scatter!(ax3r, Point2f[(0.5, 0.5), (1, 1)])
     lines!(ax3r, Point2f[(0, 0), (0.5, 0.5)])
     lines!(ax3r, Point2f[(0.5, 0.5), (1, 1)])
 
     # Row 2: PlotSpec via convert_arguments
-    scatter(fig[2, 1], MyS(); axis=(title="plotspec",))
+    scatter(fig[2, 1], MyS(); axis = (title = "plotspec",))
 
-    ax2 = Axis(fig[2, 2], title="plotspec")
+    ax2 = Axis(fig[2, 2], title = "plotspec")
     scatter!(ax2, MyS(1))
     scatter!(ax2, MyS(2))
 
-    ax3 = Axis(fig[2, 3], title="plotspec")
+    ax3 = Axis(fig[2, 3], title = "plotspec")
     scatter!(ax3, MyS())
     lines!(ax3, MyS())
 

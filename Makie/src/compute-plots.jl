@@ -18,8 +18,7 @@ function ComputePipeline.add_input!(
         conversion_func, attr::ComputeGraph,
         key::Symbol, value::ShaderAbstractions.UpdatableArray
     )
-    f = ComputePipeline.InputFunctionWrapper(key, conversion_func)
-    x = ComputePipeline._add_input!(f, attr, key, value)
+    x = ComputePipeline._add_input!(conversion_func, attr, key, value)
     on(_ -> update!(attr, key => value), ShaderAbstractions.updater(value).update, priority = -1)
     return x
 end
@@ -48,10 +47,7 @@ function ComputePipeline.add_input!(
         key::Symbol, values::Attributes
     )
     if key === :fonts
-        return ComputePipeline._add_input!(
-            ComputePipeline.InputFunctionWrapper(key, conversion_func),
-            attr, key, values
-        )
+        return ComputePipeline._add_input!(conversion_func, attr, key, values)
     else
         return add_input!(conversion_func, attr, (key,), values)
     end
@@ -138,7 +134,7 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
         # CairoMakie rasterize needs this (or be treated with more care)
-        attr[key].value = RefValue{Any}(nothing)
+        ComputePipeline.set_type!(attr[key], Any)
     end
     return plot
 end
@@ -432,7 +428,7 @@ function _register_input_arguments!(attr::ComputeGraph, input_args::Tuple)
     inputs = map(enumerate(input_args)) do (i, arg)
         sym = Symbol(:arg, i)
         add_input!(attr, sym, arg)
-        attr[sym].value = RefValue{Any}(arg)
+        ComputePipeline.set_type!(attr[sym], Any)
         return sym
     end
     return inputs
@@ -667,7 +663,8 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
         return converted # destructure
     end
 
-    add_input!((k, v) -> Ref{Any}(v), attr, :transform_func, identity)
+    add_input!(attr, :transform_func, identity)
+    ComputePipeline.set_type!(attr.transform_func, Any)
 
     add_input!(attr, :f32c, :uninitialized)
 
@@ -755,16 +752,16 @@ end
 struct AttributeConvert{Key, Plot} end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
-function (::AttributeConvert{key, plot})(_, value) where {key, plot}
+function (::AttributeConvert{key, plot})(value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
 end
-function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, _, value) where {key, plot}
+function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, value) where {key, plot}
     return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
 end
 
-to_recipe_attribute(_, x) = Ref{Any}(x) # Make sure it can change type
-to_recipe_attribute(_, attr::Attributes) = attr
-function to_recipe_attribute(_, value::NamedTuple)
+to_recipe_attribute(x) = Ref{Any}(x) # Make sure it can change type
+to_recipe_attribute(attr::Attributes) = attr
+function to_recipe_attribute(value::NamedTuple)
     return Attributes(value)
 end
 
@@ -797,21 +794,21 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         for (k, p) in lookup
             # If user explicitly passes values, we should not do anything
             let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do key, value
+                add_input!(attr, k, get(kwargs, k, nothing)) do value
                     palettes = attr.palettes[]
                     if value isa Cycled
-                        value = get_cycle_attribute(palettes, key, value.i, plotcycle)
+                        value = get_cycle_attribute(palettes, k, value.i, plotcycle)
                     end
                     if !isnothing(value)
                         if is_primitive
-                            return convert_attribute(value, Key{key}(), Key{name}())
+                            return convert_attribute(value, Key{k}(), Key{name}())
                         else
-                            return to_recipe_attribute(nothing, value)
+                            return to_recipe_attribute(value)
                         end
                     end
                     pos = attr.cycle_index[]
-                    cyc = get_cycle_attribute(palettes, key, pos, plotcycle)
-                    return convert_attribute(cyc, Key{key}(), Key{name}())
+                    cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
+                    return convert_attribute(cyc, Key{k}(), Key{name}())
                 end
                 delete!(inputs, k)
             end
@@ -828,8 +825,13 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
         if !haskey(attr.outputs, k)
             if is_primitive
                 add_input!(AttributeConvert(k, name), attr, k, v)
-            else
+            elseif v isa Union{Attributes, NamedTuple}
                 add_input!(to_recipe_attribute, attr, k, v)
+            else
+                # Probably better for performance because this more or less
+                # skips the callback
+                add_input!(attr, k, v)
+                ComputePipeline.set_type!(attr[k], Any)
             end
         end
     end
