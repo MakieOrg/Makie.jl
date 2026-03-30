@@ -150,7 +150,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
         outputs = ntuple(length(result)) do i
             v = result[i] isa RefValue ? result[i] : RefValue(result[i])
             if isdefined(edge.outputs[i], :value)
-                edge.outputs[i][] = v[] # set value of existing node
+                edge.outputs[i].value[] = v[] # set value of existing node
             else
                 edge.outputs[i].value = v # initialize to fully typed RefValue
             end
@@ -162,7 +162,7 @@ function TypedEdge(edge::ComputeEdge, f, inputs)
 
         outputs = ntuple(length(edge.outputs)) do i
             if isdefined(edge.outputs[i], :value)
-                edge.outputs[i][] = nothing
+                edge.outputs[i].value[] = nothing
             else
                 edge.outputs[i].value = RefValue(nothing)
             end
