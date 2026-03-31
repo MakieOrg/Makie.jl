@@ -769,45 +769,37 @@ function bbox(b::BezierSegment)
     mi = [min.(p0, p3)...]
     ma = [max.(p0, p3)...]
 
+    # Coefficients of the derivative: 3(a*t^2 + 2b*t + c) = 0
     c = -p0 + p1
     b = p0 - 2p1 + p2
     a = -p0 + 3p1 - 3p2 + 1p3
 
-    h = [(b .* b - a .* c)...]
-
-    if h[1] > 0
-        h[1] = sqrt(h[1])
-        t = (-b[1] - h[1]) / a[1]
-        if t > 0 && t < 1
-            s = 1.0 - t
-            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
-            mi[1] = min(mi[1], q)
-            ma[1] = max(ma[1], q)
-        end
-        t = (-b[1] + h[1]) / a[1]
-        if t > 0 && t < 1
-            s = 1.0 - t
-            q = s * s * s * p0[1] + 3.0 * s * s * t * p1[1] + 3.0 * s * t * t * p2[1] + t * t * t * p3[1]
-            mi[1] = min(mi[1], q)
-            ma[1] = max(ma[1], q)
-        end
-    end
-
-    if h[2] > 0.0
-        h[2] = sqrt(h[2])
-        t = (-b[2] - h[2]) / a[2]
-        if t > 0.0 && t < 1.0
-            s = 1.0 - t
-            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
-            mi[2] = min(mi[2], q)
-            ma[2] = max(ma[2], q)
-        end
-        t = (-b[2] + h[2]) / a[2]
-        if t > 0.0 && t < 1.0
-            s = 1.0 - t
-            q = s * s * s * p0[2] + 3.0 * s * s * t * p1[2] + 3.0 * s * t * t * p2[2] + t * t * t * p3[2]
-            mi[2] = min(mi[2], q)
-            ma[2] = max(ma[2], q)
+    for dim in 1:2
+        if abs(a[dim]) < 1e-12
+            # Degenerate cubic (effectively quadratic): solve 2b*t + c = 0
+            if abs(b[dim]) > 1e-12
+                t = -c[dim] / (2 * b[dim])
+                if t > 0 && t < 1
+                    s = 1.0 - t
+                    q = s * s * s * p0[dim] + 3.0 * s * s * t * p1[dim] + 3.0 * s * t * t * p2[dim] + t * t * t * p3[dim]
+                    mi[dim] = min(mi[dim], q)
+                    ma[dim] = max(ma[dim], q)
+                end
+            end
+        else
+            h = b[dim] * b[dim] - a[dim] * c[dim]
+            if h > 0
+                h = sqrt(h)
+                for sign in (-1, 1)
+                    t = (-b[dim] + sign * h) / a[dim]
+                    if t > 0 && t < 1
+                        s = 1.0 - t
+                        q = s * s * s * p0[dim] + 3.0 * s * s * t * p1[dim] + 3.0 * s * t * t * p2[dim] + t * t * t * p3[dim]
+                        mi[dim] = min(mi[dim], q)
+                        ma[dim] = max(ma[dim], q)
+                    end
+                end
+            end
         end
     end
 
