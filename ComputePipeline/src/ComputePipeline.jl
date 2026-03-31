@@ -1,3 +1,79 @@
+#=
+## Notes on resolve/dirty state:
+
+Dirty state is encoded in edges. Nodes only hold on to dirty state temporarily
+in resolve!() while passing on state to dependents.
+
+mark_dirty!() sets edge state to dirty, traveling down the the graph. If an
+edge is marked dirty, all its dependents are also marked dirty.
+
+resolve!() sets edge state to not dirty (resolved). Edges are selected by
+traveling up the graph, but state is still updated top to bottom because we
+need to resolve parent computations before a dependent computation can resolve.
+
+Assuming resolve!() and mark_dirty!() do not run at the same time (and the
+initial state is appropriate), an edge being dirty implies that all of its
+dependents are dirty. Equivalently, an edge being resolved implies that all its
+parents are resolved. Thus:
+- mark_dirty!() may stop propagating down if an edge is marked dirty
+- resolve!() may stop propagating up if an edge is marked resolved
+Note that mark_resolved!() and unsafe_init!() (and whatever else may affect
+resolved/dirty state) must keep state consistent with the rule(s) above to allow
+early exits in mark_dirty!() and resolve!() (and themselves).
+
+
+## Notes on concurrency
+
+There are a lot of problems to find not just with asynchronous graph
+interactions, many of which are probed by the concurrency tests.
+
+As mentioned above, `mark_dirty!()`, `resolve!()` and other functions affecting
+dirty state are not allowed to change that state at the same time. Consider a
+graph `a -> b -> c` as an example:
+- resolve!(c) walks up too a, resolves a, marks a resolved
+- mark_dirty!(a) interjects and marks a, b, c as dirty (or just a if it exits early)
+- resolve!(c) continues, marking b, c resolved
+We now have broken the rules from above as `a` is marked dirty but its dependent
+`b` is not.
+
+A node in the graph can be an input to multiple edges. To keep the results of
+these edges consistent, the value of the node is not allowed to change between
+them. This means no direct updating of that node (i.e. no setindex!(),
+setproperty!(), update!()) and no re-resolve!() of the parent edge (which may
+have updated inputs) is allowed.
+
+Note that users could (technically) try to update a node in the callback of an
+edge. In that case the value setting function as well as mark dirty run within
+the same Task, so ReentrantLock will not block the execution. This may lead to
+corrupt state or desynchronized data with ReentrantLock, or deadlocks with a
+more aggressive lock. Note as well that edge locks are likely to lock multiple
+times since one edge may be the parent of multiple other edges.
+
+Note that Observable outputs can further complicate this. Without them, one node
+value and the states of a subset of edges update.¹ With them, update also needs
+to queue an observable update, which requires a resolve itself. While the node
+may already be freed by the original resolve, the observable-based resolve may
+also target nodes that the original resolve still owns.
+
+¹ Updating state can be a non-issue here. At the start of resolve, we can go
+through all the involved edges, copy their "dirty" state to a new resolve state
+variable and mark their normal state as "resolved", under exclusion of
+mark_dirty!(). We can then base decision on the resolve state variable during
+edge resolve while mark_dirty!() can already update state for the next resolve!().
+
+Some general notes:
+- Per graph locks are also complicated, because multiple graphs can be connected.
+  resolve!() could try locking child_graph, then parent_graph, while update
+  functions may try to lock parent_graph, then child_graph (deadlock potential)
+- Graphs may also connect circularly, e.g. graph1.x -> graph2.x,
+  graph2.y -> graph1.y. So graph relationships may loop, while the underlying
+  edges don't
+- update!() promises to update all variables in sync, i.e. in such a way that
+  resolve!() either uses all the values from before update!() or all the values
+  from after. This means update!() must wait for all the variables to be
+  accessible.
+=#
+
 module ComputePipeline
 
 using Preferences
@@ -395,20 +471,6 @@ end
 
 isdirty(edge::ComputeEdge) = !edge.got_resolved[]
 
-# [Rules]:
-# after mark_dirty!():
-#   any input dirty => all outputs dirty
-# after resolve!(): any output
-#   any output resolved => all inputs resolved
-#   <=> !(all outputs dirty) => !(any input dirty)
-#   => any input dirty => all outputs dirty
-# edge.got_resolved[] encodes this:
-#   resolve!() sets it to true when resolving all edge inputs & outputs
-#   mark_dirty!() sets it to false to mark all edge outputs dirty
-# As long as every other action preserves these rules we can:
-# 1. stop resolving inputs when edge.got_resolved[] == true
-# 2. stop mark_dirty!() when edge.got_resolved[] == false
-
 """
     mark_resolved!(computed)
 
@@ -427,7 +489,6 @@ function mark_resolved!(computed::Computed)
     return
 end
 function mark_resolved!(edge::ComputeEdge)
-    # Follow the [Rules]:
     if !edge.got_resolved[]
         @lock GLOBAL_LOCK begin
             foreach(locked_resolve!, edge.inputs)
@@ -464,7 +525,7 @@ function mark_dirty!(x, obs_to_update)
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, obs_to_update::Vector{Observable})
-    if edge.got_resolved[] # because of [Rules]
+    if edge.got_resolved[]
         # Assumes this is the same graph as edge.outputs (for parent -> child graph edges)
         g = edge.graph
         for output in edge.outputs
@@ -516,14 +577,12 @@ function Base.setindex!(computed::Computed, value)
     end
 end
 
-# Updating an Input doesn't corrupt state during resolve!(), so lock is not
-# necessary. If the Input has already resolved, input.output will have the old
-# value which will be used for all dependent computation. Otherwise input.output
-# will be resolved to the new value, which will be used for all dependent computations
+# Inputs are strictly 1:1 edges (from input.value -> output), so we don't need
+# to worry about avoiding changes to input.value between multiple dependents.
+# However we do technically still need to protect it while the callback runs.
 Base.setindex!(input::Input, value) = _setindex!(input, value, input.force_update)
 function _setindex!(input::Input, value, force_update = false)
     if !force_update && is_same(input.value, value)
-        # Skip if the value is the same as before
         return value
     end
     @lock GLOBAL_LOCK begin
@@ -577,14 +636,6 @@ update!(attr::AbstractComputeGraph, dict::Dict) = _update!(attr, dict)
 update!(attr::AbstractComputeGraph, pairs::Pair...) = _update!(attr, [Pair(k, v) for (k, v) in pairs])
 update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(attr, pairs)
 
-# update!() updates multiple values in sync. resolve!() should not mix old and
-# new values. So this needs a lock.
-# Example (prevent this):
-# resolve!() processes input a (old)
-# task switch
-# update!() sets a, b
-# task switch
-# resolve!() processes input b (new) - out of sync with a (old)
 function _update!(attr::ComputeGraph, values)
     @lock GLOBAL_LOCK begin
         for (_key, value) in values
@@ -898,8 +949,6 @@ function locked_resolve!(edge::TypedEdge)
     return
 end
 
-# needs lock for multithreading? I.e. if another thread resolves a node that
-# sets inputs_dirty of the same dependent?
 function locked_resolve!(input::Input)
     input.dirty || return
     value = input.f(input.value)
@@ -1917,7 +1966,6 @@ function unsafe_init!(edge::ComputeEdge)
         return false
     end
 
-    # Follow the [Rules]:
     @lock GLOBAL_LOCK begin
         foreach(locked_resolve!, edge.inputs)
         edge.typed_edge[] = TypedEdge_no_call(edge)
