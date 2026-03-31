@@ -193,6 +193,37 @@ annotation!(ax, on_curve, text = ["on-curve point 1", "on-curve point 2"], fonts
 f
 ```
 
+Here's an example with the [`CurveTo`](@ref) command.
+
+```@figure
+heart = BezierPath([
+    MoveTo(Point(0, -1)),
+    CurveTo(Point(-1.5, -0.4), Point(-0.6, 1.2), Point(0, 0)),
+    CurveTo(Point(0.6, 1.2), Point(1.5, -0.4), Point(0, -1)),
+    ClosePath()
+])
+
+on_curve = Point2f[(0, -1), (0, 0)]
+controls = Point2f[(-1.5, -0.4), (-0.6, 1.2)]
+
+f = Figure()
+ax = Axis(f[1, 1], aspect = 1)
+
+scatter!(ax, Point2f(0, 0), marker = heart, markersize = 1,
+    markerspace = :data, color = (:red, 0.3), strokewidth = 2, strokecolor = :red)
+
+for (from, to) in zip(on_curve, controls)
+    lines!(ax, [from, to], color = :gray60, linestyle = :dash)
+end
+scatter!(ax, controls, color = :gray60, markersize = 10)
+scatter!(ax, on_curve, color = :black, markersize = 12)
+
+annotation!(ax, controls, text = ["control point 1", "control point 2"], fontsize = 12)
+annotation!(ax, on_curve, text = ["on-curve point 1", "on-curve point 2"], fontsize = 12)
+
+f
+```
+
 #### Holes
 
 Paths can have holes, just start a new subpath with `MoveTo` that is inside the main path.
