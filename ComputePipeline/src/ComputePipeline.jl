@@ -98,7 +98,7 @@ using Base: RefValue, tail
 include("ResolveLock.jl")
 include("nesting.jl")
 
-const GLOBAL_LOCK = ReentrantLock()
+const GLOBAL_LOCK = YieldingSpinLock()
 
 deref(r::RefValue) = r[]
 deref(x) = x
@@ -523,45 +523,55 @@ function mark_dirty!(computed::Computed)
 end
 function mark_dirty!(computed::Computed, obs_to_update)
     if hasparent(computed)
-        parent = computed.parent
         @lock GLOBAL_LOCK begin
-            @lock computed.parent.lock begin
-                computed.dirty = true
-            end
-            # TODO: Can we avoid marking the parent dirty?
-            # Note: Without the parent running computed.dirty doesn't get
-            # transferred to dependents in resolve!().
-            # TODO: Isn't writing to dirty risky without locking the edge?
-            # TODO: Can this be called from the same callstack as resolve!(),
-            # causing lock(edge.lock) to not block?
-            locked_mark_dirty!(parent, obs_to_update)
-
-            # push!(parent.graph.onchange.val, computed.name)
-            # if !(parent.graph.onchange in obs_to_update)
-            #     push!(obs_to_update, parent.graph.onchange)
-            # end
-            # for dependent in parent.dependents
-            #     locked_mark_dirty!(dependent, obs_to_update)
-            # end
-
-            # @lock parent.lock begin
-            #     computed.dirty = true
-            #     for dependent in parent.dependents
-            #         @lock dependent.lock begin
-            #             mark_input_dirty!(computed.parent, dependent)
-            #         end
-            #     end
-            #     computed.dirty = false
-            # end
+            locked_mark_dirty!(computed, obs_to_update)
         end
     end
     return
 end
+
 mark_dirty!(x::AbstractEdge) = mark_dirty!(x, x.graph.onchange_obs_to_update)
 function mark_dirty!(x, onchange_obs_to_update)
     # lock_before_resolve!() is not allowed to run while mark_dirty!() runs
     # lock GLOBAL_LOCK to prevent it
     @lock GLOBAL_LOCK locked_mark_dirty!(x, onchange_obs_to_update)
+end
+
+locked_mark_dirty!(x::Computed) = locked_mark_dirty!(x, x.parent.graph.onchange_obs_to_update)
+locked_mark_dirty!(e::AbstractEdge) = locked_mark_dirty!(e, e.graph.onchange_obs_to_update)
+function locked_mark_dirty!(computed::Computed, obs_to_update)
+    if hasparent(computed)
+        parent = computed.parent
+        @lock computed.parent.lock begin
+            computed.dirty = true
+        end
+        # TODO: Can we avoid marking the parent dirty?
+        # Note: Without the parent running computed.dirty doesn't get
+        # transferred to dependents in resolve!().
+        # TODO: Isn't writing to dirty risky without locking the edge?
+        # TODO: Can this be called from the same callstack as resolve!(),
+        # causing lock(edge.lock) to not block?
+        locked_mark_dirty!(parent, obs_to_update)
+
+        # push!(parent.graph.onchange.val, computed.name)
+        # if !(parent.graph.onchange in obs_to_update)
+        #     push!(obs_to_update, parent.graph.onchange)
+        # end
+        # for dependent in parent.dependents
+        #     locked_mark_dirty!(dependent, obs_to_update)
+        # end
+
+        # @lock parent.lock begin
+        #     computed.dirty = true
+        #     for dependent in parent.dependents
+        #         @lock dependent.lock begin
+        #             mark_input_dirty!(computed.parent, dependent)
+        #         end
+        #     end
+        #     computed.dirty = false
+        # end
+    end
+    return
 end
 
 function locked_mark_dirty!(edge::ComputeEdge, onchange_obs_to_update::Vector{Observable})
@@ -616,7 +626,7 @@ function Base.setindex!(computed::Computed, value)
             end
             # we don't need to keep the edge locked, but we do need to prevent
             # lock_before_resolve!() from running, so keep the GLOBAL_LOCK locked
-            mark_dirty!(computed)
+            locked_mark_dirty!(computed)
         end
         # TODO: Does this need to be locked too?
         update_observables!(computed)
@@ -650,7 +660,7 @@ function _update_input!(input::Input, value)
         @lock input.input_lock begin
             input.value = value
         end
-        mark_dirty!(input)
+        locked_mark_dirty!(input)
     end
     update_observables!(input)
     return value
@@ -662,7 +672,7 @@ function locked_update_input!(input::Input, value)
         return value
     end
     input.value = value
-    mark_dirty!(input)
+    locked_mark_dirty!(input)
     return value
 end
 
