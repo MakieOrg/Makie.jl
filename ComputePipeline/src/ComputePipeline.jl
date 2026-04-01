@@ -540,36 +540,36 @@ end
 locked_mark_dirty!(x::Computed) = locked_mark_dirty!(x, x.parent.graph.onchange_obs_to_update)
 locked_mark_dirty!(e::AbstractEdge) = locked_mark_dirty!(e, e.graph.onchange_obs_to_update)
 function locked_mark_dirty!(computed::Computed, obs_to_update)
+    #=
+    This is called by:
+    - `node[] = value` (non-input setindex) which doesn't want parent resolve
+        as that could overwrite/reset the explicitly set value
+    - `mark_dirty!(node)` which could be an in-place version of the above or a
+        same value update, which parent resolve may skip the propagation of
+    =#
+
     if hasparent(computed)
         parent = computed.parent
-        @lock computed.parent.lock begin
+        # Simulate resolve internal dirty propagation of parent resolving,
+        # so that this node can be seen as dirty in the next resolve. Do not
+        # actually change the parent edges dirty state though, so it can still
+        # update if it was primed to update.
+        @lock parent.lock begin
             computed.dirty = true
+            for dependent in parent.dependents
+                @lock dependent.lock begin
+                    mark_input_dirty!(parent, dependent)
+                end
+            end
+            computed.dirty = false
         end
-        # TODO: Can we avoid marking the parent dirty?
-        # Note: Without the parent running computed.dirty doesn't get
-        # transferred to dependents in resolve!().
-        # TODO: Isn't writing to dirty risky without locking the edge?
-        # TODO: Can this be called from the same callstack as resolve!(),
-        # causing lock(edge.lock) to not block?
-        locked_mark_dirty!(parent, obs_to_update)
 
-        # push!(parent.graph.onchange.val, computed.name)
-        # if !(parent.graph.onchange in obs_to_update)
-        #     push!(obs_to_update, parent.graph.onchange)
-        # end
-        # for dependent in parent.dependents
-        #     locked_mark_dirty!(dependent, obs_to_update)
-        # end
-
-        # @lock parent.lock begin
-        #     computed.dirty = true
-        #     for dependent in parent.dependents
-        #         @lock dependent.lock begin
-        #             mark_input_dirty!(computed.parent, dependent)
-        #         end
-        #     end
-        #     computed.dirty = false
-        # end
+        # mark all dependents dirty that are affected by this compute node being
+        # dirty.,
+        for dependent in parent.dependents
+            computed in dependent.inputs || continue
+            locked_mark_dirty!(dependent, obs_to_update)
+        end
     end
     return
 end

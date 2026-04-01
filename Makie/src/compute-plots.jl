@@ -550,11 +550,19 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Add input containing Symbol(:dim_convert_, i) which triggers when the
     # conversion changes. (One per dimension, so use unique on dim_tuple)
     # Note that the order in dim_convert_names is important
+    # Warning: dim convert updates can loop (maybe through Axis) which can cause
+    # a deadlock in the compute graph. Use @async somewhere here to prevent that
     dim_convert_names = Symbol[]
     for i in 1:maxdim
         obs = convert(Observable{Any}, needs_tick_update_observable(Observable{Any}(dim_converts[i])))
         converts_updated = map!(x -> dim_converts[i], Observable{Any}(), obs)
-        add_input!(attr, Symbol(:dim_convert_, i), converts_updated)
+        add_input!(attr, Symbol(:dim_convert_, i), converts_updated[])
+        node = attr[Symbol(:dim_convert_, i)]
+        on(converts_updated) do x
+            @async setindex!(node, x)
+            yield() # give it a chance to run immediately
+            return
+        end
         push!(dim_convert_names, Symbol(:dim_convert_, i))
     end
 
