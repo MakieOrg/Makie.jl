@@ -2256,6 +2256,88 @@ function set_type!(node::Computed, T::Type)
     return
 end
 
+function unsafe_replace_source!(of::Computed, with::Computed, at = 1)
+    return unsafe_replace_source!(of.parent, with, at)
+end
+
+function unsafe_replace_source!(of::ComputeEdge, with::Computed, at = 1)
+    # Should maybe type check compatibility of old and with?
+
+    # make sure things are initialized
+    with[]
+    of.outputs[1][]
+
+    @lock GLOBAL_LOCK begin
+        @lock of.lock begin
+            # replace edge information
+            old = of.inputs[at]
+            of.inputs[at] = with
+            filter!(e -> e !== of, old.parent.dependents)
+            push!(with.parent.dependents, of)
+
+            # replace typed_edge
+            te = of.typed_edge[]
+            inputs = let
+                N = length(of.inputs)
+                names = ntuple(i -> of.inputs[i].name, N)
+                values = ntuple(i -> of.inputs[i].value, N)
+                NamedTuple{names}(values)
+            end
+
+            if te.callback === compute_identity
+                # compute_identity skips the computation and just duplicates
+                # the ref of the input node in the output node.
+                # Technically we don't need to update of.typed_edge[] at all
+                # because of this, because it never accesses the node data. But
+                # it's probably better to keep it up to date...
+                of.typed_edge[] = TypedEdge(
+                    te.callback,
+                    inputs,
+                    te.inputs_dirty,
+                    inputs,
+                    te.output_nodes
+                )
+
+                # What we do have to update is the ref held by the output:
+                te.output_nodes[at].value = with.value
+                # The ref held by outputs also ends up in the typed_egde of each
+                # dependent, so we need to replace those too:
+                for dep in of.dependents
+                    te = dep.typed_edge[]
+                    inputs = let
+                        N = length(dep.inputs)
+                        names = ntuple(i -> dep.inputs[i].name, N)
+                        values = ntuple(i -> dep.inputs[i].value, N)
+                        NamedTuple{names}(values)
+                    end
+                    dep.typed_edge[] = TypedEdge(
+                        te.callback,
+                        inputs,
+                        te.inputs_dirty,
+                        te.outputs,
+                        te.output_nodes
+                    )
+                end
+            else
+                of.typed_edge[] = TypedEdge(
+                    te.callback,
+                    inputs,
+                    te.inputs_dirty,
+                    te.outputs,
+                    te.output_nodes
+                )
+                of.typed_edge[].inputs_dirty[at] = true
+            end
+
+            # notify dependents
+        end
+    end
+
+    mark_dirty!(with)
+
+    return
+end
+
 include("io.jl")
 include("observables_compat.jl")
 include("utils.jl")

@@ -99,7 +99,8 @@ function set_proj_view!(camera::Camera, projection, view)
     # But nobody should do that, right?
     # GLMakie uses map on view
     camera.view[] = view
-    return camera.projection[] = projection
+    camera.projection[] = projection
+    return
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -326,25 +327,74 @@ end
 
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
+    space = plot_graph.space[]
 
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
     if haskey(plot_graph, :markerspace)
-        map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-            return get_projectionview_name(markerspace), get_projection_name(markerspace),
-                get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
-        end
+        markerspace = plot_graph.markerspace[]
+
+        inputs = [
+            scene_graph[get_projectionview_name(markerspace)],
+            scene_graph[get_projection_name(markerspace)],
+            scene_graph[get_view_name(markerspace)],
+            scene_graph[get_camera_matrix_name(space, markerspace)]
+        ]
         push!(output_keys, :preprojection)
+
+        for (input, output) in zip(inputs, output_keys)
+            add_input!(plot_graph, output, input)
+        end
+
+        # replace edge sources when space changes
+        on(plot_graph.markerspace) do markerspace
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projectionview,
+                scene_graph[get_projectionview_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projection,
+                scene_graph[get_projection_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.view,
+                scene_graph[get_view_name(markerspace)]
+            )
+        end
+
+        onany(plot_graph.space, plot_graph.markerspace) do space, markerspace
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.preprojection,
+                scene_graph[get_camera_matrix_name(space, markerspace)]
+            )
+        end
+
     else
-        map!(plot_graph, :space, :camera_matrix_names) do space
-            return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+        inputs = [
+            scene_graph[get_projectionview_name(space)],
+            scene_graph[get_projection_name(space)],
+            scene_graph[get_view_name(space)]
+        ]
+
+        for (input, output) in zip(inputs, output_keys)
+            add_input!(plot_graph, output, input)
+        end
+
+        # replace edge sources when space changes
+        on(plot_graph.space) do space
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projectionview,
+                scene_graph[get_projectionview_name(space)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projection,
+                scene_graph[get_projection_name(space)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.view,
+                scene_graph[get_view_name(space)]
+            )
         end
     end
-
-    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
-
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    callback = CameraMatrixCallback(scene_graph)
-    map!(callback, plot_graph, input_keys, output_keys)
 
     return
 end
