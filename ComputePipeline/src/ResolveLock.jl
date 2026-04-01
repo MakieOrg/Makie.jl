@@ -197,6 +197,6 @@ end
 
 function Base.islocked(l::ResolveLock)
     a = (@atomic :monotonic l.locked)::Int != 0
-    b = (@atomic :monotonic l.owned_by) != 0
+    b = l.owned_by != 0
     return a || b
 end
