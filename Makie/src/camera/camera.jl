@@ -471,6 +471,7 @@ function register_camera_matrix!(
     isconst(x::Symbol) = true
     isconst(x::Computed) = false
 
+
     if isconst(_input) && isconst(_output)
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
@@ -478,20 +479,34 @@ function register_camera_matrix!(
         return matrix_name
     end
 
-    # dynamic case (space and/or markerspace used)
-    # Need to build name of the matrix dynamically before fetching it
-    name_name = Symbol(matrix_name, :_name)
+    # otherwise we need to replace the source(s)
 
+    # temporarily connect some random input, on/onany will update this
+    add_input!(M -> Mat4f(M), plot_graph, matrix_name, scene_graph.clip_to_clip)
+
+    # setup replacers
     if !isconst(_input) && isconst(_output)
-        map!(a -> get_camera_matrix_name(a, output), plot_graph, _input, name_name)
+        on(_input, update = true) do dynamic_input
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(dynamic_input, output)]
+            )
+        end
     elseif isconst(_input) && !isconst(_output)
-        map!(b -> get_camera_matrix_name(input, b), plot_graph, _output, name_name)
+        on(_output, update = true) do dynamic_output
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(input, dynamic_output)]
+            )
+        end
     else
-        map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
+        onany(_input, _output, update = true) do dynamic_input, dynamic_output
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(dynamic_input, dynamic_output)]
+            )
+        end
     end
-
-    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
-    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
 
     return matrix_name
 end

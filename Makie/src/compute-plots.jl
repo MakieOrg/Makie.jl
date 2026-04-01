@@ -705,7 +705,7 @@ function ComputePipeline.register_computation!(f, p::Plot, inputs::Vector, outpu
     return register_computation!(f, p.attributes, inputs, outputs)
 end
 
-function Base.map!(f, p::Plot, inputs::Union{Vector{Symbol}, Vector{Computed}, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
+function Base.map!(f, p::Plot, inputs::Union{Vector, Symbol, Computed}, outputs::Union{Vector{Symbol}, Symbol})
     return map!(f, p.attributes, inputs, outputs)
 end
 
