@@ -701,7 +701,9 @@ update!(attr::AbstractComputeGraph, pairs::AbstractVector{<:Pair}) = _update!(at
 function _update!(attr::ComputeGraph, pairs)
     # Checks first so we don't wait on locks just to error
     keys = [merged_key(keylike) for (keylike, _) in pairs]
-    for k in keys
+    # User could be setting the same key multiple times (for vector-like pairs)
+    ukeys = unique(keys)
+    for k in ukeys
         haskey(attr.inputs, k) || error("Attribute $k not found in ComputeGraph")
     end
 
@@ -712,7 +714,8 @@ function _update!(attr::ComputeGraph, pairs)
         # Note: resolve will always have input.lock locked when it locks
         # input.input_lock, so it is sufficient to lock input.lock. (Competing writes
         # are not our concern here)
-        for key in keys
+        # Note: Use unique keys to avoid self-inflicted deadlocks (or use keys)
+        for key in ukeys
             lock(attr.inputs[key].lock)
         end
     end
@@ -723,7 +726,8 @@ function _update!(attr::ComputeGraph, pairs)
             locked_update_input!(attr.inputs[key], value)
         end
     finally
-        for key in keys
+        # Also unique keys to avoid deadlocks
+        for key in ukeys
             unlock(attr.inputs[key].lock)
         end
     end
