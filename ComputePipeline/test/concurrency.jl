@@ -362,7 +362,7 @@ end
         graph = ComputeGraph()
         add_input!(graph, :a, 1)
         map!(graph, :a, :b) do v
-            graph.a = v+1
+            graph.a = v + 1
             return v
         end
 
@@ -386,7 +386,7 @@ end
         graph = ComputeGraph()
         add_input!(graph, :a, 1)
         map!(graph, :a, :b) do v
-            graph.a = v+1
+            graph.a = v + 1
             return v
         end
         map!(identity, graph, :a, :c)

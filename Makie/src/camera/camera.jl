@@ -332,7 +332,7 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
             scene_graph[get_projectionview_name(markerspace)],
             scene_graph[get_projection_name(markerspace)],
             scene_graph[get_view_name(markerspace)],
-            scene_graph[get_camera_matrix_name(space, markerspace)]
+            scene_graph[get_camera_matrix_name(space, markerspace)],
         ]
         push!(output_keys, :preprojection)
 
@@ -367,7 +367,7 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
         inputs = [
             scene_graph[get_projectionview_name(space)],
             scene_graph[get_projection_name(space)],
-            scene_graph[get_view_name(space)]
+            scene_graph[get_view_name(space)],
         ]
 
         for (input, output) in zip(inputs, output_keys)

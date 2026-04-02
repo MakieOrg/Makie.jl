@@ -538,6 +538,7 @@ function mark_dirty!(x, onchange_obs_to_update)
     # lock_before_resolve!() is not allowed to run while mark_dirty!() runs
     # lock GLOBAL_LOCK to prevent it
     @lock GLOBAL_LOCK locked_mark_dirty!(x, onchange_obs_to_update)
+    return
 end
 
 locked_mark_dirty!(x::Computed) = locked_mark_dirty!(x, x.parent.graph.onchange_obs_to_update)

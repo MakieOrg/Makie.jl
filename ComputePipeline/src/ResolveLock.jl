@@ -18,6 +18,7 @@ function Base.lock(l::YieldingSpinLock)
         end
         yield()
     end
+    return
 end
 
 function Base.trylock(l::YieldingSpinLock)
