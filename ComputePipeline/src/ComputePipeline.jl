@@ -542,7 +542,7 @@ end
 
 locked_mark_dirty!(x::Computed) = locked_mark_dirty!(x, x.parent.graph.onchange_obs_to_update)
 locked_mark_dirty!(e::AbstractEdge) = locked_mark_dirty!(e, e.graph.onchange_obs_to_update)
-function locked_mark_dirty!(computed::Computed, obs_to_update)
+function locked_mark_dirty!(computed::Computed, onchange_obs_to_update)
     #=
     This is called by:
     - `node[] = value` (non-input setindex) which doesn't want parent resolve
@@ -567,11 +567,16 @@ function locked_mark_dirty!(computed::Computed, obs_to_update)
             computed.dirty = false
         end
 
+        # mark this node as changed for Observable updates
+        g = parent.graph
+        push!(g.onchange.val, computed.name)
+        g.onchange in onchange_obs_to_update || push!(onchange_obs_to_update, g.onchange)
+
         # mark all dependents dirty that are affected by this compute node being
         # dirty.,
         for dependent in parent.dependents
             computed in dependent.inputs || continue
-            locked_mark_dirty!(dependent, obs_to_update)
+            locked_mark_dirty!(dependent, onchange_obs_to_update)
         end
     end
     return
@@ -631,7 +636,6 @@ function Base.setindex!(computed::Computed, value)
             # lock_before_resolve!() from running, so keep the GLOBAL_LOCK locked
             locked_mark_dirty!(computed)
         end
-        # TODO: Does this need to be locked too?
         update_observables!(computed)
         return value
     else
