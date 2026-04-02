@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CairoMakie no longer falls back to mesh drawing for `textlabel` backgrounds, avoiding rasterization in SVG/PDF output [#5579](https://github.com/MakieOrg/Makie.jl/pull/5579)
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 
