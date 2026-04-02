@@ -479,8 +479,11 @@ function isdirty(computed::Computed)
     return hasparent(computed) && isdirty(computed.parent)
 end
 
-
-isdirty(edge::ComputeEdge) = edge.dirty[]
+# dirty == true: no resolve running on the newest input values
+# dirty == false && should_resolve_now == true:
+# resolve currently evaluating newest values (outputs still dirty)
+# edge locked: outputs may be waiting for update and are protected from overwrite from other sources
+isdirty(edge::ComputeEdge) = edge.dirty[] || edge.should_resolve_now[]
 
 """
     mark_resolved!(computed)
@@ -1218,12 +1221,14 @@ function _lock_before_resolve!(c::Computed, lock_key)
 end
 
 function resolve!(edge::AbstractEdge)
-    lock_key = lock_before_resolve!(edge)
-    try
-        locked_resolve!(edge, lock_key)
-    finally
-        # locks unlock in the dependents of an edge, so this one is still locked
-        unlock(edge.lock, lock_key)
+    if isdirty(edge)
+        lock_key = lock_before_resolve!(edge)
+        try
+            locked_resolve!(edge, lock_key)
+        finally
+            # locks unlock in the dependents of an edge, so this one is still locked
+            unlock(edge.lock, lock_key)
+        end
     end
     return
 end
