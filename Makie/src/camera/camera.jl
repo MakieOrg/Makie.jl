@@ -320,11 +320,6 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-struct CameraMatrixCallback <: Function
-    graph::ComputeGraph
-end
-(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
-
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
     space = plot_graph.space[]
@@ -342,7 +337,7 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
         push!(output_keys, :preprojection)
 
         for (input, output) in zip(inputs, output_keys)
-            add_input!(plot_graph, output, input)
+            add_input!(M -> Mat4f(M), plot_graph, output, input)
         end
 
         # replace edge sources when space changes
@@ -376,7 +371,7 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
         ]
 
         for (input, output) in zip(inputs, output_keys)
-            add_input!(plot_graph, output, input)
+            add_input!(M -> Mat4f(M), plot_graph, output, input)
         end
 
         # replace edge sources when space changes
