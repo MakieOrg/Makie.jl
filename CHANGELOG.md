@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added text glow to CairoMakie [#5542](https://github.com/MakieOrg/Makie.jl/pull/5542)
+- Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
 - Barplot `bar_labels` now support `RichText` (e.g. subscript/superscript) both directly and via `label_formatter` [#5578](https://github.com/MakieOrg/Makie.jl/pull/5578)
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
