@@ -36,7 +36,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
@@ -61,6 +61,6 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: Makie/src
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           file: lcov.info

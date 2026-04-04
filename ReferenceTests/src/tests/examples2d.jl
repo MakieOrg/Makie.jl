@@ -2462,6 +2462,10 @@ end
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30)
     )
+    annotation!(
+        ax, 0, -100, 10, sin(10),
+        style = Ann.Styles.LineArrow(),
+    )
 
     f
 end

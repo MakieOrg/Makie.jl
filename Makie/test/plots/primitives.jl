@@ -170,4 +170,16 @@ end
         boundingbox(p.plots[1]) # shouldn't error
         @test length(p.plots[2].plots) == 5
     end
+
+    @testset "empty string at viewport center (no StackOverflow)" begin
+        # Empty strings produce zero-size bounding boxes. When such a label
+        # sits at the viewport center, the initial bias in
+        # calculate_best_offsets! used to call normalize(zero_vector) which
+        # produced NaN offsets. Combined with NaN != NaN defeating the
+        # ComputePipeline convergence check, this caused infinite recursion.
+        fig, ax, plt = scatter([1.0, 2.0, 3.0], [1.0, 2.0, 3.0])
+        # This must not throw a StackOverflowError
+        p = annotation!(ax, [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], text = ["A", "", "C"])
+        @test !any(x -> any(isnan, x), p.offsets[])
+    end
 end
