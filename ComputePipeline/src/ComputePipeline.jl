@@ -338,7 +338,7 @@ function ComputeGraph()
             # anything updated in-place
             if !(key in graph.should_deepcopy)
                 obs.val = val
-            elseif val != obs[] # treat in-place updates
+            elseif !isequal(val, obs[]) # treat in-place updates (use isequal to handle NaN correctly)
 
                 obs.val = deepcopy(val)
             else # same value (with deepcopy), skip update

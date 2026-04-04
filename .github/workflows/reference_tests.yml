@@ -62,7 +62,7 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: Makie/src
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           file: lcov.info
 
@@ -116,7 +116,7 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: Makie/src
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           file: lcov.info
 
@@ -171,7 +171,7 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
         with:
           directories: Makie/src
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           file: lcov.info
 
