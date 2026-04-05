@@ -857,6 +857,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
+        k === :transformation && continue
         if !haskey(plot.attributes.outputs, k)
             if haskey(documented_attr, k)
                 error("User Attribute $k did not get registered.")
