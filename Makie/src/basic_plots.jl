@@ -122,7 +122,7 @@ end
   `PlotUtils.cgrad(...)`, `Makie.Reverse(any_colormap)` can be used as well, or any symbol from ColorBrewer or PlotUtils.
   To see all available color gradients, you can call `Makie.available_gradients()`.
 - `colorscale::Function = identity` color transform function. Can be any function, but only works well together with `Colorbar` for `identity`, `log`, `log2`, `log10`, `sqrt`, `logit`, `Makie.pseudolog10`, `Makie.Symlog10`, `Makie.AsinhScale`, `Makie.SinhScale`, `Makie.LogScale`, `Makie.LuptonAsinhScale`, and `Makie.PowerScale`.
-- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`.
+- `colorrange::Tuple{<:Real, <:Real}` sets the values representing the start and end points of `colormap`. One or both end points can also be determined automatically by setting it to `Makie.automatic`. In this case the extrema of the color data are used.
 - `nan_color::Union{Symbol, <:Colorant} = RGBAf(0,0,0,0)` sets a replacement color for `color = NaN`.
 - `lowclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value below the colorrange.
 - `highclip::Union{Nothing, Symbol, <:Colorant} = nothing` sets a color for any value above the colorrange.

@@ -1,6 +1,7 @@
 bar_label_formatter(value::Number) = string(round(value; digits = 3))
 bar_label_formatter(label::String) = label
 bar_label_formatter(label::LaTeXString) = label
+bar_label_formatter(label::RichText) = label
 
 """
 Plots bars of the given heights at the given positions.
@@ -318,7 +319,8 @@ function barplot_labels(
                 color_over_bar, label_offset, label_rotation, label_align, label_position
             )
             label_pos = broadcast(xpositions, ypositions, offset, computed_labels, label_position, fillto) do x, y, off, l, lpos, fto
-                str = string(label_formatter(l))
+                formatted = label_formatter(l)
+                str = formatted isa Union{AbstractString, RichText} ? formatted : string(formatted)
                 p = if in_y_direction
                     if lpos == :end
                         Point2d(x, y + off)

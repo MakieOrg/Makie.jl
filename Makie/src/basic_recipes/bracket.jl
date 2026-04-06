@@ -141,7 +141,7 @@ function plot!(pl::Bracket)
 
         # TODO: add a broadcast/map version of broadcast_foreach doing this:
         bps = BezierPath[]
-        text_pos = Tuple{String, Point2f}[]
+        text_pos = Tuple{Union{String, LaTeXStrings.LaTeXString, RichText}, Point2f}[]
 
         broadcast_foreach(startpoints, endpoints, directions, offset, width, style, text) do p1, p2, dir, offset, width, style, str
             off = offset * dir
