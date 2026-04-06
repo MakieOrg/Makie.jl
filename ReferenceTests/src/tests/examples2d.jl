@@ -1214,10 +1214,10 @@ end
     f, ax, l = lines(0 .. 9, sin; axis = (; xgridvisible = false, ygridvisible = false))
     ylims!(ax, -1.5, 1.5)
 
-    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = "Period length", style = :square)
+    bracket!(pi / 2, 1, 5pi / 2, 1, offset = 5, text = L"\text{Period length}\,\mathcal{T} = 2\pi", style = :square)
 
     bracket!(
-        pi / 2, 1, pi / 2, -1, text = "Amplitude", orientation = :down,
+        pi / 2, 1, pi / 2, -1, text = rich(rich("Amp", color = :red, font = :bold), rich("litude", color = :darkred)), orientation = :down,
         linestyle = :dash, rotation = 0, align = (:right, :center), textoffset = 4, linewidth = 2, color = :red, textcolor = :red
     )
 
@@ -2461,6 +2461,10 @@ end
         ax, 7, -0.5, 3pi / 2, -1.0,
         text = "Corner", path = Ann.Paths.Corner(), labelspace = :data,
         linewidth = 3, shrink = (0, 30)
+    )
+    annotation!(
+        ax, 0, -100, 10, sin(10),
+        style = Ann.Styles.LineArrow(),
     )
 
     f
