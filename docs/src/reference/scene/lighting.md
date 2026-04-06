@@ -7,7 +7,7 @@ With respect to Backends:
 - GLMakie implements the baseline lighting model and will act as our default for this page.
 - WGLMakie implements a simplified version of GLMakie's lighting.
 - CairoMakie implements limited lighting due to its limited 3D capabilities
-- RPRMakie implements parts of Makies lighting model but can also use more sophisticated methods from RadeonProRender.
+- RayMakie implements physically-based spectral lighting matching pbrt-v4, supporting all Makie light types with correct global illumination.
 
 ## Material Attributes
 
@@ -21,9 +21,9 @@ Currently the following material attributes are available:
 - `backlight::Real = 0` controls how strongly light interacts with the backside of an object. Setting this to a value `> 0` can be helpful when visualizing a surface. (More precisely the light calculation is repeated with inverted normals and the result is mixed in with `backlight` as a prefactor.)
 
 !!! note
-    RPRMakie does not use these material attributes.
-    Instead it relies on RadeonProRender's material system, which is passed through the `material` attribute.
-    See the [RPRMakie page](https://docs.makie.org/stable/documentation/backends/rprmakie/) for examples.
+    RayMakie uses Hikari's physically-based material system instead of these attributes.
+    Pass materials via the `material` keyword: `mesh!(scene, geom; material=Hikari.Gold())`.
+    See the [RayMakie page](@ref) for the full material reference.
 
 
 ## Lights

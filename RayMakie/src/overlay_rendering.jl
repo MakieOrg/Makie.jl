@@ -58,11 +58,23 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
         vx, vy, vw, vh = viewport
         dvp = Vulkan.Viewport(vx, vy, vw, vh, 0f0, 1f0)
         Vulkan.cmd_set_viewport(cmd, [dvp])
+        # Compute scissor rect — must clamp to non-negative (Vulkan requirement)
+        sc_x = Int32(floor(vx))
         sc_y = vh < 0 ? Int32(floor(vy + vh)) : Int32(floor(vy))
-        sc_h = UInt32(ceil(abs(vh)))
+        sc_w = Int32(ceil(abs(vw)))
+        sc_h = Int32(ceil(abs(vh)))
+        # Clamp negative offsets: shrink extent by the overflow amount
+        if sc_x < Int32(0)
+            sc_w = max(Int32(0), sc_w + sc_x)
+            sc_x = Int32(0)
+        end
+        if sc_y < Int32(0)
+            sc_h = max(Int32(0), sc_h + sc_y)
+            sc_y = Int32(0)
+        end
         dsc = Vulkan.Rect2D(
-            Vulkan.Offset2D(Int32(floor(vx)), sc_y),
-            Vulkan.Extent2D(UInt32(ceil(abs(vw))), sc_h))
+            Vulkan.Offset2D(sc_x, sc_y),
+            Vulkan.Extent2D(UInt32(sc_w), UInt32(sc_h)))
         Vulkan.cmd_set_scissor(cmd, [dsc])
     else
         Vulkan.cmd_set_viewport(cmd, [default_vp])

@@ -33,6 +33,11 @@ mutable struct LavaRenderObject
     instances::Int
     visible::Bool
     viewport::Any      # Nothing or (Float32, Float32, Float32, Float32)
+    # Persistent arg buffer — avoids per-draw allocation from the global slab.
+    # This is a small VkMappedBuffer (typically 256-512 bytes) that holds the
+    # packed shader arguments. Written in-place each frame, never freed/reallocated.
+    arg_buffer::Any  # Nothing or Lava.VkMappedBuffer
+    push_data::Vector{UInt8}  # 8-byte push constant (BDA pointer), reused
 end
 
 function LavaRenderObject(pipeline::GraphicsPipeline;
@@ -44,7 +49,8 @@ function LavaRenderObject(pipeline::GraphicsPipeline;
                           instances=1,
                           visible=true,
                           viewport=nothing)
-    LavaRenderObject(pipeline, buffers, uniforms, arg_names, bindings, vertex_count, instances, visible, viewport)
+    LavaRenderObject(pipeline, buffers, uniforms, arg_names, bindings, vertex_count, instances, visible, viewport,
+                     nothing, Vector{UInt8}(undef, 8))
 end
 
 """

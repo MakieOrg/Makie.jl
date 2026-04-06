@@ -44,7 +44,7 @@ function create_nanovdb_bunny_scene_direct(nvdb_path::String;
     s.camera_controls.fov[] = 25.0
 
     # Transparent boundary material
-    transparent = Hikari.GlassMaterial(
+    transparent = Hikari.Dielectric(
         Kr = Hikari.RGBSpectrum(0f0),
         Kt = Hikari.RGBSpectrum(1f0),
         index = 1.0f0
@@ -61,7 +61,7 @@ function create_nanovdb_bunny_scene_direct(nvdb_path::String;
     ground_size = 1000f0
     ground_geo = Rect3f(Vec3f(-ground_size, -ground_size, -0.1f0),
                         Vec3f(2*ground_size, 2*ground_size, 0.2f0))
-    ground_material = Hikari.CoatedDiffuseMaterial(
+    ground_material = Hikari.CoatedDiffuse(
         reflectance = (0.4f0, 0.45f0, 0.35f0),
         roughness = 0f0,
         eta = 1.5f0,

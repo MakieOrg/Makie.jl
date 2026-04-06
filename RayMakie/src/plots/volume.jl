@@ -142,7 +142,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
                 delete_trace_handles!(hikari_scene, last.trace_renderobject)
             end
             gb_mesh = normal_mesh(Rect3f(config.origin, config.extent))
-            glass = Hikari.GlassMaterial(Kr=Hikari.RGBSpectrum(0f0), Kt=Hikari.RGBSpectrum(1f0), index=1f0)
+            glass = Hikari.Dielectric(Kr=Hikari.RGBSpectrum(0f0), Kt=Hikari.RGBSpectrum(1f0), index=1f0)
             mat = Hikari.MediumInterface(glass; inside=medium)
             handle = push!(hikari_scene, gb_mesh, mat)
             state.needs_film_clear = true

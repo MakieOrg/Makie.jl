@@ -52,7 +52,7 @@ let
         sensor=Hikari.FilmSensor(iso=50, exposure_time=1.0, white_balance=0)
     )
 
-    integrator = Hikari.VolPath(samples=1, max_depth=4, filter=Hikari.GaussianFilter())
+    integrator = Hikari.VolPath(samples=1, max_depth=4)
 
     println("Starting render with Smoke volume (ROCArray backend)...")
     flush(stdout)

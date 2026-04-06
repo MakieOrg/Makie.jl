@@ -121,7 +121,7 @@ function create_scene()
     coated_blue = Hikari.CoatedDiffuse(reflectance=(0.1, 0.2, 0.7), roughness=0.05)
 
     # --- Plastic ---
-    plastic_white = Hikari.Plastic(Kd=(0.9, 0.9, 0.9), Ks=(0.4, 0.4, 0.4), roughness=0.15)
+    plastic_white = Hikari.Plastic(color=(0.9, 0.9, 0.9), roughness=0.15)
 
     # --- Emissive materials (pure emitters via MediumInterface) ---
     emissive_white = Hikari.MediumInterface(Hikari.Emissive(Le=(4, 4, 4)))
@@ -202,13 +202,12 @@ RayMakie.activate!(
     gamma=2.2f0,
     sensor=sensor
 )
-nsamples = 1000
+nsamples = 10
 ax = create_scene();
-RayMakie.vulkan_viewer(ax; sensor=sensor, exposure=0.6f0, tonemap=:aces, gamma=1.0f0)
 
 integrator = Hikari.VolPath(; samples=nsamples, max_depth=5, hw_accel=true)
+img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator, update=false)
 
-img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img = @time colorbuffer(ax; backend=RayMakie, integrator=integrator)
 img

@@ -134,7 +134,7 @@ Group materials by type into a tuple of vectors for MaterialScene.
 """
 function build_materials_tuple(materials_list::Vector)
     if isempty(materials_list)
-        return (Hikari.MatteMaterial[],)
+        return (Hikari.Diffuse[],)
     end
 
     type_to_materials = Dict{DataType, Vector}()
@@ -177,7 +177,7 @@ function to_trace_light(light::Makie.PointLight, integrator)
         # with photometric normalization (scale = 1/spectrum_to_photometric), matching pbrt-v4
         return Hikari.PointLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.position))
     else
-        # RGB path: direct RGBSpectrum intensity for FastWavefront
+        # RGB path: direct RGBSpectrum intensity
         i = Hikari.RGBSpectrum(c.r, c.g, c.b)
         return Hikari.PointLight(Raycore.translate(Vec3f(light.position)), i, 1f0)
     end
@@ -198,8 +198,32 @@ end
 
 function to_trace_light(light::Makie.DirectionalLight, integrator)
     c = RGBf(light.color)
-    i = Hikari.RGBSpectrum(c.r, c.g, c.b)
-    return Hikari.DirectionalLight(Raycore.Transformation(Mat4f(I)), i, Vec3f(light.direction), 1f0)
+    if is_spectral_integrator(integrator)
+        # Spectral path: use RGB constructor with photometric normalization (matching pbrt-v4)
+        return Hikari.DirectionalLight(RGB{Float32}(c.r, c.g, c.b), Vec3f(light.direction))
+    else
+        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
+        return Hikari.DirectionalLight(Raycore.Transformation(Mat4f(I)), i, Vec3f(light.direction), 1f0)
+    end
+end
+
+function to_trace_light(light::Makie.SpotLight, integrator)
+    c = RGBf(light.color)
+    pos = Point3f(light.position)
+    dir = Vec3f(light.direction)
+    target = pos + normalize(dir)
+    # Makie SpotLight angles: [inner_angle, outer_angle] in radians
+    falloff_start = rad2deg(light.angles[1])
+    total_width = rad2deg(light.angles[2])
+    if is_spectral_integrator(integrator)
+        return Hikari.SpotLight(
+            RGB{Float32}(c.r, c.g, c.b), pos, target,
+            Float32(total_width), Float32(falloff_start))
+    else
+        i = Hikari.RGBSpectrum(c.r, c.g, c.b)
+        return Hikari.SpotLight(pos, target, i,
+            Float32(total_width), Float32(falloff_start), 1f0)
+    end
 end
 
 function to_trace_light(light::Makie.EnvironmentLight, integrator)
@@ -317,9 +341,9 @@ function init_lights!(hikari_scene, rscene, integrator)
         end
     end
 
-    if isempty(hikari_scene.lights)
-        error("Must have at least one light in scene")
-    end
+    # Note: area lights (emissive meshes) are added later during draw_atomic,
+    # so the light list may be empty here. That's OK.
+
 end
 
 # Compute Film resolution and NDC screen_window for a sub-scene viewport
@@ -510,9 +534,10 @@ function init_scene!(screen, mscene::Makie.Scene)
         if is_rt
             Hikari.sync!(state.hikari_scene)
 
-            # Center camera on data after geometry is built
+            # Adjust near/far planes to encompass the scene geometry.
+            # Note: do NOT call Makie.center!(rscene) here — it resets the
+            # camera position, overriding user-configured camera in create_scene.
             if rscene.camera_controls isa Makie.Camera3D
-                Makie.center!(rscene)
                 cc = rscene.camera_controls
                 bounds = state.hikari_scene.bounds[]
                 if bounds[1].p_min[1] < bounds[1].p_max[1]
@@ -608,11 +633,15 @@ function delete_trace_robj!(screen, plot::Makie.AbstractPlot)
     delete!(plot.attributes, :trace_renderobject, force=true, recursive=true)
 end
 
+# pbrt scene → Makie scene converter (for testing RayMakie against pbrt-v4 references)
+include("pbrt_to_makie.jl")
+
 # Standalone Vulkan viewer (GLFW + Lava swapchain, no GLMakie)
 include("vulkan_viewer.jl")
 
 # Export RayMakie-specific types
 export Screen, ScreenConfig, activate!, colorbuffer, vulkan_viewer, wait_viewer
+export pbrt_to_makie, PBRTMakieResult
 
 # Re-export DenoiseConfig from Hikari for convenience
 const DenoiseConfig = Hikari.DenoiseConfig

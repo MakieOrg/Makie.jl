@@ -35,7 +35,7 @@ function create_test_materials_scene(; size=(400, 300))
     copper = Hikari.Copper(roughness=0.1)
 
     # Row 3: Coated materials
-    plastic_blue = Hikari.Plastic(Kd=(0.1, 0.2, 0.8), Ks=(0.5, 0.5, 0.5), roughness=0.05)
+    plastic_blue = Hikari.Plastic(color=(0.1, 0.2, 0.8), roughness=0.05)
     coated_red = Hikari.CoatedDiffuse(reflectance=(0.8, 0.2, 0.2), roughness=0.1)
 
     # Row 4: Emissive
@@ -95,7 +95,7 @@ function test_render_materials(; backend=Raycore.KA.CPU(), samples=1)
     )
 
     scene = create_test_materials_scene()
-    integrator = Hikari.VolPath(samples=samples, max_depth=4, filter=Hikari.GaussianFilter())
+    integrator = Hikari.VolPath(samples=samples, max_depth=4)
 
     img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
     return img

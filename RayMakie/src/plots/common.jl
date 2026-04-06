@@ -41,51 +41,51 @@ end
 # Material merging — combine color texture with existing material
 # =============================================================================
 
-function merge_color_with_material(color_tex, material::Hikari.MatteMaterial)
-    Hikari.MatteMaterial(color_tex, material.σ)
+function merge_color_with_material(color_tex, material::Hikari.Diffuse)
+    Hikari.Diffuse(color_tex, material.σ)
 end
 
-function merge_color_with_material(color_tex, material::Hikari.MirrorMaterial)
-    Hikari.MirrorMaterial(color_tex)
+function merge_color_with_material(color_tex, material::Hikari.Mirror)
+    Hikari.Mirror(color_tex)
 end
 
-function merge_color_with_material(color_tex, material::Hikari.GlassMaterial)
-    Hikari.GlassMaterial(
+function merge_color_with_material(color_tex, material::Hikari.Dielectric)
+    Hikari.Dielectric(
         material.Kr, color_tex,
         material.u_roughness, material.v_roughness,
         material.index, material.remap_roughness
     )
 end
 
-function merge_color_with_material(color_tex, material::Hikari.ConductorMaterial)
-    Hikari.ConductorMaterial(material.eta, material.k, material.roughness, color_tex, material.remap_roughness)
+function merge_color_with_material(color_tex, material::Hikari.Conductor)
+    Hikari.Conductor(material.eta, material.k, material.roughness, color_tex, material.remap_roughness)
 end
 
-function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuseMaterial)
-    Hikari.CoatedDiffuseMaterial(
+function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuse)
+    Hikari.CoatedDiffuse(
         color_tex, material.u_roughness, material.v_roughness, material.thickness,
         material.eta, material.albedo, material.g, material.max_depth, material.n_samples, material.remap_roughness
     )
 end
 
-function merge_color_with_material(color_tex, material::Hikari.ThinDielectricMaterial)
+function merge_color_with_material(color_tex, material::Hikari.ThinDielectric)
     material
 end
 
-function merge_color_with_material(color_tex, material::Hikari.DiffuseTransmissionMaterial)
-    Hikari.DiffuseTransmissionMaterial(
+function merge_color_with_material(color_tex, material::Hikari.DiffuseTransmission)
+    Hikari.DiffuseTransmission(
         color_tex, material.transmittance, material.scale
     )
 end
 
-function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuseTransmissionMaterial)
-    Hikari.CoatedDiffuseTransmissionMaterial(
+function merge_color_with_material(color_tex, material::Hikari.CoatedDiffuseTransmission)
+    Hikari.CoatedDiffuseTransmission(
         color_tex, material.transmittance, material.u_roughness, material.v_roughness, material.thickness,
         material.eta, material.albedo, material.g, material.max_depth, material.n_samples, material.remap_roughness
     )
 end
 
-function merge_color_with_material(color_tex, material::Hikari.CoatedConductorMaterial)
+function merge_color_with_material(color_tex, material::Hikari.CoatedConductor)
     material
 end
 
@@ -109,6 +109,12 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
     material = has_material ? to_value(plot.material) : nothing
 
     if material isa Hikari.Material && !isnothing(tex)
+        # MediumInterface with emission: always merge the color into the base material.
+        # This lets users combine colormap/color with emissive overlays, e.g.
+        # surface!(...; colormap=..., material=MediumInterface(Diffuse(); emission=Emissive(...)))
+        if material isa Hikari.MediumInterface && material.emission !== nothing
+            return merge_color_with_material(tex, material)
+        end
         # If material was set post-construction (not in inputs), it's a deliberate
         # user override (e.g. recipe_plot.plots[1].material = my_mat) and should
         # always take priority over any colors, including recipe-assigned ones.
@@ -123,7 +129,7 @@ function extract_material(plot::Plot, tex::Union{Hikari.Texture, Hikari.VertexCo
     elseif material isa Hikari.Material
         return material
     elseif !isnothing(tex)
-        return Hikari.MatteMaterial(tex, Hikari.ConstTexture(0.0f0))
+        return Hikari.Diffuse(tex, Hikari.ConstTexture(0.0f0))
     else
         error("Neither color nor material are defined for plot: $plot")
     end
@@ -133,6 +139,26 @@ end
 color_to_texture(color::AbstractMatrix{<:Number}, plot) = Hikari.Texture(to_spectrum(Makie.compute_colors(plot.attributes)))
 color_to_texture(color::AbstractMatrix{<:Colorant}, ::Any) = color isa Makie.LinePattern ? Hikari.ConstTexture(to_spectrum(RGBf(1,1,1))) : Hikari.Texture(to_spectrum(color))
 color_to_texture(color::AbstractVector{<:Colorant}, ::Any) = color  # handled in mesh.jl via build_vertex_color_texture
+function color_to_texture(color::AbstractVector{<:Number}, plot)
+    # Map scalar per-vertex values through the colormap to produce per-vertex Colorant colors.
+    # Cannot rely on compute_colors here as it may produce a 2D texture matrix
+    # which requires UV coordinates the mesh doesn't have.
+    cmap_raw = to_value(get(plot, :colormap, :viridis))
+    cmap = Makie.to_colormap(cmap_raw isa Makie.Automatic ? :viridis : cmap_raw)
+    crange = to_value(get(plot, :colorrange, nothing))
+    lo, hi = if crange isa Makie.Automatic || isnothing(crange)
+        extrema(color)
+    else
+        Float32(crange[1]), Float32(crange[2])
+    end
+    n = length(cmap)
+    scale = hi == lo ? 0f0 : 1f0 / (hi - lo)
+    return map(color) do val
+        t = clamp((val - lo) * scale, 0f0, 1f0)
+        idx = clamp(round(Int, t * (n - 1)) + 1, 1, n)
+        cmap[idx]
+    end
+end
 color_to_texture(color::Colorant, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
 color_to_texture(color::Union{String,Symbol}, ::Any) = Hikari.ConstTexture(to_spectrum(to_color(color)))
 function color_to_texture(::Nothing, plot)
@@ -211,8 +237,8 @@ function build_diffuse_material(mat_dict::Dict{String, Any})
         if haskey(diffuse_map, "image")
             img = diffuse_map["image"]
             tex = Hikari.Texture(to_spectrum(img))
-            # Textured materials use MatteMaterial (supports stochastic alpha pass-through)
-            return Hikari.MatteMaterial(tex, Hikari.ConstTexture(roughness * 90f0))
+            # Textured materials use Diffuse (supports stochastic alpha pass-through)
+            return Hikari.Diffuse(tex, Hikari.ConstTexture(roughness * 90f0))
         end
     end
 
@@ -221,8 +247,8 @@ function build_diffuse_material(mat_dict::Dict{String, Any})
     color = RGBf(diffuse[1], diffuse[2], diffuse[3])
     tex = Hikari.ConstTexture(to_spectrum(color))
 
-    # CoatedDiffuseMaterial gives proper GLTF PBR appearance (Fresnel specular + diffuse)
-    return Hikari.CoatedDiffuseMaterial(reflectance=tex, roughness=roughness)
+    # CoatedDiffuse gives proper GLTF PBR appearance (Fresnel specular + diffuse)
+    return Hikari.CoatedDiffuse(reflectance=tex, roughness=roughness)
 end
 
 """
@@ -244,15 +270,15 @@ end
 # =============================================================================
 
 function create_material_with_color(color::Colorant, template::Nothing)
-    Hikari.MatteMaterial(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
+    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
 end
 
-function create_material_with_color(color::Colorant, template::Hikari.MatteMaterial)
-    Hikari.MatteMaterial(Hikari.ConstTexture(to_spectrum(color)), template.σ)
+function create_material_with_color(color::Colorant, template::Hikari.Diffuse)
+    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), template.σ)
 end
 
-function create_material_with_color(color::Colorant, template::Hikari.ConductorMaterial)
-    Hikari.ConductorMaterial(
+function create_material_with_color(color::Colorant, template::Hikari.Conductor)
+    Hikari.Conductor(
         template.eta, template.k, template.roughness,
         Hikari.ConstTexture(to_spectrum(color)),
         template.remap_roughness
@@ -260,16 +286,16 @@ function create_material_with_color(color::Colorant, template::Hikari.ConductorM
 end
 
 function create_material_with_color(color::Colorant, template::Hikari.Material)
-    @warn "Unsupported material type $(typeof(template)) for per-instance colors, using MatteMaterial"
-    Hikari.MatteMaterial(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
+    @warn "Unsupported material type $(typeof(template)) for per-instance colors, using Diffuse"
+    Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
 end
 
 # =============================================================================
 # Material texture extraction (for in-place color updates)
 # =============================================================================
 
-get_material_texture(mat::Hikari.MatteMaterial) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
-get_material_texture(mat::Hikari.ConductorMaterial) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
+get_material_texture(mat::Hikari.Diffuse) = mat.Kd isa Hikari.Texture ? mat.Kd : nothing
+get_material_texture(mat::Hikari.Conductor) = mat.reflectance isa Hikari.Texture ? mat.reflectance : nothing
 get_material_texture(mat::Hikari.Material) = nothing
 
 # In-place texture data update via dispatch

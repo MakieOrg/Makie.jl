@@ -164,29 +164,20 @@ function create_particle_scene(n_particles::Int=1000; size=(1920, 1080))
     # Floor - polished silver mirror
     floor_mesh = normal_mesh(Rect3f(Vec3f(-50, -50, -1), Vec3f(100, 100, 1)))
     mesh!(scene, floor_mesh;
-        material=Hikari.MetalMaterial(;
-            Hikari.METAL_SILVER...,
-            roughness=0.005f0  # Near-perfect mirror
-        )
+        material=Hikari.Silver(roughness=0.005f0)  # Near-perfect mirror
     )
 
     # Back wall (at y = -50) - matte plastic
     back_mesh = normal_mesh(Rect3f(Vec3f(-50, -50, 0), Vec3f(100, 1, 90)))
     mesh!(scene, back_mesh;
-        # material=Hikari.PlasticMaterial(;
-        #     Kd=Hikari.RGBSpectrum(0.9f0, 0.95f0, 0.5f0),
-        #     Ks=Hikari.RGBSpectrum(0.2f0, 0.2f0, 0.2f0),
-        #     roughness=0.0f0
-        # )
+        # material=Hikari.Plastic(color=(0.9, 0.95, 0.5), roughness=0.0)
     )
 
     # Left wall (at x = -50) - polished silver mirror
     left_mesh = normal_mesh(Rect3f(Vec3f(-50, -50, 0), Vec3f(1, 100, 90)))
     mesh!(scene, left_mesh;
-        material=Hikari.PlasticMaterial(;
-            Kd=Hikari.RGBSpectrum(0.0f0, 0.95f0, 0.5f0),
-            roughness=0.0f0
-        ), color=:white
+        material=Hikari.Plastic(color=(0.0, 0.95, 0.5), roughness=0.0),
+        color=:white
     )
 
     # Create particles with velocity-based colors
@@ -197,7 +188,7 @@ function create_particle_scene(n_particles::Int=1000; size=(1920, 1080))
     sphere_marker = Sphere(Point3f(0), 1.0f0)
 
     mplot = meshscatter!(scene, positions;
-        material = Hikari.MetalMaterial(; Hikari.METAL_GOLD...),
+        material = Hikari.Gold(),
         marker=sphere_marker,
         markersize=sizes,
         color=colors

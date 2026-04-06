@@ -2,10 +2,10 @@
 # Port of the crown scene from pbrt-v4-scenes with proper area lights and materials.
 #
 # This scene showcases:
-# - MetalMaterial with gold (Au) properties for conductor materials
-# - CoatedDiffuseMaterial for glossy painted surfaces
-# - GlassMaterial for dielectric gems
-# - MatteMaterial for diffuse surfaces
+# - Conductor with gold (Au) properties for conductor materials
+# - CoatedDiffuse for glossy painted surfaces
+# - Dielectric for dielectric gems
+# - Diffuse for diffuse surfaces
 # - Area lights via Emissive material on meshes (5500K blackbody, scale=10)
 # - DiffuseAreaLight created automatically per emissive triangle
 #
@@ -138,12 +138,12 @@ function create_hikari_material(params::Dict, all_materials::Dict)
         else
             r = get(params, "roughness", 0.01f0)  # pbrt default for coated: smooth
         end
-        return Hikari.CoatedDiffuseMaterial(reflectance=refl, roughness=r, eta=1.5f0)
+        return Hikari.CoatedDiffuse(reflectance=refl, roughness=r, eta=1.5f0)
     elseif t == "dielectric"
-        return Hikari.GlassMaterial(index=get(params, "eta", 1.5f0))
+        return Hikari.Dielectric(index=get(params, "eta", 1.5f0))
     elseif t == "diffuse"
         kd = get(params, "reflectance", (0.5f0, 0.5f0, 0.5f0))
-        return Hikari.MatteMaterial(Kd=Hikari.RGBSpectrum(kd[1], kd[2], kd[3]))
+        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(kd[1], kd[2], kd[3]))
     elseif t == "mix"
         # Mix materials: use stochastic mix at 50% (no texture support yet)
         mix_names = get(params, "mix_materials", nothing)
@@ -155,17 +155,17 @@ function create_hikari_material(params::Dict, all_materials::Dict)
                 m2 = create_hikari_material(mat2_params, all_materials)
                 # For mix materials without texture, use the conductor (gold) if present
                 # since it's the dominant visual in the crown scene mix materials
-                if m2 isa Hikari.ConductorMaterial
+                if m2 isa Hikari.Conductor
                     return m2
-                elseif m1 isa Hikari.ConductorMaterial
+                elseif m1 isa Hikari.Conductor
                     return m1
                 end
                 return m1  # Fallback to first material
             end
         end
-        return Hikari.MatteMaterial(Kd=Hikari.RGBSpectrum(0.5f0))
+        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.5f0))
     else
-        return Hikari.MatteMaterial(Kd=Hikari.RGBSpectrum(0.5f0))
+        return Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.5f0))
     end
 end
 
@@ -252,7 +252,7 @@ function create_crown_scene(; resolution=(500, 700))
 
     # Environment sphere — large radius, low tessellation to test
     env_sphere_mesh = GeometryBasics.normal_mesh(Tesselation(Sphere(Point3f(0), 100f0), 64))
-    env_mat = Hikari.MatteMaterial(Kd=Hikari.RGBSpectrum(0.2f0, 0.2f0, 0.2f0))
+    env_mat = Hikari.Diffuse(Kd=Hikari.RGBSpectrum(0.2f0, 0.2f0, 0.2f0))
     mesh!(scene, env_sphere_mesh; material=env_mat)
     println("  Added environment sphere (radius=100, tess=8)")
 

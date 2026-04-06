@@ -148,7 +148,7 @@ pages = [
             "explanations/backends/backends.md",
             "explanations/backends/cairomakie.md",
             "explanations/backends/glmakie.md",
-            "explanations/backends/rprmakie.md",
+            "explanations/backends/raymakie.md",
             "explanations/backends/wglmakie.md",
         ],
         "explanations/animation.md",

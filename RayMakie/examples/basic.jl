@@ -63,7 +63,7 @@ begin
 end
 begin
     model = load(joinpath(dirname(pathof(Hikari)), "..", "docs", "src", "assets", "models", "caustic-glass.ply"))
-    glass = Hikari.GlassMaterial(
+    glass = Hikari.Dielectric(
         Hikari.ConstantTexture(Hikari.RGBSpectrum(0.9f0)),
         Hikari.ConstantTexture(Hikari.RGBSpectrum(0.88f0)),
         Hikari.ConstantTexture(0.0f0),
@@ -71,18 +71,8 @@ begin
         Hikari.ConstantTexture(1.4f0),
         true,
     )
-    plastic = Hikari.PlasticMaterial(
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(0.6399999857f0, 0.6399999857f0, 0.5399999857f0)),
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(0.1000000015f0, 0.1000000015f0, 0.1000000015f0)),
-        Hikari.ConstantTexture(0.010408001f0),
-        true,
-    )
-    plastic_ceil = Hikari.PlasticMaterial(
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(0.3399999857f0, 0.6399999857f0, 0.8399999857f0)),
-        Hikari.ConstantTexture(Hikari.RGBSpectrum(1.4f0)),
-        Hikari.ConstantTexture(0.000408001f0),
-        true,
-    )
+    plastic = Hikari.Plastic(color=(0.64, 0.64, 0.54), roughness=0.01)
+    plastic_ceil = Hikari.Plastic(color=(0.34, 0.64, 0.84), roughness=0.0004)
     scene = Scene(size=(1024, 1024); lights=[
         AmbientLight(RGBf(1, 1, 1)),
         PointLight(RGBf(150, 150, 150), Vec3f(4, 4, 10)),

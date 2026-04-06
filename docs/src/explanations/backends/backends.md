@@ -10,7 +10,7 @@ There are four backends which concretely implement all abstract rendering capabi
 | [GLMakie](@ref)       | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows.          |
 | [CairoMakie](@ref) | `Cairo.jl` based, non-interactive 2D (and some 3D) backend  for publication-quality vector graphics. |
 | [WGLMakie](@ref)     | WebGL-based interactive 2D and 3D plotting that runs within browsers.                 |
-| [RPRMakie](@ref)     | An experimental ray tracing backend.                 |
+| [RayMakie](@ref)     | Physically-based ray tracing backend powered by Hikari (spectral path tracer matching pbrt-v4). |
 
 ### Activating Backends
 

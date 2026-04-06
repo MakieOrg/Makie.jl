@@ -36,7 +36,7 @@ begin
     glass = Hikari.Dielectric(Kt=(1, 1, 1), index=1.25)
 
     floor_material = Hikari.Plastic(
-        Kd=(0.64, 0.64, 0.64),
+        color=(0.64, 0.64, 0.64),
         roughness=0.01,
     )
 

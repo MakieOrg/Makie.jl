@@ -36,7 +36,7 @@ function extract_meshscatter_materials(plot::Makie.MeshScatter, n_instances::Int
     has_material = haskey(plot, :material) && !isnothing(to_value(plot.material))
     material_template = has_material ? to_value(plot.material) : nothing
 
-    # Always return Vector{MatteMaterial} with 0D (ConstTexture) for type stability
+    # Always return Vector{Diffuse} with 0D (ConstTexture) for type stability
     # across reactive updates — ComputePipeline types the Ref from the first return.
 
     # Per-instance colors: use Makie's compute_colors to resolve colormapping

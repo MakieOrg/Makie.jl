@@ -94,7 +94,7 @@ We suggest GLMakie for GPU-accelerated, interactive plots, and CairoMakie for st
 - [GLMakie](@ref) (OpenGL based, interactive)
 - [CairoMakie](@ref) (Cairo based, static vector graphics)
 - [WGLMakie](@ref) (WebGL based, displays plots in the browser)
-- [RPRMakie](@ref) (Experimental ray-tracing using RadeonProRender)
+- [RayMakie](@ref) (Physically-based ray tracing powered by Hikari)
 
 Then install it using Julia's package manager `Pkg`:
 
