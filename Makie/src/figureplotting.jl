@@ -154,6 +154,21 @@ NamedTuple).
 """
 preferred_axis_attributes(p::Plot, ::Type{<:Block}) = NamedTuple()
 
+"""
+    preferred_axis_attributes(arg)
+
+Returns axis attributes for a single plot argument. Data types that are passed
+as arguments to plot functions can define this method to provide default axis
+labels, scales, limits, etc.
+
+Analogous to `args_preferred_axis(arg)` which determines the axis *type* from
+arguments — this determines axis *attributes*.
+
+The return type should be a NamedTuple or other iterable of key-value pairs.
+The default returns an empty NamedTuple.
+"""
+preferred_axis_attributes(::Any) = NamedTuple()
+
 to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
 to_dict(attr::Attributes) = attributes(attr)
@@ -179,11 +194,20 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     bbox = pop!(axis_kw, :bbox, nothing)
     set_axis_attributes!(AxType, axis_kw, plot)
 
-    # Add defaults generated based on the plot creating the axis
+    # Add defaults generated based on the plot creating the axis.
+    # First from the plot type (recipe-level defaults):
     preferred_attr = preferred_axis_attributes(plot, AxType)
     attr = something(preferred_attr, NamedTuple())
     for (k, v) in pairs(attr)
         get!(axis_kw, k, v)
+    end
+
+    # Then from individual arguments (data-type-level defaults),
+    # mirroring args_preferred_axis(arg) for axis type selection:
+    for arg in plot.args[]
+        for (k, v) in pairs(preferred_axis_attributes(arg))
+            get!(axis_kw, k, v)
+        end
     end
 
     return _block(AxType, figure, [], axis_kw, bbox)
