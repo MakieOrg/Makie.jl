@@ -2,8 +2,7 @@
 
 ## Unreleased
 
-## [0.24.9] - 2026-03-04
-
+- Added possibility to gather legend entries from multiple axes [#5551](https://github.com/MakieOrg/Makie.jl/pull/5551)
 - Added loading spinner in WGLMakie that displays while the plot is being loaded [#5469](https://github.com/MakieOrg/Makie.jl/pull/5469)
 - Fixed cycling not working in `PlotList`s [#5541](https://github.com/MakieOrg/Makie.jl/pull/5541)
 - Moved decoration plots in `Axis3` to `ax.blockscene` so they no longer show up as user plots in the Axis3 [#5463](https://github.com/MakieOrg/Makie.jl/pull/5463)

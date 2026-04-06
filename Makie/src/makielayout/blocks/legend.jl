@@ -998,17 +998,20 @@ end
 
 
 """
-    Legend(fig_or_scene, axis::Union{AbstractAxis, AbstractScene, AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}}}, title = nothing; merge = false, unique = false, kwargs...)
+    Legend(fig_or_scene, axis, title = nothing; merge = false, unique = false, kwargs...)
 
-Create a single-group legend with all plots from `axis` that have the
-attribute `label` set.
+Create a single-group legend with all plots from `axis` that have the attribute
+`label` set. `axis` can be any `AbstractAxis`, `AbstractScene` or `Vector`
+of the former.
 
 If `merge` is `true`, all plot objects with the same label will be layered on top of each other into one legend entry.
 If `unique` is `true`, all plot objects with the same plot type and label will be reduced to one occurrence.
+
+To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
 """
 function Legend(
     fig_or_scene,
-    axis::Union{AbstractAxis, AbstractScene, AbstractArray{<: Union{<: AbstractAxis, <: AbstractScene}}},
+    axis::Union{AbstractAxis, AbstractScene, AbstractArray{<: Union{AbstractAxis, AbstractScene}}},
     title = nothing; merge = false, unique = false, kwargs...)
     plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
     isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
