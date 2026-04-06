@@ -546,12 +546,12 @@ end
 
     @test f isa Figure
     # The joint legend has two entries
-    @test length(leg.entrygroups[][][2]) == 2
+    @test length(leg.entrygroups[][1][2]) == 2
     # The first entry has two linked plots
-    @test length(leg.entrygroups[][][2][1].elements) == 2
+    @test length(leg.entrygroups[][1][2][1].elements) == 2
     # The two linked plots are the plots from two different axes
-    @test leg.entrygroups[][][2][1].elements[1].plots[] == l1a
-    @test leg.entrygroups[][][2][1].elements[2].plots[] == l2a
+    @test leg.entrygroups[][1][2][1].plots[1] == l1a
+    @test leg.entrygroups[][1][2][1].plots[2] == l2a
 end
 
 @testset "ReversibleScale" begin
