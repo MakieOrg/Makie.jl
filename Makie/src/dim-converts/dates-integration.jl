@@ -35,10 +35,10 @@ For DateTimes `PlotUtils.optimize_datetime_ticks` is used for getting the conver
 ```julia
 date_time = DateTime("2021-10-27T11:11:55.914")
 date_time_range = range(date_time, step=Week(5), length=10)
-# Automatically chose xticks as DateTeimeTicks:
+# Automatically choose xticks as DateTimeTicks:
 scatter(date_time_range, 1:10)
 
-# explicitly chose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
+# explicitly choose DateTimeConversion and use it to plot unitful values into it and display in the `Time` format:
 using Makie.Unitful
 conversion = Makie.DateTimeConversion(Time)
 scatter(1:4, (1:4) .* u"s", axis=(dim2_conversion=conversion,))
@@ -424,13 +424,21 @@ function best_ticks(steptype::Type{Year}, start, stop, k_ideal)
     end
 end
 
+"""
+    aligned_range(start, stop, step)
+
+Generates a range that is aligned to multiples of step, i.e. start and stop are
+integer multiples of step. The returned range is strictly within the start..stop
+range.
+"""
+function aligned_range(start, stop, step)
+    from = cld(start, step) * step
+    to = fld(stop, step) * step
+    return from:step:to
+end
+
 function best_ticks(start, stop, stepsizes, k_ideal)
-    function _range(start, stop, step)
-        from = cld(start, step) * step
-        to = fld(stop, step) * step
-        return from:step:to
-    end
-    return argmin(_range(start, stop, step) for step in stepsizes) do rng
+    return argmin(aligned_range(start, stop, step) for step in stepsizes) do rng
         _cost(rng, k_ideal)
     end
 end
