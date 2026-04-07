@@ -318,5 +318,4 @@ using Makie: Mat4f, Vec2d, Vec3d, Point2d, Point3d, Point4d
             end
         end
     end
-
 end
