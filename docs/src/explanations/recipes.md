@@ -191,11 +191,20 @@ Makie.args_preferred_axis(x, y, z) =  Makie.LScene
 These function are listed in decending priority.
 If none of them are defined for a given plot type or argument set, `Makie.Axis` will be used as the default.
 
-You can also control the attribute an axis is initialized with by implementing
+You can also control the attributes an axis is initialized with by implementing
 
 ```julia
-function Makie.preferred_axis_attributes(::MyPlot, ::Type{<:Axis})
+function Makie.preferred_axis_attributes(::Type{<:Axis}, ::MyPlot)
     return (xgridvisible = false, ygridvisible = false)
+end
+```
+
+Data types used as plot arguments can also provide axis defaults by dispatching
+on their type in the args form:
+
+```julia
+function Makie.preferred_axis_attributes(::Type{<:Axis}, ::MyData, args...)
+    return (xlabel = "x", ylabel = "y")
 end
 ```
 

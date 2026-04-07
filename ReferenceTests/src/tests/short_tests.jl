@@ -322,14 +322,14 @@ Makie.conversion_trait(::Type{<:HintLines}) = PointBased()
 Makie.plot!(p::HintLines) = lines!(p, p.attributes, p[1])
 
 Makie.args_preferred_axis(::HintLines, ::AbstractVector{<:VecTypes{3}}) = Axis3
-function Makie.preferred_axis_attributes(::HintLines, ::Type{<:Axis})
+function Makie.preferred_axis_attributes(::Type{<:Axis}, ::HintLines)
     return (
         xlabel = "x", ylabel = "y label", title = "Title",
         xticklabelsize = 10, xticklabelrotation = 0.3,
         xgridvisible = false,
     )
 end
-function Makie.preferred_axis_attributes(::HintLines, ::Type{<:Axis3})
+function Makie.preferred_axis_attributes(::Type{<:Axis3}, ::HintLines)
     return (
         title = "3D", xticklabelsize = 10, zticklabelsize = 5,
         xypanelcolor = RGBf(0.7, 0.9, 1),

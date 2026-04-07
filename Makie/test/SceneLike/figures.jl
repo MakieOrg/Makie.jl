@@ -26,13 +26,13 @@ end
 end
 
 @testset "Argument-level axis hints" begin
-    # Data types can define preferred_axis_attributes(arg) to provide
-    # axis defaults when used as plot arguments.
+    # Data types can define preferred_axis_attributes(AxisType, args...)
+    # to provide axis defaults when used as plot arguments.
     struct _AxisHintData
         xlabel::String
         ylabel::String
     end
-    function Makie.preferred_axis_attributes(d::_AxisHintData)
+    function Makie.preferred_axis_attributes(::Type{<:Axis}, d::_AxisHintData, args...)
         return (xlabel = d.xlabel, ylabel = d.ylabel)
     end
     function Makie.convert_arguments(::Type{<:Scatter}, d::_AxisHintData)
