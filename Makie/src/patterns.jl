@@ -17,6 +17,11 @@ function Base.show(io::IO, ::MIME"text/plain", p::AbstractPattern)
     return print(io, typeof(p), "()")
 end
 
+"""
+    ImagePattern(image)
+
+Wrapper type for marking an RGBAf image as a pattern.
+"""
 struct ImagePattern <: AbstractPattern{RGBAf}
     img::Matrix{RGBAf}
 end
@@ -24,8 +29,15 @@ end
 Base.size(pattern::ImagePattern) = size(pattern.img)
 
 """
+    to_image(pattern)
+
+Returns an image which produces the given pattern when repeated.
+"""
+to_image(p::ImagePattern) = p.img
+
+"""
     Pattern(image)
-    Pattern(mask[; color1, color2])
+    Pattern(mask::Matrix{<:Real}[; color1, color2])
 
 Creates an `ImagePattern` from an `image` (a matrix of colors) or a `mask`
 (a matrix of real numbers). The pattern can be passed as a `color` to a plot to
@@ -38,8 +50,6 @@ function Pattern(mask::Matrix{<:Real}; color1 = RGBAf(0, 0, 0, 1), color2 = RGBA
     img = map(x -> to_color(color1) * x + to_color(color2) * (1 - x), mask)
     return ImagePattern(img)
 end
-
-to_image(p::ImagePattern) = p.img
 
 struct LinePattern <: AbstractPattern{RGBAf}
     dirs::Vector{Vec2f}
@@ -65,6 +75,13 @@ tiles next to each other. This effectively controls the gap between lines.
 - `origin = Vec2f(0)`: Sets the starting point for the line.
 - `linecolor`: The color with which the line is replaced.
 - `backgroundcolor`: The background color.
+
+Note that CairoMakie handles line patterns differently from other backends so
+that they are not rasterized in vector graphics. Specifically, CairoMakie draws
+lines on top of the background while other backends replace the background with
+lines. For transparent line colors this can yield different results. It is
+possible to force rasterization by converting to a rasterized pattern with
+`Pattern(Makie.to_image(line_pattern))`.
 """
 function LinePattern(;
         direction = Vec2f(1), width = 2.0f0, tilesize = (10, 10), origin = Vec2f(0),
@@ -103,6 +120,24 @@ end
 Creates a line pattern based on the given argument. Available patterns are
 `'/'`, `'\\'`, `'-'`, `'|'`, `'x'`, and `'+'`. All keyword arguments correspond
 to the keyword arguments for `LinePattern`.
+
+Note that CairoMakie handles line patterns differently from other backends so
+that they are not rasterized in vector graphics. Specifically, CairoMakie draws
+lines on top of the background while other backends replace the background with
+lines. For transparent line colors this can yield different results. It is
+possible to force rasterization by converting to a rasterized pattern with
+`Pattern(Makie.to_image(line_pattern))`.
+
+## Keyword Arguments
+
+- `direction = Vec2f(1)`: One or multiple `::VecTypes{2}` setting the direction of one or multiple lines.
+- `width = 2f0`: The width of the line(s).
+- `tilesize = (10, 10)`: The size of the image on which the line is drawn. This should be
+compatible with the direction, i.e. the line pattern should be continuous when placing
+tiles next to each other. This effectively controls the gap between lines.
+- `origin = Vec2f(0)`: Sets the starting point for the line.
+- `linecolor`: The color with which the line is replaced.
+- `backgroundcolor`: The background color.
 """
 Pattern(style::String; kwargs...) = Pattern(style[1]; kwargs...)
 function Pattern(style::Char = '/'; kwargs...)

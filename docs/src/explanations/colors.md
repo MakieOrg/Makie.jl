@@ -25,13 +25,18 @@ Alternatively, one can make partially transparent colors or colormaps by passing
 Some plot types (e.g. mesh, surface, ...) allow you to sample colors from an image.
 The sampling can happen based on texture coordinates (uv coordinates), pixel coordinates or normals.
 
-The first case is used when an image `Matrix` is passed directly as the `color` attribute.
+The first case (uv based sampling) is used when an image `Matrix` is passed directly as the `color` attribute.
 Note that texture coordinates need to be available to get a well defined result.
 
-The second case is used when a `Makie.AbstractPattern` is passed as the `color`.
+The second case (pixel based sampling) is used when a `Makie.AbstractPattern` is passed as the `color`.
 This is typically used for hatching.
 For example a hatching pattern with diagonal lines can be set with `color = Pattern('/')`.
 More generally, you can define a line pattern with `Makie.LinePattern()` or use an image as a pattern with `Pattern(image)`.
+
+!!! note
+    CairoMakie handles line patterns differently from other backends to avoid rasterization.
+    As a result lines don't replace the background but draw on top of it, which causes the final render to have different colors and opacities when lines are semi-transparent.
+    If this is not desired one can force the use of an image pattern by passing `Pattern(Makie.to_image(line_pattern))` instead.
 
 The last case is used when an image is passed with the `matcap` attribute.
 The image is then interpreted as going from (-1, 1) to (1, 1) so that normals can be mapped to it.
@@ -214,4 +219,3 @@ ColorTable(getkeys("seaborn")) # hide
 ```@example colors
 ColorTable(getkeys("general")) # hide
 ```
-
