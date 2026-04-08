@@ -4,7 +4,7 @@
 using ReferenceTests: RNG, @reference_test
 using ReferenceTests, WGLMakie
 using Test
-import Electron, Bonito
+import ElectronCall, Bonito
 
 struct EScreenshot
     display
@@ -61,7 +61,7 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
         })();
         """
     )
-    Electron.ElectronAPI.setContentSize(win, win_size...)
+    ElectronCall.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
     sleep(1) # do we need time for resize and relayouting? And is there an event we could wait for?
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
