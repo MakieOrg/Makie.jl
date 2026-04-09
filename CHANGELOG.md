@@ -2,6 +2,7 @@
 
 ## Breaking
 
+- **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `using FFMPEG_jll` first. A `MAKIE_FFMPEG` environment variable is also supported for custom ffmpeg binaries. [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.
   - **breaking** `UnitfulConversion` no longer rescales units and dropped the `units_in_label` option/field.
