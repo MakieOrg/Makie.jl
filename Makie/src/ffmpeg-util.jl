@@ -238,6 +238,12 @@ end
 Returns a `VideoStream` which can pipe new frames into the ffmpeg process with few allocations via [`recordframe!(stream)`](@ref).
 When done, use [`save(path, stream)`](@ref) to write the video out to a file.
 
+!!! compat "Makie 0.25"
+    Requires `FFMPEG_jll` to be loaded. Starting with Makie v0.25,
+    `FFMPEG_jll` is no longer a hard dependency because it pulls in GPL-licensed
+    libraries. Add `using FFMPEG_jll` before creating a `VideoStream`.
+    Alternatively, set the `MAKIE_FFMPEG` environment variable to a custom ffmpeg binary path.
+
 # Arguments
 
 ## Video options
@@ -283,7 +289,7 @@ function VideoStream(
     cmd = to_ffmpeg_cmd(vso, xdim, ydim)
     # a plain `open` without the `pipeline` causes hangs when IOCapture.capture closes over a function that creates
     # a `VideoStream` without closing the process explicitly, such as when returning `Record` in a cell in Documenter or quarto
-    process = open(pipeline(`$(FFMPEG_jll.ffmpeg()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
+    process = open(pipeline(`$(get_ffmpeg_path()) $cmd $path`; stdout = devnull, stderr = devnull), "w")
     tick_controller = TickController(fig, 1.0 / vso.framerate, filter_ticks)
     result = VideoStream(process.in, process, screen, tick_controller, buffer, abspath(path), vso)
     finalizer(result) do x
@@ -341,10 +347,10 @@ function convert_video(input_path, output_path; video_options...)
     format = lstrip(typ, '.')
     vso = VideoStreamOptions(; format = format, input = input_path, rawvideo = false, video_options...)
     cmd = to_ffmpeg_cmd(vso)
-    return run(`$(FFMPEG_jll.ffmpeg()) $cmd $output_path`)
+    return run(`$(get_ffmpeg_path()) $cmd $output_path`)
 end
 
 function extract_frames(video, frame_folder; loglevel = "quiet")
     path = joinpath(frame_folder, "frame%04d.png")
-    return run(`$(FFMPEG_jll.ffmpeg()) -loglevel $(loglevel) -i $video -y $path`)
+    return run(`$(get_ffmpeg_path()) -loglevel $(loglevel) -i $video -y $path`)
 end

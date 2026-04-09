@@ -84,7 +84,6 @@ using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -313,6 +312,51 @@ include("DataInspector/extension.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+"""
+    ffmpeg_path()
+
+Returns a `Cmd` for the `ffmpeg` executable provided by FFMPEG_jll.
+This function has no methods by default — a method is added by the
+MakieFFMPEGExt package extension when `FFMPEG_jll` is loaded.
+
+See also [`get_ffmpeg_path`](@ref).
+"""
+function ffmpeg_path end
+
+"""
+    get_ffmpeg_path()
+
+Returns a `Cmd` for the `ffmpeg` executable. Resolution order:
+
+1. If the environment variable `MAKIE_FFMPEG` is set, use that path.
+2. If `FFMPEG_jll` is loaded (providing a method for [`ffmpeg_path`](@ref)), use it.
+3. Otherwise, throw an informative error.
+
+This is the function called internally by `VideoStream`, `record`, etc.
+"""
+function get_ffmpeg_path()
+    envpath = get(ENV, "MAKIE_FFMPEG", nothing)
+    if envpath !== nothing
+        return `$envpath`
+    end
+    if hasmethod(ffmpeg_path, Tuple{})
+        return ffmpeg_path()
+    end
+    error("""
+        Video recording requires FFMPEG_jll to be loaded.
+
+        Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
+        because it pulls in GPL-licensed libraries (e.g. libx264).
+        To use `record`, `VideoStream`, `convert_video`, or `extract_frames`,
+        add FFMPEG_jll to your environment and load it before using these functions:
+
+            using FFMPEG_jll
+            using CairoMakie  # or GLMakie, WGLMakie, etc.
+
+        Alternatively, set the MAKIE_FFMPEG environment variable to the path
+        of an ffmpeg binary.""")
+end
+
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")

@@ -95,6 +95,12 @@ extension.
 Under the hood, `record` is just `video_io = Record(func, figurelike, [iter]; same_kw...); save(path, video_io)`.
 `Record` can be used directly as well to do the saving at a later point, or to inline a video directly into a Notebook (the video supports, `show(video_io, "text/html")` for that purpose).
 
+!!! compat "Makie 0.25"
+    `record` requires `FFMPEG_jll` to be loaded. Starting with Makie v0.25,
+    `FFMPEG_jll` is no longer a hard dependency because it pulls in GPL-licensed
+    libraries. Add `using FFMPEG_jll` before calling `record`.
+    Alternatively, set the `MAKIE_FFMPEG` environment variable to a custom ffmpeg binary path.
+
 # Options one can pass via `kwargs...`:
 
 * `backend::Module = current_backend()`: set the backend to write out video, can be set to `CairoMakie`, `GLMakie`, `WGLMakie`, `RPRMakie`.

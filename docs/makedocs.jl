@@ -4,6 +4,7 @@ Pkg.activate(".")
 Pkg.instantiate()
 Pkg.precompile()
 
+using FFMPEG_jll
 using CairoMakie
 using GLMakie
 using WGLMakie

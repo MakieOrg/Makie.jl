@@ -3,6 +3,7 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 using Markdown
+using FFMPEG_jll
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
