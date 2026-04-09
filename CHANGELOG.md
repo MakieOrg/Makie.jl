@@ -3,6 +3,8 @@
 ## Unreleased
 
 - Menu and Toggle now immediately changed their color when updated via an Observable
+- Added possibility to gather legend entries from multiple axes [#5551](https://github.com/MakieOrg/Makie.jl/pull/5551)
+- Added complete inverse transformation support to `register_projected_positions!` with `apply_inverse_transform`, `apply_inverse_transform_func`, `apply_inverse_float32convert`, and `apply_inverse_model` kwargs. These enable correct projection from non-data spaces back to data space. Includes early-exit optimization to skip redundant transform/inverse pairs when `input_space === output_space`. [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
 - Fixed `bracket` not supporting `LaTeXString` text, which would render with dollar signs instead of mathematical notation [#5536](https://github.com/MakieOrg/Makie.jl/pull/5536)
 - Added text glow to CairoMakie [#5542](https://github.com/MakieOrg/Makie.jl/pull/5542)
 - Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
