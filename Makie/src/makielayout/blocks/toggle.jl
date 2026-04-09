@@ -89,6 +89,9 @@ function initialize_block!(t::Toggle)
     end
 
     animating = Observable(false)
+    onany(topscene, t.framecolor_active, t.framecolor_inactive) do ca, ci
+        animating[] || (framecolor[] = t.active[] ? ca : ci)
+    end
     buttonpos = Observable(t.active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
 
     # make the button stay in the correct place (and start there)

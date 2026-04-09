@@ -111,8 +111,13 @@ function initialize_block!(m::Menu; default = 1)
 
     selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values = true)
 
+    button_hovered = Observable(false)
+    selectionpoly_color = lift(blockscene, button_hovered, m.selection_cell_color_inactive,
+                               m.cell_color_hover) do hovered, inactive, hover
+        hovered ? to_color(hover) : to_color(inactive)
+    end
     selectionpoly = poly!(
-        blockscene, selectionarea, color = m.selection_cell_color_inactive[];
+        blockscene, selectionarea, color = selectionpoly_color;
         inspectable = false
     )
     selectiontextpos = Observable(Point2f(0, 0); ignore_equal_values = true)
@@ -247,7 +252,7 @@ function initialize_block!(m::Menu; default = 1)
                     end
                     return Consume(true)
                 else # HOVER
-                    selectionpoly.color = m.cell_color_hover[]
+                    button_hovered[] = true
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -267,7 +272,7 @@ function initialize_block!(m::Menu; default = 1)
         end
         if !is_over_button && was_inside_button[]
             was_inside_button[] = false
-            selectionpoly.color = m.selection_cell_color_inactive[]
+            button_hovered[] = false
         end
         # if mouse got over anything else, we close the menu
         if !is_over_button && !is_over_options && butt.button == Mouse.left && butt.action == Mouse.press

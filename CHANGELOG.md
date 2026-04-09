@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Menu and Toggle now immediately changed their color when updated via an Observable
 - Fixed `bracket` not supporting `LaTeXString` text, which would render with dollar signs instead of mathematical notation [#5536](https://github.com/MakieOrg/Makie.jl/pull/5536)
 - Added text glow to CairoMakie [#5542](https://github.com/MakieOrg/Makie.jl/pull/5542)
 - Allow to set low or high bound of the colorrange and let the other side stay adaptive [#5555](https://github.com/MakieOrg/Makie.jl/pull/5555)
