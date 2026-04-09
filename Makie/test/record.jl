@@ -1,3 +1,16 @@
+@testset "FFMPEG extension" begin
+    @test_throws "Video recording requires FFMPEG_jll" Makie.get_ffmpeg_path()
+    withenv("MAKIE_FFMPEG" => "/tmp/fake_ffmpeg") do
+        @test Makie.get_ffmpeg_path() == `/tmp/fake_ffmpeg`
+    end
+end
+
+using FFMPEG_jll
+
+@testset "FFMPEG extension after loading" begin
+    @test Makie.get_ffmpeg_path() isa Cmd
+end
+
 using Logging
 using IOCapture: IOCapture
 
