@@ -3,7 +3,6 @@ ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 using Test
 using LinearAlgebra
 using Markdown
-using FFMPEG_jll
 using Makie
 using Makie.Observables
 using Makie.GeometryBasics
@@ -87,6 +86,19 @@ end
     include("deprecated.jl")
     include("specapi.jl")
     include("pipeline.jl")
+    @testset "FFMPEG extension" begin
+        @test_throws "Video recording requires FFMPEG_jll" Makie.get_ffmpeg_path()
+        withenv("MAKIE_FFMPEG" => "/tmp/fake_ffmpeg") do
+            @test Makie.get_ffmpeg_path() == `/tmp/fake_ffmpeg`
+        end
+    end
+
+    using FFMPEG_jll
+
+    @testset "FFMPEG extension after loading" begin
+        @test Makie.get_ffmpeg_path() isa Cmd
+    end
+
     include("record.jl")
     include("ray_casting.jl")
 
