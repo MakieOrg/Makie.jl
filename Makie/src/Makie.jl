@@ -342,7 +342,8 @@ function get_ffmpeg_path()
     if hasmethod(ffmpeg_path, Tuple{})
         return ffmpeg_path()
     end
-    error("""
+    error(
+        """
         Video recording requires FFMPEG_jll to be loaded.
 
         Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
@@ -354,7 +355,8 @@ function get_ffmpeg_path()
             using CairoMakie  # or GLMakie, WGLMakie, etc.
 
         Alternatively, set the MAKIE_FFMPEG environment variable to the path
-        of an ffmpeg binary.""")
+        of an ffmpeg binary."""
+    )
 end
 
 include("ffmpeg-util.jl")
