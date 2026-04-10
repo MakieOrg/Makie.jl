@@ -155,28 +155,110 @@ function to_lines(polygon::AbstractVector{<:VecTypes{N}}) where {N}
     return (result, [typemax(Int)])
 end
 
+"""
+Return `true` if `poly` must use one `mesh!` per `(meshes[i], colors[i])` instead of a merged
+mesh: mixed [`AbstractPattern`](@ref) and non-pattern paint, or multiple distinct patterns.
+"""
+function poly_mesh_patterns_need_split(meshes, colors)::Bool
+    if !(meshes isa AbstractVector && colors isa AbstractVector)
+        return false
+    end
+    if length(meshes) != length(colors) || isempty(colors)
+        return false
+    end
+    has_pattern = any(c -> c isa AbstractPattern, colors)
+    has_non_pattern = any(c -> !(c isa AbstractPattern), colors)
+    if has_pattern && has_non_pattern
+        return true
+    end
+    if all(c -> c isa AbstractPattern, colors)
+        return !allequal(colors)
+    end
+    return false
+end
+
+function poly_remove_mesh_subplots!(poly::Plot)
+    scene = parent_scene(poly)
+    i = 1
+    while i <= length(poly.plots)
+        sub = poly.plots[i]
+        if plotkey(sub) === :mesh
+            delete!(scene, sub)
+            deleteat!(poly.plots, i)
+        else
+            i += 1
+        end
+    end
+end
+
+function poly_reorder_mesh_plots_first!(poly::Plot)
+    is_mesh = map(p -> plotkey(p) === :mesh, poly.plots)
+    if !any(is_mesh)
+        return
+    end
+    mesh_plots = poly.plots[is_mesh]
+    non_mesh = poly.plots[.!is_mesh]
+    empty!(poly.plots)
+    append!(poly.plots, mesh_plots)
+    append!(poly.plots, non_mesh)
+end
+
+function poly_update_mesh_children!(plot::Poly, meshes, colors)
+    poly_remove_mesh_subplots!(plot)
+    if poly_mesh_patterns_need_split(meshes, colors)
+        for (m, c) in zip(meshes, colors)
+            mesh!(
+                plot, m;
+                visible = plot.visible,
+                shading = plot.shading,
+                color = c,
+                colormap = plot.colormap,
+                colorscale = plot.colorscale,
+                colorrange = plot.colorrange,
+                lowclip = plot.lowclip,
+                highclip = plot.highclip,
+                nan_color = plot.nan_color,
+                alpha = plot.alpha,
+                overdraw = plot.overdraw,
+                fxaa = plot.fxaa,
+                transparency = plot.transparency,
+                inspectable = plot.inspectable,
+                space = plot.space,
+                depth_shift = plot.depth_shift,
+            )
+        end
+    else
+        mesh!(
+            plot, plot.meshes;
+            visible = plot.visible,
+            shading = plot.shading,
+            color = plot.color,
+            colormap = plot.colormap,
+            colorscale = plot.colorscale,
+            colorrange = plot.colorrange,
+            lowclip = plot.lowclip,
+            highclip = plot.highclip,
+            nan_color = plot.nan_color,
+            alpha = plot.alpha,
+            overdraw = plot.overdraw,
+            fxaa = plot.fxaa,
+            transparency = plot.transparency,
+            inspectable = plot.inspectable,
+            space = plot.space,
+            depth_shift = plot.depth_shift,
+        )
+    end
+    poly_reorder_mesh_plots_first!(plot)
+end
+
 function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<:PolyElements}}}})
     map!(poly_convert, plot, [:polygon, :transform_func], :meshes)
 
-    mesh!(
-        plot, plot.meshes;
-        visible = plot.visible,
-        shading = plot.shading,
-        color = plot.color,
-        colormap = plot.colormap,
-        colorscale = plot.colorscale,
-        colorrange = plot.colorrange,
-        lowclip = plot.lowclip,
-        highclip = plot.highclip,
-        nan_color = plot.nan_color,
-        alpha = plot.alpha,
-        overdraw = plot.overdraw,
-        fxaa = plot.fxaa,
-        transparency = plot.transparency,
-        inspectable = plot.inspectable,
-        space = plot.space,
-        depth_shift = plot.depth_shift
-    )
+    poly_update_mesh_children!(plot, to_value(plot.meshes), to_value(plot.color))
+
+    onany(plot, plot.meshes, plot.color; update = false) do meshes, colors
+        poly_update_mesh_children!(plot, meshes, colors)
+    end
 
     map!(to_lines, plot, :polygon, [:outline, :increment_at])
     map!(plot, [:outline, :increment_at, :strokecolor, :meshes], :computed_strokecolor) do outline, increment_at, sc, meshes
