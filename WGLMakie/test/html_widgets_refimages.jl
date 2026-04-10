@@ -63,20 +63,28 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
     )
     ElectronCall.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
-    sleep(1) # do we need time for resize and relayouting? And is there an event we could wait for?
+    sleep(0.5) # allow resize + relayout
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
     js_path = replace(path, '\\' => '/')
+    # Use DevTools Protocol Page.captureScreenshot which works on hidden windows
+    # (unlike capturePage() which needs the compositor to paint a visible surface)
     run(
         edisplay.window.app,
         """
-        const win = BrowserWindow.fromId($winid)
-        win.webContents.capturePage().then(image => {
-            const screenshotPath = '$(js_path)';
-            require('fs').writeFileSync(screenshotPath, image.toPNG());
-            console.log('Screenshot saved to', screenshotPath);
-        }).catch(err => {
-            console.error('Screenshot error:', err);
-        });
+        const win = BrowserWindow.fromId($winid);
+        (async () => {
+            try {
+                win.webContents.debugger.attach('1.3');
+                const result = await win.webContents.debugger.sendCommand('Page.captureScreenshot', {format: 'png'});
+                win.webContents.debugger.detach();
+                const buffer = Buffer.from(result.data, 'base64');
+                require('fs').writeFileSync('$(js_path)', buffer);
+                console.log('Screenshot saved to', '$(js_path)');
+            } catch(err) {
+                try { win.webContents.debugger.detach(); } catch(e) {}
+                console.error('Screenshot error:', err);
+            }
+        })();
         """,
     )
     Bonito.wait_for(() -> isfile(path); timeout = 30)
@@ -248,15 +256,18 @@ function create_test_figure()
 end
 
 # Makie.inline!(Makie.automatic)
-edisplay = Bonito.use_electron_display(; devtools = true)
+edisplay = Bonito.use_electron_display(; devtools = false, options = Dict{String,Any}("show" => false))
 # ReferenceTests.RECORDING_DIR[] = joinpath(pwd(), "WidgetTests")
 # ReferenceTests.REGISTERED_TESTS |> empty!
-function close_devtools(w)
-    return run(w.app, "electron.BrowserWindow.fromId($(w.id)).webContents.closeDevTools()")
-end
 
-# Devtools cut off the screenshot!
-close_devtools(edisplay.window.window)
+# Force devicePixelRatio to 1.0 so reference images match CI regardless of local DPI
+let dpr = run(edisplay.window, "window.devicePixelRatio")
+    if dpr != 1.0
+        @info "Correcting devicePixelRatio from $dpr to 1.0"
+        run(edisplay.window.app,
+            "electron.BrowserWindow.fromId($(edisplay.window.window.id)).webContents.setZoomFactor($(1.0 / dpr))")
+    end
+end
 
 @reference_test "Widgets layout" begin
     WGLMakie.activate!(; use_html_widgets = false, px_per_unit = Makie.automatic, scalefactor = Makie.automatic)
