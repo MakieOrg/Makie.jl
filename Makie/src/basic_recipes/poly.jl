@@ -189,6 +189,7 @@ function poly_remove_mesh_subplots!(poly::Plot)
             i += 1
         end
     end
+    return
 end
 
 function poly_reorder_mesh_plots_first!(poly::Plot)
@@ -200,7 +201,7 @@ function poly_reorder_mesh_plots_first!(poly::Plot)
     non_mesh = poly.plots[.!is_mesh]
     empty!(poly.plots)
     append!(poly.plots, mesh_plots)
-    append!(poly.plots, non_mesh)
+    return append!(poly.plots, non_mesh)
 end
 
 function poly_update_mesh_children!(plot::Poly, meshes, colors)
@@ -248,7 +249,7 @@ function poly_update_mesh_children!(plot::Poly, meshes, colors)
             depth_shift = plot.depth_shift,
         )
     end
-    poly_reorder_mesh_plots_first!(plot)
+    return poly_reorder_mesh_plots_first!(plot)
 end
 
 function plot!(plot::Poly{<:Tuple{<:Union{Polygon, MultiPolygon, Rect2, Circle, AbstractVector{<:PolyElements}}}})
