@@ -285,8 +285,39 @@ function create_material_with_color(color::Colorant, template::Hikari.Conductor)
     )
 end
 
+# Dielectric: per-instance color modulates transmittance (Kt)
+function create_material_with_color(color::Colorant, template::Hikari.Dielectric)
+    Hikari.Dielectric(
+        template.Kr,
+        Hikari.ConstTexture(to_spectrum(color)),
+        template.u_roughness, template.v_roughness,
+        template.index, template.remap_roughness
+    )
+end
+
+# CoatedDiffuse (also covers Plastic): per-instance color modulates reflectance
+function create_material_with_color(color::Colorant, template::Hikari.CoatedDiffuse)
+    Hikari.CoatedDiffuse(
+        Hikari.ConstTexture(to_spectrum(color)),
+        template.u_roughness, template.v_roughness,
+        template.thickness, template.eta, template.albedo,
+        template.g, template.max_depth, template.n_samples,
+        template.remap_roughness
+    )
+end
+
+# Mirror: per-instance color modulates reflectance (Kr)
+function create_material_with_color(color::Colorant, template::Hikari.Mirror)
+    Hikari.Mirror(Hikari.ConstTexture(to_spectrum(color)))
+end
+
+# MediumInterface: return as-is (emission/medium properties don't map to colors)
+function create_material_with_color(::Colorant, template::Hikari.MediumInterface)
+    return template
+end
+
 function create_material_with_color(color::Colorant, template::Hikari.Material)
-    @warn "Unsupported material type $(typeof(template)) for per-instance colors, using Diffuse"
+    @warn "Unsupported material type $(typeof(template)) for per-instance colors, using Diffuse" maxlog=1
     Hikari.Diffuse(Hikari.ConstTexture(to_spectrum(color)), Hikari.ConstTexture(0.0f0))
 end
 

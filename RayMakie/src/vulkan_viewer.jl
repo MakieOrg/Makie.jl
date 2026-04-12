@@ -87,128 +87,16 @@ end
 """
     vulkan_viewer(scene; kwargs...) -> Screen
 
-Open a standalone Vulkan window with an async render loop.
-Returns the `Screen`. Use `close(screen)` to stop, `colorbuffer(screen)` to grab a frame,
-`wait(screen)` to block until the window is closed.
+Deprecated. Use `display(scene; backend=RayMakie)` instead (opens a window automatically
+when `visible=true`, which is the default).
 """
 function vulkan_viewer(fig::Makie.FigureLike; kwargs...)
     return vulkan_viewer(Makie.get_scene(fig); kwargs...)
 end
 
-function vulkan_viewer(root_scene::Makie.Scene;
-                       device=nothing,
-                       integrator=Hikari.VolPath(samples=1, max_depth=8, hw_accel=true),
-                       exposure=1.0f0, tonemap=:aces, gamma=1.0f0,
-                       vsync=true,
-                       title="RayMakie",
-                       max_frames::Int=0)
-
-    device === nothing && (device = Lava.LavaBackend())
-    config = ScreenConfig(integrator, Float32(exposure), tonemap, Float32(gamma), device)
-    screen = Screen(nothing, nothing, config)
-
-    # Create window BEFORE display — GPU buffers allocated during display must
-    # coexist with the swapchain (window creation changes device resource state).
-    w, h = size(root_scene)
-    win = Lava.RenderWindow(w, h; title, vsync)
-    screen.window = win
-    connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
-
-    Base.display(screen, root_scene)
-
-    # Per-scene camera tracking — only for RT scenes.
-    # We track the Hikari camera parameters (derived from Makie's projectionview)
-    # rather than the projectionview observable directly, because Makie fires
-    # projectionview notifications on window_area changes even when the 3D camera
-    # hasn't moved (e.g. zooming a 2D scatter in another panel).
-    for ss in screen.scene_states
-        ss.overlay_only && continue
-        makie_scene = ss.makie_scene
-        last_pv = Ref(copy(makie_scene.camera.projectionview[]))
-        on(root_scene, makie_scene.camera.projectionview) do pv
-            if !isapprox(pv, last_pv[])
-                last_pv[] = copy(pv)
-                ss.needs_film_clear = true
-            end
-        end
-    end
-
-    screen.stop_renderloop[] = false
-    ctx = Lava.vk_context()
-    present_bq = Lava.allocate_batch_queue!()
-
-    screen.rendertask = @async begin
-        yield()  # Return control to caller so vulkan_viewer() returns immediately
-        frame_count = 0
-        last_time = time()
-        try
-            while !screen.stop_renderloop[] && (max_frames <= 0 || frame_count < max_frames)
-                GLFW.PollEvents()
-                screen.stop_renderloop[] && break
-                !isopen(win) && break
-                frame_count += 1
-                last_time = poll_glfw_events!(root_scene, win.handle, frame_count, last_time)
-
-                cur_w, cur_h = size(win)
-                if (cur_w, cur_h) != (w, h)
-                    w, h = cur_w, cur_h
-                    resize!(screen, w, h)
-                end
-
-                for ss in screen.scene_states
-                    screen.state = ss
-                    render!(screen)
-                end
-                # Flush RT dispatches to prevent GPU timeout from large batches
-                Lava.vk_flush!()
-
-                screen.stop_renderloop[] && break
-
-                postprocess_and_composite_gpu!(screen)
-
-                Lava.vk_flush!()
-                Lava.Vulkan.device_wait_idle(ctx.device)
-
-                screen.stop_renderloop[] && break
-
-                # Blit RGBA output_buffer to window, then render overlays on top
-                Lava.acquire_next_image!(win)
-                Lava.blit!(present_bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
-
-                # Render overlays (scatter, lines, text) directly onto the window
-                win_target = Lava.WindowTarget(win)
-                for ss in screen.scene_states
-                    screen.state = ss
-                    poll_all_plots(screen, ss.makie_scene)
-                    render_overlays!(screen, present_bq, win_target)
-                end
-
-                Lava.present_frame!(present_bq, win)
-                Lava.Vulkan.device_wait_idle(ctx.device)
-                yield()
-            end
-            println("exiting renderloop")
-        catch e
-            if !(e isa EOFError || e isa Base.IOError)
-                @error "Render loop error" exception=(e, catch_backtrace())
-            end
-        finally
-            screen.stop_renderloop[] = true
-            try
-                Lava.Vulkan.device_wait_idle(ctx.device)
-            catch e
-                @error "device_wait_idle error" exception = (e, catch_backtrace())
-            finally
-                # Always destroy the window. GLFW's WindowCloseCallback only sets
-                # WindowShouldClose=true (making isopen() return false), but does NOT
-                # call glfwDestroyWindow. We must close unconditionally.
-                try close(win) catch end
-                screen.rendertask = nothing
-            end
-        end
-    end
-
-    return screen
+function vulkan_viewer(root_scene::Makie.Scene; kwargs...)
+    @warn "vulkan_viewer is deprecated. Use `display(scene; backend=RayMakie)` instead." maxlog=1
+    return Base.display(RayMakie.Screen(root_scene; kwargs...), root_scene)
 end
 
 """

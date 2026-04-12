@@ -39,13 +39,20 @@ struct ScreenConfig
     device::Any  # KA backend: KA.CPU(), ROCBackend(), CUDABackend()
     denoise::Bool
     denoise_config::Union{Hikari.DenoiseConfig, Nothing}
+    visible::Bool
+    title::String
+    vsync::Bool
 
-    function ScreenConfig(integrator, exposure, tonemap, gamma, device=Raycore.KA.CPU(), denoise=false, denoise_config=nothing)
+    function ScreenConfig(integrator, exposure, tonemap, gamma, device=Raycore.KA.CPU(),
+                          denoise=false, denoise_config=nothing,
+                          visible=true, title="RayMakie", vsync=true)
         actual_integrator = integrator isa Makie.Automatic ? VolPath(; hw_accel=true) : integrator
         actual_exposure = Float32(exposure)
         actual_gamma = isnothing(gamma) ? nothing : Float32(gamma)
         actual_device = device isa Makie.Automatic ? Lava.LavaBackend() : device
-        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, actual_device, denoise, denoise_config)
+        actual_visible = visible isa Makie.Automatic ? true : visible
+        return new(actual_integrator, actual_exposure, tonemap, actual_gamma, actual_device,
+                   denoise, denoise_config, actual_visible, string(title), vsync)
     end
 end
 
@@ -574,15 +581,17 @@ end
 
 function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Makie.JuliaNative; figure = nothing, clear=true)
     if isempty(screen.scene_states)
-        display(screen, screen.scene; figure = figure)
+        # Only init the scene -- don't open a window or start the render loop.
+        # colorbuffer renders all samples synchronously and returns the result;
+        # the interactive window is managed separately by display().
+        init_scene!(screen, screen.scene)
     end
 
-    # If the render loop is running (vulkan_viewer), return the last composited frame.
-    # The render loop updates screen.last_colorbuffer each frame.
+    # If the render loop is running, return the last composited frame.
     if renderloop_running(screen)
         buf = screen.last_colorbuffer
         buf !== nothing && return format == Makie.GLNative ? Makie.jl_to_gl_format(buf) : buf
-        # No frame yet — fall through to render one
+        # No frame yet -- fall through to render one
     end
 
     # Render each scene for the configured number of samples
@@ -694,7 +703,127 @@ end
 function Base.display(screen::Screen, scene::Scene; figure = nothing, display_kw...)
     screen.scene = scene
     init_scene!(screen, scene)
+
+    # Open a window and start the interactive render loop if visible
+    if screen.config.visible && screen.window === nothing && !renderloop_running(screen)
+        start_renderloop!(screen, scene)
+    end
     return screen
+end
+
+"""
+    start_renderloop!(screen::Screen, root_scene::Scene)
+
+Open a GLFW window and start an async render loop. Called automatically by
+`display` when `visible=true`. The loop renders progressively (1 sample per
+frame), presents to the window, and handles input events.
+"""
+function start_renderloop!(screen::Screen, root_scene::Scene)
+    w, h = size(root_scene)
+    win = Lava.RenderWindow(w, h; title=screen.config.title, vsync=screen.config.vsync)
+    screen.window = win
+    connect_glfw_events!(root_scene, win.handle, screen.stop_renderloop)
+
+    # Track camera changes to clear the film for re-accumulation
+    for ss in screen.scene_states
+        ss.overlay_only && continue
+        makie_scene = ss.makie_scene
+        last_pv = Ref(copy(makie_scene.camera.projectionview[]))
+        on(root_scene, makie_scene.camera.projectionview) do pv
+            if !isapprox(pv, last_pv[])
+                last_pv[] = copy(pv)
+                ss.needs_film_clear = true
+            end
+        end
+    end
+
+    screen.stop_renderloop[] = false
+    ctx = Lava.vk_context()
+    present_bq = Lava.allocate_batch_queue!()
+
+    screen.rendertask = @async begin
+        yield()
+        frame_count = 0
+        last_time = time()
+        try
+            # Present initial frame immediately (background + overlays, no raytracing)
+            # so the window isn't black during kernel compilation / first sample.
+            bg = root_scene.backgroundcolor[]
+            fill!(screen.output_buffer, RGBA{Float32}(red(bg), green(bg), blue(bg), 1f0))
+            KernelAbstractions.synchronize(screen.config.device)
+
+            Lava.acquire_next_image!(win)
+            Lava.blit!(present_bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
+            win_target = Lava.WindowTarget(win)
+            for ss in screen.scene_states
+                screen.state = ss
+                poll_all_plots(screen, ss.makie_scene)
+                render_overlays!(screen, present_bq, win_target)
+            end
+            Lava.present_frame!(present_bq, win)
+            Lava.Vulkan.device_wait_idle(ctx.device)
+
+            while !screen.stop_renderloop[]
+                GLFW.PollEvents()
+                screen.stop_renderloop[] && break
+                !isopen(win) && break
+                frame_count += 1
+                last_time = poll_glfw_events!(root_scene, win.handle, frame_count, last_time)
+
+                cur_w, cur_h = size(win)
+                if (cur_w, cur_h) != (w, h)
+                    w, h = cur_w, cur_h
+                    resize!(screen, w, h)
+                end
+
+                for ss in screen.scene_states
+                    screen.state = ss
+                    render!(screen)
+                end
+                Lava.vk_flush!()
+
+                screen.stop_renderloop[] && break
+
+                postprocess_and_composite_gpu!(screen)
+
+                Lava.vk_flush!()
+                Lava.Vulkan.device_wait_idle(ctx.device)
+
+                screen.stop_renderloop[] && break
+
+                Lava.acquire_next_image!(win)
+                Lava.blit!(present_bq, Lava.WindowTarget(win), screen.output_buffer; clear=false)
+
+                win_target = Lava.WindowTarget(win)
+                for ss in screen.scene_states
+                    screen.state = ss
+                    poll_all_plots(screen, ss.makie_scene)
+                    render_overlays!(screen, present_bq, win_target)
+                end
+
+                Lava.present_frame!(present_bq, win)
+                Lava.Vulkan.device_wait_idle(ctx.device)
+
+                # Cache composited frame for colorbuffer() to return without blocking
+                try
+                    cpu_buf = Array(screen.output_buffer)
+                    screen.last_colorbuffer = map(c -> RGB{N0f8}(clamp01nan(c.r), clamp01nan(c.g), clamp01nan(c.b)), cpu_buf)
+                catch
+                end
+
+                yield()
+            end
+        catch e
+            if !(e isa EOFError || e isa Base.IOError)
+                @error "Render loop error" exception=(e, catch_backtrace())
+            end
+        finally
+            screen.stop_renderloop[] = true
+            try Lava.Vulkan.device_wait_idle(ctx.device) catch end
+            try close(win) catch end
+            screen.rendertask = nothing
+        end
+    end
 end
 
 function Base.insert!(screen::Screen, scene::Scene, plot::AbstractPlot)
