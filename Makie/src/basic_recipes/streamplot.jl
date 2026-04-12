@@ -78,6 +78,22 @@ See the function `Makie.streamplot_impl` for implementation details.
     miter_limit = @inherit miter_limit
     "Sets the dash pattern for lines. See `?lines`."
     linestyle = nothing
+
+    """
+    Render streamlines as 3D tube meshes instead of flat lines.
+    When `true`, uses `tubes!` internally. Tubes are ray-traceable mesh geometry.
+    Only applies in 3D (ignored for 2D streamplots).
+    """
+    use_tubes = false
+    "Tube radius when `use_tubes=true`. Scalar or `:auto` for gridsize-based default."
+    tube_radius = automatic
+    "Number of sides for tube cross-section when `use_tubes=true`."
+    tube_n_sides = 8
+    "Smooth tubes with Catmull-Rom splines when `use_tubes=true`."
+    tube_spline = true
+    "Spline resolution per segment when `use_tubes=true` and `tube_spline=true`."
+    tube_spline_resolution = 5
+
     mixin_colormap_attributes()...
     mixin_generic_plot_attributes()...
 end
@@ -232,9 +248,22 @@ function plot!(p::StreamPlot)
         return streamplot_impl(CallType, f, args...)
     end
 
-    lines!(p, p.attributes, p.line_points, color = p.line_colors, fxaa = false)
-
     N = ndims(p.limits[])
+
+    if p.use_tubes[] && N == 3
+        # Compute tube radius from gridsize if automatic
+        tube_r = map(p, p.tube_radius, p.limits, p.gridsize) do tr, limits, gridsize
+            tr === automatic ? Float32(0.15 * minimum(limits.widths) / minimum(gridsize)) : Float32(tr)
+        end
+        tubes!(p, p.line_points;
+            color=p.line_colors,
+            radius=tube_r,
+            n_sides=p.tube_n_sides,
+            spline=p.tube_spline,
+            spline_resolution=p.tube_spline_resolution)
+    else
+        lines!(p, p.attributes, p.line_points, color = p.line_colors, fxaa = false)
+    end
 
     if N == 2
         # In 2D rotations apply in markerspace (pixel space here), which means
