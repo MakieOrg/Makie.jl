@@ -1,3 +1,5 @@
+using Pkg: Pkg
+
 @testset "ffmpeg_path configuration" begin
     @test Makie.ffmpeg_path() === nothing
 
@@ -7,6 +9,22 @@
 
     Makie.ffmpeg_path!(nothing)
     @test Makie.ffmpeg_path() === nothing
+end
+
+# Verify the helpful error when FFMPEG_jll cannot be auto-loaded. This must
+# run BEFORE the auto-load test below, because once FFMPEG_jll is loaded into
+# the session `Base.require` will succeed regardless of the active env.
+@testset "get_ffmpeg_path errors helpfully when FFMPEG_jll unavailable" begin
+    @assert !haskey(Base.loaded_modules, Makie._FFMPEG_JLL_PKGID) "FFMPEG_jll already loaded; this test would be a no-op"
+    current_env = dirname(Pkg.project().path)
+    mktempdir() do tmpenv
+        Pkg.activate(tmpenv; io = devnull)
+        try
+            @test_throws "Video recording requires FFMPEG_jll" Makie.get_ffmpeg_path()
+        finally
+            Pkg.activate(current_env; io = devnull)
+        end
+    end
 end
 
 # When no path is configured, get_ffmpeg_path should auto-load FFMPEG_jll.
