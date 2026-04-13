@@ -375,8 +375,11 @@ function get_ffmpeg_path()
 
               • add FFMPEG_jll to your environment:
                     using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
-              • or point Makie at an existing ffmpeg binary:
-                    Makie.ffmpeg_path!("/path/to/ffmpeg")"""
+              • or point Makie at an existing ffmpeg binary for this session:
+                    Makie.ffmpeg_path!("/path/to/ffmpeg")
+              • or persist that override across sessions via Preferences.jl:
+                    using Preferences
+                    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")"""
         )
     end
 
@@ -395,6 +398,11 @@ function get_ffmpeg_path()
             Makie at an existing ffmpeg binary:
 
                 Makie.ffmpeg_path!("/path/to/ffmpeg")
+
+            or persistently across sessions:
+
+                using Preferences
+                set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
 
             The error encountered while trying to load FFMPEG_jll was:
             $(sprint(showerror, err))"""
