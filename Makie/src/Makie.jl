@@ -350,6 +350,20 @@ end
 # A method for this is added by the MakieFFMPEGExt package extension.
 function _ffmpeg_jll_path end
 
+_ffmpeg_help_message(reason::AbstractString) = """
+Video recording requires FFMPEG_jll, $reason.
+
+Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
+because it pulls in GPL-licensed libraries (e.g. libx264). Either:
+
+  • add FFMPEG_jll to your environment:
+        using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
+  • or point Makie at an existing ffmpeg binary for this session:
+        Makie.ffmpeg_path!("/path/to/ffmpeg")
+  • or persist that override across sessions via Preferences.jl:
+        using Preferences
+        set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")"""
+
 # Internal: returns a `Cmd` for the ffmpeg binary, attempting to load
 # FFMPEG_jll on demand if no path has been configured. Called by
 # VideoStream, record, convert_video, extract_frames.
@@ -366,21 +380,7 @@ function get_ffmpeg_path()
     # active env, so the user gets a clean error instead of a load failure.
     already_loaded = haskey(Base.loaded_modules, _FFMPEG_JLL_PKGID)
     if !already_loaded && Base.locate_package(_FFMPEG_JLL_PKGID) === nothing
-        error(
-            """
-            Video recording requires FFMPEG_jll, but it is not in the active environment.
-
-            Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
-            because it pulls in GPL-licensed libraries (e.g. libx264). Either:
-
-              • add FFMPEG_jll to your environment:
-                    using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
-              • or point Makie at an existing ffmpeg binary for this session:
-                    Makie.ffmpeg_path!("/path/to/ffmpeg")
-              • or persist that override across sessions via Preferences.jl:
-                    using Preferences
-                    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")"""
-        )
+        error(_ffmpeg_help_message("but it is not in the active environment"))
     end
 
     # FFMPEG_jll is available — try to load it. The MakieFFMPEGExt extension
@@ -392,20 +392,8 @@ function get_ffmpeg_path()
         Base.retry_load_extensions()
     catch err
         error(
-            """
-            Video recording requires FFMPEG_jll, and Makie failed to load it
-            from the active environment. You can work around this by pointing
-            Makie at an existing ffmpeg binary:
-
-                Makie.ffmpeg_path!("/path/to/ffmpeg")
-
-            or persistently across sessions:
-
-                using Preferences
-                set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
-
-            The error encountered while trying to load FFMPEG_jll was:
-            $(sprint(showerror, err))"""
+            _ffmpeg_help_message("and Makie failed to load it from the active environment") *
+                "\n\nThe underlying load error was:\n$(sprint(showerror, err))"
         )
     end
 
