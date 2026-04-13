@@ -17,11 +17,18 @@ end
 @testset "get_ffmpeg_path errors helpfully when FFMPEG_jll unavailable" begin
     @assert !haskey(Base.loaded_modules, Makie._FFMPEG_JLL_PKGID) "FFMPEG_jll already loaded; this test would be a no-op"
     current_env = dirname(Pkg.project().path)
+    saved_load_path = copy(LOAD_PATH)
     mktempdir() do tmpenv
+        # Restrict LOAD_PATH to only the temp env so `Base.locate_package` can't
+        # fall back to FFMPEG_jll installed in the user's default depot env.
+        empty!(LOAD_PATH)
+        push!(LOAD_PATH, tmpenv)
         Pkg.activate(tmpenv; io = devnull)
         try
             @test_throws "Video recording requires FFMPEG_jll" Makie.get_ffmpeg_path()
         finally
+            empty!(LOAD_PATH)
+            append!(LOAD_PATH, saved_load_path)
             Pkg.activate(current_env; io = devnull)
         end
     end
