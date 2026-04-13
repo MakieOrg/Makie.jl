@@ -239,10 +239,10 @@ Returns a `VideoStream` which can pipe new frames into the ffmpeg process with f
 When done, use [`save(path, stream)`](@ref) to write the video out to a file.
 
 !!! compat "Makie 0.25"
-    Requires `FFMPEG_jll` to be loaded. Starting with Makie v0.25,
-    `FFMPEG_jll` is no longer a hard dependency because it pulls in GPL-licensed
-    libraries. Add `using FFMPEG_jll` before creating a `VideoStream`.
-    Alternatively, set the `MAKIE_FFMPEG` environment variable to a custom ffmpeg binary path.
+    Starting with Makie v0.25, `FFMPEG_jll` is no longer a hard dependency because it pulls in
+    GPL-licensed libraries. `VideoStream` will try to load `FFMPEG_jll` automatically when first
+    called, so as long as `FFMPEG_jll` is in your environment it works without further setup.
+    To use a custom ffmpeg binary, call [`Makie.ffmpeg_path!`](@ref).
 
 # Arguments
 

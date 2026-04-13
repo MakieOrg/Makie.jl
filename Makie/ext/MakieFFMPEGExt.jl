@@ -3,6 +3,6 @@ module MakieFFMPEGExt
 import Makie
 import FFMPEG_jll
 
-Makie.ffmpeg_path() = FFMPEG_jll.ffmpeg()
+Makie._ffmpeg_jll_path() = FFMPEG_jll.ffmpeg()
 
 end

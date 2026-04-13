@@ -1,13 +1,17 @@
-@testset "FFMPEG extension" begin
-    @test_throws "Video recording requires FFMPEG_jll" Makie.get_ffmpeg_path()
-    withenv("MAKIE_FFMPEG" => "/tmp/fake_ffmpeg") do
-        @test Makie.get_ffmpeg_path() == `/tmp/fake_ffmpeg`
-    end
+@testset "ffmpeg_path configuration" begin
+    @test Makie.ffmpeg_path() === nothing
+
+    Makie.ffmpeg_path!("/tmp/fake_ffmpeg")
+    @test Makie.ffmpeg_path() == "/tmp/fake_ffmpeg"
+    @test Makie.get_ffmpeg_path() == `/tmp/fake_ffmpeg`
+
+    Makie.ffmpeg_path!(nothing)
+    @test Makie.ffmpeg_path() === nothing
 end
 
-using FFMPEG_jll
-
-@testset "FFMPEG extension after loading" begin
+# When no path is configured, get_ffmpeg_path should auto-load FFMPEG_jll.
+# FFMPEG_jll is in the test deps so this should succeed.
+@testset "get_ffmpeg_path auto-loads FFMPEG_jll" begin
     @test Makie.get_ffmpeg_path() isa Cmd
 end
 

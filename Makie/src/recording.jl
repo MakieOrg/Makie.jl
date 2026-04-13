@@ -96,10 +96,10 @@ Under the hood, `record` is just `video_io = Record(func, figurelike, [iter]; sa
 `Record` can be used directly as well to do the saving at a later point, or to inline a video directly into a Notebook (the video supports, `show(video_io, "text/html")` for that purpose).
 
 !!! compat "Makie 0.25"
-    `record` requires `FFMPEG_jll` to be loaded. Starting with Makie v0.25,
-    `FFMPEG_jll` is no longer a hard dependency because it pulls in GPL-licensed
-    libraries. Add `using FFMPEG_jll` before calling `record`.
-    Alternatively, set the `MAKIE_FFMPEG` environment variable to a custom ffmpeg binary path.
+    Starting with Makie v0.25, `FFMPEG_jll` is no longer a hard dependency because it pulls in
+    GPL-licensed libraries. `record` will try to load `FFMPEG_jll` automatically when first called,
+    so as long as `FFMPEG_jll` is in your environment it works without further setup.
+    To use a custom ffmpeg binary, call [`Makie.ffmpeg_path!`](@ref).
 
 # Options one can pass via `kwargs...`:
 

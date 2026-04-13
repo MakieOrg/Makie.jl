@@ -125,6 +125,7 @@ import TriplotBase
 import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
+import Preferences
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
@@ -312,51 +313,93 @@ include("DataInspector/extension.jl")
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
-"""
-    ffmpeg_path()
-
-Returns a `Cmd` for the `ffmpeg` executable provided by FFMPEG_jll.
-This function has no methods by default — a method is added by the
-MakieFFMPEGExt package extension when `FFMPEG_jll` is loaded.
-
-See also [`get_ffmpeg_path`](@ref).
-"""
-function ffmpeg_path end
+const _ffmpeg_path = Ref{Union{Nothing, String}}(nothing)
+const _FFMPEG_JLL_PKGID = Base.PkgId(Base.UUID("b22a6f82-2f65-5046-a5b2-351ab43fb4e5"), "FFMPEG_jll")
 
 """
-    get_ffmpeg_path()
+    Makie.ffmpeg_path() -> Union{Nothing, String}
 
-Returns a `Cmd` for the `ffmpeg` executable. Resolution order:
+Return the user-configured path to the `ffmpeg` executable, or `nothing`
+if none has been set. When `nothing`, video recording functions try to
+load `FFMPEG_jll` automatically to obtain a binary.
 
-1. If the environment variable `MAKIE_FFMPEG` is set, use that path.
-2. If `FFMPEG_jll` is loaded (providing a method for [`ffmpeg_path`](@ref)), use it.
-3. Otherwise, throw an informative error.
-
-This is the function called internally by `VideoStream`, `record`, etc.
+See also [`Makie.ffmpeg_path!`](@ref).
 """
+ffmpeg_path() = _ffmpeg_path[]
+
+"""
+    Makie.ffmpeg_path!(path::Union{Nothing, AbstractString})
+
+Set the path to the `ffmpeg` executable that Makie should use for video
+recording, overriding any binary that would be loaded from `FFMPEG_jll`.
+
+Pass `nothing` to clear the override, in which case Makie falls back to
+loading `FFMPEG_jll` automatically.
+
+This change only affects the current Julia session. To persist a path
+across sessions, use [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl):
+
+    using Preferences
+    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
+"""
+function ffmpeg_path!(path::Union{Nothing, AbstractString})
+    _ffmpeg_path[] = path === nothing ? nothing : String(path)
+    return _ffmpeg_path[]
+end
+
+# A method for this is added by the MakieFFMPEGExt package extension.
+function _ffmpeg_jll_path end
+
+# Internal: returns a `Cmd` for the ffmpeg binary, attempting to load
+# FFMPEG_jll on demand if no path has been configured. Called by
+# VideoStream, record, convert_video, extract_frames.
 function get_ffmpeg_path()
-    envpath = get(ENV, "MAKIE_FFMPEG", nothing)
-    if envpath !== nothing
-        return `$envpath`
+    user = _ffmpeg_path[]
+    if user !== nothing
+        return `$user`
     end
-    if hasmethod(ffmpeg_path, Tuple{})
-        return ffmpeg_path()
+
+    # Fast path when the extension is already loaded.
+    hasmethod(_ffmpeg_jll_path, Tuple{}) && return _ffmpeg_jll_path()
+
+    # Try to load FFMPEG_jll on demand. The MakieFFMPEGExt extension will be
+    # triggered as a side effect.
+    try
+        Base.require(_FFMPEG_JLL_PKGID)
+        # `Base.require` doesn't always auto-trigger extension loading for
+        # newly-loaded triggers, so do it explicitly.
+        Base.retry_load_extensions()
+    catch err
+        error(
+            """
+            Video recording requires FFMPEG_jll, and Makie was unable to load it
+            automatically.
+
+            Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency
+            because it pulls in GPL-licensed libraries (e.g. libx264). Either:
+
+              • add FFMPEG_jll to your environment and load it manually:
+                    using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
+              • or point Makie at an existing ffmpeg binary:
+                    Makie.ffmpeg_path!("/path/to/ffmpeg")
+
+            The error encountered while trying to load FFMPEG_jll was:
+            $(sprint(showerror, err))"""
+        )
     end
-    error(
-        """
-        Video recording requires FFMPEG_jll to be loaded.
 
-        Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
-        because it pulls in GPL-licensed libraries (e.g. libx264).
-        To use `record`, `VideoStream`, `convert_video`, or `extract_frames`,
-        add FFMPEG_jll to your environment and load it before using these functions:
-
-            using FFMPEG_jll
-            using CairoMakie  # or GLMakie, WGLMakie, etc.
-
-        Alternatively, set the MAKIE_FFMPEG environment variable to the path
-        of an ffmpeg binary."""
-    )
+    # Use `invokelatest` to step into the new world age in which the method
+    # added by the extension is visible.
+    try
+        return Base.invokelatest(_ffmpeg_jll_path)
+    catch err
+        err isa MethodError && err.f === _ffmpeg_jll_path || rethrow()
+        error(
+            """
+            FFMPEG_jll was loaded but the MakieFFMPEGExt extension did not register
+            a method for `Makie._ffmpeg_jll_path`. Please report this as a bug."""
+        )
+    end
 end
 
 include("ffmpeg-util.jl")
@@ -522,6 +565,8 @@ function __init__()
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
+    # Load any user-configured ffmpeg path from Preferences
+    _ffmpeg_path[] = Preferences.load_preference(@__MODULE__, "ffmpeg_path", nothing)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *

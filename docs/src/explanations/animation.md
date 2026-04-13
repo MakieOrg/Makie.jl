@@ -9,16 +9,25 @@ You can find out more about the Observables workflow on the [Observables](@ref) 
 !!! compat "Makie 0.25"
     Starting with Makie v0.25, `FFMPEG_jll` is no longer a hard dependency of Makie because it
     transitively pulls in GPL-licensed libraries (e.g. libx264). To use `record`, `VideoStream`,
-    or any other video-related functionality, you must add `FFMPEG_jll` to your project and load
-    it before recording:
+    or any other video-related functionality, `FFMPEG_jll` must be available in your environment.
+
+    The first time you call `record` (or `VideoStream`), Makie will automatically try to load
+    `FFMPEG_jll`, so as long as it's in your project this works without any code change on your
+    part. If you'd rather load it explicitly (e.g. to be sure of when it gets loaded), do:
+
     ```julia
     using FFMPEG_jll
     using CairoMakie  # or GLMakie, WGLMakie, etc.
     ```
 
-    Alternatively, you can set the `MAKIE_FFMPEG` environment variable to the path of
-    a custom `ffmpeg` binary. This takes priority over `FFMPEG_jll` and lets you use an
-    ffmpeg build with different codecs enabled.
+    To use a custom `ffmpeg` binary (e.g. one with extra codecs compiled in), call
+    `Makie.ffmpeg_path!("/path/to/ffmpeg")`. To persist this setting across Julia sessions,
+    use [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl):
+
+    ```julia
+    using Preferences
+    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
+    ```
 
 ## A simple example
 
@@ -33,7 +42,6 @@ over the course of the animation.
 As a start, here is how you can change the color of a line plot:
 
 ```@example
-using FFMPEG_jll
 using GLMakie
 GLMakie.activate!() # hide
 using Makie.Colors
