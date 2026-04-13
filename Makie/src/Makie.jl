@@ -362,8 +362,26 @@ function get_ffmpeg_path()
     # Fast path when the extension is already loaded.
     hasmethod(_ffmpeg_jll_path, Tuple{}) && return _ffmpeg_jll_path()
 
-    # Try to load FFMPEG_jll on demand. The MakieFFMPEGExt extension will be
-    # triggered as a side effect.
+    # Don't even attempt `Base.require` if FFMPEG_jll isn't available in the
+    # active env, so the user gets a clean error instead of a load failure.
+    already_loaded = haskey(Base.loaded_modules, _FFMPEG_JLL_PKGID)
+    if !already_loaded && Base.locate_package(_FFMPEG_JLL_PKGID) === nothing
+        error(
+            """
+            Video recording requires FFMPEG_jll, but it is not in the active environment.
+
+            Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
+            because it pulls in GPL-licensed libraries (e.g. libx264). Either:
+
+              • add FFMPEG_jll to your environment:
+                    using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
+              • or point Makie at an existing ffmpeg binary:
+                    Makie.ffmpeg_path!("/path/to/ffmpeg")"""
+        )
+    end
+
+    # FFMPEG_jll is available — try to load it. The MakieFFMPEGExt extension
+    # will be triggered as a side effect.
     try
         Base.require(_FFMPEG_JLL_PKGID)
         # `Base.require` doesn't always auto-trigger extension loading for
@@ -372,16 +390,11 @@ function get_ffmpeg_path()
     catch err
         error(
             """
-            Video recording requires FFMPEG_jll, and Makie was unable to load it
-            automatically.
+            Video recording requires FFMPEG_jll, and Makie failed to load it
+            from the active environment. You can work around this by pointing
+            Makie at an existing ffmpeg binary:
 
-            Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency
-            because it pulls in GPL-licensed libraries (e.g. libx264). Either:
-
-              • add FFMPEG_jll to your environment and load it manually:
-                    using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
-              • or point Makie at an existing ffmpeg binary:
-                    Makie.ffmpeg_path!("/path/to/ffmpeg")
+                Makie.ffmpeg_path!("/path/to/ffmpeg")
 
             The error encountered while trying to load FFMPEG_jll was:
             $(sprint(showerror, err))"""
