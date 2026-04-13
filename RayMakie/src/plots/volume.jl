@@ -142,8 +142,11 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
                 delete_trace_handles!(hikari_scene, last.trace_renderobject)
             end
             gb_mesh = normal_mesh(Rect3f(config.origin, config.extent))
-            glass = Hikari.Dielectric(Kr=Hikari.RGBSpectrum(0f0), Kt=Hikari.RGBSpectrum(1f0), index=1f0)
-            mat = Hikari.MediumInterface(glass; inside=medium)
+            # pbrt `Material "interface"` semantics: null surface, only medium swap fires.
+            # Wrapping in a Dielectric (even Kr=0/Kt=1/index=1) makes shadow rays treat
+            # the bounding cube as opaque (intersection.jl:351), painting the box as a
+            # uniformly-shadowed cuboid that obscures the actual volume contents.
+            mat = Hikari.MediumInterface(Hikari.NullMaterial(); inside=medium)
             handle = push!(hikari_scene, gb_mesh, mat)
             state.needs_film_clear = true
             return (handle,)
