@@ -270,13 +270,14 @@ end
             img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
 
             # Integrator should have state after render
-            @test integrator.state !== nothing || integrator._adapted_scene_cache !== nothing
+            @test integrator.state !== nothing || integrator.adapted_scene !== nothing
 
             # Close integrator clears all caches
             close(integrator)
             @test integrator.state === nothing
-            @test integrator._adapted_scene_cache === nothing
-            @test integrator._filter_sampler_gpu === nothing
+            @test integrator.adapted_scene === nothing
+            @test integrator.adapted_scene_id === UInt64(0)
+            @test integrator.filter_sampler_gpu === nothing
 
             screen = Makie.getscreen(scene)
             if screen !== nothing
