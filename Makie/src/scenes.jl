@@ -1,21 +1,43 @@
+"""
+    struct SSAO
+
+Settings for Screen Space Ambient Occlusion.
+
+Screen Space Ambient Occlusion darkens corners and creases. To do this, each
+pixel samples depth values from its surrounding area and compares them to itself.
+The more samples are in front of the pixel, the more occluded it is. The
+occlusion information gets blurred with neighboring pixels before being applied
+to reduce aliasing.
+
+Settings:
+- `radius`: Controls the sample range, in world space units.
+- `bias`: Sets the minimum difference in depth required to treat a sample as
+    "in front". This is needed to differentiate smoothly curved surfaces from
+    corners and creases.
+- `blur`: Sets the range of blurring.
+
+Note: SSAO is only implemented in GLMakie and needs to be explicitly turned on
+with `GLMakie.activate!(ssao = true)`, `display(figure/scene, ssao = true)` or
+by setting the render pipeline to one that includes SSAO.
+"""
 struct SSAO
     """
-    sets the range of SSAO. You may want to scale this up or
-    down depending on the limits of your coordinate system
+    Sets the range of SSAO, i.e. how far away a sample point can be from the
+    point whose occlusion is getting calculated. This should be scaled to the
+    scene so that only nearby points are considered.
     """
     radius::Observable{Float32}
 
     """
-    sets the minimum difference in depth required for a pixel to
-    be occluded. Increasing this will typically make the occlusion
-    effect stronger.
+    Sets the minimum difference in depth required for a pixel to be occluded.
+    Decreasing this will strengthen the occlusion effect but may also add
+    occlusion to smoothly varying surfaces.
     """
     bias::Observable{Float32}
 
     """
-    sets the (pixel) range of the blur applied to the occlusion texture.
-    The texture contains a (random) pattern, which is washed out by
-    blurring. Small `blur` will be faster, sharper and more patterned.
+    Sets the (pixel) range of the blur applied to the occlusion texture to
+    decrease aliasing. Small `blur` will be faster, sharper and more aliased.
     Large `blur` will be slower and smoother. Typically `blur = 2` is
     a good compromise.
     """
@@ -26,7 +48,8 @@ function Base.show(io::IO, ssao::SSAO)
     println(io, "SSAO:")
     println(io, "    radius: ", ssao.radius[])
     println(io, "    bias:   ", ssao.bias[])
-    return println(io, "    blur:   ", ssao.blur[])
+    println(io, "    blur:   ", ssao.blur[])
+    return
 end
 
 function SSAO(; radius = nothing, bias = nothing, blur = nothing)
@@ -93,7 +116,7 @@ mutable struct Scene <: AbstractScene
 
     conversions::DimConversions
     isclosed::Bool
-    # Cant type this, dont have the type yet
+    # Can't type this, don't have the type yet
     data_inspector::Any
 
     function Scene(
@@ -114,6 +137,7 @@ mutable struct Scene <: AbstractScene
             lights::Vector;
             deregister_callbacks = Observables.ObserverFunction[]
         )
+        replace_computed_with_obs!(theme)
         scene = new(
             parent,
             events,
@@ -138,7 +162,8 @@ mutable struct Scene <: AbstractScene
         )
         add_camera_computation!(scene.compute, scene)
         add_light_computation!(scene.compute, scene, lights)
-        add_input!((k, v) -> Ref{Any}(v), scene.compute, :transform_func, transformation.transform_func)
+        add_input!(scene.compute, :transform_func, transformation.transform_func)
+        ComputePipeline.set_type!(scene.compute.transform_func, Any)
         on(scene, events.window_open) do open
             if !open
                 scene.isclosed = true
@@ -157,6 +182,15 @@ mutable struct Scene <: AbstractScene
         end
         return scene
     end
+end
+
+function replace_computed_with_obs!(theme::Union{Dict, Attributes})
+    for (key, val) in theme
+        if val isa Computed
+            theme[key] = ComputePipeline.get_observable!(val)
+        end
+    end
+    return
 end
 
 isclosed(scene::Scene) = scene.isclosed
@@ -342,7 +376,7 @@ function Scene(
     child_px_area = viewport isa Observable ? viewport : Observable(Rect2i(0, 0, 0, 0); ignore_equal_values = true)
     deregister_callbacks = Observables.ObserverFunction[]
     _visible = Observable(true)
-    if visible isa Observable
+    if visible isa Union{Computed, Observable}
         listener = on(visible; update = true) do v
             _visible[] = v
         end
@@ -350,7 +384,7 @@ function Scene(
     elseif visible isa Bool
         _visible[] = visible
     else
-        error("Unsupported typer visible: $(typeof(visible))")
+        error("Unsupported type visible: $(typeof(visible))")
     end
     child = Scene(;
         events = events,
@@ -715,7 +749,21 @@ struct FigureAxisPlot
     plot::AbstractPlot
 end
 
-const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+struct FigureBlock
+    figure::Figure
+    block::Block
+end
+
+const FigureAxis = FigureBlock
+function Base.getproperty(fb::FigureBlock, name::Symbol)
+    if name === :axis
+        return getfield(fb, :block)
+    else
+        return getfield(fb, name)
+    end
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot, FigureBlock}
 
 """
     is_atomic_plot(plot::Plot)

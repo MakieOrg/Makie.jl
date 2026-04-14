@@ -23,7 +23,7 @@ to_string_arr(text) = [text]
 
 function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_args)
     # Set up Inputs
-    inputs = _register_input_arguments!(Text, attr, input_args)
+    inputs = _register_input_arguments!(attr, input_args)
 
     # User arguments can be PointBased(), String-like or mixed, with the
     # position and text attributes supplementing data not in arguments.
@@ -871,7 +871,7 @@ struct GlyphInfo
     origin::Point2f
     extent::GlyphExtent
     size::Vec2f
-    rotation::Quaternion
+    rotation::Quaternionf
     color::RGBAf
     strokecolor::RGBAf
     strokewidth::Float32

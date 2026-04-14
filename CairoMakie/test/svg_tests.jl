@@ -19,11 +19,6 @@ end
     )
     @test svg_isnt_rasterized(
         begin
-            f = Figure(); Axis3(f[1, 1]); f
-        end
-    )
-    @test svg_isnt_rasterized(
-        begin
             f = Figure(); PolarAxis(f[1, 1]); f
         end
     )
@@ -44,6 +39,66 @@ end
         end
     )
     @test svg_isnt_rasterized(poly(Circle(Point2f(0, 0), 10)))
+    @test svg_isnt_rasterized(
+        poly(
+            Rect2f(0, 0, 1, 1);
+            color = Makie.LinePattern(direction = Makie.Vec2f(1, 1), width = 1.5f0, tilesize = (12, 12))
+        )
+    )
+    @test svg_isnt_rasterized(
+        poly(
+            Rect2f(0, 0, 1, 1);
+            color = Makie.LinePattern(
+                direction = Makie.Vec2f(1, 0),
+                width = 1.0f0,
+                tilesize = (8, 8),
+                linecolor = (:black, 0.8),
+                backgroundcolor = (:orange, 0.4)
+            )
+        )
+    )
+    @test svg_isnt_rasterized(
+        begin
+            fig = Figure()
+            ax = Axis(fig[1, 1])
+            barplot!(
+                ax, 1:3, [5, 10, 7],
+                color = Makie.LinePattern(
+                    direction = Makie.Vec2f(1, 1),
+                    width = 1.25f0,
+                    tilesize = (10, 10),
+                    linecolor = (:navy, 0.9),
+                    backgroundcolor = (:gray, 0.2)
+                )
+            )
+            fig
+        end
+    )
+    @test svg_isnt_rasterized(
+        poly(
+            Makie.GeometryBasics.Polygon(Point2f.([(0, 0), (1, 0), (0.2, 0.9), (0, 0)]));
+            color = Makie.LinePattern(direction = Makie.Vec2f(0, 1), width = 0.8f0, tilesize = (6, 6))
+        )
+    )
+    @test svg_isnt_rasterized(
+        begin
+            fig = Figure()
+            ax = Axis(fig[1, 1])
+            textlabel!(
+                ax,
+                Point2f(0.5, 0.5),
+                text = "Lbl",
+                background_color = Makie.LinePattern(
+                    direction = Makie.Vec2f(1, 1),
+                    width = 1.0f0,
+                    tilesize = (8, 8),
+                    linecolor = (:black, 0.9),
+                    backgroundcolor = (:white, 0.2)
+                )
+            )
+            fig
+        end
+    )
     @test svg_isnt_rasterized(
         poly(
             BezierPath(

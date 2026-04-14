@@ -1,7 +1,6 @@
 ################################################################################
 #                               Type Conversions                               #
 ################################################################################
-const RangeLike = Union{AbstractVector, ClosedInterval, Tuple{Real, Real}}
 
 function convert_arguments(CT::ConversionTrait, args...)
     expanded = expand_dimensions(CT, args...)
@@ -11,7 +10,7 @@ function convert_arguments(CT::ConversionTrait, args...)
     return args
 end
 
-function convert_arguments(T::Type{<:AbstractPlot}, args...; kw...)
+function convert_arguments(T::Type{<:Union{AbstractPlot, Block}}, args...; kw...)
     # landing here means, that there is no matching `convert_arguments` method for the plot type
     # Meaning, it needs to be a conversion trait, or it needs single_convert_arguments or expand_dimensions
     CT = conversion_trait(T, args...)
@@ -191,6 +190,20 @@ end
 #     return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 # end
 
+################################################################################
+#                                PointBased2D                                  #
+################################################################################
+
+"""
+PointBased2D uses the same conversion methods as PointBased, so we delegate all
+convert_arguments calls to PointBased.
+"""
+convert_arguments(::PointBased2D, args...) = convert_arguments(PointBased(), args...)
+
+################################################################################
+#                               3D Rect conversions                            #
+################################################################################
+
 function convert_arguments(::PointBased, rect::Rect3{T}) where {T}
     return (decompose(Point3{float_type(T)}, rect),)
 end
@@ -369,7 +382,7 @@ Takes one or two ClosedIntervals `x` and `y` and converts them to closed ranges
 with size(z, 1/2).
 """
 function convert_arguments(P::GridBased, x::RangeLike, y::RangeLike, z::AbstractMatrix{<:Union{Real, Colorant}})
-    return convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+    return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
 function convert_arguments(
@@ -378,6 +391,9 @@ function convert_arguments(
     )
     return (to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), el32convert(z))
 end
+
+# for dim_converts
+to_endpoints(x::Tuple{<:Any, <:Any}) = x
 
 function to_endpoints(x::Tuple{<:Real, <:Real})
     T = float_type(x...)
@@ -438,6 +454,7 @@ function convert_arguments(
     return (EndPoints{Tx}(xe[1] - xstep, xe[2] + xstep), EndPoints{Ty}(ye[1] - ystep, ye[2] + ystep), el32convert(z))
 end
 
+# Note: used by dim_converts to normalize xs, ys, so no eltype on RangeLike
 function convert_arguments(
         ::ImageLike, xs::RangeLike, ys::RangeLike,
         data::AbstractMatrix{<:Union{Real, Colorant}}
@@ -652,9 +669,9 @@ accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::AbstractArray,
+        vertices::AbstractArray{<:Union{VecTypes{N, <:Real}, <:Real}},
         indices::AbstractArray
-    )
+    ) where {N}
     vs = to_vertices(vertices)
     fs = to_triangles(indices)
     if eltype(vs) <: Point{3}
@@ -704,11 +721,11 @@ function convert_arguments(::VolumeLike, x::RealVector, y::RealVector, z::RealVe
     return (map(v -> to_endpoints((first(v), last(v))), (x, y, z))..., el32convert.(f.(_x, _y, _z)))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, r::RealVector, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, r::RealVector, f::Function)
     return convert_arguments(P, r, map(f, r))
 end
 
-function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+function convert_arguments(P::Type{<:Union{AbstractPlot, Block}}, i::AbstractInterval, f::Function)
     x, y = PlotUtils.adapted_grid(f, endpoints(i))
     return convert_arguments(P, x, y)
 end
@@ -734,6 +751,7 @@ end
 ################################################################################
 
 to_linspace(interval::Interval, N) = range(leftendpoint(interval), stop = rightendpoint(interval), length = N)
+to_linspace(x::AbstractVector, N) = x
 to_linspace(x, N) = range(first(x), stop = last(x), length = N)
 
 """
@@ -2404,3 +2422,5 @@ to_lrbt_padding(pad::VecTypes{4}) = to_ndim(Vec4f, pad, 0)
 
 convert_attribute(x::Plane, ::key"clip_planes") = Plane3f[x]
 convert_attribute(x::Vector{<:Plane}, ::key"clip_planes") = Plane3f.(x)
+
+convert_attribute(x, ::key"inspector_label") = Ref{Any}(x)

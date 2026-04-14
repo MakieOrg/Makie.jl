@@ -413,6 +413,10 @@ macro recipe(Tsym::Symbol, args, attrblock)
     return create_recipe_expr(Tsym, args, attrblock)
 end
 
+macro recipe(Tsym::Symbol, args, attrblock, _export)
+    return create_recipe_expr(Tsym, args, attrblock, _export)
+end
+
 function types_for_plot_arguments end
 
 documented_attributes(_) = nothing
@@ -428,7 +432,7 @@ end
 function plot_attributes(scene, T)
     plot_attr = Makie.documented_attributes(T)
     if isnothing(plot_attr)
-        return merge(default_theme(scene, T), default_theme(T))
+        return mergeleft!(default_theme(scene, T), default_theme(T))
     else
         return plot_attr.d
     end
@@ -471,7 +475,41 @@ function extract_docstring(str)
     end
 end
 
-function create_recipe_expr(Tsym, args, attrblock)
+function extract_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+
+    if isnothing(idx)
+        return Markdown.MD()
+    end
+    return Markdown.MD(doc_flat.content[(idx + 1):end])
+end
+
+function extract_before_arguments_section(doc::Markdown.MD)
+    # Somehow the doc markdown is super nested, so we need to flatten it:
+    doc_flat = Markdown.parse(string(doc))
+    # Find the "## Arguments" header
+    idx = findfirst(doc_flat.content) do x
+        x isa Markdown.Header{2} && !isempty(x.text) && x.text[1] == "Arguments"
+    end
+    if isnothing(idx)
+        return doc_flat
+    end
+    return Markdown.MD(doc_flat.content[1:(idx - 1)])
+end
+
+function argument_docs end
+
+# TODO:
+# If this reruns with an `## Arguments` section in the user-written docstring of
+# a @recipe, another empty `## Arguments` section will be added to the final
+# docstring. Any changes from the user-written docstring will not make it into
+# the new docstring. (Until Julia restart)
+function create_recipe_expr(Tsym, args, attrblock, _export = true)
     funcname_sym = to_func_name(Tsym)
     funcname!_sym = Symbol("$(funcname_sym)!")
     funcname! = esc(funcname!_sym)
@@ -504,7 +542,10 @@ function create_recipe_expr(Tsym, args, attrblock)
             delete!(Docs.meta(@__MODULE__), binding)
             _docstring
         else
-            "No docstring defined.\n"
+            # \n just gets printed as is...
+            md"No docstring defined.
+
+            "
         end
 
 
@@ -536,11 +577,35 @@ function create_recipe_expr(Tsym, args, attrblock)
 
         $(arg_type_func)
 
-        docstring_modified = make_recipe_docstring($PlotType, $(QuoteNode(Tsym)), $(QuoteNode(funcname_sym)), user_docstring)
-        @doc docstring_modified $funcname_sym
-        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $Tsym
-        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Check the docstring for `$($(string(funcname_sym)))` for further information." $funcname!_sym
-        export $PlotType, $funcname, $funcname!
+        # Check if user_docstring contains an "## Arguments" section
+        # If so, generate an argument_docs override for this plot type
+        _args_section = $(Makie).extract_arguments_section(user_docstring)
+        if !isempty(_args_section.content)
+            # Define argument_docs override for this specific plot type
+            function $(Makie).argument_docs(::Type{<:$(PlotType)})
+                return _args_section
+            end
+        end
+
+        # Override Docs.getdoc to generate comprehensive documentation
+        function Base.Docs.getdoc(::Type{T}; max_examples = 1, full_attributes = false) where {T <: $(PlotType)}
+            return $(Makie).document_recipe(
+                T, user_docstring; max_examples = max_examples, full_attributes = full_attributes
+            )
+        end
+
+        # For the function symbol, forward to the plot type
+        function Base.Docs.getdoc(::typeof($funcname))
+            return Base.Docs.getdoc($(PlotType))
+        end
+
+        # Simple docstrings for mutating function and type
+        @doc "`$($(string(Tsym)))` is the plot type associated with plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $Tsym
+        @doc "`$($(string(funcname!_sym)))` is the mutating variant of plotting function `$($(string(funcname_sym)))`. Use `?$($(string(funcname_sym)))` for detailed documentation." $funcname!_sym
+    end
+
+    if _export
+        push!(q.args, :(export $PlotType, $funcname, $funcname!))
     end
 
     if !isempty(syms)
@@ -554,32 +619,6 @@ function create_recipe_expr(Tsym, args, attrblock)
     end
 
     return q
-end
-
-
-function make_recipe_docstring(P::Type{<:Plot}, Tsym, funcname_sym, docstring)
-    io = IOBuffer()
-
-    attr_docstrings = _attribute_docs(P)
-
-    print(io, docstring)
-
-    println(io, "## Plot type")
-    println(io, "The plot type alias for the `$funcname_sym` function is `$Tsym`.")
-
-    println(io, "## Attributes")
-    println(io)
-
-    names = sort(collect(attribute_names(P)))
-    exprdict = attribute_default_expressions(P)
-    for name in names
-        default = exprdict[name]
-        print(io, "**`", name, "`** = ", " `", default, "`  — ")
-        println(io, something(attr_docstrings[name], "*No docs available.*"))
-        println(io)
-    end
-
-    return String(take!(io))
 end
 
 # from MacroTools

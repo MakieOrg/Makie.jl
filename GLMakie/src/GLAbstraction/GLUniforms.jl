@@ -123,7 +123,8 @@ function toglsltype_string(x::T) where {T}
         error("can't splice $T into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true\n\n$x")
     end
 end
-toglsltype_string(t::Union{GLBuffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
+toglsltype_string(::GPUVector{T}) where {T} = string("in ", glsl_typename(T))
+toglsltype_string(@nospecialize(t::GLBuffer)) = string("in ", glsl_typename(t))
 # Gets used to access a
 function glsl_variable_access(keystring, t::Texture{T, D}) where {T, D}
     fields = SubString("rgba", 1, length(T))

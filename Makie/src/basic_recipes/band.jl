@@ -1,13 +1,22 @@
 """
-    band(x, ylower, yupper; kwargs...)
-    band(lower, upper; kwargs...)
-    band(x, lowerupper; kwargs...)
+Plots a band between lower and upper bounds.
 
-Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
-between the points in `lower` and `upper`.
-Both bounds can be passed together as `lowerupper`, a vector of intervals.
+## Arguments
+
+* `xs, ys_lower, ys_upper` Plots a band from `ys_lower` to `ys_upper` along `xs`. `xs` is an
+    `AbstractVector{<:Real}` containing x-values, and `ys_lower`, `ys_upper` are
+    `AbstractVector{<:Real}` containing the lower and upper y-limits of the band.
+* `xs, lowerupper` Plots a band where `lowerupper` is an `AbstractVector{<:Interval}` containing the
+    lower and upper limits of the band as intervals.
+* `lower, upper` Plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface) between the
+    points in `lower` and `upper`. Both are `AbstractVector{<:Point{D, <:Real}}` containing the
+    (x, y) or (x, y, z) coordinates of the lower and upper limits of the band respectively.
+* Setting `direction = :y` will reinterpret (x, y) as (y, x). (2D only)
 """
-@recipe Band (lowerpoints, upperpoints) begin
+@recipe Band (
+    lowerpoints::PointVector{N, <:Real} where {N},
+    upperpoints::PointVector{N, <:Real} where {N},
+) begin
     documented_attributes(Mesh)...
     "The direction of the band. If set to `:y`, x and y coordinates will be flipped, resulting in a vertical band. This setting applies only to 2D bands."
     direction = :x
@@ -20,12 +29,21 @@ Both bounds can be passed together as `lowerupper`, a vector of intervals.
     shading = NoShading
 end
 
-function convert_arguments(::Type{<:Band}, x, ylower, yupper)
+argument_dim_kwargs(::Type{<:Band}) = (:direction,)
+function argument_dims(::Type{<:Band}, x, ylower, yupper; direction)
+    return direction === :x ? (1, 2, 2) : (2, 1, 1)
+end
+function argument_dims(::Type{<:Band}, lower::VecTypesVector{N}, upper::VecTypesVector{N}; direction) where {N}
+    return direction === :x ? ((1, 2), (1, 2)) : ((2, 1), (2, 1))
+end
+
+function convert_arguments(::Type{<:Band}, x::RealVector, ylower::RealVector, yupper::RealVector)
     return (Point2{float_type(x, ylower)}.(x, ylower), Point2{float_type(x, yupper)}.(x, yupper))
 end
 
-convert_arguments(P::Type{<:Band}, x::AbstractVector{<:Number}, y::AbstractVector{<:Interval}) =
-    convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
+function convert_arguments(P::Type{<:Band}, x::AbstractVector, y::AbstractVector{<:Interval})
+    return convert_arguments(P, x, leftendpoint.(y), rightendpoint.(y))
+end
 
 function band_connect(n)
     ns = 1:(n - 1)
@@ -35,7 +53,8 @@ end
 
 _nanpoint(::Type{<:Point3}) = Point3(NaN)
 _nanpoint(::Type{<:Point2}) = Point2(NaN)
-function Makie.plot!(plot::Band)
+
+function plot!(plot::Band)
     map!(plot, [:lowerpoints, :upperpoints, :direction], :coordinates) do lowerpoints, upperpoints, direction
         n = length(lowerpoints)
         @assert n == length(upperpoints) "length of lower band is not equal to length of upper band!"
@@ -127,22 +146,5 @@ end
 
 export fill_between!
 
-function attribute_examples(::Type{Band})
-    return Dict(
-        :direction => [
-            Example(
-                code = """
-                fig = Figure()
-                location = range(0, 4pi, length = 200)
-                lower =   cos.(location) .- location
-                upper = .-cos.(location) .+ location .+ 5
-                band(fig[1, 1], location, lower, upper,
-                    axis = (; title = "direction = :x"))
-                band(fig[1, 2], location, lower, upper, direction = :y,
-                    axis = (; title = "direction = :y"))
-                fig
-                """
-            ),
-        ],
-    )
-end
+# attribute_examples for Band has been moved to documentation/plots/band.md
+# under the "## Attributes" section and is now loaded automatically.

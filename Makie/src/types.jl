@@ -499,7 +499,6 @@ function Base.:(==)(a::GlyphCollection, b::GlyphCollection)
         a.strokewidths == b.strokewidths
 end
 
-
 # The color type we ideally use for most color attributes
 const RGBColors = Union{RGBAf, Vector{RGBAf}, Vector{Float32}}
 

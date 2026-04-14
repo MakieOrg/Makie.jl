@@ -1,3 +1,66 @@
+"""
+# Makie
+
+A data visualization library for Julia.
+
+## Getting Help
+
+### Plot Documentation
+Get comprehensive documentation for any plot type:
+```julia
+?scatter  # Full documentation including arguments, attributes, and examples
+?lines    # Documentation for line plots
+```
+
+$(
+    if VERSION < v"1.12.2"
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        help(scatter, :color)      # Documentation and examples for the color attribute
+        help(lines, :linewidth)    # Documentation for the linewidth attribute
+        ```
+        """
+    else
+        """
+        ### Attribute Documentation
+        View documentation for specific attributes of plots:
+        ```julia
+        ?scatter.color      # Documentation and examples for the color attribute
+        ?lines.linewidth    # Documentation for the linewidth attribute
+        ```
+        """
+    end
+)
+
+### Block Documentation (Axis, Colorbar, Legend, etc.)
+Get documentation for layout blocks:
+```julia
+?Axis        # Full Axis documentation
+?Colorbar    # Colorbar documentation
+?Legend      # Legend documentation
+```
+
+View specific block attributes:
+```julia
+?Axis.xlabel        # Documentation for xlabel attribute
+?Colorbar.colormap  # Documentation for colormap attribute
+```
+
+### Additional Information
+See available argument conversion methods:
+```julia
+Makie.conversion_docs(Scatter)  # Show all ways to create scatter plots
+```
+
+Get attribute examples:
+```julia
+Makie.attribute_examples(Scatter, :color)  # Examples for color attribute
+```
+
+For more information, visit: https://docs.makie.org
+"""
 module Makie
 
 if isdefined(Base, :Experimental) && isdefined(Base.Experimental, Symbol("@max_methods"))
@@ -21,7 +84,6 @@ using Pkg.Artifacts # load early to cut down REPLExt init time
 using LaTeXStrings
 using MathTeXEngine
 using Random
-using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
 using PlotUtils
@@ -63,6 +125,7 @@ import TriplotBase
 import DelaunayTriangulation as DelTri
 import REPL
 import MacroTools
+import Preferences
 
 using IntervalSets: IntervalSets, (..), OpenInterval, ClosedInterval, AbstractInterval, Interval, endpoints, leftendpoint, rightendpoint
 using FixedPointNumbers: N0f8
@@ -106,6 +169,7 @@ macro noconstprop(expr)
 end
 
 include("documentation/docstringextension.jl")
+
 include("utilities/quaternions.jl")
 include("utilities/stable-hashing.jl")
 include("coretypes.jl")
@@ -113,6 +177,8 @@ include("attributes.jl")
 include("recipes.jl")
 include("basic_plots.jl")
 include("conversion.jl")
+include("documentation/argument_docs.jl")
+include("documentation/recipe_docs.jl")
 include("bezier.jl")
 include("types.jl")
 include("richtext.jl")
@@ -127,11 +193,20 @@ include("utilities/utilities.jl") # need Makie.AbstractPattern
 include("lighting.jl")
 # Basic scene/plot/recipe interfaces + types
 
+# Note: This file could easily be moved out into a mini-package.
+include("RenderPipeline/BufferFormat.jl")
+include("RenderPipeline/RenderPipeline.jl")
+include("RenderPipeline/LoweredPipeline.jl")
+include("RenderPipeline/io.jl")
+include("RenderPipeline/defaults.jl")
+include("RenderPipeline/gui.jl")
+
 include("dim-converts/dim-converts.jl")
 include("dim-converts/unitful-integration.jl")
 include("dim-converts/dynamic-quantities-integration.jl")
 include("dim-converts/categorical-integration.jl")
 include("dim-converts/dates-integration.jl")
+include("dim-converts/argument_dims.jl")
 
 include("scenes.jl")
 include("float32-scaling.jl")
@@ -186,9 +261,6 @@ include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
 include("basic_recipes/tooltip.jl")
 
-include("basic_recipes/makiecore_examples/scatter.jl")
-include("basic_recipes/makiecore_examples/lines.jl")
-
 # conversions: need to be after plot recipes
 include("conversions.jl")
 
@@ -230,11 +302,115 @@ include("stats/dendrogram.jl")
 include("interaction/events.jl")
 include("interaction/interactive_api.jl")
 include("interaction/ray_casting.jl")
-include("interaction/inspector.jl")
+include("DataInspector/util.jl")
+
+# DataInspector
+include("DataInspector/PlotElement.jl")
+include("DataInspector/pick_element.jl")
+include("DataInspector/DataInspector.jl")
+include("DataInspector/extension.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")
 include("display.jl")
+const _ffmpeg_path = Ref{Union{Nothing, String}}(nothing)
+const _FFMPEG_JLL_PKGID = Base.PkgId(Base.UUID("b22a6f82-2f65-5046-a5b2-351ab43fb4e5"), "FFMPEG_jll")
+
+"""
+    Makie.ffmpeg_path() -> Union{Nothing, String}
+
+Return the user-configured path to the `ffmpeg` executable, or `nothing`
+if none has been set. When `nothing`, video recording functions try to
+load `FFMPEG_jll` automatically to obtain a binary.
+
+See also [`Makie.ffmpeg_path!`](@ref).
+"""
+ffmpeg_path() = _ffmpeg_path[]
+
+"""
+    Makie.ffmpeg_path!(path::Union{Nothing, AbstractString})
+
+Set the path to the `ffmpeg` executable that Makie should use for video
+recording, overriding any binary that would be loaded from `FFMPEG_jll`.
+
+Pass `nothing` to clear the override, in which case Makie falls back to
+loading `FFMPEG_jll` automatically.
+
+This change only affects the current Julia session. To persist a path
+across sessions, use [Preferences.jl](https://github.com/JuliaPackaging/Preferences.jl):
+
+    using Preferences
+    set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")
+"""
+function ffmpeg_path!(path::Union{Nothing, AbstractString})
+    _ffmpeg_path[] = path === nothing ? nothing : String(path)
+    return _ffmpeg_path[]
+end
+
+# A method for this is added by the MakieFFMPEGExt package extension.
+function _ffmpeg_jll_path end
+
+_ffmpeg_help_message(reason::AbstractString) = """
+Video recording requires FFMPEG_jll, $reason.
+
+Starting with Makie v0.25, FFMPEG_jll is no longer a hard dependency of Makie
+because it pulls in GPL-licensed libraries (e.g. libx264). Either:
+
+  • add FFMPEG_jll to your environment:
+        using Pkg; Pkg.add("FFMPEG_jll"); using FFMPEG_jll
+  • or point Makie at an existing ffmpeg binary for this session:
+        Makie.ffmpeg_path!("/path/to/ffmpeg")
+  • or persist that override across sessions via Preferences.jl:
+        using Preferences
+        set_preferences!(Makie, "ffmpeg_path" => "/path/to/ffmpeg")"""
+
+# Internal: returns a `Cmd` for the ffmpeg binary, attempting to load
+# FFMPEG_jll on demand if no path has been configured. Called by
+# VideoStream, record, convert_video, extract_frames.
+function get_ffmpeg_path()
+    user = _ffmpeg_path[]
+    if user !== nothing
+        return `$user`
+    end
+
+    # Fast path when the extension is already loaded.
+    hasmethod(_ffmpeg_jll_path, Tuple{}) && return _ffmpeg_jll_path()
+
+    # Don't even attempt `Base.require` if FFMPEG_jll isn't available in the
+    # active env, so the user gets a clean error instead of a load failure.
+    already_loaded = haskey(Base.loaded_modules, _FFMPEG_JLL_PKGID)
+    if !already_loaded && Base.locate_package(_FFMPEG_JLL_PKGID) === nothing
+        error(_ffmpeg_help_message("but it is not in the active environment"))
+    end
+
+    # FFMPEG_jll is available — try to load it. The MakieFFMPEGExt extension
+    # will be triggered as a side effect.
+    try
+        Base.require(_FFMPEG_JLL_PKGID)
+        # `Base.require` doesn't always auto-trigger extension loading for
+        # newly-loaded triggers, so do it explicitly.
+        Base.retry_load_extensions()
+    catch err
+        error(
+            _ffmpeg_help_message("and Makie failed to load it from the active environment") *
+                "\n\nThe underlying load error was:\n$(sprint(showerror, err))"
+        )
+    end
+
+    # Use `invokelatest` to step into the new world age in which the method
+    # added by the extension is visible.
+    try
+        return Base.invokelatest(_ffmpeg_jll_path)
+    catch err
+        err isa MethodError && err.f === _ffmpeg_jll_path || rethrow()
+        error(
+            """
+            FFMPEG_jll was loaded but the MakieFFMPEGExt extension did not register
+            a method for `Makie._ffmpeg_jll_path`. Please report this as a bug."""
+        )
+    end
+end
+
 include("ffmpeg-util.jl")
 include("recording.jl")
 include("event-recorder.jl")
@@ -244,7 +420,7 @@ include("backend-functionality.jl")
 export BezierPath, MoveTo, LineTo, CurveTo, EllipticalArc, ClosePath
 
 # help functions and supporting functions
-export help, help_attributes, help_arguments
+export help
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, MakieScreen
@@ -398,6 +574,8 @@ function __init__()
     end
     # fonts aren't cacheable by precompilation, so we need to empty it on load!
     empty!(FONT_CACHE)
+    # Load any user-configured ffmpeg path from Preferences
+    _ffmpeg_path[] = Preferences.load_preference(@__MODULE__, "ffmpeg_path", nothing)
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
         @warn "The global configuration file is no longer supported." *
@@ -418,6 +596,7 @@ include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
 include("basic_recipes/raincloud.jl")
+
 include("deprecated.jl")
 
 export Heatmap, Image, Lines, LineSegments, Mesh, MeshScatter, Poly, Scatter, Surface, Text, Volume, Wireframe, Voxels

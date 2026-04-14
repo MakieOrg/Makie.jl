@@ -411,7 +411,8 @@ function initialize_block!(cb::Colorbar)
     end
 
     axis = LineAxis(
-        blockscene, endpoints = axispoints, flipped = cb.flipaxis,
+        blockscene, ComputePipeline.ComputeGraphView(cb.attributes, :axis),
+        endpoints = axispoints, flipped = cb.flipaxis,
         limits = lims, ticklabelalign = cb.ticklabelalign, label = cb.label,
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
@@ -423,7 +424,7 @@ function initialize_block!(cb::Colorbar)
         ticklabelrotation = cb.ticklabelrotation,
         tickwidth = cb.tickwidth, tickcolor = cb.tickcolor, spinewidth = cb.spinewidth,
         ticklabelspace = cb.ticklabelspace, ticklabelcolor = cb.ticklabelcolor,
-        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = cb.flip_vertical_label,
+        spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
         minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale
@@ -431,7 +432,7 @@ function initialize_block!(cb::Colorbar)
 
     cb.axis = axis
 
-    onany(blockscene, axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
+    onany(blockscene, cb.attributes.axis.protrusion, cb.vertical, cb.flipaxis) do axprotrusion,
             vertical, flipaxis
 
         left, right, top, bottom = 0.0f0, 0.0f0, 0.0f0, 0.0f0
@@ -450,18 +451,21 @@ function initialize_block!(cb::Colorbar)
             end
         end
 
-        cb.layoutobservables.protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        rs = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        if rs != cb.layoutobservables.protrusions[]
+            cb.layoutobservables.protrusions[] = rs
+        end
     end
 
     # trigger protrusions with one of the attributes
-    notify(cb.vertical)
+    notify(ComputePipeline.get_observable!(cb.vertical))
     # We set everything via the ColorMapping now. To be backwards compatible, we always set those fields:
     if (cb.colormap[] isa ColorMapping)
-        setfield!(cb, :limits, convert(Observable{Any}, limits))
-        setfield!(cb, :colormap, convert(Observable{Any}, cmap.colormap))
-        setfield!(cb, :highclip, convert(Observable{Any}, cmap.highclip))
-        setfield!(cb, :lowclip, convert(Observable{Any}, cmap.lowclip))
-        setfield!(cb, :scale, convert(Observable{Any}, cmap.scale))
+        on(x -> cb.limits = x, cb.blockscene, convert(Observable{Any}, limits), update = true)
+        on(x -> cb.colormap = x, cb.blockscene, convert(Observable{Any}, cmap.colormap), update = true)
+        on(x -> cb.highclip = x, cb.blockscene, convert(Observable{Any}, cmap.highclip), update = true)
+        on(x -> cb.lowclip = x, cb.blockscene, convert(Observable{Any}, cmap.lowclip), update = true)
+        on(x -> cb.scale = x, cb.blockscene, convert(Observable{Any}, cmap.scale), update = true)
     end
     # trigger bbox
     notify(cb.layoutobservables.suggestedbbox)

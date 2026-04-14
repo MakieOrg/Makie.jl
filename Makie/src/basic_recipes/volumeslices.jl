@@ -1,9 +1,17 @@
 """
-    volumeslices(x, y, z, v)
+Draws heatmap slices visualizing an xy, yz and xz plane of the volume data v.
 
-Draws heatmap slices of the volume `v`.
+## Arguments
+
+* `x, y, z, v` Defines the extends of the volume with `x, y, z` (any type that implements `extrema`)
+    and the volume data `v` (an `AbstractArray{3, Real}`).
 """
-@recipe VolumeSlices (x, y, z, volume) begin
+@recipe VolumeSlices (
+    x::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    y::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    z::Union{RangeLike{<:Real}, EndPoints{<:Real}},
+    volume::AbstractArray{<:Union{Real, Colorant}, 3},
+) begin
     documented_attributes(Heatmap)...
     "Controls whether the bounding box outline is visible"
     bbox_visible = true
@@ -11,7 +19,9 @@ Draws heatmap slices of the volume `v`.
     bbox_color = RGBAf(0.5, 0.5, 0.5, 0.5)
 end
 
-function Makie.plot!(plot::VolumeSlices)
+argument_dims(::Type{<:VolumeSlices}, x, y, z, vol) = (1, 2, 3)
+
+function plot!(plot::VolumeSlices)
     @extract plot (x, y, z, volume)
 
     map!(plot.attributes, [:colorrange, :volume], :computed_colorrange) do colorrange, volume

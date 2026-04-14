@@ -24,11 +24,13 @@ function _hist_center_weights(values, edges, normalization, scale_to, wgts)
 end
 
 """
-    stephist(values)
+Plot a step histogram which shows the outline of the histogram.
 
-Plot a step histogram of `values`.
+## Arguments
+
+* `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
-@recipe StepHist (values,) begin
+@recipe StepHist (values::RealVector,) begin
     documented_attributes(Stairs)...
 
     """
@@ -56,6 +58,8 @@ Plot a step histogram of `values`.
     scale_to = nothing
 end
 
+argument_dims(::Type{<:StepHist}, vals) = (1,)
+
 function plot!(plot::StepHist)
 
     map!(pick_hist_edges, plot, [:values, :bins], :edges)
@@ -79,11 +83,13 @@ function plot!(plot::StepHist)
 end
 
 """
-    hist(values)
+Plot a histogram which draws bars whose height corresponds to the number of values that fall into certain ranges.
 
-Plot a histogram of `values`.
+## Arguments
+
+* `values::AbstractVector{<:Real}` is the data to be histogrammed.
 """
-@recipe Hist (values,) begin
+@recipe Hist (values::Union{RealVector, Vector{<:RealVector}},) begin
     """
     Sets the number of bins if set to an integer or the edges of bins if set to
     an sorted collection of real numbers.
@@ -132,6 +138,17 @@ Plot a histogram of `values`.
     """
     color = @inherit patchcolor
 end
+
+function attribute_groups(::Type{<:Hist})
+    groups = attribute_groups(BarPlot)
+    idx = findfirst(entry -> entry[1] == "Label Attributes", groups)
+    group = groups[idx][2]
+    push!(group, :over_background_color, :over_bar_color)
+    return groups
+end
+
+argument_dim_kwargs(::Type{<:Hist}) = (:direction,)
+argument_dims(::Type{<:Hist}, vals; direction) = (ifelse(direction === :y, 1, 2),)
 
 function pick_hist_edges(vals, bins)
     if bins isa Int

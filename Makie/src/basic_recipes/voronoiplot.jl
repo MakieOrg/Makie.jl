@@ -1,15 +1,24 @@
 """
-    voronoiplot(x, y, values; kwargs...)
-    voronoiplot(values; kwargs...)
-    voronoiplot(x, y; kwargs...)
-    voronoiplot(positions; kwargs...)
-    voronoiplot(vorn::VoronoiTessellation; kwargs...)
+Generate and plot a Voronoi tessellation from heatmap-like or point-based data.
 
-Generates and plots a Voronoi tessalation from `heatmap`- or point-like data.
-The tessellation can also be passed directly as a `VoronoiTessellation` from
-DelaunayTriangulation.jl.
+The tessellation generates a cell for each passed position similar to `heatmap`,
+however the cells are not restricted to a rectangular shape.
+
+## Arguments
+
+* `xs, ys` where both are `AbstractVector{<:Real}` defining cell positions per dimension.
+* `xs, ys, values` where `xs` and `ys` are `AbstractVector{<:Real}` and `values` is either
+    `AbstractVector{<:Real}` or `AbstractMatrix{<:Real}` used for colormapping. When `values` is a
+    matrix, `xs` and `ys` are interpreted per matrix axes.
+* `positions::AbstractVector{<:VecTypes{D, <:Real}}` where positions are `Point`, `Vec` or `Tuple`
+    defining locations around which voronoi cells are formed. If a third dimension is present, it is
+    used for colormapping.
+* `values::AbstractMatrix{<:Real}` where `values` is the sole argument, in which case `xs` and `ys`
+    default to `axes(values, dim)`.
+* `vorn::VoronoiTessellation` where the tessellation from DelaunayTriangulation.jl is passed directly
+    to define the voronoi cells explicitly.
 """
-@recipe Voronoiplot begin
+@recipe Voronoiplot (input::Union{PointVector{N, <:Real} where {N}, DelTri.VoronoiTessellation},) begin
     "Determines whether to plot the individual generators."
     show_generators = true
     "If true, then the Voronoi tessellation is smoothed into a centroidal tessellation."
@@ -117,6 +126,7 @@ function convert_arguments(::Type{<:Voronoiplot}, mat::AbstractMatrix)
     return convert_arguments(PointBased(), axes(mat, 1), axes(mat, 2), mat)
 end
 convert_arguments(::Type{<:Voronoiplot}, xs, ys, zs) = convert_arguments(PointBased(), xs, ys, zs)
+argument_dims(::Type{Voronoiplot}, x, y, z) = (1, 2) # last dim treated as colormap values
 # For scatter-like inputs
 convert_arguments(::Type{<:Voronoiplot}, ps) = convert_arguments(PointBased(), ps)
 convert_arguments(::Type{<:Voronoiplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
@@ -126,12 +136,12 @@ function plot!(p::Voronoiplot{<:Tuple{<:Vector{<:Point{N}}}}) where {N}
 
     if N == 3
         # from call pattern (::Vector, ::Vector, ::Matrix)
-        map!(ps -> (Point2.(ps), last.(ps)), p, :converted_1, [:positions, :extracted_colors])
+        map!(ps -> (Point2.(ps), last.(ps)), p, :input, [:positions, :extracted_colors])
         positions = :positions
         color = :extracted_colors
     else
         # from xs, ys or Points call pattern
-        positions = :converted_1
+        positions = :input
         color = :color
     end
 
@@ -177,7 +187,7 @@ end
 boundingbox(p::Voronoiplot{<:Tuple{<:Vector{<:Point}}}, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
 function plot!(p::Voronoiplot{<:Tuple{<:DelTri.VoronoiTessellation}})
-    ComputePipeline.alias!(p.attributes, :converted_1, :vorn)
+    ComputePipeline.alias!(p.attributes, :input, :vorn)
 
     map!(p, [:color, :vorn], :calculated_colors) do color, vorn
         if color === automatic

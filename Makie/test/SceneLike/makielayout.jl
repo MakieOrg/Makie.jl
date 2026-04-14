@@ -65,7 +65,8 @@ end
 @testset "Axis limits basics" begin
     f = Figure()
     ax = Axis(f[1, 1], limits = (nothing, nothing))
-    ax.targetlimits[] = BBox(0, 10, 0, 20)
+    ax.localxlimits[] = (0.0, 10.0)
+    ax.localylimits[] = (0.0, 20.0)
     @test ax.finallimits[] == BBox(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
     xlims!(ax, -10, 10)
@@ -104,22 +105,22 @@ end
     @test ax.targetlimits[] == BBox(0, 5, 0, 6)
     @test ax.finallimits[] == BBox(0, 5, 0, 6)
     xlims!(ax, [-10, 10])
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 6)
     @test ax.finallimits[] == BBox(-10, 10, 0, 6)
     scatter!(Point2f(11, 12))
     reset_limits!(ax)
-    @test ax.limits[] == ([-10, 10], nothing)
+    @test ax.limits[] == ((-10, 10), nothing)
     @test ax.targetlimits[] == BBox(-10, 10, 0, 12)
     @test ax.finallimits[] == BBox(-10, 10, 0, 12)
     autolimits!(ax)
     ylims!(ax, [5, 7])
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(0, 11, 5, 7)
     @test ax.finallimits[] == BBox(0, 11, 5, 7)
     scatter!(Point2f(-5, -7))
     reset_limits!(ax)
-    @test ax.limits[] == (nothing, [5, 7])
+    @test ax.limits[] == (nothing, (5, 7))
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
     @test_throws MethodError limits!(f[1, 1], -1, 1, -1, 1)
@@ -259,7 +260,7 @@ end
         # https://github.com/MakieOrg/Makie.jl/issues/2278
         fig = Figure()
         cbar = Colorbar(fig[1, 1], colormap = :viridis, colorrange = Vec2f(0, 1))
-        ticklabel_strings = first.(cbar.axis.elements[:ticklabels].arg1[])
+        ticklabel_strings = cbar.axis.elements[:ticklabels].text[]
         @test ticklabel_strings[1] == "0.0"
         @test ticklabel_strings[end] == "1.0"
     end
@@ -545,12 +546,12 @@ end
 
     @test f isa Figure
     # The joint legend has two entries
-    @test length(leg.entrygroups[][][2]) == 2
+    @test length(leg.entrygroups[][1][2]) == 2
     # The first entry has two linked plots
-    @test length(leg.entrygroups[][][2][1].elements) == 2
+    @test length(leg.entrygroups[][1][2][1].elements) == 2
     # The two linked plots are the plots from two different axes
-    @test leg.entrygroups[][][2][1].elements[1].plots[] == l1a
-    @test leg.entrygroups[][][2][1].elements[2].plots[] == l2a
+    @test leg.entrygroups[][1][2][1].plots[1] == l1a
+    @test leg.entrygroups[][1][2][1].plots[2] == l2a
 end
 
 @testset "ReversibleScale" begin
