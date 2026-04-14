@@ -890,6 +890,67 @@ function color_per_mesh(ccolors, vertes_per_mesh)
     return result
 end
 
+"""
+    _metamesh_material_colors(mm::MetaMesh, color) -> Union{Vector{RGBAf}, Nothing}
+
+Extract per-vertex colors from MetaMesh material metadata (view_materials or
+material_palette).  Returns `nothing` when materials are absent or when the
+user already supplied an explicit color vector.
+"""
+function _metamesh_material_colors(mm::GeometryBasics.MetaMesh, color, colormap)
+    # If user explicitly set a color vector, don't override it
+    color isa AbstractVector{<:Colorant} && return nothing
+    # Materials are categorical — use :tab10 unless the user explicitly set a colormap
+    cmap_key = colormap === :viridis ? :tab10 : colormap
+
+    inner = mm.mesh
+
+    # Per-face path: FaceView{UInt32} indices + Dict palette
+    if hasproperty(inner, :material) && haskey(mm, :material_palette)
+        mat_attr = inner.material
+        indices_data = mat_attr isa GeometryBasics.FaceView ? mat_attr.data : mat_attr
+        # Map each unique material key to a distinct colormap color
+        unique_keys = sort!(collect(keys(mm[:material_palette])))
+        n_mats = length(unique_keys)
+        cmap = categorical_colors(cmap_key, n_mats)
+        key_to_color = Dict{UInt32, RGBAf}(
+            UInt32(k) => RGBAf(cmap[i]) for (i, k) in enumerate(unique_keys)
+        )
+        gb_faces = GeometryBasics.faces(inner)
+        n_verts = length(coordinates(inner))
+        vertex_colors = Vector{RGBAf}(undef, n_verts)
+        fill!(vertex_colors, RGBAf(0.8, 0.8, 0.8, 1))
+        for (fi, face) in enumerate(gb_faces)
+            c = get(key_to_color, indices_data[fi], RGBAf(0.8, 0.8, 0.8, 1))
+            for vi in face
+                vertex_colors[GeometryBasics.value(vi)] = c
+            end
+        end
+        return vertex_colors
+
+    # Per-view path: one material per mesh view
+    elseif haskey(mm, :view_materials)
+        gb_faces = GeometryBasics.faces(inner)
+        n_verts = length(coordinates(inner))
+        n_views = length(inner.views)
+        cmap = categorical_colors(cmap_key, n_views)
+        vertex_colors = Vector{RGBAf}(undef, n_verts)
+        fill!(vertex_colors, RGBAf(0.8, 0.8, 0.8, 1))
+        for (vi_idx, vr) in enumerate(inner.views)
+            c = RGBAf(cmap[vi_idx])
+            for fi in vr
+                face = gb_faces[fi]
+                for vi in face
+                    vertex_colors[GeometryBasics.value(vi)] = c
+                end
+            end
+        end
+        return vertex_colors
+    end
+
+    return nothing
+end
+
 function register_mesh_decomposition!(attr)
     # :arg1 is user input, :mesh is after convert_arguments and dim converts (?)
     map!(attr, :mesh, [:positions, :faces, :normals, :texturecoordinates]) do merged
@@ -904,11 +965,18 @@ function register_mesh_decomposition!(attr)
     end
 
     return map!(
-        attr, [:arg1, :mesh, :color], [:mesh_color, :interpolate_in_fragment_shader]
-    ) do meshes, merged, color
+        attr, [:arg1, :mesh, :color, :colormap], [:mesh_color, :interpolate_in_fragment_shader]
+    ) do meshes, merged, color, colormap
 
         if hasproperty(merged, :color)
             return (merged.color, true)
+        elseif merged isa GeometryBasics.MetaMesh
+            # Try to derive vertex colors from MetaMesh material metadata
+            mat_colors = _metamesh_material_colors(merged, color, colormap)
+            if mat_colors !== nothing
+                return (mat_colors, true)
+            end
+            return (color, true)
         elseif meshes isa Vector{<:AbstractGeometry} && color isa Vector && length(color) == length(meshes)
             _color = color_per_mesh(color, map(x -> length(coordinates(x)), meshes))
             return (_color, false)

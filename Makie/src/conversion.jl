@@ -149,3 +149,89 @@ function should_dim_convert(P, arg)
     isnothing(types_for_plot_arguments(P)) && return false
     return should_dim_convert(get_element_type(arg))
 end
+
+################################################################################
+#                           Material Conversion                                #
+################################################################################
+
+"""
+    convert_material(material) -> HikariBase.Material
+
+Convert a user-defined material type into a `HikariBase.Material` for rendering.
+
+Backends use `HikariBase.Material` as the canonical material representation:
+- TraceMakie/RayMakie: uses Hikari materials directly for path tracing
+- GLMakie/WGLMakie: converts Hikari materials to shader uniforms internally
+
+Users can extend this function for their own material types:
+
+```julia
+function Makie.convert_material(m::MySurfaceMaterial)
+    HikariBase.MatteMaterial(Kd=HikariBase.RGBSpectrum(m.albedo...))
+end
+```
+"""
+function convert_material end
+
+# Identity: HikariBase materials pass through unchanged
+convert_material(m::HikariBase.Material) = m
+
+# Vectors of materials
+convert_material(v::AbstractVector) = convert_material.(v)
+
+# Dict palette (UInt32 keys)
+function convert_material(d::AbstractDict{<:Integer})
+    Dict{UInt32, HikariBase.Material}(UInt32(k) => convert_material(v) for (k, v) in d)
+end
+
+# Fallback with helpful error
+function convert_material(m)
+    error("No `Makie.convert_material` method defined for $(typeof(m)). " *
+          "Define `Makie.convert_material(::$(typeof(m)))` to return a `HikariBase.Material`.")
+end
+
+"""
+    material_to_color(material::HikariBase.Material) -> RGBAf
+
+Extract a representative RGBA color from a HikariBase material for rasterization backends.
+"""
+function material_to_color end
+
+function _extract_color(tex::HikariBase.Texture)
+    if tex.isconst
+        v = tex.constval
+        if v isa HikariBase.RGBSpectrum
+            c = v.c
+            return RGBAf(c[1], c[2], c[3], c[4])
+        elseif v isa Real
+            return RGBAf(v, v, v, 1f0)
+        end
+    end
+    return RGBAf(0.8, 0.8, 0.8, 1)
+end
+
+material_to_color(m::HikariBase.MatteMaterial) = _extract_color(m.Kd)
+material_to_color(m::HikariBase.MirrorMaterial) = _extract_color(m.Kr)
+material_to_color(m::HikariBase.GlassMaterial) = _extract_color(m.Kt)
+material_to_color(m::HikariBase.ConductorMaterial) = _extract_color(m.reflectance)
+material_to_color(m::HikariBase.CoatedDiffuseMaterial) = _extract_color(m.reflectance)
+material_to_color(m::HikariBase.CoatedConductorMaterial) = _extract_color(m.reflectance)
+material_to_color(m::HikariBase.ThinDielectricMaterial) = RGBAf(0.95, 0.95, 0.95, 0.3)
+material_to_color(m::HikariBase.DiffuseTransmissionMaterial) = _extract_color(m.reflectance)
+material_to_color(m::HikariBase.CoatedDiffuseTransmissionMaterial) = _extract_color(m.reflectance)
+material_to_color(m::HikariBase.Emissive) = _extract_color(m.Le)
+function material_to_color(m::HikariBase.MediumInterface)
+    if !isnothing(m.emission)
+        # Blend emission with base color
+        base = material_to_color(m.material)
+        emit = material_to_color(m.emission)
+        return RGBAf(
+            min(1f0, base.r + emit.r * 0.5f0),
+            min(1f0, base.g + emit.g * 0.5f0),
+            min(1f0, base.b + emit.b * 0.5f0),
+            base.alpha
+        )
+    end
+    return material_to_color(m.material)
+end
+material_to_color(::HikariBase.Material) = RGBAf(0.8, 0.8, 0.8, 1)

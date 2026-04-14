@@ -590,6 +590,12 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N, T}) wher
     return (mesh,)
 end
 
+function convert_arguments(T::Type{<:Mesh}, mm::GeometryBasics.MetaMesh)
+    inner = mm.mesh
+    converted = convert_arguments(T, inner)[1]
+    return (GeometryBasics.MetaMesh(converted, mm.meta),)
+end
+
 function convert_arguments(
         T::Type{<:Mesh},
         meshes::AbstractVector{<:GeometryBasics.AbstractGeometry{DIM}}

@@ -694,8 +694,7 @@ function interactive_window(root_scene::Makie.Scene;
     root_w, root_h = size(root_scene)
     overlay_scene = Makie.Scene(root_scene; camera=Makie.campixel!)
     dummy = fill(RGB{Float32}(0, 0, 0), root_h, root_w)
-    imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, uv_transform=(:rotr90, :flip_y), overdraw=true)
-    translate!(imgp, 0, 0, 10000)
+    imgp = image!(overlay_scene, 0..root_w, 0..root_h, dummy; visible=false, inspectable=false, uv_transform=(:rotr90, :flip_y), overdraw=true)
     last_root_size = Ref((root_w, root_h))
     running = Threads.Atomic{Bool}(true)
 

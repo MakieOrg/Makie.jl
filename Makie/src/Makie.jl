@@ -24,6 +24,7 @@ using Random
 using FFMPEG_jll # get FFMPEG on any system!
 using Observables
 using GeometryBasics
+import HikariBase
 using PlotUtils
 using ColorBrewer
 using ColorTypes

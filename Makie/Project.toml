@@ -26,6 +26,7 @@ Format = "1fa38f19-a742-5d3f-a2b9-30dd87b9d5f8"
 FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
 FreeTypeAbstraction = "663a7486-cb36-511b-a19d-713bb74d65c9"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
+HikariBase = "d04ef8c3-9501-4b4a-88f8-81ec9dfb6a96"
 GridLayoutBase = "3955a311-db13-416c-9275-1d80ed98e5e9"
 ImageBase = "c817782e-172a-44cc-b673-b171935fbb9e"
 ImageIO = "82e4d734-157c-48bb-816b-45c225c6df19"
@@ -71,6 +72,7 @@ DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 
 [sources]
 ComputePipeline = {path = "../ComputePipeline"}
+HikariBase = {path = "../../HikariBase"}
 
 [extensions]
 MakieDynamicQuantitiesExt = "DynamicQuantities"

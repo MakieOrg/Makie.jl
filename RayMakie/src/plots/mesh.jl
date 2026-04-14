@@ -13,11 +13,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     end
 
     # 2. Everything → push to scene via Hikari
-    register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals,
-                                  :texturecoordinates, :trace_color_tex, :model_f32c],
-                          [:trace_renderobject]) do args, changed, last
+    inputs = [:mesh, :positions_transformed_f32c, :faces, :normals,
+              :texturecoordinates, :trace_color_tex, :model_f32c]
+    # Include _resolved_materials from MetaMesh recipe if available
+    if haskey(attr, :_resolved_materials)
+        push!(inputs, :_resolved_materials)
+    end
+
+    register_computation!(attr, inputs, [:trace_renderobject]) do args, changed, last
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
+
+        resolved = hasproperty(args, :_resolved_materials) ? args._resolved_materials : nothing
 
         if isnothing(last) || isnothing(last.trace_renderobject) ||
            changed.mesh || changed.positions_transformed_f32c || changed.faces ||
@@ -28,7 +35,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 
             robj = push_to_scene(args.mesh, hikari_scene, plot, color_tex,
                                   args.positions_transformed_f32c, args.faces,
-                                  args.normals, args.texturecoordinates, transform)
+                                  args.normals, args.texturecoordinates, transform,
+                                  resolved)
             state.needs_film_clear = true
             return (robj,)
         end
@@ -57,24 +65,68 @@ function extract_glb_diffuse_texture(mat_dict::Dict{String, Any})
     return Hikari.ConstTexture(to_spectrum(RGBf(diffuse[1], diffuse[2], diffuse[3])))
 end
 
+# Expand resolved materials to per-face vector
+function resolved_to_per_face(resolved, n_faces)
+    per_face = Vector{Hikari.Material}(undef, n_faces)
+    if hasproperty(resolved, :per_face) && resolved.per_face
+        # Per-face indices + palette
+        indices = resolved.indices
+        palette = resolved.palette
+        for fi in 1:n_faces
+            per_face[fi] = palette[indices[fi]]
+        end
+    elseif hasproperty(resolved, :view_materials)
+        # Per-view materials
+        for (vr, mat) in zip(resolved.views, resolved.view_materials)
+            for fi in vr
+                per_face[fi] = mat
+            end
+        end
+    end
+    return per_face
+end
+
 # MetaMesh: multi-material
 function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, color_tex,
-                       positions, faces, normals, uv, transform)
-    has_embedded = haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
-    if !has_embedded
-        return push_to_scene_simple(mesh_val.mesh, hikari_scene, plot, color_tex, transform)
+                       positions, faces, normals, uv, transform, resolved)
+    inner = mesh_val.mesh
+    gb_faces = GeometryBasics.faces(inner)
+    n_faces = length(gb_faces)
+
+    # Path 1: Per-face or per-view resolved materials (from Makie recipe)
+    if !isnothing(resolved) && (
+        (hasproperty(resolved, :per_face) && resolved.per_face) ||
+        hasproperty(resolved, :view_materials))
+        per_face_materials = resolved_to_per_face(resolved, n_faces)
+        handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
+        return (handle=handle, instance_idx=length(hikari_scene.accel.instances))
+    end
+
+    # Path 2: Legacy GLTF (resolved from recipe or directly from MetaMesh)
+    has_legacy = !isnothing(resolved) && hasproperty(resolved, :legacy_gltf) && resolved.legacy_gltf
+    if !has_legacy
+        has_legacy = haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
+    end
+
+    if !has_legacy
+        return push_to_scene_simple(inner, hikari_scene, plot, color_tex, transform)
     end
 
     # Check if user explicitly provided a material template
     user_material = haskey(plot, :material) && !isnothing(to_value(plot.material)) ?
         to_value(plot.material) : nothing
 
-    inner = mesh_val.mesh
     views = inner.views
-    mat_names = mesh_val[:material_names]
-    materials_dict = mesh_val[:materials]
-    gb_faces = GeometryBasics.faces(inner)
-    n_faces = length(gb_faces)
+    mat_names = if !isnothing(resolved) && hasproperty(resolved, :legacy_gltf)
+        resolved.names
+    else
+        mesh_val[:material_names]
+    end
+    materials_dict = if !isnothing(resolved) && hasproperty(resolved, :legacy_gltf)
+        resolved.materials
+    else
+        mesh_val[:materials]
+    end
 
     # Resolve per-face materials
     per_face_materials = Vector{Hikari.Material}(undef, n_faces)
@@ -113,7 +165,7 @@ end
 
 # Plain mesh: single material
 function push_to_scene(mesh_val, hikari_scene, plot, color_tex,
-                       positions, faces, normals_arg, uv, transform)
+                       positions, faces, normals_arg, uv, transform, resolved)
     push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform;
                           positions=positions, faces=faces, normals=normals_arg, uv=uv)
 end
