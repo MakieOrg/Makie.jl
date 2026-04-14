@@ -395,18 +395,25 @@ end
 
 # Common helper: place glyphs along a path given their arc-length positions.
 # `sample_fn(s)` returns `(point, tangent)` or `nothing`.
-function _place_glyphs_on_path(x_positions, chars, sample_fn, frac, total_text_len, total_path_len)
+# `y_offsets` (optional) are per-glyph perpendicular shifts (e.g. from sub/superscript baseline).
+function _place_glyphs_on_path(
+        x_positions, chars, sample_fn, frac, total_text_len, total_path_len;
+        y_offsets = nothing,
+    )
     positions = Point2f[]
     rotations = Quaternionf[]
     placed_chars = String[]
 
     start_s = frac * (total_path_len - total_text_len)
 
-    for (x, c) in zip(x_positions, chars)
+    for (i, (x, c)) in enumerate(zip(x_positions, chars))
         sample = sample_fn(start_s + x)
         sample === nothing && break
         pt, tangent = sample
         normal = Point2f(-tangent[2], tangent[1])
+        if y_offsets !== nothing && !iszero(y_offsets[i])
+            pt = pt + y_offsets[i] * normal
+        end
         push!(positions, pt)
         push!(rotations, to_rotation(Vec2f(normal)))
         push!(placed_chars, string(c))
@@ -497,6 +504,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
     length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
 
     x_positions = Float32[gc.origins[i][1] for i in 1:n]
+    y_offsets = Float32[gc.origins[i][2] for i in 1:n]
     scales = collect_vector(gc.scales, n)
     total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
 
@@ -505,7 +513,10 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
 
     frac = _parse_align(align)
     sample_fn = s -> _sample_polyline_at(working_path, s)
-    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    pos, rot, chars = _place_glyphs_on_path(
+        x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
+        y_offsets,
+    )
 
     # Wrap each placed glyph as a single-char RichText with its per-glyph style.
     # This lets the child text! handle font/color/size natively per block.
@@ -535,6 +546,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
 
     x_positions = Float32[gc.origins[i][1] for i in 1:n]
+    y_offsets = Float32[gc.origins[i][2] for i in 1:n]
     scales = collect_vector(gc.scales, n)
     total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
 
@@ -544,7 +556,10 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
 
     frac = _parse_align(align)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
-    pos, rot, placed_chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    pos, rot, placed_chars = _place_glyphs_on_path(
+        x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
+        y_offsets,
+    )
 
     m = length(pos)
     colors_vec = collect_vector(gc.colors, n)
