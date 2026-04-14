@@ -407,9 +407,11 @@ end
 
 # Common helper: place glyphs along a path given their arc-length positions.
 # `sample_fn(s)` returns `(point, tangent)` or `nothing`.
+# `advances` are the horizontal advance widths per glyph (used to compute the
+#   chord across each character for its rotation).
 # `y_offsets` (optional) are per-glyph perpendicular shifts (e.g. from sub/superscript baseline).
 function _place_glyphs_on_path(
-        x_positions, chars, sample_fn, frac, total_text_len, total_path_len;
+        x_positions, advances, chars, sample_fn, frac, total_text_len, total_path_len;
         y_offsets = nothing,
     )
     positions = Point2f[]
@@ -418,10 +420,28 @@ function _place_glyphs_on_path(
 
     start_s = frac * (total_path_len - total_text_len)
 
-    for (i, (x, c)) in enumerate(zip(x_positions, chars))
-        sample = sample_fn(start_s + x)
-        sample === nothing && break
-        pt, tangent = sample
+    for (i, (x, adv, c)) in enumerate(zip(x_positions, advances, chars))
+        s0 = start_s + x
+        sample_start = sample_fn(s0)
+        sample_start === nothing && break
+        pt, _ = sample_start
+
+        # Rotation from the chord spanning the character's advance width.
+        # Falls back to the tangent at the start if the end sample is unavailable.
+        sample_end = sample_fn(s0 + adv)
+        if sample_end !== nothing
+            pt_end, _ = sample_end
+            chord = pt_end - pt
+            chord_len = norm(chord)
+            if chord_len > 1.0f-6
+                tangent = Point2f(chord[1] / chord_len, chord[2] / chord_len)
+            else
+                tangent = sample_start[2]
+            end
+        else
+            tangent = sample_start[2]
+        end
+
         normal = Point2f(-tangent[2], tangent[1])
         if y_offsets !== nothing && !iszero(y_offsets[i])
             pt = pt + y_offsets[i] * normal
@@ -496,7 +516,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::Abstract
     x_positions = cumsum(advances) .- advances
     frac = _parse_halign(halign)
     sample_fn = s -> _sample_polyline_at(working_path, s)
-    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    pos, rot, chars = _place_glyphs_on_path(x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len)
     return (pos, rot, chars, nothing)
 end
 
@@ -521,7 +541,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, 
     x_positions = cumsum(advances) .- advances
     frac = _parse_halign(halign)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
-    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    pos, rot, chars = _place_glyphs_on_path(x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len)
     return (pos, rot, chars, nothing)
 end
 
@@ -545,7 +565,8 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
     x_positions = Float32[gc.origins[i][1] for i in 1:n]
     y_offsets = Float32[gc.origins[i][2] for i in 1:n]
     scales = collect_vector(gc.scales, n)
-    total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
+    advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
+    total_text_len = x_positions[end] + advances[end]
 
     working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
     total_path_len = _polyline_arc_length(working_path)
@@ -553,7 +574,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
     frac = _parse_halign(halign)
     sample_fn = s -> _sample_polyline_at(working_path, s)
     pos, rot, chars = _place_glyphs_on_path(
-        x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
+        x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len;
         y_offsets,
     )
 
@@ -587,7 +608,8 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     x_positions = Float32[gc.origins[i][1] for i in 1:n]
     y_offsets = Float32[gc.origins[i][2] for i in 1:n]
     scales = collect_vector(gc.scales, n)
-    total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
+    advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
+    total_text_len = x_positions[end] + advances[end]
 
     segs = _prepare_bezierpath(pixel_bp, _offset)
     isempty(segs) && return _empty_layout()
@@ -596,7 +618,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     frac = _parse_halign(halign)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
     pos, rot, chars = _place_glyphs_on_path(
-        x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
+        x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len;
         y_offsets,
     )
 
