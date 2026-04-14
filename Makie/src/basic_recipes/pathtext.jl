@@ -61,6 +61,29 @@ function convert_arguments(::Type{<:PathText}, path::BezierPath)
     return (path,)
 end
 
+# -- RichText helpers ----------------------------------------------------------
+
+function _richtext_chars(rt::RichText)
+    chars = Char[]
+    _collect_richtext_chars!(chars, rt)
+    return chars
+end
+
+function _collect_richtext_chars!(chars, rt::RichText)
+    for child in rt.children
+        _collect_richtext_chars!(chars, child)
+    end
+    return
+end
+
+function _collect_richtext_chars!(chars, s::String)
+    for c in s
+        c == '\n' && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
+        push!(chars, c)
+    end
+    return
+end
+
 # ==============================================================================
 # Cubic Bézier math
 # ==============================================================================
@@ -370,6 +393,28 @@ end
 # Layout
 # ==============================================================================
 
+# Common helper: place glyphs along a path given their arc-length positions.
+# `sample_fn(s)` returns `(point, tangent)` or `nothing`.
+function _place_glyphs_on_path(x_positions, chars, sample_fn, frac, total_text_len, total_path_len)
+    positions = Point2f[]
+    rotations = Quaternionf[]
+    placed_chars = String[]
+
+    start_s = frac * (total_path_len - total_text_len)
+
+    for (x, c) in zip(x_positions, chars)
+        sample = sample_fn(start_s + x)
+        sample === nothing && break
+        pt, tangent = sample
+        normal = Point2f(-tangent[2], tangent[1])
+        push!(positions, pt)
+        push!(rotations, to_rotation(Vec2f(normal)))
+        push!(placed_chars, string(c))
+    end
+
+    return (positions, rotations, placed_chars)
+end
+
 function _parse_align(align)
     frac = if align === :left
         0.0f0
@@ -385,13 +430,12 @@ function _parse_align(align)
     return frac
 end
 
-# Layout on a polyline
-function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::AbstractString, fontsize, font, fonts, align, offset)
-    positions = Point2f[]
-    rotations = Quaternionf[]
-    chars = String[]
+_empty_layout() = (Point2f[], Quaternionf[], String[], nothing)
 
-    (isempty(text) || length(pixel_path) < 2) && return (positions, rotations, chars)
+# --- String on polyline -------------------------------------------------------
+
+function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::AbstractString, fontsize, font, fonts, align, offset)
+    (isempty(text) || length(pixel_path) < 2) && return _empty_layout()
 
     _font = to_font(fonts, font)
     _fontsize = Float32(to_fontsize(fontsize))
@@ -404,70 +448,132 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::Abstract
     total_text_len = sum(advances; init = 0.0f0)
     total_path_len = _polyline_arc_length(working_path)
 
+    # x_positions: cumulative advance (start of each glyph)
+    x_positions = cumsum(advances) .- advances
     frac = _parse_align(align)
-    start_s = frac * (total_path_len - total_text_len)
-
-    s = start_s
-    for (c, adv) in zip(text_chars, advances)
-        sample = _sample_polyline_at(working_path, s)
-        sample === nothing && break
-        pt, tangent = sample
-        normal = Point2f(-tangent[2], tangent[1])
-        push!(positions, pt)
-        push!(rotations, to_rotation(Vec2f(normal)))
-        push!(chars, string(c))
-        s += adv
-    end
-
-    return (positions, rotations, chars)
+    sample_fn = s -> _sample_polyline_at(working_path, s)
+    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    return (pos, rot, chars, nothing)
 end
 
-# Layout on a BezierPath (native cubic evaluation)
-function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, font, fonts, align, offset)
-    positions = Point2f[]
-    rotations = Quaternionf[]
-    chars = String[]
+# --- String on BezierPath -----------------------------------------------------
 
-    isempty(text) && return (positions, rotations, chars)
+function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, font, fonts, align, offset)
+    isempty(text) && return _empty_layout()
 
     _font = to_font(fonts, font)
     _fontsize = Float32(to_fontsize(fontsize))
     _offset = Float64(offset)
 
     segs = _prepare_bezierpath(pixel_bp, _offset)
-    isempty(segs) && return (positions, rotations, chars)
+    isempty(segs) && return _empty_layout()
 
     text_chars = collect(text)
     advances = Float32[Float32(GlyphExtent(_font, c).hadvance) * _fontsize for c in text_chars]
     total_text_len = sum(advances; init = 0.0f0)
     total_path_len = Float32(_total_arclen(segs))
 
+    x_positions = cumsum(advances) .- advances
     frac = _parse_align(align)
-    start_s = frac * (total_path_len - total_text_len)
+    sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
+    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+    return (pos, rot, chars, nothing)
+end
 
-    s = start_s
-    for (c, adv) in zip(text_chars, advances)
-        sample = _sample_bezierpath_at(segs, s, _offset)
-        sample === nothing && break
-        pt, tangent = sample
-        normal = Point2f(-tangent[2], tangent[1])
-        push!(positions, pt)
-        push!(rotations, to_rotation(Vec2f(normal)))
-        push!(chars, string(c))
-        s += adv
-    end
+# --- RichText on polyline -----------------------------------------------------
 
-    return (positions, rotations, chars)
+function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText, fontsize, font, fonts, align, offset)
+    length(pixel_path) < 2 && return _empty_layout()
+
+    _fontsize = Float32(to_fontsize(fontsize))
+    _font = to_font(fonts, font)
+    _offset = Float32(offset)
+
+    gc = layout_text(text, _fontsize, _font, fonts, (:left, :baseline), to_rotation(0), :left, 1.0, RGBAf(0, 0, 0, 1))
+    n = length(gc.glyphs)
+    n == 0 && return _empty_layout()
+
+    text_chars = _richtext_chars(text)
+    length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
+
+    x_positions = Float32[gc.origins[i][1] for i in 1:n]
+    scales = collect_vector(gc.scales, n)
+    total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
+
+    working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
+    total_path_len = _polyline_arc_length(working_path)
+
+    frac = _parse_align(align)
+    sample_fn = s -> _sample_polyline_at(working_path, s)
+    pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+
+    # Wrap each placed glyph as a single-char RichText with its per-glyph style.
+    # This lets the child text! handle font/color/size natively per block.
+    m = length(pos)
+    colors_vec = collect_vector(gc.colors, n)
+    fonts_vec = collect_vector(gc.fonts, n)
+    scales_vec = collect_vector(gc.scales, n)
+    rt_chars = Union{String, RichText}[
+        rich(string(placed_chars[j]); color = colors_vec[j], font = fonts_vec[j], fontsize = scales_vec[j][1])
+            for j in 1:m
+    ]
+    return (pos, rot, rt_chars, nothing)
+end
+
+# --- RichText on BezierPath ---------------------------------------------------
+
+function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, fonts, align, offset)
+    _fontsize = Float32(to_fontsize(fontsize))
+    _font = to_font(fonts, font)
+    _offset = Float64(offset)
+
+    gc = layout_text(text, _fontsize, _font, fonts, (:left, :baseline), to_rotation(0), :left, 1.0, RGBAf(0, 0, 0, 1))
+    n = length(gc.glyphs)
+    n == 0 && return _empty_layout()
+
+    text_chars = _richtext_chars(text)
+    length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
+
+    x_positions = Float32[gc.origins[i][1] for i in 1:n]
+    scales = collect_vector(gc.scales, n)
+    total_text_len = x_positions[end] + gc.extents[end].hadvance * scales[end][1]
+
+    segs = _prepare_bezierpath(pixel_bp, _offset)
+    isempty(segs) && return _empty_layout()
+    total_path_len = Float32(_total_arclen(segs))
+
+    frac = _parse_align(align)
+    sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
+    pos, rot, placed_chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
+
+    m = length(pos)
+    colors_vec = collect_vector(gc.colors, n)
+    fonts_vec = collect_vector(gc.fonts, n)
+    scales_vec = collect_vector(gc.scales, n)
+    rt_chars = Union{String, RichText}[
+        rich(string(placed_chars[j]); color = colors_vec[j], font = fonts_vec[j], fontsize = scales_vec[j][1])
+            for j in 1:m
+    ]
+    return (pos, rot, rt_chars, nothing)
 end
 
 # ==============================================================================
 # plot!
 # ==============================================================================
 
+function _validate_pathtext(text::AbstractString)
+    occursin('\n', text) && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
+    return text
+end
+
+function _validate_pathtext(text::RichText)
+    _richtext_chars(text) # walks the tree; throws if newline found
+    return text
+end
+
 function plot!(p::PathText)
     map!(p.attributes, [:text], :_pathtext_validated_text) do text
-        occursin('\n', text) && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
-        return String(text)
+        return _validate_pathtext(text)
     end
 
     # Extract geometric control points from whatever path type we have.
@@ -489,11 +595,11 @@ function plot!(p::PathText)
         return _reassemble_path(px_pts, orig_path)
     end
 
-    # Compute per-character positions and rotations.
+    # Compute per-character positions, rotations, chars, and optional per-glyph styles.
     map!(
         p.attributes,
         [:_pathtext_pixel_path, :_pathtext_validated_text, :fontsize, :font, :fonts, :align, :offset],
-        [:_pathtext_positions, :_pathtext_rotations, :_pathtext_chars]
+        [:_pathtext_positions, :_pathtext_rotations, :_pathtext_chars, :_pathtext_glyph_styles]
     ) do pixel_path, text, fontsize, font, fonts, align, offset
         return _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset)
     end
