@@ -393,6 +393,16 @@ end
 # Layout
 # ==============================================================================
 
+# Layout a single-line RichText into a GlyphCollection with the baseline at y=0.
+# We call the layout sub-steps directly, skipping apply_alignment_and_justification!
+# which would shift all origins by the descender height.
+function _layout_richtext_for_path(text::RichText, fontsize, font, fonts)
+    lines = [GlyphInfo[]]
+    gs = GlyphState(0, 0, Vec2f(fontsize), font, RGBAf(0, 0, 0, 1))
+    process_rt_node!(lines, gs, text, fonts)
+    return GlyphCollection(reduce(vcat, lines))
+end
+
 # Common helper: place glyphs along a path given their arc-length positions.
 # `sample_fn(s)` returns `(point, tangent)` or `nothing`.
 # `y_offsets` (optional) are per-glyph perpendicular shifts (e.g. from sub/superscript baseline).
@@ -436,6 +446,14 @@ function _parse_align(align)
     end
     return frac
 end
+
+# Per-glyph style overrides from RichText layout (or `nothing` for plain strings
+# where the recipe's own color/font/fontsize attributes are used as-is).
+const _PathtextGlyphStyles = @NamedTuple{
+    colors::Vector{RGBAf},
+    fonts::Vector{NativeFont},
+    fontsizes::Vector{Float32},
+}
 
 _empty_layout() = (Point2f[], Quaternionf[], String[], nothing)
 
@@ -496,7 +514,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
     _font = to_font(fonts, font)
     _offset = Float32(offset)
 
-    gc = layout_text(text, _fontsize, _font, fonts, (:left, :baseline), to_rotation(0), :left, 1.0, RGBAf(0, 0, 0, 1))
+    gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
     n = length(gc.glyphs)
     n == 0 && return _empty_layout()
 
@@ -518,17 +536,16 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
         y_offsets,
     )
 
-    # Wrap each placed glyph as a single-char RichText with its per-glyph style.
-    # This lets the child text! handle font/color/size natively per block.
     m = length(pos)
     colors_vec = collect_vector(gc.colors, n)
     fonts_vec = collect_vector(gc.fonts, n)
     scales_vec = collect_vector(gc.scales, n)
-    rt_chars = Union{String, RichText}[
-        rich(string(placed_chars[j]); color = colors_vec[j], font = fonts_vec[j], fontsize = scales_vec[j][1])
-            for j in 1:m
-    ]
-    return (pos, rot, rt_chars, nothing)
+    styles = (
+        colors = colors_vec[1:m],
+        fonts = fonts_vec[1:m],
+        fontsizes = Float32[s[1] for s in scales_vec[1:m]],
+    )::_PathtextGlyphStyles
+    return (pos, rot, chars, styles)
 end
 
 # --- RichText on BezierPath ---------------------------------------------------
@@ -538,7 +555,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     _font = to_font(fonts, font)
     _offset = Float64(offset)
 
-    gc = layout_text(text, _fontsize, _font, fonts, (:left, :baseline), to_rotation(0), :left, 1.0, RGBAf(0, 0, 0, 1))
+    gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
     n = length(gc.glyphs)
     n == 0 && return _empty_layout()
 
@@ -556,7 +573,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
 
     frac = _parse_align(align)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
-    pos, rot, placed_chars = _place_glyphs_on_path(
+    pos, rot, chars = _place_glyphs_on_path(
         x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
         y_offsets,
     )
@@ -565,11 +582,12 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     colors_vec = collect_vector(gc.colors, n)
     fonts_vec = collect_vector(gc.fonts, n)
     scales_vec = collect_vector(gc.scales, n)
-    rt_chars = Union{String, RichText}[
-        rich(string(placed_chars[j]); color = colors_vec[j], font = fonts_vec[j], fontsize = scales_vec[j][1])
-            for j in 1:m
-    ]
-    return (pos, rot, rt_chars, nothing)
+    styles = (
+        colors = colors_vec[1:m],
+        fonts = fonts_vec[1:m],
+        fontsizes = Float32[s[1] for s in scales_vec[1:m]],
+    )::_PathtextGlyphStyles
+    return (pos, rot, chars, styles)
 end
 
 # ==============================================================================
@@ -619,15 +637,27 @@ function plot!(p::PathText)
         return _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset)
     end
 
+    # For RichText, per-glyph color/font/fontsize come from the layout.
+    # For plain strings, fall through to the recipe's own attributes.
+    map!(p.attributes, [:_pathtext_glyph_styles, :color], :_pathtext_color) do styles, user_color
+        styles !== nothing ? styles.colors : user_color
+    end
+    map!(p.attributes, [:_pathtext_glyph_styles, :font], :_pathtext_font) do styles, user_font
+        styles !== nothing ? styles.fonts : user_font
+    end
+    map!(p.attributes, [:_pathtext_glyph_styles, :fontsize], :_pathtext_fontsize) do styles, user_fs
+        styles !== nothing ? styles.fontsizes : user_fs
+    end
+
     text!(
         p,
         p._pathtext_positions;
         text = p._pathtext_chars,
         rotation = p._pathtext_rotations,
-        fontsize = p.fontsize,
-        font = p.font,
+        fontsize = p._pathtext_fontsize,
+        font = p._pathtext_font,
         fonts = p.fonts,
-        color = p.color,
+        color = p._pathtext_color,
         strokecolor = p.strokecolor,
         strokewidth = p.strokewidth,
         colormap = p.colormap,
