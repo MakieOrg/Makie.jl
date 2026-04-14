@@ -84,7 +84,7 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
     args = build_args(robj)
     tt = gfx_type_tuple(args)
     ds_layout = robj.bindings !== nothing ? robj.bindings.layout : nothing
-    vert_shader, compiled = Lava._ensure_compiled_with_shader!(robj.pipeline,
+    vert_shader, compiled = Lava.ensure_compiled_with_shader!(robj.pipeline,
         robj.pipeline.vertex, robj.pipeline.fragment, tt, tt;
         color_format=color_format, descriptor_set_layout=ds_layout)
 
@@ -96,7 +96,7 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
         push!(batch.data_refs, robj.bindings)
     end
 
-    push_data = Lava.pack_gfx_args(args, vert_shader.push_info)
+    push_data = Lava.pack_gfx_args(bq, args, vert_shader.push_info)
 
     if haskey(robj.buffers, :indices)
         ib = robj.buffers[:indices]

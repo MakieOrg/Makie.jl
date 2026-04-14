@@ -71,10 +71,15 @@ end
 # --- TLAS creation helper ---
 
 function meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances)
-    handles = Hikari.SceneHandle[]
-    for (transform, mat) in zip(transforms, materials)
-        handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
-        push!(handles, handle)
+    # One BLAS + N instances, per-instance material routed through
+    # `InstanceDescriptor.instance_id` (Hikari's `resolve_mi_idx` picks it
+    # up as a `medium_interface_idx` override).  Used to be N separate
+    # push!'es which built N identical-geometry BLASes (~1 GB / frame for
+    # a ~100-arrow dolphin scatter).
+    handles = if n_instances == 0
+        Hikari.SceneHandle[]
+    else
+        push!(hikari_scene, gb_mesh, collect(materials), collect(transforms))
     end
     state.needs_film_clear = true
     return (

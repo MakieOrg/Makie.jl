@@ -13,8 +13,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     end
 
     # 2. Everything → push to scene via Hikari (or overlay for 2D in overlay-only mode)
+    # `:material` is an input so that `Makie.update!(mesh; material=new)` cascades
+    # here: if only material changed, we swap it in-place on the existing scene
+    # handle via `Hikari.update_material!` (mirrors volume.jl's pattern) instead
+    # of rebuilding the BLAS/TLAS. Without this, live material updates leak GPU
+    # buffers and crash the ray traversal a few frames later.
     register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals,
-                                  :texturecoordinates, :trace_color_tex, :model_f32c],
+                                  :texturecoordinates, :trace_color_tex, :model_f32c, :material],
                           [:trace_renderobject]) do args, changed, last
         color_tex = args.trace_color_tex
         transform = Mat4f(args.model_f32c)
@@ -103,8 +108,47 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         if changed.model_f32c
             update_trace_transform!(hikari_scene, state, robj, transform)
         end
+        if changed.material
+            # Pass args.material raw (NOT through extract_material again).
+            # extract_material can wrap Kr/Kt/index into `Texture{...}` when
+            # Makie has since populated plot.color with a default, but the
+            # initial push stored the material unwrapped. MultiTypeSet.update!
+            # requires matching concrete types, so we must preserve whatever
+            # structure the user passed.
+            update_trace_material!(hikari_scene, state, robj, args.material)
+        end
         return (robj,)
     end
+end
+
+"""
+Swap the material (and inside/outside media, if `MediumInterface`) of an
+existing mesh scene handle in place — no BLAS/TLAS rebuild. Uses
+`Hikari.update_material!`, the same path the volume plot uses for density
+updates. Safe to call every frame.
+
+Accepts:
+- `Hikari.Material` — update just the surface BSDF
+- `Hikari.MediumInterface` — update surface BSDF AND swap inside/outside media
+- `nothing` — no-op (user cleared the override)
+"""
+function update_trace_material!(hikari_scene, state, robj, new_material)
+    hikari_scene === nothing && return
+    robj === nothing && return
+    h = hasproperty(robj, :handle) ? robj.handle : return
+    interface_idx = h isa Hikari.SceneHandle ? h.interface :
+                    hasproperty(robj, :mat_idx) ? robj.mat_idx : return
+    if new_material isa Hikari.MediumInterface
+        # Surface
+        Hikari.update_material!(hikari_scene, interface_idx, new_material.material)
+        # Inside medium (if present)
+        new_material.inside !== nothing &&
+            Hikari.update_material!(hikari_scene, interface_idx, new_material.inside)
+    elseif new_material isa Hikari.Material
+        Hikari.update_material!(hikari_scene, interface_idx, new_material)
+    end
+    state.needs_film_clear = true
+    return nothing
 end
 
 # =============================================================================

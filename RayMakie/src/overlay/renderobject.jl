@@ -132,7 +132,7 @@ function compile_robj!(robj::LavaRenderObject, args::Tuple;
     if ds_layout === nothing && robj.bindings !== nothing
         ds_layout = robj.bindings.layout
     end
-    vert_shader, compiled = Lava._ensure_compiled_with_shader!(pipeline,
+    vert_shader, compiled = Lava.ensure_compiled_with_shader!(pipeline,
         pipeline.vertex, pipeline.fragment, tt, tt;
         color_format, descriptor_set_layout=ds_layout)
     return vert_shader, compiled
