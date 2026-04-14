@@ -22,10 +22,12 @@ Newlines in `text` are not supported.
 - `color`: Text color. May be a single value or a vector with one entry per
   character.
 - `strokecolor`, `strokewidth`: Stroke styling; may be per-character.
-- `align = :left`: Alignment along the path. One of `:left`, `:center`, `:right`,
-  or a `Real` fraction (0 = start, 1 = end).
-- `offset = 0.0`: Perpendicular offset from the path in pixels. Positive values
-  shift the text to the left of the path's direction of travel.
+- `align = (:left, :baseline)`: Alignment as `(halign, valign)`. `halign` controls
+  position along the path (`:left`, `:center`, `:right`, or a `Real` 0–1).
+  `valign` controls perpendicular placement relative to font metrics
+  (`:baseline`, `:bottom`, `:center`, `:top`).
+- `offset = 0.0`: Additional perpendicular offset in pixels, applied on top of
+  `valign`. Positive values shift to the left of the path's travel direction.
 - `space = :data`: Coordinate space of the path; `:data` or `:pixel`.
 """
 @recipe PathText (path,) begin
@@ -43,9 +45,9 @@ Newlines in `text` are not supported.
     strokewidth = 0
     "Font size in pixels."
     fontsize = @inherit fontsize
-    "Alignment of the text along the path. One of `:left`, `:center`, `:right`, or a `Real` fraction between 0 (start) and 1 (end)."
-    align = :left
-    "Perpendicular offset (in pixels) from the path. Positive values shift the text to the left of the path's direction of travel."
+    "Alignment of the text relative to the path, as a `(halign, valign)` tuple. `halign` controls position along the path (`:left`, `:center`, `:right`, or a `Real` fraction 0–1). `valign` controls perpendicular placement (`:baseline`, `:bottom`, `:center`, `:top`)."
+    align = (:left, :baseline)
+    "Additional perpendicular offset (in pixels) from the path, applied on top of `valign`. Positive values shift the text to the left of the path's direction of travel."
     offset = 0.0f0
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
@@ -432,19 +434,35 @@ function _place_glyphs_on_path(
     return (positions, rotations, placed_chars)
 end
 
-function _parse_align(align)
-    frac = if align === :left
+function _parse_halign(ha)
+    return if ha === :left
         0.0f0
-    elseif align === :center
+    elseif ha === :center
         0.5f0
-    elseif align === :right
+    elseif ha === :right
         1.0f0
-    elseif align isa Real
-        Float32(align)
+    elseif ha isa Real
+        Float32(ha)
     else
-        throw(ArgumentError("Invalid `align = $(repr(align))` for `pathtext`. Expected `:left`, `:center`, `:right`, or a `Real`."))
+        throw(ArgumentError("Invalid halign $(repr(ha)) for `pathtext`. Expected `:left`, `:center`, `:right`, or a `Real`."))
     end
-    return frac
+end
+
+# Compute perpendicular baseline shift from valign and font metrics (ascender/descender in pixels).
+# Positive result shifts text in the +normal direction (left of path travel).
+function _valign_shift(va, fontsize, font)
+    va === :baseline && return 0.0f0
+    asc = Float32(FreeTypeAbstraction.ascender(font)) * fontsize
+    desc = Float32(FreeTypeAbstraction.descender(font)) * fontsize  # negative
+    return if va === :bottom
+        -desc    # shift up so descender sits on path
+    elseif va === :top
+        -asc     # shift down so ascender sits on path
+    elseif va === :center
+        -(asc + desc) / 2   # center of typographic extent on path
+    else
+        throw(ArgumentError("Invalid valign $(repr(va)) for `pathtext`. Expected `:baseline`, `:bottom`, `:center`, or `:top`."))
+    end
 end
 
 # Per-glyph style overrides from RichText layout (or `nothing` for plain strings
@@ -464,7 +482,8 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::Abstract
 
     _font = to_font(fonts, font)
     _fontsize = Float32(to_fontsize(fontsize))
-    _offset = Float32(offset)
+    halign, valign = align
+    _offset = Float32(offset) + _valign_shift(valign, _fontsize, _font)
 
     working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
 
@@ -475,7 +494,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::Abstract
 
     # x_positions: cumulative advance (start of each glyph)
     x_positions = cumsum(advances) .- advances
-    frac = _parse_align(align)
+    frac = _parse_halign(halign)
     sample_fn = s -> _sample_polyline_at(working_path, s)
     pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
     return (pos, rot, chars, nothing)
@@ -488,7 +507,8 @@ function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, 
 
     _font = to_font(fonts, font)
     _fontsize = Float32(to_fontsize(fontsize))
-    _offset = Float64(offset)
+    halign, valign = align
+    _offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
 
     segs = _prepare_bezierpath(pixel_bp, _offset)
     isempty(segs) && return _empty_layout()
@@ -499,7 +519,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, 
     total_path_len = Float32(_total_arclen(segs))
 
     x_positions = cumsum(advances) .- advances
-    frac = _parse_align(align)
+    frac = _parse_halign(halign)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
     pos, rot, chars = _place_glyphs_on_path(x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len)
     return (pos, rot, chars, nothing)
@@ -510,9 +530,10 @@ end
 function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText, fontsize, font, fonts, align, offset)
     length(pixel_path) < 2 && return _empty_layout()
 
-    _fontsize = Float32(to_fontsize(fontsize))
     _font = to_font(fonts, font)
-    _offset = Float32(offset)
+    _fontsize = Float32(to_fontsize(fontsize))
+    halign, valign = align
+    _offset = Float32(offset) + _valign_shift(valign, _fontsize, _font)
 
     gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
     n = length(gc.glyphs)
@@ -529,7 +550,7 @@ function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText
     working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
     total_path_len = _polyline_arc_length(working_path)
 
-    frac = _parse_align(align)
+    frac = _parse_halign(halign)
     sample_fn = s -> _sample_polyline_at(working_path, s)
     pos, rot, chars = _place_glyphs_on_path(
         x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
@@ -553,7 +574,8 @@ end
 function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, fonts, align, offset)
     _fontsize = Float32(to_fontsize(fontsize))
     _font = to_font(fonts, font)
-    _offset = Float64(offset)
+    halign, valign = align
+    _offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
 
     gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
     n = length(gc.glyphs)
@@ -571,7 +593,7 @@ function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, 
     isempty(segs) && return _empty_layout()
     total_path_len = Float32(_total_arclen(segs))
 
-    frac = _parse_align(align)
+    frac = _parse_halign(halign)
     sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
     pos, rot, chars = _place_glyphs_on_path(
         x_positions, text_chars, sample_fn, frac, total_text_len, total_path_len;
