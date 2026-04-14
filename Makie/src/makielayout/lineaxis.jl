@@ -255,7 +255,15 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
     # make sure we update tick calculation when needed
     obs = needs_tick_update_observable(dim_convert)
     if !isnothing(obs)
-        on(x -> ComputePipeline.mark_dirty!(dim_convert), obs)
+        on(obs) do _
+            # mark_dirty!(node) is not allowed to run while the parent or any
+            # of its dependents are part of a running resolve. The observable
+            # may trigger as part of get_ticks() though, which is called during
+            # resolve. To avoid a deadlock, we do this asynchronously
+            @async ComputePipeline.mark_dirty!(dim_convert)
+            yield() # give it a chance to run immediately
+            return
+        end
     end
 
     map!(

@@ -712,8 +712,7 @@ function Makie.plot!(p::HeatmapShader)
     end
     add_input!(p.attributes, :slow_limits, slow_limits)
 
-    map!(p.attributes, :resolution, :max_resolution) do resolution
-        resampler = p.image[]
+    map!(p.attributes, [:resolution, :image], :max_resolution) do resolution, resampler
         res = resampler.max_resolution isa Automatic ? resolution : resampler.max_resolution
         return round.(Int, max.(res, 512)) # Not sure why, but viewport can become (1, 1)
     end
@@ -753,7 +752,10 @@ function Makie.plot!(p::HeatmapShader)
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer
-    lp = image!(p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate, colorrange = p.computed_colorrange)
+    lp = image!(
+        p, p.x, p.y, p.overview_image; gpa..., cpa..., interpolate = p.interpolate,
+        colorrange = p.computed_colorrange
+    )
     translate!(lp, 0, 0, -1)
 
     image!(

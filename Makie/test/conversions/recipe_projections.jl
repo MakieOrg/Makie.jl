@@ -44,9 +44,9 @@ using Makie: is_identity_transform
             return p4d[Vec(1, 2, 3)] / p4d[4]
         end
 
-        # Nodes added: dynamic matrix name, camera matrix, combined matrix, output
+        # Nodes added: camera matrix, combined matrix, output
         run_checks(
-            Symbol(space, :_positions), projected, 4;
+            Symbol(space, :_positions), projected, 3;
             output_space = space
         )
     end

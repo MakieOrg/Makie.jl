@@ -99,7 +99,8 @@ function set_proj_view!(camera::Camera, projection, view)
     # But nobody should do that, right?
     # GLMakie uses map on view
     camera.view[] = view
-    return camera.projection[] = projection
+    camera.projection[] = projection
+    return
 end
 
 is_mouseinside(x, target) = is_mouseinside(get_scene(x), target)
@@ -319,32 +320,76 @@ function get_space_to_space_matrix(scene, input_space::Symbol, output_space::Sym
     return get_preprojection(get_scene(scene).compute, input_space, output_space)
 end
 
-struct CameraMatrixCallback <: Function
-    graph::ComputeGraph
-end
-(cb::CameraMatrixCallback)(_, names) = map(name -> Mat4f(cb.graph[name][]::Mat4d), names)
-
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
+    space = plot_graph.space[]
 
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
     if haskey(plot_graph, :markerspace)
-        map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-            return get_projectionview_name(markerspace), get_projection_name(markerspace),
-                get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
-        end
+        markerspace = plot_graph.markerspace[]
+
+        inputs = [
+            scene_graph[get_projectionview_name(markerspace)],
+            scene_graph[get_projection_name(markerspace)],
+            scene_graph[get_view_name(markerspace)],
+            scene_graph[get_camera_matrix_name(space, markerspace)],
+        ]
         push!(output_keys, :preprojection)
+
+        for (input, output) in zip(inputs, output_keys)
+            add_input!(M -> Mat4f(M), plot_graph, output, input)
+        end
+
+        # replace edge sources when space changes
+        on(plot_graph.markerspace) do markerspace
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projectionview,
+                scene_graph[get_projectionview_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projection,
+                scene_graph[get_projection_name(markerspace)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.view,
+                scene_graph[get_view_name(markerspace)]
+            )
+        end
+
+        onany(plot_graph.space, plot_graph.markerspace) do space, markerspace
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.preprojection,
+                scene_graph[get_camera_matrix_name(space, markerspace)]
+            )
+        end
+
     else
-        map!(plot_graph, :space, :camera_matrix_names) do space
-            return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+        inputs = [
+            scene_graph[get_projectionview_name(space)],
+            scene_graph[get_projection_name(space)],
+            scene_graph[get_view_name(space)],
+        ]
+
+        for (input, output) in zip(inputs, output_keys)
+            add_input!(M -> Mat4f(M), plot_graph, output, input)
+        end
+
+        # replace edge sources when space changes
+        on(plot_graph.space) do space
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projectionview,
+                scene_graph[get_projectionview_name(space)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.projection,
+                scene_graph[get_projection_name(space)]
+            )
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph.view,
+                scene_graph[get_view_name(space)]
+            )
         end
     end
-
-    input_keys = Computed[scene_graph.camera_trigger, plot_graph.camera_matrix_names]
-
-    # Update camera matrices in plot if space changed or a relevant camera update happened
-    callback = CameraMatrixCallback(scene_graph)
-    map!(callback, plot_graph, input_keys, output_keys)
 
     return
 end
@@ -421,6 +466,7 @@ function register_camera_matrix!(
     isconst(x::Symbol) = true
     isconst(x::Computed) = false
 
+
     if isconst(_input) && isconst(_output)
         # both spaces are constant so we don't need to be able to switch to a
         # different camera.
@@ -428,20 +474,34 @@ function register_camera_matrix!(
         return matrix_name
     end
 
-    # dynamic case (space and/or markerspace used)
-    # Need to build name of the matrix dynamically before fetching it
-    name_name = Symbol(matrix_name, :_name)
+    # otherwise we need to replace the source(s)
 
+    # temporarily connect some random input, on/onany will update this
+    add_input!(M -> Mat4f(M), plot_graph, matrix_name, scene_graph.clip_to_clip)
+
+    # setup replacers
     if !isconst(_input) && isconst(_output)
-        map!(a -> get_camera_matrix_name(a, output), plot_graph, _input, name_name)
+        on(_input, update = true) do dynamic_input
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(dynamic_input, output)]
+            )
+        end
     elseif isconst(_input) && !isconst(_output)
-        map!(b -> get_camera_matrix_name(input, b), plot_graph, _output, name_name)
+        on(_output, update = true) do dynamic_output
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(input, dynamic_output)]
+            )
+        end
     else
-        map!(get_camera_matrix_name, plot_graph, [_input, _output], name_name)
+        onany(_input, _output, update = true) do dynamic_input, dynamic_output
+            ComputePipeline.unsafe_replace_source!(
+                plot_graph[matrix_name],
+                scene_graph[get_camera_matrix_name(dynamic_input, dynamic_output)]
+            )
+        end
     end
-
-    inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
-    map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
 
     return matrix_name
 end
