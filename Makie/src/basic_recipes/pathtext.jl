@@ -8,30 +8,12 @@ When a `BezierPath` is provided, glyphs are positioned and oriented using exact
 cubic-Bézier evaluation, giving smooth tangent rotations. A polyline input is
 sampled piecewise-linearly.
 
-Text is always rendered at pixel size (`fontsize` is in pixels) because the glyphs
-are placed visually along the path. The path itself may be given in `:data` or
-`:pixel` space, controlled by the `space` attribute.
+The path itself may be given in `:data` or `:pixel` space, controlled by the `space` attribute.
 
-Newlines in `text` are not supported.
-
-# Attributes
-
-- `text = ""`: The text to place along the path. Must not contain newlines.
-- `fontsize`: The font size in pixels.
-- `font`, `fonts`: Font settings (as for `text`).
-- `color`: Text color. May be a single value or a vector with one entry per
-  character.
-- `strokecolor`, `strokewidth`: Stroke styling; may be per-character.
-- `align = (:left, :baseline)`: Alignment as `(halign, valign)`. `halign` controls
-  position along the path (`:left`, `:center`, `:right`, or a `Real` 0–1).
-  `valign` controls perpendicular placement relative to font metrics
-  (`:baseline`, `:bottom`, `:center`, `:top`).
-- `offset = 0.0`: Additional perpendicular offset in pixels, applied on top of
-  `valign`. Positive values shift to the left of the path's travel direction.
-- `space = :data`: Coordinate space of the path; `:data` or `:pixel`.
+Newlines in `text` are currently not supported.
 """
 @recipe PathText (path,) begin
-    "The text to place along the path. Must not contain newlines."
+    "The text to place along the path. May be `String` or `RichText`. Must not contain newlines."
     text = ""
     "The color of the text. May be a single value or a vector with one entry per character."
     color = @inherit textcolor
@@ -40,7 +22,7 @@ Newlines in `text` are not supported.
     "Dictionary of fonts that can be referenced by `Symbol`."
     fonts = @inherit fonts
     "Color of the text stroke. May be per-character."
-    strokecolor = (:black, 0.0)
+    strokecolor = :black
     "Width of the text stroke in pixels. May be per-character."
     strokewidth = 0
     "Font size in pixels."
@@ -212,23 +194,32 @@ struct _PreparedSegment
     p2::Point2d           # control 2 (cubic)
     p3::Point2d           # end (cubic)
     arclen::Float64       # (offset) arc length
+    subpath_id::Int       # incremented on each MoveTo (to detect sub-path gaps)
 end
 
 function _prepare_bezierpath(bp::BezierPath, d::Real = 0.0)
     bp2 = replace_nonfreetype_commands(bp)
     segs = _PreparedSegment[]
     last_pt = Point2d(0, 0)
+    subpath_id = 0
+    started = false
     for cmd in bp2.commands
         if cmd isa MoveTo
             last_pt = cmd.p
+            if started
+                subpath_id += 1
+            end
+            started = true
         elseif cmd isa LineTo
+            started || (subpath_id += 1; started = true)
             len = norm(cmd.p - last_pt)
-            push!(segs, _PreparedSegment(:line, last_pt, cmd.p, Point2d(0), Point2d(0), len))
+            push!(segs, _PreparedSegment(:line, last_pt, cmd.p, Point2d(0), Point2d(0), len, subpath_id))
             last_pt = cmd.p
         elseif cmd isa CurveTo
+            started || (subpath_id += 1; started = true)
             len = iszero(d) ? _cubic_arclen(last_pt, cmd.c1, cmd.c2, cmd.p) :
                 _cubic_offset_arclen(last_pt, cmd.c1, cmd.c2, cmd.p, d)
-            push!(segs, _PreparedSegment(:cubic, last_pt, cmd.c1, cmd.c2, cmd.p, len))
+            push!(segs, _PreparedSegment(:cubic, last_pt, cmd.c1, cmd.c2, cmd.p, len, subpath_id))
             last_pt = cmd.p
         end
     end
@@ -259,13 +250,13 @@ function _sample_bezierpath_at(segs::Vector{_PreparedSegment}, s::Real, d::Real 
                     nx, ny = -tangent[2], tangent[1]
                     pt = pt + Float32(d) * Point2f(nx, ny)
                 end
-                return (pt, tangent)
+                return (pt, tangent, seg.subpath_id)
             else # :cubic
                 t = _cubic_inv_arclen(seg.p0, seg.p1, seg.p2, seg.p3, local_s, seg.arclen, d)
                 tangent = _cubic_unit_tangent(seg.p0, seg.p1, seg.p2, seg.p3, t)
                 pt = iszero(d) ? Point2f(_cubic_eval(seg.p0, seg.p1, seg.p2, seg.p3, t)...) :
                     _cubic_offset_point(seg.p0, seg.p1, seg.p2, seg.p3, t, d)
-                return (pt, tangent)
+                return (pt, tangent, seg.subpath_id)
             end
         end
         accum += seg.arclen
@@ -332,10 +323,19 @@ end
 function _sample_polyline_at(points::AbstractVector{<:VecTypes}, s::Real)
     s < 0 && return nothing
     accum = 0.0
+    subpath_id = 0
+    prev_was_nan = true   # so the very first valid segment starts sub-path 0
     @inbounds for i in 1:(length(points) - 1)
         p1 = points[i]
         p2 = points[i + 1]
-        (any(isnan, p1) || any(isnan, p2)) && continue
+        if any(isnan, p1) || any(isnan, p2)
+            prev_was_nan = true
+            continue
+        end
+        if prev_was_nan
+            subpath_id += 1
+            prev_was_nan = false
+        end
         v = p2 - p1
         seglen = norm(v)
         iszero(seglen) && continue
@@ -343,7 +343,7 @@ function _sample_polyline_at(points::AbstractVector{<:VecTypes}, s::Real)
             t = (s - accum) / seglen
             unit_tangent = Point2f(v[1] / seglen, v[2] / seglen)
             pt = Point2f(p1[1] + t * v[1], p1[2] + t * v[2])
-            return (pt, unit_tangent)
+            return (pt, unit_tangent, subpath_id)
         end
         accum += seglen
     end
@@ -429,22 +429,23 @@ function _place_glyphs_on_path(
         s0 = start_s + x
         sample_start = sample_fn(s0)
         sample_start === nothing && break
-        pt, _ = sample_start
+        pt, start_tangent, start_subpath = sample_start
 
         # Rotation from the chord spanning the character's advance width.
-        # Falls back to the tangent at the start if the end sample is unavailable.
+        # Falls back to the tangent at the start if the end sample is unavailable
+        # or lands on a different sub-path (avoids bridging NaN gaps).
         sample_end = sample_fn(s0 + adv)
-        if sample_end !== nothing
-            pt_end, _ = sample_end
-            chord = pt_end - pt
-            chord_len = norm(chord)
-            if chord_len > 1.0f-6
-                tangent = Point2f(chord[1] / chord_len, chord[2] / chord_len)
+        tangent = if sample_end !== nothing
+            pt_end, _, end_subpath = sample_end
+            if end_subpath != start_subpath
+                start_tangent
             else
-                tangent = sample_start[2]
+                chord = pt_end - pt
+                chord_len = norm(chord)
+                chord_len > 1.0f-6 ? Point2f(chord[1] / chord_len, chord[2] / chord_len) : start_tangent
             end
         else
-            tangent = sample_start[2]
+            start_tangent
         end
 
         normal = Point2f(-tangent[2], tangent[1])
