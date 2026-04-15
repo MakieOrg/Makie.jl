@@ -769,7 +769,7 @@ function attribute_examples(::Type{PathText})
         ],
         :align => [
             Example(;
-                code = """
+                code = raw"""
                 bp = BezierPath([
                     MoveTo(Point2(0, 0)),
                     CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
@@ -777,7 +777,7 @@ function attribute_examples(::Type{PathText})
                 fig = Figure(size = (800, 600))
                 for (i, va) in enumerate((:top, :center, :baseline, :bottom))
                     r, c = fldmod1(i, 2)
-                    ax = Axis(fig[r, c], aspect = DataAspect(), title = "valign = \\$(repr(va))",
+                    ax = Axis(fig[r, c], aspect = DataAspect(), title = "valign = $(repr(va))",
                         limits = (nothing, (-0.5, 3)))
                     lines!(ax, bp, color = (:steelblue, 0.5), linewidth = 2)
                     pathtext!(ax, bp, text = "Text along a path", fontsize = 22,
@@ -789,7 +789,7 @@ function attribute_examples(::Type{PathText})
         ],
         :offset => [
             Example(;
-                code = """
+                code = raw"""
                 bp = BezierPath([
                     MoveTo(Point2(0, 0)),
                     CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
@@ -798,7 +798,7 @@ function attribute_examples(::Type{PathText})
                 ax = Axis(fig[1, 1], aspect = DataAspect(), limits = (nothing, (-0.5, 3)))
                 lines!(ax, bp, color = (:gray, 0.4), linewidth = 2)
                 for (off, col) in zip((-15, 0, 15), (:red, :black, :blue))
-                    pathtext!(ax, bp, text = "offset = \\$off", fontsize = 14,
+                    pathtext!(ax, bp, text = "offset = $off", fontsize = 14,
                         align = (:center, :baseline), offset = off, color = col)
                 end
                 fig
