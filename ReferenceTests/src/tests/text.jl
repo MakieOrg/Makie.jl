@@ -593,7 +593,7 @@ end
             MoveTo(Point2(0.0, 0.0)),
             LineTo(Point2(1.5, 0.0)),
             CurveTo(Point2(2.5, 1.5), Point2(3.5, -1.5), Point2(4.5, 0.0)),
-            EllipticalArc(Point2(5.5, 0.0), 1.0, 0.6, 0.0, π, 0.0),
+            Makie.EllipticalArc(Point2(5.5, 0.0), 1.0, 0.6, 0.0, π, 0.0),
         ]
     )
     pts = Makie.convert_arguments(Makie.PointBased(), bp)[1]
