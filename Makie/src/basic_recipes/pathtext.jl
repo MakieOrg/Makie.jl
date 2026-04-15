@@ -157,7 +157,9 @@ function _cubic_inv_arclen(p0, p1, p2, p3, target, total_len, d = 0.0)
     target <= 0 && return 0.0
     target >= total_len && return 1.0
     lo, hi = 0.0, 1.0
-    for _ in 1:30
+    # 20 iterations of bisection → ≈ 1e-6 precision on the parameter, which is
+    # below sub-pixel accuracy for any realistic font size.
+    for _ in 1:20
         mid = 0.5 * (lo + hi)
         s = iszero(d) ? _cubic_arclen(p0, p1, p2, p3, 0.0, mid) :
             _cubic_offset_arclen(p0, p1, p2, p3, d, 0.0, mid)
@@ -199,6 +201,7 @@ struct _PreparedSegment
     p2::Point2d           # control 2 (cubic)
     p3::Point2d           # end (cubic)
     arclen::Float64       # (offset) arc length
+    cum_end::Float64      # cumulative arc length at the end of this segment
     subpath_id::Int       # incremented on each MoveTo (to detect sub-path gaps)
 end
 
@@ -207,6 +210,7 @@ function _prepare_bezierpath(bp::BezierPath, d::Real = 0.0)
     segs = _PreparedSegment[]
     last_pt = Point2d(0, 0)
     subpath_id = 0
+    cum = 0.0
     started = false
     for cmd in bp2.commands
         if cmd isa MoveTo
@@ -218,22 +222,22 @@ function _prepare_bezierpath(bp::BezierPath, d::Real = 0.0)
         elseif cmd isa LineTo
             started || (subpath_id += 1; started = true)
             len = norm(cmd.p - last_pt)
-            push!(segs, _PreparedSegment(:line, last_pt, cmd.p, Point2d(0), Point2d(0), len, subpath_id))
+            cum += len
+            push!(segs, _PreparedSegment(:line, last_pt, cmd.p, Point2d(0), Point2d(0), len, cum, subpath_id))
             last_pt = cmd.p
         elseif cmd isa CurveTo
             started || (subpath_id += 1; started = true)
             len = iszero(d) ? _cubic_arclen(last_pt, cmd.c1, cmd.c2, cmd.p) :
                 _cubic_offset_arclen(last_pt, cmd.c1, cmd.c2, cmd.p, d)
-            push!(segs, _PreparedSegment(:cubic, last_pt, cmd.c1, cmd.c2, cmd.p, len, subpath_id))
+            cum += len
+            push!(segs, _PreparedSegment(:cubic, last_pt, cmd.c1, cmd.c2, cmd.p, len, cum, subpath_id))
             last_pt = cmd.p
         end
     end
     return segs
 end
 
-function _total_arclen(segs::Vector{_PreparedSegment})
-    return sum(s.arclen for s in segs; init = 0.0)
-end
+_total_arclen(segs::Vector{_PreparedSegment}) = isempty(segs) ? 0.0 : segs[end].cum_end
 
 """
 Sample a prepared BezierPath at arc-length `s`. Returns `(point, tangent)` or
@@ -241,32 +245,40 @@ Sample a prepared BezierPath at arc-length `s`. Returns `(point, tangent)` or
 """
 function _sample_bezierpath_at(segs::Vector{_PreparedSegment}, s::Real, d::Real = 0.0)
     s < 0 && return nothing
-    accum = 0.0
-    for seg in segs
-        if accum + seg.arclen >= s
-            local_s = s - accum
-            if seg.kind === :line
-                frac = seg.arclen > 0 ? local_s / seg.arclen : 0.0
-                v = seg.p1 - seg.p0
-                len = norm(v)
-                tangent = len > 0 ? Point2f(v[1] / len, v[2] / len) : Point2f(1, 0)
-                pt = Point2f(seg.p0[1] + frac * v[1], seg.p0[2] + frac * v[2])
-                if !iszero(d)
-                    nx, ny = -tangent[2], tangent[1]
-                    pt = pt + Float32(d) * Point2f(nx, ny)
-                end
-                return (pt, tangent, seg.subpath_id)
-            else # :cubic
-                t = _cubic_inv_arclen(seg.p0, seg.p1, seg.p2, seg.p3, local_s, seg.arclen, d)
-                tangent = _cubic_unit_tangent(seg.p0, seg.p1, seg.p2, seg.p3, t)
-                pt = iszero(d) ? Point2f(_cubic_eval(seg.p0, seg.p1, seg.p2, seg.p3, t)...) :
-                    _cubic_offset_point(seg.p0, seg.p1, seg.p2, seg.p3, t, d)
-                return (pt, tangent, seg.subpath_id)
-            end
+
+    # Binary search the segment whose cumulative arc-length range contains `s`.
+    lo, hi = 1, length(segs)
+    hi == 0 && return nothing
+    while lo < hi
+        mid = (lo + hi) >> 1
+        if segs[mid].cum_end < s
+            lo = mid + 1
+        else
+            hi = mid
         end
-        accum += seg.arclen
     end
-    return nothing
+    seg = segs[lo]
+    seg.cum_end < s && return nothing
+    local_s = s - (seg.cum_end - seg.arclen)
+
+    if seg.kind === :line
+        frac = seg.arclen > 0 ? local_s / seg.arclen : 0.0
+        v = seg.p1 - seg.p0
+        len = norm(v)
+        tangent = len > 0 ? Point2f(v[1] / len, v[2] / len) : Point2f(1, 0)
+        pt = Point2f(seg.p0[1] + frac * v[1], seg.p0[2] + frac * v[2])
+        if !iszero(d)
+            nx, ny = -tangent[2], tangent[1]
+            pt = pt + Float32(d) * Point2f(nx, ny)
+        end
+        return (pt, tangent, seg.subpath_id)
+    else # :cubic
+        t = _cubic_inv_arclen(seg.p0, seg.p1, seg.p2, seg.p3, local_s, seg.arclen, d)
+        tangent = _cubic_unit_tangent(seg.p0, seg.p1, seg.p2, seg.p3, t)
+        pt = iszero(d) ? Point2f(_cubic_eval(seg.p0, seg.p1, seg.p2, seg.p3, t)...) :
+            _cubic_offset_point(seg.p0, seg.p1, seg.p2, seg.p3, t, d)
+        return (pt, tangent, seg.subpath_id)
+    end
 end
 
 # ==============================================================================
@@ -415,19 +427,21 @@ function _layout_richtext_for_path(text::RichText, fontsize, font, fonts)
     return GlyphCollection(reduce(vcat, lines))
 end
 
-# Common helper: place glyphs along a path given their arc-length positions.
-# `sample_fn(s)` returns `(point, tangent)` or `nothing`.
-# `advances` are the horizontal advance widths per glyph (used to compute the
-#   chord across each character for its rotation).
-# `y_offsets` (optional) are per-glyph perpendicular shifts (e.g. from sub/superscript baseline).
+# `sample_fn(s)` returns `(point, tangent, subpath_id)` or `nothing`.
+# `advances` are the horizontal advance widths per glyph; the chord between
+# arc-length `s` and `s + adv` determines the glyph's rotation (so wide letters
+# span the curvature naturally).
+# `y_offsets` (optional) are per-glyph perpendicular shifts from the path
+# baseline (e.g. sub/superscript displacement in RichText).
 function _place_glyphs_on_path(
-        x_positions, advances, chars, sample_fn, frac, total_text_len, total_path_len;
+        x_positions, advances, chars, sample_fn, frac, total_path_len;
         y_offsets = nothing,
     )
     positions = Point2f[]
     rotations = Quaternionf[]
     placed_chars = String[]
 
+    total_text_len = isempty(x_positions) ? 0.0f0 : x_positions[end] + advances[end]
     start_s = frac * (total_path_len - total_text_len)
 
     for (i, (x, adv, c)) in enumerate(zip(x_positions, advances, chars))
@@ -436,9 +450,8 @@ function _place_glyphs_on_path(
         sample_start === nothing && break
         pt, start_tangent, start_subpath = sample_start
 
-        # Rotation from the chord spanning the character's advance width.
-        # Falls back to the tangent at the start if the end sample is unavailable
-        # or lands on a different sub-path (avoids bridging NaN gaps).
+        # Fall back to the start tangent when the chord would bridge a NaN or
+        # MoveTo gap between two sub-paths.
         sample_end = sample_fn(s0 + adv)
         tangent = if sample_end !== nothing
             pt_end, _, end_subpath = sample_end
@@ -479,18 +492,18 @@ function _parse_halign(ha)
     end
 end
 
-# Compute perpendicular baseline shift from valign and font metrics (ascender/descender in pixels).
-# Positive result shifts text in the +normal direction (left of path travel).
+# Perpendicular baseline shift (in pixels) from valign and font metrics.
+# Positive result shifts to the left of the path's travel direction.
 function _valign_shift(va, fontsize, font)
     va === :baseline && return 0.0f0
     asc = Float32(FreeTypeAbstraction.ascender(font)) * fontsize
     desc = Float32(FreeTypeAbstraction.descender(font)) * fontsize  # negative
     return if va === :bottom
-        -desc    # shift up so descender sits on path
+        -desc
     elseif va === :top
-        -asc     # shift down so ascender sits on path
+        -asc
     elseif va === :center
-        -(asc + desc) / 2   # center of typographic extent on path
+        -(asc + desc) / 2
     else
         throw(ArgumentError("Invalid valign $(repr(va)) for `pathtext`. Expected `:baseline`, `:bottom`, `:center`, or `:top`."))
     end
@@ -511,9 +524,13 @@ _empty_layout() = (Point2f[], Quaternionf[], String[], nothing)
 function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts)
     chars = collect(text)
     advances = Float32[Float32(GlyphExtent(font, c).hadvance) * fontsize for c in chars]
-    x_positions = cumsum(advances) .- advances
-    y_offsets = nothing
-    return (chars, x_positions, y_offsets, advances, nothing)
+    x_positions = similar(advances)
+    acc = 0.0f0
+    @inbounds for i in eachindex(advances)
+        x_positions[i] = acc
+        acc += advances[i]
+    end
+    return (chars, x_positions, nothing, advances, nothing)
 end
 
 function _layout_glyphs(text::RichText, fontsize::Float32, font, fonts)
@@ -565,10 +582,9 @@ function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset
     prepared === nothing && return _empty_layout()
     total_path_len, sample_fn = prepared
 
-    total_text_len = isempty(x_positions) ? 0.0f0 : x_positions[end] + advances[end]
     frac = _parse_halign(halign)
     pos, rot, placed = _place_glyphs_on_path(
-        x_positions, advances, chars, sample_fn, frac, total_text_len, total_path_len;
+        x_positions, advances, chars, sample_fn, frac, total_path_len;
         y_offsets,
     )
 
