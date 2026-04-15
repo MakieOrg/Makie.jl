@@ -667,25 +667,22 @@ is_all_equal_scale(::Vector{Real}) = true
 is_all_equal_scale(v::Vec2f) = v[1] == v[2] # could use ≈ too
 is_all_equal_scale(vs::Vector{Vec2f}) = all(is_all_equal_scale, vs)
 
-function compute_marker_attributes((atlas, marker, font, scale), changed, last)
-    # Note: Careful, changed[2] is not always called marker
-    # TODO, only calculate offset if needed
-    # [atlas_sym, :marker, :font, :markersize]
-    # [:sdf_marker_shape, :sdf_uv, :image]
+function compute_marker_attributes((atlas, color_atlas, marker, font, scale), changed, last)
+    # Note: Careful, changed[3] is not always called marker
+    # [atlas_sym, color_atlas_sym, :marker, :font, :markersize]
+    # [:sdf_marker_shape, :sdf_uv, :image, :is_color_glyph, :color_uv]
     if marker isa Matrix{<:Colorant} # single image marker
-        return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), marker)
+        return (Cint(RECTANGLE), Vec4f(0, 0, 1, 1), marker, Int32(0), Vec4f(0))
     elseif marker isa Vector{<:Matrix{<:Colorant}} # multiple image markers
-        # TODO: Should we cache the RectanglePacker so we don't need to redo everything?
-        if changed[2]
+        if changed[3]
             uvs, images = pack_images(marker)
-            return (Cint(RECTANGLE), uvs, images)
+            return (Cint(RECTANGLE), uvs, images, Int32(0), Vec4f(0))
         else
-            # if marker is up to date don't update
-            return (nothing, nothing, nothing)
+            return (nothing, nothing, nothing, nothing, nothing)
         end
     else # Char, BezierPath, Vectors thereof or Shapes (Rect, Circle)
-        if changed[2] || changed.markersize
-            shape = Cint(marker_to_sdf_shape(marker)) # expensive for arrays with abstract eltype?
+        if changed[3] || changed.markersize
+            shape = Cint(marker_to_sdf_shape(marker))
             if shape == 0 && !is_all_equal_scale(scale)
                 shape = Cint(5)
             end
@@ -693,21 +690,54 @@ function compute_marker_attributes((atlas, marker, font, scale), changed, last)
             shape = last.sdf_marker_shape
         end
 
-        if (shape == Cint(DISTANCEFIELD)) && (changed[2] || changed.font)
+        if (shape == Cint(DISTANCEFIELD)) && (changed[3] || changed.font)
             uv = Makie.primitive_uv_offset_width(atlas, marker, font)
         elseif isnothing(last)
             uv = Vec4f(0, 0, 1, 1)
         else
-            uv = nothing # Is this even worth it?
+            uv = nothing
         end
-        return (shape, uv, nothing)
+
+        # Color emoji support
+        is_color = _marker_is_color(marker, font)
+        if is_color != Int32(0) && (changed[3] || changed.font)
+            color_uv_val = _marker_color_uv(color_atlas, marker, font)
+        elseif isnothing(last)
+            color_uv_val = _is_color_scalar(is_color) ? Vec4f(0) : fill(Vec4f(0), length(marker))
+        else
+            color_uv_val = nothing
+        end
+
+        return (shape, uv, nothing, is_color, color_uv_val)
     end
 end
 
+_is_color_scalar(x::Int32) = true
+_is_color_scalar(x) = false
+
+function _marker_is_color(marker::Char, font)
+    f = find_font_for_char(marker, font)
+    return _is_color_font(f) ? Int32(1) : Int32(0)
+end
+function _marker_is_color(marker::AbstractVector{Char}, font)
+    return Int32[_marker_is_color(c, font) for c in marker]
+end
+_marker_is_color(marker, font) = Int32(0)
+
+function _marker_color_uv(catlas::ColorTextureAtlas, marker::Char, font)
+    f = find_font_for_char(marker, font)
+    return _is_color_font(f) ? glyph_uv_width!(catlas, marker, f) : Vec4f(0)
+end
+function _marker_color_uv(catlas::ColorTextureAtlas, marker::AbstractVector{Char}, font)
+    return Vec4f[_marker_color_uv(catlas, c, font) for c in marker]
+end
+_marker_color_uv(catlas, marker, font) = Vec4f(0)
+
 function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
-    inputs = [:atlas, markername, :font, :markersize]
-    outputs = [:sdf_marker_shape, :sdf_uv, :image]
+    add_constant!(attr, :color_atlas, get_color_texture_atlas())
+    inputs = [:atlas, :color_atlas, markername, :font, :markersize]
+    outputs = [:sdf_marker_shape, :sdf_uv, :image, :is_color_glyph, :color_uv]
     return register_computation!(
         compute_marker_attributes, attr, inputs, outputs
     )
@@ -769,6 +799,14 @@ function rescale_marker(atlas::TextureAtlas, char::AbstractVector{Char}, font, m
 end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
+    f = find_font_for_char(char, font)
+    if _is_color_font(f)
+        # Color fonts don't use the SDF atlas for rendering, so marker_scale_factor
+        # (which is based on SDF atlas UV size) gives wrong results.
+        # Use the font metrics directly instead.
+        inkbb = FreeTypeAbstraction.inkboundingbox(FreeTypeAbstraction.get_extent(f, char))
+        return markersize .* Vec2f(widths(inkbb))
+    end
     factor = marker_scale_factor.(Ref(atlas), char, font)
     return markersize .* factor
 end

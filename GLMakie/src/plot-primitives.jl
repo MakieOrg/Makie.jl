@@ -283,6 +283,7 @@ function assemble_scatter_robj!(data, screen::Screen, attr, args, input2glname)
 
     # TODO: allowing user supplied atlas for e.g. sprite animations would be nice...
     data[:distancefield] = marker_shape === Cint(DISTANCEFIELD) ? get_texture!(screen.glscreen, Makie.get_texture_atlas()) : nothing
+    data[:color_atlas] = get_color_texture!(screen.glscreen, Makie.get_color_texture_atlas())
     data[:shape] = marker_shape
 
     add_color_attributes!(screen, attr, data, color, colormap, colornorm)
@@ -376,6 +377,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         uniforms = [
             :positions_transformed_f32c,
             :sdf_uv, :quad_scale, :quad_offset,
+            :color_uv, :is_color_glyph,
             :image, :lowclip_color, :highclip_color, :nan_color,
             :strokecolor, :strokewidth, :glowcolor, :glowwidth,
             :model_f32c, :converted_rotation, :billboard, :transform_marker,
@@ -395,6 +397,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Scatter)
         :scaled_color => :color,
         :sdf_marker_shape => :shape,
         :sdf_uv => :uv_offset_width,
+        :color_uv => :color_uv_offset_width,
+        :is_color_glyph => :is_color_glyph,
         :gl_markerspace => :markerspace,
         :quad_scale => :scale, :gl_image => :image,
         :strokecolor => :stroke_color, :strokewidth => :stroke_width,
