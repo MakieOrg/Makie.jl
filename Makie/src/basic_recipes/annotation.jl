@@ -1132,14 +1132,15 @@ function attribute_examples(::Type{Annotation})
                 code = raw"""
                 fig = Figure()
                 ax = Axis(fig[1, 1])
-                scatter!(ax, [1, 5], [2, 5], markersize = 10, color = :black)
-                annotation!(ax, [Point2f(1, 2)], [Point2f(5, 5)];
+                A, B = Point2f(1, 2), Point2f(5, 5)
+                scatter!(ax, [A, B], markersize = 10, color = :black)
+                text!(ax, [A, B], text = ["A", "B"],
+                    align = (:right, :top), offset = (-6, -4))
+                annotation!(ax, [A], [B];
                     text = [""],
                     path = Ann.Paths.Arc(height = 0.4),
                     style = Ann.Styles.WithText(Ann.Styles.LineArrow();
-                        text = rich("H", subscript("2"), "O → ",
-                            rich("products"; color = :crimson)),
-                        fontsize = 14),
+                        text = "from A to B", fontsize = 14),
                     color = :steelblue, labelspace = :data, shrink = (5.0, 5.0))
                 fig
                 """
