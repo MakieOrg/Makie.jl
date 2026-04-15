@@ -417,6 +417,7 @@ end
 
 function assemble_text_robj!(data, screen::Screen, attr, args, input2glname)
     data[:distancefield] = get_texture!(screen.glscreen, Makie.get_texture_atlas())
+    data[:color_atlas] = get_color_texture!(screen.glscreen, Makie.get_color_texture_atlas())
     data[:shape] = Cint(DISTANCEFIELD)
     data[:image] = nothing
     data[:rotation] = args.text_rotation
@@ -459,6 +460,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         :per_char_positions_transformed_f32c,
         :text_color, :text_strokecolor, :text_rotation,
         :marker_offset, :quad_offset, :sdf_uv, :quad_scale,
+        :color_uv, :is_color_glyph,
         :lowclip_color, :highclip_color, :nan_color,
         :strokewidth, :glowcolor, :glowwidth,
         :model_f32c, :transform_marker,
@@ -479,6 +481,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Text)
         :per_char_positions_transformed_f32c => :position,
         :text_color => :color,
         :sdf_uv => :uv_offset_width,
+        :color_uv => :color_uv_offset_width,
+        :is_color_glyph => :is_color_glyph,
         :gl_markerspace => :markerspace,
         :quad_scale => :scale,
         :quad_offset => :quad_offset,

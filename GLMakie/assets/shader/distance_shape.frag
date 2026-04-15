@@ -20,6 +20,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 
 {{distancefield_type}}  distancefield;
+{{color_atlas_type}}    color_atlas;
 {{image_type}}          image;
 
 uniform float           stroke_width;
@@ -38,6 +39,8 @@ flat in uvec2           f_id;
 flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
+flat in vec4            f_color_uv_texture_bbox;
+flat in int             f_is_color_glyph;
 flat in vec2            f_sprite_scale;
 
 // These versions of aastep assume that `dist` is a signed distance function
@@ -181,7 +184,19 @@ float aspect_corrected_local_aa_radius(float signed_distance) {
 
 void write2framebuffer(vec4 color, uvec2 id);
 
+vec4 get_color_emoji(sampler2D atlas, vec2 uv) { return texture(atlas, uv); }
+vec4 get_color_emoji(Nothing atlas, vec2 uv) { return vec4(0); }
+
 void main(){
+    // Color emoji: sample directly from the color atlas and skip SDF processing
+    if (f_is_color_glyph != 0) {
+        vec2 color_tex_uv = mix(f_color_uv_texture_bbox.xy, f_color_uv_texture_bbox.zw,
+                                clamp(f_uv, 0.0, 1.0));
+        vec4 emoji_color = get_color_emoji(color_atlas, color_tex_uv);
+        write2framebuffer(emoji_color, f_id);
+        return;
+    }
+
     float signed_distance = 0.0;
 
     // UV coords in the texture are clamped so that they don't stray outside
