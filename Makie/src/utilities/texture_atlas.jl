@@ -187,8 +187,9 @@ function alternativefonts()
         if isempty(ALTERNATIVE_FONTS)
             alternatives = [
                 "TeXGyreHerosMakie-Regular.otf",
-                "DejaVuSans.ttf",
                 "NotoSansCuneiform-Regular.ttf",
+                "NotoColorEmoji-COLRv1.ttf",
+                "DejaVuSans.ttf",
                 "NotoSansSymbols-Regular.ttf",
                 "FiraMono-Medium.ttf",
             ]
@@ -248,6 +249,8 @@ function find_font_for_char(glyph, font::NativeFont)
     end
     error("Can't represent character $(glyph) with any fallback font nor $(font.family_name)!")
 end
+
+_is_color_font(font::NativeFont) = (font.face_flags & FreeTypeAbstraction.FreeType.FT_FACE_FLAG_COLOR) != 0
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
     h = hash((glyph, objectid(font)))
