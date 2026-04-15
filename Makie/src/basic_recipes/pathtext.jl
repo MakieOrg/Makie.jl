@@ -35,6 +35,11 @@ Newlines in `text` are currently not supported.
     mixin_colormap_attributes()...
 end
 
+# Preserve `align` as-is. The default numeric conversion used for `text`/`scatter`
+# is not appropriate for `pathtext`, whose `halign` accepts a `Real` fraction
+# (0–1) along the path and whose `valign` accepts symbolic values.
+convert_attribute(align, ::key"align", ::key"PathText") = Ref{Any}(align)
+
 # -- convert_arguments ---------------------------------------------------------
 
 function convert_arguments(::Type{<:PathText}, path::AbstractVector{<:VecTypes{2}})

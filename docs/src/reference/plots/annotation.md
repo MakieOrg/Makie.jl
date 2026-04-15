@@ -35,6 +35,25 @@ hidedecorations!.([ax1, ax2])
 f
 ```
 
+### Text along the connection path
+
+`Ann.Styles.WithText` wraps another annotation style and additionally draws text along the connection path using [`pathtext`](@ref).
+
+```@figure
+f = Figure()
+ax = Axis(f[1, 1])
+A, B = Point2f(1, 2), Point2f(5, 5)
+scatter!(ax, [A, B], markersize = 10, color = :black)
+text!(ax, [A, B], text = ["A", "B"], align = (:right, :top), offset = (-6, -4))
+annotation!(ax, [A], [B];
+    text = [""],
+    path = Ann.Paths.Arc(height = 0.4),
+    style = Ann.Styles.WithText(Ann.Styles.LineArrow();
+        text = "from A to B", fontsize = 14),
+    color = :steelblue, labelspace = :data, shrink = (5.0, 5.0))
+f
+```
+
 ## Attributes
 
 ```@attrdocs

@@ -606,6 +606,29 @@ end
     f
 end
 
+@reference_test "pathtext as annotation style" begin
+    f = Figure(size = (500, 300))
+    ax = Axis(f[1, 1]; limits = ((0, 6), (1, 6)))
+    hidedecorations!(ax); hidespines!(ax)
+    scatter!(ax, [1, 5], [2, 5]; markersize = 10, color = :black)
+    annotation!(
+        ax, [Point2f(1, 2)], [Point2f(5, 5)];
+        text = [""],
+        path = Ann.Paths.Arc(height = 0.4),
+        style = Ann.Styles.WithText(
+            Ann.Styles.LineArrow();
+            text = rich(
+                "H", subscript("2"), "O → ",
+                rich("products"; color = :crimson),
+            ),
+            fontsize = 14,
+        ),
+        color = :steelblue, linewidth = 1.5,
+        labelspace = :data, shrink = (5.0, 5.0),
+    )
+    f
+end
+
 @reference_test "pathtext data vs pixel space" begin
     f = Figure(size = (500, 250))
 
