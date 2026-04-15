@@ -506,143 +506,83 @@ const _PathtextGlyphStyles = @NamedTuple{
 
 _empty_layout() = (Point2f[], Quaternionf[], String[], nothing)
 
-# --- String on polyline -------------------------------------------------------
-
-function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::AbstractString, fontsize, font, fonts, align, offset)
-    (isempty(text) || length(pixel_path) < 2) && return _empty_layout()
-
-    _font = to_font(fonts, font)
-    _fontsize = Float32(to_fontsize(fontsize))
-    halign, valign = align
-    _offset = Float32(offset) + _valign_shift(valign, _fontsize, _font)
-
-    working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
-
-    text_chars = collect(text)
-    advances = Float32[Float32(GlyphExtent(_font, c).hadvance) * _fontsize for c in text_chars]
-    total_text_len = sum(advances; init = 0.0f0)
-    total_path_len = _polyline_arc_length(working_path)
-
-    # x_positions: cumulative advance (start of each glyph)
+# Dispatch for the text side of layout. Returns per-glyph arrays and optional
+# per-glyph styles (or `nothing` for plain `AbstractString`).
+function _layout_glyphs(text::AbstractString, fontsize::Float32, font, fonts)
+    chars = collect(text)
+    advances = Float32[Float32(GlyphExtent(font, c).hadvance) * fontsize for c in chars]
     x_positions = cumsum(advances) .- advances
-    frac = _parse_halign(halign)
-    sample_fn = s -> _sample_polyline_at(working_path, s)
-    pos, rot, chars = _place_glyphs_on_path(x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len)
-    return (pos, rot, chars, nothing)
+    y_offsets = nothing
+    return (chars, x_positions, y_offsets, advances, nothing)
 end
 
-# --- String on BezierPath -----------------------------------------------------
-
-function _pathtext_layout(pixel_bp::BezierPath, text::AbstractString, fontsize, font, fonts, align, offset)
-    isempty(text) && return _empty_layout()
-
-    _font = to_font(fonts, font)
-    _fontsize = Float32(to_fontsize(fontsize))
-    halign, valign = align
-    _offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
-
-    segs = _prepare_bezierpath(pixel_bp, _offset)
-    isempty(segs) && return _empty_layout()
-
-    text_chars = collect(text)
-    advances = Float32[Float32(GlyphExtent(_font, c).hadvance) * _fontsize for c in text_chars]
-    total_text_len = sum(advances; init = 0.0f0)
-    total_path_len = Float32(_total_arclen(segs))
-
-    x_positions = cumsum(advances) .- advances
-    frac = _parse_halign(halign)
-    sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
-    pos, rot, chars = _place_glyphs_on_path(x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len)
-    return (pos, rot, chars, nothing)
-end
-
-# --- RichText on polyline -----------------------------------------------------
-
-function _pathtext_layout(pixel_path::AbstractVector{<:VecTypes}, text::RichText, fontsize, font, fonts, align, offset)
-    length(pixel_path) < 2 && return _empty_layout()
-
-    _font = to_font(fonts, font)
-    _fontsize = Float32(to_fontsize(fontsize))
-    halign, valign = align
-    _offset = Float32(offset) + _valign_shift(valign, _fontsize, _font)
-
-    gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
+function _layout_glyphs(text::RichText, fontsize::Float32, font, fonts)
+    gc = _layout_richtext_for_path(text, fontsize, font, fonts)
     n = length(gc.glyphs)
-    n == 0 && return _empty_layout()
+    n == 0 && return (Char[], Float32[], Float32[], Float32[], nothing)
 
-    text_chars = _richtext_chars(text)
-    length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
+    chars = _richtext_chars(text)
+    length(chars) != n && error("RichText character count ($(length(chars))) does not match glyph count ($n).")
 
+    scales = collect_vector(gc.scales, n)
     x_positions = Float32[gc.origins[i][1] for i in 1:n]
     y_offsets = Float32[gc.origins[i][2] for i in 1:n]
-    scales = collect_vector(gc.scales, n)
     advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
-    total_text_len = x_positions[end] + advances[end]
+    styles = (
+        colors = collect_vector(gc.colors, n),
+        fonts = collect_vector(gc.fonts, n),
+        fontsizes = Float32[s[1] for s in scales],
+    )::_PathtextGlyphStyles
+    return (chars, x_positions, y_offsets, advances, styles)
+end
 
-    working_path = iszero(_offset) ? pixel_path : _offset_polyline(pixel_path, _offset)
-    total_path_len = _polyline_arc_length(working_path)
+# Dispatch for the path side of layout. Returns `(total_path_len, sample_fn)`
+# or `nothing` if the path is too short/empty.
+function _prepare_path_sampler(pixel_path::AbstractVector{<:VecTypes}, d::Real)
+    length(pixel_path) < 2 && return nothing
+    working = iszero(d) ? pixel_path : _offset_polyline(pixel_path, d)
+    total = _polyline_arc_length(working)
+    return (total, s -> _sample_polyline_at(working, s))
+end
 
+function _prepare_path_sampler(pixel_bp::BezierPath, d::Real)
+    segs = _prepare_bezierpath(pixel_bp, d)
+    isempty(segs) && return nothing
+    total = Float32(_total_arclen(segs))
+    return (total, s -> _sample_bezierpath_at(segs, s, d))
+end
+
+function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset)
+    _font = to_font(fonts, font)
+    _fontsize = Float32(to_fontsize(fontsize))
+    halign, valign = align
+    perp_offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
+
+    chars, x_positions, y_offsets, advances, styles = _layout_glyphs(text, _fontsize, _font, fonts)
+    isempty(chars) && return _empty_layout()
+
+    prepared = _prepare_path_sampler(pixel_path, perp_offset)
+    prepared === nothing && return _empty_layout()
+    total_path_len, sample_fn = prepared
+
+    total_text_len = isempty(x_positions) ? 0.0f0 : x_positions[end] + advances[end]
     frac = _parse_halign(halign)
-    sample_fn = s -> _sample_polyline_at(working_path, s)
-    pos, rot, chars = _place_glyphs_on_path(
-        x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len;
+    pos, rot, placed = _place_glyphs_on_path(
+        x_positions, advances, chars, sample_fn, frac, total_text_len, total_path_len;
         y_offsets,
     )
 
-    m = length(pos)
-    colors_vec = collect_vector(gc.colors, n)
-    fonts_vec = collect_vector(gc.fonts, n)
-    scales_vec = collect_vector(gc.scales, n)
-    styles = (
-        colors = colors_vec[1:m],
-        fonts = fonts_vec[1:m],
-        fontsizes = Float32[s[1] for s in scales_vec[1:m]],
-    )::_PathtextGlyphStyles
-    return (pos, rot, chars, styles)
-end
-
-# --- RichText on BezierPath ---------------------------------------------------
-
-function _pathtext_layout(pixel_bp::BezierPath, text::RichText, fontsize, font, fonts, align, offset)
-    _fontsize = Float32(to_fontsize(fontsize))
-    _font = to_font(fonts, font)
-    halign, valign = align
-    _offset = Float64(offset) + _valign_shift(valign, _fontsize, _font)
-
-    gc = _layout_richtext_for_path(text, _fontsize, _font, fonts)
-    n = length(gc.glyphs)
-    n == 0 && return _empty_layout()
-
-    text_chars = _richtext_chars(text)
-    length(text_chars) != n && error("RichText character count ($(length(text_chars))) does not match glyph count ($n).")
-
-    x_positions = Float32[gc.origins[i][1] for i in 1:n]
-    y_offsets = Float32[gc.origins[i][2] for i in 1:n]
-    scales = collect_vector(gc.scales, n)
-    advances = Float32[gc.extents[i].hadvance * scales[i][1] for i in 1:n]
-    total_text_len = x_positions[end] + advances[end]
-
-    segs = _prepare_bezierpath(pixel_bp, _offset)
-    isempty(segs) && return _empty_layout()
-    total_path_len = Float32(_total_arclen(segs))
-
-    frac = _parse_halign(halign)
-    sample_fn = s -> _sample_bezierpath_at(segs, s, _offset)
-    pos, rot, chars = _place_glyphs_on_path(
-        x_positions, advances, text_chars, sample_fn, frac, total_text_len, total_path_len;
-        y_offsets,
-    )
-
-    m = length(pos)
-    colors_vec = collect_vector(gc.colors, n)
-    fonts_vec = collect_vector(gc.fonts, n)
-    scales_vec = collect_vector(gc.scales, n)
-    styles = (
-        colors = colors_vec[1:m],
-        fonts = fonts_vec[1:m],
-        fontsizes = Float32[s[1] for s in scales_vec[1:m]],
-    )::_PathtextGlyphStyles
-    return (pos, rot, chars, styles)
+    truncated_styles = if styles === nothing
+        nothing
+    else
+        m = length(pos)
+        (
+            colors = styles.colors[1:m],
+            fonts = styles.fonts[1:m],
+            fontsizes = styles.fontsizes[1:m],
+        )::_PathtextGlyphStyles
+    end
+    return (pos, rot, placed, truncated_styles)
 end
 
 # ==============================================================================
