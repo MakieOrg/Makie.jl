@@ -88,6 +88,11 @@ end
 
 # ==============================================================================
 # Cubic Bézier math
+#
+# Arc-length (Gauss-Legendre quadrature) and inverse arc-length (binary search)
+# techniques are adapted from the `kurbo` Rust crate (MIT-licensed), specifically
+# its `cubicbez.rs` and `param_curve.rs` modules.
+# See https://github.com/linebender/kurbo
 # ==============================================================================
 
 # 8-point Gauss-Legendre nodes and weights on [0, 1]  (transformed from [-1, 1])
