@@ -337,14 +337,19 @@ jobs:
         with:
           name: ReferenceImages
           path: ./ReferenceImagesCombined/
-      - name: Check for missing reference images
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
         run: |
+          mkdir -p ./n_missing
           N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
-          echo "$N_MISSING missing reference image(s)"
-          if [ "$N_MISSING" -ne 0 ]; then
-            echo "::error::$N_MISSING missing reference image(s) must be uploaded"
-            exit 1
-          fi
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v7
+        with:
+          name: n_missing_refimages
+          path: n_missing/
 
   relocatability:
     name: Relocatability ${{ matrix.backend }}
@@ -426,11 +431,29 @@ jobs:
           name: Docs build
           path: ./docs/build
 
+  refimage-status:
+    name: Reference image status
+    runs-on: ubuntu-latest
+    needs: [consolidation]
+    if: always() && needs.consolidation.result == 'success'
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: n_missing_refimages
+      - name: Check for missing reference images
+        run: |
+          N_MISSING=$(head -1 n_missing_refimages)
+          echo "$N_MISSING missing reference image(s)"
+          if [ "$N_MISSING" -ne 0 ]; then
+            echo "::error::$N_MISSING missing reference image(s) must be uploaded"
+            exit 1
+          fi
+
   finalize:
     name: CI result
     runs-on: ubuntu-latest
     if: always()
-    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, relocatability, docs]
+    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, relocatability, docs, refimage-status]
     steps:
       - run: |
           results='${{ toJSON(needs.*.result) }}'
