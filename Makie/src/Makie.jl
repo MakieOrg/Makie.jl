@@ -22,6 +22,7 @@ using LaTeXStrings
 using MathTeXEngine
 using Random
 using FFMPEG_jll # get FFMPEG on any system!
+using Cairo_jll # for color emoji rendering
 using Observables
 using GeometryBasics
 using PlotUtils

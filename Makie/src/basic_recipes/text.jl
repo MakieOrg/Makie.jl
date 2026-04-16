@@ -366,6 +366,18 @@ function register_text_computations!(attr::ComputeGraph)
         return glyph_uv_width!.((atlas,), gi, fonts)
     end
 
+    add_constant!(attr, :color_atlas, get_color_texture_atlas())
+
+    map!(attr, [:color_atlas, :glyphindices, :font_per_char], :color_uv) do catlas, gi, fonts
+        return map(gi, fonts) do g, f
+            _is_color_font(f) ? glyph_uv_width!(catlas, g, f) : Vec4f(0)
+        end
+    end
+
+    map!(attr, [:font_per_char], :is_color_glyph) do fonts
+        return Int32[_is_color_font(f) for f in fonts]
+    end
+
     map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks
         return Point3f[origins[gi] + sv_getindex(offset, i) for (i, r) in enumerate(blocks) for gi in r]
     end
@@ -379,11 +391,21 @@ function register_text_computations!(attr::ComputeGraph)
         quad_scales = Vec2f[]
         pad = atlas.glyph_padding / atlas.pix_per_glyph
         per_glyph_attributes(text_blocks, (gi, fonts, fontsize)) do g, f, fs
-            # These are tight to the glyph. They do not fill the full space
-            # a glyph takes within a string/layout.
             bb = FreeTypeAbstraction.metrics_bb(g, f, fs)[1]
-            quad_offset = Vec2f(minimum(bb) .- fs .* pad)
-            quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
+            if all(iszero, widths(bb))
+                # Empty ink bounding box (e.g. COLRv1 color fonts with no outlines):
+                # synthesize from hadvance and ascender/descender.
+                # No SDF padding — color glyphs are rendered directly, not as distance fields.
+                ext = FreeTypeAbstraction.get_extent(f, g)
+                ha = FreeTypeAbstraction.hadvance(ext)
+                asc = FreeTypeAbstraction.ascender(f)
+                desc = FreeTypeAbstraction.descender(f)
+                quad_offset = Vec2f(0, desc * fs[2])
+                quad_scale = Vec2f(ha * fs[1], (asc - desc) * fs[2])
+            else
+                quad_offset = Vec2f(minimum(bb) .- fs .* pad)
+                quad_scale = Vec2f(widths(bb) .+ fs * 2pad)
+            end
             push!(quad_offsets, quad_offset)
             push!(quad_scales, quad_scale)
         end

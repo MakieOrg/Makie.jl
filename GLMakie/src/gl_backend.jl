@@ -17,12 +17,19 @@ include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
 
 const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
+const color_atlas_texture_cache = Dict{Any, Tuple{Texture{RGBAf, 2}, Function}}()
 
 function cleanup_texture_atlas!(context)
     to_delete = filter(atlas_ctx -> atlas_ctx[2] == context, keys(atlas_texture_cache))
     for (atlas, ctx) in to_delete
         tex, func = pop!(atlas_texture_cache, (atlas, ctx))
         Makie.remove_font_render_callback!(atlas, func)
+        GLAbstraction.free(tex)
+    end
+    to_delete_color = filter(atlas_ctx -> atlas_ctx[2] == context, keys(color_atlas_texture_cache))
+    for (atlas, ctx) in to_delete_color
+        tex, func = pop!(color_atlas_texture_cache, (atlas, ctx))
+        Makie.remove_color_font_render_callback!(atlas, func)
         GLAbstraction.free(tex)
     end
     GLAbstraction.require_context_no_error(context) # avoid try .. catch at call site
@@ -59,6 +66,39 @@ function get_texture!(context, atlas::Makie.TextureAtlas)
         end
         Makie.font_render_callback!(callback, atlas)
         atlas_texture_cache[(atlas, context)] = (tex, callback)
+        return tex
+    end
+end
+
+function get_color_texture!(context, atlas::Makie.ColorTextureAtlas)
+    # Also check tex.id != 0: the texture may have been freed (e.g. by cleanup_texture_atlas!)
+    # while the context is still alive (screen reuse from pool).
+    filter!(color_atlas_texture_cache) do ((ptr, ctx), tex_func)
+        if GLAbstraction.context_alive(ctx) && tex_func[1].id != 0
+            return true
+        else
+            tex_func[1].id = 0
+            Makie.remove_color_font_render_callback!(atlas, tex_func[2])
+            return false
+        end
+    end
+
+    if haskey(color_atlas_texture_cache, (atlas, context))
+        return color_atlas_texture_cache[(atlas, context)][1]
+    else
+        require_context(context)
+        tex = Texture(context, atlas.data, minfilter = :linear, magfilter = :linear)
+
+        function callback(color_data, rectangle)
+            ctx = tex.context
+            return if tex.id != 0 && GLAbstraction.context_alive(ctx)
+                GLAbstraction.with_context(ctx) do
+                    tex[rectangle] = color_data
+                end
+            end
+        end
+        Makie.color_font_render_callback!(callback, atlas)
+        color_atlas_texture_cache[(atlas, context)] = (tex, callback)
         return tex
     end
 end
