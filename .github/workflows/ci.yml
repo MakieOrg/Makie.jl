@@ -351,6 +351,56 @@ jobs:
           name: n_missing_refimages
           path: n_missing/
 
+  rprmakie:
+    name: RPRMakie Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          pkg"registry up"
+          Pkg.update()
+          # dev mono repo versions
+          pkg"dev ./ComputePipeline ./Makie ./RPRMakie ./ReferenceTests"
+      - name: Run the tests
+        continue-on-error: true
+        run: >
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("RPRMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReferenceImages_${{ matrix.os }}_${{ matrix.arch }}_${{ matrix.version }}
+          path: ./RPRMakie/test/recorded
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: Makie/src
+      - uses: codecov/codecov-action@v6
+        with:
+          file: lcov.info
+
   relocatability:
     name: Relocatability ${{ matrix.backend }}
     needs: [codespell, formatting]
@@ -453,7 +503,7 @@ jobs:
     name: CI result
     runs-on: ubuntu-latest
     if: always()
-    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, relocatability, docs, refimage-status]
+    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, rprmakie, relocatability, docs, refimage-status]
     steps:
       - run: |
           results='${{ toJSON(needs.*.result) }}'
