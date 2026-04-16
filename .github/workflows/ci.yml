@@ -1,9 +1,6 @@
-name: Makie.jl
+name: CI
 on:
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
     branches:
       - master
   push:
@@ -54,3 +51,14 @@ jobs:
       - uses: codecov/codecov-action@v6
         with:
           file: lcov.info
+
+  codespell:
+    name: Codespell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: codespell-project/actions-codespell@v2
+        with:
+          ignore_words_list: indexin,doubleclick,Heros,OT,jus,bu,te,lins,Missings
+          skip: '*.js,*.vert,*.ai,*.frag,*.geom'
+          only_warn: 1
