@@ -1,7 +1,6 @@
 name: CI
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     branches:
       - master
   push:
@@ -20,7 +19,7 @@ jobs:
   makie:
     name: Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -81,20 +80,10 @@ jobs:
         with:
           version: '1.4'
 
-  changelog:
-    name: Enforce changelog
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: dangoslen/changelog-enforcer@v3
-        with:
-          changeLogPath: 'CHANGELOG.md'
-          skipLabels: 'skip-changelog'
-
   compute-pipeline:
     name: ComputePipeline Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -127,7 +116,7 @@ jobs:
   cairomakie:
     name: CairoMakie Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -178,7 +167,7 @@ jobs:
   glmakie:
     name: GLMakie Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     env:
       MODERNGL_DEBUGGING: "true"
     runs-on: ${{ matrix.os }}
@@ -234,7 +223,7 @@ jobs:
   wglmakie:
     name: WGLMakie Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -291,7 +280,7 @@ jobs:
   consolidation:
     name: Merge artifacts
     runs-on: ubuntu-latest
-    if: always() && (github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action))
+    if: always()
     needs: [cairomakie, glmakie, wglmakie]
     steps:
       - uses: actions/download-artifact@v8
@@ -354,7 +343,7 @@ jobs:
   rprmakie:
     name: RPRMakie Julia ${{ matrix.version }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -404,7 +393,7 @@ jobs:
   relocatability:
     name: Relocatability ${{ matrix.backend }}
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     env:
       MODERNGL_DEBUGGING: "true"
       JULIA_NUM_PRECOMPILE_TAKS: 1
@@ -446,7 +435,7 @@ jobs:
   docs:
     name: Docs build and deploy
     needs: [codespell, formatting]
-    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -503,7 +492,7 @@ jobs:
     name: CI result
     runs-on: ubuntu-latest
     if: always()
-    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, rprmakie, relocatability, docs, refimage-status]
+    needs: [codespell, formatting, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, rprmakie, relocatability, docs, refimage-status]
     steps:
       - run: |
           results='${{ toJSON(needs.*.result) }}'
