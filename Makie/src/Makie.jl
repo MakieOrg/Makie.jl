@@ -49,7 +49,7 @@ using ComputePipeline
 
 import Unitful
 import UnicodeFun
-import RelocatableFolders
+using RelocatableFolders: @path
 import StatsBase
 import Distributions
 import KernelDensity
@@ -451,6 +451,8 @@ function cleanup_globals()
 end
 
 export cleanup_globals
+
+const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 
 include("precompiles.jl")
 
