@@ -23,27 +23,27 @@ jobs:
     uses: ./.github/workflows/_formatting.yml
 
   makie:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_makie.yml
 
   compute-pipeline:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_compute-pipeline.yml
 
   reference-tests:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_reference-tests.yml
 
   rprmakie:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_rprmakie.yml
 
   relocatability:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_relocatability.yml
 
   docs:
-    needs: [codespell, formatting]
+
     uses: ./.github/workflows/_docs.yml
     secrets: inherit
 
