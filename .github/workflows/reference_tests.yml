@@ -66,6 +66,47 @@ jobs:
         with:
           file: lcov.info
 
+  skiamakie:
+    name: SkiaMakie Julia ${{ matrix.version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+      - name: Install Julia dependencies
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./SkiaMakie ./ReferenceTests ./ComputePipeline"
+      - name: Run the tests
+        continue-on-error: true
+        run: >
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("SkiaMakie", coverage=true)'
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ReferenceImages_SkiaMakie_${{ matrix.version }}
+          path: ./SkiaMakie/test/reference_images/
+      - name: Fail after artifacts if tests failed
+        if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
+        run: exit 1
+
   glmakie:
     name: GLMakie Julia ${{ matrix.version }}
     env:
@@ -178,8 +219,8 @@ jobs:
   consolidation:
     name: Merge artifacts
     runs-on: ubuntu-latest
-    if: ${{ always() }} # run even if any of the three backend test jobs failed
-    needs: [cairomakie, glmakie, wglmakie]
+    if: ${{ always() }} # run even if any of the backend test jobs failed
+    needs: [cairomakie, skiamakie, glmakie, wglmakie]
     steps:
       - uses: actions/download-artifact@v8
         with:
@@ -193,6 +234,11 @@ jobs:
         with:
           name: ReferenceImages_GLMakie_1
           path: ./ReferenceImages/GLMakie
+      - uses: actions/download-artifact@v8
+        if: ${{ needs.skiamakie.result == 'success' || needs.skiamakie.result == 'failure' }}
+        with:
+          name: ReferenceImages_SkiaMakie_1
+          path: ./ReferenceImages/SkiaMakie
       - name: Consolidate reference image folders
         run: |
           baseDir="./ReferenceImages"
@@ -208,7 +254,9 @@ jobs:
           > "./ReferenceImagesCombined/new_files.txt"
 
           # Loop through the directories and concatenate the files, and copy recorded folders
-          for dir in WGLMakie CairoMakie GLMakie; do
+          for dir in WGLMakie CairoMakie GLMakie SkiaMakie; do
+              # Skip if the directory doesn't exist (e.g. SkiaMakie may not have run)
+              [ -d "${baseDir}/${dir}" ] || continue
               # Concatenate scores.tsv, new_files.txt and missing_files.txt
               cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
               cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"

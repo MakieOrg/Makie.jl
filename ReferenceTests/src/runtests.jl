@@ -18,7 +18,9 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
     end
 
     open(joinpath(base_folder, "missing_files.txt"), "w") do file
-        backend_ref_dir = joinpath(reference_folder, backend)
+        ref_backend_aliases = Dict("SkiaMakie" => "CairoMakie")
+        ref_backend = get(ref_backend_aliases, backend, backend)
+        backend_ref_dir = joinpath(reference_folder, ref_backend)
         recorded_paths = mapreduce(vcat, walkdir(backend_ref_dir)) do (root, dirs, files)
             relpath.(joinpath.(root, files), reference_folder)
         end
@@ -56,8 +58,19 @@ function compare(
         scores = Dict{String, Float64}()
     )
 
+    # Allow backends to share reference images (e.g. SkiaMakie → CairoMakie)
+    ref_backend_aliases = Dict("SkiaMakie" => "CairoMakie")
+
     for relative_test_path in relative_test_paths
-        ref_path = joinpath(reference_dir, relative_test_path)
+        # Remap backend prefix in the reference path if an alias exists
+        ref_relative = relative_test_path
+        for (from, to) in ref_backend_aliases
+            if startswith(ref_relative, from * "/") || startswith(ref_relative, from * "\\")
+                ref_relative = to * ref_relative[length(from)+1:end]
+                break
+            end
+        end
+        ref_path = joinpath(reference_dir, ref_relative)
         rec_path = joinpath(record_dir, relative_test_path)
         if !isfile(ref_path)
             push!(missing_refimages, relative_test_path)
