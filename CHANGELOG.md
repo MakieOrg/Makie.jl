@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Added `pathtext` recipe for placing text along a path, plus `Ann.Styles.WithText` to layer path text onto any existing `annotation` style [#5596](https://github.com/MakieOrg/Makie.jl/pull/5596).
 - Fixed shared precompile file path not being relocatable by using `RelocatableFolders.@path` [#5597](https://github.com/MakieOrg/Makie.jl/pull/5597)
 - Added possibility to gather legend entries from multiple axes [#5551](https://github.com/MakieOrg/Makie.jl/pull/5551)
 - Added complete inverse transformation support to `register_projected_positions!` with `apply_inverse_transform`, `apply_inverse_transform_func`, `apply_inverse_float32convert`, and `apply_inverse_model` kwargs. These enable correct projection from non-data spaces back to data space. Includes early-exit optimization to skip redundant transform/inverse pairs when `input_space === output_space`. [#5485](https://github.com/MakieOrg/Makie.jl/pull/5485)
