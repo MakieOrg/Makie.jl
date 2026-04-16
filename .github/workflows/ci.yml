@@ -18,6 +18,8 @@ concurrency:
 jobs:
   makie:
     name: Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -90,6 +92,8 @@ jobs:
 
   compute-pipeline:
     name: ComputePipeline Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -121,6 +125,8 @@ jobs:
 
   cairomakie:
     name: CairoMakie Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -170,6 +176,8 @@ jobs:
 
   glmakie:
     name: GLMakie Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     env:
       MODERNGL_DEBUGGING: "true"
     runs-on: ${{ matrix.os }}
@@ -224,6 +232,8 @@ jobs:
 
   wglmakie:
     name: WGLMakie Julia ${{ matrix.version }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -280,7 +290,7 @@ jobs:
   consolidation:
     name: Merge artifacts
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: always() && needs.cairomakie.result != 'skipped'
     needs: [cairomakie, glmakie, wglmakie]
     steps:
       - uses: actions/download-artifact@v8
@@ -342,6 +352,8 @@ jobs:
 
   relocatability:
     name: Relocatability ${{ matrix.backend }}
+    needs: [codespell, formatting]
+    if: github.event_name != 'pull_request' || !contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
     env:
       MODERNGL_DEBUGGING: "true"
       JULIA_NUM_PRECOMPILE_TAKS: 1
@@ -378,4 +390,18 @@ jobs:
             DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes ./relocatability.jl ${{ matrix.backend }}
           else
             julia --color=yes ./relocatability.jl ${{ matrix.backend }}
+          fi
+
+  finalize:
+    name: CI result
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [codespell, formatting, changelog, makie, compute-pipeline, cairomakie, glmakie, wglmakie, consolidation, relocatability]
+    steps:
+      - run: |
+          results='${{ toJSON(needs.*.result) }}'
+          echo "Job results: $results"
+          if echo "$results" | grep -qE '"(failure|cancelled)"'; then
+            echo "Some required jobs failed or were cancelled"
+            exit 1
           fi
