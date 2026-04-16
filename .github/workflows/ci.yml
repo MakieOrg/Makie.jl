@@ -1,6 +1,7 @@
 name: CI
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
     branches:
       - master
   push:
@@ -76,3 +77,13 @@ jobs:
       - uses: fredrikekre/runic-action@v1
         with:
           version: '1.4'
+
+  changelog:
+    name: Enforce changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dangoslen/changelog-enforcer@v3
+        with:
+          changeLogPath: 'CHANGELOG.md'
+          skipLabels: 'skip-changelog'
