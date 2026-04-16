@@ -37,6 +37,12 @@ function record_comparison(base_folder::String, backend::String; record_folder_n
         end
     end
 
+    open(joinpath(base_folder, "skipped_names.txt"), "w") do file
+        for name in sort!(collect(SKIPPED_NAMES))
+            println(file, joinpath(backend, "$name.png"))
+        end
+    end
+
     return missing_refimages, scores
 end
 
