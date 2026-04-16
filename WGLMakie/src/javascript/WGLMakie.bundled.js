@@ -23206,6 +23206,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     if (is_linesegments) {
         return `precision highp float;
             precision highp int;
+            precision highp sampler2D;
+            precision highp sampler3D;
 
             ${attribute_decl}
 
@@ -23401,6 +23403,8 @@ function lines_vertex_shader(uniforms, attributes, is_linesegments) {
     } else {
         return `precision highp float;
             precision highp int;
+            precision highp sampler2D;
+            precision highp sampler3D;
 
             ${attribute_decl}
 
@@ -23897,8 +23901,8 @@ function lines_fragment_shader(uniforms, attributes) {
 
     precision highp int;
     precision highp float;
-    precision mediump sampler2D;
-    precision mediump sampler3D;
+    precision highp sampler2D;
+    precision highp sampler3D;
 
     in highp vec3 f_quad_sdf;
     in vec2 f_truncation;
@@ -25088,7 +25092,7 @@ function create_scene(wrapper, canvas, canvas_width, scenes, comm, width, height
     const gl = renderer.getContext();
     const err = gl.getError();
     if (err != gl.NO_ERROR) {
-        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+        throw new Error("WebGL error: " + wglerror(gl, err));
     }
     return renderer;
 }

@@ -150,6 +150,8 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
+          Pkg.add(url="https://github.com/SimonDanisch/Bonito.jl.git", rev="sd/electron-call")
+          Pkg.add(url="https://github.com/IanButterworth/ElectronCall.jl.git", rev="main")
       - name: Run the tests
         continue-on-error: true
         run: >

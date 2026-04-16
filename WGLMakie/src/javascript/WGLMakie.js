@@ -737,7 +737,7 @@ function create_scene(
     const gl = renderer.getContext();
     const err = gl.getError();
     if (err != gl.NO_ERROR) {
-        throw new Error("WebGL error: " + WGL.wglerror(gl, err));
+        throw new Error("WebGL error: " + wglerror(gl, err));
     }
     return renderer;
 }
