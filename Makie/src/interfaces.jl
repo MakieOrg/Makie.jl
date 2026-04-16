@@ -136,7 +136,7 @@ function plot!(::Plot{F, Args}) where {F, Args}
 end
 
 function handle_transformation!(plot, parent)
-    t_user = to_value(pop!(plot.kw, :transformation, :automatic))
+    t_user = to_value(get!(plot.kw, :transformation, :automatic))
 
     # Handle passing transform!() inputs through transformation
     if t_user isa Tuple{Symbol, <:Real} || t_user isa Union{Attributes, AbstractDict, NamedTuple}
