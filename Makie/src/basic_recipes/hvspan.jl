@@ -34,6 +34,9 @@ Both bounds can be passed together as an interval `xs_lowhigh`.
     documented_attributes(Poly)...
 end
 
+Makie.dim_convert_dimensions(::Type{<:HSpan}, low, high) = (2, 2)
+Makie.dim_convert_dimensions(::Type{<:VSpan}, low, high) = (1, 1)
+
 function Makie.plot!(p::Union{HSpan, VSpan})
     mi = p isa HSpan ? :xmin : :ymin
     ma = p isa HSpan ? :xmax : :ymax

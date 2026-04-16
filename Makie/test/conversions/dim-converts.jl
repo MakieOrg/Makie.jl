@@ -61,6 +61,26 @@ end
     @test pl[1][] == Point.(1:5, Float64.(Makie.date_to_number.(DateTime, DateTime.(1:5))))
 end
 
+@testset "datetime spans use the correct dimension" begin
+    low = DateTime(2025, 1, 1)
+    high = DateTime(2025, 1, 2)
+    converted = Float64.(Makie.date_to_number.(DateTime, (low, high)))
+
+    f, ax, pl = hspan(low, high)
+    pl_conversion = Makie.get_conversions(pl)
+    @test pl_conversion[1] isa Union{Nothing, Makie.NoDimConversion}
+    @test pl_conversion[2] isa Makie.DateTimeConversion
+    @test pl[1][] == converted[1]
+    @test pl[2][] == converted[2]
+
+    f, ax, pl = vspan(low, high)
+    pl_conversion = Makie.get_conversions(pl)
+    @test pl_conversion[1] isa Makie.DateTimeConversion
+    @test pl_conversion[2] isa Union{Nothing, Makie.NoDimConversion}
+    @test pl[1][] == converted[1]
+    @test pl[2][] == converted[2]
+end
+
 @testset "Categorical ylims!" begin
     f, ax, p = scatter(1:4, Categorical(["a", "b", "c", "a"]))
     scatter!(ax, 1:4, Categorical(["b", "d", "a", "c"]))
