@@ -4,7 +4,7 @@ on:
 
 jobs:
   test:
-    name: WGLMakie Julia ${{ matrix.version }}
+    name: WGLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,6 +16,7 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        bucket: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -35,18 +36,21 @@ jobs:
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
+        env:
+          REFTEST_BUCKET: ${{ matrix.bucket }}
+          REFTEST_NBUCKETS: '4'
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_WGLMakie_${{ matrix.version }}
+          name: ReferenceImages_WGLMakie_${{ matrix.version }}_${{ matrix.bucket }}
           path: ./WGLMakie/test/reference_images/
       - name: Upload test Electron logs
         uses: actions/upload-artifact@v7
         with:
-          name: Electron_Logs_WGLMakie_${{ matrix.version }}
+          name: Electron_Logs_WGLMakie_${{ matrix.version }}_${{ matrix.bucket }}
           path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}

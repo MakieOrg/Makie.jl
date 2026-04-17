@@ -4,7 +4,7 @@ on:
 
 jobs:
   test:
-    name: GLMakie Julia ${{ matrix.version }}
+    name: GLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
     env:
       MODERNGL_DEBUGGING: "true"
     runs-on: ${{ matrix.os }}
@@ -18,6 +18,7 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        bucket: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -38,13 +39,16 @@ jobs:
       - name: Run the tests
         id: referencetests
         continue-on-error: true
+        env:
+          REFTEST_BUCKET: ${{ matrix.bucket }}
+          REFTEST_NBUCKETS: '4'
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_GLMakie_${{ matrix.version }}
+          name: ReferenceImages_GLMakie_${{ matrix.version }}_${{ matrix.bucket }}
           path: |
             ./GLMakie/test/reference_images/
       - name: Fail after artifacts if tests failed

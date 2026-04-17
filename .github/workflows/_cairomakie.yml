@@ -4,7 +4,7 @@ on:
 
 jobs:
   test:
-    name: CairoMakie Julia ${{ matrix.version }}
+    name: CairoMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -16,6 +16,7 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        bucket: [1, 2, 3, 4]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -34,13 +35,16 @@ jobs:
           pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
       - name: Run the tests
         continue-on-error: true
+        env:
+          REFTEST_BUCKET: ${{ matrix.bucket }}
+          REFTEST_NBUCKETS: '4'
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_CairoMakie_${{ matrix.version }}
+          name: ReferenceImages_CairoMakie_${{ matrix.version }}_${{ matrix.bucket }}
           path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
