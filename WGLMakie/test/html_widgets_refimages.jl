@@ -17,11 +17,13 @@ EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Defau
 
 function snapshot_figure(edisplay, app, path; capture_full_page = false)
     rm(path; force = true)
-    # Reset window to a known size before displaying so layout starts from
-    # a deterministic state regardless of what previous tests left behind
-    Electron.ElectronAPI.setContentSize(edisplay.window.window, 1200, 900)
-    display(edisplay, app)
     win = edisplay.window.window
+    # Reset window to a known size and force device scale factor to 1
+    # so screenshots have deterministic pixel dimensions regardless of
+    # what previous tests left behind or the host's DPI setting
+    Electron.ElectronAPI.setContentSize(win, 1200, 900)
+    run(win, "window.devicePixelRatio = 1")
+    display(edisplay, app)
     Bonito.wait_for_ready(app)
     sleep(1)
     win_size = run(
@@ -66,6 +68,7 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
     )
     Electron.ElectronAPI.setContentSize(win, win_size...)
     winid = win.id
+    target_w, target_h = win_size
     sleep(1) # do we need time for resize and relayouting? And is there an event we could wait for?
     # Normalize path for JavaScript (replace backslashes with forward slashes on Windows)
     js_path = replace(path, '\\' => '/')
@@ -74,8 +77,11 @@ function snapshot_figure(edisplay, app, path; capture_full_page = false)
         """
         const win = BrowserWindow.fromId($winid)
         win.webContents.capturePage().then(image => {
+            // Resize to the logical content size to normalize out devicePixelRatio
+            // differences (e.g. Retina 2x vs CI xvfb 1x)
+            const resized = image.resize({ width: $target_w, height: $target_h })
             const screenshotPath = '$(js_path)';
-            require('fs').writeFileSync(screenshotPath, image.toPNG());
+            require('fs').writeFileSync(screenshotPath, resized.toPNG());
             console.log('Screenshot saved to', screenshotPath);
         }).catch(err => {
             console.error('Screenshot error:', err);
