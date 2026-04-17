@@ -3,27 +3,45 @@ on:
   workflow_call:
 
 jobs:
-  test:
-    name: CairoMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
-    runs-on: ${{ matrix.os }}
+  setup:
+    name: Setup CairoMakie Julia ${{ matrix.version }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-          - '1'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        bucket: [1, 2, 3, 4]
+        version: ['1.10', '1']
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: julia-cache-cairomakie-${{ matrix.version }}
+          include-matrix: false
+      - name: Install and precompile
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
+          Pkg.precompile()
+
+  test:
+    name: CairoMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.10', '1']
+        bucket: [1, 2]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
           cache-name: julia-cache-cairomakie-${{ matrix.version }}
@@ -32,7 +50,6 @@ jobs:
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
-          # dev mono repo versions
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
@@ -40,7 +57,7 @@ jobs:
         continue-on-error: true
         env:
           REFTEST_BUCKET: ${{ matrix.bucket }}
-          REFTEST_NBUCKETS: '4'
+          REFTEST_NBUCKETS: '2'
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV

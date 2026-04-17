@@ -3,27 +3,46 @@ on:
   workflow_call:
 
 jobs:
-  test:
-    name: WGLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
-    runs-on: ${{ matrix.os }}
+  setup:
+    name: Setup WGLMakie Julia ${{ matrix.version }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-          - '1'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-        bucket: [1, 2, 3, 4]
+        version: ['1.10', '1']
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+        with:
+          cache-name: julia-cache-wglmakie-${{ matrix.version }}
+          include-matrix: false
+      - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
+      - name: Install and precompile
+        shell: julia --project=monorepo {0}
+        run: |
+          using Pkg;
+          pkg"registry up"
+          Pkg.update()
+          pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
+          Pkg.precompile()
+
+  test:
+    name: WGLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ['1.10', '1']
+        bucket: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
       - uses: julia-actions/cache@v3
         with:
           cache-name: julia-cache-wglmakie-${{ matrix.version }}
@@ -33,7 +52,6 @@ jobs:
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
-          # dev mono repo versions
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./WGLMakie ./ReferenceTests ./ComputePipeline"
