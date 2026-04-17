@@ -20,14 +20,19 @@ jobs:
           cache-name: julia-cache-glmakie-${{ matrix.version }}
           include-matrix: false
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
-      - name: Install and precompile
+      - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
-          Pkg.precompile()
+      - name: Precompile via Pkg.test
+        env:
+          PRECOMPILE_ONLY: 'true'
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie")'
 
   test:
     name: GLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2

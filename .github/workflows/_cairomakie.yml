@@ -19,14 +19,17 @@ jobs:
         with:
           cache-name: julia-cache-cairomakie-${{ matrix.version }}
           include-matrix: false
-      - name: Install and precompile
+      - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         run: |
           using Pkg;
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
-          Pkg.precompile()
+      - name: Precompile via Pkg.test
+        env:
+          PRECOMPILE_ONLY: 'true'
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
 
   test:
     name: CairoMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
