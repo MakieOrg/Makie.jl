@@ -23,8 +23,32 @@ const SKIP_FUNCTIONS = Set{Symbol}()
 const COUNTER = Ref(0)
 const TOTAL_COUNTER = Ref(0) # counts all @reference_test invocations, used for bucket assignment
 const TOTAL_TESTS = Ref(0) # total number of tests across all files, set before running for chunked bucketing
-const COUNT_ONLY = Ref(false) # when true, @reference_test only counts without running
 const SKIPPED_NAMES = Set{String}() # names skipped due to title exclusion or function exclusion
+
+"""
+    count_reference_tests(paths)
+
+Count `@reference_test` occurrences by reading files as text, recursively
+following `include("...")` directives relative to each file's directory.
+"""
+function count_reference_tests(paths)
+    n = 0
+    for path in paths
+        n += _count_in_file(path)
+    end
+    return n
+end
+
+function _count_in_file(path)
+    text = read(path, String)
+    n = count(r"@reference_test\b", text)
+    dir = dirname(path)
+    for m in eachmatch(r"include\(\"([^\"]+)\"\)", text)
+        child = joinpath(dir, m.captures[1])
+        isfile(child) && (n += _count_in_file(child))
+    end
+    return n
+end
 
 """
     should_run_in_bucket(test_index::Int)
@@ -62,9 +86,7 @@ macro reference_test(name, code)
     skip = (title in SKIP_TITLES) || any(x -> x in funcs, SKIP_FUNCTIONS)
     return quote
         ReferenceTests.TOTAL_COUNTER[] += 1
-        if ReferenceTests.COUNT_ONLY[]
-            # Counting pass, don't run anything
-        elseif !ReferenceTests.should_run_in_bucket(ReferenceTests.TOTAL_COUNTER[])
+        if !ReferenceTests.should_run_in_bucket(ReferenceTests.TOTAL_COUNTER[])
             # Not in this bucket, skip entirely
         else
             @testset $(title) begin
@@ -150,16 +172,8 @@ macro include_reference_tests(backend::Symbol, path, paths...)
             ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded", $(string(backend)))
             mkpath(ReferenceTests.RECORDING_DIR[])
 
-            # Count total tests via a dry-run pass (test files are already
-            # compiled so the second include is essentially free)
-            ReferenceTests.COUNT_ONLY[] = true
-            ReferenceTests.TOTAL_COUNTER[] = 0
-            for include_path in include_paths
-                include(include_path)
-            end
-            ReferenceTests.TOTAL_TESTS[] = ReferenceTests.TOTAL_COUNTER[]
-            ReferenceTests.COUNT_ONLY[] = false
-            ReferenceTests.TOTAL_COUNTER[] = 0
+            # Count total @reference_test occurrences for chunked bucket assignment
+            ReferenceTests.TOTAL_TESTS[] = ReferenceTests.count_reference_tests(include_paths)
 
             # Log bucket configuration
             let
