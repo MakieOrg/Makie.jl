@@ -108,7 +108,11 @@ end
 @reference_test "deletion" begin
     f = Figure()
     l = Legend(f[1, 1], [LineElement(color = :red)], ["Line"])
-    s = display(f)
+    # Use colorbuffer to initialize the screen with a properly established session.
+    # The generic `display(f)` inline path doesn't reliably wait for the WGLMakie session.
+    Makie.colorbuffer(f)
+    s = Makie.getscreen(f.scene)
+    @test !isnothing(s)
     @test f.scene.current_screens[1] === s
     @test f.scene.children[1].current_screens[1] === s
     @test f.scene.children[1].children[1].current_screens[1] === s
@@ -123,7 +127,9 @@ end
 @reference_test "deletion and observable args" begin
     obs = Observable(1:5)
     f, ax, pl = scatter(obs; markersize = 150)
-    s = display(f)
+    # Use colorbuffer to initialize the screen with a properly established session.
+    # The generic `display(f)` inline path doesn't reliably wait for the WGLMakie session.
+    Makie.colorbuffer(f)
     # So, for GLMakie it will be 2, since we register an additional listener for
     # State changes for the on demand renderloop
     @test length(obs.listeners) in (1, 2)

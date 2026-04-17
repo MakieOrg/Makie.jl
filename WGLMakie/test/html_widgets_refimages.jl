@@ -283,6 +283,7 @@ end
 end
 
 @reference_test "resize_to parent with fixed size div" begin
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     app = App() do
         fig = create_test_figure()
         DOM.div(
@@ -297,6 +298,7 @@ end
 end
 
 @reference_test "resize_to parent with ResizableCard" begin
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     app = App() do
         fig = create_test_figure()
         card = TestResizableCard(WGLMakie.WithConfig(fig; use_html_widgets = true, resize_to = :parent))
@@ -309,6 +311,7 @@ end
 end
 
 @reference_test "resize_to parent nested in styled container" begin
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     app = App() do
         fig = create_test_figure()
         DOM.div(
@@ -326,6 +329,7 @@ end
 end
 
 @reference_test "resize_to parent with multiple figures side by side" begin
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     app = App() do
         fig1 = Figure(; size = (600, 400))
         ax1 = Axis(fig1[1, 1]; title = "Left Plot")
@@ -356,6 +360,7 @@ end
 end
 
 @reference_test "resize_to body baseline" begin
+    WGLMakie.activate!(; use_html_widgets = true, px_per_unit = 2, scalefactor = 2)
     app = Bonito.App() do
         fig = create_test_figure()
         DOM.div(
