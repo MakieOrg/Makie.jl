@@ -1,8 +1,5 @@
 ENV["ENABLE_COMPUTE_CHECKS"] = "true"
 
-# Allow Pkg.test to be used purely for precompilation (setup job in CI)
-get(ENV, "PRECOMPILE_ONLY", nothing) == "true" && exit(0)
-
 ENV["ELECTRON_LOG_FILE"] = joinpath(@__DIR__, "electron.log")
 ENV["ELECTRON_ENABLE_LOGGING"] = "true"
 

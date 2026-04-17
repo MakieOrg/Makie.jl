@@ -3,13 +3,16 @@ on:
   workflow_call:
 
 jobs:
-  setup:
-    name: Setup GLMakie Julia ${{ matrix.version }}
+  test:
+    name: GLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
+    env:
+      MODERNGL_DEBUGGING: "true"
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         version: ['1.10', '1']
+        bucket: [1, 2]
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
@@ -27,56 +30,6 @@ jobs:
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./GLMakie ./ReferenceTests ./ComputePipeline"
-      - name: Precompile via Pkg.test
-        env:
-          PRECOMPILE_ONLY: 'true'
-        run: >
-          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
-          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie")'
-      - name: Upload Julia depot
-        uses: actions/upload-artifact@v7
-        with:
-          name: julia-depot-glmakie-${{ matrix.version }}
-          path: |
-            ~/.julia/compiled
-            ~/.julia/packages
-            ~/.julia/artifacts
-            ~/.julia/scratchspaces
-          retention-days: 1
-      - name: Upload Manifest
-        uses: actions/upload-artifact@v7
-        with:
-          name: manifest-glmakie-${{ matrix.version }}
-          path: monorepo/Manifest.toml
-          retention-days: 1
-
-  test:
-    name: GLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
-    needs: setup
-    env:
-      MODERNGL_DEBUGGING: "true"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ['1.10', '1']
-        bucket: [1, 2]
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-      - name: Download Julia depot
-        uses: actions/download-artifact@v8
-        with:
-          name: julia-depot-glmakie-${{ matrix.version }}
-          path: ~/.julia
-      - name: Download Manifest
-        uses: actions/download-artifact@v8
-        with:
-          name: manifest-glmakie-${{ matrix.version }}
-          path: monorepo
-      - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Run the tests
         id: referencetests
         continue-on-error: true
