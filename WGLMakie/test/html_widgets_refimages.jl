@@ -17,6 +17,9 @@ EScreenshot(display, app::Bonito.App) = EScreenshot(display, app, true)  # Defau
 
 function snapshot_figure(edisplay, app, path; capture_full_page = false)
     rm(path; force = true)
+    # Reset window to a known size before displaying so layout starts from
+    # a deterministic state regardless of what previous tests left behind
+    Electron.ElectronAPI.setContentSize(edisplay.window.window, 1200, 900)
     display(edisplay, app)
     win = edisplay.window.window
     Bonito.wait_for_ready(app)
