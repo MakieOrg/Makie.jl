@@ -22,6 +22,8 @@ const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
 const COUNTER = Ref(0)
 const TOTAL_COUNTER = Ref(0) # counts all @reference_test invocations, used for bucket assignment
+const TOTAL_TESTS = Ref(0) # total number of tests across all files, set before running for chunked bucketing
+const COUNT_ONLY = Ref(false) # when true, @reference_test only counts without running
 const SKIPPED_NAMES = Set{String}() # names skipped due to title exclusion or function exclusion
 
 """
@@ -35,7 +37,17 @@ function should_run_in_bucket(test_index::Int)
     nbuckets_str = get(ENV, "REFTEST_NBUCKETS", nothing)
     bucket_str = get(ENV, "REFTEST_BUCKET", nothing)
     (nbuckets_str === nothing || bucket_str === nothing) && return true
-    return mod1(test_index, parse(Int, nbuckets_str)) == parse(Int, bucket_str)
+    nbuckets = parse(Int, nbuckets_str)
+    bucket = parse(Int, bucket_str)
+    # Use contiguous chunks rather than interleaving so that each bucket
+    # touches fewer distinct code paths, reducing JIT/compilation overhead.
+    ntotal = TOTAL_TESTS[]
+    if ntotal <= 0
+        # Total unknown, fall back to interleaved assignment
+        return mod1(test_index, nbuckets) == bucket
+    end
+    chunk_size = cld(ntotal, nbuckets) # ceil division
+    return (bucket - 1) * chunk_size < test_index <= min(bucket * chunk_size, ntotal)
 end
 
 """
@@ -50,7 +62,9 @@ macro reference_test(name, code)
     skip = (title in SKIP_TITLES) || any(x -> x in funcs, SKIP_FUNCTIONS)
     return quote
         ReferenceTests.TOTAL_COUNTER[] += 1
-        if !ReferenceTests.should_run_in_bucket(ReferenceTests.TOTAL_COUNTER[])
+        if ReferenceTests.COUNT_ONLY[]
+            # Counting pass, don't run anything
+        elseif !ReferenceTests.should_run_in_bucket(ReferenceTests.TOTAL_COUNTER[])
             # Not in this bucket, skip entirely
         else
             @testset $(title) begin
@@ -136,12 +150,24 @@ macro include_reference_tests(backend::Symbol, path, paths...)
             ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded", $(string(backend)))
             mkpath(ReferenceTests.RECORDING_DIR[])
 
+            # Count total tests via a dry-run pass (test files are already
+            # compiled so the second include is essentially free)
+            ReferenceTests.COUNT_ONLY[] = true
+            ReferenceTests.TOTAL_COUNTER[] = 0
+            for include_path in include_paths
+                include(include_path)
+            end
+            ReferenceTests.TOTAL_TESTS[] = ReferenceTests.TOTAL_COUNTER[]
+            ReferenceTests.COUNT_ONLY[] = false
+            ReferenceTests.TOTAL_COUNTER[] = 0
+
             # Log bucket configuration
             let
                 nb = get(ENV, "REFTEST_NBUCKETS", nothing)
                 b = get(ENV, "REFTEST_BUCKET", nothing)
                 if nb !== nothing && b !== nothing
-                    @info "Running reference test bucket $(b)/$(nb)"
+                    ntotal = ReferenceTests.TOTAL_TESTS[]
+                    @info "Running reference test bucket $(b)/$(nb) ($(ntotal) total tests)"
                 end
             end
 
