@@ -33,6 +33,15 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie")'
+      - name: Upload Julia depot
+        uses: actions/upload-artifact@v7
+        with:
+          name: julia-depot-glmakie-${{ matrix.version }}
+          path: |
+            ~/.julia/compiled
+            ~/.julia/packages
+            ~/.julia/artifacts
+          retention-days: 1
 
   test:
     name: GLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
@@ -50,10 +59,11 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v3
+      - name: Download Julia depot
+        uses: actions/download-artifact@v8
         with:
-          cache-name: julia-cache-glmakie-${{ matrix.version }}
-          include-matrix: false
+          name: julia-depot-glmakie-${{ matrix.version }}
+          path: ~/.julia
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}

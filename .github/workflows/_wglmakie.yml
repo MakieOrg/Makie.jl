@@ -33,6 +33,15 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24'
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie")'
+      - name: Upload Julia depot
+        uses: actions/upload-artifact@v7
+        with:
+          name: julia-depot-wglmakie-${{ matrix.version }}
+          path: |
+            ~/.julia/compiled
+            ~/.julia/packages
+            ~/.julia/artifacts
+          retention-days: 1
 
   test:
     name: WGLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
@@ -48,10 +57,11 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - uses: julia-actions/cache@v3
+      - name: Download Julia depot
+        uses: actions/download-artifact@v8
         with:
-          cache-name: julia-cache-wglmakie-${{ matrix.version }}
-          include-matrix: false
+          name: julia-depot-wglmakie-${{ matrix.version }}
+          path: ~/.julia
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
