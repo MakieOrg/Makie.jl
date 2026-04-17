@@ -30,7 +30,7 @@ jobs:
         env:
           PRECOMPILE_ONLY: 'true'
         run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
-      - name: Upload Julia depot and Manifest
+      - name: Upload Julia depot
         uses: actions/upload-artifact@v7
         with:
           name: julia-depot-cairomakie-${{ matrix.version }}
@@ -39,7 +39,12 @@ jobs:
             ~/.julia/packages
             ~/.julia/artifacts
             ~/.julia/scratchspaces
-            monorepo/Manifest.toml
+          retention-days: 1
+      - name: Upload Manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: manifest-cairomakie-${{ matrix.version }}
+          path: monorepo/Manifest.toml
           retention-days: 1
 
   test:
@@ -56,16 +61,16 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - name: Download Julia depot and Manifest
+      - name: Download Julia depot
         uses: actions/download-artifact@v8
         with:
           name: julia-depot-cairomakie-${{ matrix.version }}
-          path: .
-      - name: Restore depot to home
-        run: |
-          mkdir -p ~/.julia
-          cp -r .julia/* ~/.julia/
-          rm -rf .julia
+          path: ~/.julia
+      - name: Download Manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: manifest-cairomakie-${{ matrix.version }}
+          path: monorepo
       - name: Run the tests
         continue-on-error: true
         env:

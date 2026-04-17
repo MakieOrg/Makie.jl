@@ -33,7 +33,7 @@ jobs:
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24'
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie")'
-      - name: Upload Julia depot and Manifest
+      - name: Upload Julia depot
         uses: actions/upload-artifact@v7
         with:
           name: julia-depot-wglmakie-${{ matrix.version }}
@@ -42,7 +42,12 @@ jobs:
             ~/.julia/packages
             ~/.julia/artifacts
             ~/.julia/scratchspaces
-            monorepo/Manifest.toml
+          retention-days: 1
+      - name: Upload Manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: manifest-wglmakie-${{ matrix.version }}
+          path: monorepo/Manifest.toml
           retention-days: 1
 
   test:
@@ -59,16 +64,16 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-      - name: Download Julia depot and Manifest
+      - name: Download Julia depot
         uses: actions/download-artifact@v8
         with:
           name: julia-depot-wglmakie-${{ matrix.version }}
-          path: .
-      - name: Restore depot to home
-        run: |
-          mkdir -p ~/.julia
-          cp -r .julia/* ~/.julia/
-          rm -rf .julia
+          path: ~/.julia
+      - name: Download Manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: manifest-wglmakie-${{ matrix.version }}
+          path: monorepo
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Run the tests
         continue-on-error: true
