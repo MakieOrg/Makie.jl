@@ -63,6 +63,7 @@ jobs:
           path: .
       - name: Restore depot to home
         run: |
+          mkdir -p ~/.julia
           cp -r .julia/* ~/.julia/
           rm -rf .julia
       - name: Run the tests

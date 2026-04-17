@@ -66,6 +66,7 @@ jobs:
           path: .
       - name: Restore depot to home
         run: |
+          mkdir -p ~/.julia
           cp -r .julia/* ~/.julia/
           rm -rf .julia
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
