@@ -1113,7 +1113,7 @@ end
 
 
 function assemble_voxel_robj!(data, screen::Screen, attr, args, input2glname)
-    voxel_id = Texture(screen.glscreen, args.chunk_u8)
+    voxel_id = Texture(screen.glscreen, args.chunk_sampler)
     uvt = args.packed_uv_transform
     data[:voxel_id] = voxel_id
     data[:uv_transform] = isnothing(uvt) ? nothing : Texture(screen.glscreen, uvt, minfilter = :nearest)
@@ -1146,7 +1146,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
         # Special
         :space,
         # Needs explicit handling
-        :chunk_u8, :packed_uv_transform,
+        :chunk_sampler, :packed_uv_transform,
     ]
     uniforms = [
         :instances, :voxel_model, :gap, :depthsorting,
@@ -1157,7 +1157,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Voxels)
     haskey(attr, :voxel_colormap) && push!(uniforms, :voxel_colormap)
 
     input2glname = Dict{Symbol, Symbol}(
-        :chunk_u8 => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
+        :chunk_sampler => :voxel_id, :voxel_model => :model, :packed_uv_transform => :uv_transform,
         :voxel_colormap => :color_map, :voxel_color => :color,
         :uniform_num_clip_planes => :_num_clip_planes
     )
