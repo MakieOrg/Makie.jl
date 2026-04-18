@@ -67,3 +67,32 @@ end
 
     parent
 end
+
+@reference_test "Inf in colormap" begin
+    data = reshape(collect(1.0:16.0), 4, 4)
+    data[1, 1] = Inf
+
+    data3 = reshape(collect(1.0:64.0), 4, 4, 4)
+    data3[1, 1, 1] = Inf
+    data3[end, end, end] = -Inf
+
+    cs4 = [1, 2, 3, -Inf]
+    cs5 = [1, 2, 3, -Inf, 1]
+
+    f = Figure(size = (400, 600))
+    heatmap(f[1, 1], data)
+    image(f[1, 2], data, colormap = :viridis)
+    surface(f[2, 1], zeros(10, 10), color = data, shading = NoShading)
+    mesh(f[2, 2], Rect2f(0, 0, 1, 1), color = data, shading = NoShading)
+    Makie.volume(f[3, 1], data3)
+    lines(f[3, 2], Rect2f(0, 0, 1, 1), color = cs5, linewidth = 5)
+    scatter!(Rect2f(0, 0, 1, 1), color = cs4, markersize = 20)
+    linesegments!(coordinates(Rect2f(0, 0, 1, 1))[[1, 3, 2, 4]], color = cs4, linewidth = 5)
+    meshscatter!(Rect2f(-0.2, -0.2, 1.4, 1.4), color = cs4)
+    text!(
+        [-0.2, 0.5, 0.5, 1.2], [0.5, -0.2, 1.2, 0.5], color = cs4, text = string.(1:4),
+        fontsize = 20, align = (:center, :center)
+    )
+
+    f
+end

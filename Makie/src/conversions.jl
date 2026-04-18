@@ -943,6 +943,9 @@ convert_attribute(x, ::key"colorscale") = Ref{Any}(x)
 
 # TODO: is it worth typing this as Ref{Union{Automatic, VecTypes{2}, Tuple{<: Real, <: Real}}} ?
 convert_attribute(x::Automatic, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{<:Any, Automatic}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, <:Any}, ::key"colorrange") = Ref{Any}(x)
+convert_attribute(x::Tuple{Automatic, Automatic}, ::key"colorrange") = Ref{Any}(first(x))
 convert_attribute(x, ::key"colorrange") = Ref{Any}(to_colorrange(x))
 to_colorrange(x) = isnothing(x) ? nothing : Vec2f(x)
 
@@ -969,6 +972,7 @@ to_color(c::VecTypes{4}) = RGBAf(c[1], c[2], c[3], c[4])
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::AbstractArray) = to_color.(c)
+#to_color(c::Observable) = lift(to_color, c)
 to_color(c::AbstractArray{<:Colorant, N}) where {N} = convert(Array{RGBAf, N}, c)
 to_color(p::AbstractPattern) = p
 function to_color(c::Tuple{<:Any, <:Number})
@@ -2344,6 +2348,7 @@ end
 
 convert_attribute(value, ::key"diffuse") = Vec3f(value)
 convert_attribute(value, ::key"specular") = Vec3f(value)
+convert_attribute(value, ::key"shininess") = Float32(value)
 
 convert_attribute(value, ::key"backlight") = Float32(value)
 

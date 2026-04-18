@@ -163,7 +163,7 @@ lines!(ax, seconds, exp.(seconds) .+ 7, color = :tomato, linestyle = :dash)
 f
 ```
 
-## Legend
+## [Legend](@id Legend_getting_started_example)
 
 The last element we're missing is the legend.
 One way to create a legend is by labelling plots with the `label` keyword and using the [`axislegend`](@ref) function:
@@ -207,4 +207,3 @@ nothing # hide
 ```
 
 You should now find the three files in your `makie_tutorial` folder.
-

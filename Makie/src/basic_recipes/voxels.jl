@@ -104,7 +104,8 @@ end
 # TODO: Does have some overlap with the normal version...
 function register_voxel_colormapping!(attr)
     # TODO: Is resolving this immediately fine?
-    return if isnothing(attr[:color][])
+    add_constant!(attr, :fetch_pixel, false) # for CairoMakie
+    if isnothing(attr[:color][])
         register_computation!(attr, [:colormap, :alpha, :lowclip, :highclip], [:voxel_colormap]) do (cmap, alpha, lowclip, highclip), changed, cached_load
             N = 253 + (lowclip === automatic) + (highclip === automatic)
             cm = add_alpha.(resample_cmap(cmap, N), alpha)
@@ -140,6 +141,7 @@ function register_voxel_colormapping!(attr)
         end
 
     end
+    return
 end
 
 function calculated_attributes!(::Type{Voxels}, plot::Plot)
@@ -282,12 +284,14 @@ end
 function voxel_colors(p::Voxels)
     voxel_id = p.chunk_u8[].data::Array{UInt8, 3}
     uv_map = p.uvmap[]
-    if !isnothing(uv_map)
+    color = if !isnothing(uv_map)
         @warn "Voxel textures are not implemented in this backend!"
+        # for safety and type stability
+        p.voxel_color[]
     elseif haskey(p, :voxel_colormap)
-        color = p.voxel_colormap[]
+        p.voxel_colormap[]
     else
-        color = p.voxel_color[]
+        p.voxel_color[]
     end
 
     return [color[id] for id in voxel_id if id !== 0x00]

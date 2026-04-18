@@ -1,3 +1,48 @@
+function _update_option_colors!(hovered, optionstrings, optionpolycolors, m)
+    n = length(optionstrings[])
+    resize!(optionpolycolors.val, n)
+    map!(optionpolycolors.val, 1:n) do idx
+        if idx == m.i_selected[]
+            return m.cell_color_active[]
+        elseif idx == hovered
+            return m.cell_color_hover[]
+        else
+            if iseven(idx)
+                to_color(m.cell_color_inactive_even[])
+            else
+                to_color(m.cell_color_inactive_odd[])
+            end
+        end
+    end
+    return notify(optionpolycolors)
+end
+
+function _pick_entry(y, menuscene, list_y_bounds)
+    # determine which rectangle in the list the mouse is in
+    # we do this geometrically and not by picking because it's hard to calculate the index
+    # of the text from the picking value returned
+    # translation due to scrolling has to be removed first
+    ytrans = y - translation(menuscene)[][2]
+    return argmin(
+        i -> abs(ytrans - 0.5 * (list_y_bounds[][i + 1] + list_y_bounds[][i])),
+        1:(length(list_y_bounds[]) - 1)
+    )
+end
+
+function _mouse_up(butt, was_pressed)
+    if butt.button == Mouse.left
+        if butt.action == Mouse.press
+            was_pressed[] = true
+            return false
+        elseif butt.action == Mouse.release && was_pressed[]
+            was_pressed[] = false
+            return true
+        end
+    end
+    was_pressed[] = false
+    return false
+end
+
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 
@@ -90,27 +135,18 @@ function initialize_block!(m::Menu; default = 1)
 
     textpositions = Observable(zeros(Point2f, length(optionstrings[])); ignore_equal_values = true)
 
+    # band-aid fix for resizing before display
+    on(optionstrings) do strings
+        N = length(strings)
+        if N != length(textpositions[])
+            resize!(textpositions[], N)
+            notify(textpositions)
+        end
+        return
+    end
+
     optionrects = Observable([Rect2d(0, 0, 0, 0)]; ignore_equal_values = true)
     optionpolycolors = Observable(RGBAf[RGBAf(0.5, 0.5, 0.5, 1)]; ignore_equal_values = true)
-
-    function update_option_colors!(hovered)
-        n = length(optionstrings[])
-        resize!(optionpolycolors.val, n)
-        map!(optionpolycolors.val, 1:n) do idx
-            if idx == m.i_selected[]
-                return m.cell_color_active[]
-            elseif idx == hovered
-                return m.cell_color_hover[]
-            else
-                if iseven(idx)
-                    to_color(m.cell_color_inactive_even[])
-                else
-                    to_color(m.cell_color_inactive_odd[])
-                end
-            end
-        end
-        return notify(optionpolycolors)
-    end
 
     # the y boundaries of the list rectangles
     list_y_bounds = Ref(Float32[])
@@ -150,26 +186,15 @@ function initialize_block!(m::Menu; default = 1)
             BBox(0, w_bbox, h - heights_cumsum[i + 1], h - heights_cumsum[i])
         end
 
-        update_option_colors!(0)
+        _update_option_colors!(0, optionstrings, optionpolycolors, m)
         notify(optionrects)
         return
     end
     notify(optionstrings)
 
-    function pick_entry(y)
-        # determine which rectangle in the list the mouse is in
-        # we do this geometrically and not by picking because it's hard to calculate the index
-        # of the text from the picking value returned
-        # translation due to scrolling has to be removed first
-        ytrans = y - translation(menuscene)[][2]
-        return argmin(
-            i -> abs(ytrans - 0.5 * (list_y_bounds[][i + 1] + list_y_bounds[][i])),
-            1:(length(list_y_bounds[]) - 1)
-        )
-    end
 
-    was_inside_options = false
-    was_inside_button = false
+    was_inside_options = Ref(false)
+    was_inside_button = Ref(false)
 
     e = menuscene.events
 
@@ -180,19 +205,6 @@ function initialize_block!(m::Menu; default = 1)
     # TODO, move this back to mousestatemachine, which does exactly this
     was_pressed_options = Ref(false)
     was_pressed_button = Ref(false)
-    function mouse_up(butt, was_pressed)
-        if butt.button == Mouse.left
-            if butt.action == Mouse.press
-                was_pressed[] = true
-                return false
-            elseif butt.action == Mouse.release && was_pressed[]
-                was_pressed[] = false
-                return true
-            end
-        end
-        was_pressed[] = false
-        return false
-    end
 
     onany(blockscene, e.mouseposition, e.mousebutton; priority = 64) do position, butt
         mp = screen_relative(menuscene, position)
@@ -205,15 +217,14 @@ function initialize_block!(m::Menu; default = 1)
             # selectable area and are in pixel space relative to menuscene)
             if any(r -> mp in r, optionpolys[1][])
                 is_over_options = true
-                was_inside_options = true
+                was_inside_options[] = true
                 # we either clicked on an item or hover it
-                if mouse_up(butt, was_pressed_options) # PRESSED
-                    i = pick_entry(mp[2])
-                    m.i_selected[] = i
+                if _mouse_up(butt, was_pressed_options) # PRESSED
+                    m.i_selected[] = _pick_entry(mp[2], menuscene, list_y_bounds)
                     m.is_open[] = false
                 else # HOVER
-                    idx_hovered = pick_entry(mp[2])
-                    update_option_colors!(idx_hovered)
+                    idx_hovered = _pick_entry(mp[2], menuscene, list_y_bounds)
+                    _update_option_colors!(idx_hovered, optionstrings, optionpolycolors, m)
                 end
             else
                 # If not inside anymore, invalidate was_pressed
@@ -226,8 +237,8 @@ function initialize_block!(m::Menu; default = 1)
             if position in selectionpoly.converted[][1]
                 # If over, we either click it to open/close the menu, or we just hover it
                 is_over_button = true
-                was_inside_button = true
-                if mouse_up(butt, was_pressed_button) # PRESSED
+                was_inside_button[] = true
+                if _mouse_up(butt, was_pressed_button) # PRESSED
                     m.is_open[] = !m.is_open[]
                     if m.is_open[]
                         t = translation(menuscene)[]
@@ -250,12 +261,12 @@ function initialize_block!(m::Menu; default = 1)
         end
 
         # clean up hovers if we're outside
-        if !is_over_options && was_inside_options # going from being inside to outside
-            was_inside_options = false
-            update_option_colors!(0)
+        if !is_over_options && was_inside_options[] # going from being inside to outside
+            was_inside_options[] = false
+            _update_option_colors!(0, optionstrings, optionpolycolors, m)
         end
-        if !is_over_button && was_inside_button
-            was_inside_button = false
+        if !is_over_button && was_inside_button[]
+            was_inside_button[] = false
             selectionpoly.color = m.selection_cell_color_inactive[]
         end
         # if mouse got over anything else, we close the menu

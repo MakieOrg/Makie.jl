@@ -175,15 +175,15 @@ module Aggregation
                 out[i, j] = update(op, out[i, j], z)
             end
         end
-
         mini, maxi = Inf, -Inf
-        map!(pixelbuffer, aggbuffer) do x
-            final_value = value(op, x)
+
+        for i in eachindex(pixelbuffer, aggbuffer)
+            final_value = value(op, aggbuffer[i])
             if isfinite(final_value)
                 mini = min(final_value, mini)
                 maxi = max(final_value, maxi)
             end
-            return final_value
+            pixelbuffer[i] = final_value
         end
         c.data_extrema = (mini, maxi)
         return c
@@ -711,33 +711,33 @@ function Makie.plot!(p::HeatmapShader)
 
     map!(xy_to_rect, p.attributes, [:x, :y], :data_limits)
 
+
+    T = eltype(p.image[].data) <: Colors.Colorant ? RGB{Float32} : Float32
     map!(p.attributes, [:image, :x, :y, :max_resolution, :data_limits, :colorrange], [:x_endpoints, :y_endpoints, :overview_image, :computed_colorrange]) do image, x, y, max_resolution, image_area, crange
         x, y, img = resample_image(x, y, image.data, max_resolution, image_area)
         cr = calculate_colorrange(img, crange)
         if image.lowres_background
             val = cr isa Vec2 ? mean(cr) : 0.0f0 # TODO color mean?
-            _img = Float32[val for _ in 1:1, _ in 1:1]
+            _img = [T(val) for _ in 1:1, _ in 1:1]
         else
             _img = img
         end
         return x, y, _img, cr
     end
 
-    register_computation!(p.attributes, [:image, :x, :y, :max_resolution, :slow_limits], [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible]) do (image, x, y, max_resolution, limits), changed, last
+    ComputePipeline.map!(
+        p.attributes,
+        [:image, :x, :y, :max_resolution, :slow_limits],
+        [:lx_endpoints, :ly_endpoints, :limit_image, :l_visible],
+        init = (p.x[], p.x[], fill(zero(T), 2, 2), false)
+    ) do image, x, y, max_resolution, limits
         xe_ye_oimg = resample_image(x, y, image.data, max_resolution, limits)
-        if isnothing(xe_ye_oimg)
-            if isnothing(last) # first downsample
-                return (x, x, fill(0.0f0, 2, 2), false)
-            else
-                return (nothing, nothing, nothing, false) # simply dont update!
-            end
-        end
+        isnothing(xe_ye_oimg) && return nothing
         return (xe_ye_oimg..., true)
     end
 
     gpa = generic_plot_attributes(p)
     cpa = colormap_attributes(p)
-
 
     # Create an overview image that gets shown behind, so we always see the "big picture"
     # In case updating the detailed view takes longer

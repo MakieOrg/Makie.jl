@@ -35,7 +35,7 @@ After initialization a number of functions can be used to view and manipulate li
 For these the ambient light and the remaining lights are separated.
 
 - `get_lights(scene)` returns the current lights vector (without the ambient light)
-- `set_lights(scene, lights)` replaces the current lights with the given ones (excluding ambient)
+- `set_lights!(scene, lights)` replaces the current lights with the given ones (excluding ambient)
 - `set_ambient_light!(scene, color)` sets the color (and intensity) of the ambient light
 - `set_light!(scene, n, light)` replaces the n-th light in the light vector with the given one
 - `set_light!(scene, n; fields...)` updates a field of the n-the light in the light vector
