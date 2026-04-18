@@ -34,7 +34,7 @@ jobs:
           PRECOMPILE_ONLY: 'true'
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24'
-          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie")'
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie", coverage=true)'
       - name: Package depot and Manifest
         run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball

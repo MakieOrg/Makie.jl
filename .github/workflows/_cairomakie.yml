@@ -31,7 +31,7 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
-        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
       - name: Package depot and Manifest
         run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball
@@ -65,7 +65,6 @@ jobs:
         env:
           REFTEST_BUCKET: ${{ matrix.bucket }}
           REFTEST_NBUCKETS: '2'
-          JULIA_DEBUG: ${{ matrix.bucket == 1 && 'loading' || '' }}
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
