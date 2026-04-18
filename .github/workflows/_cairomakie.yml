@@ -31,12 +31,12 @@ jobs:
           PRECOMPILE_ONLY: 'true'
         run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
       - name: Package depot and Manifest
-        run: tar -cf /tmp/depot.tar -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces && tar -rf /tmp/depot.tar monorepo/Manifest.toml
+        run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball
         uses: actions/upload-artifact@v7
         with:
           name: julia-depot-cairomakie-${{ matrix.version }}
-          path: /tmp/depot.tar
+          path: /tmp/depot.tar.zst
           retention-days: 1
 
   test:
@@ -58,7 +58,7 @@ jobs:
         with:
           name: julia-depot-cairomakie-${{ matrix.version }}
       - name: Extract depot and Manifest
-        run: tar -xf depot.tar -C ~ && tar -xf depot.tar monorepo/Manifest.toml
+        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - name: Run the tests
         continue-on-error: true
         env:

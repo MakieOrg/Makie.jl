@@ -34,12 +34,12 @@ jobs:
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie")'
       - name: Package depot and Manifest
-        run: tar -cf /tmp/depot.tar -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces && tar -rf /tmp/depot.tar monorepo/Manifest.toml
+        run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball
         uses: actions/upload-artifact@v7
         with:
           name: julia-depot-glmakie-${{ matrix.version }}
-          path: /tmp/depot.tar
+          path: /tmp/depot.tar.zst
           retention-days: 1
 
   test:
@@ -63,7 +63,7 @@ jobs:
         with:
           name: julia-depot-glmakie-${{ matrix.version }}
       - name: Extract depot and Manifest
-        run: tar -xf depot.tar -C ~ && tar -xf depot.tar monorepo/Manifest.toml
+        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Run the tests
         id: referencetests
