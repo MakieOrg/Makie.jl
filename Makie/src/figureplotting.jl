@@ -142,17 +142,29 @@ args_preferred_axis(::AbstractVector{<:Point2}) = Axis
 # axis attributes
 
 """
-    preferred_axis_attributes(plot::Plot, ::Type{<:Block})
+    preferred_axis_attributes(::Type{<:Block}, plot::Plot)
 
 Sets the default axis attributes when a plot creates an axis. The axis may be
 created based on `args_preferred_axis()` or by the user setting
 `plot(..., axis = (type == axistype, ...))`. The latter may also overwrite
 attributes returned by this function.
 
+Recipe authors can override this to provide defaults for their plot type:
+
+    preferred_axis_attributes(::Type{<:Axis}, ::MyPlot) = (xlabel = "x", ...)
+
+The default unpacks `plot.args[]` and delegates to the args form, so data
+types used as plot arguments can provide axis defaults by dispatching on
+their type:
+
+    preferred_axis_attributes(::Type{<:Axis}, ::MyData, args...) = (xlabel = "x", ...)
+
 The return type is expected to be a Dict-like collection (e.g. Attributes, Dict,
 NamedTuple).
 """
-preferred_axis_attributes(p::Plot, ::Type{<:Block}) = NamedTuple()
+preferred_axis_attributes(::Type{T}, plot::Plot) where {T <: Block} =
+    preferred_axis_attributes(T, plot.args[]...)
+preferred_axis_attributes(::Type{<:Block}, args...) = NamedTuple()
 
 to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
@@ -180,7 +192,7 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     set_axis_attributes!(AxType, axis_kw, plot)
 
     # Add defaults generated based on the plot creating the axis
-    preferred_attr = preferred_axis_attributes(plot, AxType)
+    preferred_attr = preferred_axis_attributes(AxType, plot)
     attr = something(preferred_attr, NamedTuple())
     for (k, v) in pairs(attr)
         get!(axis_kw, k, v)
