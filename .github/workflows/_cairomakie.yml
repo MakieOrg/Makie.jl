@@ -65,6 +65,7 @@ jobs:
         env:
           REFTEST_BUCKET: ${{ matrix.bucket }}
           REFTEST_NBUCKETS: '2'
+          JULIA_DEBUG: ${{ matrix.bucket == 1 && 'loading' || '' }}
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
