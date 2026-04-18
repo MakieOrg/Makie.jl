@@ -217,7 +217,7 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
     else
-        preferred_axis_type(plot)
+        _preferred_axis_type(plot)
     end
 
     if AxType == FigureOnly # For FigureSpec, which creates Axes dynamically
