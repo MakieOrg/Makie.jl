@@ -21,6 +21,8 @@ jobs:
           include-matrix: false
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
           using Pkg;
           pkg"registry up"
