@@ -58,7 +58,7 @@ jobs:
         with:
           name: julia-depot-cairomakie-${{ matrix.version }}
       - name: Extract depot and Manifest
-        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
+        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && mkdir -p monorepo && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - name: Run the tests
         continue-on-error: true
         env:

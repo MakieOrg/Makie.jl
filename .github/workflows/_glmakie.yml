@@ -63,7 +63,7 @@ jobs:
         with:
           name: julia-depot-glmakie-${{ matrix.version }}
       - name: Extract depot and Manifest
-        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
+        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && mkdir -p monorepo && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev xsettingsd x11-xserver-utils
       - name: Run the tests
         id: referencetests
