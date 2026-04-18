@@ -114,7 +114,7 @@ macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
 
         $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
-        docstring_modified = make_block_docstring($name, user_docstring)
+        docstring_modified = $(make_block_docstring)($name, user_docstring)
         @doc docstring_modified $name
     end
 
