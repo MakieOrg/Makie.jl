@@ -1,23 +1,23 @@
 name: WGLMakie
 on:
   workflow_call:
+    inputs:
+      julia-version:
+        required: true
+        type: string
 
 jobs:
   setup:
-    name: Setup WGLMakie Julia ${{ matrix.version }}
+    name: Setup WGLMakie Julia ${{ inputs.julia-version }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ['1.10', '1']
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
+          version: ${{ inputs.julia-version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: julia-cache-wglmakie-${{ matrix.version }}
+          cache-name: julia-cache-wglmakie-${{ inputs.julia-version }}
           include-matrix: false
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
@@ -40,28 +40,27 @@ jobs:
       - name: Upload depot tarball
         uses: actions/upload-artifact@v7
         with:
-          name: julia-depot-wglmakie-${{ matrix.version }}
+          name: julia-depot-wglmakie-${{ inputs.julia-version }}
           path: /tmp/depot.tar.zst
           retention-days: 1
 
   test:
-    name: WGLMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/4
+    name: WGLMakie Julia ${{ inputs.julia-version }} bucket ${{ matrix.bucket }}/4
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.10', '1']
         bucket: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
+          version: ${{ inputs.julia-version }}
       - name: Download depot tarball
         uses: actions/download-artifact@v8
         with:
-          name: julia-depot-wglmakie-${{ matrix.version }}
+          name: julia-depot-wglmakie-${{ inputs.julia-version }}
       - name: Extract depot and Manifest
         run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && mkdir -p monorepo && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev libosmesa6 libgl1-mesa-dri mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
@@ -76,12 +75,12 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_WGLMakie_${{ matrix.version }}_${{ matrix.bucket }}
+          name: ReferenceImages_WGLMakie_${{ inputs.julia-version }}_${{ matrix.bucket }}
           path: ./WGLMakie/test/reference_images/
       - name: Upload test Electron logs
         uses: actions/upload-artifact@v7
         with:
-          name: Electron_Logs_WGLMakie_${{ matrix.version }}_${{ matrix.bucket }}
+          name: Electron_Logs_WGLMakie_${{ inputs.julia-version }}_${{ matrix.bucket }}
           path: ./WGLMakie/test/electron.log
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}

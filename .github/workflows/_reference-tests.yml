@@ -4,13 +4,28 @@ on:
 
 jobs:
   cairomakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_cairomakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   glmakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_glmakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   wglmakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_wglmakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   consolidation:
     name: Merge artifacts

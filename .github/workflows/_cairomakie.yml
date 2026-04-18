@@ -1,23 +1,23 @@
 name: CairoMakie
 on:
   workflow_call:
+    inputs:
+      julia-version:
+        required: true
+        type: string
 
 jobs:
   setup:
-    name: Setup CairoMakie Julia ${{ matrix.version }}
+    name: Setup CairoMakie Julia ${{ inputs.julia-version }}
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        version: ['1.10', '1']
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
+          version: ${{ inputs.julia-version }}
       - uses: julia-actions/cache@v3
         with:
-          cache-name: julia-cache-cairomakie-${{ matrix.version }}
+          cache-name: julia-cache-cairomakie-${{ inputs.julia-version }}
           include-matrix: false
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
@@ -37,28 +37,27 @@ jobs:
       - name: Upload depot tarball
         uses: actions/upload-artifact@v7
         with:
-          name: julia-depot-cairomakie-${{ matrix.version }}
+          name: julia-depot-cairomakie-${{ inputs.julia-version }}
           path: /tmp/depot.tar.zst
           retention-days: 1
 
   test:
-    name: CairoMakie Julia ${{ matrix.version }} bucket ${{ matrix.bucket }}/2
+    name: CairoMakie Julia ${{ inputs.julia-version }} bucket ${{ matrix.bucket }}/2
     needs: setup
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        version: ['1.10', '1']
         bucket: [1, 2]
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
+          version: ${{ inputs.julia-version }}
       - name: Download depot tarball
         uses: actions/download-artifact@v8
         with:
-          name: julia-depot-cairomakie-${{ matrix.version }}
+          name: julia-depot-cairomakie-${{ inputs.julia-version }}
       - name: Extract depot and Manifest
         run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && mkdir -p monorepo && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - name: Run the tests
@@ -72,7 +71,7 @@ jobs:
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_CairoMakie_${{ matrix.version }}_${{ matrix.bucket }}
+          name: ReferenceImages_CairoMakie_${{ inputs.julia-version }}_${{ matrix.bucket }}
           path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
