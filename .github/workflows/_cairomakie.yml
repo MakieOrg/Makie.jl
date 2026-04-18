@@ -31,7 +31,7 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
-        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
       - name: Package depot and Manifest
         run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball
@@ -76,9 +76,3 @@ jobs:
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: Makie/src
-      - uses: codecov/codecov-action@v6
-        with:
-          file: lcov.info

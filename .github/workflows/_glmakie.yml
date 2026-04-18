@@ -34,7 +34,7 @@ jobs:
           PRECOMPILE_ONLY: 'true'
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
-          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie", coverage=true)'
+          julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("GLMakie")'
       - name: Package depot and Manifest
         run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
       - name: Upload depot tarball
@@ -84,9 +84,3 @@ jobs:
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: Makie/src
-      - uses: codecov/codecov-action@v6
-        with:
-          file: lcov.info
