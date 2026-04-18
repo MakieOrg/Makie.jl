@@ -1,53 +1,78 @@
 name: CairoMakie
 on:
   workflow_call:
+    inputs:
+      julia-version:
+        required: true
+        type: string
 
 jobs:
-  test:
-    name: CairoMakie Julia ${{ matrix.version }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.10'
-          - '1'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
+  setup:
+    name: Setup CairoMakie Julia ${{ inputs.julia-version }}
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
         with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
+          version: ${{ inputs.julia-version }}
       - uses: julia-actions/cache@v3
+        with:
+          cache-name: julia-cache-cairomakie-${{ inputs.julia-version }}
+          include-matrix: false
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
           using Pkg;
-          # dev mono repo versions
           pkg"registry up"
           Pkg.update()
           pkg"dev ./Makie ./CairoMakie ./ReferenceTests ./ComputePipeline"
+      - name: Precompile via Pkg.test
+        env:
+          PRECOMPILE_ONLY: 'true'
+        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
+      - name: Package depot and Manifest
+        run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
+      - name: Upload depot tarball
+        uses: actions/upload-artifact@v7
+        with:
+          name: julia-depot-cairomakie-${{ inputs.julia-version }}
+          path: /tmp/depot.tar.zst
+          retention-days: 1
+
+  test:
+    name: CairoMakie Julia ${{ inputs.julia-version }} bucket ${{ matrix.bucket }}/2
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        bucket: [1, 2]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ inputs.julia-version }}
+      - name: Download depot tarball
+        uses: actions/download-artifact@v8
+        with:
+          name: julia-depot-cairomakie-${{ inputs.julia-version }}
+      - name: Extract depot and Manifest
+        run: tar -xf depot.tar.zst --use-compress-program unzstd -C ~ && mkdir -p monorepo && cp ~/.julia/monorepo-Manifest.toml monorepo/Manifest.toml
       - name: Run the tests
         continue-on-error: true
+        env:
+          REFTEST_BUCKET: ${{ matrix.bucket }}
+          REFTEST_NBUCKETS: '2'
         run: >
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie", coverage=true)'
           && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: ReferenceImages_CairoMakie_${{ matrix.version }}
+          name: ReferenceImages_CairoMakie_${{ inputs.julia-version }}_${{ matrix.bucket }}
           path: ./CairoMakie/test/reference_images/
       - name: Fail after artifacts if tests failed
         if: ${{ env.TESTS_SUCCESSFUL != 'true' }}
         run: exit 1
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          directories: Makie/src
-      - uses: codecov/codecov-action@v6
-        with:
-          file: lcov.info

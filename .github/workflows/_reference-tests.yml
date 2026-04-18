@@ -4,13 +4,28 @@ on:
 
 jobs:
   cairomakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_cairomakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   glmakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_glmakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   wglmakie:
+    strategy:
+      matrix:
+        julia-version: ['1.10', '1']
     uses: ./.github/workflows/_wglmakie.yml
+    with:
+      julia-version: ${{ matrix.julia-version }}
 
   consolidation:
     name: Merge artifacts
@@ -18,42 +33,61 @@ jobs:
     if: always()
     needs: [cairomakie, glmakie, wglmakie]
     steps:
-      - uses: actions/download-artifact@v8
+      - name: Download all bucket artifacts for Julia 1
+        uses: actions/download-artifact@v8
         with:
-          name: ReferenceImages_WGLMakie_1
-          path: ./ReferenceImages/WGLMakie
-      - uses: actions/download-artifact@v8
-        with:
-          name: ReferenceImages_CairoMakie_1
-          path: ./ReferenceImages/CairoMakie
-      - uses: actions/download-artifact@v8
-        with:
-          name: ReferenceImages_GLMakie_1
-          path: ./ReferenceImages/GLMakie
+          pattern: ReferenceImages_*_1_*
+          path: ./BucketArtifacts/
       - name: Consolidate reference image folders
         run: |
-          baseDir="./ReferenceImages"
+          baseDir="./BucketArtifacts"
+          outDir="./ReferenceImagesCombined"
+          mkdir -p "$outDir"
 
-          # Create new top-level directory for combined files
-          mkdir -p "./ReferenceImagesCombined"
+          # Copy reference images from the first available artifact (same across all buckets/backends)
+          first_artifact=$(ls -d ${baseDir}/ReferenceImages_*_1_*/ 2>/dev/null | head -1)
+          if [ -n "$first_artifact" ] && [ -d "${first_artifact}/reference" ]; then
+            cp -r "${first_artifact}/reference/." "$outDir/reference/"
+          fi
 
-          # Copy the reference folder from GLMakie, it's the same for all backends
-          cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
+          # Initialize output files
+          > "$outDir/scores.tsv"
+          > "$outDir/new_files.txt"
+          > "$outDir/missing_files.txt"
 
-          # Initialize empty files for concatenation
-          > "./ReferenceImagesCombined/scores.tsv"
-          > "./ReferenceImagesCombined/new_files.txt"
+          for backend in CairoMakie GLMakie WGLMakie; do
+              mkdir -p "$outDir/recorded/${backend}/"
 
-          # Loop through the directories and concatenate the files, and copy recorded folders
-          for dir in WGLMakie CairoMakie GLMakie; do
-              # Concatenate scores.tsv, new_files.txt and missing_files.txt
-              cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
-              cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
-              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
+              # Merge all buckets for this backend
+              for bucket_dir in ${baseDir}/ReferenceImages_${backend}_1_*/; do
+                  [ -d "$bucket_dir" ] || continue
 
-              # Copy recorded folder
-              mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
-              cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
+                  # Copy recorded images (no overlap between buckets)
+                  if [ -d "${bucket_dir}/recorded/${backend}/" ]; then
+                      cp -r "${bucket_dir}/recorded/${backend}/." "$outDir/recorded/${backend}/"
+                  fi
+
+                  # Concatenate scores and new_files from each bucket
+                  [ -f "${bucket_dir}/scores.tsv" ] && cat "${bucket_dir}/scores.tsv" >> "$outDir/scores.tsv"
+                  [ -f "${bucket_dir}/new_files.txt" ] && cat "${bucket_dir}/new_files.txt" >> "$outDir/new_files.txt"
+              done
+
+              # Compute missing_files: reference files that were neither recorded nor skipped
+              if [ -d "$outDir/reference/${backend}" ]; then
+                  first_bucket=$(ls -d ${baseDir}/ReferenceImages_${backend}_1_*/ 2>/dev/null | head -1)
+
+                  # Build sorted list of files that are accounted for (recorded + skipped)
+                  {
+                      [ -d "$outDir/recorded/${backend}" ] && (cd "$outDir/recorded" && find "${backend}" -type f)
+                      [ -n "$first_bucket" ] && [ -f "${first_bucket}/skipped_names.txt" ] && cat "${first_bucket}/skipped_names.txt"
+                  } | sort -u > /tmp/have_or_skip.txt
+
+                  # Reference files
+                  (cd "$outDir/reference" && find "${backend}" -type f) | sort > /tmp/ref_files.txt
+
+                  # Missing = reference - (recorded ∪ skipped)
+                  comm -23 /tmp/ref_files.txt /tmp/have_or_skip.txt >> "$outDir/missing_files.txt"
+              fi
           done
 
           echo "Files and folders have been successfully combined into ReferenceImagesCombined."

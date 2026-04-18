@@ -21,7 +21,58 @@ const RECORDING_DIR = Base.RefValue{String}()
 const SKIP_TITLES = Set{String}()
 const SKIP_FUNCTIONS = Set{Symbol}()
 const COUNTER = Ref(0)
+const TOTAL_COUNTER = Ref(0) # counts all @reference_test invocations, used for bucket assignment
+const TOTAL_TESTS = Ref(0) # total number of tests across all files, set before running for chunked bucketing
 const SKIPPED_NAMES = Set{String}() # names skipped due to title exclusion or function exclusion
+
+"""
+    count_reference_tests(paths)
+
+Count `@reference_test` occurrences by reading files as text, recursively
+following `include("...")` directives relative to each file's directory.
+"""
+function count_reference_tests(paths)
+    n = 0
+    for path in paths
+        n += _count_in_file(path)
+    end
+    return n
+end
+
+function _count_in_file(path)
+    text = read(path, String)
+    n = count(r"@reference_test\b", text)
+    dir = dirname(path)
+    for m in eachmatch(r"include\(\"([^\"]+)\"\)", text)
+        child = joinpath(dir, m.captures[1])
+        isfile(child) && (n += _count_in_file(child))
+    end
+    return n
+end
+
+"""
+    should_run_in_bucket(test_index::Int)
+
+Check whether a test with the given index should run in the current bucket.
+Bucketing is controlled by the `REFTEST_BUCKET` and `REFTEST_NBUCKETS` environment variables.
+If either is unset, all tests run (no bucketing).
+"""
+function should_run_in_bucket(test_index::Int)
+    nbuckets_str = get(ENV, "REFTEST_NBUCKETS", nothing)
+    bucket_str = get(ENV, "REFTEST_BUCKET", nothing)
+    (nbuckets_str === nothing || bucket_str === nothing) && return true
+    nbuckets = parse(Int, nbuckets_str)
+    bucket = parse(Int, bucket_str)
+    # Use contiguous chunks rather than interleaving so that each bucket
+    # touches fewer distinct code paths, reducing JIT/compilation overhead.
+    ntotal = TOTAL_TESTS[]
+    if ntotal <= 0
+        # Total unknown, fall back to interleaved assignment
+        return mod1(test_index, nbuckets) == bucket
+    end
+    chunk_size = cld(ntotal, nbuckets) # ceil division
+    return (bucket - 1) * chunk_size < test_index <= min(bucket * chunk_size, ntotal)
+end
 
 """
     @reference_test(name, code)
@@ -34,35 +85,40 @@ macro reference_test(name, code)
     funcs = used_functions(code)
     skip = (title in SKIP_TITLES) || any(x -> x in funcs, SKIP_FUNCTIONS)
     return quote
-        @testset $(title) begin
-            if $skip
-                @test_broken false
-                mark_skipped!($title)
-            else
-                t1 = time()
-                if $title in $REGISTERED_TESTS
-                    error("title must be unique. Duplicate title: $($title)")
+        ReferenceTests.TOTAL_COUNTER[] += 1
+        if !ReferenceTests.should_run_in_bucket(ReferenceTests.TOTAL_COUNTER[])
+            # Not in this bucket, skip entirely
+        else
+            @testset $(title) begin
+                if $skip
+                    @test_broken false
+                    mark_skipped!($title)
+                else
+                    t1 = time()
+                    if $title in $REGISTERED_TESTS
+                        error("title must be unique. Duplicate title: $($title)")
+                    end
+                    println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
+                    Makie.set_theme!(;
+                        size = (500, 500),
+                        CairoMakie = (; px_per_unit = 1),
+                        GLMakie = (; scalefactor = 1, px_per_unit = 1),
+                        WGLMakie = (; scalefactor = 1, px_per_unit = 1)
+                    )
+                    ReferenceTests.RNG.seed_rng!()
+                    result = let
+                        $(esc(code))
+                    end
+                    @test save_result(joinpath(RECORDING_DIR[], $title), result)
+                    push!($REGISTERED_TESTS, $title)
+                    elapsed = round(time() - t1; digits = 5)
+                    total = Sys.total_memory()
+                    mem = round((total - Sys.free_memory()) / 10^9; digits = 3)
+                    # TODO, write to file and create an overview in the end, similar to the benchmark results!
+                    println("Used $(mem)gb of $(round(total / 10^9; digits = 3))gb RAM, time: $(elapsed)s")
                 end
-                println("running $(lpad(COUNTER[] += 1, 3)): $($title)")
-                Makie.set_theme!(;
-                    size = (500, 500),
-                    CairoMakie = (; px_per_unit = 1),
-                    GLMakie = (; scalefactor = 1, px_per_unit = 1),
-                    WGLMakie = (; scalefactor = 1, px_per_unit = 1)
-                )
-                ReferenceTests.RNG.seed_rng!()
-                result = let
-                    $(esc(code))
-                end
-                @test save_result(joinpath(RECORDING_DIR[], $title), result)
-                push!($REGISTERED_TESTS, $title)
-                elapsed = round(time() - t1; digits = 5)
-                total = Sys.total_memory()
-                mem = round((total - Sys.free_memory()) / 10^9; digits = 3)
-                # TODO, write to file and create an overview in the end, similar to the benchmark results!
-                println("Used $(mem)gb of $(round(total / 10^9; digits = 3))gb RAM, time: $(elapsed)s")
+                GC.gc(true) # Run GC, to catch accumulating memory early on (used RAM)
             end
-            GC.gc(true) # Run GC, to catch accumulating memory early on (used RAM)
         end
     end
 end
@@ -115,6 +171,20 @@ macro include_reference_tests(backend::Symbol, path, paths...)
             # prefix the recordings with the backend name so that each backend has its own versions
             ReferenceTests.RECORDING_DIR[] = joinpath(recording_dir, "recorded", $(string(backend)))
             mkpath(ReferenceTests.RECORDING_DIR[])
+
+            # Count total @reference_test occurrences for chunked bucket assignment
+            ReferenceTests.TOTAL_TESTS[] = ReferenceTests.count_reference_tests(include_paths)
+
+            # Log bucket configuration
+            let
+                nb = get(ENV, "REFTEST_NBUCKETS", nothing)
+                b = get(ENV, "REFTEST_BUCKET", nothing)
+                if nb !== nothing && b !== nothing
+                    ntotal = ReferenceTests.TOTAL_TESTS[]
+                    @info "Running reference test bucket $(b)/$(nb) ($(ntotal) total tests)"
+                end
+            end
+
             @testset "Reference tests $($(string(backend)))" begin
                 empty!(ReferenceTests.REGISTERED_TESTS)
                 for include_path in include_paths
@@ -125,6 +195,7 @@ macro include_reference_tests(backend::Symbol, path, paths...)
             recording_dir = recording_dir
             empty!(ReferenceTests.REGISTERED_TESTS)
             ReferenceTests.COUNTER[] = 0
+            ReferenceTests.TOTAL_COUNTER[] = 0
             (recorded_files, recording_dir)
         end
     )
