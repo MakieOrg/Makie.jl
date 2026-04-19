@@ -13,53 +13,144 @@ symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
 symbol_to_block(::Val) = nothing
 
 """
+    @Block BlockName begin ... end
+
 Creates a new `Block` implementation which represents content within a layout.
-The content may draw to the slot in the layout directly, or represent a layout
+The content may draw to the layout slot directly, or represent a layout
 itself, containing more blocks.
 
 ## Usage
 
+The absolute minimum required to define a block is:
+
 ```
-@Block TypeName <: OptionalParent optional_args begin
-    optional_field1::OptionalType
-    optional_field2
+@Bock MyBlock
+Makie.initialize_block!(::MyBlock) = nothing
+```
+
+This will define `MyBlock` as a new empty block containing no visual or functional
+components, no attributes, no arguments, no internal layout.
+In contrast, this is a `@Block` definition containing all optional components:
+
+```
+@Block MyBlock <: OptionalParent (optional_arg1::OptionalType1, ...) begin
+    optional_field::OptionalType
     @attributes begin
-        "docstring"
-        attribute1::OptionalType = value1
-        attribute2 = value2
+        "optional docstring"
+        attribute::OptionalType = value
     end
 end
 ```
 
-The macro generates a `mutable struct` with the name `TypeName`, which always
-needs to be given in the macro. If a parent type `<: OptionalParent` is given,
-the struct will inherit from that type. Otherwise it will inherit from `Block`.
-Note that the parent should also inherit from `Block`.
+The optional components include:
 
-The content of the struct **always** includes:
-- `parent::Union{Figure, Scene, Nothing}` which refers back to the figure or
-    scene the block is placed in
-- `layoutobservables::Makie.LayoutObservables{GridLayout}` which handle the
-    placement into the parent layout
-- `attributes::Makie.ComputeGraph` which contains the attributes and
-    computations that use them
-- `blockscene::Scene` which acts as a container for the inner layout and can be
-    used for decoration plots
-- `layout::GridLayout` which represents an optional internal layout used when
-    implementing a `Block` as a container for more blocks.
+- `<: OptionalParent` a parent type for the block, i.e. `struct MyBlock <: OptionalParent`.
+    The parent type must inherit from `Block`. If not given, `Block` is used as a parent type.
+- `(optional_arg1::OptionalType1, ...)` an optional tuple of input arguments for the block.
+    This is required for blocks that process arguments, i.e. complex recipes. Types are
+    optional.
+- `optional_field::OptionalType` an optional field named `optional_field` added to the block
+    struct. This can optionally be typed, much like a normal struct field definition. Fields
+    are generally initialized in `initialize_block!()`.
+- `attribute::OptionalType = value` defines an attribute called `attribute` within a
+    `@attributes begin ... end` block. The block is required to separate fields from
+    attributes. Each attribute is required to define a default `value`. It may optionally
+    include a type `OptionalType` and it may optionally include a docstring above it.
 
-Optionally you may also add fields by declaring them in the `begin ... end`
-block, outside the `@attributes begin ... end` block. Each line will be treated
-as a new field to add, with an optional type. You can have any number of fields.
-Note that you will need to initialize them yourself in `initialize_block!()`.
+If the `@Block` definition includes arguments they are processed using almost the same pipeline
+as plots. The only difference is the exclusion of dim converts. This means that blocks can use:
 
-The `@attributes begin ... end` block is also optional. When given, each entry
-needs to have at least a name and value given as `name = value`. Optionally, the
-attribute can be typed by adding a type annotation `name::Type`. Also
-optionally, the attribute can be given a docstring by adding a string in the
-line above. This can also be a triple-quoted multiline string.
+- `conversion_trait(::Type{MyBlock}, args...)` to define a conversion trait used for the
+    conversion of arguments.
+- `convert_arguments(::Type{MyBlock}, args...)` to define a conversion method for arguments.
+- `used_attributes(::Type{MyBlock}, args...)` to mark which attributes should be passed to
+        `convert_arguments()` as keyword arguments.
+- `expand_dimensions(::ConversionTrait, args...)` to fill out missing arguments
 
-Note that some layouting attributes are always defined. These include:
+The final output of the conversion pipeline will be saved to the names defined in the `@Block`
+definition.
+
+Any block eventually calls `initialize_block!(b::MyBlock; kwargs...)` to set up its visual
+and functional aspects, similar to how plot recipes call `plot!(plot::MyPlot)`. The keyword
+arguments passed here are any keyword arguments passed to `MyBlock()` which have not been
+mapped to attributes.
+
+For a complex recipes, the implementation of `initialize_block!(::MyBlock)` involves adding
+blocks to the internal layout of `MyBlock`. For example:
+
+```
+function Makie.initialize_block!(b::MyBlock)
+    ax = Axis(b[1, 1])
+    # with @Block MyBlock (positions,) ...
+    scatter!(ax, b.positions, label = "plot")
+    Legend(b[1, 2], ax)
+    return
+end
+```
+
+For primitive blocks (e.g. `Axis` or `Label`) the definition is more free. They
+generally don't involve other blocks and instead directly plot to `b.blockscene`
+or create a child scene of `b.blockscene` to plot to. They may communicate with
+`b.layoutobservables` and may react to events.
+
+## BlockSpec
+
+Similar to how a plot can defined by returning a `PlotSpec` from `convert_arguments`, a
+`Block` can be defined by a `BlockSpec` or `GridLayoutSpec`. In this case the internal
+layout of the block will be built based on the block spec. `initialize_block!(::MyBlock)`
+will not be called, and the arguments section of the `@Block` macro will be ignored and
+thus isn't required.
+
+```
+@Block SpecBlock
+convert_arguments(::Type{<:SpecBlock}, ...) = SpecApi.Axis(...) # BlockSpec
+convert_arguments(::Type{<:SpecBlock}, ...) = SpecApi.GridLayout(...) # GridLayoutSpec
+```
+
+## User Interface
+
+- Arguments are accessible with `block.arg1` etc.
+- Converted arguments are accessible using the names defined in `@Block`, e.g. `block.optional_arg1`
+- Attributes are accessible with `block.attribute`
+- Blocks contained within a complex recipe style block are listed in `block.blocks`
+- If initialized with a layout, layout positions can be accessed with `block[i, j]`
+- Plots can be accessed indirectly from an axis by retrieving it from `block.blocks` first
+
+# Extended help
+
+## `@Block`
+
+The minimal example generates the following mutable struct:
+
+```
+mutable struct MyBlock <: Block
+    parent::Union{Nothing, Figure, Scene}
+    layoutobservables::LayoutObservables{GridLayout}
+    attributes::ComputePipeline.ComputeGraph
+    blockscene::Scene
+    layout::Union{Nothing, GridLayout}
+end
+```
+
+This includes:
+- `parent` which refers back to the figure or scene the block is placed in
+- `layoutobservables` which handles the placement of this block in the parent layout
+- `attributes` which contain the attributes defined in `@attributes` block in the `@Block`
+    macro. It also contains the computations based on those attributes and, if present,
+    arguments and their computations.
+- `blockscene` which is a pixel space scene owned by the Block. It may be used for
+    decoration plots and as the base for child scenes owned by the block.
+- `layout` which represents an optional internal layout used when implementing a `Block`
+    as a container for more blocks, i.e. a complex recipe. It is initially `nothing`
+    and may change to a `GridLayout` when accessed through `block[i, j]` during
+    initialization. After initialization it is fixed to either a `GridLayout` or `nothing`
+
+Any fields included in the `@Block` macro will be added directly to the struct.
+
+## Attributes
+
+There are a few layouting attributes that are always added, even when no `@attributes`
+block is specified. These include:
 - `halign = :center` The horizontal alignment of the block in its suggested bounding box.
 - `valign = :center` The vertical alignment of the block in its suggested bounding box.
 - `width = Auto()` The width setting of the block.
@@ -68,53 +159,29 @@ Note that some layouting attributes are always defined. These include:
 - `tellheight::Bool = true` Controls if the parent layout can adjust to this block's height
 - `alignmode = Inside()` The align mode of the block in its parent GridLayout.
 
-All attributes are automatically collected and added to `attributes` ComputeGraph.
+## Attribute Conversions
 
-## `initialize_block!(block::TypeName, args...; kwargs...)`
-
-The `initialize_block!` function is necessary unless the block is purely used
-as container for a `BlockSpec` or `GridLayoutSpec` (SpecApi). Otherwise the
-function is called to handle the non-generic parts of the block initialization.
-This includes initializing the fields declared in the macro, handling keyword
-arguments outside of attributes and building the visual aspects of the block.
-
-If `optional_args` are given in `@Block` as a tuple `(name1, name2, ...)` the
-default `initialize_block!(block, args...; kwargs...)` will handle attributes.
-They are handled more or less the same as with plots. Arguments are added as
-inputs `:arg1, :arg2, ...` to the compute graph. They then go through a few
-computations, calling `expand_dimensions(...)` and `convert_arguments(...)`,
-before writing the converted arguments to `:name1, :name2, ...`. These can then
-be grabbed from the block as `block.name1` etc.
-
-If `optional_args` are not given the Block can be constructed with no arguments.
-If arguments are given and should be handled without convert_arguments, a method
-of `initialize_block!()` needs to be defined to handle them.
-
-Other than that, the `initialize_block!()` function typically comes in one of
-two forms. One is used by self-contained blocks like `Label` or `Axis`. They
-don't have child blocks and instead directly define their visuals and
-functionality. This may include adding plots and scenes to `block.blockscene`
-and setting up interactivity. These kinds of blocks typically do not have
-arguments, or handle them explicitly.
-
-The other type defines its content through child blocks, which are added to the
-parent block as if it was a figure. Plots may also be added to the child blocks.
-For this, the conversion pipeline may be helpful. The blocks may also connect
-to each other, e.g. with a Slider controlling a plot.
+Attributes may optionally define a type `attr::T = value`. This effectively results in
 
 ```
-function Makie.initialize_block!(block::TypeName, x, y)
-    ax = Axis(block[1, 1], title = block.title)
-    p = scatter!(ax, x, y, color = block.color, label = "scatter 1")
-    Legend(block[0, 1], ax, nbanks = 5)
-    return
+add_input!(BlockAttributeConvert{T}(), block.attributes, :attr, value)
+```
+
+being called to create the attribute. This means that any time `block.attr = new` is set,
+`BlockAttributeConvert{T}()(new)` is called. In the default case, this will perform a type
+assertion `new::T`, but it can also perform a conversion. For example, if `T <: Number` a
+type cast `T(new)` is performed and for `RGBAf` `to_color(new)` is called.
+
+## Arguments
+
+Strictly speaking arguments only need to be defined in `@Block` if the default argument
+processing is used. It can be skipped/done manually by implementing
+```
+function initialize_block!(block::MyBlock, arg, args...; kwargs...)
+    # process args...
+    return initialize_block!(block; kwargs...)
 end
 ```
-
-The blocks and plots added this way are automatically tracked in `block` and
-can be queried with `block.blocks` and `block.plots` respectively. After the
-block is constructed further plots can be added to the axis by plotting to its
-layout slot `block[1, 1]`.
 """
 macro Block(_name::Union{Expr, Symbol}, body::Expr = Expr(:block))
     return block_macro_internal(_name, nothing, body)
@@ -576,7 +643,7 @@ function BlockAttributeConvert(Target::Union)
 end
 BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
 
-(::BlockAttributeConvert{<:Any})(x) = x
+(::BlockAttributeConvert{<:T})(x) where {T} = x::T
 function (mbac::MultiBlockAttributeConvert)(x)
     y = x
     for bac in mbac.converts
