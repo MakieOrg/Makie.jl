@@ -32,6 +32,7 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
+          JULIA_DEBUG: loading
         run: >
           DISPLAY=:0 xvfb-run -s '-screen 0 2048x2048x24'
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("WGLMakie")'

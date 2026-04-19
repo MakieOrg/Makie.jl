@@ -31,6 +31,7 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
+          JULIA_DEBUG: loading
         run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("CairoMakie")'
       - name: Package depot and Manifest
         run: cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml && tar -cf /tmp/depot.tar.zst --use-compress-program zstdmt -C ~ .julia/compiled .julia/packages .julia/artifacts .julia/scratchspaces .julia/monorepo-Manifest.toml
