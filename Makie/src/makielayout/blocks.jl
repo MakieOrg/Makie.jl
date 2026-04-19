@@ -643,7 +643,7 @@ function BlockAttributeConvert(Target::Union)
 end
 BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
 
-(::BlockAttributeConvert{<:T})(x) where {T} = x::T
+(::BlockAttributeConvert{T})(x) where {T} = x::T
 function (mbac::MultiBlockAttributeConvert)(x)
     y = x
     for bac in mbac.converts
@@ -658,6 +658,7 @@ function (mbac::MultiBlockAttributeConvert)(x)
     end
     return y
 end
+(bac::BlockAttributeConvert{<:VecTypes})(x) = convert(eltype(bac), x)
 (::BlockAttributeConvert{T})(x) where {T <: Number} = T(x)
 (::BlockAttributeConvert{<:RGBAf})(x) = to_color(x)::RGBAf
 (::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(x) = to_font(x)
