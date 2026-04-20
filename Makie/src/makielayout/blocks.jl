@@ -661,7 +661,7 @@ end
 (bac::BlockAttributeConvert{<:VecTypes})(x) = convert(eltype(bac), x)
 (::BlockAttributeConvert{T})(x) where {T <: Number} = T(x)
 (::BlockAttributeConvert{<:RGBAf})(x) = to_color(x)::RGBAf
-(::BlockAttributeConvert{<:Makie.FreeTypeAbstraction.FTFont})(x) = to_font(x)
+(::BlockAttributeConvert{<:FreeTypeAbstraction.FTFont})(x) = to_font(x)
 
 function add_attributes!(T::Type{<:Block}, graph, attributes)
     return _add_attributes!(T, graph, attributes)
@@ -967,8 +967,7 @@ end
                     setfield!(x, key, value)
                 end
             else
-                TargetType = observable_type(fieldtype(T, key))
-                getfield(x, key)[] = BlockAttributeConvert{TargetType}()(value)
+                getfield(x, key)[] = value
             end
         else
             setfield!(x, key, value)
