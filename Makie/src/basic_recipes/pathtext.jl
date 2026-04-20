@@ -1,6 +1,4 @@
 """
-    pathtext(path; text = "", kwargs...)
-
 Draw `text` along a path. `path` can be a `Vector{<: Point2}` (with optional
 `NaN` separators between sub-paths) or a `BezierPath`.
 
@@ -12,7 +10,7 @@ The path itself may be given in `:data` or `:pixel` space, controlled by the `sp
 
 Newlines in `text` are currently not supported.
 """
-@recipe PathText (path,) begin
+@recipe PathText (path::Union{PointVector{2, <:Real}, BezierPath},) begin
     "The text to place along the path. May be `String` or `RichText`. Must not contain newlines."
     text = ""
     "The color of the text. May be a single value or a vector with one entry per character."
@@ -33,25 +31,14 @@ Newlines in `text` are currently not supported.
     offset = 0.0f0
     mixin_generic_plot_attributes()...
     mixin_colormap_attributes()...
+    fxaa = false
 end
 
-# Preserve `align` as-is. The default numeric conversion used for `text`/`scatter`
-# is not appropriate for `pathtext`, whose `halign` accepts a `Real` fraction
-# (0–1) along the path and whose `valign` accepts symbolic values.
-convert_attribute(align, ::key"align", ::key"PathText") = Ref{Any}(align)
+# Convert as PointBased() unless we have a BezierPath
+conversion_trait(::Type{<:PathText}) = PointBased()
+convert_arguments(::Type{<:PathText}, path::BezierPath) = (path,)
 
-# -- convert_arguments ---------------------------------------------------------
-
-function convert_arguments(::Type{<:PathText}, path::AbstractVector{<:VecTypes{2}})
-    return (convert(Vector{Point2d}, path),)
-end
-
-function convert_arguments(::Type{<:PathText}, path::BezierPath)
-    return (path,)
-end
-
-# -- RichText helpers ----------------------------------------------------------
-
+# RichText helpers
 function _richtext_chars(rt::RichText)
     chars = Char[]
     _collect_richtext_chars!(chars, rt)
@@ -73,14 +60,14 @@ function _collect_richtext_chars!(chars, s::String)
     return
 end
 
-# ==============================================================================
+################################################################################
 # Cubic Bézier math
 #
 # Arc-length (Gauss-Legendre quadrature) and inverse arc-length (binary search)
 # techniques are adapted from the `kurbo` Rust crate (MIT-licensed), specifically
 # its `cubicbez.rs` and `param_curve.rs` modules.
 # See https://github.com/linebender/kurbo
-# ==============================================================================
+################################################################################
 
 # 8-point Gauss-Legendre nodes and weights on [0, 1]  (transformed from [-1, 1])
 const _GL8 = (
@@ -190,9 +177,9 @@ function _cubic_unit_tangent(p0, p1, p2, p3, t)
     return Point2f(dp[1] / speed, dp[2] / speed)
 end
 
-# ==============================================================================
+################################################################################
 # Prepared BezierPath: precomputed per-segment (offset) arc lengths
-# ==============================================================================
+################################################################################
 
 struct _PreparedSegment
     kind::Symbol          # :line or :cubic
@@ -281,9 +268,9 @@ function _sample_bezierpath_at(segs::Vector{_PreparedSegment}, s::Real, d::Real 
     end
 end
 
-# ==============================================================================
+################################################################################
 # Polyline utilities (for Vector{Point} input)
-# ==============================================================================
+################################################################################
 
 function _polyline_arc_length(points::AbstractVector{<:VecTypes})
     total = 0.0
@@ -367,9 +354,9 @@ function _sample_polyline_at(points::AbstractVector{<:VecTypes}, s::Real)
     return nothing
 end
 
-# ==============================================================================
+################################################################################
 # Control-point extraction / reassembly (for projecting BezierPath to pixel)
-# ==============================================================================
+################################################################################
 
 function _extract_control_points(path::AbstractVector{<:VecTypes})
     return path
@@ -413,9 +400,9 @@ function _reassemble_path(px_pts::AbstractVector, bp::BezierPath)
     return BezierPath(cmds)
 end
 
-# ==============================================================================
+################################################################################
 # Layout
-# ==============================================================================
+################################################################################
 
 # Layout a single-line RichText into a GlyphCollection with the baseline at y=0.
 # We call the layout sub-steps directly, skipping apply_alignment_and_justification!
@@ -601,9 +588,9 @@ function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset
     return (pos, rot, placed, truncated_styles)
 end
 
-# ==============================================================================
+################################################################################
 # plot!
-# ==============================================================================
+################################################################################
 
 function _validate_pathtext(text::AbstractString)
     occursin('\n', text) && throw(ArgumentError("`pathtext` does not support newlines in `text`."))
@@ -616,16 +603,10 @@ function _validate_pathtext(text::RichText)
 end
 
 function plot!(p::PathText)
-    map!(p.attributes, [:text], :_pathtext_validated_text) do text
-        return _validate_pathtext(text)
-    end
+    map!(_validate_pathtext, p, :text, :_pathtext_validated_text)
 
-    # Extract geometric control points from whatever path type we have.
-    map!(p.attributes, [:path], :_pathtext_control_points) do path
-        return _extract_control_points(path)
-    end
+    map!(_extract_control_points, p, :path, :_pathtext_control_points)
 
-    # Project control points from input space to pixel space.
     register_projected_positions!(
         p, Point2f;
         input_name = :_pathtext_control_points,
@@ -634,132 +615,55 @@ function plot!(p::PathText)
         output_space = :pixel,
     )
 
-    # Reassemble projected path (BezierPath or polyline).
-    map!(p.attributes, [:_pathtext_control_points_pixel, :path], :_pathtext_pixel_path) do px_pts, orig_path
-        return _reassemble_path(px_pts, orig_path)
-    end
+    map!(_reassemble_path, p, [:_pathtext_control_points_pixel, :path], :_pathtext_pixel_path)
 
     # Compute per-character positions, rotations, chars, and optional per-glyph styles.
     map!(
-        p.attributes,
+        _pathtext_layout, p,
         [:_pathtext_pixel_path, :_pathtext_validated_text, :fontsize, :font, :fonts, :align, :offset],
         [:_pathtext_positions, :_pathtext_rotations, :_pathtext_chars, :_pathtext_glyph_styles]
-    ) do pixel_path, text, fontsize, font, fonts, align, offset
-        return _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset)
-    end
+    )
 
     # For RichText, per-glyph color/font/fontsize come from the layout.
     # For plain strings, fall through to the recipe's own attributes.
-    map!(p.attributes, [:_pathtext_glyph_styles, :color], :_pathtext_color) do styles, user_color
-        styles !== nothing ? styles.colors : user_color
+    map!(p, [:_pathtext_glyph_styles, :color], :_pathtext_color) do styles, user_color
+        return styles !== nothing ? styles.colors : user_color
     end
-    map!(p.attributes, [:_pathtext_glyph_styles, :font], :_pathtext_font) do styles, user_font
-        styles !== nothing ? styles.fonts : user_font
+    map!(p, [:_pathtext_glyph_styles, :font], :_pathtext_font) do styles, user_font
+        return styles !== nothing ? styles.fonts : user_font
     end
-    map!(p.attributes, [:_pathtext_glyph_styles, :fontsize], :_pathtext_fontsize) do styles, user_fs
-        styles !== nothing ? styles.fontsizes : user_fs
+    map!(p, [:_pathtext_glyph_styles, :fontsize], :_pathtext_fontsize) do styles, user_fs
+        return styles !== nothing ? styles.fontsizes : user_fs
     end
 
     text!(
         p,
+        p.attributes,
         p._pathtext_positions;
         text = p._pathtext_chars,
         rotation = p._pathtext_rotations,
         fontsize = p._pathtext_fontsize,
         font = p._pathtext_font,
-        fonts = p.fonts,
         color = p._pathtext_color,
-        strokecolor = p.strokecolor,
-        strokewidth = p.strokewidth,
-        colormap = p.colormap,
-        colorscale = p.colorscale,
-        colorrange = p.colorrange,
-        lowclip = p.lowclip,
-        highclip = p.highclip,
-        nan_color = p.nan_color,
-        alpha = p.alpha,
-        visible = p.visible,
-        transparency = p.transparency,
-        overdraw = p.overdraw,
-        inspectable = p.inspectable,
         align = (:left, :baseline),
         space = :pixel,
         markerspace = :pixel,
         transformation = :nothing,
+        offset = Vec2f(0),
     )
 
     return p
 end
 
 function data_limits(p::PathText)
-    if p.space[] === :data
-        path = p.path[]
-        if path isa BezierPath
-            return Rect3d(bbox(path))
-        elseif path isa AbstractVector && !isempty(path)
-            return Rect3d(Rect2d(path))
-        end
+    path = p.path[]
+    if path isa BezierPath
+        return Rect3d(bbox(path))
+    elseif path isa AbstractVector && !isempty(path)
+        return Rect3d(Rect2d(path))
+    else
+        return Rect3d()
     end
-    return Rect3d(Point3d(NaN), Vec3d(NaN))
 end
-boundingbox(p::PathText, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
 
-function attribute_examples(::Type{PathText})
-    return Dict(
-        :text => [
-            Example(;
-                code = """
-                bp = BezierPath([
-                    MoveTo(Point2(0, 0)),
-                    CurveTo(Point2(1, 2), Point2(3, 2), Point2(4, 0)),
-                ])
-                fig = Figure()
-                ax = Axis(fig[1, 1], aspect = DataAspect())
-                lines!(ax, bp, color = (:gray, 0.4))
-                pathtext!(ax, bp, text = "plain string", fontsize = 20, align = (:left, :bottom))
-                pathtext!(ax, bp, text = rich("Rich", rich("Text"; color = :red, font = :bold)),
-                    fontsize = 20, align = (:right, :bottom))
-                fig
-                """
-            ),
-        ],
-        :align => [
-            Example(;
-                code = raw"""
-                bp = BezierPath([
-                    MoveTo(Point2(0, 0)),
-                    CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
-                ])
-                fig = Figure(size = (800, 600))
-                for (i, va) in enumerate((:top, :center, :baseline, :bottom))
-                    r, c = fldmod1(i, 2)
-                    ax = Axis(fig[r, c], aspect = DataAspect(), title = "valign = $(repr(va))",
-                        limits = (nothing, (-0.5, 3)))
-                    lines!(ax, bp, color = (:steelblue, 0.5), linewidth = 2)
-                    pathtext!(ax, bp, text = "Text along a path", fontsize = 22,
-                        align = (:center, va))
-                end
-                fig
-                """
-            ),
-        ],
-        :offset => [
-            Example(;
-                code = raw"""
-                bp = BezierPath([
-                    MoveTo(Point2(0, 0)),
-                    CurveTo(Point2(1, 3), Point2(3, 3), Point2(4, 0)),
-                ])
-                fig = Figure()
-                ax = Axis(fig[1, 1], aspect = DataAspect(), limits = (nothing, (-0.5, 3)))
-                lines!(ax, bp, color = (:gray, 0.4), linewidth = 2)
-                for (off, col) in zip((-15, 0, 15), (:red, :black, :blue))
-                    pathtext!(ax, bp, text = "offset = $off", fontsize = 14,
-                        align = (:center, :baseline), offset = off, color = col)
-                end
-                fig
-                """
-            ),
-        ],
-    )
-end
+boundingbox(p::PathText, space::Symbol = :data) = apply_transform_and_model(p, data_limits(p))
