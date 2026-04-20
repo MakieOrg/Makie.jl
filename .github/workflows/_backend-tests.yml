@@ -47,6 +47,8 @@ jobs:
       - name: Install Julia dependencies
         shell: julia --project=monorepo {0}
         env:
+          # Don't precompile here; Pkg.test below handles it with the correct
+          # test environment and flags.
           JULIA_PKG_PRECOMPILE_AUTO: '0'
         run: |
           using Pkg;
@@ -56,7 +58,13 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
+          # Portable CPU target so pkgimages work across GitHub's heterogeneous
+          # runner fleet (mix of AMD Zen3, Intel Haswell, etc.).
           JULIA_CPU_TARGET: 'generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
+        # NOTE: coverage is intentionally omitted. On Julia 1.10, coverage=true
+        # disables pkgimages (use_pkgimages=false), causing cache flag mismatches
+        # between setup and bucket jobs. If coverage is re-enabled, this must be
+        # set identically here and in the bucket test step.
         run: ${{ inputs.test-prefix }} julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("${{ inputs.backend }}")'
       - name: Package depot and Manifest
         run: >
