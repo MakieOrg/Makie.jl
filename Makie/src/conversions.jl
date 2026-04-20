@@ -945,7 +945,6 @@ convert_attribute(cycle, ::key"cycle") = Cycle(cycle)
 
 
 convert_attribute(font, ::key"font") = to_font(font)
-convert_attribute(align, ::key"align") = to_align(align)
 
 convert_attribute(x::Automatic, ::key"color") = x
 convert_attribute(color, ::key"color") = to_color(color)
