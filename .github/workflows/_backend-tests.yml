@@ -56,7 +56,6 @@ jobs:
       - name: Precompile via Pkg.test
         env:
           PRECOMPILE_ONLY: 'true'
-          JULIA_DEBUG: loading
           JULIA_CPU_TARGET: 'generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
         run: ${{ inputs.test-prefix }} julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("${{ inputs.backend }}")'
       - name: Package depot and Manifest
