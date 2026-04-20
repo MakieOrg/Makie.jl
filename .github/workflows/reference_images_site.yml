@@ -27,7 +27,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Julia
-        uses: julia-actions/setup-julia@v2
+        uses: julia-actions/setup-julia@v3
         with:
           version: '1'
 
