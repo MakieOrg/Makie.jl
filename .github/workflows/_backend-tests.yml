@@ -18,11 +18,11 @@ on:
         type: string
         default: ''
         description: 'apt packages to install (space-separated)'
-      shell:
+      test-prefix:
         required: false
         type: string
-        default: 'bash -eo pipefail {0}'
-        description: 'Shell for test steps. Use e.g. DISPLAY=:0 xvfb-run ... bash -eo pipefail {0} for display-dependent backends.'
+        default: ''
+        description: 'Command prefix for test execution, e.g. "DISPLAY=:0 xvfb-run -s \"-screen 0 1024x768x24\""'
 
 jobs:
   setup:
@@ -54,12 +54,11 @@ jobs:
           Pkg.update()
           pkg"dev ./Makie ./${{ inputs.backend }} ./ReferenceTests ./ComputePipeline"
       - name: Precompile via Pkg.test
-        shell: ${{ inputs.shell }}
         env:
           PRECOMPILE_ONLY: 'true'
           JULIA_DEBUG: loading
           JULIA_CPU_TARGET: 'generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
-        run: julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("${{ inputs.backend }}")'
+        run: ${{ inputs.test-prefix }} julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("${{ inputs.backend }}")'
       - name: Package depot and Manifest
         run: >
           cp monorepo/Manifest.toml ~/.julia/monorepo-Manifest.toml &&
@@ -95,15 +94,15 @@ jobs:
         if: inputs.system-packages != ''
         run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
       - name: Run the tests
-        shell: ${{ inputs.shell }}
         continue-on-error: true
         env:
           REFTEST_BUCKET: ${{ matrix.bucket }}
           REFTEST_NBUCKETS: ${{ inputs.nbuckets }}
           JULIA_CPU_TARGET: 'generic;sandybridge,-xsaveopt,clone_all;haswell,-rdrnd,base(1)'
-        run: |
+        run: >
+          ${{ inputs.test-prefix }}
           julia --color=yes --project=monorepo -e 'using Pkg; Pkg.test("${{ inputs.backend }}")'
-          echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
+          && echo "TESTS_SUCCESSFUL=true" >> $GITHUB_ENV
       - name: Upload test Artifacts
         uses: actions/upload-artifact@v7
         with:
