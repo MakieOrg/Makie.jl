@@ -432,7 +432,6 @@ function tex_linesegments!(plot)
     ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
         isempty(linesegments) && return Point3f[]
         markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        # TODO: avoid repeated apply_transform and use block_idx?
         return map(linesegments, indices) do seg, (block_idx, glyph_idx)
             return seg + markerspace_positions[block_idx]
         end
@@ -1056,8 +1055,6 @@ function right_align!(line1::Vector{GlyphInfo}, line2::Vector{GlyphInfo})
     isempty(line1) || isempty(line2) && return
     xmax1, xmax2 = map((line1, line2)) do line
         maximum(line; init = 0.0f0) do ginfo
-            # TODO: typo?
-            GlyphInfo
             ginfo.origin[1] + ginfo.size[1] * (ginfo.extent.ink_bounding_box.origin[1] + ginfo.extent.ink_bounding_box.widths[1])
         end
     end

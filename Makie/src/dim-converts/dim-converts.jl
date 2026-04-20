@@ -77,11 +77,6 @@ function get_ticks(::Union{Nothing, NoDimConversion}, ticks, scale, formatter, v
     return get_ticks(ticks, scale, formatter, vmin, vmax)
 end
 
-# TODO: temporary
-function get_ticks(c::Union{Nothing, AbstractDimConversion}, ticks, scale, formatter, vmin, vmax)
-    return get_ticks(c, ticks, scale, formatter, vmin, vmax, true)
-end
-
 show_dim_convert_in_ticklabel(dc::Union{AbstractDimConversion, Nothing}, ::Automatic) = show_dim_convert_in_ticklabel(dc)
 show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}) = false
 show_dim_convert_in_ticklabel(::Union{AbstractDimConversion, Nothing}, option::Bool) = option

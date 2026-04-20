@@ -100,46 +100,7 @@ $(ATTRIBUTES)
     )
 end
 
-################################################################################
-
-# TODO: This blob of code only exists to support the old recipe syntax which is
-# currently only used by Axis3D. Clean it up and remove this. (And also the
-# $ATTRIBUTES thing from documentation/docstringextension.jl)
-
-function help_attributes(io::IO, func::Function; extended = false)
-    return help_attributes(io, to_plot_type(func); extended = extended)
-end
-
-"""
-    print_rec(io::IO, dict, indent::Int = 1[; extended = false])
-
-Traverses a dictionary `dict` and recursively print out its keys and values
-in a nicely-indented format.
-
-Use the optional `extended = true` keyword argument to see more details.
-"""
-function print_rec(io::IO, dict, indent::Int = 1; extended = false)
-    for (k, v) in dict
-        print(io, " "^(indent * 4), k)
-        if isa(to_value(v), Makie.Attributes)
-            print(io, ": ")
-            println(io)
-            print_rec(io, v.attributes, indent + 1; extended = extended)
-        elseif isa(v, Observable)
-            if extended
-                print(io, ": ")
-                println(io, isnothing(to_value(v)) ? "nothing" : to_value(v))
-            else
-                println(io)
-            end
-        else
-            println(io, v)
-        end
-    end
-    return
-end
-
-
+# compat for old @recipe style of Axis3D
 function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Axis3D}
     if extended
         println(io, "OldAxis attributes and their defaults for `$Typ` are: \n")
@@ -151,8 +112,6 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Axi
     print_rec(io, attributes, 1; extended = extended)
     return println(io, "```")
 end
-
-################################################################################
 
 argument_dim_kwargs(::Type{<:Axis3D}) = tuple()
 argument_dims(::Type{<:Axis3D}, args...) = nothing
@@ -406,7 +365,6 @@ function draw_axis3d(plot)
         visible = plot.visible
     )
 
-    # TODO: linesegments
     map!(
         attr,
         [

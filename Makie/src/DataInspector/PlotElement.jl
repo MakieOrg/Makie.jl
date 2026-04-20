@@ -293,7 +293,6 @@ function InterpolatedAccessor(
     )
 end
 
-# TODO: can we extend is_vector_attribute() to consider Matrices vectors?
 is_array_attribute(x::AbstractArray) = true
 is_array_attribute(x::Base.Generator) = is_array_attribute(x.iter)
 is_array_attribute(x::NativeFont) = false

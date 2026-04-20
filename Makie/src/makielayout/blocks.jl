@@ -526,7 +526,7 @@ end
 function attribute_names(::Type{T}) where {T <: Block}
     attrs = _attribute_docs(T)
     # Some blocks have keyword arguments that are not attributes.
-    # TODO: Refactor intiailize_block! to just not use kwargs?
+    # TODO: Refactor initialize_block! to just not use kwargs?
     (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
     T <: Legend && (attrs[:entrygroups] = "")
     T <: Menu && (attrs[:default] = "")

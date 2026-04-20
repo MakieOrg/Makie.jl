@@ -307,7 +307,6 @@ function LineAxis(parent::Scene, graph::AbstractComputeGraph, attrs::Attributes)
         :tickpositions
     ) do tickvalues, scale, position, extents_uncorrected, horizontal, limits, reversed
 
-        # TODO: maybe move out?
         extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
         px_o = extents[1]
         px_width = extents[2] - extents[1]

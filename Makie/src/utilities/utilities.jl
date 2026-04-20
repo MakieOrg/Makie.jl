@@ -530,20 +530,7 @@ sv_getindex(x::ShaderAbstractions.Sampler, ::CartesianIndex) = x
 sv_getindex(x::AbstractMatrix{<:Colorant}, ::Integer) = x
 sv_getindex(x::ShaderAbstractions.Sampler, ::Integer) = x
 
-# TODO: move to GeometryBasics
-function corners(rect::Rect2{T}) where {T}
-    o = minimum(rect)
-    w = widths(rect)
-    T0 = zero(T)
-    return Point{3, T}[o .+ Vec2{T}(x, y) for x in (T0, w[1]) for y in (T0, w[2])]
-end
-
-function corners(rect::Rect3{T}) where {T}
-    o = minimum(rect)
-    w = widths(rect)
-    T0 = zero(T)
-    return Point{3, T}[o .+ Vec3{T}(x, y, z) for x in (T0, w[1]) for y in (T0, w[2]) for z in (T0, w[3])]
-end
+@deprecate corners(r::Rect) GeometryBasics.coordinates(r) false
 
 """
     available_plotting_methods()

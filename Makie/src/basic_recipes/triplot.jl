@@ -1,7 +1,7 @@
 """
 Plots a triangulation based on the provided positions or `Triangulation` from DelaunayTriangulation.jl.
 """
-@recipe Triplot (triangles::Union{AbstractVector{<:Point{N, <:Real}} where {N}, DelTri.Triangulation},) begin
+@recipe Triplot (triangles::Union{PointVector{2, <:Real}, DelTri.Triangulation},) begin
     # Toggles
     "Determines whether to plot the individual points. Note that this will only plot points included in the triangulation."
     show_points = false
@@ -230,7 +230,6 @@ function get_triangulation_constrained_edges!(constrained_edges, tri)
     return constrained_edges
 end
 
-# TODO: restrict to Point2?
 convert_arguments(::Type{<:Triplot}, ps) = convert_arguments(PointBased(), ps)
 convert_arguments(::Type{<:Triplot}, xs, ys) = convert_arguments(PointBased(), xs, ys)
 convert_arguments(::Type{<:Triplot}, x::DelTri.Triangulation) = (x,)
