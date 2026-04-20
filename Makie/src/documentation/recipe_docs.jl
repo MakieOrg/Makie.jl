@@ -283,7 +283,7 @@ end
 const DEFAULT_ATTRIBUTE_GROUPS = let
     generic = collect(keys(Makie.mixin_generic_plot_attributes().d))
     push!(generic, :cycle)
-    inspector = [:inspectable, :inspector_label, :inspector_clear, :inspector_hover]
+    inspector = [:inspectable, :inspector_label]
     filter!(name -> !in(name, inspector), generic)
     colormapping = collect(keys(Makie.mixin_colormap_attributes().d))
     shading = collect(keys(Makie.mixin_shading_attributes().d))

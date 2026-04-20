@@ -23,6 +23,7 @@
     - `get_tooltip_position()` which extracts the position using that information
     - `get_default_tooltip_label()` which generates a default label from picking information
     - `update_indicator_plot!()` for drawing indicator plots
+    - removed `inspector_clear` and `inspector_hover` attributes which are now handled by `update_indicator_plot!()`
   - Added functionality for persistent tooltips
 - Added a system to simulate nesting in compute graphs to allow for nested attributes.
   - **minor breaking** `nested_attributes = Attributes(...)` in `@recipe` are now mapped to nested nodes in a compute graph. As a result `plot.nested_attributes[]` is of type `::ComputeGraphView` instead of `::Attributes`. The contents can still be handled like before, i.e. `map/on/lift(..., plot.nested_attributes[].attribute)`.
