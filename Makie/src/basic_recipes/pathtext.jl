@@ -465,20 +465,6 @@ function _place_glyphs_on_path(
     return (positions, rotations, placed_chars)
 end
 
-function _parse_halign(ha)
-    return if ha === :left
-        0.0f0
-    elseif ha === :center
-        0.5f0
-    elseif ha === :right
-        1.0f0
-    elseif ha isa Real
-        Float32(ha)
-    else
-        throw(ArgumentError("Invalid halign $(repr(ha)) for `pathtext`. Expected `:left`, `:center`, `:right`, or a `Real`."))
-    end
-end
-
 # Perpendicular baseline shift (in pixels) from valign and font metrics.
 # Positive result shifts to the left of the path's travel direction.
 function _valign_shift(va, fontsize, font)
@@ -569,7 +555,8 @@ function _pathtext_layout(pixel_path, text, fontsize, font, fonts, align, offset
     prepared === nothing && return _empty_layout()
     total_path_len, sample_fn = prepared
 
-    frac = _parse_halign(halign)
+    error_msg = "Invalid halign $(repr(halign)) for `pathtext`. Expected `:left`, `:center`, `:right`, or a `Real`."
+    frac = halign2num(halign, error_msg)
     pos, rot, placed = _place_glyphs_on_path(
         x_positions, advances, chars, sample_fn, frac, total_path_len;
         y_offsets,
