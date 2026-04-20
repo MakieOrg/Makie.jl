@@ -43,17 +43,8 @@ struct PlotSpec
                 kw[k] = to_value(v)
                 # error("PlotSpec are supposed to be used without Observables")
             else
-                try
-                    # Really unfortunate!
-                    # Recipes don't have convert_attribute
-                    # (e.g. band(...; color=:y))
-                    # So on error we don't convert for now via try catch
-                    # Since we also dont have an API to figure out if a convert is defined correctly
-                    # TODO, I think we can do this more elegantly but will need a bit of a convert_attribute refactor
-                    kw[k] = deref(convert_attribute(v, Key{k}(), Key{type}()))
-                catch e
-                    kw[k] = v
-                end
+                # Conversion are handled by the plot
+                kw[k] = v
             end
         end
         return new(type, Any[args...], kw)
