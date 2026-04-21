@@ -127,7 +127,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.elements = elements
 
     scene = Scene(blockscene, viewport = Rect2i(0, 0, 0, 0), visible = false)
-    add_input!(ax.attributes, :viewport, scene.viewport)
+    add_input!(ax, :viewport, scene.viewport)
     # Hide to block updates, will be unhidden! in constructor who calls this!
     @assert !scene.visible[]
     ax.scene = scene
@@ -139,8 +139,8 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     initialize_limit_computations!(ax)
 
-    add_input!(ax.attributes, :computedbbox, ax.layoutobservables.computedbbox)
-    map!(calculate_scenearea, ax.attributes, [:computedbbox, :finallimits, :aspect], :scenearea)
+    add_input!(ax, :computedbbox, ax.layoutobservables.computedbbox)
+    map!(calculate_scenearea, ax, [:computedbbox, :finallimits, :aspect], :scenearea)
     connect!(scene.viewport, ax.scenearea)
 
     if !isnothing(palette)
@@ -158,7 +158,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(background, 0, 0, -100)
     elements[:background] = background
 
-    map!(ax.attributes, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
+    map!(ax, [:xaxisposition, :viewport], :xaxis_endpoints) do xaxisposition, area
         if xaxisposition === :bottom
             return bottomline(Rect2f(area))
         elseif xaxisposition === :top
@@ -168,7 +168,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    map!(ax.attributes, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
+    map!(ax, [:yaxisposition, :viewport], :yaxis_endpoints) do yaxisposition, area
         if yaxisposition === :left
             return leftline(Rect2f(area))
         elseif yaxisposition === :right
@@ -178,36 +178,36 @@ function initialize_block!(ax::Axis; palette = nothing)
         end
     end
 
-    map!(x -> x === :top, ax.attributes, :xaxisposition, :xaxis_flipped)
-    map!(x -> x === :right, ax.attributes, :yaxisposition, :yaxis_flipped)
+    map!(x -> x === :top, ax, :xaxisposition, :xaxis_flipped)
+    map!(x -> x === :right, ax, :yaxisposition, :yaxis_flipped)
 
     map!(
         (flip, bv, tv) -> ifelse(flip, (tv, bv), (bv, tv)),
-        ax.attributes,
+        ax,
         [:xaxis_flipped, :bottomspinevisible, :topspinevisible],
         [:xspinevisible, :xoppositespinevisible]
     )
     map!(
         (flip, lv, rv) -> ifelse(flip, (rv, lv), (lv, rv)),
-        ax.attributes,
+        ax,
         [:yaxis_flipped, :leftspinevisible, :rightspinevisible],
         [:yspinevisible, :yoppositespinevisible]
     )
     map!(
         (flip, bc, tc) -> ifelse(flip, (tc, bc), (bc, tc)),
-        ax.attributes,
+        ax,
         [:xaxis_flipped, :bottomspinecolor, :topspinecolor],
         [:xspinecolor, :xoppositespinecolor]
     )
     map!(
         (flip, lc, rc) -> ifelse(flip, (rc, lc), (lc, rc)),
-        ax.attributes,
+        ax,
         [:yaxis_flipped, :leftspinecolor, :rightspinecolor],
         [:yspinecolor, :yoppositespinecolor]
     )
 
-    map!(xlimits, ax.attributes, :finallimits, :finalxlimits)
-    map!(ylimits, ax.attributes, :finallimits, :finalylimits)
+    map!(xlimits, ax, :finallimits, :finalxlimits)
+    map!(ylimits, ax, :finallimits, :finalylimits)
 
     xaxis = LineAxis(
         blockscene, ComputePipeline.ComputeGraphView(ax.attributes, :xaxis),
@@ -248,7 +248,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     ax.yaxis = yaxis
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :spinewidth, :xaxisposition],
         :xoppositelinepoints
     ) do r, sw, xaxpos
@@ -266,7 +266,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :spinewidth, :yaxisposition],
         :yoppositelinepoints
     ) do r, sw, yaxpos
@@ -284,11 +284,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        mirror_xticks, ax.attributes,
+        mirror_xticks, ax,
         [(:xaxis, :tickpositions), :xticksize, :xtickalign, :viewport, :xaxisposition, :spinewidth],
         :xticksmirrored_points
     )
-    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
+    map!((a, b) -> a && b, ax, [:xticksmirrored, :xticksvisible], :mirroredxticksvisible)
     xticksmirrored_lines = linesegments!(
         blockscene, ax.xticksmirrored_points, visible = ax.mirroredxticksvisible,
         linewidth = ax.xtickwidth, color = ax.xtickcolor
@@ -296,11 +296,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_yticks, ax.attributes,
+        mirror_yticks, ax,
         [(:yaxis, :tickpositions), :yticksize, :ytickalign, :viewport, :yaxisposition, :spinewidth],
         :yticksmirrored_points
     )
-    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
+    map!((a, b) -> a && b, ax, [:yticksmirrored, :yticksvisible], :mirroredyticksvisible)
     yticksmirrored_lines = linesegments!(
         blockscene, ax.yticksmirrored_points, visible = ax.mirroredyticksvisible,
         linewidth = ax.ytickwidth, color = ax.ytickcolor
@@ -308,11 +308,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_xticks, ax.attributes,
+        mirror_xticks, ax,
         [(:xaxis, :minortickpositions), :xminorticksize, :xminortickalign, :viewport, :xaxisposition, :spinewidth],
         :xminorticksmirrored
     )
-    map!((a, b) -> a && b, ax.attributes, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
+    map!((a, b) -> a && b, ax, [:xticksmirrored, :xminorticksvisible], :mirroredxminorticksvisible)
     xminorticksmirrored_lines = linesegments!(
         blockscene, ax.xminorticksmirrored, visible = ax.mirroredxminorticksvisible,
         linewidth = ax.xminortickwidth, color = ax.xminortickcolor
@@ -320,11 +320,11 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(xminorticksmirrored_lines, 0, 0, 10)
 
     map!(
-        mirror_yticks, ax.attributes,
+        mirror_yticks, ax,
         [(:yaxis, :minortickpositions), :yminorticksize, :yminortickalign, :viewport, :yaxisposition, :spinewidth],
         :yminorticksmirrored
     )
-    map!((a, b) -> a && b, ax.attributes, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
+    map!((a, b) -> a && b, ax, [:yticksmirrored, :yminorticksvisible], :mirroredyminorticksvisible)
     yminorticksmirrored_lines = linesegments!(
         blockscene, ax.yminorticksmirrored, visible = ax.mirroredyminorticksvisible,
         linewidth = ax.yminortickwidth, color = ax.yminortickcolor
@@ -350,7 +350,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     translate!(yoppositeline, 0, 0, 20)
 
     map!(
-        ax.attributes,
+        ax,
         [(:xaxis, :tickpositions), :xaxisposition, :viewport],
         :xgrid_points
     ) do tickpos, axispos, area
@@ -360,7 +360,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:yaxis, :tickpositions), :yaxisposition, :viewport],
         :ygrid_points
     ) do tickpos, axispos, area
@@ -370,7 +370,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:xaxis, :minortickpositions), :xaxisposition, :viewport],
         :xminorgrid_points
     ) do tickpos, axispos, area
@@ -380,7 +380,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        ax.attributes,
+        ax,
         [(:yaxis, :minortickpositions), :yaxisposition, :viewport],
         :yminorgrid_points
     ) do tickpos, axispos, area
@@ -422,7 +422,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     elements[:yminorgridlines] = yminorgridlines
 
     map!(
-        ax.attributes,
+        ax,
         [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion)],
         :subtitlepos
     ) do a, titlegap, align, xaxisposition, xaxisprotrusion
@@ -435,7 +435,7 @@ function initialize_block!(ax::Axis; palette = nothing)
         return Point2f(x, yoffset)
     end
 
-    map!(align -> (align, :bottom), ax.attributes, :titlealign, :titlealign_tuple)
+    map!(align -> (align, :bottom), ax, :titlealign, :titlealign_tuple)
 
     subtitlet = text!(
         blockscene,
@@ -453,7 +453,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     subtitle_bbox = register_raw_string_boundingboxes!(subtitlet)
     map!(
-        ax.attributes, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
+        ax, [subtitle_bbox, :subtitlevisible, :subtitlegap], :subtitle_height
     ) do bboxes, visible, gap
         bb = reduce(update_boundingbox, bboxes, init = Rect3f())
         height = widths(bb)[2]
@@ -461,7 +461,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        calculate_title_position, ax.attributes,
+        calculate_title_position, ax,
         [:viewport, :titlegap, :titlealign, :xaxisposition, (:xaxis, :protrusion), :subtitle_height],
         :titlepos
     )
@@ -482,7 +482,7 @@ function initialize_block!(ax::Axis; palette = nothing)
 
     title_bbox = register_raw_string_boundingboxes!(titlet)
     map!(
-        ax.attributes, [title_bbox, :titlevisible, :titlegap], :title_height
+        ax, [title_bbox, :titlevisible, :titlegap], :title_height
     ) do bboxes, visible, gap
         bb = reduce(update_boundingbox, bboxes, init = Rect3f())
         height = widths(bb)[2]
@@ -490,7 +490,7 @@ function initialize_block!(ax::Axis; palette = nothing)
     end
 
     map!(
-        compute_protrusions, ax.attributes,
+        compute_protrusions, ax,
         [
             :title_height, :subtitle_height,
             :xaxisposition, (:xaxis, :protrusion),
@@ -813,7 +813,7 @@ end
 function update_xlims_locally!(ax, xlims, xreversed)
     # update xlims if they changed, keep ylims
     update!(
-        ax.attributes,
+        ax,
         limits = (xlims, ax.limits[][2]),
         _limit_update_rule = (:force, :deny),
         xreversed = xreversed
@@ -824,7 +824,7 @@ end
 function update_ylims_locally!(ax, ylims, yreversed)
     # update ylims if they changed, keep xlims
     update!(
-        ax.attributes,
+        ax,
         limits = (ax.limits[][1], ylims),
         _limit_update_rule = (:deny, :force),
         yreversed = yreversed
@@ -862,7 +862,7 @@ function _limits!(ax, lims)
 
     # update xlims if they changed, keep ylims
     update!(
-        ax.attributes,
+        ax,
         limits = (xlims, ylims),
         xreversed = xreversed,
         yreversed = yreversed
