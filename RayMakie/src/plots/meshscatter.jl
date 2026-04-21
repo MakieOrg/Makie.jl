@@ -70,20 +70,27 @@ end
 
 # --- TLAS creation helper ---
 
-function meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances)
+function meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances;
+                              reuse_mi_indices::Union{Nothing, AbstractVector{UInt32}}=nothing)
     # One BLAS + N instances, per-instance material routed through
     # `InstanceDescriptor.instance_id` (Hikari's `resolve_mi_idx` picks it
-    # up as a `medium_interface_idx` override).  Used to be N separate
-    # push!'es which built N identical-geometry BLASes (~1 GB / frame for
-    # a ~100-arrow dolphin scatter).
+    # up as a `medium_interface_idx` override).
+    #
+    # `reuse_mi_indices` lets rebuild frames reuse the previously-returned
+    # per-instance mi_indices: `update_material!` on each old slot instead
+    # of `push!(scene.materials, …)`.  With this, scene.materials grows only
+    # up to the high water mark of N instead of by N every frame.
     handles = if n_instances == 0
         Hikari.SceneHandle[]
     else
-        push!(hikari_scene, gb_mesh, collect(materials), collect(transforms))
+        push!(hikari_scene, gb_mesh, collect(materials), collect(transforms);
+              reuse_mi_indices)
     end
+    mi_indices = UInt32[h.interface for h in handles]
     state.needs_film_clear = true
     return (
         handles=handles, n_instances=n_instances, materials=materials,
+        mi_indices=mi_indices,
     )
 end
 
@@ -140,15 +147,43 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
 
         robj = last.trace_renderobject
 
-        # Any change → full rebuild (delete old instances, create new ones).
-        if changed.trace_marker_mesh || changed.trace_transforms || changed.trace_materials
+        # Marker mesh OR instance count change: needs full BLAS rebuild.
+        # We pass the prior mi_indices into meshscatter_create! so the
+        # material MultiTypeSet slots are reused — scene.materials grows
+        # only up to the high water mark, never unbounded per frame.
+        if changed.trace_marker_mesh || n_instances != robj.n_instances
             delete_trace_handles!(hikari_scene, robj)
             if n_instances != robj.n_instances
                 materials = extract_meshscatter_materials(plot, n_instances)
             end
-            return (meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances),)
+            reuse = hasproperty(robj, :mi_indices) ? robj.mi_indices : nothing
+            return (meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials, n_instances;
+                                         reuse_mi_indices=reuse),)
         end
 
-        return (robj,)
+        # Arity-stable incremental path: update per-instance transforms and/or
+        # materials in place via `Raycore.update_transform!` / `Hikari.update_material!`.
+        # This keeps `scene.materials` / `scene.media_interfaces` / `hwtlas.instance_transforms`
+        # at a fixed size across frames — critical for streamplot / quiver /
+        # meshscatter animations that rebuild every frame (otherwise each
+        # frame piles N new material entries onto the MultiTypeSet and every
+        # subsequent `rebuild_static!` re-adapts the full accumulated vector,
+        # leaking hundreds of MiB/frame).
+        # Single TLASHandle owns all N instances (see the batch push! in
+        # scene-mesh.jl); each instance is index `i` within that range.
+        if changed.trace_transforms
+            base_handle = robj.handles[1].geometry
+            for (i, h) in enumerate(robj.handles)
+                Raycore.update_transform_at!(hikari_scene.accel, base_handle, i, transforms[i])
+            end
+        end
+        if changed.trace_materials
+            for (i, h) in enumerate(robj.handles)
+                Hikari.update_material!(hikari_scene, h.interface, materials[i])
+            end
+        end
+        state.needs_film_clear = true
+        return ((handles=robj.handles, n_instances=n_instances, materials=materials,
+                 mi_indices=robj.mi_indices),)
     end
 end

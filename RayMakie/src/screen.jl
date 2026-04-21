@@ -628,7 +628,7 @@ function Makie.colorbuffer(screen::Screen, format::Makie.ImageStorageFormat = Ma
         composite_scene!(screen.output_buffer, scene_state, screen.scene)
     end
     KernelAbstractions.synchronize(screen.config.device)
-    Lava.vk_flush!()
+    Lava.vk_flush!(Lava.vk_context())
     Lava.Vulkan.device_wait_idle(Lava.vk_context().device)
 
     if has_overlays
@@ -778,13 +778,13 @@ function start_renderloop!(screen::Screen, root_scene::Scene)
                     screen.state = ss
                     render!(screen)
                 end
-                Lava.vk_flush!()
+                Lava.vk_flush!(Lava.vk_context())
 
                 screen.stop_renderloop[] && break
 
                 postprocess_and_composite_gpu!(screen)
 
-                Lava.vk_flush!()
+                Lava.vk_flush!(Lava.vk_context())
                 Lava.Vulkan.device_wait_idle(ctx.device)
 
                 screen.stop_renderloop[] && break

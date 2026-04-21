@@ -76,6 +76,11 @@ update_medium_data!(medium::Hikari.RGBGridMedium, density, params, colormap, col
 update_medium_data!(medium::Hikari.GridMedium, density, params, colormap, colorrange) =
     medium.density .= density .* params.extinction_scale
 
+# Grid-shape accessor used to detect when the per-frame density cube changed
+# size and we need to reallocate (rather than index an old σ_s_grid OOB).
+medium_grid_size(m::Hikari.RGBGridMedium) = size(m.σ_s_grid)
+medium_grid_size(m::Hikari.GridMedium) = size(m.density)
+
 # Rebuild majorant grid after data updates
 rebuild_majorant!(m::Hikari.RGBGridMedium) =
     Hikari.build_rgb_majorant_grid!(m.majorant_grid, m.σ_a_grid, m.σ_s_grid, m.sigma_scale, size(m.σ_s_grid))
@@ -121,7 +126,13 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Volume)
         config = args.trace_volume_config
         bounds = Raycore.Bounds3(config.origin, config.origin + config.extent)
 
-        if isnothing(last) || isnothing(last.trace_medium) || changed.trace_volume_config
+        # Rebuild if no medium yet, if config changed, OR if the density grid
+        # dimensions changed (e.g. animated bodies where the per-step vorticity-
+        # crop window shifts). Without the size check, `update_medium_data!`
+        # would index a stale σ_s_grid out of bounds.
+        size_mismatch = !isnothing(last) && !isnothing(last.trace_medium) &&
+            medium_grid_size(last.trace_medium) != size(density)
+        if isnothing(last) || isnothing(last.trace_medium) || changed.trace_volume_config || size_mismatch
             return (volume_medium(density, bounds, config.params;
                         colormap=config.colormap, colorrange=config.colorrange),)
         end

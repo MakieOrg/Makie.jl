@@ -93,13 +93,18 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
         if isnothing(last) || isnothing(last.trace_renderobject) ||
            changed.mesh || changed.positions_transformed_f32c || changed.faces ||
            changed.normals || changed.texturecoordinates || changed.trace_color_tex
-            # Delete old handles if rebuilding
+            # Pick up the previous material slot before we drop the old handle;
+            # reusing it avoids an unbounded leak of MultiTypeSet texture slots
+            # on per-frame mesh rebuilds (streamplot tubes, etc.).
+            reuse_mat_idx = reusable_material_idx(last)
+
             !isnothing(last) && !isnothing(last.trace_renderobject) &&
                 delete_trace_handles!(hikari_scene, last.trace_renderobject)
 
             robj = push_to_scene(args.mesh, hikari_scene, plot, color_tex,
                                   args.positions_transformed_f32c, args.faces,
-                                  args.normals, args.texturecoordinates, transform)
+                                  args.normals, args.texturecoordinates, transform,
+                                  reuse_mat_idx)
             state.needs_film_clear = true
             return (robj,)
         end
@@ -122,15 +127,8 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
 end
 
 """
-Swap the material (and inside/outside media, if `MediumInterface`) of an
-existing mesh scene handle in place — no BLAS/TLAS rebuild. Uses
-`Hikari.update_material!`, the same path the volume plot uses for density
-updates. Safe to call every frame.
-
-Accepts:
-- `Hikari.Material` — update just the surface BSDF
-- `Hikari.MediumInterface` — update surface BSDF AND swap inside/outside media
-- `nothing` — no-op (user cleared the override)
+Swap the material of an existing mesh scene handle in place — no BLAS/TLAS
+rebuild.  For a `MediumInterface`, unpack to surface + inside updates.
 """
 function update_trace_material!(hikari_scene, state, robj, new_material)
     hikari_scene === nothing && return
@@ -139,9 +137,7 @@ function update_trace_material!(hikari_scene, state, robj, new_material)
     interface_idx = h isa Hikari.SceneHandle ? h.interface :
                     hasproperty(robj, :mat_idx) ? robj.mat_idx : return
     if new_material isa Hikari.MediumInterface
-        # Surface
         Hikari.update_material!(hikari_scene, interface_idx, new_material.material)
-        # Inside medium (if present)
         new_material.inside !== nothing &&
             Hikari.update_material!(hikari_scene, interface_idx, new_material.inside)
     elseif new_material isa Hikari.Material
@@ -167,12 +163,28 @@ function extract_glb_diffuse_texture(mat_dict::Dict{String, Any})
     return Hikari.ConstTexture(to_spectrum(RGBf(diffuse[1], diffuse[2], diffuse[3])))
 end
 
-# MetaMesh: multi-material
+# Does the prior trace_renderobject carry a `mat_idx` we can recycle?
+# Every rebuild that takes this path keeps `scene.materials` /
+# `scene.media_interfaces` a fixed size, letting `Raycore.update!` re-use the
+# backing GPU texture slot rather than growing it each frame.
+function reusable_material_idx(last)
+    last === nothing && return nothing
+    last_robj = last.trace_renderobject
+    last_robj === nothing && return nothing
+    hasproperty(last_robj, :mat_idx) || return nothing
+    return UInt32(last_robj.mat_idx)
+end
+
+# MetaMesh: multi-material.  Per-face materials don't currently share a slot
+# with the prior render object (multi-mat rebuilds are rare), so the
+# `reuse_mat_idx` argument is ignored — the normal push path runs.
 function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, color_tex,
-                       positions, faces, normals, uv, transform)
+                       positions, faces, normals, uv, transform,
+                       reuse_mat_idx::Union{Nothing, UInt32})
     has_embedded = haskey(mesh_val, :material_names) && haskey(mesh_val, :materials)
     if !has_embedded
-        return push_to_scene_simple(mesh_val.mesh, hikari_scene, plot, color_tex, transform)
+        return push_to_scene_simple(mesh_val.mesh, hikari_scene, plot, color_tex, transform,
+                                     reuse_mat_idx)
     end
 
     # Check if user explicitly provided a material template
@@ -223,13 +235,21 @@ end
 
 # Plain mesh: single material
 function push_to_scene(mesh_val, hikari_scene, plot, color_tex,
-                       positions, faces, normals_arg, uv, transform)
-    push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform;
+                       positions, faces, normals_arg, uv, transform,
+                       reuse_mat_idx::Union{Nothing, UInt32})
+    push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
+                          reuse_mat_idx;
                           positions=positions, faces=faces, normals=normals_arg, uv=uv)
 end
 
-# Internal: build GB.Mesh from decomposed data and push with single material
-function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform;
+# Internal: build GB.Mesh from decomposed data and push with single material.
+# When `reuse_mat_idx` is given, the pre-existing material slot is refreshed
+# via `Hikari.update_material!` and the mesh is pushed with that same idx,
+# keeping `scene.materials` / `scene.media_interfaces` a fixed size across
+# rebuilds.  `update_material!` reuses the GPU texture buffer through the
+# `Raycore.update_item` / `Raycore.copyto_texture!` dispatch chain.
+function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
+                               reuse_mat_idx::Union{Nothing, UInt32};
                                positions=nothing, faces=nothing, normals=nothing, uv=nothing)
     # If mesh_val is already a GB.Mesh, use it directly; otherwise build from decomposed
     gb_mesh = if mesh_val isa GeometryBasics.Mesh
@@ -249,7 +269,12 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
     end
 
     mat = extract_material(plot, color_tex)
-    handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
+    handle = if reuse_mat_idx === nothing
+        push!(hikari_scene, gb_mesh, mat; transform=transform)
+    else
+        Hikari.update_material!(hikari_scene, reuse_mat_idx, mat)
+        push!(hikari_scene, gb_mesh, reuse_mat_idx, mat; transform=transform)
+    end
     state_instance_idx = length(hikari_scene.accel.instances)
     return (handle=handle, mat_idx=handle.interface, material=mat, instance_idx=state_instance_idx)
 end

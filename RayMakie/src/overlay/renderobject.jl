@@ -75,12 +75,16 @@ end
 """
     update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArray)
 
-Update a named GPU buffer. Uses `Lava.update!` which resizes if needed and frees
-the old buffer immediately (no GC pressure).
+Update a named GPU buffer.  `Base.resize!` on a LavaArray is capacity-aware
+(no Vulkan alloc when the new size fits the existing VkBuffer) and retires
+the old VkBuffer via deferred-free on genuine growth — no GC pressure, no
+per-call CPU sync.
 """
 function update_buffer!(robj::LavaRenderObject, name::Symbol, data::AbstractArray)
     if haskey(robj.buffers, name)
-        Lava.update!(robj.buffers[name], data)
+        buf = robj.buffers[name]
+        resize!(buf, length(data))
+        copyto!(buf, data)
     else
         robj.buffers[name] = LavaArray(data)
     end
@@ -167,12 +171,14 @@ function update_robj!(robj::LavaRenderObject, args::NamedTuple, changed::NamedTu
         if name === :visible
             robj.visible = value
         elseif haskey(robj.buffers, name)
-            # GPU buffer — update in place (resize if needed)
+            # GPU buffer — update in place (capacity-aware resize + copyto)
             if value isa AbstractArray
                 if name === :indices
                     robj.buffers[name] = Lava.alloc_index_buffer(UInt32.(value))
                 else
-                    Lava.update!(robj.buffers[name], value)
+                    buf = robj.buffers[name]
+                    resize!(buf, length(value))
+                    copyto!(buf, value)
                 end
             end
         elseif haskey(robj.uniforms, name)

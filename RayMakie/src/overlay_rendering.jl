@@ -93,7 +93,7 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
             Vulkan.PIPELINE_BIND_POINT_GRAPHICS,
             compiled.pipeline_layout, UInt32(0),
             [robj.bindings.set], UInt32[])
-        push!(batch.data_refs, robj.bindings)
+        Lava.pin!(batch, robj.bindings)
     end
 
     push_data = Lava.pack_gfx_args(bq, args, vert_shader.push_info)
@@ -107,9 +107,9 @@ function draw_lava_renderobject!(screen, bq::Lava.BatchQueue, robj::LavaRenderOb
             push_data=push_data, instances=robj.instances)
     end
 
-    push!(batch.data_refs, compiled)
+    Lava.pin!(batch, compiled)
     for (_, buf) in robj.buffers
-        push!(batch.data_refs, buf)
+        Lava.pin!(batch, buf)
     end
 end
 

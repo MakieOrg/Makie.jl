@@ -36,7 +36,7 @@ end
 # Helper: flush GPU and GC to get accurate buffer counts
 function _flush_all!()
     GC.gc(true)
-    Lava.vk_flush!()
+    Lava.vk_flush!(Lava.vk_context())
     Lava.flush_deferred_frees!()
     GC.gc(true)
     Lava.flush_deferred_frees!()
@@ -170,7 +170,7 @@ end
             integrator = Hikari.VolPath(samples=1, max_depth=2)
 
             img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-            Lava.vk_flush!()
+            Lava.vk_flush!(Lava.vk_context())
 
             # After render on GPU, many buffers should be allocated
             during = length(Lava._live_buffers)
@@ -205,14 +205,14 @@ end
 
             # Warmup
             img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-            Lava.vk_flush!()
+            Lava.vk_flush!(Lava.vk_context())
             _flush_all!()
             baseline = length(Lava._live_buffers)
 
             # Multiple renders — should not leak
             for _ in 1:5
                 img = colorbuffer(scene; backend=RayMakie, integrator=integrator)
-                Lava.vk_flush!()
+                Lava.vk_flush!(Lava.vk_context())
             end
             _flush_all!()
             after = length(Lava._live_buffers)
@@ -300,6 +300,27 @@ end
             Base.delete!(screen, scene)
             @test isnothing(screen.state)
         end
+
+        # Regression (2026-04-20): Makie's `free(scene)` → `empty!(scene)` →
+        # `delete!(scene, plot)` calls `delete_trace_robj!` while the screen's
+        # scene_states are still alive (screen wasn't explicitly closed first).
+        # That path used to resolve the compute graph via `plot.attributes[
+        # :trace_renderobject][]`, which re-ran `draw_atomic` → `push!(scene,
+        # mat)` → `update!(::LavaArray)`, hitting `ArgumentError: Attempt to
+        # use a freed reference` whenever MultiTypeSet cache slots had been
+        # released by an HW-accel rebuild upstream. `delete_trace_robj!` now
+        # wraps the resolution in try/catch and falls through to attribute-
+        # delete on failure.
+        @testset "empty!(scene) without close(screen) does not crash" begin
+            scene = _make_makie_scene(; sz=(16, 16))
+            RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
+            integrator = Hikari.VolPath(samples=1, max_depth=2)
+            colorbuffer(scene; backend=RayMakie, integrator=integrator)
+            @test_nowarn empty!(scene)
+            screen = Makie.getscreen(scene)
+            screen !== nothing && close(screen)
+            close(integrator)
+        end
     end
 
     # ── 7. Different material rendering ──
@@ -359,7 +380,7 @@ end
         # Flush everything from prior tests
         for _ in 1:3
             GC.gc(true); sleep(0.05)
-            Lava.vk_flush!(); Lava.flush_deferred_frees!()
+            Lava.vk_flush!(Lava.vk_context()); Lava.flush_deferred_frees!()
         end
         baseline = length(Lava._live_buffers)
 
@@ -369,12 +390,12 @@ end
             RayMakie.activate!(; device=_gpu_device, exposure=1.0f0, tonemap=:aces, gamma=2.2f0)
             int = Hikari.VolPath(samples=1, max_depth=2)
             colorbuffer(s; backend=RayMakie, integrator=int)
-            Lava.vk_flush!()
+            Lava.vk_flush!(Lava.vk_context())
         end
         # All references out of scope — Scene finalizer should close screen
         for _ in 1:3
             GC.gc(true); sleep(0.1)
-            Lava.vk_flush!(); Lava.flush_deferred_frees!()
+            Lava.vk_flush!(Lava.vk_context()); Lava.flush_deferred_frees!()
         end
 
         after = length(Lava._live_buffers)
