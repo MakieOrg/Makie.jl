@@ -1179,6 +1179,19 @@ Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(
 function ComputePipeline.register_computation!(f, b::Block, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, b.attributes, inputs, outputs)
 end
+
+function Base.map!(f, b::Block, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
+    return map!(f, b.attributes, inputs, outputs)
+end
+
+function ComputePipeline.add_input!(f, b::Block, args...; kwargs...)
+    return add_input!(f, b.attributes, args...; kwargs...)
+end
+
+function ComputePipeline.add_input!(b::Block, args...; kwargs...)
+    return add_input!(b.attributes, args...; kwargs...)
+end
+
 function ComputePipeline.update!(b::Block, args...; kwargs...)
     return ComputePipeline.update!(b.attributes, args...; kwargs...)
 end

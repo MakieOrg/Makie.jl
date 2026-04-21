@@ -490,20 +490,3 @@ Makie.get_scene(ax::Axis) = ax.scene
 Makie.get_scene(ax::Axis3) = ax.scene
 Makie.get_scene(ax::LScene) = ax.scene
 Makie.get_scene(ax::PolarAxis) = ax.scene
-
-function Base.map!(f, b::Block, inputs::Union{Vector, ComputePipeline.InputNodeTypes}, outputs::Union{Vector, ComputePipeline.OutputNodeTypes})
-    return map!(f, b.attributes, inputs, outputs)
-end
-ComputePipeline.add_input!(f, b::Block, args...; kwargs...) = add_input!(f, b.attributes, args...; kwargs...)
-ComputePipeline.add_input!(b::Block, args...; kwargs...) = add_input!(b.attributes, args...; kwargs...)
-ComputePipeline.update!(b::Block, dict) = ComputePipeline.update!(b.attributes, dict)
-ComputePipeline.update!(b::Block; kwargs...) = ComputePipeline.update!(b.attributes; kwargs...)
-
-function ComputePipeline.update!(b::Block, args...; attr...)
-    kw = [Pair{Symbol, Any}(Symbol(:arg, i), arg) for (i, arg) in enumerate(args)]
-    for (a, v) in attr
-        push!(kw, Pair{Symbol, Any}(a, v))
-    end
-    ComputePipeline.update!(b.attributes, kw)
-    return
-end
