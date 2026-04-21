@@ -756,7 +756,7 @@ function destroy!(screen::Screen)
 end
 
 """
-    close(screen::Screen; reuse=true)
+    close(screen::Screen; reuse = true)
 
 Closes screen and empties it.
 Doesn't destroy the screen and instead frees it to be reused again, if `reuse=true`.
@@ -1149,7 +1149,7 @@ end
 export plot2robjs
 
 """
-    render_asap([callback::Function, ]screen, N)
+    render_asap([callback::Function]screen, N)
 
 Renders N frames as fast as possible, calling `callback` before each frame if
 defined. This will stop the existing rendertask and disable vsync before

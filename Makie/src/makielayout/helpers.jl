@@ -323,8 +323,10 @@ end
 
 
 """
-    labelslider!(scene, label, range; format = string, sliderkw = Dict(),
-    labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...)
+    labelslider!(
+        scene, label, range; format = string, sliderkw = Dict(),
+        labelkw = Dict(), valuekw = Dict(), value_column_width = automatic, layoutkw...
+    )
 
 **`labelslider!` is deprecated, use `SliderGrid` instead**
 
@@ -382,9 +384,11 @@ end
 
 
 """
-    labelslidergrid!(scene, labels, ranges; formats = [string],
+    labelslidergrid!(
+        scene, labels, ranges; formats = [string],
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(),
-        value_column_width = automatic, layoutkw...)
+        value_column_width = automatic, layoutkw...
+    )
 
 **`labelslidergrid!` is deprecated, use `SliderGrid` instead**
 

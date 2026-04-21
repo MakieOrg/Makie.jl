@@ -272,14 +272,14 @@ function Makie.process_interaction(interaction::MyInteraction, event::MouseEvent
     if interaction.allow_left_click && event.type === MouseEventTypes.leftclick
         println("Left click in correct mode")
     end
-    if interaction.allow_right_click && event.type === MouseEventTypes.rightclick
+    return if interaction.allow_right_click && event.type === MouseEventTypes.rightclick
         println("Right click in correct mode")
     end
 end
 
 function Makie.process_interaction(interaction::MyInteraction, event::KeysEvent, axis)
     interaction.allow_left_click = Keyboard.l in event.keys
-    interaction.allow_right_click = Keyboard.r in event.keys
+    return interaction.allow_right_click = Keyboard.r in event.keys
 end
 
 register_interaction!(ax, :left_and_right, MyInteraction(false, false))

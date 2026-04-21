@@ -19,7 +19,7 @@ add_input!((key, value) -> Float32(value), graph, :input2, 2) # directly convert
 # add computations (edges + output nodes)
 register_computation!(graph, [:input1, :input2], [:output]) do inputs, changed, last_output
     input1, input2 = inputs
-    return (input1 + input2, )
+    return (input1 + input2,)
 end
 
 # Observable like API:

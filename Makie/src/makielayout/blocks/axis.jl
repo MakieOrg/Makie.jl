@@ -1082,8 +1082,10 @@ end
 
 
 """
-    hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
-        minorgrid = true, minorticks = true)
+    hidexdecorations!(
+        la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true
+    )
 
 Hide decorations of the x-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
@@ -1113,8 +1115,10 @@ function hidexdecorations!(
 end
 
 """
-    hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
-        minorgrid = true, minorticks = true)
+    hideydecorations!(
+        la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true
+    )
 
 Hide decorations of the y-axis: label, ticklabels, ticks and grid. Keyword
 arguments can be used to disable hiding of certain types of decorations.
@@ -1144,8 +1148,10 @@ function hideydecorations!(
 end
 
 """
-    hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true,
-                     grid = true, minorgrid = true, minorticks = true)
+    hidedecorations!(
+        la::Axis; label = true, ticklabels = true, ticks = true,
+        grid = true, minorgrid = true, minorticks = true
+    )
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
 Keyword arguments can be used to disable hiding of certain types of decorations.
@@ -1280,7 +1286,7 @@ end
     xlims!(ax, low, high)
     xlims!(ax; low = nothing, high = nothing)
     xlims!(ax, (low, high))
-    xlims!(ax, low..high)
+    xlims!(ax, low .. high)
 
 Set the x-axis limits of axis `ax` to `low` and `high` or a tuple
 `xlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1292,7 +1298,7 @@ Makie.xlims!(ax, low, high) = Makie.xlims!(ax, (low, high))
     ylims!(ax, low, high)
     ylims!(ax; low = nothing, high = nothing)
     ylims!(ax, (low, high))
-    ylims!(ax, low..high)
+    ylims!(ax, low .. high)
 
 Set the y-axis limits of axis `ax` to `low` and `high` or a tuple
 `ylims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1304,7 +1310,7 @@ Makie.ylims!(ax, low, high) = Makie.ylims!(ax, (low, high))
     zlims!(ax, low, high)
     zlims!(ax; low = nothing, high = nothing)
     zlims!(ax, (low, high))
-    zlims!(ax, low..high)
+    zlims!(ax, low .. high)
 
 Set the z-axis limits of axis `ax` to `low` and `high` or a tuple
 `zlims = (low,high)`. If the limits are ordered high-low, the axis orientation
@@ -1974,7 +1980,7 @@ function axis_bounds_with_decoration(axis::Axis)
 end
 
 """
-    colorbuffer(ax::Axis; include_decorations=true, colorbuffer_kws...)
+    colorbuffer(ax::Axis; include_decorations = true, colorbuffer_kws...)
 
 Gets the colorbuffer of the `Axis` in `JuliaNative` image format.
 If `include_decorations=false`, only the inside of the axis is fetched.

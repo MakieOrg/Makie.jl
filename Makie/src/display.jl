@@ -85,7 +85,7 @@ end
 const ALWAYS_INLINE_PLOTS = Ref{Union{Automatic, Bool}}(automatic)
 
 """
-    inline!(inline=true)
+    inline!(inline = true)
 
 Prevents opening a window when e.g. in the REPL.
 Usually, Makie opens a window when displaying a plot.
@@ -119,7 +119,7 @@ function can_show_inline(Backend)
 end
 
 """
-    Base.display(figlike::FigureLike; backend=current_backend(), screen_config...)
+    Base.display(figlike::FigureLike; backend = current_backend(), screen_config...)
 
 Displays the figurelike in a window or the browser, depending on the backend.
 
@@ -461,7 +461,7 @@ isvisible(::Nothing) = false
 const COLORBUFFER_LOCK = ReentrantLock()
 
 """
-    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update=true, backend=current_backend(), figure=nothing, screen_config...)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative; update = true, backend = current_backend(), figure = nothing, screen_config...)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors. The return type is backend-dependent, but will be some form of RGB

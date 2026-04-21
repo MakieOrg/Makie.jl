@@ -207,9 +207,9 @@ Example:
 ```julia
 App() do
     f1 = scatter(1:4)
-    f2 = scatter(1:4; figure=(; backgroundcolor=:gray))
-    wc = WGLMakie.WithConfig(f2; resize_to=:parent)
-    DOM.div(f1, DOM.div(wc; style="height: 200px; width: 50%"))
+    f2 = scatter(1:4; figure = (; backgroundcolor = :gray))
+    wc = WGLMakie.WithConfig(f2; resize_to = :parent)
+    DOM.div(f1, DOM.div(wc; style = "height: 200px; width: 50%"))
 end
 ```
 """

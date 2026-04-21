@@ -1014,7 +1014,7 @@ function (x::MapFunctionWrapper{false})(inputs, @nospecialize(changed), @nospeci
 end
 
 """
-    map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Computed, Vector}, outputs::Union{Symbol, Vector{Symbol}}; init=nothing)
+    map!(f, compute_graph::ComputeGraph, inputs::Union{Symbol, Computed, Vector}, outputs::Union{Symbol, Vector{Symbol}}; init = nothing)
 
 Registers a new ComputeEdge in the `compute_graph` which connect one or multiple
 `inputs` to one or multiple `outputs`.
@@ -1041,12 +1041,12 @@ other_graph = ComputeGraph()
 add_input!(other_graph, :input, 3)
 
 map!(x -> 2x, graph, :input1, :output1)
-map!((x, y) -> x+y, graph, [:input1, other_graph.input], :output2)
-map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output3, :output4])
+map!((x, y) -> x + y, graph, [:input1, other_graph.input], :output2)
+map!((x, y) -> (x + y, x - y), graph, [:input1, :input2], [:output3, :output4])
 
 # With initial values
-map!(x -> 2x, graph, :input1, :output5; init=0)
-map!((x, y) -> (x+y, x-y), graph, [:input1, :input2], [:output6, :output7]; init=(0, 0))
+map!(x -> 2x, graph, :input1, :output5; init = 0)
+map!((x, y) -> (x + y, x - y), graph, [:input1, :input2], [:output6, :output7]; init = (0, 0))
 ```
 
 See also: [`add_input!`](@ref), [`register_computation!`](@ref)
@@ -1100,7 +1100,7 @@ function take_last!(channel::Channel; wait = false)
 end
 
 """
-    map_latest!(f, compute_graph::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn=false, init=nothing)
+    map_latest!(f, compute_graph::ComputeGraph, inputs::Vector{Symbol}, outputs::Vector{Symbol}; spawn = false, init = nothing)
 
 Registers an asynchronous computation in the `compute_graph` that processes only the
 most recent input changes, skipping intermediate updates if the computation is still running.

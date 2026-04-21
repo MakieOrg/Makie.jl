@@ -34,7 +34,7 @@ The convention is to always use the `S` prefix when creating spec objects, so th
 import Makie.SpecApi as S
 
 scatterspec = S.Scatter(1:4) # a PlotSpec describing a Scatter plot
-axspec = S.Axis(plots=[scatterspec]) # a BlockSpec describing an Axis with a Scatter plot
+axspec = S.Axis(plots = [scatterspec]) # a BlockSpec describing an Axis with a Scatter plot
 layout_spec = S.GridLayout(axspec) # a Layout describing a Figure with an Axis with a Scatter plot
 
 # Now we can instantiate the spec into a fully realized Figure.
@@ -48,14 +48,14 @@ f, _, pl = plot(layout_spec)
 # update all the content in the Figure with something new. In this case,
 # we just change the plot type in the Axis from Scatter to Lines, and the
 # axis title to "Lines".
-pl[1] = S.GridLayout(S.Axis(; title="Lines", plots=[S.Lines(1:4)]))
+pl[1] = S.GridLayout(S.Axis(; title = "Lines", plots = [S.Lines(1:4)]))
 ```
 
 You can not only `plot` specs describing whole layout, but also specs describing `Block`s or just single plots.
 
 ```julia
-s = Makie.PlotSpec(:Scatter, 1:4; color=:red)
-axis = Makie.BlockSpec(:Axis; title="Axis at layout position (1, 1)")
+s = Makie.PlotSpec(:Scatter, 1:4; color = :red)
+axis = Makie.BlockSpec(:Axis; title = "Axis at layout position (1, 1)")
 ```
 
 ## Building layouts for specs
@@ -361,8 +361,8 @@ Note that things like `hidedecorations!(axis)` is not yet supported, since we wi
 One of the few functions that's already supported is `linkaxes!`:
 
 ```julia
-axes_1 = [S.Axis(title="Axis (1): $(i)") for i in 1:3]
-axes_2 = [S.Axis(title="Axis (2): $(i)") for i in 1:3]
+axes_1 = [S.Axis(title = "Axis (1): $(i)") for i in 1:3]
+axes_2 = [S.Axis(title = "Axis (2): $(i)") for i in 1:3]
 for ax1 in axes_1
     for ax2 in axes_2
         if ax1 != ax2

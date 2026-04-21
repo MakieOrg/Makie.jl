@@ -32,12 +32,12 @@ radiance = 10000
 # supporting multiple light sources and EnvironmentLights right now
 lights = [
     EnvironmentLight(0.5, Makie.FileIO.load(RPR.assetpath("studio026.exr"))),
-    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance))
+    PointLight(Vec3f(0, 0, 20), RGBf(radiance, radiance, radiance)),
 ]
 
 # Only LScene is supported right now,
 # since the other projections don't map to the physical accurate Camera in RPR.
-ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
 # Note that since RPRMakie doesn't yet support text (this is being worked on!),
 # you can't show a 3d axis yet.
 
@@ -47,7 +47,7 @@ ax = LScene(fig[1, 1]; show_axis = false, scenekw=(lights=lights,))
 # manually created Context would be invalid. Since RPRs error handling is pretty
 # bad, this usually results in Segfaults.
 # See below how to render a picture with a manually created context
-screen = RPRMakie.Screen(ax.scene; iterations=10, plugin=RPR.Northstar)
+screen = RPRMakie.Screen(ax.scene; iterations = 10, plugin = RPR.Northstar)
 matsys = screen.matsys
 context = screen.context
 # You can use lots of materials from RPR.
@@ -55,7 +55,7 @@ context = screen.context
 # Or at least one, that doesn't need to access the RPR context
 mat = RPR.Chrome(matsys)
 # The material attribute is specific to RPRMakie and gets ignored by other Backends. This may change in the future
-mesh!(ax, Sphere(Point3f(0), 1), material=mat)
+mesh!(ax, Sphere(Point3f(0), 1), material = mat)
 
 # There are three main ways to turn a Makie scene into a picture:
 # Get the colorbuffer of the Screen. Screen also has `show` overloaded for the MIME `image/png`
@@ -64,10 +64,10 @@ image = colorbuffer(screen)::Matrix{RGB{N0f8}}
 # Replace a specific (sub) LScene with RPR, and display the whole scene interactively in RPRMakie
 using RPRMakie
 refresh = Observable(nothing) # Optional observable that triggers rerendering
-display(ax.scene; backend=GLMakie) # Make sure to display scene first in GLMakie
+display(ax.scene; backend = GLMakie) # Make sure to display scene first in GLMakie
 # Replace the scene with an interactively rendered RPR output.
 # See more about this in the RPRMakie interop example
-context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh = refresh)
 # If one doesn't create the Screen manually to create custom materials,
 # display(ax.scene), show(io, MIME"image/png", ax.scene), save("rpr.png", ax.scene)
 # Should work just like with other backends.
@@ -89,11 +89,13 @@ using Colors, FileIO
 using Colors: N0f8
 
 radiance = 500
-lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-            PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
-fig = Figure(; size=(1500, 700));
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights=lights))
-screen = RPRMakie.Screen(ax.scene; plugin=RPR.Northstar, iterations=400)
+lights = [
+    EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+    PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1)),
+]
+fig = Figure(; size = (1500, 700));
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (; lights = lights))
+screen = RPRMakie.Screen(ax.scene; plugin = RPR.Northstar, iterations = 400)
 
 matsys = screen.matsys
 emissive = RPR.EmissiveMaterial(matsys)
@@ -104,20 +106,22 @@ chrome = RPR.Chrome(matsys)
 dielectric = RPR.DielectricBrdfX(matsys)
 gold = RPR.SurfaceGoldX(matsys)
 
-materials = [glass chrome;
-                gold dielectric;
-                emissive plastic]
+materials = [
+    glass chrome;
+    gold dielectric;
+    emissive plastic
+]
 
-mesh!(ax, GeometryBasics.Mesh(load(Makie.assetpath("matball_floor.obj"))); color=:white)
+mesh!(ax, GeometryBasics.Mesh(load(Makie.assetpath("matball_floor.obj"))); color = :white)
 palette = reshape(Makie.wong_colors()[1:6], size(materials))
 
 for i in CartesianIndices(materials)
     x, y = Tuple(i)
     mat = materials[i]
     mplot = if mat === emissive
-        matball!(ax, diffuse; inner=emissive, color=nothing)
+        matball!(ax, diffuse; inner = emissive, color = nothing)
     else
-        matball!(ax, mat; color=nothing)
+        matball!(ax, mat; color = nothing)
     end
     v = Vec3f(((x, y) .- (0.5 .* size(materials)) .- 0.5)..., 0)
     translate!(mplot, 0.9 .* (v .- Vec3f(0, 3, 0)))
@@ -166,22 +170,26 @@ function glow_material(data_normed)
     )
 end
 
-RPRMakie.activate!(iterations=32, plugin=RPR.Northstar)
-fig = Figure(; size=(2000, 800))
+RPRMakie.activate!(iterations = 32, plugin = RPR.Northstar)
+fig = Figure(; size = (2000, 800))
 radiance = 30000
-lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-            PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance))]
+lights = [
+    EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+    PointLight(Vec3f(0, 100, 100), RGBf(radiance, radiance, radiance)),
+]
 
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(lights=lights,))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (lights = lights,))
 
 mini, maxi = extrema(data)
 data_normed = ((data .- mini) ./ (maxi - mini))
 
 material = glow_material(data_normed)
 
-pltobj = surface!(ax, lon, lat, data_normed .* 20;
-                    material=material, colormap=[:black, :white, :brown],
-                    colorrange=(0.2, 0.8) .* 20)
+pltobj = surface!(
+    ax, lon, lat, data_normed .* 20;
+    material = material, colormap = [:black, :white, :brown],
+    colorrange = (0.2, 0.8) .* 20
+)
 # Set the camera to a nice angle
 cam = cameracontrols(ax.scene)
 cam.eyeposition[] = Vec3f(3, -300, 300)
@@ -207,24 +215,28 @@ using Colors: N0f8
 f = (u, v) -> cos(v) * (6 - (5 / 4 + sin(3u)) * sin(u - 3v))
 g = (u, v) -> sin(v) * (6 - (5 / 4 + sin(3u)) * sin(u - 3v))
 h = (u, v) -> -cos(u - 3v) * (5 / 4 + sin(3u));
-u = range(0; stop=2π, length=150)
-v = range(0; stop=2π, length=150)
+u = range(0; stop = 2π, length = 150)
+v = range(0; stop = 2π, length = 150)
 radiance = 500
-lights = [EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
-          PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1))]
+lights = [
+    EnvironmentLight(1.0, load(RPR.assetpath("studio026.exr"))),
+    PointLight(Vec3f(10), RGBf(radiance, radiance, radiance * 1.1)),
+]
 
-fig = Figure(; size=(1500, 1000))
-ax = LScene(fig[1, 1]; show_axis=false, scenekw=(; lights))
-screen = RPRMakie.Screen(size(ax.scene); plugin=RPR.Tahoe)
+fig = Figure(; size = (1500, 1000))
+ax = LScene(fig[1, 1]; show_axis = false, scenekw = (; lights))
+screen = RPRMakie.Screen(size(ax.scene); plugin = RPR.Tahoe)
 material = RPR.UberMaterial(screen.matsys)
 
-surface!(ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient=Vec3f(0.5), diffuse=Vec3f(1),
-         specular=0.5, colormap=:balance, material)
+surface!(
+    ax, f.(u, v'), g.(u, v'), h.(u, v'); ambient = Vec3f(0.5), diffuse = Vec3f(1),
+    specular = 0.5, colormap = :balance, material
+)
 
 function Input(fig, val::RGB)
-    hue = Slider(fig; range=1:380, width=200)
-    lightness = Slider(fig; range=LinRange(0, 1, 100), width=200)
-    labels = [Label(fig, "hue"; halign=:left), Label(fig, "light"; halign=:left)]
+    hue = Slider(fig; range = 1:380, width = 200)
+    lightness = Slider(fig; range = LinRange(0, 1, 100), width = 200)
+    labels = [Label(fig, "hue"; halign = :left), Label(fig, "light"; halign = :left)]
     layout = grid!(hcat(labels, [hue, lightness]))
     hsl = HSL(val)
     set_close_to!(hue, hsl.h)
@@ -234,54 +246,56 @@ function Input(fig, val::RGB)
 end
 
 function Input(fig, val::Vec4)
-    s = Slider(fig; range=LinRange(0, 1, 100), width=200)
+    s = Slider(fig; range = LinRange(0, 1, 100), width = 200)
     set_close_to!(s, first(val))
     return map(Vec4f, s.value), s
 end
 
 function Input(fig, val::Bool)
-    toggle = Toggle(fig; active=val)
+    toggle = Toggle(fig; active = val)
     return toggle.active, toggle
 end
 
 reflection_sliders = (
-    reflection_color=Input(fig, RGB(0, 0, 0)),
-    reflection_weight=Input(fig, Vec4(0)),
-    reflection_roughness=Input(fig, Vec4(0)),
-    reflection_anisotropy=Input(fig, Vec4(0)),
-    reflection_anisotropy_rotation=Input(fig, Vec4(0)),
-    reflection_mode=Input(fig, Vec4(0)),
-    reflection_ior=Input(fig, Vec4(0)),
-    reflection_metalness=Input(fig, Vec4(0)),
+    reflection_color = Input(fig, RGB(0, 0, 0)),
+    reflection_weight = Input(fig, Vec4(0)),
+    reflection_roughness = Input(fig, Vec4(0)),
+    reflection_anisotropy = Input(fig, Vec4(0)),
+    reflection_anisotropy_rotation = Input(fig, Vec4(0)),
+    reflection_mode = Input(fig, Vec4(0)),
+    reflection_ior = Input(fig, Vec4(0)),
+    reflection_metalness = Input(fig, Vec4(0)),
 )
 refraction_sliders = (
-    refraction_color=Input(fig, RGB(0, 0, 0)),
-    refraction_weight=Input(fig, Vec4(0)),
-    refraction_roughness=Input(fig, Vec4(0)),
-    refraction_ior=Input(fig, Vec4(0)),
-    refraction_absorption_color=Input(fig, RGB(0, 0, 0)),
-    refraction_absorption_distance=Input(fig, Vec4(0)),
-    refraction_caustics=Input(fig, true),
+    refraction_color = Input(fig, RGB(0, 0, 0)),
+    refraction_weight = Input(fig, Vec4(0)),
+    refraction_roughness = Input(fig, Vec4(0)),
+    refraction_ior = Input(fig, Vec4(0)),
+    refraction_absorption_color = Input(fig, RGB(0, 0, 0)),
+    refraction_absorption_distance = Input(fig, Vec4(0)),
+    refraction_caustics = Input(fig, true),
 )
 sss_sliders = (
-    sss_scatter_color=Input(fig, RGB(0, 0, 0)),
-    sss_scatter_distance=Input(fig, Vec4(0)),
-    sss_scatter_direction=Input(fig, Vec4(0)),
-    sss_weight=Input(fig, Vec4(0)),
-    sss_multiscatter=Input(fig, false),
+    sss_scatter_color = Input(fig, RGB(0, 0, 0)),
+    sss_scatter_distance = Input(fig, Vec4(0)),
+    sss_scatter_direction = Input(fig, Vec4(0)),
+    sss_weight = Input(fig, Vec4(0)),
+    sss_multiscatter = Input(fig, false),
 )
 backscatter_sliders = (
-    backscatter_weight=Input(fig, Vec4(0)),
-    backscatter_color=Input(fig, RGB(0, 0, 0))
+    backscatter_weight = Input(fig, Vec4(0)),
+    backscatter_color = Input(fig, RGB(0, 0, 0)),
 )
-sliders = merge(reflection_sliders, refraction_sliders,
-                sss_sliders, backscatter_sliders)
+sliders = merge(
+    reflection_sliders, refraction_sliders,
+    sss_sliders, backscatter_sliders
+)
 
 labels = []
 inputs = []
 refresh = Observable(nothing)
 for (key, (obs, input)) in pairs(sliders)
-    push!(labels, Label(fig, string(key); align=:left))
+    push!(labels, Label(fig, string(key); align = :left))
     push!(inputs, input)
     on(obs) do value
         setproperty!(material, key, value)
@@ -289,7 +303,7 @@ for (key, (obs, input)) in pairs(sliders)
     end
 end
 
-fig[1, 2] = grid!(hcat(labels, inputs); width=500)
+fig[1, 2] = grid!(hcat(labels, inputs); width = 500)
 RPRMakie.activate!()
 
 cam = cameracontrols(ax.scene)
@@ -300,7 +314,7 @@ cam.fov[] = 30
 
 display(fig)
 
-context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh=refresh)
+context, task = RPRMakie.replace_scene_rpr!(ax.scene, screen; refresh = refresh)
 
 # Change light parameters interactively
 begin
@@ -342,8 +356,8 @@ origins = Dict(
 )
 
 rotation_axes = Dict(
-    "arm_right" => Vec3f(0.0000, -0.9828, 0.1848),
-    "arm_left" => Vec3f(0.0000, 0.9828, 0.1848),
+    "arm_right" => Vec3f(0.0, -0.9828, 0.1848),
+    "arm_left" => Vec3f(0.0, 0.9828, 0.1848),
     "leg_right" => Vec3f(0, -1, 0),
     "leg_left" => Vec3f(0, 1, 0),
 )
@@ -361,37 +375,37 @@ function plot_part!(scene, parent, name::String)
     else
         translate!(trans, -ptrans.translation[])
     end
-    return mesh!(scene, m; color=color, transformation=trans)
+    return mesh!(scene, m; color = color, transformation = trans)
 end
 
-function plot_lego_figure(s, floor=true)
+function plot_lego_figure(s, floor = true)
     # Plot hierarchical mesh!
     figure = Dict()
     # Plot hierarchical mesh!
     figure["torso"] = plot_part!(s, s, "torso")
-        figure["head"] = plot_part!(s, figure["torso"], "head")
-            figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
-        figure["arm_right"] = plot_part!(s, figure["torso"], "arm_right")
-            figure["hand_right"] = plot_part!(s, figure["arm_right"], "hand_right")
-        figure["arm_left"] = plot_part!(s, figure["torso"], "arm_left")
-            figure["hand_left"] = plot_part!(s, figure["arm_left"], "hand_left")
-        figure["belt"] = plot_part!(s, figure["torso"], "belt")
-            figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
-            figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
+    figure["head"] = plot_part!(s, figure["torso"], "head")
+    figure["eyes_mouth"] = plot_part!(s, figure["head"], "eyes_mouth")
+    figure["arm_right"] = plot_part!(s, figure["torso"], "arm_right")
+    figure["hand_right"] = plot_part!(s, figure["arm_right"], "hand_right")
+    figure["arm_left"] = plot_part!(s, figure["torso"], "arm_left")
+    figure["hand_left"] = plot_part!(s, figure["arm_left"], "hand_left")
+    figure["belt"] = plot_part!(s, figure["torso"], "belt")
+    figure["leg_right"] = plot_part!(s, figure["belt"], "leg_right")
+    figure["leg_left"] = plot_part!(s, figure["belt"], "leg_left")
     # lift the little guy up
     translate!(figure["torso"], 0, 0, 20)
     # add some floor
-    floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color=:white)
+    floor && mesh!(s, Rect3f(Vec3f(-400, -400, -2), Vec3f(800, 800, 2)), color = :white)
     return figure
 end
 
-RPRMakie.activate!(iterations=200, plugin=RPR.Northstar)
+RPRMakie.activate!(iterations = 200, plugin = RPR.Northstar)
 radiance = 50000
 lights = [
     EnvironmentLight(1.5, rotl90(load(assetpath("sunflowers_1k.hdr"))')),
-    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance*1.1)),
+    PointLight(Vec3f(50, 0, 200), RGBf(radiance, radiance, radiance * 1.1)),
 ]
-s = Scene(size=(500, 500), lights=lights)
+s = Scene(size = (500, 500), lights = lights)
 
 cam3d!(s)
 c = cameracontrols(s)
@@ -400,12 +414,12 @@ c.far[] = 1000
 update_cam!(s, c, Vec3f(100, 30, 80), Vec3f(0, 0, -10))
 figure = plot_lego_figure(s)
 
-rot_joints_by = 0.25*pi
+rot_joints_by = 0.25 * pi
 total_translation = 50
 animation_strides = 10
 
 a1 = LinRange(0, rot_joints_by, animation_strides)
-angles = [a1; reverse(a1[1:end-1]); -a1[2:end]; reverse(-a1[1:end-1]);]
+angles = [a1; reverse(a1[1:(end - 1)]); -a1[2:end]; reverse(-a1[1:(end - 1)]);]
 nsteps = length(angles); #Number of animation steps
 translations = LinRange(0, total_translation, nsteps)
 
@@ -476,24 +490,26 @@ end
 
 earth_img = load(Downloads.download("https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg"))
 # the actual plot !
-RPRMakie.activate!(; iterations=100)
+RPRMakie.activate!(; iterations = 100)
 scene = with_theme(theme_dark()) do
-    fig = Figure(; size=(1000, 1000))
+    fig = Figure(; size = (1000, 1000))
     radiance = 30
-    lights = [EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
-              PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance))]
-    ax = LScene(fig[1, 1]; show_axis=false, scenekw=(;lights=lights))
+    lights = [
+        EnvironmentLight(0.5, load(RPR.assetpath("starmap_4k.tif"))),
+        PointLight(Vec3f(1, 1, 3), RGBf(radiance, radiance, radiance)),
+    ]
+    ax = LScene(fig[1, 1]; show_axis = false, scenekw = (; lights = lights))
     n = 1024 ÷ 4 # 2048
     θ = LinRange(0, pi, n)
     φ = LinRange(-pi, pi, 2 * n)
     xe = [cos(φ) * sin(θ) for θ in θ, φ in φ]
     ye = [sin(φ) * sin(θ) for θ in θ, φ in φ]
     ze = [cos(θ) for θ in θ, φ in φ]
-    surface!(ax, xe, ye, ze; color=earth_img)
-    meshscatter!(toPoints3D; color=1:length(toPoints3D), markersize=0.005, colormap=:plasma)
+    surface!(ax, xe, ye, ze; color = earth_img)
+    meshscatter!(toPoints3D; color = 1:length(toPoints3D), markersize = 0.005, colormap = :plasma)
     colors = Makie.default_palettes.color[]
     c = Iterators.cycle(colors)
-    foreach(((l, c),) -> lines!(ax, l; linewidth=2, color=c), zip(splitLines3D, c))
+    foreach(((l, c),) -> lines!(ax, l; linewidth = 2, color = c), zip(splitLines3D, c))
     ax.scene.camera_controls.eyeposition[] = Vec3f(1.5)
     return ax.scene
 end

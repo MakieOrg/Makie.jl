@@ -703,7 +703,7 @@ Helper to debug texture atlas (this usually happens on the GPU)!
 can be used like this:
 ```julia
 matr = Makie.get_uv_img(atlas, glyph_index, font)
-scatter(Point2f(0), distancefield=matr, uv_offset_width=Vec4f(0, 0, 1, 1), markersize=100)
+scatter(Point2f(0), distancefield = matr, uv_offset_width = Vec4f(0, 0, 1, 1), markersize = 100)
 ```
 """
 get_uv_img(atlas::TextureAtlas, glyph, font) = get_uv_img(atlas, primitive_uv_offset_width(atlas, glyph, font))

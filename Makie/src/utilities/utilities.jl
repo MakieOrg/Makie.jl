@@ -13,7 +13,7 @@ end
 
 
 """
-    resample_cmap(cmap, ncolors::Integer; alpha=1.0)
+    resample_cmap(cmap, ncolors::Integer; alpha = 1.0)
 
 * cmap: anything that `to_colormap` accepts
 * ncolors: number of desired colors
@@ -362,7 +362,7 @@ end
 # This function was copied from GR.jl,
 # written by Josef Heinen.
 """
-    peaks([n=49])
+    peaks([n = 49])
 
 Return a nonlinear function on a grid.  Useful for test cases.
 """
@@ -407,7 +407,7 @@ end
 ############################################################
 
 """
-    nan_aware_orthogonal_vector(v1, v2, v3) where N
+    nan_aware_orthogonal_vector(v1, v2, v3) where {N}
 
 Returns an un-normalized normal vector for the triangle formed by the three input points.
 Skips any combination of the inputs for which any point has a NaN component.
@@ -418,7 +418,7 @@ function nan_aware_orthogonal_vector(v1, v2, v3)
 end
 
 """
-    nan_aware_normals(vertices::AbstractVector{<: Union{Point, PointMeta}}, faces::AbstractVector{F})
+    nan_aware_normals(vertices::AbstractVector{<:Union{Point, PointMeta}}, faces::AbstractVector{F})
 
 Computes the normals of a mesh defined by `vertices` and `faces` (a vector of `GeometryBasics.NgonFace`)
 which ignores all contributions from points with `NaN` components.

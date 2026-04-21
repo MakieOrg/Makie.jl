@@ -939,7 +939,8 @@ end
         contents::AbstractArray,
         labels::AbstractArray,
         title = nothing;
-        kwargs...)
+        kwargs...
+    )
 
 Create a legend from `contents` and `labels` where each label is associated to
 one content element. A content element can be an `AbstractPlot`, an array of
@@ -970,7 +971,8 @@ end
         contentgroups::AbstractVector{<:AbstractVector},
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector;
-        kwargs...)
+        kwargs...
+    )
 
 Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`.
 Each group from `contentgroups` and `labelgroups` is associated with one title

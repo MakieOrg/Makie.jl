@@ -58,5 +58,5 @@ The version of output PDFs can be restricted via the `pdf_version` argument of t
 ```julia
 using CairoMakie
 fig = Figure()
-save("figure.pdf", fig, pdf_version="1.4")
+save("figure.pdf", fig, pdf_version = "1.4")
 ```

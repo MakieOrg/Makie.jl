@@ -22,7 +22,7 @@ add_input!((key, value) -> Float32(value), graph, :input2, 2)
 # add computations (edges + output nodes)
 register_computation!(graph, [:input1, :input2], [:output]) do inputs, changed, cached
     input1, input2 = inputs
-    return (input1[] + input2[], )
+    return (input1[] + input2[],)
 end
 ```
 
@@ -84,14 +84,14 @@ add_input!(graph, :input2, 2)
 
 register_computation!(graph, [:input1, :input2], [:sum]) do inputs, changed, cached
     input1, input2 = inputs
-    return (input1[] + input2[], )
+    return (input1[] + input2[],)
 end
 
 graph2 = ComputeGraph()
 add_input!(graph2, :sum, graph[:sum])
 
 register_computation!(graph2, [:sum], [:output]) do (sum,), changed, cached
-    return (2 * sum[], )
+    return (2 * sum[],)
 end
 
 graph2[:output][] # 2 * (1 + 2) = 6

@@ -14,4 +14,6 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: fredrikekre/runic-action@v1
         with:
-          version: '1.4'
+          version: '1.7'
+          extensions: 'jl,md'
+          docstrings: true

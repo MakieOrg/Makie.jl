@@ -13,8 +13,10 @@ using CairoMakie
 using Makie.FileIO
 CairoMakie.activate!() # hide
 
-f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-    size = (1000, 700))
+f = Figure(
+    backgroundcolor = RGBf(0.98, 0.98, 0.98),
+    size = (1000, 700)
+)
 ga = f[1, 1] = GridLayout()
 gb = f[2, 1] = GridLayout()
 gcd = f[1:2, 2] = GridLayout()
@@ -51,23 +53,29 @@ leg.tellheight = true
 colgap!(ga, 10)
 rowgap!(ga, 10)
 
-Label(ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
+Label(
+    ga[1, 1:2, Top()], "Stimulus ratings", valign = :bottom,
     font = :bold,
-    padding = (0, 0, 5, 0))
+    padding = (0, 0, 5, 0)
+)
 
 xs = LinRange(0.5, 6, 50)
 ys = LinRange(0.5, 6, 50)
 data1 = [sin(x^1.5) * cos(y^0.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 data2 = [sin(x^0.8) * cos(y^1.5) for x in xs, y in ys] .+ 0.1 .* randn.()
 
-ax1, hm = contourf(gb[1, 1], xs, ys, data1,
-    levels = 6)
+ax1, hm = contourf(
+    gb[1, 1], xs, ys, data1,
+    levels = 6
+)
 ax1.title = "Histological analysis"
 contour!(ax1, xs, ys, data1, levels = 5, color = :black)
 hidexdecorations!(ax1)
 
-ax2, hm2 = contourf(gb[2, 1], xs, ys, data2,
-    levels = 6)
+ax2, hm2 = contourf(
+    gb[2, 1], xs, ys, data2,
+    levels = 6
+)
 contour!(ax2, xs, ys, data2, levels = 5, color = :black)
 
 cb = Colorbar(gb[1:2, 2], hm, label = "cell group")
@@ -98,8 +106,10 @@ hidedecorations!.(axs, grid = false, label = false)
 for row in 1:3, col in 1:2
     xrange = col == 1 ? (0:0.1:6pi) : (0:0.1:10pi)
 
-    eeg = [sum(sin(pi * rand() + k * x) / k for k in 1:10)
-        for x in xrange] .+ 0.1 .* randn.()
+    eeg = [
+        sum(sin(pi * rand() + k * x) / k for k in 1:10)
+            for x in xrange
+    ] .+ 0.1 .* randn.()
 
     lines!(axs[row, col], eeg, color = (:black, 0.5))
 end
@@ -107,16 +117,18 @@ end
 axs[3, 1].xlabel = "Day 1"
 axs[3, 2].xlabel = "Day 2"
 
-Label(gd[1, :, Top()], "EEG traces", valign = :bottom,
+Label(
+    gd[1, :, Top()], "EEG traces", valign = :bottom,
     font = :bold,
-    padding = (0, 0, 5, 0))
+    padding = (0, 0, 5, 0)
+)
 
 rowgap!(gd, 10)
 colgap!(gd, 10)
 
 for (i, label) in enumerate(["sleep", "awake", "test"])
     Box(gd[i, 3], color = :gray90)
-    Label(gd[i, 3], label, rotation = pi/2, tellheight = false)
+    Label(gd[i, 3], label, rotation = pi / 2, tellheight = false)
 end
 
 colgap!(gd, 2, 0)
@@ -128,11 +140,13 @@ colsize!(gd, 1, Auto(n_day_1))
 colsize!(gd, 2, Auto(n_day_2))
 
 for (label, layout) in zip(["A", "B", "C", "D"], [ga, gb, gc, gd])
-    Label(layout[1, 1, TopLeft()], label,
+    Label(
+        layout[1, 1, TopLeft()], label,
         fontsize = 26,
         font = :bold,
         padding = (0, 5, 5, 0),
-        halign = :right)
+        halign = :right
+    )
 end
 
 colsize!(f.layout, 1, Auto(0.5))

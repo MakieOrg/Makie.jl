@@ -64,7 +64,7 @@ function distance(plane::Plane{N, T}, point::VecTypes) where {N, T}
 end
 
 """
-    min_clip_distance(planes::Vector{<: Plane}, point)
+    min_clip_distance(planes::Vector{<:Plane}, point)
 
 Returns the smallest absolute distance between the point each clip plane. If
 the point is clipped by any plane, only negative distances are considered.

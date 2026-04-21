@@ -58,7 +58,7 @@ If you want to change the port on which WGLMakie runs on the remote, say `8081`,
 ```julia
 using Bonito
 
-Bonito.configure_server!(listen_port=8081)
+Bonito.configure_server!(listen_port = 8081)
 ```
 before any plotting commands with WGLMakie.
 
@@ -67,5 +67,5 @@ you will also need to set the `forwarded_port` like this:
 ```julia
 using Bonito
 
-Bonito.configure_server!(listen_port=8081, forwarded_port=8080)
+Bonito.configure_server!(listen_port = 8081, forwarded_port = 8080)
 ```

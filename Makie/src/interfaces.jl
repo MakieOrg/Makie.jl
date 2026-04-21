@@ -89,7 +89,7 @@ plottype(P1::Type{<:Plot{T1}}, ::Type{<:Plot{T2}}) where {T1, T2} = P1
 plottype(::Type{Plot{plot}}, ::Type{Plot{plot}}) = Plot{plot}
 
 """
-    plottype(P1::Type{<: Plot{T1}}, P2::Type{<: Plot{T2}})
+    plottype(P1::Type{<:Plot{T1}}, P2::Type{<:Plot{T2}})
 
 Chooses the more concrete plot type
 ```julia

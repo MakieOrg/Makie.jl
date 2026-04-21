@@ -25,7 +25,7 @@ This is the sequential logic by which conversions in Makie are attempted:
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points for any existing plot type:
 
 ```julia
-Makie.convert_arguments(::Type{<: AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
+Makie.convert_arguments(::Type{<:AbstractPlot}, x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
@@ -114,7 +114,7 @@ Otherwise a set of default names `Symbol(:converted_, i)` is used.
 In our example we provided `(x, y, z)` and thus get:
 
 ```julia
-argument_names(::Type{<: MyPlot}, N) = (:x, :y, :z)
+argument_names(::Type{<:MyPlot}, N) = (:x, :y, :z)
 ```
 
 This is optional but it will allow the use of `plot_object.x` to fetch the first converted argument from the call `plot_object = myplot(rand(10), rand(10), rand(10))`, for example.
@@ -154,7 +154,7 @@ The function needs to return the output of `@DocumentedAttributes` for this.
 
 ```julia
 function shared_myplot_attributes()
-    Makie.@DocumentedAttributes begin
+    return Makie.@DocumentedAttributes begin
         "Some attribute that is used by multiple recipes"
         shared_attribute1 = 1
         shared_attribute2 = @inherit markersize
@@ -180,7 +180,7 @@ The function resolves the inherited attributes and returns the final set of defa
 You can control which kind of axis is used for the plot by defining
 
 ```julia
-Makie.args_preferred_axis(::Type{<: MyPlot}, x, y, z) =  Makie.LScene
+Makie.args_preferred_axis(::Type{<:MyPlot}, x, y, z) = Makie.LScene
 ```
 
 or
@@ -209,8 +209,8 @@ It's possible to add specializations here, depending on the converted argument t
 For example, to specialize the behavior of `myplot(a)` when `a` converts to a 3D array of floating point numbers:
 
 ```julia
-const MyVolume = MyPlot{Tuple{<:AbstractArray{<: AbstractFloat, 3}}}
-argument_names(::Type{<: MyVolume}) = (:volume,) # optional, to allow plot[:volume]
+const MyVolume = MyPlot{Tuple{<:AbstractArray{<:AbstractFloat, 3}}}
+argument_names(::Type{<:MyVolume}) = (:volume,) # optional, to allow plot[:volume]
 function plot!(plot::MyVolume)
     volume!(plot, plot[:volume], colormap = plot[:colormap])
     return plot
@@ -239,7 +239,7 @@ To register a new computation and produce new (output) nodes you can use
 map!(plot.attributes, [:positions, :window], :running_average) do positions, window
     # if the output name is a Symbol, return a value
     # if the output is Symbol[], return a tuple() of values (matching order)
-    return [mean(positions[i : i + window]) for i in 1 : length(positions)-window]
+    return [mean(positions[i:(i + window)]) for i in 1:(length(positions) - window)]
 end
 ```
 
@@ -257,11 +257,11 @@ register_computation!(plot.attributes, [:positions, :window], [:running_average]
 
     # cached contains the previous result or nothing if no previous result exists
 
-    output = [mean(positions[i : i + window]) for i in 1 : length(positions)-window]
+    output = [mean(positions[i:(i + window)]) for i in 1:(length(positions) - window)]
 
     # The return type should be either a tuple() of the new data, or nothing if
     # the calculation should be discarded
-    return (output, )
+    return (output,)
 end
 ```
 
@@ -298,7 +298,7 @@ While you can pass them one by one via keyword arguments, you can also pass `plo
 
 ```julia
 function Makie.plot!(myplot::MyPlot)
-    lines!(myplot, myplot.attributes, args...; kwargs...)
+    return lines!(myplot, myplot.attributes, args...; kwargs...)
 end
 ```
 
@@ -308,7 +308,7 @@ If you want to prevent an attribute from getting forwarded you can explicitly se
 
 ```julia
 function Makie.plot!(myplot::MyPlot)
-    lines!(myplot, myplot.attributes, args...; color = myplot.computed_color)
+    return lines!(myplot, myplot.attributes, args...; color = myplot.computed_color)
 end
 ```
 
@@ -323,7 +323,7 @@ They can still be used, but may run into update synchronization issues, can be h
 The code above can be translated to:
 
 ```julia
-@recipe MyPlot (positions, ) begin
+@recipe MyPlot (positions,) begin
     window = 10
 end
 
@@ -335,8 +335,8 @@ function Makie.plot!(myplot::MyPlot)
     running_variance = Observable(Float32[])
 
     onany(myplot, myplot.position, myplot.window) do positions, window
-        running_average.val = [mean(positions[i : i + window]) for i in 1 : length(positions)-window]
-        running_variance.val = [var(positions[i : i + window]) for i in 1 : length(positions)-window]
+        running_average.val = [mean(positions[i:(i + window)]) for i in 1:(length(positions) - window)]
+        running_variance.val = [var(positions[i:(i + window)]) for i in 1:(length(positions) - window)]
         notify(running_average)
         notify(running_variance)
         return

@@ -226,7 +226,7 @@ function mixin_shading_attributes()
 end
 
 """
-    calculated_attributes!(trait::Type{<: AbstractPlot}, plot)
+    calculated_attributes!(trait::Type{<:AbstractPlot}, plot)
 
 trait version of `calculated_attributes`
 """

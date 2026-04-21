@@ -182,7 +182,7 @@ The attributes for these elements are the following (the `[]` parts can be left 
 
 # MarkerElement
 [marker]points, marker, markersize, [marker]color,
-[marker]strokewidth, [marker]strokecolor
+    [marker]strokewidth, [marker]strokecolor
 
 # PolyElement
 [poly]points, [poly]color, [poly]strokewidth, [poly]strokecolor
