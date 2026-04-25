@@ -370,12 +370,12 @@ function register_text_computations!(attr::ComputeGraph)
 
     map!(attr, [:color_atlas, :glyphindices, :font_per_char], :color_uv) do catlas, gi, fonts
         return map(gi, fonts) do g, f
-            _is_color_font(f) ? glyph_uv_width!(catlas, g, f) : Vec4f(0)
+            is_color_font(f) ? glyph_uv_width!(catlas, g, f) : Vec4f(0)
         end
     end
 
     map!(attr, [:font_per_char], :is_color_glyph) do fonts
-        return Int32[_is_color_font(f) for f in fonts]
+        return Int32[is_color_font(f) for f in fonts]
     end
 
     map!(attr, [:glyph_origins, :offset, :text_blocks], :marker_offset) do origins, offset, blocks

@@ -376,7 +376,7 @@ function find_font_for_char(glyph, font::NativeFont)
     error("Can't represent character $(glyph) with any fallback font nor $(font.family_name)!")
 end
 
-_is_color_font(font::NativeFont) = (font.face_flags & FreeTypeAbstraction.FreeType.FT_FACE_FLAG_COLOR) != 0
+is_color_font(font::NativeFont) = (font.face_flags & FreeTypeAbstraction.FreeType.FT_FACE_FLAG_COLOR) != 0
 
 function glyph_index!(atlas::TextureAtlas, glyph, font::NativeFont)
     h = hash((glyph, objectid(font)))
@@ -699,11 +699,11 @@ function compute_marker_attributes((atlas, color_atlas, marker, font, scale), ch
         end
 
         # Color emoji support
-        is_color = _marker_is_color(marker, font)
+        is_color = marker_is_color(marker, font)
         if is_color != Int32(0) && (changed[3] || changed.font)
-            color_uv_val = _marker_color_uv(color_atlas, marker, font)
+            color_uv_val = marker_color_uv(color_atlas, marker, font)
         elseif isnothing(last)
-            color_uv_val = _is_color_scalar(is_color) ? Vec4f(0) : fill(Vec4f(0), length(marker))
+            color_uv_val = is_color_scalar(is_color) ? Vec4f(0) : fill(Vec4f(0), length(marker))
         else
             color_uv_val = nothing
         end
@@ -712,26 +712,26 @@ function compute_marker_attributes((atlas, color_atlas, marker, font, scale), ch
     end
 end
 
-_is_color_scalar(x::Int32) = true
-_is_color_scalar(x) = false
+is_color_scalar(x::Int32) = true
+is_color_scalar(x) = false
 
-function _marker_is_color(marker::Char, font)
+function marker_is_color(marker::Char, font)
     f = find_font_for_char(marker, font)
-    return _is_color_font(f) ? Int32(1) : Int32(0)
+    return is_color_font(f) ? Int32(1) : Int32(0)
 end
-function _marker_is_color(marker::AbstractVector{Char}, font)
-    return Int32[_marker_is_color(c, font) for c in marker]
+function marker_is_color(marker::AbstractVector{Char}, font)
+    return Int32[marker_is_color(c, font) for c in marker]
 end
-_marker_is_color(marker, font) = Int32(0)
+marker_is_color(marker, font) = Int32(0)
 
-function _marker_color_uv(catlas::ColorTextureAtlas, marker::Char, font)
+function marker_color_uv(catlas::ColorTextureAtlas, marker::Char, font)
     f = find_font_for_char(marker, font)
-    return _is_color_font(f) ? glyph_uv_width!(catlas, marker, f) : Vec4f(0)
+    return is_color_font(f) ? glyph_uv_width!(catlas, marker, f) : Vec4f(0)
 end
-function _marker_color_uv(catlas::ColorTextureAtlas, marker::AbstractVector{Char}, font)
-    return Vec4f[_marker_color_uv(catlas, c, font) for c in marker]
+function marker_color_uv(catlas::ColorTextureAtlas, marker::AbstractVector{Char}, font)
+    return Vec4f[marker_color_uv(catlas, c, font) for c in marker]
 end
-_marker_color_uv(catlas, marker, font) = Vec4f(0)
+marker_color_uv(catlas, marker, font) = Vec4f(0)
 
 function all_marker_computations!(attr, markername = :marker)
     add_constant!(attr, :atlas, get_texture_atlas())
@@ -800,7 +800,7 @@ end
 
 function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     f = find_font_for_char(char, font)
-    if _is_color_font(f)
+    if is_color_font(f)
         # Color fonts don't use the SDF atlas for rendering, so marker_scale_factor
         # (which is based on SDF atlas UV size) gives wrong results.
         # Use the font metrics directly instead.
