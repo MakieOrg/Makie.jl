@@ -146,40 +146,27 @@ function render_color_glyph(font::NativeFont, glyph_index::UInt64, pixelsize::In
     surface = ccall((:cairo_image_surface_create, Cairo_jll.libcairo), Ptr{Cvoid},
         (Cint, Cint, Cint), 0, sz, sz) # CAIRO_FORMAT_ARGB32 = 0
     ctx = ccall((:cairo_create, Cairo_jll.libcairo), Ptr{Cvoid}, (Ptr{Cvoid},), surface)
-
     font_face = Base.@lock font.lock ccall(
         (:cairo_ft_font_face_create_for_ft_face, Cairo_jll.libcairo),
         Ptr{Cvoid}, (FreeTypeAbstraction.FreeType.FT_Face, Cint), font, Cint(0))
-    ccall((:cairo_set_font_face, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx, font_face)
-    ccall((:cairo_set_font_size, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Cdouble), ctx, font_scale)
+    try
+        ccall((:cairo_set_font_face, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), ctx, font_face)
+        ccall((:cairo_set_font_size, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Cdouble), ctx, font_scale)
 
-    glyph_buf = Ref((Culong(glyph_index), Cdouble(0), Cdouble(asc * font_scale)))
-    ccall((:cairo_show_glyphs, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}, Cint), ctx, glyph_buf, 1)
+        glyph_buf = Ref((Culong(glyph_index), Cdouble(0), Cdouble(asc * font_scale)))
+        ccall((:cairo_show_glyphs, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}, Cint), ctx, glyph_buf, 1)
 
-    ccall((:cairo_surface_flush, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), surface)
-    data_ptr = ccall((:cairo_image_surface_get_data, Cairo_jll.libcairo), Ptr{UInt8}, (Ptr{Cvoid},), surface)
-    stride = ccall((:cairo_image_surface_get_stride, Cairo_jll.libcairo), Cint, (Ptr{Cvoid},), surface)
-
-    result = Matrix{RGBAf}(undef, sz, sz)
-    for y in 1:sz, x in 1:sz
-        offset = (y - 1) * stride + (x - 1) * 4
-        b = unsafe_load(data_ptr, offset + 1)
-        g = unsafe_load(data_ptr, offset + 2)
-        r = unsafe_load(data_ptr, offset + 3)
-        a = unsafe_load(data_ptr, offset + 4)
-        af = a / 255f0
-        if af > 0
-            result[x, y] = RGBAf(r / 255f0, g / 255f0, b / 255f0, af)
-        else
-            result[x, y] = RGBAf(0, 0, 0, 0)
-        end
+        ccall((:cairo_surface_flush, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), surface)
+        data_ptr = ccall((:cairo_image_surface_get_data, Cairo_jll.libcairo), Ptr{UInt8}, (Ptr{Cvoid},), surface)
+        stride = ccall((:cairo_image_surface_get_stride, Cairo_jll.libcairo), Cint, (Ptr{Cvoid},), surface)
+        @assert stride == sz * 4
+        bgra = unsafe_wrap(Matrix{BGRA{N0f8}}, Ptr{BGRA{N0f8}}(data_ptr), (sz, sz))
+        return convert(Matrix{RGBAf}, bgra)
+    finally
+        ccall((:cairo_font_face_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), font_face)
+        ccall((:cairo_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), ctx)
+        ccall((:cairo_surface_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), surface)
     end
-
-    ccall((:cairo_font_face_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), font_face)
-    ccall((:cairo_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), ctx)
-    ccall((:cairo_surface_destroy, Cairo_jll.libcairo), Cvoid, (Ptr{Cvoid},), surface)
-
-    return result
 end
 
 # basically a singleton for the textureatlas
