@@ -320,39 +320,35 @@ end
 function draw_marker(ctx, marker::Char, font, pos, strokecolor, strokewidth, jl_mat, mat)
     cairoface = set_ft_font(ctx, font)
 
-    # The given pos includes the user position which corresponds to the center
-    # of the marker and the user marker_offset which may shift the position.
-    # At this point we still need to center the character we draw. For that we
-    # get the character boundingbox where (0,0) is the anchor point:
     charextent = Makie.FreeTypeAbstraction.get_extent(font, marker)
     inkbb = Makie.FreeTypeAbstraction.inkboundingbox(charextent)
+    if all(iszero, widths(inkbb))
+        # font with empty outlines (e.g. COLRv1): use hadvance as synthetic size
+        ha = Makie.FreeTypeAbstraction.hadvance(charextent)
+        asc = Makie.FreeTypeAbstraction.ascender(font)
+        desc = Makie.FreeTypeAbstraction.descender(font)
+        centering_offset = Vec2f(ha / 2, (asc + desc) / 2)
+    else
+        centering_offset = Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb)
+    end
 
-    # And calculate an offset to the the center of the marker
-    centering_offset = Makie.origin(inkbb) .+ 0.5f0 .* widths(inkbb)
-    # which we then transform from marker space to screen space using the
-    # local coordinate transform derived by project_marker()
-    # (Need yflip because Cairo's y coordinates are reversed)
     char_offset = Vec2f(jl_mat * ((1, -1) .* centering_offset))
 
-    # The offset is then applied to pos and the marker placement is set
     charorigin = pos - char_offset
     Cairo.translate(ctx, charorigin[1], charorigin[2])
 
-    # The font matrix takes care of rotation, scaling and shearing of the marker
     old_matrix = get_font_matrix(ctx)
     set_font_matrix(ctx, mat)
 
-    Cairo.move_to(ctx, 0, 0)
-    Cairo.text_path(ctx, string(marker))
-    Cairo.fill_preserve(ctx)
-    # stroke
+    gi = Makie.FreeTypeAbstraction.glyph_index(font, marker)
+    show_glyph(ctx, gi, 0.0, 0.0)
+    # Stroke the outline (no-op for glyphs with empty outlines like COLRv1 emoji)
     Cairo.set_line_width(ctx, strokewidth)
     Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+    glyph_path(ctx, gi, 0.0, 0.0)
     Cairo.stroke(ctx)
 
-    # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
-
     set_font_matrix(ctx, old_matrix)
     return
 end

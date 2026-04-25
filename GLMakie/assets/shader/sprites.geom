@@ -31,6 +31,7 @@ mat4 qmat(vec4 quat){
 }
 
 {{distancefield_type}}  distancefield;
+{{color_atlas_type}}    color_atlas;
 
 uniform bool scale_primitive;
 uniform bool billboard;
@@ -46,6 +47,8 @@ uniform vec4 clip_planes[8];
 
 in int g_primitive_index[];
 in vec4 g_uv_texture_bbox[];
+in vec4 g_color_uv_texture_bbox[];
+flat in int g_is_color_glyph[];
 in vec4 g_color[];
 in vec4 g_stroke_color[];
 in vec4 g_glow_color[];
@@ -65,6 +68,8 @@ flat out vec4 f_glow_color;
 flat out uvec2 f_id;
 out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
+flat out vec4 f_color_uv_texture_bbox;
+flat out int f_is_color_glyph;
 flat out vec2 f_sprite_scale;
 
 
@@ -106,6 +111,8 @@ void emit_vertex(vec4 vertex, vec2 uv)
     gl_Position.z     += gl_Position.w * depth_shift;
     f_uv              = uv;
     f_uv_texture_bbox = g_uv_texture_bbox[0];
+    f_color_uv_texture_bbox = g_color_uv_texture_bbox[0];
+    f_is_color_glyph = g_is_color_glyph[0];
     f_primitive_index = g_primitive_index[0];
     f_color           = g_color[0];
     f_stroke_color    = g_stroke_color[0];

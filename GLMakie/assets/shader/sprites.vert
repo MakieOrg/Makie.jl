@@ -24,6 +24,8 @@ struct Grid3D{
 };
 
 {{uv_offset_width_type}} uv_offset_width;
+{{color_uv_offset_width_type}} color_uv_offset_width;
+{{is_color_glyph_type}} is_color_glyph;
 //{{uv_x_type}} uv_width;
 {{position_type}} position;
 //Assembling functions for creating the right position from the above inputs. They also indicate the type combinations allowed for the above inputs
@@ -83,6 +85,8 @@ out vec3  g_world_position;
 out vec3  g_marker_offset;
 out vec4  g_offset_width;
 out vec4  g_uv_texture_bbox;
+out vec4  g_color_uv_texture_bbox;
+flat out int g_is_color_glyph;
 out vec4  g_rotation;
 out vec4  g_color;
 out vec4  g_stroke_color;
@@ -90,6 +94,11 @@ out vec4  g_glow_color;
 
 vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
 vec4 to_vec4(vec4 x){return x;}
+
+vec4 _color_uv(Nothing x){return vec4(0);}
+vec4 _color_uv(vec4 x){return x;}
+int _is_color(Nothing x){return 0;}
+int _is_color(int x){return x;}
 
 void main(){
     int index         = gl_VertexID;
@@ -103,6 +112,8 @@ void main(){
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;
+    g_color_uv_texture_bbox = _color_uv(color_uv_offset_width);
+    g_is_color_glyph = _is_color(is_color_glyph);
     g_stroke_color    = to_vec4(stroke_color);
     g_glow_color      = to_vec4(glow_color);
 
