@@ -480,14 +480,14 @@ function set_screen_visibility!(screen::Screen, visible::Bool)
 
     set_screen_visibility!(screen.glscreen, visible)
     if visible
-        show_gl_icon_in_dock(true)
+        macos_set_dock_visible(true)
     else
         any_visible = any(ALL_SCREENS) do s
             s !== screen && s.owns_glscreen &&
                 GLAbstraction.context_alive(s.glscreen) &&
                 GLFW.GetWindowAttrib(s.glscreen, GLFW.VISIBLE) != 0
         end
-        any_visible || show_gl_icon_in_dock(false)
+        any_visible || macos_set_dock_visible(false)
     end
     return
 end
