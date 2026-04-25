@@ -790,9 +790,13 @@ function rescale_marker(atlas::TextureAtlas, char::Char, font, markersize)
     if is_color_font(f)
         # Color fonts don't use the SDF atlas for rendering, so marker_scale_factor
         # (which is based on SDF atlas UV size) gives wrong results.
-        # Use the font metrics directly instead.
-        inkbb = FreeTypeAbstraction.inkboundingbox(FreeTypeAbstraction.get_extent(f, char))
-        return markersize .* Vec2f(widths(inkbb))
+        # inkboundingbox returns zero for COLRv1 glyphs, so use hadvance and
+        # ascender-descender which match the metrics used in render_color_glyph.
+        ha = FreeTypeAbstraction.hadvance(FreeTypeAbstraction.get_extent(f, char))
+        asc = FreeTypeAbstraction.ascender(f)
+        desc = FreeTypeAbstraction.descender(f)
+        scale = Vec2f(ha, asc - desc) / max(ha, asc - desc, 1.0f0)
+        return markersize .* scale
     end
     factor = marker_scale_factor.(Ref(atlas), char, font)
     return markersize .* factor
