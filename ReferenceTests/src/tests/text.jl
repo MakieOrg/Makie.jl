@@ -520,3 +520,12 @@ end
     Makie.step!(st)
     st
 end
+
+@reference_test "emoji rendering" begin
+    fig = Figure(size = (600, 400))
+    ax1 = Axis(fig[1, 1], title = "Text")
+    text!(ax1, 0.5, 0.5, text = "Hello 😀 World 🌍!", fontsize = 30, align = (:center, :center))
+    ax2 = Axis(fig[2, 1], title = "Scatter")
+    scatter!(ax2, 1:4, [0.3, 0.6, 0.5, 0.4], marker = '🌍', markersize = 30)
+    fig
+end
