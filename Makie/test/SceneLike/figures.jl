@@ -76,9 +76,11 @@ end
     fig = Figure()
     ax = Axis(fig[1, 1])
     scatter!(ax, rand(10))
-    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
     @test ax.xlabel[] == ""
     @test ax.ylabel[] == ""
+    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
 end
 
 @testset "AxisPlot and Axes" begin

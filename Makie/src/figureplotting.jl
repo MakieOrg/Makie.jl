@@ -481,14 +481,6 @@ const PlotSpecPlot = Plot{plot, Tuple{<:GridLayoutSpec}}
 get_conversions(scene::Scene) = scene.conversions
 get_conversions(fig::Figure) = get_conversions(fig.scene)
 
-function has_user_plots(ax::AbstractAxis)
-    if hasproperty(ax, :scene)
-        return !isempty(ax.scene.plots)
-    else
-        return false
-    end
-end
-
 @noinline function _create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
         if args[1] isa FigureAxisPlot
@@ -538,7 +530,7 @@ end
 
     # Late axis hints for mutating plot calls. Non-mutating plot() calls remove
     # the attribute earlier, if it is explicitly given
-    if to_value(pop!(figkws, :use_axis_hints, false)) && !has_user_plots(ax)
+    if to_value(pop!(figkws, :use_axis_hints, false))
         preferred_attr = _preferred_axis_attributes(typeof(ax), plot)
         if !isnothing(preferred_attr)
             for (k, v) in pairs(preferred_attr)
