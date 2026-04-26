@@ -228,10 +228,12 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     set_axis_attributes!(AxType, axis_kw, plot)
 
     # Add defaults generated based on the plot creating the axis
-    preferred_attr = _preferred_axis_attributes(AxType, plot)
-    attr = something(preferred_attr, NamedTuple())
-    for (k, v) in pairs(attr)
-        get!(axis_kw, k, v)
+    if to_value(pop!(attributes, :use_axis_hints, true))
+        preferred_attr = _preferred_axis_attributes(AxType, plot)
+        attr = something(preferred_attr, NamedTuple())
+        for (k, v) in pairs(attr)
+            get!(axis_kw, k, v)
+        end
     end
 
     return _block(AxType, figure, [], axis_kw, bbox)
@@ -426,6 +428,9 @@ function fig_keywords!(kws)
     if haskey(kws, :figure)
         figkws[:figure] = pop!(kws, :figure)
     end
+    if haskey(kws, :use_axis_hints)
+        figkws[:use_axis_hints] = pop!(kws, :use_axis_hints)
+    end
     return figkws
 end
 
@@ -476,6 +481,14 @@ const PlotSpecPlot = Plot{plot, Tuple{<:GridLayoutSpec}}
 get_conversions(scene::Scene) = scene.conversions
 get_conversions(fig::Figure) = get_conversions(fig.scene)
 
+function has_user_plots(ax::AbstractAxis)
+    if hasproperty(ax, :scene)
+        return !isempty(ax.scene.plots)
+    else
+        return false
+    end
+end
+
 @noinline function _create_plot!(F, attributes::Dict, args...)
     if length(args) > 0
         if args[1] isa FigureAxisPlot
@@ -522,6 +535,18 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
     if ax isa Figure && !(plot isa PlotSpecPlot)
         error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
     end
+
+    # Late axis hints for mutating plot calls. Non-mutating plot() calls remove
+    # the attribute earlier, if it is explicitly given
+    if to_value(pop!(figkws, :use_axis_hints, false)) && !has_user_plots(ax)
+        preferred_attr = _preferred_axis_attributes(typeof(ax), plot)
+        if !isnothing(preferred_attr)
+            for (k, v) in pairs(preferred_attr)
+                setproperty!(ax, k, v)
+            end
+        end
+    end
+
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end

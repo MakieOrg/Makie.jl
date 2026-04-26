@@ -50,15 +50,35 @@ end
     @test ax2.ylabel[] == "override"
 
     # Non-hinting arguments are unaffected
-    fig2 = Figure()
-    ax3, p3 = scatter(fig2[1, 1], [1, 2, 3], [4, 5, 6])
-    @test ax3.xlabel[] == ""
-    @test ax3.ylabel[] == ""
+    fig = Figure()
+    ax, p = scatter(fig[1, 1], [1, 2, 3], [4, 5, 6])
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
 
     # Auto-created Figure
-    fig3, ax4, p4 = scatter(_AxisHintData("auto_x", "auto_y"))
-    @test ax4.xlabel[] == "auto_x"
-    @test ax4.ylabel[] == "auto_y"
+    fig, ax, p = scatter(_AxisHintData("auto_x", "auto_y"))
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
+
+    # opt-out
+    fig, ax, p = scatter(_AxisHintData("auto_x", "auto_y"), use_axis_hints = false)
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
+
+    # opt-in
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
+    @test ax.xlabel[] == "auto_x"
+    @test ax.ylabel[] == "auto_y"
+
+    # skipped opt-in after first plot
+    fig = Figure()
+    ax = Axis(fig[1, 1])
+    scatter!(ax, rand(10))
+    scatter!(ax, _AxisHintData("auto_x", "auto_y"), use_axis_hints = true)
+    @test ax.xlabel[] == ""
+    @test ax.ylabel[] == ""
 end
 
 @testset "AxisPlot and Axes" begin
