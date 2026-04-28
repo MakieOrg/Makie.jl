@@ -665,13 +665,15 @@ end
 # See Makie#5588
 @testset "Color Updates of interactive elements" begin
     f = Figure()
-    m = Menu(f[1,1], options=['a','b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
-    t = Toggle(f[2,1], framecolor_inactive  = :red, framecolor_active = :orange)
-    s = Slider(f[3,1], range = -100:100,
+    m = Menu(f[1, 1], options = ['a', 'b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
+    t = Toggle(f[2, 1], framecolor_inactive = :red, framecolor_active = :orange)
+    s = Slider(
+        f[3, 1], range = -100:100,
         color_inactive = :red, color_active_dimmed = :orange, color_active = :black,
     )
     set_close_to!(s, 0)
-    c = Checkbox(f[4,1],
+    c = Checkbox(
+        f[4, 1],
         checkboxcolor_unchecked = :red, checkboxcolor_checked = :orange,
         checkboxstrokecolor_unchecked = :blue, checkboxstrokecolor_checked = :cyan,
         checkmarkcolor_unchecked = :white, checkmarkcolor_checked = :black,

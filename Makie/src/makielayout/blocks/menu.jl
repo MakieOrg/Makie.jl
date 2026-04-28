@@ -112,8 +112,10 @@ function initialize_block!(m::Menu; default = 1)
     selectionarea = Observable(Rect2d(0, 0, 0, 0); ignore_equal_values = true)
 
     button_hovered = Observable(false)
-    selectionpoly_color = lift(blockscene, button_hovered, m.selection_cell_color_inactive,
-                               m.cell_color_hover) do hovered, inactive, hover
+    selectionpoly_color = lift(
+        blockscene, button_hovered, m.selection_cell_color_inactive,
+        m.cell_color_hover
+    ) do hovered, inactive, hover
         hovered ? to_color(hover) : to_color(inactive)
     end
     selectionpoly = poly!(
