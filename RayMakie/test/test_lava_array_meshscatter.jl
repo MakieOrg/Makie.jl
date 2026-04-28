@@ -1,6 +1,6 @@
 using Test
 using Lava: LavaArray
-using GeometryBasics: Point3f, Point2f, Point
+using GeometryBasics: Point3f, Point2f, Point, Vec3f, Rect3f
 import Makie
 import GPUArraysCore
 
@@ -100,5 +100,49 @@ end
         # Result is a GPU array (transform was applied via broadcast)
         @test result isa LavaArray || result isa AbstractArray
         @test length(result) == 2
+    end
+end
+
+# limits_with_marker_transforms LavaArray override (closes P3.4a footgun).
+# The 4-arg and 5-arg variants both enumerate(positions) by default; the
+# overrides compute extrema(positions) on the GPU and add the uniform marker
+# bbox contribution.
+@testset "limits_with_marker_transforms over LavaArray" begin
+    positions = LavaArray([Point3f(0, 0, 0), Point3f(10, 0, 0), Point3f(0, 5, -2)])
+    marker_bbox = Rect3f(Vec3f(-1, -1, -1), Vec3f(2, 2, 2))
+
+    # 4-arg with scalar Vec3f scale (treated as uniform via Makie.VecTypes)
+    bb1 = Makie.limits_with_marker_transforms(positions, Vec3f(0.5, 0.5, 0.5),
+                                               Makie.Quaternionf(0, 0, 0, 1), marker_bbox)
+    @test minimum(bb1) ≈ Makie.Point3d(-0.5, -0.5, -2.5)
+    @test maximum(bb1) ≈ Makie.Point3d(10.5, 5.5, 0.5)
+
+    # 5-arg with model
+    bb2 = Makie.limits_with_marker_transforms(positions, Vec3f(1, 1, 1),
+                                               Makie.Quaternionf(0, 0, 0, 1),
+                                               Makie.Mat4d(Makie.I), marker_bbox)
+    @test minimum(bb2) ≈ Makie.Point3d(-1, -1, -3)
+    @test maximum(bb2) ≈ Makie.Point3d(11, 6, 1)
+
+    # Per-instance Vector scales alongside LavaArray positions errors loudly
+    scales_vec = Vec3f[Vec3f(0.5, 0.5, 0.5), Vec3f(2, 2, 2), Vec3f(1, 1, 1)]
+    @test_throws ErrorException Makie.limits_with_marker_transforms(
+        positions, scales_vec, Makie.Quaternionf(0, 0, 0, 1), marker_bbox)
+
+    # Empty LavaArray returns empty Rect3d
+    empty_pos = LavaArray(Point3f[])
+    bb3 = Makie.limits_with_marker_transforms(empty_pos, Vec3f(1, 1, 1),
+                                               Makie.Quaternionf(0, 0, 0, 1), marker_bbox)
+    @test bb3 == Makie.Rect3d()
+end
+
+@testset "limits_with_marker_transforms does not scalar iterate" begin
+    positions = LavaArray([Point3f(0, 0, 0), Point3f(10, 0, 0)])
+    marker_bbox = Rect3f(Vec3f(-1, -1, -1), Vec3f(2, 2, 2))
+    with_scalar_disallowed() do
+        bb = Makie.limits_with_marker_transforms(positions, Vec3f(1, 1, 1),
+                                                  Makie.Quaternionf(0, 0, 0, 1), marker_bbox)
+        @test minimum(bb) ≈ Makie.Point3d(-1, -1, -1)
+        @test maximum(bb) ≈ Makie.Point3d(11, 1, 1)
     end
 end

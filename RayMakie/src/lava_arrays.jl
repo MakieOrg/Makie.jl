@@ -114,3 +114,75 @@ function Makie.iterate_transformed(plot, points::LavaArray{<:Point{N, Float32}, 
         return filter(p -> !Makie.is_clipped(cp, p), cpu_points)
     end
 end
+
+# --- Marker-transform bounds (closes P3.4a footgun) --------------------------
+
+# limits_with_marker_transforms (Makie data_limits.jl:36, boundingbox.jl:54)
+# enumerates positions to compute per-instance marker-transformed bboxes. With
+# a LavaArray that is scalar-iteration -- triggers @allowscalar.
+#
+# For uniform scale + rotation (the common case), the marker bbox is fixed in
+# instance-local space and just gets translated by each grain's position. So
+# the per-instance loop reduces to: extrema(positions) +/- the uniform marker
+# bbox. extrema_nan over LavaArray is already GPU-safe (above).
+#
+# Per-instance LavaArray scales/rotation is not yet supported -- error loudly.
+# Per-instance CPU Vector scales/rotation is also rejected on the GPU path
+# because looking each up by index inside a GPU mapreduce is non-trivial; the
+# user can pre-compute the per-instance contribution into a LavaArray and pass
+# scalar attrs here.
+function _check_uniform_attr(attr, name::String)
+    attr isa LavaArray && error(
+        "limits_with_marker_transforms: per-instance $name as a LavaArray is not " *
+        "yet supported on the GPU path. Pass a scalar instead, or compute the " *
+        "expanded bounds yourself.")
+    # AbstractVector includes static vectors (Vec3f, Quaternionf etc.) which Makie
+    # treats as scalars via attr_broadcast_getindex.  Use Makie.VecTypes to
+    # distinguish: VecTypes = scalar, plain AbstractVector = per-instance.
+    if attr isa AbstractVector && !(attr isa Makie.VecTypes)
+        error(
+            "limits_with_marker_transforms: per-instance $name (Vector) alongside " *
+            "a LavaArray positions is not yet supported on the GPU path. Pass a " *
+            "scalar $name (uniform across all instances).")
+    end
+    return nothing
+end
+
+function Makie.limits_with_marker_transforms(positions::LavaArray{<:Point{N, Float32}, 1},
+                                              scales, rotation, element_bbox) where {N}
+    isempty(positions) && return Makie.Rect3d()
+    _check_uniform_attr(scales, "scales")
+    _check_uniform_attr(rotation, "rotation")
+    first_scale = Makie.attr_broadcast_getindex(scales, 1)
+    first_rot   = Makie.attr_broadcast_getindex(rotation, 1)
+    marker_bbox = first_rot * (element_bbox * first_scale)
+    pos_lo, pos_hi = Makie.extrema_nan(positions)
+    bb_min = Makie.to_ndim(Makie.Point3d, pos_lo, 0) + minimum(marker_bbox)
+    bb_max = Makie.to_ndim(Makie.Point3d, pos_hi, 0) + maximum(marker_bbox)
+    return Makie.Rect3d(bb_min, bb_max - bb_min)
+end
+
+function Makie.limits_with_marker_transforms(positions::LavaArray{<:Point{N, Float32}, 1},
+                                              scales, rotation, model, element_bbox) where {N}
+    isempty(positions) && return Makie.Rect3d()
+    _check_uniform_attr(scales, "scales")
+    _check_uniform_attr(rotation, "rotation")
+    first_scale = Makie.attr_broadcast_getindex(scales, 1)
+    first_rot   = Makie.attr_broadcast_getindex(rotation, 1)
+    model3 = model[Makie.Vec(1, 2, 3), Makie.Vec(1, 2, 3)]
+    # Uniform marker contribution: enumerate the 8 corners of element_bbox once,
+    # apply rotation+scale+model to each, take min/max -- this is fixed cost
+    # (8 vertices) so no GPU concern.
+    vertices = Makie.decompose(Makie.Point3d, element_bbox)
+    marker_min = Makie.Point3d(Inf, Inf, Inf)
+    marker_max = Makie.Point3d(-Inf, -Inf, -Inf)
+    for v in vertices
+        p = model3 * (first_rot * (first_scale .* v))
+        marker_min = min.(marker_min, p)
+        marker_max = max.(marker_max, p)
+    end
+    pos_lo, pos_hi = Makie.extrema_nan(positions)
+    bb_min = Makie.to_ndim(Makie.Point3d, pos_lo, 0) + marker_min
+    bb_max = Makie.to_ndim(Makie.Point3d, pos_hi, 0) + marker_max
+    return Makie.Rect3d(bb_min, bb_max - bb_min)
+end
