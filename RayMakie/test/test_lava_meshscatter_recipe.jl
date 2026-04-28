@@ -6,7 +6,7 @@
 #   - First-sync: BLAS built, instance_buf filled correctly, TLAS built.
 #   - Refit: instance_buf updated in-place, TLAS refitted, handle preserved.
 #   - ensure_lava_rotations: converts Quaternionf, Vec4f, and CPU Vector inputs.
-#   - uniform_scale_f32: extracts Float32 from Number and uniform Vec3f.
+#   - gpu_scale: dispatches to Float32 (uniform) or LavaArray{Vec3f} (per-instance).
 
 using Test, Lava, Raycore, Hikari, GeometryBasics
 using Lava: LavaArray, LavaBackend, LavaInstanceRecord, AS_INPUT_USAGE
@@ -61,7 +61,8 @@ end
         @test rec.transform[12] ≈ 0f0           # tz
         @test rec.transform[1]  ≈ 0.5f0         # Rxx * scale
         @test rec.blas_address == robj.blas_addr
-        @test (rec.custom_index_and_mask & 0x00FFFFFF) == UInt32(i - 1)
+        # Default mi_idx=0 means custom_index=0 for all instances (physics-only mode).
+        @test (rec.custom_index_and_mask & 0x00FFFFFF) == UInt32(0)
         @test (rec.custom_index_and_mask >> 24) == UInt32(0x04)
     end
 
@@ -81,9 +82,11 @@ end
     robj = RayMakie.meshscatter_create_gpu!(scene, nothing, cube,
                                              positions, rotations, 0.5f0, UInt8(0x04))
 
-    # Move all positions by +100.
+    # Move all positions by +100.  refit takes the scale explicitly as of P3-fu3
+    # (multiple-dispatch over Float32 vs LavaArray{Vec3f, 1}).
     new_positions = LavaArray([Point3f(Float32(i + 100), 0f0, 0f0) for i in 1:n])
-    robj2 = RayMakie.meshscatter_refit_gpu!(scene, nothing, new_positions, rotations, robj)
+    robj2 = RayMakie.meshscatter_refit_gpu!(scene, nothing, new_positions, rotations,
+                                             0.5f0, robj)
 
     # Handle identity must be preserved.
     @test robj2.handle === robj.handle
@@ -134,19 +137,13 @@ end
     @test result === arr  # same object, no copy
 end
 
-@testset "uniform_scale_f32 -- Number" begin
-    @test RayMakie.uniform_scale_f32(0.005f0) == 0.005f0
-    @test RayMakie.uniform_scale_f32(2)        == 2f0
-end
-
-@testset "uniform_scale_f32 -- uniform Vec3f" begin
-    @test RayMakie.uniform_scale_f32(Vec3f(0.5f0, 0.5f0, 0.5f0)) == 0.5f0
-end
-
-@testset "uniform_scale_f32 -- non-uniform Vec3f errors" begin
-    @test_throws ErrorException RayMakie.uniform_scale_f32(Vec3f(1f0, 2f0, 3f0))
-end
-
-@testset "uniform_scale_f32 -- AbstractVector errors" begin
-    @test_throws ErrorException RayMakie.uniform_scale_f32([0.1f0, 0.2f0])
+@testset "gpu_scale dispatch -- Number / Vec3f / LavaArray" begin
+    # Renamed in P3-fu3 from uniform_scale_f32 to gpu_scale (multiple-dispatch
+    # over scalar Number, Vec3f, and LavaArray{Vec3f} forms).  Per-instance
+    # CPU Vector still rejected.
+    @test RayMakie.gpu_scale(0.005f0) === 0.005f0
+    @test RayMakie.gpu_scale(2)        === 2f0
+    @test RayMakie.gpu_scale(Vec3f(0.5f0, 0.5f0, 0.5f0)) === 0.5f0
+    @test_throws ErrorException RayMakie.gpu_scale(Vec3f(1f0, 2f0, 3f0))
+    @test_throws ErrorException RayMakie.gpu_scale([0.1f0, 0.2f0])
 end

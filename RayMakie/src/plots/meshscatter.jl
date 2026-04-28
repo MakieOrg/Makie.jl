@@ -151,27 +151,35 @@ Extract a uniform scalar scale from `markersize`. Supports:
 Per-instance markersize (AbstractVector) is not yet supported on the GPU
 path -- use a uniform scalar instead.
 """
-function uniform_scale_f32(markersize)
-    if markersize isa Number
-        return Float32(markersize)
-    elseif markersize isa Vec3f
-        if markersize[1] ≈ markersize[2] ≈ markersize[3]
-            return Float32(markersize[1])
-        else
-            error("meshscatter GPU path: non-uniform Vec3f markersize $markersize " *
-                  "is not supported. Use a scalar Float32 markersize.")
-        end
-    elseif markersize isa AbstractVector
-        error("meshscatter GPU path: per-instance markersize (AbstractVector) " *
-              "is not supported. Use a uniform scalar Float32 markersize.")
-    else
-        error("meshscatter GPU path: unsupported markersize type $(typeof(markersize)).")
-    end
+# Dispatch on markersize type to extract the scale form the GPU kernel needs.
+# Number / equal-component Vec3f -> Float32 (uniform).
+# LavaArray{Vec3f} -> the array itself (per-instance, validated for length).
+# Anything else -> loud error.
+gpu_scale(markersize::Number) = Float32(markersize)
+function gpu_scale(markersize::Vec3f)
+    markersize[1] ≈ markersize[2] ≈ markersize[3] || error(
+        "meshscatter GPU path: non-uniform Vec3f markersize $markersize is not " *
+        "supported as a scalar.  Use a LavaArray{Vec3f} for true per-instance " *
+        "scaling.")
+    return Float32(markersize[1])
 end
+gpu_scale(markersize::Lava.LavaArray{Vec3f, 1}) = markersize
+function gpu_scale(markersize::Lava.LavaArray{T, 1}) where {T}
+    error("meshscatter GPU path: per-instance markersize LavaArray must have " *
+          "eltype Vec3f; got $T.")
+end
+function gpu_scale(markersize::AbstractVector)
+    error("meshscatter GPU path: per-instance markersize as a CPU Vector is " *
+          "not yet supported.  Pass a scalar Number / Vec3f (uniform), or a " *
+          "LavaArray{Vec3f} (per-instance, GPU-resident).")
+end
+gpu_scale(markersize) = error(
+    "meshscatter GPU path: unsupported markersize type $(typeof(markersize)).")
 
 """
     meshscatter_create_gpu!(hikari_scene, state, gb_mesh,
-                             positions, rotations, scale, instance_mask)
+                             positions, rotations, scale, instance_mask;
+                             mi_idx=UInt32(0))
 
 GPU-resident meshscatter first-sync path. Builds the BLAS from `gb_mesh`,
 allocates a `LavaArray{LavaInstanceRecord}` of length `n`, runs
@@ -182,23 +190,31 @@ Returns a NamedTuple stored as the recipe's `trace_renderobject`:
   `(handle, n_instances, instance_buf, blas_addr, scale, mask, gpu_path=true)`
 
 `state` may be `nothing` when called from tests.
+
+`mi_idx` is a 1-based index into `hikari_scene.media_interfaces` written as the
+`gl_InstanceCustomIndexEXT` for every instance.  Pass `UInt32(0)` for
+physics-only visibility (all rays that hit these instances produce zero radiance
+because there is no material).  Pass the return value of
+`push!(hikari_scene, material)` so that every instance receives the same
+material and path-traced hits produce correct radiance.
 """
 function meshscatter_create_gpu!(hikari_scene, state, gb_mesh::GeometryBasics.Mesh,
                                   positions::Lava.LavaArray{Point3f, 1},
                                   rotations::Lava.LavaArray{Vec4f, 1},
                                   scale::Float32,
-                                  instance_mask::UInt8)
+                                  instance_mask::UInt8;
+                                  mi_idx::UInt32 = UInt32(0))
     n = length(positions)
     tlas = hikari_scene.accel
 
-    # Attach neutral TriangleMeta (medium_interface_idx=0, no area lights) so
-    # hwtlas_add_geometry! builds Triangle{TriangleMeta} matching the HWTLAS
-    # type parameter.  The GPU path does not register materials per-instance;
-    # the hit shader falls back to the face's material_idx=0 (transparent/miss)
-    # or is used in a physics-visibility-only mode.
+    # Attach TriangleMeta with medium_interface_idx=mi_idx so that instances
+    # with custom_index=0 (physics-only callers that pass mi_idx=0) fall through
+    # to the face metadata, and callers that supply a real mi_idx let the face
+    # metadata carry it as a fallback.  Both paths ultimately use `mi_idx` as
+    # the material selector (via resolve_mi_idx in the integrator).
     gb_faces = GeometryBasics.faces(gb_mesh)
     n_faces = length(gb_faces)
-    face_meta = [Hikari.TriangleMeta(UInt32(0), UInt32(i), UInt32(0)) for i in 1:n_faces]
+    face_meta = [Hikari.TriangleMeta(mi_idx, UInt32(i), UInt32(0)) for i in 1:n_faces]
     mesh_with_meta = GeometryBasics.mesh(gb_mesh;
                                           face_meta=GeometryBasics.per_face(face_meta, gb_mesh))
 
@@ -213,10 +229,11 @@ function meshscatter_create_gpu!(hikari_scene, state, gb_mesh::GeometryBasics.Me
     handle = Base.push!(tlas, mesh_with_meta, instance_buf; instance_mask=instance_mask)
     blas_addr = tlas.instance_batches[end].blas.address
 
-    # Fill the instance buffer on the GPU.
+    # Fill the instance buffer on the GPU.  Pass mi_idx as custom_index so the
+    # HW RT integrator can resolve the material from media_interfaces[mi_idx].
     backend = Lava.LavaBackend()
     Lava.write_meshscatter_instances_kernel(backend)(
-        positions, rotations, scale, blas_addr, instance_mask, instance_buf;
+        positions, rotations, scale, blas_addr, instance_mask, mi_idx, instance_buf;
         ndrange = n)
     Lava.vk_flush!(Lava.vk_context().default_bq)
 
@@ -225,7 +242,8 @@ function meshscatter_create_gpu!(hikari_scene, state, gb_mesh::GeometryBasics.Me
 
     state !== nothing && (state.needs_film_clear = true)
     return (handle=handle, n_instances=n, instance_buf=instance_buf,
-            blas_addr=blas_addr, scale=scale, mask=instance_mask, gpu_path=true)
+            blas_addr=blas_addr, scale=scale, mask=instance_mask,
+            mi_idx=mi_idx, gpu_path=true)
 end
 
 """
@@ -241,16 +259,75 @@ Returns the same `robj` (handle/instance_buf identity is preserved).
 function meshscatter_refit_gpu!(hikari_scene, state,
                                  positions::Lava.LavaArray{Point3f, 1},
                                  rotations::Lava.LavaArray{Vec4f, 1},
+                                 scale::Float32,
                                  robj)
     tlas = hikari_scene.accel
     instance_buf = Raycore.instance_buffer(tlas, robj.handle)
+    mi_idx = hasproperty(robj, :mi_idx) ? robj.mi_idx : UInt32(0)
 
     backend = Lava.LavaBackend()
     Lava.write_meshscatter_instances_kernel(backend)(
-        positions, rotations, robj.scale, robj.blas_addr, robj.mask, instance_buf;
+        positions, rotations, scale, robj.blas_addr, robj.mask, mi_idx, instance_buf;
         ndrange = robj.n_instances)
     Lava.vk_flush!(Lava.vk_context().default_bq)
+    Raycore.refit_tlas!(tlas)
+    state !== nothing && (state.needs_film_clear = true)
+    return robj
+end
 
+# Per-instance Vec3f scale variants (P3-fu3).  Multiple-dispatch on the scale
+# argument: a `LavaArray{Vec3f, 1}` routes to the per-vec kernel; a `Float32`
+# (existing methods above) routes to the uniform kernel.
+
+function meshscatter_create_gpu!(hikari_scene, state, gb_mesh::GeometryBasics.Mesh,
+                                  positions::Lava.LavaArray{Point3f, 1},
+                                  rotations::Lava.LavaArray{Vec4f, 1},
+                                  scales::Lava.LavaArray{Vec3f, 1},
+                                  instance_mask::UInt8;
+                                  mi_idx::UInt32 = UInt32(0))
+    n = length(positions)
+    length(scales) == n || error(
+        "meshscatter_create_gpu!: scales length $(length(scales)) != positions length $n.")
+    tlas = hikari_scene.accel
+
+    gb_faces = GeometryBasics.faces(gb_mesh)
+    n_faces = length(gb_faces)
+    face_meta = [Hikari.TriangleMeta(mi_idx, UInt32(i), UInt32(0)) for i in 1:n_faces]
+    mesh_with_meta = GeometryBasics.mesh(gb_mesh;
+                                          face_meta=GeometryBasics.per_face(face_meta, gb_mesh))
+
+    instance_buf = Lava.LavaArray{Lava.LavaInstanceRecord}(undef, n;
+                                                             extra_usage=Lava.AS_INPUT_USAGE)
+    handle = Base.push!(tlas, mesh_with_meta, instance_buf; instance_mask=instance_mask)
+    blas_addr = tlas.instance_batches[end].blas.address
+
+    backend = Lava.LavaBackend()
+    Lava.write_meshscatter_instances_pervec_kernel(backend)(
+        positions, rotations, scales, blas_addr, instance_mask, mi_idx, instance_buf;
+        ndrange = n)
+    Lava.vk_flush!(Lava.vk_context().default_bq)
+    Raycore.sync!(tlas)
+
+    state !== nothing && (state.needs_film_clear = true)
+    return (handle=handle, n_instances=n, instance_buf=instance_buf,
+            blas_addr=blas_addr, scale=scales, mask=instance_mask,
+            mi_idx=mi_idx, gpu_path=true)
+end
+
+function meshscatter_refit_gpu!(hikari_scene, state,
+                                 positions::Lava.LavaArray{Point3f, 1},
+                                 rotations::Lava.LavaArray{Vec4f, 1},
+                                 scales::Lava.LavaArray{Vec3f, 1},
+                                 robj)
+    tlas = hikari_scene.accel
+    instance_buf = Raycore.instance_buffer(tlas, robj.handle)
+    mi_idx = hasproperty(robj, :mi_idx) ? robj.mi_idx : UInt32(0)
+
+    backend = Lava.LavaBackend()
+    Lava.write_meshscatter_instances_pervec_kernel(backend)(
+        positions, rotations, scales, robj.blas_addr, robj.mask, mi_idx, instance_buf;
+        ndrange = robj.n_instances)
+    Lava.vk_flush!(Lava.vk_context().default_bq)
     Raycore.refit_tlas!(tlas)
     state !== nothing && (state.needs_film_clear = true)
     return robj
@@ -309,7 +386,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
             n = length(positions_raw)
             rotation_raw = to_value(attr[:rotation])
             rotations_arr = ensure_lava_rotations(rotation_raw, n)
-            scale = uniform_scale_f32(to_value(attr[:markersize]))
+            scale = gpu_scale(to_value(attr[:markersize]))
             mask = UInt8(0x04)
 
             robj = isnothing(last) || isnothing(last.trace_renderobject) ||
@@ -335,8 +412,10 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
                                                 scale, mask),)
             else
                 # Incremental: re-derive instance records and refit TLAS.
+                # Multiple-dispatch on `scale` type picks the scalar vs per-vec kernel.
                 return (meshscatter_refit_gpu!(hikari_scene, state,
-                                               positions_raw, rotations_arr, robj),)
+                                               positions_raw, rotations_arr,
+                                               scale, robj),)
             end
         end
 
