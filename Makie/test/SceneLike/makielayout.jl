@@ -666,7 +666,7 @@ end
 @testset "Color Updates of interactive elements" begin
     f = Figure()
     m = Menu(f[1, 1], options = ['a', 'b'], selection_cell_color_inactive = :red, cell_color_hover = :orange)
-    t = Toggle(f[2, 1], framecolor_inactive = :red, framecolor_active = :orange)
+    t = Toggle(f[2, 1], framecolor_inactive = to_color(:red), framecolor_active = to_color(:orange))
     s = Slider(
         f[3, 1], range = -100:100,
         color_inactive = :red, color_active_dimmed = :orange, color_active = :black,
@@ -696,7 +696,7 @@ end
     @testset "Toggle" begin
         p = t.blockscene.plots[1]::Poly
         @test to_color(p.color[]) == to_color(:red)
-        t.framecolor_inactive = :blue
+        t.framecolor_inactive = to_color(:blue)
         @test to_color(p.color[]) == to_color(:blue)
 
         events(f).mouseposition[] = (300.0, 225.0)
@@ -705,7 +705,7 @@ end
         events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 1, 0.1, 0.1)
         events(f).tick[] = Makie.Tick(Makie.SkippedRenderTick, 2, 0.2, 0.1)
         @test to_color(p.color[]) == to_color(:orange)
-        t.framecolor_active = :green
+        t.framecolor_active = to_color(:green)
         @test to_color(p.color[]) == to_color(:green)
     end
 
