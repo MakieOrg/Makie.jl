@@ -381,9 +381,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The font family of the yticklabels."
         yticklabelfont = :regular
         "The color of xticklabels."
-        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xticklabelcolor = @inherit(:textcolor, :black)
         "The color of yticklabels."
-        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        yticklabelcolor = @inherit(:textcolor, :black)
         "The font size of the xticklabels."
         xticklabelsize::Float64 = @inherit(:fontsize, 16.0f0)
         "The font size of the yticklabels."
@@ -425,9 +425,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The width of the ytick marks."
         ytickwidth::Float64 = 1.0f0
         "The color of the xtick marks."
-        xtickcolor::RGBAf = RGBf(0, 0, 0)
+        xtickcolor = RGBf(0, 0, 0)
         "The color of the ytick marks."
-        ytickcolor::RGBAf = RGBf(0, 0, 0)
+        ytickcolor = RGBf(0, 0, 0)
         "Controls if the x ticks and minor ticks are mirrored on the other side of the Axis."
         xticksmirrored::Bool = false
         "Controls if the y ticks and minor ticks are mirrored on the other side of the Axis."
@@ -455,9 +455,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The width of the y grid lines."
         ygridwidth::Float64 = 1.0f0
         "The color of the x grid lines."
-        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        ygridcolor = RGBAf(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
@@ -471,9 +471,9 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The width of the y minor grid lines."
         yminorgridwidth::Float64 = 1.0f0
         "The color of the x minor grid lines."
-        xminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        xminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The color of the y minor grid lines."
-        yminorgridcolor::RGBAf = RGBAf(0, 0, 0, 0.05)
+        yminorgridcolor = RGBAf(0, 0, 0, 0.05)
         "The linestyle of the x minor grid lines."
         xminorgridstyle = nothing
         "The linestyle of the y minor grid lines."
@@ -664,7 +664,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The tick width of x minor ticks"
         xminortickwidth::Float64 = 1.0f0
         "The tick color of x minor ticks"
-        xminortickcolor::RGBAf = :black
+        xminortickcolor = :black
         """
         The tick locator for the minor ticks of the x axis.
 
@@ -683,7 +683,7 @@ Axis(fig_or_scene; palette = nothing, kwargs...)
         "The tick width of y minor ticks"
         yminortickwidth::Float64 = 1.0f0
         "The tick color of y minor ticks"
-        yminortickcolor::RGBAf = :black
+        yminortickcolor = :black
         """
         The tick locator for the minor ticks of the y axis.
 
@@ -787,7 +787,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The color bar label string."
         label = ""
         "The label color."
-        labelcolor::RGBAf = @inherit(:textcolor, :black)
+        labelcolor = @inherit(:textcolor, :black)
         "The label font family."
         labelfont = :regular
         "The label font size."
@@ -805,7 +805,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
         "The color of the tick labels."
-        ticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        ticklabelcolor = @inherit(:textcolor, :black)
         "The size of the tick marks."
         ticksize = 5.0f0
         "Controls if the tick marks are visible."
@@ -823,7 +823,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The line width of the tick marks."
         tickwidth = 1.0f0
         "The color of the tick marks."
-        tickcolor::RGBAf = RGBf(0, 0, 0)
+        tickcolor = RGBf(0, 0, 0)
         "The horizontal and vertical alignment of the tick labels."
         ticklabelalign = Makie.automatic
         "The rotation of the ticklabels."
@@ -839,13 +839,13 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "Controls if the bottom spine is visible."
         bottomspinevisible = true
         "The color of the top spine."
-        topspinecolor::RGBAf = RGBf(0, 0, 0)
+        topspinecolor = RGBf(0, 0, 0)
         "The color of the left spine."
-        leftspinecolor::RGBAf = RGBf(0, 0, 0)
+        leftspinecolor = RGBf(0, 0, 0)
         "The color of the right spine."
-        rightspinecolor::RGBAf = RGBf(0, 0, 0)
+        rightspinecolor = RGBf(0, 0, 0)
         "The color of the bottom spine."
-        bottomspinecolor::RGBAf = RGBf(0, 0, 0)
+        bottomspinecolor = RGBf(0, 0, 0)
         "The vertical alignment of the colorbar in its suggested bounding box."
         valign = :center
         "The horizontal alignment of the colorbar in its suggested bounding box."
@@ -893,7 +893,7 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         "The tick width of minor ticks"
         minortickwidth = 1.0f0
         "The tick color of minor ticks"
-        minortickcolor::RGBAf = :black
+        minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
@@ -945,7 +945,7 @@ end
         "Controls if the rectangle is visible."
         visible = true
         "The color of the rectangle."
-        color::RGBAf = RGBf(0.9, 0.9, 0.9)
+        color = RGBf(0.9, 0.9, 0.9)
         "The vertical alignment of the rectangle in its suggested boundingbox"
         valign = :center
         "The horizontal alignment of the rectangle in its suggested boundingbox"
@@ -955,7 +955,7 @@ end
         "Controls if the border of the rectangle is visible."
         strokevisible = true
         "The color of the border."
-        strokecolor::RGBAf = RGBf(0, 0, 0)
+        strokecolor = RGBf(0, 0, 0)
         "The linestyle of the rectangle border"
         linestyle = nothing
         "The radius of the rounded corner. One number is for all four corners, four numbers for going clockwise from top-right."
@@ -1144,19 +1144,19 @@ end
         "The line width of the button border."
         strokewidth = 2.0f0
         "The color of the button border."
-        strokecolor::RGBAf = :transparent
+        strokecolor = :transparent
         "The color of the button."
-        buttoncolor::RGBAf = RGBf(0.94, 0.94, 0.94)
+        buttoncolor = RGBf(0.94, 0.94, 0.94)
         "The color of the label."
-        labelcolor::RGBAf = @inherit(:textcolor, :black)
+        labelcolor = @inherit(:textcolor, :black)
         "The color of the label when the mouse hovers over the button."
-        labelcolor_hover::RGBAf = :black
+        labelcolor_hover = :black
         "The color of the label when the mouse clicks the button."
-        labelcolor_active::RGBAf = :white
+        labelcolor_active = :white
         "The color of the button when the mouse clicks the button."
-        buttoncolor_active::RGBAf = COLOR_ACCENT[]
+        buttoncolor_active = COLOR_ACCENT[]
         "The color of the button when the mouse hovers over the button."
-        buttoncolor_hover::RGBAf = COLOR_ACCENT_DIMMED[]
+        buttoncolor_hover = COLOR_ACCENT_DIMMED[]
         "The number of clicks that have been registered by the button."
         clicks = 0
         "The align mode of the button in its parent GridLayout."
@@ -1197,17 +1197,17 @@ const CHECKMARK_BEZIER = scale(
         "The strokewidth of the checkbox poly."
         checkboxstrokewidth = 1.5
         "The color of the checkbox background when checked."
-        checkboxcolor_checked::RGBAf = COLOR_ACCENT[]
+        checkboxcolor_checked = COLOR_ACCENT[]
         "The color of the checkbox background when unchecked."
-        checkboxcolor_unchecked::RGBAf = @inherit(:backgroundcolor, :white)
+        checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
         "The strokecolor of the checkbox background when checked."
-        checkboxstrokecolor_checked::RGBAf = COLOR_ACCENT[]
+        checkboxstrokecolor_checked = COLOR_ACCENT[]
         "The strokecolor of the checkbox background when unchecked."
-        checkboxstrokecolor_unchecked::RGBAf = COLOR_ACCENT[]
+        checkboxstrokecolor_unchecked = COLOR_ACCENT[]
         "The color of the checkmark when unchecked."
-        checkmarkcolor_unchecked::RGBAf = :transparent
+        checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
-        checkmarkcolor_checked::RGBAf = :white
+        checkmarkcolor_checked = :white
         "The align mode of the checkbox in its parent GridLayout."
         alignmode = Inside()
         "If the checkbox is currently checked. This value should not be modified directly."
@@ -1257,12 +1257,12 @@ end
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        framecolor_inactive = RGBf(0.94, 0.94, 0.94)
         "The color of the border when the toggle is hovered."
-        framecolor_active::RGBAf = COLOR_ACCENT_DIMMED[]
+        framecolor_active = COLOR_ACCENT_DIMMED[]
         # buttoncolor = RGBf(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor::RGBAf = COLOR_ACCENT[]
+        buttoncolor = COLOR_ACCENT[]
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
@@ -1349,17 +1349,17 @@ end
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover::RGBAf = COLOR_ACCENT_DIMMED[]
+        cell_color_hover = COLOR_ACCENT_DIMMED[]
         "Cell color when active"
-        cell_color_active::RGBAf = COLOR_ACCENT[]
+        cell_color_active = COLOR_ACCENT[]
         "Cell color when inactive even"
-        cell_color_inactive_even::RGBAf = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_even = RGBf(0.97, 0.97, 0.97)
         "Cell color when inactive odd"
-        cell_color_inactive_odd::RGBAf = RGBf(0.97, 0.97, 0.97)
+        cell_color_inactive_odd = RGBf(0.97, 0.97, 0.97)
         "Selection cell color when inactive"
-        selection_cell_color_inactive::RGBAf = RGBf(0.94, 0.94, 0.94)
+        selection_cell_color_inactive = RGBf(0.94, 0.94, 0.94)
         "Color of the dropdown arrow"
-        dropdown_arrow_color::RGBAf = (:black, 0.2)
+        dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
         dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
@@ -1369,7 +1369,7 @@ end
         "Padding of entry texts"
         textpadding = (8, 10, 8, 8)
         "Color of entry texts"
-        textcolor::RGBAf = :black
+        textcolor = :black
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
@@ -1462,7 +1462,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "Controls if the legend titles are visible."
         titlevisible = true
         "The color of the legend titles"
-        titlecolor::RGBAf = @inherit(:textcolor, :black)
+        titlecolor = @inherit(:textcolor, :black)
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
@@ -1470,7 +1470,7 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The font family of the entry labels."
         labelfont = :regular
         "The color of the entry labels."
-        labelcolor::RGBAf = @inherit(:textcolor, :black)
+        labelcolor = @inherit(:textcolor, :black)
         "The horizontal alignment of the entry labels."
         labelhalign = :left
         "The justification of the label text. Default is `automatic`, which will set the justification to labelhalign."
@@ -1484,9 +1484,9 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The background color of the legend. DEPRECATED - use `backgroundcolor` instead."
         bgcolor = nothing
         "The background color of the legend."
-        backgroundcolor::RGBAf = :white
+        backgroundcolor = :white
         "The color of the legend border."
-        framecolor::RGBAf = :black
+        framecolor = :black
         "The line width of the legend border."
         framewidth = 1.0f0
         "Controls if the legend border is visible."
@@ -1494,11 +1494,11 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         "The size of the rectangles containing the legend markers. It can help to increase the width if line patterns are not clearly visible with the default size."
         patchsize = (20.0f0, 20.0f0)
         "The color of the border of the patches containing the legend markers."
-        patchstrokecolor::RGBAf = :transparent
+        patchstrokecolor = :transparent
         "The line width of the border of the patches containing the legend markers."
         patchstrokewidth = 1.0f0
         "The color of the patches containing the legend markers."
-        patchcolor::RGBAf = :transparent
+        patchcolor = :transparent
         "The default entry label."
         label = "undefined"
         "The number of banks in which the legend entries are grouped. Columns if the legend is vertically oriented, otherwise rows."
@@ -1695,27 +1695,27 @@ end
         "Text size."
         fontsize = @inherit(:fontsize, 16.0f0)
         "Text color."
-        textcolor::RGBAf = @inherit(:textcolor, :black)
+        textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."
-        textcolor_placeholder::RGBAf = RGBf(0.5, 0.5, 0.5)
+        textcolor_placeholder = RGBf(0.5, 0.5, 0.5)
         "Font family."
         font = :regular
         "Color of the box."
-        boxcolor::RGBAf = :transparent
+        boxcolor = :transparent
         "Color of the box when focused."
-        boxcolor_focused::RGBAf = :transparent
+        boxcolor_focused = :transparent
         "Color of the box when focused."
-        boxcolor_focused_invalid::RGBAf = RGBAf(1, 0, 0, 0.3)
+        boxcolor_focused_invalid = RGBAf(1, 0, 0, 0.3)
         "Color of the box when hovered."
-        boxcolor_hover::RGBAf = :transparent
+        boxcolor_hover = :transparent
         "Color of the box border."
-        bordercolor::RGBAf = RGBf(0.8, 0.8, 0.8)
+        bordercolor = RGBf(0.8, 0.8, 0.8)
         "Color of the box border when hovered."
-        bordercolor_hover::RGBAf = COLOR_ACCENT_DIMMED[]
+        bordercolor_hover = COLOR_ACCENT_DIMMED[]
         "Color of the box border when focused."
-        bordercolor_focused::RGBAf = COLOR_ACCENT[]
+        bordercolor_focused = COLOR_ACCENT[]
         "Color of the box border when focused and invalid."
-        bordercolor_focused_invalid::RGBAf = RGBf(1, 0, 0)
+        bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
         borderwidth = 1.0f0
         "Padding of the text against the box."
@@ -1731,7 +1731,7 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor::RGBAf = :transparent
+        cursorcolor = :transparent
     end
 end
 
@@ -1822,7 +1822,7 @@ end
         "Controls whether content is clipped at the axis frame. Note that you can also overwrite clipping per plot by setting `clip_planes = Plane3f[]`."
         clip::Bool = true
         "The background color"
-        backgroundcolor::RGBAf = :transparent
+        backgroundcolor = :transparent
         "The x label"
         xlabel = "x"
         "The y label"
@@ -1830,11 +1830,11 @@ end
         "The z label"
         zlabel = "z"
         "The x label color"
-        xlabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xlabelcolor = @inherit(:textcolor, :black)
         "The y label color"
-        ylabelcolor::RGBAf = @inherit(:textcolor, :black)
+        ylabelcolor = @inherit(:textcolor, :black)
         "The z label color"
-        zlabelcolor::RGBAf = @inherit(:textcolor, :black)
+        zlabelcolor = @inherit(:textcolor, :black)
         "Controls if the x label is visible"
         xlabelvisible = true
         "Controls if the y label is visible"
@@ -1884,11 +1884,11 @@ end
         "The z label offset"
         zlabeloffset = 50
         "The x ticklabel color"
-        xticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        xticklabelcolor = @inherit(:textcolor, :black)
         "The y ticklabel color"
-        yticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        yticklabelcolor = @inherit(:textcolor, :black)
         "The z ticklabel color"
-        zticklabelcolor::RGBAf = @inherit(:textcolor, :black)
+        zticklabelcolor = @inherit(:textcolor, :black)
         "The x ticklabel size"
         xticklabelsize = @inherit(:fontsize, 16.0f0)
         "The y ticklabel size"
@@ -1908,11 +1908,11 @@ end
         "The z ticklabel font"
         zticklabelfont = :regular
         "The x grid color"
-        xgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        xgridcolor = RGBAf(0, 0, 0, 0.12)
         "The y grid color"
-        ygridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        ygridcolor = RGBAf(0, 0, 0, 0.12)
         "The z grid color"
-        zgridcolor::RGBAf = RGBAf(0, 0, 0, 0.12)
+        zgridcolor = RGBAf(0, 0, 0, 0.12)
         "The x grid width"
         xgridwidth = 1
         "The y grid width"
@@ -1920,11 +1920,11 @@ end
         "The z grid width"
         zgridwidth = 1
         "The x tick color"
-        xtickcolor::RGBAf = :black
+        xtickcolor = :black
         "The y tick color"
-        ytickcolor::RGBAf = :black
+        ytickcolor = :black
         "The z tick color"
-        ztickcolor::RGBAf = :black
+        ztickcolor = :black
         "The x tick width"
         xtickwidth = 1
         "The y tick width"
@@ -1938,31 +1938,31 @@ end
         "The size of the ztick marks."
         zticksize::Float64 = 6
         "The color of x spine 1 where the ticks are displayed"
-        xspinecolor_1::RGBAf = :black
+        xspinecolor_1 = :black
         "The color of y spine 1 where the ticks are displayed"
-        yspinecolor_1::RGBAf = :black
+        yspinecolor_1 = :black
         "The color of z spine 1 where the ticks are displayed"
-        zspinecolor_1::RGBAf = :black
+        zspinecolor_1 = :black
         "The color of x spine 2 towards the center"
-        xspinecolor_2::RGBAf = :black
+        xspinecolor_2 = :black
         "The color of y spine 2 towards the center"
-        yspinecolor_2::RGBAf = :black
+        yspinecolor_2 = :black
         "The color of z spine 2 towards the center"
-        zspinecolor_2::RGBAf = :black
+        zspinecolor_2 = :black
         "The color of x spine 3 opposite of the ticks"
-        xspinecolor_3::RGBAf = :black
+        xspinecolor_3 = :black
         "The color of y spine 3 opposite of the ticks"
-        yspinecolor_3::RGBAf = :black
+        yspinecolor_3 = :black
         "The color of z spine 3 opposite of the ticks"
-        zspinecolor_3::RGBAf = :black
+        zspinecolor_3 = :black
         "Controls if the 4. Spines are created to close the outline box"
         front_spines = false
         "The color of x spine 4"
-        xspinecolor_4::RGBAf = :black
+        xspinecolor_4 = :black
         "The color of y spine 4"
-        yspinecolor_4::RGBAf = :black
+        yspinecolor_4 = :black
         "The color of z spine 4"
-        zspinecolor_4::RGBAf = :black
+        zspinecolor_4 = :black
         "The x spine width"
         xspinewidth = 1
         "The y spine width"
@@ -2020,13 +2020,13 @@ end
         "The horizontal alignment of the title."
         titlealign = :center
         "The color of the title"
-        titlecolor::RGBAf = @inherit(:textcolor, :black)
+        titlecolor = @inherit(:textcolor, :black)
         "The color of the xy panel"
-        xypanelcolor::RGBAf = :transparent
+        xypanelcolor = :transparent
         "The color of the yz panel"
-        yzpanelcolor::RGBAf = :transparent
+        yzpanelcolor = :transparent
         "The color of the xz panel"
-        xzpanelcolor::RGBAf = :transparent
+        xzpanelcolor = :transparent
         "Controls if the xy panel is visible"
         xypanelvisible = true
         "Controls if the yz panel is visible"
@@ -2128,7 +2128,7 @@ end
         # Background / clip settings
 
         "The background color of the axis."
-        backgroundcolor::RGBAf = inherit(scene, :backgroundcolor, :white)
+        backgroundcolor = inherit(scene, :backgroundcolor, :white)
         "The density at which curved lines are sampled. (grid lines, spine lines, clip)"
         sample_density::Int = 90
         "Controls whether to activate the nonlinear clip feature. Note that this should not be used when the background is ultimately transparent."
@@ -2162,7 +2162,7 @@ end
         "The width of the spine."
         spinewidth::Float32 = 2
         "The color of the spine."
-        spinecolor::RGBAf = :black
+        spinecolor = :black
         "Controls whether the spine is visible."
         spinevisible::Bool = true
         "The linestyle of the spine."
@@ -2184,7 +2184,7 @@ end
         "The width of the rtick marks."
         rtickwidth::Float64 = 1.0f0
         "The color of the rtick marks."
-        rtickcolor::RGBAf = RGBf(0, 0, 0)
+        rtickcolor = RGBf(0, 0, 0)
 
         "The specifier for the minor `r` ticks."
         rminorticks = IntervalsBetween(2)
@@ -2198,7 +2198,7 @@ end
         "The tick width of r minor ticks"
         rminortickwidth::Float64 = 1.0f0
         "The tick color of r minor ticks"
-        rminortickcolor::RGBAf = :black
+        rminortickcolor = :black
 
         "The formatter for the `r` ticks"
         rtickformat = Makie.automatic
@@ -2207,7 +2207,7 @@ end
         "The font of the `r` tick labels."
         rticklabelfont = inherit(scene, (:Axis, :xticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `r` tick labels."
-        rticklabelcolor::RGBAf = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
+        rticklabelcolor = inherit(scene, (:Axis, :xticklabelcolor), inherit(scene, :textcolor, :black))
         "The width of the outline of `r` ticks. Setting this to 0 will remove the outline."
         rticklabelstrokewidth::Float32 = 0.0
         "The color of the outline of `r` ticks. By default this uses the background color."
@@ -2246,7 +2246,7 @@ end
         "The width of the theta tick marks."
         thetatickwidth::Float64 = 1.0f0
         "The color of the theta tick marks."
-        thetatickcolor::RGBAf = RGBf(0, 0, 0)
+        thetatickcolor = RGBf(0, 0, 0)
 
         "The specifier for the minor `theta` ticks."
         thetaminorticks = IntervalsBetween(2)
@@ -2260,7 +2260,7 @@ end
         "The tick width of theta minor ticks"
         thetaminortickwidth::Float64 = 1.0f0
         "The tick color of theha minor ticks"
-        thetaminortickcolor::RGBAf = :black
+        thetaminortickcolor = :black
 
         "The formatter for the `theta` ticks."
         thetatickformat = Makie.automatic
@@ -2269,7 +2269,7 @@ end
         "The font of the `theta` tick labels."
         thetaticklabelfont = inherit(scene, (:Axis, :yticklabelfont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the `theta` tick labels."
-        thetaticklabelcolor::RGBAf = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
+        thetaticklabelcolor = inherit(scene, (:Axis, :yticklabelcolor), inherit(scene, :textcolor, :black))
         "Padding of the `theta` ticks label."
         thetaticklabelpad::Float32 = 4.0f0
         "The width of the outline of `theta` ticks. Setting this to 0 will remove the outline."
@@ -2287,7 +2287,7 @@ end
         gridz::Float32 = -100
 
         "The color of the `r` grid."
-        rgridcolor::RGBAf = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
+        rgridcolor = inherit(scene, (:Axis, :xgridcolor), (:black, 0.5))
         "The linewidth of the `r` grid."
         rgridwidth::Float32 = inherit(scene, (:Axis, :xgridwidth), 1)
         "The linestyle of the `r` grid."
@@ -2296,7 +2296,7 @@ end
         rgridvisible::Bool = inherit(scene, (:Axis, :xgridvisible), true)
 
         "The color of the `r` minor grid."
-        rminorgridcolor::RGBAf = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
+        rminorgridcolor = inherit(scene, (:Axis, :xminorgridcolor), (:black, 0.2))
         "The linewidth of the `r` minor grid."
         rminorgridwidth::Float32 = inherit(scene, (:Axis, :xminorgridwidth), 1)
         "The linestyle of the `r` minor grid."
@@ -2307,7 +2307,7 @@ end
         # Theta minor and major grid
 
         "The color of the `theta` grid."
-        thetagridcolor::RGBAf = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
+        thetagridcolor = inherit(scene, (:Axis, :ygridcolor), (:black, 0.5))
         "The linewidth of the `theta` grid."
         thetagridwidth::Float32 = inherit(scene, (:Axis, :ygridwidth), 1)
         "The linestyle of the `theta` grid."
@@ -2317,7 +2317,7 @@ end
 
 
         "The color of the `theta` minor grid."
-        thetaminorgridcolor::RGBAf = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
+        thetaminorgridcolor = inherit(scene, (:Axis, :yminorgridcolor), (:black, 0.2))
         "The linewidth of the `theta` minor grid."
         thetaminorgridwidth::Float32 = inherit(scene, (:Axis, :yminorgridwidth), 1)
         "The linestyle of the `theta` minor grid."
@@ -2338,7 +2338,7 @@ end
         "The font of the title."
         titlefont = inherit(scene, (:Axis, :titlefont), inherit(scene, :font, Makie.defaultfont()))
         "The color of the title."
-        titlecolor::RGBAf = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
+        titlecolor = inherit(scene, (:Axis, :titlecolor), inherit(scene, :textcolor, :black))
         "Controls if the title is visible."
         titlevisible::Bool = inherit(scene, (:Axis, :titlevisible), true)
 
