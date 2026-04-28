@@ -95,6 +95,168 @@ function meshscatter_create!(hikari_scene, state, gb_mesh, transforms, materials
 end
 
 # =============================================================================
+# GPU-resident path helpers
+# =============================================================================
+
+"""
+    ensure_lava_rotations(rotation, n) -> LavaArray{Vec4f, 1}
+
+Convert a rotation argument to a `LavaArray{Vec4f, 1}` of length `n`,
+where each element is `Vec4f(x, y, z, w)` (unit quaternion).
+
+Accepts:
+- `LavaArray{Vec4f, 1}`: returned as-is (no copy).
+- `Quaternionf` scalar: broadcast identity quaternion over all n instances.
+- `Vec4f` scalar: broadcast over all n instances.
+- `AbstractVector{Quaternionf}`: convert each to Vec4f.
+- `AbstractVector{Vec4f}`: upload to GPU.
+
+Any other type errors loudly -- the GPU path does not support arbitrary
+rotation representations; convert to one of the above forms first.
+"""
+function ensure_lava_rotations(rotation, n::Int)
+    if rotation isa Lava.LavaArray{Vec4f, 1}
+        return rotation
+    elseif rotation isa Quaternionf
+        d = rotation.data  # (x, y, z, w)
+        q = Vec4f(d[1], d[2], d[3], d[4])
+        return Lava.LavaArray([q for _ in 1:n])
+    elseif rotation isa Vec4f
+        return Lava.LavaArray([rotation for _ in 1:n])
+    elseif rotation isa AbstractVector{Quaternionf}
+        length(rotation) == n || throw(ArgumentError(
+            "rotation length $(length(rotation)) != positions length $n"))
+        cpu = [Vec4f(q.data[1], q.data[2], q.data[3], q.data[4]) for q in rotation]
+        return Lava.LavaArray(cpu)
+    elseif rotation isa AbstractVector{Vec4f}
+        length(rotation) == n || throw(ArgumentError(
+            "rotation length $(length(rotation)) != positions length $n"))
+        return Lava.LavaArray(collect(rotation))
+    else
+        error("meshscatter GPU path: unsupported rotation type $(typeof(rotation)). " *
+              "Provide a Quaternionf scalar, Vec4f scalar, " *
+              "AbstractVector{Quaternionf}, AbstractVector{Vec4f}, or " *
+              "LavaArray{Vec4f, 1}.")
+    end
+end
+
+"""
+    uniform_scale_f32(markersize) -> Float32
+
+Extract a uniform scalar scale from `markersize`. Supports:
+- Number: converted to Float32 directly.
+- Vec3f with equal components: uses the first component.
+- Vec3f with unequal components: errors (non-uniform scale not supported on GPU path).
+
+Per-instance markersize (AbstractVector) is not yet supported on the GPU
+path -- use a uniform scalar instead.
+"""
+function uniform_scale_f32(markersize)
+    if markersize isa Number
+        return Float32(markersize)
+    elseif markersize isa Vec3f
+        if markersize[1] ≈ markersize[2] ≈ markersize[3]
+            return Float32(markersize[1])
+        else
+            error("meshscatter GPU path: non-uniform Vec3f markersize $markersize " *
+                  "is not supported. Use a scalar Float32 markersize.")
+        end
+    elseif markersize isa AbstractVector
+        error("meshscatter GPU path: per-instance markersize (AbstractVector) " *
+              "is not supported. Use a uniform scalar Float32 markersize.")
+    else
+        error("meshscatter GPU path: unsupported markersize type $(typeof(markersize)).")
+    end
+end
+
+"""
+    meshscatter_create_gpu!(hikari_scene, state, gb_mesh,
+                             positions, rotations, scale, instance_mask)
+
+GPU-resident meshscatter first-sync path. Builds the BLAS from `gb_mesh`,
+allocates a `LavaArray{LavaInstanceRecord}` of length `n`, runs
+`write_meshscatter_instances_kernel` to fill it, registers the batch via
+`push!(tlas, mesh, instance_buf)`, and calls `Raycore.sync!` to build the TLAS.
+
+Returns a NamedTuple stored as the recipe's `trace_renderobject`:
+  `(handle, n_instances, instance_buf, blas_addr, scale, mask, gpu_path=true)`
+
+`state` may be `nothing` when called from tests.
+"""
+function meshscatter_create_gpu!(hikari_scene, state, gb_mesh::GeometryBasics.Mesh,
+                                  positions::Lava.LavaArray{Point3f, 1},
+                                  rotations::Lava.LavaArray{Vec4f, 1},
+                                  scale::Float32,
+                                  instance_mask::UInt8)
+    n = length(positions)
+    tlas = hikari_scene.accel
+
+    # Attach neutral TriangleMeta (medium_interface_idx=0, no area lights) so
+    # hwtlas_add_geometry! builds Triangle{TriangleMeta} matching the HWTLAS
+    # type parameter.  The GPU path does not register materials per-instance;
+    # the hit shader falls back to the face's material_idx=0 (transparent/miss)
+    # or is used in a physics-visibility-only mode.
+    gb_faces = GeometryBasics.faces(gb_mesh)
+    n_faces = length(gb_faces)
+    face_meta = [Hikari.TriangleMeta(UInt32(0), UInt32(i), UInt32(0)) for i in 1:n_faces]
+    mesh_with_meta = GeometryBasics.mesh(gb_mesh;
+                                          face_meta=GeometryBasics.per_face(face_meta, gb_mesh))
+
+    # Allocate the instance buffer (must have AS_INPUT_USAGE so the driver can
+    # use it as an AS build input).
+    instance_buf = Lava.LavaArray{Lava.LavaInstanceRecord}(undef, n;
+                                                             extra_usage=Lava.AS_INPUT_USAGE)
+
+    # push!(tlas, mesh_with_meta, instance_buf) builds the BLAS internally and
+    # registers the batch in tlas.instance_batches.  The BLAS address is now
+    # available.
+    handle = Base.push!(tlas, mesh_with_meta, instance_buf; instance_mask=instance_mask)
+    blas_addr = tlas.instance_batches[end].blas.address
+
+    # Fill the instance buffer on the GPU.
+    backend = Lava.LavaBackend()
+    Lava.write_meshscatter_instances_kernel(backend)(
+        positions, rotations, scale, blas_addr, instance_mask, instance_buf;
+        ndrange = n)
+    Lava.vk_flush!(Lava.vk_context().default_bq)
+
+    # Build the TLAS from the now-filled instance buffer.
+    Raycore.sync!(tlas)
+
+    state !== nothing && (state.needs_film_clear = true)
+    return (handle=handle, n_instances=n, instance_buf=instance_buf,
+            blas_addr=blas_addr, scale=scale, mask=instance_mask, gpu_path=true)
+end
+
+"""
+    meshscatter_refit_gpu!(hikari_scene, state, positions, rotations, robj)
+
+GPU-resident meshscatter per-frame refit path. Re-runs
+`write_meshscatter_instances_kernel` into the existing instance buffer (fetched
+via `Raycore.instance_buffer`), then calls `Raycore.refit_tlas!`.
+
+`robj` must be the NamedTuple returned by a prior `meshscatter_create_gpu!` call.
+Returns the same `robj` (handle/instance_buf identity is preserved).
+"""
+function meshscatter_refit_gpu!(hikari_scene, state,
+                                 positions::Lava.LavaArray{Point3f, 1},
+                                 rotations::Lava.LavaArray{Vec4f, 1},
+                                 robj)
+    tlas = hikari_scene.accel
+    instance_buf = Raycore.instance_buffer(tlas, robj.handle)
+
+    backend = Lava.LavaBackend()
+    Lava.write_meshscatter_instances_kernel(backend)(
+        positions, rotations, robj.scale, robj.blas_addr, robj.mask, instance_buf;
+        ndrange = robj.n_instances)
+    Lava.vk_flush!(Lava.vk_context().default_bq)
+
+    Raycore.refit_tlas!(tlas)
+    state !== nothing && (state.needs_film_clear = true)
+    return robj
+end
+
+# =============================================================================
 # draw_atomic — granular compute graph
 # =============================================================================
 
@@ -131,14 +293,54 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.MeshScatter)
     # calls with data can't assign a NamedTuple to Ref{Nothing}.
     # Instead, meshscatter_create! handles empty transforms naturally (0 TLAS entries).
     #
-    # Always do a full delete+recreate when anything changes.  In-place transform
-    # updates via first_instance_idx are unsafe: when multiple meshscatter plots
-    # exist, one plot's deletion shifts the indices of all others.
+    # GPU-resident path: when positions is a LavaArray{Point3f, 1} the recipe
+    # bypasses the CPU transform pipeline and drives TLAS instances directly from
+    # GPU buffers via write_meshscatter_instances_kernel + refit_tlas!.
+    # The CPU path (Vector positions) is preserved unchanged for backward compat.
     register_computation!(attr, [:trace_marker_mesh, :trace_transforms, :trace_materials], [:trace_renderobject]) do args, changed, last
         gb_mesh = args.trace_marker_mesh
         transforms = args.trace_transforms
         materials = args.trace_materials
 
+        # --- GPU-resident branch ---
+        # Positions Observable value (before f32c transform) determines the path.
+        positions_raw = to_value(attr[:positions])
+        if positions_raw isa Lava.LavaArray{Point3f, 1}
+            n = length(positions_raw)
+            rotation_raw = to_value(attr[:rotation])
+            rotations_arr = ensure_lava_rotations(rotation_raw, n)
+            scale = uniform_scale_f32(to_value(attr[:markersize]))
+            mask = UInt8(0x04)
+
+            robj = isnothing(last) || isnothing(last.trace_renderobject) ||
+                   !hasproperty(last.trace_renderobject, :gpu_path) ?
+                   nothing : last.trace_renderobject
+
+            if robj === nothing || changed.trace_marker_mesh || n != robj.n_instances
+                # Full rebuild path.
+                # If a prior GPU batch exists and the marker or count changed, we
+                # cannot delete the old batch from HWTLAS (batch deletion is not yet
+                # implemented). For the physics demo use case this branch should
+                # never be hit after the first frame -- positions count and marker
+                # geometry are fixed across frames. Error loudly if it happens so
+                # the caller knows to build a fresh plot.
+                if robj !== nothing && (changed.trace_marker_mesh || n != robj.n_instances)
+                    error("meshscatter GPU path: marker mesh or instance count changed " *
+                          "after initial sync. The GPU-resident path does not support " *
+                          "in-place batch replacement. Build a new meshscatter plot " *
+                          "instead of updating the existing one.")
+                end
+                return (meshscatter_create_gpu!(hikari_scene, state, gb_mesh,
+                                                positions_raw, rotations_arr,
+                                                scale, mask),)
+            else
+                # Incremental: re-derive instance records and refit TLAS.
+                return (meshscatter_refit_gpu!(hikari_scene, state,
+                                               positions_raw, rotations_arr, robj),)
+            end
+        end
+
+        # --- CPU path (unchanged) ---
         n_instances = length(transforms)
 
         if isnothing(last) || isnothing(last.trace_renderobject) || !hasproperty(last.trace_renderobject, :handles)
