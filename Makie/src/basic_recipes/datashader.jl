@@ -6,7 +6,7 @@ module Aggregation
     abstract type AggOp end
 
     """
-        Canvas(bounds::Rect2; resolution::Tuple{Int,Int}=(800, 800), op=AggCount())
+        Canvas(bounds::Rect2; resolution::Tuple{Int, Int} = (800, 800), op = AggCount())
         Canvas(xmin::Number, xmax::Number, ymin::Number, ymax::Number; args...)
 
     # Example
@@ -32,7 +32,7 @@ module Aggregation
     end
 
     """
-        get_aggregation(canvas::Canvas; operation=equalize_histogram, local_operation=identity, result=similar(canvas.pixelbuffer, canvas.resolution))
+        get_aggregation(canvas::Canvas; operation = equalize_histogram, local_operation = identity, result = similar(canvas.pixelbuffer, canvas.resolution))
 
     Basically does `operation(map!(local_operation, result, canvas.pixelbuffer))`, but does the correct reshaping of the flat pixelbuffer and
     simplifies passing a local or global operation.
@@ -128,7 +128,7 @@ module Aggregation
     using InteractiveUtils
 
     """
-        aggregate!(c::Canvas, points; point_transform=identity, method::AggMethod=AggSerial())
+        aggregate!(c::Canvas, points; point_transform = identity, method::AggMethod = AggSerial())
 
     Aggregate points into a canvas. The points are transformed by `point_transform` before aggregation.
     Method can be `AggSerial()` or `AggThreads()`.
@@ -275,7 +275,7 @@ function equalize_histogram(matrix; nbins = 256)
 end
 
 """
-    datashader(points::AbstractVector{<: Point})
+    datashader(points::AbstractVector{<:Point})
 
 !!! warning
     This feature might change outside breaking releases, since the API is not yet finalized.
@@ -517,7 +517,7 @@ function xy_to_rect(x, y)
 end
 
 """
-    Resampler(matrix; max_resolution=automatic, method=Interpolations.Linear(), update_while_button_pressed=false)
+    Resampler(matrix; max_resolution = automatic, method = Interpolations.Linear(), update_while_button_pressed = false)
 
 Creates a resampling type which can be used with `heatmap`, to display large images/heatmaps.
 Passed can be any array that supports `array(linrange, linrange)`, as the interpolation interface from Interpolations.jl.

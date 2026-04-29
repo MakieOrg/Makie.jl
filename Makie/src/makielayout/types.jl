@@ -1035,11 +1035,14 @@ SliderGrid(fig_or_scene, nts::NamedTuple...; kwargs...)
 ## Examples
 
 ```julia
-sg = SliderGrid(fig[1, 1],
+sg = SliderGrid(
+    fig[1, 1],
     (label = "Amplitude", range = 0:0.1:10, startvalue = 5),
     (label = "Frequency", range = 0:0.5:50, format = "{:.1f}Hz", startvalue = 10),
-    (label = "Phase", range = 0:0.01:2pi,
-        format = x -> string(round(x/pi, digits = 2), "π"))
+    (
+        label = "Phase", range = 0:0.01:2pi,
+        format = x -> string(round(x / pi, digits = 2), "π"),
+    )
 )
 ```
 
@@ -1231,7 +1234,7 @@ Toggle(fig_or_scene; kwargs...)
 ```julia
 t_horizontal = Toggle(fig[1, 1])
 t_vertical = Toggle(fig[2, 1], orientation = :vertical)
-t_diagonal = Toggle(fig[3, 1], orientation = pi/4)
+t_diagonal = Toggle(fig[3, 1], orientation = pi / 4)
 on(t_vertical.active) do switch_is_on
     switch_is_on ? println("good morning!") : println("good night")
 end

@@ -70,11 +70,11 @@ We thus implement
 import Makie: show_data
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Lines)
-    return show_barplot(inspector, plot, div(idx-1, 6)+1)
+    return show_barplot(inspector, plot, div(idx - 1, 6) + 1)
 end
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
-    return show_barplot(inspector, plot, div(idx-1, 4)+1)
+    return show_barplot(inspector, plot, div(idx - 1, 4) + 1)
 end
 ```
 

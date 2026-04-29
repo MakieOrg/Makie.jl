@@ -44,7 +44,7 @@ Instead of the above, we could also have written:
 
 ```julia
 function change_function(hue)
-    lineplot.color = HSV(hue, 1, 0.75)
+    return lineplot.color = HSV(hue, 1, 0.75)
 end
 
 record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = framerate)
@@ -168,10 +168,10 @@ limits!(ax, -4, 4, -4, 4)
 fps = 60
 nframes = 120
 
-for i = 1:nframes
+for i in 1:nframes
     new_point = Point2f(randn(2))
     points[] = push!(points[], new_point)
-    sleep(1/fps) # refreshes the display!
+    sleep(1 / fps) # refreshes the display!
 end
 ```
 

@@ -118,7 +118,7 @@ function ztickrange(scene)
 end
 
 """
-    ticks!([scene,]; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+    ticks!([scene]; tickranges = tickranges(scene), ticklabels = ticklabels(scene))
 
 Set the tick labels and ranges along all axes. The respective labels and ranges
 along each axis must be of the same length.
@@ -135,7 +135,7 @@ function ticks!(scene::Scene; tickranges = tickranges(scene), ticklabels = tickl
 end
 
 """
-    xticks!([scene,]; xtickrange=xtickrange(scene), xticklabels=xticklabel(scene))
+    xticks!([scene]; xtickrange = xtickrange(scene), xticklabels = xticklabel(scene))
 
 Set the tick labels and range along the x-axis. See also `ticks!`.
 """
@@ -145,7 +145,7 @@ function xticks!(scene::Scene; xtickrange = xtickrange(scene), xticklabels = xti
 end
 
 """
-    yticks!([scene,]; ytickrange=ytickrange(scene), yticklabels=yticklabel(scene))
+    yticks!([scene]; ytickrange = ytickrange(scene), yticklabels = yticklabel(scene))
 
 Set the tick labels and range along all the y-axis. See also `ticks!`.
 """
@@ -161,7 +161,7 @@ function yticks!(scene::Scene; ytickrange = ytickrange(scene), yticklabels = yti
 end
 
 """
-    zticks!([scene,]; ztickranges=ztickrange(scene), zticklabels=zticklabel(scene))
+    zticks!([scene]; ztickranges = ztickrange(scene), zticklabels = zticklabel(scene))
 
 Set the tick labels and range along all z-axis. See also `ticks!`.
 """

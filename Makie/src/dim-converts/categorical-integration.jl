@@ -1,5 +1,5 @@
 """
-    CategoricalConversion(; sortby=identity)
+    CategoricalConversion(; sortby = identity)
 
 Categorical conversion. Gets chosen automatically only for `Categorical(array_of_objects)` and `Enums` right now.
 The categories work with any sortable value though, so one can always do `Axis(fig; dim1_conversion=CategoricalConversion())`,
@@ -20,8 +20,8 @@ struct Named
 end
 Base.show(io::IO, s::SomeStruct) = println(io, "[\$(s.value)]")
 
-conversion = Makie.CategoricalConversion(sortby=x->x.value)
-barplot(Named.([:a, :b, :c]), 1:3, axis=(dim1_conversion=conversion,))
+conversion = Makie.CategoricalConversion(sortby = x -> x.value)
+barplot(Named.([:a, :b, :c]), 1:3, axis = (dim1_conversion = conversion,))
 ```
 """
 struct CategoricalConversion <: AbstractDimConversion

@@ -132,7 +132,7 @@ The following signatures are defined to make `MyPlot` nice to use:
 A specialization of `argument_names` is emitted if you have an argument list
 `(x,y,z)` provided to the recipe macro:
 
-    argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
+    argument_names(::Type{<:MyPlot}) = (:x, :y, :z)
 
 This is optional but it will allow the use of `plot_object[:x]` to
 fetch the first argument from the call
@@ -146,7 +146,7 @@ specialization of `default_theme` which inserts the theme into any scene that
 plots `MyPlot`:
 
     function default_theme(scene, ::MyPlot)
-        Attributes(
+        return Attributes(
             plot_color = :red
         )
     end
@@ -159,19 +159,19 @@ plotting of the `MyPlot` object by specializing `plot!`:
         # or atomic plotting operations, and adding to the combined `plot`:
         lines!(plot, rand(10), color = plot[:plot_color])
         plot!(plot, plot[:x], plot[:y])
-        plot
+        return plot
     end
 
 It's possible to add specializations here, depending on the argument *types*
 supplied to `myplot`. For example, to specialize the behavior of `myplot(a)`
 when `a` is a 3D array of floating point numbers:
 
-    const MyVolume = MyPlot{Tuple{<:AbstractArray{<: AbstractFloat, 3}}}
-    argument_names(::Type{<: MyVolume}) = (:volume,) # again, optional
+    const MyVolume = MyPlot{Tuple{<:AbstractArray{<:AbstractFloat, 3}}}
+    argument_names(::Type{<:MyVolume}) = (:volume,) # again, optional
     function plot!(plot::MyVolume)
         # plot a volume with a colormap going from fully transparent to plot_color
         volume!(plot, plot[:volume], colormap = :transparent => plot[:plot_color])
-        plot
+        return plot
     end
 
 The docstring given to the recipe will be transferred to the functions it generates.
@@ -649,7 +649,7 @@ function expand_mixin(e::Expr)
 end
 
 """
-    Plot(args::Vararg{DataType,N})
+    Plot(args::Vararg{DataType, N})
 
 Returns the Plot type that represents the signature of `args`.
 Example:
@@ -688,7 +688,7 @@ Any custom argument combination that has a preferred way to be plotted should ov
 e.g.:
 ```julia
     # make plot(rand(5, 5, 5)) plot as a volume
-    plottype(x::Array{<: AbstractFloat, 3}) = Volume
+plottype(x::Array{<:AbstractFloat, 3}) = Volume
 ```
 """
 plottype(plot_args...) = Plot{plot} # default to dispatch to type recipes!

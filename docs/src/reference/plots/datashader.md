@@ -128,10 +128,11 @@ end
 
 # ~0.06s
 @time begin
-    f, ax, dsplot = datashader(points;
-        colormap=:fire,
-        axis=(; type=Axis, autolimitaspect = 1),
-        figure=(;figure_padding=0, size=(1200, 600))
+    f, ax, dsplot = datashader(
+        points;
+        colormap = :fire,
+        axis = (; type = Axis, autolimitaspect = 1),
+        figure = (; figure_padding = 0, size = (1200, 600))
     )
     # Zoom into the hotspot
     limits!(ax, Rect2f(-74.175, 40.619, 0.5, 0.25))
@@ -163,15 +164,15 @@ points = Mmap.mmap(open(path, "r"), Vector{Point2f});
         # For a big dataset its interesting to see how long each aggregation takes
         show_timings = true,
         # Use a local operation which is faster to calculate and looks good!
-        local_operation=x-> log10(x + 1),
+        local_operation = x -> log10(x + 1),
         #=
             in the code we used to save the binary, we had the points in the wrong order.
             A good chance to demonstrate the `point_transform` argument,
             Which gets applied to every point before aggregating it
         =#
-        point_transform=reverse,
-        axis=(; type=Axis, autolimitaspect = 1),
-        figure=(;figure_padding=0, size=(1200, 600))
+        point_transform = reverse,
+        axis = (; type = Axis, autolimitaspect = 1),
+        figure = (; figure_padding = 0, size = (1200, 600))
     )
     hidedecorations!(ax)
     hidespines!(ax)
@@ -217,18 +218,18 @@ fig
 We can also reuse the previous NYC example for a categorical plot:
 ```julia
 @time begin
-    f = Figure(figure_padding=0, size=(1200, 600))
+    f = Figure(figure_padding = 0, size = (1200, 600))
     ax = Axis(
         f[1, 1],
-        autolimitaspect=1,
-        limits=(-74.022, -73.827, 40.696, 40.793),
-        backgroundcolor=:black
+        autolimitaspect = 1,
+        limits = (-74.022, -73.827, 40.696, 40.793),
+        backgroundcolor = :black
     )
     datashader!(ax, groups, points)
     hidedecorations!(ax)
     hidespines!(ax)
     # Create a styled legend
-    axislegend("Vendor ID"; titlecolor=:white, framecolor=:grey, polystrokewidth=2, polystrokecolor=(:white, 0.5), rowgap=10, backgroundcolor=:black, labelcolor=:white)
+    axislegend("Vendor ID"; titlecolor = :white, framecolor = :grey, polystrokewidth = 2, polystrokecolor = (:white, 0.5), rowgap = 10, backgroundcolor = :black, labelcolor = :white)
     display(f)
 end
 ```

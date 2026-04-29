@@ -1,7 +1,7 @@
 # Spinner components for loading indication
 
 """
-    CircleSpinner(; size=40, stroke=4, color="currentColor", background_color="rgba(0, 0, 0, 0.1)", duration=1)
+    CircleSpinner(; size = 40, stroke = 4, color = "currentColor", background_color = "rgba(0, 0, 0, 0.1)", duration = 1)
 
 A circular CSS spinner component that shows a loading animation.
 This is the default spinner for WGLMakie scene loading.
@@ -22,8 +22,8 @@ ensuring that each scene gets its own spinner instance (avoiding shared DOM issu
 WGLMakie.activate!()
 
 # Customize spinner appearance
-spinner = WGLMakie.CircleSpinner(size=60, stroke=6, color="blue")
-WGLMakie.activate!(; spinner=spinner)
+spinner = WGLMakie.CircleSpinner(size = 60, stroke = 6, color = "blue")
+WGLMakie.activate!(; spinner = spinner)
 ```
 
 # Custom Spinners

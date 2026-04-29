@@ -114,23 +114,27 @@ time = 1:500
 stock_price = cumsum(randn(500) .+ 0.5)
 
 # Create a figure
-fig = Figure(size=(800, 600))
+fig = Figure(size = (800, 600))
 
 # Main plot
-ax_main = Axis(fig[1, 1],
-    title="Stock Price Over Time",
-    xlabel="Days",
-    ylabel="Price")
+ax_main = Axis(
+    fig[1, 1],
+    title = "Stock Price Over Time",
+    xlabel = "Days",
+    ylabel = "Price"
+)
 
-line_main = lines!(ax_main, time, stock_price, color=:blue)
+line_main = lines!(ax_main, time, stock_price, color = :blue)
 
 # Inset axis
-ax_inset = Axis(fig[1, 1],
-    width=Relative(0.2),
-    height=Relative(0.2),
-    halign=0.1,
-    valign=0.9,
-    title="Zoomed View")
+ax_inset = Axis(
+    fig[1, 1],
+    width = Relative(0.2),
+    height = Relative(0.2),
+    halign = 0.1,
+    valign = 0.9,
+    title = "Zoomed View"
+)
 
 # Set xlims for a selected time data range
 xlims!(ax_inset, 50, 70)
@@ -140,7 +144,7 @@ min_price, max_price = extrema(stock_price[50:70])
 ylims!(ax_inset, min_price, max_price)
 
 # Plot the data in the inset axis
-line_inset = lines!(ax_inset, time, stock_price, color=:red)
+line_inset = lines!(ax_inset, time, stock_price, color = :red)
 
 # Z-Ordering for rendering order
 translate!(ax_inset.blockscene, 0, 0, 150)
@@ -150,7 +154,7 @@ Legend(fig[1, 2], [line_main, line_inset], ["Stock Price", "Zoomed Region"])
 
 # Mark the zoomed section (x, y, width, height)
 border_rect = Rect2(50, min_price, 20, max_price - min_price)
-lines!(ax_main, border_rect, color=:black, linewidth=1)
+lines!(ax_main, border_rect, color = :black, linewidth = 1)
 
 fig
 ```

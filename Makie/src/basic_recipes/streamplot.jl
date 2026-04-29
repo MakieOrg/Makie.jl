@@ -11,8 +11,8 @@ and must return a subtype of `VecTypes{2}` or `VecTypes{3}`, for example a
 
 Example:
 ```julia
-v(x::Point2{T}) where T = Point2f(x[2], 4*x[1])
-streamplot(v, -2..2, -2..2)
+v(x::Point2{T}) where {T} = Point2f(x[2], 4 * x[1])
+streamplot(v, -2 .. 2, -2 .. 2)
 ```
 
 ## Implementation

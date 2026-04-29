@@ -1,5 +1,5 @@
 """
-    DQConversion(unit=automatic; units_in_label=false)
+    DQConversion(unit = automatic; units_in_label = false)
 
 Allows to plot arrays of DynamicQuantity objects into an axis.
 
@@ -19,7 +19,7 @@ Fix unit to always use Meter & display unit in the xlabel:
 ```julia
 dqc = Makie.DQConversion(us"m"; units_in_label = false)
 
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=dqc, xlabel="x (km)"))
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis = (dim2_conversion = dqc, xlabel = "x (km)"))
 ```
 """
 struct DQConversion <: AbstractDimConversion

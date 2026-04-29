@@ -85,7 +85,7 @@ function Makie.pick(::Scene, screen::Screen, r::Rect2)
 end
 
 """
-    ToolTip(figurelike, js_callback; plots=plots_you_want_to_hover)
+    ToolTip(figurelike, js_callback; plots = plots_you_want_to_hover)
 
 Returns a Bonito DOM element, which creates a popup whenever you click on a plot element in `plots`.
 The content of the popup is filled with the return value of js_callback, which can be a string or `HTMLNode`.

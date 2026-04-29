@@ -402,8 +402,8 @@ In this example, we sample from the Scene `scene` for 10 seconds, at a rate of 1
 ```julia
 fps = 10
 record(scene, "test.mp4"; framerate = fps) do io
-    for i = 1:100
-        sleep(1/fps)
+    for i in 1:100
+        sleep(1 / fps)
         recordframe!(io)
     end
 end

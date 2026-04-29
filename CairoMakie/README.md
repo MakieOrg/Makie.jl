@@ -35,7 +35,7 @@ canvas = @GtkCanvas()
 window = GtkWindow(canvas, "Makie", 500, 500)
 
 function drawonto(canvas, figure)
-    @guarded draw(canvas) do _
+    return @guarded draw(canvas) do _
         scene = figure.scene
         resize!(scene, Gtk.width(canvas), Gtk.height(canvas))
         config = CairoMakie.ScreenConfig(1.0, 1.0, :good, true, true)

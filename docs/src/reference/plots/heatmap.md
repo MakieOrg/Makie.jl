@@ -182,7 +182,7 @@ using Downloads, FileIO, GLMakie
 # 30000×22943 image
 path = Downloads.download("https://upload.wikimedia.org/wikipedia/commons/7/7e/In_the_Conservatory.jpg")
 img = rotr90(load(path))
-f, ax, pl = heatmap(Resampler(img); axis=(; aspect=DataAspect()), figure=(;size=size(img)./20))
+f, ax, pl = heatmap(Resampler(img); axis = (; aspect = DataAspect()), figure = (; size = size(img) ./ 20))
 hidedecorations!(ax)
 f
 ```
@@ -195,11 +195,15 @@ For better down sampling quality we recommend using `Makie.Pyramid` (might be mo
 ```julia
 pyramid = Makie.Pyramid(img)
 fsize = (size(img) ./ 30) .* (1, 2)
-fig, ax, pl = heatmap(Resampler(pyramid);
-    axis=(; aspect=DataAspect(), title="Pyramid"), figure=(; size=fsize))
+fig, ax, pl = heatmap(
+    Resampler(pyramid);
+    axis = (; aspect = DataAspect(), title = "Pyramid"), figure = (; size = fsize)
+)
 hidedecorations!(ax)
-ax, pl = heatmap(fig[2, 1], Resampler(img1);
-    axis=(; aspect=DataAspect(), title="No Pyramid"))
+ax, pl = heatmap(
+    fig[2, 1], Resampler(img1);
+    axis = (; aspect = DataAspect(), title = "No Pyramid")
+)
 hidedecorations!(ax)
 save("heatmap-pyramid.png", fig)
 ```

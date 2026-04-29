@@ -47,7 +47,7 @@ Locally, WGLMakie should just work out of the box for Pluto/IJulia. However, if 
 begin
     using Bonito
     some_forwarded_port = 8080
-    Page(listen_url="0.0.0.0", listen_port=some_forwarded_port)
+    Page(listen_url = "0.0.0.0", listen_port = some_forwarded_port)
 end
 ```
 
@@ -78,7 +78,7 @@ WGLMakie shows a loading spinner while the scene is being initialized. By defaul
 To remove the spinner entirely, pass `nothing`:
 
 ```julia
-WGLMakie.activate!(; spinner=nothing)
+WGLMakie.activate!(; spinner = nothing)
 ```
 
 #### Styling the Default Spinner
@@ -89,13 +89,13 @@ The default `CircleSpinner` accepts several styling options:
 using WGLMakie
 # Customize the spinner's appearance
 spinner = WGLMakie.CircleSpinner(;
-    size=100,                                    # diameter in pixels
-    stroke=10,                                   # border width in pixels
-    color="red",                       # color of the spinning part
-    background_color="rgba(1, 0, 0, 0.9)",      # color of the background circle
-    duration=1                                  # rotation speed in seconds
+    size = 100,                                    # diameter in pixels
+    stroke = 10,                                   # border width in pixels
+    color = "red",                       # color of the spinning part
+    background_color = "rgba(1, 0, 0, 0.9)",      # color of the background circle
+    duration = 1                                  # rotation speed in seconds
 )
-WGLMakie.activate!(; spinner=spinner)
+WGLMakie.activate!(; spinner = spinner)
 ```
 
 #### Using a Custom Spinner
@@ -129,12 +129,12 @@ function Bonito.jsrender(session::Bonito.Session, spinner::TextSpinner)
             "font-size" => "14px",
         )
     )
-    return Bonito.jsrender(session, Bonito.DOM.div(container_styles, spinner.message; class="wglmakie-spinner"))
+    return Bonito.jsrender(session, Bonito.DOM.div(container_styles, spinner.message; class = "wglmakie-spinner"))
 end
 
 # Use the custom spinner
 custom_spinner = TextSpinner("Loading visualization...", "rgba(0, 0, 0, 0.7)")
-WGLMakie.activate!(; spinner=custom_spinner)
+WGLMakie.activate!(; spinner = custom_spinner)
 ```
 
 Note: The `wglmakie-spinner` class is required as WGLMakie uses it to find and remove the spinner once the scene is fully loaded.
@@ -171,8 +171,8 @@ WGLMakie.activate!(; use_html_widgets = true)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-sl = Makie.Slider(fig[2, 1], range = 0:0.1:10, startvalue = 5, tellwidth=false)
-btn = Makie.Button(fig[3, 1], label = "Click me", tellwidth=false)
+sl = Makie.Slider(fig[2, 1], range = 0:0.1:10, startvalue = 5, tellwidth = false)
+btn = Makie.Button(fig[3, 1], label = "Click me", tellwidth = false)
 x = 0:10
 lines!(ax, x, map(y -> sin.(y .* x), sl.value))
 fig # Will get rendered with HTML widgets
@@ -182,7 +182,7 @@ You can also use this locally in a Bonito app:
 
 ```julia
 App() do
-    DOM.div(WGLMakie.WithConfig(fig; use_html_widget=true))
+    DOM.div(WGLMakie.WithConfig(fig; use_html_widget = true))
 end
 ```
 
@@ -413,11 +413,13 @@ Bonito also offers the `Styles` type, which allows to define whole stylesheets a
 That's how Bonito creates styleable components:
 
 ```julia
-Rows(args...) = DOM.div(args..., style=Styles(
-    "display" => "grid",
-    "grid-template-rows" => "fr",
-    "grid-template-columns" => "repeat($(length(args)), fr)",
-))
+Rows(args...) = DOM.div(
+    args..., style = Styles(
+        "display" => "grid",
+        "grid-template-rows" => "fr",
+        "grid-template-columns" => "repeat($(length(args)), fr)",
+    )
+)
 ```
 This Style object will only be inserted one time into the DOM in one Session, and subsequent uses will just give the div the same class.
 
@@ -470,31 +472,37 @@ using WGLMakie, Bonito, FileIO
 WGLMakie.activate!()
 
 open("index.html", "w") do io
-    println(io, """
-    <html>
-        <head>
-        </head>
-        <body>
-    """)
-    Page(exportable=true, offline=true)
+    println(
+        io, """
+        <html>
+            <head>
+            </head>
+            <body>
+        """
+    )
+    Page(exportable = true, offline = true)
     # Then, you can just inline plots or whatever you want :)
     # Of course it would make more sense to put this into a single app
     app = App() do
-        C(x;kw...) = Card(x; height="fit-content", width="fit-content", kw...)
-        figure = (; size=(300, 300))
+        C(x; kw...) = Card(x; height = "fit-content", width = "fit-content", kw...)
+        figure = (; size = (300, 300))
         f1 = scatter(1:4; figure)
         f2 = mesh(load(assetpath("brain.stl")); figure)
-        C(DOM.div(
-            Bonito.StylableSlider(1:100),
-            Row(C(f1), C(f2))
-        ); padding="30px", margin="15px")
+        C(
+            DOM.div(
+                Bonito.StylableSlider(1:100),
+                Row(C(f1), C(f2))
+            ); padding = "30px", margin = "15px"
+        )
     end
     show(io, MIME"text/html"(), app)
     # or anything else from Bonito, or that can be displayed as html:
-    println(io, """
-        </body>
-    </html>
-    """)
+    println(
+        io, """
+            </body>
+        </html>
+        """
+    )
 end
 ```
 

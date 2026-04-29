@@ -8,10 +8,10 @@ Usage:
 ```julia
 using SparseArrays, GLMakie
 N = 200_000
-x = sprand(Float64, N, N, (3(10^6)) / (N*N));
+x = sprand(Float64, N, N, (3(10^6)) / (N * N));
 spy(x)
 # or if you want to specify the range of x and y:
-spy(0..1, 0..1, x)
+spy(0 .. 1, 0 .. 1, x)
 ```
 """
 @recipe Spy (x::EndPoints, y::EndPoints, z::RealMatrix) begin
@@ -23,8 +23,8 @@ spy(0..1, 0..1, x)
     ```julia
     data = sprand(10, 10, 0.5)
     f = Figure()
-    spy(f[1, 1], data; marker=FastPixel())
-    spy(f[1, 2], data; marker=FastPixel(), axis=(; aspect=1))
+    spy(f[1, 1], data; marker = FastPixel())
+    spy(f[1, 2], data; marker = FastPixel(), axis = (; aspect = 1))
     f
     ```
     """

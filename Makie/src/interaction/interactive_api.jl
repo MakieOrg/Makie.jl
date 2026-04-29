@@ -6,7 +6,7 @@ const PICK_TRACKING = Ref(false)
 const _PICK_COUNTER = Ref(0)
 
 """
-    mouseover(fig/ax/scene, plots::AbstractPlot...)
+    mouseover(fig / ax / scene, plots::AbstractPlot...)
 
 Returns true if the mouse currently hovers any of `plots`.
 """
@@ -17,7 +17,7 @@ function mouseover(scene::Scene, plots::AbstractPlot...)
 end
 
 """
-    onpick(f, fig/ax/scene, plots::AbstractPlot...)
+    onpick(f, fig / ax / scene, plots::AbstractPlot...)
 
 Calls `f(plot, idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
@@ -134,7 +134,7 @@ end
 using InteractiveUtils
 
 """
-    pick_sorted(fig/ax/scene, xy::VecLike, range)
+    pick_sorted(fig / ax / scene, xy::VecLike, range)
 
 Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region
 sorted by distance to `xy`. See [`pick`](@ref) for more details.

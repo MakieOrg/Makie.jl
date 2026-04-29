@@ -18,12 +18,12 @@ using Bonito
 app = App() do session, request
     return DOM.div(
         DOM.h1("Some Makie Plots:"),
-        meshscatter(1:4, color=1:4),
-        meshscatter(1:4, color=rand(RGBAf, 4)),
-        meshscatter(1:4, color=rand(RGBf, 4)),
-        meshscatter(1:4, color=:red),
-        meshscatter(rand(Point3f, 10), color=rand(RGBf, 10)),
-        meshscatter(rand(Point3f, 10), marker=WGLMakie.Pyramid(Point3f(0), 1f0, 1f0)),
+        meshscatter(1:4, color = 1:4),
+        meshscatter(1:4, color = rand(RGBAf, 4)),
+        meshscatter(1:4, color = rand(RGBf, 4)),
+        meshscatter(1:4, color = :red),
+        meshscatter(rand(Point3f, 10), color = rand(RGBf, 10)),
+        meshscatter(rand(Point3f, 10), marker = WGLMakie.Pyramid(Point3f(0), 1.0f0, 1.0f0)),
     )
 end
 isdefined(Main, :server) && close(server)

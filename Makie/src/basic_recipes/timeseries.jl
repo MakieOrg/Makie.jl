@@ -16,7 +16,7 @@ display(scene)
     signal[] = data
     # sleep/ wait for new data/ whatever...
     # It's important to yield here though, otherwise nothing will be rendered
-    sleep(1/30)
+    sleep(1 / 30)
 end
 
 ```

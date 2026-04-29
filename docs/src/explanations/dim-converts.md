@@ -58,7 +58,7 @@ And set them accordingly:
 
 ```julia
 f = Figure()
-ax = Axis(f[1, 1]; dim1_conversion=Makie.CategoricalConversion())
+ax = Axis(f[1, 1]; dim1_conversion = Makie.CategoricalConversion())
 ```
 
 ### Experimental DynamicQuantities.jl support

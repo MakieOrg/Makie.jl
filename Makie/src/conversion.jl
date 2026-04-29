@@ -123,7 +123,7 @@ end
 should_dim_convert(::Type) = false
 
 """
-    should_dim_convert(::Type{<: Plot}, args)::Bool
+    should_dim_convert(::Type{<:Plot}, args)::Bool
     should_dim_convert(eltype::DataType)::Bool
 
 Returns `true` if the plot type should convert its arguments via DimConversions.

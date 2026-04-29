@@ -18,7 +18,7 @@ end
 
 
 """
-    ray_at_cursor(fig/ax/scene)
+    ray_at_cursor(fig / ax / scene)
 
 Returns a Ray into the scene starting at the current cursor position.
 """

@@ -257,7 +257,7 @@ Will make sure to map one value to one color and create the correct Colorbar for
 
 Example:
 ```julia
-fig, ax, pl = barplot(1:3; color=1:3, colormap=Makie.Categorical(:viridis))
+fig, ax, pl = barplot(1:3; color = 1:3, colormap = Makie.Categorical(:viridis))
 ```
 
 !!! warning

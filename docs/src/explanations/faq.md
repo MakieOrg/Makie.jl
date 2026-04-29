@@ -36,11 +36,13 @@ Tiling the plot, as shown below, yields a correct image.
 ```julia
 sc = Scene()
 data = rand(Float32, 24900, 26620)
-heatmap!(sc, 1:size(data, 1)÷2, 1:size(data, 2)÷2, data[1:end÷2, 1:end÷2])
-heatmap!(sc, (size(data, 1)÷2 + 1):size(data, 1), 1:size(data, 2)÷2, data[(end÷2 + 1):end, 1:end÷2])
-heatmap!(sc, 1:size(data, 1)÷2, (size(data, 2)÷2 + 1):size(data, 2), data[1:end÷2, (end÷2 + 1):end])
-heatmap!(sc, (size(data, 1)÷2 + 1):size(data, 1), (size(data, 2)÷2 + 1):size(data, 2),
-         data[(end÷2 + 1):end, (end÷2 + 1):end])
+heatmap!(sc, 1:(size(data, 1) ÷ 2), 1:(size(data, 2) ÷ 2), data[1:(end ÷ 2), 1:(end ÷ 2)])
+heatmap!(sc, (size(data, 1) ÷ 2 + 1):size(data, 1), 1:(size(data, 2) ÷ 2), data[(end ÷ 2 + 1):end, 1:(end ÷ 2)])
+heatmap!(sc, 1:(size(data, 1) ÷ 2), (size(data, 2) ÷ 2 + 1):size(data, 2), data[1:(end ÷ 2), (end ÷ 2 + 1):end])
+heatmap!(
+    sc, (size(data, 1) ÷ 2 + 1):size(data, 1), (size(data, 2) ÷ 2 + 1):size(data, 2),
+    data[(end ÷ 2 + 1):end, (end ÷ 2 + 1):end]
+)
 ```
 ![tiled heatmap](https://user-images.githubusercontent.com/32143268/61105143-a3b35780-a496-11e9-83d1-bebe549aa593.png)
 

@@ -129,7 +129,7 @@ unit_convert(unit::T, value) where {T <: Union{Unitful.MixedUnits, Quantity{<:Un
 # Overload conversion functions for Axis, to properly display units
 
 """
-    UnitfulConversion(unit=automatic; units_in_label=false)
+    UnitfulConversion(unit = automatic; units_in_label = false)
 
 Allows to plot arrays of unitful objects into an axis.
 
@@ -149,8 +149,8 @@ scatter(1:4, [1u"ns", 2u"ns", 3u"ns", 4u"ns"])
 
 Fix unit to always use Meter & display unit in the ylabel:
 ```julia
-uc = Makie.UnitfulConversion(u"m"; units_in_label=false)
-scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis=(dim2_conversion=uc, ylabel="y (m)"))
+uc = Makie.UnitfulConversion(u"m"; units_in_label = false)
+scatter(1:4, [0.01u"km", 0.02u"km", 0.03u"km", 0.04u"km"]; axis = (dim2_conversion = uc, ylabel = "y (m)"))
 ```
 """
 struct UnitfulConversion <: AbstractDimConversion

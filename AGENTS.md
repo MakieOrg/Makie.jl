@@ -59,11 +59,13 @@ From the `.scratch/` directory, `dev` the local packages you need. Always dev `C
 ```julia
 using Pkg
 Pkg.activate(".scratch")
-Pkg.develop([
-    PackageSpec(path="ComputePipeline"),
-    PackageSpec(path="Makie"),
-    PackageSpec(path="CairoMakie"),  # or GLMakie, WGLMakie, ... as needed
-])
+Pkg.develop(
+    [
+        PackageSpec(path = "ComputePipeline"),
+        PackageSpec(path = "Makie"),
+        PackageSpec(path = "CairoMakie"),  # or GLMakie, WGLMakie, ... as needed
+    ]
+)
 ```
 
 ## Example Code for Testing

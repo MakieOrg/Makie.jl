@@ -38,7 +38,7 @@ We use [`Runic`](https://github.com/fredrikekre/Runic.jl) for code formatting.
 You should follow the instructions in the README of `Runic` to format the code.
 If you have the `runic` script installed, it should be sufficient to run
 ```sh
-$ runic --inplace src/ test/
+$ runic --inplace --extensions=jl,md --docstrings src/ test/
 ```
 for every workspace sub-package modified before finalizing the PR.
 

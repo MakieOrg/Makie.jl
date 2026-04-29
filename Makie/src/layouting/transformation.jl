@@ -216,7 +216,7 @@ function origin!(::Type{T}, t::Transformable, xyz::VecTypes) where {T}
 end
 
 """
-    transform!(transformable, plane_offset::Tuple{Symbol, <: Real})
+    transform!(transformable, plane_offset::Tuple{Symbol, <:Real})
 
 This function views the transformable (plot or scene) as an xy plane and transforms
 it to the given `plane_offset = (plane, offset)`. This implies a rotation of the
@@ -518,7 +518,7 @@ function Symlog10(lower, upper; linscale = 1)
 end
 
 """
-    AsinhScale(a=0.1)
+    AsinhScale(a = 0.1)
 
 An asinh scaling defined as
 ```math
@@ -533,7 +533,7 @@ function AsinhScale(a = 0.1)
 end
 
 """
-    SinhScale(a=1/3)
+    SinhScale(a = 1 / 3)
 A sinh scaling defined as
 ```math
 y = \\frac{\\text{sinh} \\left(x/a\\right)}{\\text{sinh} \\left(1/a\\right)}
@@ -547,7 +547,7 @@ function SinhScale(a = 1 / 3)
 end
 
 """
-    LogScale(a=1000, base=ℯ)
+    LogScale(a = 1000, base = ℯ)
 
 A logarithmic scaling defined as
 ```math
@@ -563,7 +563,7 @@ function LogScale(a = 1000, base = ℯ)
 end
 
 """
-    LuptonAsinhScale(a=0.1, Q=0.01, frac=0.1)
+    LuptonAsinhScale(a = 0.1, Q = 0.01, frac = 0.1)
 
 A modified asinh scaling based on
 [Lupton et al. 2004](https://ui.adsabs.harvard.edu/abs/2004PASP..116..133L)
@@ -584,7 +584,7 @@ function LuptonAsinhScale(a = 0.1, Q = 0.01, frac = 0.1)
 end
 
 """
-    PowerScale(a=1)
+    PowerScale(a = 1)
 
 A power-law scaling derived as ``y = x^a``.
 """

@@ -92,7 +92,7 @@ end
 # end
 
 """
-    Float32Convert([resolution = 1e4])
+    Float32Convert([resolution = 1.0e4])
 
 Creates a Float32Convert which acts as an additional conversion step when
 attached to a `scene` as `scene.float32convert`. The optional `resolution`
