@@ -23,6 +23,16 @@ end
 
 Base.size(pattern::ImagePattern) = size(pattern.img)
 
+function Base.isequal(a::ImagePattern, b::ImagePattern)
+    return isequal(a.img, b.img)
+end
+
+function Base.hash(p::ImagePattern, h::UInt)
+    return hash(p.img, hash(ImagePattern, h))
+end
+
+Base.:(==)(a::ImagePattern, b::ImagePattern) = isequal(a, b)
+
 """
     Pattern(image)
     Pattern(mask[; color1, color2])
@@ -52,6 +62,19 @@ end
 
 Base.size(pattern::LinePattern) = pattern.tilesize
 
+function Base.isequal(a::LinePattern, b::LinePattern)
+    return isequal(a.dirs, b.dirs) && isequal(a.widths, b.widths) && isequal(a.origins, b.origins) &&
+        isequal(a.tilesize, b.tilesize) && isequal(a.colors, b.colors)
+end
+
+function Base.hash(p::LinePattern, h::UInt)
+    return hash(
+        p.colors,
+        hash(p.tilesize, hash(p.origins, hash(p.widths, hash(p.dirs, hash(LinePattern, h))))),
+    )
+end
+
+Base.:(==)(a::LinePattern, b::LinePattern) = isequal(a, b)
 
 """
     LinePattern([; kwargs...])

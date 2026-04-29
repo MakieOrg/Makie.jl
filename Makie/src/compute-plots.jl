@@ -223,16 +223,39 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             scaled = el32convert(apply_scale(colorscale, color))
             auto_colorrange = Vec2f(distinct_extrema_nan(scaled))
             val = clamp.(scaled, -floatmax(Float32), floatmax(Float32))
+            is_pat = false
         elseif color isa AbstractPattern
             val = ShaderAbstractions.Sampler(add_alpha.(to_image(color), alpha), x_repeat = :repeat)
+            is_pat = true
         elseif color isa ShaderAbstractions.Sampler
             val = color
+            is_pat = true
         elseif color isa AbstractArray
-            val = add_alpha.(color, alpha)
+            if !isempty(color) && any(c -> c isa Colorant, color) && any(c -> c isa AbstractPattern, color)
+                error(
+                    "Mixing colorants and line patterns in one `color` array is not supported for a single merged mesh. " *
+                        "Use `poly`/`barplot` (they split meshes when needed), or for raw `mesh!` use only solid colors or only patterns, or separate plots.",
+                )
+            elseif !isempty(color) && all(c -> c isa AbstractPattern, color)
+                if allequal(color)
+                    p = first(color)
+                    val = ShaderAbstractions.Sampler(add_alpha.(to_image(p), alpha), x_repeat = :repeat)
+                    is_pat = true
+                else
+                    error(
+                        "Multiple different `LinePattern` fills require splitting the mesh (`poly`/`barplot` do this). " *
+                            "If you see this from `mesh!`, report it to Makie.jl.",
+                    )
+                end
+            else
+                val = add_alpha.(color, alpha)
+                is_pat = false
+            end
         else
             val = add_alpha(color, alpha)
+            is_pat = false
         end
-        return (color, val, color isa AbstractPattern, auto_colorrange)
+        return (color, val, is_pat, auto_colorrange)
     end
 
     return map!(
@@ -891,11 +914,38 @@ function attribute_per_pos!(attr, attribute::Symbol, output_name::Symbol)
 end
 
 
+"""
+    mesh_vertex_paint_eltype(ccolors::AbstractVector)
+
+Element type for expanding per-submesh colors or [`AbstractPattern`](@ref)s to per-vertex
+vectors. Uses `Union{...}` when types differ, since `typejoin` of e.g. `Colorant` and
+`LinePattern` is `Any`.
+"""
+function mesh_vertex_paint_eltype(ccolors::AbstractVector)
+    if isempty(ccolors)
+        return RGBAf
+    end
+    Ts = Tuple(unique(typeof(c) for c in ccolors))
+    if length(Ts) == 1
+        T = Ts[1]
+        if T <: Colorant
+            return float32type(ccolors)::Type{<:Colorant}
+        end
+        return T
+    end
+    if all(T -> T <: Colorant, Ts)
+        return float32type(ccolors)::Type{<:Colorant}
+    end
+    return Union{Ts...}
+end
+
 function color_per_mesh(ccolors, vertes_per_mesh)
-    result = similar(ccolors, float32type(ccolors), sum(vertes_per_mesh))
+    T = mesh_vertex_paint_eltype(ccolors)
+    n = sum(vertes_per_mesh)
+    result = Vector{T}(undef, n)
     i = 1
     for (cs, len) in zip(ccolors, vertes_per_mesh)
-        for j in 1:len
+        for _ in 1:len
             result[i] = cs
             i += 1
         end
