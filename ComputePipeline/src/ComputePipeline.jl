@@ -2025,6 +2025,26 @@ function set_type!(node::Computed, T::Type)
     return
 end
 
+"""
+    set_type!(view::ComputeGraphView, type)
+
+Initialize every uninitialized node in the view to the given `type`.
+"""
+function set_type!(view::ComputeGraphView, T::Type)
+    for (k, element) in view
+        maybe_set_type!(element, T)
+    end
+    return
+end
+
+maybe_set_type!(view::ComputeGraphView, T) = set_type!(view, T)
+function maybe_set_type!(node::Computed, T)
+    if !isdefined(node, :value)
+        set_type!(node, T)
+    end
+    return
+end
+
 include("io.jl")
 include("observables_compat.jl")
 include("utils.jl")
