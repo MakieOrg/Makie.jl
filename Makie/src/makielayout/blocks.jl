@@ -164,12 +164,12 @@ block is specified. These include:
 Attributes may optionally define a type `attr::T = value`. This effectively results in
 
 ```
-add_input!(BlockAttributeConvert{T}(), block.attributes, :attr, value)
+add_input!(x -> convert_for_attribute(T, x), block.attributes, :attr, value)
 ```
 
-being called to create the attribute. This means that any time `block.attr = new` is set,
-`BlockAttributeConvert{T}()(new)` is called. In the default case, this will perform a type
-assertion `new::T`, but it can also perform a conversion. For example, if `T <: Number` a
+being used to create the attribute. Every time the attribute is set, the value
+will be converted by `convert_for_attribute`. In the default case this will perform a type
+assertion `new::T` but it can also perform a conversion. For example, if `T <: Number` a
 type cast `T(new)` is performed and for `RGBAf` `to_color(new)` is called.
 
 ## Arguments
@@ -602,66 +602,31 @@ function connect_block_layoutobservables!(@nospecialize(block), layout_width, la
     return
 end
 
-"""
-    BlockAttributeConvert{TargetType}()
+# Should this be allowed?
+convert_for_attribute(::UnionAll, x) = x
 
-When a block attribute has a type assigned this callable struct is used to
-convert the data of that attribute to the assigned type.
-
-For example:
-```julia
-@Block ... begin
-    @attributes begin
-        attrib1::RGBAf = :black
+# If a concrete union is given, try each conversion option until one work
+function convert_for_attribute(t::Union, x)
+    try
+        y1 = convert_for_attribute(t.a, x)
+        (y1 isa t.a) && return y1
+    catch e
     end
-end
-```
-will generate a `converter = BlockAttributeConvert{RGBAf}()` and use it as a
-callback for the compute graph input `add_input!(converter, :attrib1, :black)`.
-Updating the input will then call
-```julia
-(::BlockAttributeConvert{RGBAf})(x) = to_color(x)::RGBAf
-```
-before setting a compute node strictly typed to `RGBAf`.
 
-If no method exists for a specific target type, no conversions happen. This
-means the attribute only accepts values of the given type (and its subtypes).
-If no type is given `Any` is used.
-"""
-struct BlockAttributeConvert{Target} end
-struct MultiBlockAttributeConvert{T}
-    converts::T
-end
-
-Base.eltype(::BlockAttributeConvert{T}) where {T} = T
-union_to_tuple(u::Union) = (u.a, union_to_tuple(u.b)...)
-union_to_tuple(T) = (T,)
-
-function BlockAttributeConvert(Target::Union)
-    converts = map(T -> BlockAttributeConvert{T}(), union_to_tuple(Target))
-    return MultiBlockAttributeConvert{typeof(converts)}(converts)
-end
-BlockAttributeConvert(Target) = BlockAttributeConvert{Target}()
-
-(::BlockAttributeConvert{T})(x) where {T} = x::T
-function (mbac::MultiBlockAttributeConvert)(x)
-    y = x
-    for bac in mbac.converts
-        x isa eltype(bac) && return x
-        try
-            _y = bac(x)
-            if _y isa eltype(bac)
-                y = _y
-            end
-        catch e
-        end
+    try
+        y2 = convert_for_attribute(t.b, x)
+        (y2 isa t.b) && return y2
+    catch e
     end
-    return y
+
+    return x
 end
-(bac::BlockAttributeConvert{<:VecTypes})(x) = convert(eltype(bac), x)
-(::BlockAttributeConvert{T})(x) where {T <: Number} = T(x)
-(::BlockAttributeConvert{<:RGBAf})(x) = to_color(x)::RGBAf
-(::BlockAttributeConvert{<:FreeTypeAbstraction.FTFont})(x) = to_font(x)
+
+convert_for_attribute(::Any, x) = x
+convert_for_attribute(::Type{T}, x) where {T <: VecTypes} = convert(T, x)
+convert_for_attribute(::Type{T}, x) where {T <: Number} = convert(T, x)
+convert_for_attribute(::Type{RGBAf}, x) = to_color(x)::RGBAf
+convert_for_attribute(::Type{FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 function add_attributes!(T::Type{<:Block}, graph, attributes)
     return _add_attributes!(T, graph, attributes)
@@ -671,7 +636,7 @@ function _add_attributes!(T::Type{<:Block}, graph::AbstractComputeGraph, attribu
     typedict = attribute_types(T)
     for (key, attrib) in attributes
         type = get(typedict, key, Any)
-        add_input!(BlockAttributeConvert(type), graph, key, attrib)
+        add_input!(x -> convert_for_attribute(type, x), graph, key, attrib)
         ComputePipeline.set_type!(graph[key], type)
     end
     return

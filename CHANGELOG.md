@@ -33,7 +33,7 @@
   - Like traditional blocks, attributes are defined in a `@attribute begin ... end` block within `@Block`. Names defined outside this will be added as fields instead.
   - `convert_arguments(::Type{MyBlock}, args...)` can be defined as a conversion between user passed arguments and converted arguments. Note that blocks are not parametric types so `<:MyBlock` is not needed
   - Similarly `conversion_trait(::Type{MyBlock})` can also be defined
-  - Attribute converts rely on methods of `(::BlockAttributeConvert{Type}(name::Symbol, user_input))`.
+  - Attribute converts rely on methods of `Makie.convert_for_attribute(::Type{T}, user_input)`.
   - `initialize_block!(b::MyBlock)` is used to initialize the recipe with blocks and plots analogously to `plot!(p::MyPlot)`. The parent block `b::MyBlock` should be treated like a figure here, e.g. `Axis(b[1, 1])`
   - After defining the block, it can be added to a figure like any other block `mb = MyBlock(fig[1, 1])`.
   - The blocks within `MyBlock` can be accessed via the layout `mb.layout`, `mb.blocks` or `mb[i, j]`.
