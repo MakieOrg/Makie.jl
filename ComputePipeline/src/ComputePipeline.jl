@@ -651,15 +651,11 @@ function _update!(attr::ComputeGraph, values)
     return attr
 end
 
-function Base.haskey(attr::ComputeGraph, key::Symbol)
-    return haskey(attr.outputs, key) || haskey(attr.nesting.keytables[1], key)
-end
-function Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...)
-    return haskey(graph.nesting, key, keys...)
-end
-function Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}})
-    return haskey(graph, keys...)
-end
+Base.haskey(attr::ComputeGraph, key::Symbol) = haskey(attr.outputs, key) || haskey(attr.nesting, key)
+Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...) = haskey(graph.nesting, key, keys...)
+Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}}) = haskey(graph, keys...)
+
+has_nested_key(graph::ComputeGraph, key::Symbol) = haskey(graph.nesting, key)
 
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 Base.keys(graph::ComputeGraph) = keys(graph.outputs)

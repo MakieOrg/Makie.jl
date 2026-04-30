@@ -6,11 +6,7 @@ NestedSearchTree() = NestedSearchTree([Dict{Symbol, Int}()])
 
 has_root_key(tree::NestedSearchTree, key::Symbol) = has_key_in_level(tree, 1, key)
 function has_key_in_level(tree::NestedSearchTree, level::Int, key::Symbol)
-    if length(tree.keytables) >= level
-        return haskey(tree.keytables[level], key)
-    else
-        return false
-    end
+    return (length(tree.keytables) >= level) && haskey(tree.keytables[level], key)
 end
 
 add_key!(tree::NestedSearchTree, args...) = add_key!(tree, args)
