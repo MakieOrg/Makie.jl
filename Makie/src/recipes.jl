@@ -228,6 +228,35 @@ end
 Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
 Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
 
+function Base.show(io::IO, a::DocumentedAttributes)
+    print_documented_attributes(io, a, 1)
+end
+
+function print_documented_attributes(io, a::DocumentedAttributes, tab)
+    maxlength = 100
+    print(io, "DocumentedAttributes(")
+    for (k, v) in a.d
+        docs = if length(v.docstring) > maxlength
+            v.docstring[1:maxlength] * "..."
+        else
+            v.docstring
+        end
+        print(io, "\n", "   "^tab, '"', docs, '"')
+        print(io, "\n", "   "^tab, k, " = ")
+        print_documented_attributes(io, v, tab)
+    end
+    print(io, "\n", "   "^(tab-1), ")")
+    return io
+end
+
+function print_documented_attributes(io, m::AttributeMetadata, tab)
+    if m.default_value isa DocumentedAttributes
+        print_documented_attributes(io, m.default_value, tab+1)
+    else
+        print(io, m.default_expr)
+    end
+end
+
 function filter_attributes(attr::DocumentedAttributes; kwargs...)
     return filter_attributes!(copy(attr); kwargs...)
 end
@@ -260,7 +289,8 @@ function lookup_default(meta::AttributeMetadata, theme)
 end
 
 function get_default_expr(default)
-    if default isa Expr && default.head === :macrocall && default.args[1] === Symbol("@inherit")
+    is_macrocall = default isa Expr && default.head === :macrocall
+    if is_macrocall && default.args[1] === Symbol("@inherit")
         if length(default.args) ∉ (3, 4)
             error("@inherit works with 1 or 2 arguments, expression was $default")
         end
@@ -272,18 +302,26 @@ function get_default_expr(default)
         # first check scene theme
         # then default value
         return :($(Makie.Inherit)($(QuoteNode(key)), $(esc(_default))))
+    elseif is_macrocall && default.args[1] === Symbol("@attributes")
+        if !(length(default.args) == 3 && default.args[3].head === :block)
+            error("@attributes should begin an attributes block `@attributes begin ... end` but the found expression is $default")
+        end
+        return build_documented_attributes(default.args[3])
     else
         return esc(default)
     end
 end
 
 macro DocumentedAttributes(expr::Expr)
+    return build_documented_attributes(expr)
+end
+
+function build_documented_attributes(expr::Expr)
     if !(expr isa Expr && expr.head === :block)
         throw(ArgumentError("Argument is not a begin end block"))
     end
 
     metadata_exprs = []
-    closure_exprs = []
     mixin_exprs = Expr[]
 
     mixin_idx = 0
@@ -314,9 +352,12 @@ macro DocumentedAttributes(expr::Expr)
             end
             qsym = QuoteNode(sym)
             metadata = quote
+                default_value = let
+                    $(get_default_expr(default))
+                end
                 am = AttributeMetadata(;
                     docstring = $docs,
-                    default_value = $(get_default_expr(default)),
+                    default_value = default_value,
                     default_expr = $(default_expr_string(default))
                 )
                 if haskey(d, $(qsym))
@@ -634,7 +675,15 @@ function rmlines(x::Expr)
     end
 end
 
-default_expr_string(x) = string(rmlines(x))
+function default_expr_string(default)
+    is_macrocall = default isa Expr && default.head === :macrocall
+    if is_macrocall && default.args[1] === Symbol("@attributes")
+        return "Attributes(...)"
+    else
+        return string(rmlines(default))
+    end
+end
+
 default_expr_string(x::String) = repr(x)
 
 function extract_attribute_metadata(arg)
