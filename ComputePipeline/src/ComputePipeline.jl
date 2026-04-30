@@ -741,7 +741,7 @@ function Base.show(io::IO, ::MIME"text/plain", view::ComputeGraphView)
     print(io, "Nested view of ComputeGraph at graph.$base_key containing:")
     for (key, val) in level_dict
         full_key = Symbol(base_key, :(.), key)
-        if val == -1
+        if is_final_level(val)
             node = get(attr.inputs, full_key, attr.outputs[full_key])
             print(io, "\n  ", key, " => ", node)
         else

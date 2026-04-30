@@ -1,3 +1,18 @@
+#=
+This struct tracks nested keys. Each element in `keytables` represents a local
+set of keys which may point to integer. If that integer < 0 the key is considered
+an end point, i.e. there is no more nesting. If it is > 0 it points to another
+element of keytables that acts as the next level of nesting.
+`keytables[1]` is always the root level of nesting.
+
+With this, `graph.a.b.c` is represented as:
+    index1 = keytables[1][:a]
+    index2 = keytables[index1][:b]
+    ketables[index2][:c] < 0
+
+Endpoint indices can be set to any value < 0 so they can be used to index into
+other collections.
+=#
 struct NestedSearchTree
     keytables::Vector{Dict{Symbol, Int}}
 end
@@ -13,15 +28,18 @@ add_key!(tree::NestedSearchTree, args...) = add_key!(tree, args)
 add_key!(tree::NestedSearchTree, args::Tuple) = add_key!(tree, 1, args)
 add_path!(tree::NestedSearchTree, args...) = add_path!(tree, args)
 add_path!(tree::NestedSearchTree, args::Tuple) = add_key!(tree, 1, args, false)
-function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to_value = true)
+
+is_final_level(x::Int) = x < 0
+
+function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to = -1)
     key_to_insert = first(args)
     tail = Base.tail(args)
     if has_key_in_level(tree, level, key_to_insert)
 
         next_level = tree.keytables[level][key_to_insert]
-        if next_level == -1 && !isempty(tail)
+        if is_final_level(next_level) && !isempty(tail)
             error("Cannot insert (...).$key_to_insert.(...) - (...).$key_to_insert is already set to a value.")
-        elseif next_level != -1 && isempty(tail)
+        elseif !is_final_level(next_level) && isempty(tail)
             error("Cannot insert (...).$key_to_insert - (...).$key_to_insert is already set to a nested graph.")
         elseif isempty(tail)
             error("The given nested path (...).$key_to_insert already exists.")
@@ -37,8 +55,8 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to_value = 
         end
 
         if isempty(tail)
-            if points_to_value
-                tree.keytables[level][key_to_insert] = -1
+            if points_to < 0
+                tree.keytables[level][key_to_insert] = points_to
             else
                 next_level = length(tree.keytables) + 1
                 @assert length(tree.keytables) == next_level - 1
@@ -63,7 +81,7 @@ function delete_key!(tree::NestedSearchTree, level, args::Tuple)
     if has_key_in_level(tree, level, current_key)
         next_level = pop!(tree.keytables[level], current_key)
 
-        if next_level != -1 # on path to leaf node
+        if !is_final_level(next_level) # on path to leaf node
             delete_key!(tree, next_level, tail)
         end
 
@@ -92,7 +110,7 @@ keys_in_level(tree::NestedSearchTree, level) = keys(tree.keytables[level])
 
 function recursive_keys(tree::NestedSearchTree, level, root = tuple(), allkeys = Tuple[])
     for (key, next_level) in tree.keytables[level]
-        if next_level == -1
+        if next_level < 0
             push!(allkeys, (root..., key))
         else
             path = (root..., key)
@@ -128,7 +146,7 @@ function Base.getindex(temp::TemporarySearchResult, key::Symbol)
     end
 end
 
-isfinal(temp::TemporarySearchResult) = temp.next_index == -1
+isfinal(temp::TemporarySearchResult) = is_final_level(temp.next_index)
 
 merged_key(temp::TemporarySearchResult) = merged_key(temp.keys)
 merged_key(keys::Symbol...) = merged_key(keys)
