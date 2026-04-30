@@ -78,9 +78,10 @@ function default_theme end
 """
 # Plot Recipes in `Makie`
 
-There's two types of recipes. *Type recipes* define a simple mapping from a
-user defined type to an existing plot type. *Full recipes* can customize the
-theme and define a custom plotting function.
+There are three types of recipes:
+- **Type recipes** which convert user given data to a useable format for an existing plot type.
+- **Full recipes** which define custom plots consisting of other plots.
+- **Complex/Block recipes** which define a layout of blocks which may also include plots.
 
 ## Type recipes
 
@@ -92,90 +93,198 @@ pipeline. This can be done for all plot types or for a subset of plot types:
     # Only for scatter plots
     convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 
-Optionally you may define the default plot type so that `plot(x::MyType)` will
-use this:
+Optionally you may define the default plot type so that `plot(x::MyType)` and
+`plot!(..., x::MyType)` will use it:
 
     plottype(::MyType) = Surface
 
 ## Full recipes with the `@recipe` macro
 
-A full recipe for `MyPlot` comes in two parts. First is the plot type name,
-arguments and theme definition which are defined using the `@recipe` macro.
-Second is a custom `plot!` for `MyPlot`, implemented in terms of the atomic
-plotting functions.
+A full recipe for `MyPlot` comes in two parts. The first defines the plots name,
+converted arguments and attributes using the `@recipe` macro. The second part is a custom
+`plot!` method for new plot type, implemented in terms of other plotting functions.
 
 We use an example to show how this works:
 
-    # arguments (x, y, z) && theme are optional
-    @recipe(MyPlot, x, y, z) do scene
-        Attributes(
-            plot_color = :red
-        )
+    \"\"\"
+    myplot documentation
+    \"\"\"
+    @recipe MyPlot (position::Vector{Point2f},) begin
+        "color attribute documentation"
+        color = :red
+        "linewidth which inherits from the parent theme"
+        linewidth = @inherit linewidth
+
+        "nested attributes"
+        group = @attributes begin
+            "color attribute within the nested group"
+            color = :blue
+        end
+
+        Makie.mixin_colormap_attributes()...
     end
 
-This macro expands to several things. Firstly a type definition:
+### Type Definition
 
-    const MyPlot{ArgTypes} = Plot{myplot, ArgTypes}
-
-The type parameter of `Plot` contains the function instead of e.g. a
-symbol. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
-(The downside is we always need a function `myplot` - TODO: is this a problem?)
-
-The following signatures are defined to make `MyPlot` nice to use:
+The plot type `MyPlot` defines both the type name of the plot as well as its
+plot functions:
 
     myplot(args...; kw_args...) = ...
-    myplot!(scene, args...; kw_args...) = ...
-    myplot(kw_args::Dict, args...) = ...
-    myplot!(scene, kw_args::Dict, args...) = ...
-    #etc (not 100% settled what signatures there will be)
+    myplot!(scenelike, args...; kw_args...) = ...
+    myplot(attributes, args...) = ...
+    myplot!(scenelike, attributes, args...) = ...
+    const MyPlot{ArgTypes} = Plot{myplot, ArgTypes}
 
-A specialization of `argument_names` is emitted if you have an argument list
-`(x,y,z)` provided to the recipe macro:
+In this context `scenelike` can be a `Scene` or a axis-like `Block` that can be
+plotted to. The syntax with attributes can be used to pass along attributes of
+one plot to another.
 
-    argument_names(::Type{<: MyPlot}) = (:x, :y, :z)
+### Converted Argument Definition
 
-This is optional but it will allow the use of `plot_object[:x]` to
-fetch the first argument from the call
-`plot_object = myplot(rand(10), rand(10), rand(10))`, for example.
-Alternatively you can always fetch the `i`th argument using `plot_object[i]`,
-and if you leave out the `(x,y,z)`, the default version of `argument_names`
-will provide `plot_object[:arg1]` etc.
+The second component of `@recipe` is an optional definition of the converted
+argument names and their types. If the names are defined a method
 
-The theme given in the body of the `@recipe` invocation is inserted into a
-specialization of `default_theme` which inserts the theme into any scene that
-plots `MyPlot`:
+    argument_names(::Type{<: MyPlot}, N) = (:positions,)
 
-    function default_theme(scene, ::MyPlot)
-        Attributes(
-            plot_color = :red
-        )
+is generated which will make the converted arguments available as
+`plot.positions`. This will restrict the output of `convert_arguments()` to
+match the number of converted arguments defined here.
+
+If the converted argument names have type annotations, the output of
+`convert_arguments` will be further restricted to match the given type. This is
+then used to error-check arguments during plot construction. It is also used to
+reason about dim converts. (Reaching the required type implies that dim converts
+should not apply. Without this, the recipe may not be usable by another recipe
+when dim converts are involved.)
+
+If converted arguments are not given, converted argument names default to
+`converted_1, converted_2, ...` based on the number of converted arguments found
+during plot construction.
+
+#### Conversion Traits
+
+Note that argument conversion can also be implemented using conversion traits.
+This may be useful if a set of conversion can be reused across multiple plot types.
+To define a new conversion trait, it needs to be a subtype of `Makie.ConversionTrait`:
+
+    struct MyTrait <: Makie.ConversionTrait end
+
+`convert_argument` methods can then be define with trait instead of a plot type
+
+    Makie.convert_argument(::MyTrait, x::Vector{<:Real}, y::Vector{<:Real}) = Point2f.(x, y)
+
+The trait can then be registered to the plot. This can optionally be restricted
+to specific argument signatures:
+
+    Makie.conversion_trait(::Type{MyPlot}) = MyTrait()
+    Makie.conversion_trait(::Type{MyPlot}, x, y) = MyTrait()
+
+Makie itself defines a few traits, the most useful being `PointBased()`. Using
+it will add various conversions to `Vector{Point{D, T}}` where D is 2 or 3 and
+T is Float32 or Float64.
+
+### Attributes
+
+Plot Attributes are defined within a `begin ... end` block. The block is mandatory
+but can be empty. Note that even if it is empty, Makie will add some mandatory
+inputs to `plot.attributes`.
+
+To define an attribute, at least its name and default value need to be given:
+
+    attribute_name = default_value
+
+Optionally, an attribute may include a docstring in the preceding line:
+
+    "documentation for attribute
+    attribute = 1
+
+An attribute can inherit values from the theme of its parent scene, which in
+turn inherits from the global theme. For this the `@inherit` macro is used.
+Since themes may not always define a default for a given attribute, a fallback
+can be given with `@inherit`:
+
+    colormap = @inherit colormap
+    color = @inherit color :red
+
+Attributes can also be nested. For this an attribute name should point to an
+`@attributes` block:
+
+    outer = @attributes begin
+        inner1 = 1
+        inner2 = 2
     end
 
-As the second part of defining `MyPlot`, you should implement the actual
-plotting of the `MyPlot` object by specializing `plot!`:
+This will define `plot.outer.inner1` and `plot.outer.inner2`. Docstrings can be
+added to `outer`, `inner1` and `inner2` as usual. The realized inner attributes
+may also use `@inherit`.
 
-    function plot!(plot::MyPlot)
+Finally, attributes may also included from functions with
+
+    Makie.mixin_colormap_attributes()...
+
+These functions should return `DocumentedAttributes` from the
+`@DocumentedAttributes` macro. Within the macro, the same rules as described
+above apply. An example implementation may look like this:
+
+    function mixin_my_attributes()
+        return @DocumentedAttributes begin
+            color = :red
+            colormap = @inherit colormap
+        end
+    end
+
+All of the attributes defined in the attribute block of `@recipe` is processed
+into one `DocumentedAttributes` object which can fetched by
+`Makie.documented_attributes`. From there it is used to generate documentation,
+validate user given keyword arguments and generate default plot attributes,
+among other things.
+
+### `@recipe` documentation
+
+If a docstring is given above `@recipe` it will be used to build the docstring
+for `?myplot` and `?MyPlot`. The final docstring will include several sections:
+
+1. Automatically generated header with call signatures for the new plot type.
+2. \"myplot documentation\" from the `@recipe` docstring
+3. Argument docs which is either extracted from an \"## Attributes\" section in
+    the `@recipe` docstring, given by the conversion trait of the plot or
+    generated from its converted arguments.
+4. An optional example section which shows the first example from a markdown
+    file saved at `Makie.path_to_plot_examples(MyPlot)`. See
+    `Makie/src/documentation/plots`
+5. Attribute docs generated using all the attribute names defined in `@recipe`.
+    These are grouped based on `Makie.attribute_groups(MyPlot)`
+
+### `plot!()` Method
+
+After creating a new plot type with `@recipe` we now need to define what the
+plot looks like. This is done by implementing a `plot!(::MyPlot)` method:
+
+    function Makie.plot!(plot::MyPlot)
         # normal plotting code, building on any previously defined recipes
         # or atomic plotting operations, and adding to the combined `plot`:
-        lines!(plot, rand(10), color = plot[:plot_color])
-        plot!(plot, plot[:x], plot[:y])
-        plot
+        lines!(plot, rand(10), color = plot.color, linewidth = plot.linewidth)
+        plot!(plot, plot.positions)
+        return
     end
 
-It's possible to add specializations here, depending on the argument *types*
-supplied to `myplot`. For example, to specialize the behavior of `myplot(a)`
-when `a` is a 3D array of floating point numbers:
+If `@recipe` defines no converted argument types or a `Union` of types, it is
+possible to add specializations based on the converted argument types here:
 
     const MyVolume = MyPlot{Tuple{<:AbstractArray{<: AbstractFloat, 3}}}
-    argument_names(::Type{<: MyVolume}) = (:volume,) # again, optional
-    function plot!(plot::MyVolume)
+    Makie.argument_names(::Type{<: MyVolume}) = (:volume,) # optional
+
+    function Makie.plot!(plot::MyVolume)
         # plot a volume with a colormap going from fully transparent to plot_color
-        volume!(plot, plot[:volume], colormap = :transparent => plot[:plot_color])
+        map!(c -> [:tranparent, c], plot, :color, :vol_colormap)
+        volume!(plot, plot.volume, colormap = plot.vol_colormap)
         plot
     end
 
-The docstring given to the recipe will be transferred to the functions it generates.
+## Complex/Block Recipes
 
+Block recipes define a new Block as a layout of other Blocks rather than a new
+plot as a combination of other plots. They are documented in `@Block`.
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname_sym = to_func_name(Tsym)
