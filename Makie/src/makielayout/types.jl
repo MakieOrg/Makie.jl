@@ -1815,7 +1815,7 @@ end
             if a particular aspect is needed.
           - `:free` behaves like `:fit` but changes some interactions. Zooming affects the whole axis rather
             than just the content. This allows you to zoom in on content without it getting clipped by the 3D
-            bounding box of the Axis3. `zoommode = :cursor` is disabled. Translations can no also affect the axis as
+            bounding box of the Axis3. Translations can also affect the axis as
             a whole with `control + right drag`.
         """
         viewmode = :fitzoom # :fit :fitzoom :stretch
