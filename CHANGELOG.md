@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Crop decorations in Axis3 viewmode :free properly [#5615](https://github.com/MakieOrg/Makie.jl/pull/5615)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
