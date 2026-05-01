@@ -327,16 +327,46 @@ end
 function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph::ComputeGraph)
     output_keys = [:projectionview, :projection, :view]
 
+    # `space` (and `markerspace`) may be a per-axis tuple, in which case the standard
+    # name-based lookup doesn't apply. We resolve such matrices via `register_per_axis_camera_matrix!`
+    # below and use the homogeneous representative space for the projectionview/projection/view trio.
+    space_val = haskey(plot_graph, :space) ? plot_graph[:space][] : :data
+    space_is_tuple = space_val isa Tuple
+    has_markerspace = haskey(plot_graph, :markerspace)
+    markerspace_val = has_markerspace ? plot_graph[:markerspace][] : space_val
+    markerspace_is_tuple = markerspace_val isa Tuple
+
+    # `_homogeneous_or_tuple_first` collapses a tuple to its first axis when used as the
+    # representative space for projectionview/projection/view. Mixed projectionview/view
+    # values are intentionally not supported yet — markerspace is expected to be a Symbol.
+    rep_space(s) = s isa Tuple ? first(s) : s
+
     # merging Symbols is somewhat expensive so we shouldn't do it repetitively
-    if haskey(plot_graph, :markerspace)
-        map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
-            return get_projectionview_name(markerspace), get_projection_name(markerspace),
-                get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
+    if has_markerspace
+        if space_is_tuple || markerspace_is_tuple
+            # Build (projectionview, projection, view) names from the markerspace representative.
+            # Don't bake `:preprojection` into the camera_matrix_names — it's registered below.
+            map!(plot_graph, :markerspace, :camera_matrix_names) do markerspace
+                ms = rep_space(markerspace)
+                return get_projectionview_name(ms), get_projection_name(ms), get_view_name(ms)
+            end
+        else
+            map!(plot_graph, [:space, :markerspace], :camera_matrix_names) do space, markerspace
+                return get_projectionview_name(markerspace), get_projection_name(markerspace),
+                    get_view_name(markerspace), get_camera_matrix_name(space, markerspace)
+            end
+            push!(output_keys, :preprojection)
         end
-        push!(output_keys, :preprojection)
     else
-        map!(plot_graph, :space, :camera_matrix_names) do space
-            return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+        if space_is_tuple
+            map!(plot_graph, :space, :camera_matrix_names) do space
+                sp = rep_space(space)
+                return get_projectionview_name(sp), get_projection_name(sp), get_view_name(sp)
+            end
+        else
+            map!(plot_graph, :space, :camera_matrix_names) do space
+                return get_projectionview_name(space), get_projection_name(space), get_view_name(space)
+            end
         end
     end
 
@@ -345,6 +375,11 @@ function _register_common_camera_matrices!(plot_graph::ComputeGraph, scene_graph
     # Update camera matrices in plot if space changed or a relevant camera update happened
     callback = CameraMatrixCallback(scene_graph)
     map!(callback, plot_graph, input_keys, output_keys)
+
+    # Per-axis preprojection (space -> markerspace) when space is a tuple.
+    if has_markerspace && space_is_tuple && !haskey(plot_graph, :preprojection)
+        register_per_axis_camera_matrix!(scene_graph, plot_graph, :space, :markerspace; matrix_name = :preprojection)
+    end
 
     return
 end
@@ -390,6 +425,13 @@ function register_camera_matrix!(
         scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
         input::Symbol, output::Symbol
     )
+
+    # If the dynamic input or output space resolves to a per-axis tuple, fall back to the
+    # per-axis registration which builds a combined matrix from the individual axis projections.
+    if (input in (:space, :markerspace) && haskey(plot_graph, input) && plot_graph[input][] isa Tuple) ||
+            (output in (:space, :markerspace) && haskey(plot_graph, output) && plot_graph[output][] isa Tuple)
+        return register_per_axis_camera_matrix!(scene_graph, plot_graph, input, output)
+    end
 
     # this can be :space_to_pixel, i.e. its not always a name for fetching from camera
     matrix_name = get_camera_matrix_name(input, output)
@@ -442,6 +484,63 @@ function register_camera_matrix!(
 
     inputs = Computed[scene_graph.camera_trigger, getindex(plot_graph, name_name)]
     map!((_, name) -> Mat4f(scene_graph[name][]::Mat4d), plot_graph, inputs, matrix_name)
+
+    return matrix_name
+end
+
+"""
+    register_per_axis_camera_matrix!(scene_graph, plot_graph, input, output; matrix_name)
+
+Build a per-axis combined camera matrix when `input` (or `output`) resolves to
+a per-axis space tuple. Each axis gets its own `axis_space[i] -> output_axis_space[i]`
+matrix from the standard registration path, then `combine_axis_projection_matrices`
+zips them together by extracting the i-th diagonal entry and translation.
+
+The resulting matrix is exact for orthographic, axis-aligned cameras (a regular 2D
+`Axis`); off-diagonal terms (rotation/perspective) are dropped.
+"""
+function register_per_axis_camera_matrix!(
+        scene_graph::ComputePipeline.ComputeGraph, plot_graph::ComputePipeline.ComputeGraph,
+        input::Symbol, output::Symbol;
+        matrix_name::Union{Symbol, Nothing} = nothing,
+    )
+
+    function resolve_axes(s::Symbol)
+        if s in (:space, :markerspace) && haskey(plot_graph, s)
+            val = plot_graph[s][]
+            return val isa Tuple ? _padded_space_tuple(val) : (val::Symbol, val::Symbol, val::Symbol)
+        else
+            return (s, s, s)
+        end
+    end
+
+    in_axes = resolve_axes(input)
+    out_axes = resolve_axes(output)
+
+    if matrix_name === nothing
+        matrix_name = Symbol(
+            "per_axis_", input, "_", in_axes[1], "_", in_axes[2], "_", in_axes[3],
+            "__to__", output, "_", out_axes[1], "_", out_axes[2], "_", out_axes[3],
+        )
+    end
+
+    haskey(plot_graph, matrix_name) && return matrix_name
+
+    per_axis_names = Symbol[
+        register_camera_matrix!(scene_graph, plot_graph, in_axes[i], out_axes[i]) for i in 1:3
+    ]
+
+    # Two axes can resolve to the same source matrix (e.g. (:data, :relative, :relative)
+    # -> [:world_to_pixel, :relative_to_pixel, :relative_to_pixel]). ComputePipeline's
+    # NamedTuple-based input wiring requires unique names, so deduplicate and route by index.
+    unique_names = unique(per_axis_names)
+    idx = ntuple(i -> findfirst(==(per_axis_names[i]), unique_names)::Int, 3)
+    map!(plot_graph, unique_names, matrix_name) do mats...
+        Mx = Mat4f(mats[idx[1]])
+        My = Mat4f(mats[idx[2]])
+        Mz = Mat4f(mats[idx[3]])
+        return combine_axis_projection_matrices(Mx, My, Mz)
+    end
 
     return matrix_name
 end

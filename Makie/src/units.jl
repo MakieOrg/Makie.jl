@@ -138,6 +138,14 @@ Returns the currently available `space` values:
 
 Note that `space` only affects projections, i.e. it has no effect on plot transformations.
 As such `:data` space does not correspond to the data passed to a plot, but the data after transformations are applied.
+
+`space` may also be set to a tuple of these symbols to use a different space per
+axis, e.g. `space = (:data, :relative)` for an x value in data space and a y
+value in relative space. Axes not covered by the tuple default to `:data`, so
+`(:data, :relative)` is equivalent to `(:data, :relative, :data)`. Mixed-space
+projections only consider the diagonal entries of each underlying projection
+matrix and therefore expect orthographic, axis-aligned cameras (the typical 2D
+`Axis`).
 """
 spaces() = (:data, :pixel, :relative, :clip)
 
@@ -155,3 +163,48 @@ is_data_space(space::Symbol) = space === :data
 is_pixel_space(space::Symbol) = space === :pixel
 is_relative_space(space::Symbol) = space === :relative
 is_clip_space(space::Symbol) = space === :clip
+
+# Tuple/per-axis space: true only when every axis matches.
+is_data_space(space::Tuple) = !isempty(space) && all(is_data_space, space)
+is_pixel_space(space::Tuple) = !isempty(space) && all(is_pixel_space, space)
+is_relative_space(space::Tuple) = !isempty(space) && all(is_relative_space, space)
+is_clip_space(space::Tuple) = !isempty(space) && all(is_clip_space, space)
+
+"""
+    is_homogeneous_space(space)
+
+Returns `true` if `space` uses the same space on every axis, `false` for a
+mixed per-axis tuple.
+"""
+is_homogeneous_space(space::Symbol) = true
+is_homogeneous_space(space::Tuple) = isempty(space) || all(==(first(space)), space)
+is_homogeneous_space(space::Observable) = is_homogeneous_space(space[])
+is_homogeneous_space(p::Plot) = is_homogeneous_space(to_value(get(p, :space, :data)))
+
+"""
+    axis_space(space, dim::Int)
+
+Returns the space symbol used on axis `dim`. For homogeneous (Symbol) spaces
+this is the space itself; for tuple spaces it is `space[dim]`, or `:data` if
+`dim` exceeds the tuple length.
+"""
+axis_space(space::Symbol, ::Int) = space
+axis_space(space::NTuple{N, Symbol}, dim::Int) where {N} = dim <= N ? space[dim] : :data
+axis_space(space::Observable, dim::Int) = axis_space(space[], dim)
+axis_space(p::Plot, dim::Int) = axis_space(to_value(get(p, :space, :data)), dim)
+
+"""
+    is_axis_data_space(space, dim::Int)
+
+Returns whether axis `dim` of `space` is `:data` space (i.e. participates in
+data limits / autolimits).
+"""
+is_axis_data_space(space, dim::Int) = is_data_space(axis_space(space, dim))
+is_axis_data_space(p::Plot, dim::Int) = is_data_space(axis_space(p, dim))
+
+# Pad a 1-3 element space tuple to NTuple{3,Symbol}, defaulting unspecified axes to :data.
+_padded_space_tuple(s::Symbol) = (s, s, s)
+function _padded_space_tuple(t::Tuple)
+    isempty(t) && error("`space` tuple must not be empty.")
+    return ntuple(i -> i <= length(t) ? t[i]::Symbol : :data, 3)
+end

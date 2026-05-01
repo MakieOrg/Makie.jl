@@ -754,11 +754,12 @@ function register_data_limits!(plot)
             :data_limits
         ) do markerspace, space, bbs, positions
 
-            if markerspace === space
-                return reduce(update_boundingbox, bbs, init = Rect3d())
+            bb = if markerspace === space
+                reduce(update_boundingbox, bbs, init = Rect3d())
             else
-                return Rect3d(positions)
+                Rect3d(positions)
             end
+            return _mask_non_data_axes(bb, space)
         end
     end
     return plot.data_limits
