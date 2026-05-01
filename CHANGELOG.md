@@ -3,6 +3,7 @@
 ## Unreleased
 
 - `space` can now be set to a tuple of symbols (e.g. `space = (:data, :relative)`) to use a different space per axis. Useful for placing annotations on `vlines`/`hlines` where one coordinate is meaningful in data space and the other is best given relative to the viewport. Mixed-space plots only contribute to autolimits on their `:data` axes. The mixed-space combiner uses each axis's diagonal projection only and is intended for orthographic, axis-aligned cameras (typical 2D `Axis`). [#5612](https://github.com/MakieOrg/Makie.jl/pull/5612)
+- Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
 
