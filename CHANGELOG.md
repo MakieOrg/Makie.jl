@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- zoommode = :cursor is now an option for Axis3 with viewmode = :free [5616](https://github.com/MakieOrg/Makie.jl/pull/5616)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
