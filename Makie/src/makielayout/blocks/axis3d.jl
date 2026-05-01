@@ -133,9 +133,9 @@ function initialize_block!(ax::Axis3)
         get_ticks(ax.scene.conversions[3], ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
-    add_panel!(blockscene, ax, 1, 2, 3, finallimits, mi3)
-    add_panel!(blockscene, ax, 2, 3, 1, finallimits, mi1)
-    add_panel!(blockscene, ax, 1, 3, 2, finallimits, mi2)
+    add_panel!(scene, ax, 1, 2, 3, finallimits, mi3)
+    add_panel!(scene, ax, 2, 3, 1, finallimits, mi1)
+    add_panel!(scene, ax, 1, 3, 2, finallimits, mi2)
 
     # This exists as a bandaid for WGLMakie. See add_gridlines_and_frames!()
     overlay = Scene(
@@ -144,24 +144,24 @@ function initialize_block!(ax::Axis3)
     )
 
     xgridline1, xgridline2, xframelines = add_gridlines_and_frames!(
-        blockscene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
+        scene, overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     ygridline1, ygridline2, yframelines = add_gridlines_and_frames!(
-        blockscene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
+        scene, overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
     zgridline1, zgridline2, zframelines = add_gridlines_and_frames!(
-        blockscene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
+        scene, overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2,
         ax.xreversed, ax.yreversed, ax.zreversed
     )
 
     xticks, xticklabels, xlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(overlay, ax, 1, finallimits, ticknode_1, mi1, mi2, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     yticks, yticklabels, ylabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(overlay, ax, 2, finallimits, ticknode_2, mi2, mi1, mi3, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
     zticks, zticklabels, zlabel =
-        add_ticks_and_ticklabels!(blockscene, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
+        add_ticks_and_ticklabels!(overlay, ax, 3, finallimits, ticknode_3, mi3, mi1, mi2, ax.azimuth, ax.xreversed, ax.yreversed, ax.zreversed)
 
     titlepos = lift(scene, ax.layoutobservables.computedbbox, ax.titlegap, ax.titlealign) do a, titlegap, align
 
