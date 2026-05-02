@@ -1204,15 +1204,30 @@ function attribute_name_allowlist()
 end
 
 function validate_attribute_keys(plot::P) where {P <: Plot}
-    nameset = attribute_names(P)
-    nameset === nothing && return
+    attribute_names(P) === nothing && return
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
     kw = plot.kw
-    unknown = setdiff(keys(kw), nameset, allowlist, first.(deprecations))
-    if !isempty(unknown)
-        throw(InvalidAttributeError(P, unknown))
+    defaults = documented_attributes(P)
+
+    invalid_names = Symbol[]
+    for (k, v) in kw
+        if k in allowlist || k in deprecations
+            continue
+        end
+
+        if !(k in keys(defaults))
+            push!(invalid_names, k)
+            continue
+        end
+
+        collect_invalid_nested_attributes!(invalid_names, (k,), v, defaults[k].default_value)
     end
+
+    if !isempty(invalid_names)
+        throw(InvalidAttributeError(P, Set(invalid_names)))
+    end
+
     for (deprecated, message, should_error) in deprecations
         if haskey(kw, deprecated)
             full_message = "Keyword `$deprecated` is deprecated for plot type $P. $message"
@@ -1223,5 +1238,34 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
             end
         end
     end
+    return
+end
+
+function collect_invalid_nested_attributes!(invalid_names, keys, val::Union{Attributes, NamedTuple}, defaults::DocumentedAttributes)
+    for (k, v) in pairs(val)
+        if haskey(defaults, k)
+            collect_invalid_nested_attributes!(invalid_names, (keys..., k), v, defaults[k].default_value)
+        else
+            push!(invalid_names, ComputePipeline.merged_key(keys..., k))
+        end
+    end
+    return
+end
+
+function collect_invalid_nested_attributes!(invalid_names, keys, val::Union{Attributes, NamedTuple}, defaults)
+    # defaults can't be indexed anymore
+    push!(invalid_names, ComputePipeline.merged_key(keys))
+    return
+end
+
+function collect_invalid_nested_attributes!(invalid_names, keys, val, defaults::DocumentedAttributes)
+    last(keys) === :fonts && return
+    # did not reach an endpoint, should have more nesting
+    push!(invalid_names, ComputePipeline.merged_key(keys))
+    return
+end
+
+function collect_invalid_nested_attributes!(invalid_names, keys, val, defaults)
+    # reached value kwarg at endpoint
     return
 end
