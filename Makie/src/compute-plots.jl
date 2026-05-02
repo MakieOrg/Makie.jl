@@ -92,6 +92,8 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     attr = plot.attributes
     if haskey(attr.inputs, key)
         setproperty!(attr, key, val)
+    elseif ComputePipeline.has_nested_key(attr, key)
+        nested_update!(plot, key, val)
     else
         add_input!(attr, key, val)
         # maybe best to not make assumptions about user attributes?
@@ -100,6 +102,37 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     end
     return plot
 end
+
+function nested_update!(plot::Plot, key::Symbol, val::Union{NamedTuple, Attributes})
+    updates = Pair{Symbol, Any}[]
+    skipped = Tuple[]
+    prepare_nested_update!(updates, skipped, (key,), plot.attributes[key], val)
+    update!(plot.attributes, updates)
+    if !isempty(skipped)
+        names = ComputePipeline.merged_key.(skipped)
+        throw(InvalidAttributeError(typeof(plot), "plot", Set(names)))
+    end
+    return
+end
+
+function prepare_nested_update!(
+        updates, skipped, path,
+        view::ComputeGraphView, val::Union{NamedTuple, Attributes}
+    )
+    for (k, v) in val
+        if haskey(view, k)
+            prepare_nested_update!(updates, skipped, (path..., k), view[k], v)
+        else
+            push!(skipped, (path..., k))
+        end
+    end
+    return
+end
+
+# TODO: Should we disallow NamedTuple, Attributes here?
+nested_update!(updates, skipped, path, ::Computed, val) = push!(updates, path => val)
+nested_update!(updates, skipped, path, ::ComputeGraphView, val) = push!(skipped, path)
+
 
 # temp fix axis selection
 args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
