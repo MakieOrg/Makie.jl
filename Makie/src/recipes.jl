@@ -388,6 +388,7 @@ struct Inherit
     key::Symbol
     fallback::Any
 end
+struct NoFallback end
 
 function lookup_default(meta::AttributeMetadata, theme)
     default = meta.default_value
@@ -395,7 +396,7 @@ function lookup_default(meta::AttributeMetadata, theme)
         if haskey(theme, default.key)
             to_value(theme[default.key]) # only use value of theme entry
         else
-            if isnothing(default.fallback)
+            if default.fallback === NoFallback()
                 error("Inherited key $(default.key) not found in theme with no fallback given.")
             else
                 return default.fallback
@@ -416,7 +417,7 @@ function get_default_expr(default)
             error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
         end
         key = default.args[3]
-        _default = get(default.args, 4, :(nothing))
+        _default = get(default.args, 4, :(NoFallback()))
         # first check scene theme
         # then default value
         return :($(Makie.Inherit)($(QuoteNode(key)), $(esc(_default))))
