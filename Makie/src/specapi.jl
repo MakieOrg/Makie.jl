@@ -558,11 +558,10 @@ plots[] = [
 ]
 ```
 """
-@recipe(PlotList, plotspecs) do scene
-    Attributes()
-end
+@recipe PlotList (plotspecs,) begin end
 
 is_atomic_plot(plot::PlotList) = false # is never atomic
+validate_attribute_keys(::PlotList) = true
 
 function Base.propertynames(pl::PlotList)
     inner_pnames = if length(pl.plots) == 1

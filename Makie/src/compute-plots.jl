@@ -609,6 +609,7 @@ end
 
 function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw) where {P}
     dim_converts = to_value(get!(() -> DimConversions(), user_kw, :dim_conversions))
+    add_input!(attr, :dim_conversions, dim_converts)
 
     args = attr.args[]
     add_convert_kwargs!(attr, user_kw, P, args)
@@ -764,7 +765,9 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
     # Add remaining attributes with initial values from plot kwargs (user given)
     # or defaults set by plot_attributes()
     documented_attr = documented_attributes(T)
-    add_attributes!(attr, documented_attr, kwargs, is_primitive, name)
+    if !isnothing(documented_attr)
+        add_attributes!(attr, documented_attr, kwargs, is_primitive, name)
+    end
 
     if !haskey(attr, :model)
         add_input!(attr, :model, Mat4d(I))
@@ -838,12 +841,10 @@ end
 get_nested_path(::ComputeGraph, k) = k
 get_nested_path(g::ComputeGraphView, k) = ComputePipeline.merged_key(ComputePipeline.merged_key(g), k)
 
-function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plotsym)
+function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plotsym, exclude = tuple())
     for (k, meta) in plot_attr
         haskey(graph, k) || continue
-        if k in (:transformation, :model, :transform_func)
-            continue
-        end
+        k in exclude && continue
         v = meta.default_value
 
         if v isa DocumentedAttributes
@@ -866,6 +867,9 @@ function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plots
                     error("Could not get default for $nested_key because the parent theme does not define it and no fallback is provided by $plotsym.")
                 end
                 setproperty!(graph, k, inherited)
+            elseif user_kw[k] isa Computed
+                # can't merge that
+                continue
             elseif inherited isa Union{Dict, Attributes, NamedTuple}
                 # mergeable kwarg should merge
                 setproperty!(graph, k, merge(inherited, user_kw[k]))
@@ -877,10 +881,11 @@ function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plots
     return
 end
 
-overwrite_plot_defaults!(graph, user_kw, ::Nothing, plotsym) = nothing
-function overwrite_plot_defaults!(graph, user_kw, overwrite_theme, plotsym)
+overwrite_plot_defaults!(graph, user_kw, ::Nothing, plotsym, exclude = nothing) = nothing
+function overwrite_plot_defaults!(graph, user_kw, overwrite_theme, plotsym, exclude = tuple())
     for (k, maybe_obs) in overwrite_theme
         haskey(graph, k) || continue
+        k in exclude && continue
         v = to_value(maybe_obs)
         subgraph = graph[k]
 
@@ -893,7 +898,7 @@ function overwrite_plot_defaults!(graph, user_kw, overwrite_theme, plotsym)
             error("Nesting missmatch: $k is a leaf node of theme[$plotsym] but not of the plots attributes $(graph[k])")
         elseif !haskey(user_kw, k)
             setproperty!(graph, k, v)
-        elseif user_kw isa Union{Dict, Attributes, NamedTuple}
+        elseif user_kw[k] isa Union{Dict, Attributes, NamedTuple}
             setproperty!(graph, k, merge(v, user_kw[k]))
         end
     end
@@ -905,19 +910,26 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     # so there is little to gain from compiling updates into one big `update!()`
     # call.
     plot_attr = documented_attributes(T)
+    isnothing(plot_attr) && return
+
     scene_theme = theme(scene)
     plot_name = plotsym(T)
+
+    # TODO: Probably needs to be something else once/if we allow cycle to affect
+    # nested attributes
+    exclude = Set{Symbol}([:transformation, :model, :transform_func])
+    haskey(graph, :palette_lookup) && union!(exclude, keys(graph.palette_lookup[]))
 
     # Go through all @recipe attributes again. If the attribute is an @inherit
     # and it is not set by the user (and it exists in the scenes theme) replace
     # it with the theme value.
     # If inherited attribute is nested, merge every nested layer.
-    inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plot_name)
+    inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plot_name, exclude)
 
     # Overwrite defaults from the plot @recipe with defaults set in the scenes
     # theme specifically for the plot, i.e. `:Scatter => Attributes(...)`
     plot_scene_theme = get(scene_theme, plotsym(T), Attributes())
-    overwrite_plot_defaults!(graph, user_kw, plot_scene_theme, plot_name)
+    overwrite_plot_defaults!(graph, user_kw, plot_scene_theme, plot_name, exclude)
 
     return
 end
@@ -1004,7 +1016,7 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
             end
         end
 
-        # these are handled by TRansformations()
+        # these are handled by Transformations()
         filter!(kv -> !in(kv[1], [:model, :transform_func]), merged_attr)
 
         return Plot{Func}(Base.tail(user_args), merged_attr)
@@ -1090,7 +1102,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
 
     plot!(plot)
 
-
+    # Used to add things like `label` for Legend
     documented_attr = plot_attributes(scene, Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)

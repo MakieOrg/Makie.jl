@@ -603,6 +603,14 @@ If it is given as a `Dict` or `NamedTuple` values may point to another `Dict` or
 treated as an attribute or nested collection of attributes to exclude.
 """
 function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
+    if drop isa Union{Vector, Set}
+        push!(drop, :model)
+    elseif drop isa Dict
+        get!(drop, :model, nothing)
+    else
+        drop = (model = nothing, drop...)
+    end
+
     return shared_attributes(plot.attributes, documented_attributes(target), drop)
 end
 

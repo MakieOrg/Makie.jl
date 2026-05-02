@@ -287,7 +287,7 @@ Block recipes define a new Block as a layout of other Blocks rather than a new
 plot as a combination of other plots. They are documented in `@Block`.
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
-    Base.depwarn("`@recipe ... do scene ... end` is deprecated in favor of `@recipe ... begin ... end`", :recipe)
+    Base.depwarn("`@recipe $Tsym $args do scene ... end` is deprecated in favor of `@recipe $Tsym $args begin ... end`", :recipe)
     funcname_sym = to_func_name(Tsym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
@@ -1097,10 +1097,12 @@ end
 function find_nearby_attributes(attributes, candidates)
     d = Vector{Tuple{String, Bool}}(undef, length(attributes))
     any_close = false
-    for (i, attr) in enumerate(attributes)
-        candidate, valid = _levsort(String(attr), candidates)
-        any_close = any_close || valid
-        d[i] = (candidate, valid)
+    if !isempty(candidates)
+        for (i, attr) in enumerate(attributes)
+            candidate, valid = _levsort(String(attr), candidates)
+            any_close = any_close || valid
+            d[i] = (candidate, valid)
+        end
     end
     return d, any_close
 end
