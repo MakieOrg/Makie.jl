@@ -23,46 +23,6 @@ function ComputePipeline.add_input!(
     return x
 end
 
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(identity, attr, key, values)
-    else
-        return add_input!(attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        attr::ComputeGraph, keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        key::Symbol, values::Attributes
-    )
-    if key === :fonts
-        return ComputePipeline._add_input!(conversion_func, attr, key, values)
-    else
-        return add_input!(conversion_func, attr, (key,), values)
-    end
-end
-
-function ComputePipeline.add_input!(
-        conversion_func, attr::ComputePipeline.ComputeGraph,
-        keys::Tuple, values::Attributes
-    )
-    for (child_key, child_value) in values
-        add_input!(conversion_func, attr, (keys..., child_key), child_value)
-    end
-    return attr[first(keys)]
-end
-
 ComputePipeline.add_input!(f, p::Plot, args...; kwargs...) = add_input!(f, p.attributes, args...; kwargs...)
 ComputePipeline.add_input!(p::Plot, args...; kwargs...) = add_input!(p.attributes, args...; kwargs...)
 
@@ -706,54 +666,6 @@ function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTy
     return map!(f, p.attributes, inputs, outputs)
 end
 
-# from DocumentedAttributes
-function default_attribute(user_attributes, kv::Pair{Symbol, AttributeMetadata})
-    return default_attribute(user_attributes, kv[1], kv[2].default_value)
-end
-
-# from Attributes
-function default_attribute(user_attributes, kv::Pair)
-    return default_attribute(user_attributes, kv...)
-end
-
-function default_attribute(user_attributes, key::Symbol, value)
-    if haskey(user_attributes, key)
-        if value isa Attributes
-            # The back and forth casting from Attributes -> Dict -> Attributes
-            # is to prevent overwriting values in the default plot attributes
-            # (and the observables it contains)
-            output = Dict{Symbol, Any}(value)
-            recursive_attr_merge!(output, user_attributes[key])
-            return Attributes(output)
-        else
-            val = user_attributes[key]
-            val isa NamedTuple && return Attributes(val)
-            return val
-        end
-    elseif value isa Inherit
-        return value.fallback
-    else
-        return to_value(value)
-    end
-end
-
-function recursive_attr_merge!(target::Dict{Symbol, Any}, user_attr)
-    for (k, v) in pairs(user_attr)
-        if v isa Union{ComputePipeline.ComputeGraphView, Attributes}
-            inner = if haskey(target, k)
-                Dict{Symbol, Any}(target[k])
-            else
-                Dict{Symbol, Any}()
-            end
-            recursive_attr_merge!(inner, user_attr[k])
-            target[k] = Attributes(inner)
-        else
-            target[k] = v
-        end
-    end
-    return target
-end
-
 struct AttributeConvert{Key, Plot} end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
@@ -771,12 +683,9 @@ function to_recipe_attribute(value::NamedTuple)
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    documented_attr = plot_attributes(nothing, T)
     name = plotkey(T)
     is_primitive = T <: PrimitivePlotTypes
-    inputs = Dict((kv[1] => default_attribute(kwargs, kv) for kv in documented_attr))
 
-    delete!(inputs, :cycle)
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(
             get(kwargs, :cycle) do
@@ -815,207 +724,168 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
                     cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
                     return convert_attribute(cyc, Key{k}(), Key{name}())
                 end
-                delete!(inputs, k)
             end
         end
     end
 
-    # this is handled through plot.kw, not plot.attributes. Keeping it in the
-    # compute graph may cause double application of user set transformations,
-    # e.g. #4789
-    delete!(inputs, :transformation)
+    # Add remaining attributes with initial values from plot kwargs (user given)
+    # or defaults set by plot_attributes()
+    documented_attr = documented_attributes(T)
+    add_attributes!(attr, documented_attr, kwargs, is_primitive, name)
 
-    for (k, v) in inputs
-        # primitives use convert_attributes, recipe plots don't
-        if !haskey(attr.outputs, k)
-            if is_primitive
-                add_input!(AttributeConvert(k, name), attr, k, v)
-            elseif v isa Union{Attributes, NamedTuple}
-                add_input!(to_recipe_attribute, attr, k, v)
-            else
-                # Probably better for performance because this more or less
-                # skips the callback
-                add_input!(attr, k, v)
-                ComputePipeline.set_type!(attr[k], Any)
-            end
-        end
-    end
     if !haskey(attr, :model)
         add_input!(attr, :model, Mat4d(I))
     end
     return
 end
 
-# TODO: This implies the recipe has, e.g. `kwargs = Attributes(a = 1)` but the user
-# supplied `; kwargs = Attributes(a = Attributes(...))`
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{})
-    @warn "User keywords contains Attributes more deeply nested than expected."
-    return true
-end
-
-# reached end of nested Attributes before resolving key -> not found
-contains_nested_attr(user_kw, keytuple::Tuple{Symbol, Vararg{Symbol}}) = false
-# reached end and resolve key -> found
-contains_nested_attr(user_kw, keytuple::Tuple{}) = true
-
-function contains_nested_attr(user_kw::Dict, keytuple::Tuple{Symbol, Vararg{Symbol}})
-    if haskey(user_kw, first(keytuple))
-        return contains_nested_attr(user_kw[first(keytuple)], Base.tail(keytuple))
-    else
-        return false
+# TODO: Should we switch to Dict?
+fonts_compat(fonts) = fonts
+function fonts_compat(fonts::DocumentedAttributes)
+    d = Dict{Symbol, Any}()
+    for (k, v) in fonts.d
+        d[k] = v.default_value
     end
+    return d
 end
 
-function add_or_update_nested_attribute!(graph, updates, keytuple, attr::Attributes, user_kw)
-    for (k, v) in attr
-        add_or_update_nested_attribute!(graph, updates, (keytuple..., k), v, user_kw)
-    end
-    return
-end
-
-function add_or_update_nested_attribute!(graph, updates, keytuple, value, user_kw)
-    if haskey(graph, keytuple)
-        if contains_nested_attr(user_kw, keytuple)
-            # user set, nothing to do
-        else
-            # defaulted, update from theme
-            combined = ComputePipeline.merged_key(keytuple)
-            push!(updates, combined => value)
-        end
-    else
-        # value comes from the scene theme which can't have an @inherit
-        add_input!(graph, keytuple, value)
-    end
-    return
-end
-
-function add_theme_inner!(updates, key, inherit::Inherit, user_kw, graph, scene_theme)
-    # dont set theme values for cycled attributes
-    if haskey(graph, :palette_lookup) && haskey(graph.palette_lookup[], key)
-        return
-    end
-
-    value = if haskey(scene_theme, inherit.key)
-        to_value(scene_theme[inherit.key])
-    elseif !isnothing(inherit.fallback)
-        default.fallback
-    else
-        error("No fallback + theme for $(key)")
-    end
-
-    if key === :fonts
-        # want to merge regardless of user_kw if :fonts is an Input
-        # if it's a passthrough (i.e. no Input) this should happen at a higher layer
-        if haskey(graph.inputs, :fonts)
-            given = graph.inputs[:fonts].value # avoid resolve
-            new = isnothing(given) ? value : merge(given, value) # TODO: wrong order
-            push!(updates, :fonts => new)
-        end
-    else
-        add_or_update_nested_attribute!(graph, updates, (key,), value, user_kw)
-    end
-
-    return
-end
-
-# This method should be hit for the generic case where attributes are set by
-# solely by the plot. This should have been handled by add_attributes!() already
-# so we should not need to do anything here.
-function add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    if !haskey(graph, key)
-        error(":$key should have already been added to the plot.")
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Dict{Symbol, AttributeMetadata}, user_kw, graph, scene_theme)
-    for (key, meta) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        value = meta.default_value
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-function inherit_theme_from_scene!(updates, plot_attr::Attributes, user_kw, graph, scene_theme)
-    for (key, value) in plot_attr
-        if key in (:transformation, :model, :transform_func)
-            continue
-        end
-        add_theme_inner!(updates, key, value, user_kw, graph, scene_theme)
-    end
-    return
-end
-
-
-# User set keyword case, don't update. (Reached when the keys in plot_scene_theme
-# continue to appear in user_kw)
-overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme) = nothing
-
-# We stopped finding nested keys in user passed kwargs, so we will update.
-# Here we have not reached the end of nesting yet
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, plot_scene_theme::Attributes)
-    for (k, v) in plot_scene_theme
-        if haskey(graph, key)
-            overwrite_plot_defaults!(updates, graph[k], v)
-        end
-    end
-    return
-end
-
-# reached end
-function overwrite_plot_defaults!(updates, node::Computed, value)
-    push!(updates, node.name => to_value(value))
-    return
-end
-
-# nesting mismatch
-function overwrite_plot_defaults!(updates, graph::ComputeGraphView, value)
-    error("Could not use theme default $value for $graph due to inconsistent nesting")
-end
-function overwrite_plot_defaults!(updates, node::Computed, value::Attributes)
-    error("Could not use theme default $value for $(node.name) due to inconsistent nesting")
-end
-
-function overwrite_plot_defaults!(
-        updates, graph::AbstractComputeGraph,
-        user_kw::Union{Dict, Attributes, NamedTuple},
-        plot_scene_theme::Attributes
+function add_attributes!(
+        graph::AbstractComputeGraph, default_attributes::DocumentedAttributes,
+        user_attributes, is_primitive::Bool, plot_key::Symbol
     )
-    for (k, v) in plot_scene_theme
-        if haskey(graph, k)
-            if k === :fonts
-                push!(updates, :fonts => merge(v, graph.fonts[]))
-            elseif haskey(user_kw, k)
-                overwrite_plot_defaults!(updates, graph[k], user_kw[k], v)
+
+    for (key, meta) in default_attributes.d
+        # this is handled through plot.kw, not plot.attributes. Keeping it in the
+        # compute graph may cause double application of user set transformations,
+        # e.g. #4789
+        key === :transformation && continue
+
+        # Old recipes translate Attributes to DocumentedAttributes which causes
+        # fonts to become DocumentedAttributes which would lead to nesting here
+        default = if key === :fonts
+            fonts_compat(meta.default_value)
+        else
+            meta.default_value
+        end
+
+        if default isa Makie.DocumentedAttributes
+            user_kw = get(user_attributes, key, NamedTuple())
+            view = ComputePipeline.ComputeGraphView(graph, key)
+            add_attributes!(view, default, user_kw, is_primitive, plot_key)
+
+        elseif default isa Union{Attributes, NamedTuple}
+            error("Unexpected $(typeof(default)) in documented attributes for $key.")
+
+        else
+            # Added already by cycling or arguments
+            if haskey(graph, key)
+                # @info "skip $key"
+                continue
+            end
+
+            # TODO: fonts should probably also merge with kwargs here...?
+
+            default_value = default isa Makie.Inherit ? default.fallback : default
+            value = get(user_attributes, key, default_value)
+            if is_primitive
+                add_input!(Makie.AttributeConvert(key, plot_key), graph, key, value)
+            elseif value isa Union{Attributes, NamedTuple, DocumentedAttributes}
+                user_attr = get(user_attributes, key, nothing)
+                error("Nesting missmatch between user attributes $user_attr and documented attributed $default at $key.")
             else
-                # maybe nested, do update
-                overwrite_plot_defaults!(updates, graph[k], v)
+                add_input!(graph, key, value)
+                ComputePipeline.set_type!(graph[key], Any)
+            end
+        end
+    end
+
+    return
+end
+
+get_nested_path(::ComputeGraph, k) = k
+get_nested_path(g::ComputeGraphView, k) = ComputePipeline.merged_key(ComputePipeline.merged_key(g), k)
+
+function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plotsym)
+    for (k, meta) in plot_attr
+        haskey(graph, k) || continue
+        if k in (:transformation, :model, :transform_func)
+            continue
+        end
+        v = meta.default_value
+
+        if v isa DocumentedAttributes
+            subgraph = graph[k]
+            subkw = get(user_kw, k, NamedTuple())
+            subtheme = get(scene_theme, k, NamedTuple())
+            inherit_theme_from_scene!(subgraph, v, subkw, subtheme, plotsym)
+
+        elseif v isa Inherit
+            inherited = if haskey(scene_theme, v.key)
+                to_value(scene_theme[v.key])
+            else
+                to_value(theme(nothing, v.key, default = v.fallback))
+            end
+
+            if !haskey(user_kw, k)
+                # No user given kwarg, Inherit must resolve here
+                if inherited === NoFallback()
+                    nested_key = get_nested_path(graph, k)
+                    error("Could not get default for $nested_key because the parent theme does not define it and no fallback is provided by $plotsym.")
+                end
+                setproperty!(graph, k, inherited)
+            elseif inherited isa Union{Dict, Attributes, NamedTuple}
+                # mergeable kwarg should merge
+                setproperty!(graph, k, merge(inherited, user_kw[k]))
+            else
+                # value kwarg given, takes priority of theme inheritance
             end
         end
     end
     return
 end
 
+overwrite_plot_defaults!(graph, user_kw, ::Nothing, plotsym) = nothing
+function overwrite_plot_defaults!(graph, user_kw, overwrite_theme, plotsym)
+    for (k, maybe_obs) in overwrite_theme
+        haskey(graph, k) || continue
+        v = to_value(maybe_obs)
+        subgraph = graph[k]
+
+        if k === :fonts
+            setproperty!(graph, k, v)
+        elseif v isa Union{Attributes, Dict, NamedTuple} && subgraph isa ComputeGraphView
+            subkw = get(user_kw, k, NamedTuple())
+            overwrite_plot_defaults!(subgraph, subkw, v, plotsym)
+        elseif subgraph isa ComputeGraphView
+            error("Nesting missmatch: $k is a leaf node of theme[$plotsym] but not of the plots attributes $(graph[k])")
+        elseif !haskey(user_kw, k)
+            setproperty!(graph, k, v)
+        elseif user_kw isa Union{Dict, Attributes, NamedTuple}
+            setproperty!(graph, k, merge(v, user_kw[k]))
+        end
+    end
+    return
+end
+
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
-    plot_attr = plot_attributes(scene, T)
+    # Note: Most attributes have not yet been pulled or connected to anything,
+    # so there is little to gain from compiling updates into one big `update!()`
+    # call.
+    plot_attr = documented_attributes(T)
     scene_theme = theme(scene)
-    updates = Pair{Symbol, Any}[]
+    plot_name = plotsym(T)
 
     # Go through all @recipe attributes again. If the attribute is an @inherit
     # and it is not set by the user (and it exists in the scenes theme) replace
     # it with the theme value.
     # If inherited attribute is nested, merge every nested layer.
-    inherit_theme_from_scene!(updates, plot_attr, user_kw, graph, scene_theme)
+    inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plot_name)
 
     # Overwrite defaults from the plot @recipe with defaults set in the scenes
     # theme specifically for the plot, i.e. `:Scatter => Attributes(...)`
     plot_scene_theme = get(scene_theme, plotsym(T), Attributes())
-    overwrite_plot_defaults!(updates, graph, user_kw, plot_scene_theme)
+    overwrite_plot_defaults!(graph, user_kw, plot_scene_theme, plot_name)
 
-    update!(graph, updates)
     return
 end
 

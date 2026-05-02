@@ -756,6 +756,7 @@ end
 
 Base.keys(view::ComputeGraphView) = keys(view.nested_trace)
 recursive_keys(view::ComputeGraphView) = recursive_keys(view.nested_trace)
+merged_key(view::ComputeGraphView) = merged_key(view.nested_trace)
 
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
