@@ -592,28 +592,58 @@ function linestyle_to_sdf(linestyle::AbstractVector{<:Real}, resolution::Real = 
 end
 
 """
-    shared_attributes(plot::Plot, target::Type{<:Plot})
+    shared_attributes(plot::Plot, target::Type{<:Plot}[; drop])
 
 Extracts all attributes from `plot` that are shared with the `target` plot type.
+
+Optionally, `drop` can be specified for attributes to exclude. If it is given
+as a `Vector{Symbol}` or `Set{Symbol}` it only applies to top level attributes.
+If it is given as a `Dict` or `NamedTuple` values may point to another `Dict` or
+`NamedTuple` to exclude specific nested attributes. If it does not, the key is
+treated as an attribute or nested collection of attributes to exclude.
 """
-function shared_attributes(plot::Plot, target::Type{<:Plot}; drop::Vector{Symbol} = Symbol[])
-    # TODO: This currently happens for ComputeGraph passthrough already
-    valid_attributes = attribute_names(target)
-    existing_attributes = keys(plot.attributes.outputs)
-    to_drop = setdiff(existing_attributes, valid_attributes)
-    # Model is always shared, but should not be shared and therefore dropped
-    push!(to_drop, :model)
-    union!(to_drop, drop)
-    return drop_attributes(plot, to_drop)
+function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
+    return shared_attributes(plot.attributes, documented_attributes(target), drop)
 end
 
-function drop_attributes(plot::Plot, to_drop::Symbol...)
-    return drop_attributes(plot, Set(to_drop))
+function shared_attributes(
+        graph::ComputePipeline.AbstractComputeGraph, allowed::DocumentedAttributes,
+        excluded::Union{Vector{Symbol}, Set{Symbol}}
+    )
+    output = Attributes()
+    for (k, meta) in allowed
+        haskey(graph, k) || continue
+        k in excluded && continue
+        v = meta.default_value
+        maybe_subgraph = graph[k]
+        if v isa DocumentedAttributes && maybe_subgraph isa ComputeGraphView
+            output[k] = shared_attributes(maybe_subgraph, v, NamedTuple())
+        elseif !(v isa DocumentedAttributes) && maybe_subgraph isa Computed
+            output[k] = maybe_subgraph
+        end
+    end
+    return output
 end
 
-function drop_attributes(plot::Plot, to_drop::Set{Symbol})
-    attr = plot.attributes.outputs
-    return Attributes([k => v for (k, v) in attr if !(k in to_drop)])
+function shared_attributes(
+        graph::ComputePipeline.AbstractComputeGraph, allowed::DocumentedAttributes,
+        excluded::Union{Dict, NamedTuple}
+    )
+    output = Attributes()
+    for (k, meta) in allowed
+        haskey(graph, k) || continue
+        if haskey(excluded, k) && !(excluded[k] isa Union{Dict, NamedTuple})
+            continue
+        end
+        v = meta.default_value
+        maybe_subgraph = graph[k]
+        if v isa DocumentedAttributes && maybe_subgraph isa ComputeGraphView
+            output[k] = shared_attributes(maybe_subgraph, v, get(excluded, k, NamedTuple()))
+        elseif !(v isa DocumentedAttributes) && maybe_subgraph isa Computed
+            output[k] = maybe_subgraph
+        end
+    end
+    return output
 end
 
 isscalar(x::StaticVector) = true
