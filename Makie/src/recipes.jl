@@ -471,9 +471,7 @@ function build_documented_attributes(expr::Expr)
             end
             qsym = QuoteNode(sym)
             metadata = quote
-                default_value = let
-                    $(get_default_expr(default))
-                end
+                default_value = $(get_default_expr(default))
                 am = AttributeMetadata(;
                     docstring = $docs,
                     default_value = default_value,
@@ -514,12 +512,16 @@ function build_documented_attributes(expr::Expr)
         end
     end
 
+    # Both `let` and `local` are need to prevent nested attributes from writing
+    # to the same DocumentedAttributes (which can create recursive references)
     return quote
-        mixins = Dict{Int, DocumentedAttributes}()
-        $(mixin_exprs...)
-        d = Dict{Symbol, AttributeMetadata}()
-        $(metadata_exprs...)
-        DocumentedAttributes(d)
+        let
+            mixins = Dict{Int, DocumentedAttributes}()
+            $(mixin_exprs...)
+            local d = Dict{Symbol, AttributeMetadata}()
+            $(metadata_exprs...)
+            DocumentedAttributes(d)
+        end
     end
 end
 
