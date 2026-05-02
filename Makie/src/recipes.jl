@@ -336,6 +336,13 @@ end
 
 Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
 Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
+Base.getindex(d::DocumentedAttributes, key::Symbol) = d.d[key]
+Base.keys(d::DocumentedAttributes) = keys(d.d)
+Base.iterate(d::DocumentedAttributes) = iterate(d.d)
+Base.iterate(d::DocumentedAttributes, state) = iterate(d.d, state)
+Base.length(d::DocumentedAttributes) = length(d.d)
+Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
+Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
 
 function Base.show(io::IO, a::DocumentedAttributes)
     print_documented_attributes(io, a, 1)
@@ -344,13 +351,15 @@ end
 function print_documented_attributes(io, a::DocumentedAttributes, tab)
     maxlength = 100
     print(io, "DocumentedAttributes(")
-    for (k, v) in a.d
-        docs = if length(v.docstring) > maxlength
-            v.docstring[1:maxlength] * "..."
-        else
-            v.docstring
+    for (k, v) in a
+        if !isnothing(v.docstring)
+            docs = if length(v.docstring) > maxlength
+                v.docstring[1:maxlength] * "..."
+            else
+                v.docstring
+            end
+            print(io, "\n", "   "^tab, '"', docs, '"')
         end
-        print(io, "\n", "   "^tab, '"', docs, '"')
         print(io, "\n", "   "^tab, k, " = ")
         print_documented_attributes(io, v, tab)
     end
@@ -370,8 +379,8 @@ function filter_attributes(attr::DocumentedAttributes; kwargs...)
     return filter_attributes!(copy(attr); kwargs...)
 end
 function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
-    !isempty(allow) && filter!(p -> p[1] in allow, attr.d)
-    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr.d)
+    !isempty(allow) && filter!(p -> p[1] in allow, attr)
+    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr)
     return attr
 end
 
@@ -491,7 +500,7 @@ function build_documented_attributes(expr::Expr)
             # docstrings and default expressions of the mixed in
             # DocumentedAttributes are inserted
             metadata_exp = quote
-                for (key, value) in mixins[$mixin_idx].d
+                for (key, value) in mixins[$mixin_idx]
                     if haskey(d, key)
                         error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
                     end
@@ -518,11 +527,11 @@ function is_attribute(T::Type{<:Plot}, sym::Symbol)
 end
 
 function attribute_default_expressions(T::Type{<:Plot})
-    return Dict(k => v.default_expr for (k, v) in documented_attributes(T).d)
+    return Dict(k => v.default_expr for (k, v) in documented_attributes(T))
 end
 
 function _attribute_docs(T::Type{<:Plot})
-    return Dict(k => v.docstring for (k, v) in documented_attributes(T).d)
+    return Dict(k => v.docstring for (k, v) in documented_attributes(T))
 end
 
 
@@ -575,7 +584,7 @@ filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); 
 function attribute_names(T::Type{<:Plot})
     attr = documented_attributes(T)
     isnothing(attr) && return nothing
-    return keys(attr.d)
+    return keys(attr)
 end
 
 
@@ -584,7 +593,7 @@ function plot_attributes(scene, T)
     if isnothing(plot_attr)
         return mergeleft!(default_theme(scene, T), default_theme(T))
     else
-        return plot_attr.d
+        return plot_attr
     end
 end
 
@@ -611,7 +620,7 @@ function default_theme(scene, T::Type{<:Plot})
     isnothing(metas) && return attr
     thm = theme(scene)
     _attr = attr.attributes
-    for (k, meta) in metas.d
+    for (k, meta) in metas
         _attr[k] = lookup_default(meta, thm)
     end
     return attr
