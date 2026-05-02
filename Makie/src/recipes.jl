@@ -586,6 +586,8 @@ function build_documented_attributes(expr::Expr)
     end
 end
 
+is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
+
 function is_attribute(T::Type{<:Plot}, sym::Symbol)
     return sym in attribute_names(T)
 end

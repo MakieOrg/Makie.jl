@@ -267,14 +267,6 @@ function argument_docs(::NoConversion)
     return Markdown.MD()  # Return empty markdown
 end
 
-
-function Base.show(io::IO, attr_meta::AttributeMetadata)
-    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
-    return if !isnothing(attr_meta.docstring)
-        println(io, attr_meta.docstring)
-    end
-end
-
 ################################################################################
 ### Main Documentation Function
 ################################################################################
@@ -382,7 +374,7 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
                     idx = findfirst(==(name), sorted_names)
                     if !isnothing(idx)
                         has_prev && print(io, ", ")
-                        print(io, '`', name, '`')
+                        write_short_single_attribute_docs!(io, attrs, name)
                         has_prev = true
                         deleteat!(sorted_names, idx)
                     end
@@ -400,8 +392,14 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
                 write_full_single_attribute_docs!(io, attrs, examples, attr)
             end
         else
-            str = mapreduce(name -> "`$name`", (a, b) -> "$a, $b", sorted_names)
-            println(io, "**Plot Attributes**: ", str, "\n")
+            print(io, "**Plot Attributes**: ")
+            has_prev = false
+            for name in sorted_names
+                has_prev && print(io, ", ")
+                write_short_single_attribute_docs!(io, attrs, name)
+                has_prev = true
+            end
+            println(io, "\n")
         end
     end
 
@@ -412,16 +410,43 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
         else
             "?$typename.attribute"
         end
-        println(io, "For more information and examples on specific attributes check `$info`.")
+        println(
+            io,
+            "For more information and examples on specific attributes check `$info`.",
+            " For nested attributes check `help($typename, :outer, :inner)`."
+        )
+    end
+    return
+end
+
+
+function Base.show(io::IO, attr_meta::AttributeMetadata)
+    println(io, "**Default:** `$(attr_meta.default_expr)`\n")
+    if !isnothing(attr_meta.docstring)
+        println(io, attr_meta.docstring)
     end
     return
 end
 
 function write_full_single_attribute_docs!(io, attrs, examples, attribute)
-    attr_meta = get(attrs.d, attribute, nothing)
+    attr_meta = attrs[attribute]
     println(io, "#### `$attribute`\n")
-    if !isnothing(attr_meta)
-        println(io, attr_meta)
+
+    if is_nested(attr_meta)
+        if !isnothing(attr_meta.docstring)
+            println(io, attr_meta.docstring)
+        end
+        println(io, "\n `$attribute` contains:")
+        # TODO: How do we handle examples for this?
+        subattr = attr_meta.default_value
+        for k in keys(subattr)
+            write_nested_attributes_docs!(io, subattr, k, 0)
+        end
+    else
+        println(io, "**Default:** `$(attr_meta.default_expr)`\n")
+        if !isnothing(attr_meta.docstring)
+            println(io, attr_meta.docstring)
+        end
         # Add example if available
         if !isempty(examples)
             println(io, "**Example:**\n")
@@ -433,8 +458,43 @@ function write_full_single_attribute_docs!(io, attrs, examples, attribute)
             end
             println(io)
         end
+    end
+    return
+end
+
+function write_nested_attributes_docs!(io, attrs, name, tab)
+    meta = attrs[name]
+    if is_nested(meta)
+        print(io, "  "^tab, "- `$name`")
     else
-        println(io, "*No documentation available.*\n")
+        print(io, "  "^tab, "- `$name = $(meta.default_expr)`")
+    end
+    if !isnothing(meta.docstring)
+        print(io, ": ", meta.docstring)
+    end
+    println(io)
+    if is_nested(meta)
+        subattr = meta.default_value
+        for k in keys(subattr)
+            write_nested_attributes_docs!(io, subattr, k, tab+1)
+        end
+    end
+    return
+end
+
+function write_short_single_attribute_docs!(io, attrs, name)
+    if is_nested(attrs[name])
+        print(io, '`', name, ".`(")
+        has_prev = false
+        subattr = attrs[name].default_value
+        for k in keys(subattr)
+            has_prev && print(io, ", ")
+            write_short_single_attribute_docs!(io, subattr, k)
+            has_prev = true
+        end
+        print(io, ')')
+    else
+        print(io, '`', name, '`')
     end
     return
 end
@@ -625,8 +685,16 @@ end
 ################################################################################
 
 
-function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
-    attr_meta = attribute_docs(T, attr)
+function field_docs(::Type{T}, names::Symbol...) where {T <: Plot}
+    return field_docs(T, documented_attributes(T), names...)
+end
+
+function field_docs(::Type{T}, attrs::DocumentedAttributes, name::Symbol, names::Symbol...) where {T <: Plot}
+    return field_docs(T, attrs[name].default_value, names...)
+end
+
+function field_docs(::Type{T}, attrs::DocumentedAttributes, attr::Symbol) where {T <: Plot}
+    attr_meta = attrs[attr]
 
     if isnothing(attr_meta)
         return Markdown.parse("No documentation available for attribute `$attr` of plot type `$T`.")
@@ -670,6 +738,18 @@ function field_docs(::Type{T}, attr::Symbol) where {T <: Plot}
                 end
             end
         end
+    end
+
+    if is_nested(attr_meta)
+        println(io, "\n Nested Attribute `$attr` contains:")
+        # TODO: How do we handle examples for this?
+        subattr = attr_meta.default_value
+        for k in keys(subattr)
+            write_nested_attributes_docs!(io, subattr, k, 0)
+        end
+
+        sym = plotsym(T)
+        println(io, "See `help($sym, :$attr, :inner[, ...])` for detailed documentation on nested attributes.")
     end
 
     return Markdown.parse(String(take!(io)))
