@@ -74,12 +74,13 @@ $(ATTRIBUTES)
             rotation = axisnames_rotation3d,
             fontsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = lift(to_3tuple, theme(scene, :font)),
+            font = theme(scene, :font),
             gap = 3
         ),
 
         ticks = Attributes(
-            ranges_labels = (automatic, automatic),
+            ranges = automatic,
+            labels = automatic,
             formatter = Formatters.plain,
 
             textcolor = (tick_color, tick_color, tick_color),
@@ -88,7 +89,7 @@ $(ATTRIBUTES)
             fontsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = lift(to_3tuple, theme(scene, :font)),
+            font = theme(scene, :font),
         ),
 
         frame = Attributes(
@@ -98,19 +99,6 @@ $(ATTRIBUTES)
             axiscolor = (:black, :black, :black),
         )
     )
-end
-
-# compat for old @recipe style of Axis3D
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where {T <: Axis3D}
-    if extended
-        println(io, "OldAxis attributes and their defaults for `$Typ` are: \n")
-    else
-        println(io, "OldAxis attributes for `$Typ` are: \n")
-    end
-    attributes = default_theme(nothing, Typ)
-    println(io, "```")
-    print_rec(io, attributes, 1; extended = extended)
-    return println(io, "```")
 end
 
 argument_dim_kwargs(::Type{<:Axis3D}) = tuple()
@@ -431,5 +419,5 @@ end
 
 
 function axis3d!(scene::Scene, lims = boundingbox(scene, p -> isaxis(p) || not_in_data_space(p)); kw...)
-    return axis3d!(scene, Attributes(), lims; ticks = (ranges = automatic, labels = automatic), kw...)
+    return axis3d!(scene, Attributes(), lims; kw...)
 end

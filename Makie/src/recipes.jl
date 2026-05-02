@@ -287,17 +287,22 @@ Block recipes define a new Block as a layout of other Blocks rather than a new
 plot as a combination of other plots. They are documented in `@Block`.
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
+    Base.depwarn("`@recipe ... do scene ... end` is deprecated in favor of `@recipe ... begin ... end`", :recipe)
     funcname_sym = to_func_name(Tsym)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
+    doc_attr_expr = esc(convert_old_attributes_expr(theme_func))
+    attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
+
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
-        $(Makie).default_theme(scene, ::Type{<:$PlotType}) = $(esc(theme_func))(scene)
+        const $attr_placeholder = $doc_attr_expr
+        $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
@@ -334,6 +339,62 @@ struct DocumentedAttributes
     d::Dict{Symbol, AttributeMetadata}
 end
 
+# This is only meant for compat with old style recipes
+function convert_old_attributes_expr(func_expr)
+    # remove the function header and just work on the body
+    ex = func_expr.args[2]
+
+    error_keys = Symbol[]
+
+    # This replaces:
+    # - `theme(scene, name)` -> `Inherit(name, NoFallback())`
+    # - `name = val` -> `name => AttributeMetadata(nothing, val, expr_string)`
+    # - `Attributes(...)` -> `DocumentedAttributes(Dict{Symbol, AttributeMetadata}(...))`
+    # and also checks for `lift(f, ...)` which is incompatible with DocumentedAttributes
+    expr = MacroTools.postwalk(ex) do x
+        if MacroTools.@capture(x, theme(scene_, key_))
+            return :(Inherit($key, NoFallback()))
+        elseif MacroTools.@capture(x, key_ = lift(f_, args__))
+            push!(error_keys, key)
+        elseif MacroTools.@capture(x, key_ = map(f_, args__))
+            if any(expr -> Makie.eval(expr) isa Union{Observable, Inherit}, args)
+                push!(error_keys, key)
+            end
+        elseif MacroTools.@capture(x, Attributes(args__))
+            dict_call = :(Dict{Symbol, AttributeMetadata}())
+            for arg in args
+                # Need to be careful to not match normal Code with this, e.g.
+                # value = sin(1) # don't make this value => AttributeMetadata(nothing, sin(1), "sin(1)")
+                # ...
+                # return Attributes(a = value) # only here
+                if MacroTools.@capture(arg, key_ = val_)
+                    str = Makie.default_expr_string(val)
+                    element_expr = :($(QuoteNode(key)) => AttributeMetadata(nothing, $val, $str))
+                    push!(dict_call.args, element_expr)
+                else
+                    error("Failed to match $arg")
+                end
+            end
+            return :(DocumentedAttributes($dict_call))
+        elseif MacroTools.@capture(x, return arg_)
+            return :($arg)
+        end
+        return x
+    end
+
+    if !isempty(error_keys)
+        error(
+            "Calling `lift` or `Observables.map` on attributes inside \
+            `@recipe ... do scene ... end` is no longer allowed. Apply these \
+            transformations in `plot!()` instead. Found in attributes: $error_keys.
+            "
+        )
+    end
+
+    # let to not let any enclosed variable spill out
+    return :(let; $expr end)
+end
+
 Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
 Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
 Base.getindex(d::DocumentedAttributes, key::Symbol) = d.d[key]
@@ -345,7 +406,7 @@ Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
 Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
 
 function Base.show(io::IO, a::DocumentedAttributes)
-    print_documented_attributes(io, a, 1)
+    return print_documented_attributes(io, a, 1)
 end
 
 function print_documented_attributes(io, a::DocumentedAttributes, tab)
