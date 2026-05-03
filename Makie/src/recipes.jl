@@ -327,13 +327,19 @@ Base.@kwdef struct AttributeMetadata
     docstring::Union{Nothing, String}
     default_value::Any
     default_expr::String # stringified expression, just needed for docs purposes
+    type::Type
 end
 
 update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
     am2.docstring === nothing ? am1.docstring : am2.docstring,
     am2.default_value,
-    am2.default_expr # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
+    am2.default_expr, # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
+    am2.type
 )
+function set_metadata!(d, key, am)
+    d[key] = haskey(d, key) ? update_metadata(d[key], am) : am
+    return
+end
 
 struct DocumentedAttributes
     d::Dict{Symbol, AttributeMetadata}
@@ -369,7 +375,7 @@ function convert_old_attributes_expr(func_expr)
                 # return Attributes(a = value) # only here
                 if MacroTools.@capture(arg, key_ = val_)
                     str = Makie.default_expr_string(val)
-                    element_expr = :($(QuoteNode(key)) => AttributeMetadata(nothing, $val, $str))
+                    element_expr = :($(QuoteNode(key)) => AttributeMetadata(nothing, $val, $str, Any))
                     push!(dict_call.args, element_expr)
                 else
                     error("Failed to match $arg")
@@ -421,7 +427,8 @@ function print_documented_attributes(io, a::DocumentedAttributes, tab)
             end
             print(io, "\n", "   "^tab, '"', docs, '"')
         end
-        print(io, "\n", "   "^tab, k, " = ")
+        Tstr = v.type === Any ? "" : "::$(v.type)"
+        print(io, "\n", "   "^tab, k, Tstr, " = ")
         print_documented_attributes(io, v, tab)
     end
     print(io, "\n", "   "^(tab-1), ")")
@@ -525,8 +532,13 @@ function build_documented_attributes(expr::Expr)
         end
 
         if is_attr_line
-            sym = attr.args[1]
-            default = attr.args[2]
+            if MacroTools.@capture(attr, sym_::type_ = default_)
+                # capture spawns all variables we need
+            elseif MacroTools.@capture(attr, sym_ = default_)
+                type = :Any
+            else
+                error("Could not parse attribute expr $expr")
+            end
             if !(sym isa Symbol)
                 error("$sym should be a symbol")
             end
@@ -536,7 +548,8 @@ function build_documented_attributes(expr::Expr)
                 am = AttributeMetadata(;
                     docstring = $docs,
                     default_value = default_value,
-                    default_expr = $(default_expr_string(default))
+                    default_expr = $(default_expr_string(default)),
+                    type = $type
                 )
                 if haskey(d, $(qsym))
                     d[$(qsym)] = update_metadata(d[$(qsym)], am)
