@@ -3,6 +3,7 @@ on:
   pull_request:
     branches:
       - master
+      - ff/breaking-0.25
   push:
     tags:
       - '*'
