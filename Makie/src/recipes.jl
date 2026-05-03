@@ -573,11 +573,7 @@ function build_documented_attributes(expr::Expr)
                     default_expr = $(default_expr_string(default)),
                     type = $type
                 )
-                if haskey(d, $(qsym))
-                    d[$(qsym)] = update_metadata(d[$(qsym)], am)
-                else
-                    d[$(qsym)] = am
-                end
+                set_metadata!(d, $qsym, am)
             end
             push!(metadata_exprs, metadata)
         elseif is_mixin_line
@@ -780,8 +776,6 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
     if !(attrblock isa Expr && attrblock.head === :block)
         throw(ArgumentError("Last argument is not a begin end block"))
     end
-    # attrblock = expand_mixins(attrblock)
-    # attrs = [extract_attribute_metadata(arg) for arg in attrblock.args if !(arg isa LineNumberNode)]
 
     docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
@@ -812,15 +806,7 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Plot{$funcname, $(esc(:ArgType))}
 
-        # This weird syntax is so that the output of the macrocall can be escaped because it
-        # contains user expressions, without escaping what's passed to the macro because that
-        # messes with its transformation logic. Because we escape the whole block with the macro,
-        # we don't reference it by symbol but splice in the macro itself into the AST
-        # with `var"@DocumentedAttributes"`
-        const $attr_placeholder = $(
-            esc(Expr(:macrocall, var"@DocumentedAttributes", LineNumberNode(@__LINE__), attrblock))
-        )
-
+        const $attr_placeholder = $(build_documented_attributes(attrblock))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
@@ -904,36 +890,6 @@ function default_expr_string(default)
 end
 
 default_expr_string(x::String) = repr(x)
-
-function extract_attribute_metadata(arg)
-    has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
-
-    if has_docs
-        docs = arg.args[3]
-        attr = arg.args[4]
-    else
-        docs = nothing
-        attr = arg
-    end
-
-    if !(attr isa Expr && attr.head === :(=) && length(attr.args) == 2)
-        error("$attr is not a valid attribute line like :x[::Type] = default_value")
-    end
-    left = attr.args[1]
-    default = attr.args[2]
-    if left isa Symbol
-        attr_symbol = left
-        type = Any
-    else
-        if !(left isa Expr && left.head === :(::) && length(left.args) == 2)
-            error("$left is not a Symbol or an expression such as x::Type")
-        end
-        attr_symbol = left.args[1]::Symbol
-        type = left.args[2]
-    end
-
-    return (docs = docs, symbol = attr_symbol, type = type, default = default)
-end
 
 function expand_mixins(attrblock::Expr)
     return Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
