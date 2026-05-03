@@ -359,7 +359,7 @@ function convert_old_attributes_expr(func_expr)
     # and also checks for `lift(f, ...)` which is incompatible with DocumentedAttributes
     expr = MacroTools.postwalk(ex) do x
         if MacroTools.@capture(x, theme(scene_, key_))
-            return :(Inherit($key, NoFallback()))
+            return :(Inherit(($key,), NoFallback()))
         elseif MacroTools.@capture(x, key_ = lift(f_, args__))
             push!(error_keys, key)
         elseif MacroTools.@capture(x, key_ = map(f_, args__))
@@ -452,8 +452,8 @@ function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude
     return attr
 end
 
-struct Inherit
-    key::Symbol
+struct Inherit{N}
+    keys::NTuple{N, Symbol}
     fallback::Any
 end
 struct NoFallback end
@@ -475,27 +475,49 @@ function lookup_default(meta::AttributeMetadata, theme)
     end
 end
 
+default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
+default_key_expr(x::QuoteNode) = :(($x,))
+function default_key_expr(expr::Expr)
+    if !(expr.head == :tuple && all(x -> x isa QuoteNode, expr.args))
+        error("$expr is not a valid inheritance key")
+    end
+    return :(($expr,))
+end
+
 function get_default_expr(default)
-    is_macrocall = default isa Expr && default.head === :macrocall
-    if is_macrocall && default.args[1] === Symbol("@inherit")
-        if length(default.args) ∉ (3, 4)
-            error("@inherit works with 1 or 2 arguments, expression was $default")
-        end
-        if !(default.args[3] isa Symbol)
-            error("Argument 1 of @inherit must be a Symbol, got $(default.args[3])")
-        end
-        key = default.args[3]
-        _default = get(default.args, 4, :(NoFallback()))
-        # first check scene theme
-        # then default value
-        return :($(Makie.Inherit)($(QuoteNode(key)), $(esc(_default))))
-    elseif is_macrocall && default.args[1] === Symbol("@attributes")
-        if !(length(default.args) == 3 && default.args[3].head === :block)
-            error("@attributes should begin an attributes block `@attributes begin ... end` but the found expression is $default")
-        end
-        return build_documented_attributes(default.args[3])
+    if MacroTools.@capture(default, @attributes attrblock_)
+        return build_documented_attributes(attrblock)
     else
-        return esc(default)
+        try
+            return get_default_expr_no_nesting(attrblock)
+        catch e
+            error("Failed to transform $default into `Inherit`.")
+        end
+    end
+end
+
+function get_default_expr_no_nesting(default)
+    # This is split off to allow Inherit(key, Inherit(...)) in some capacity
+    MacroTools.postwalk(default) do expr
+        if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
+            # This was only supported with fallback by Blocks
+            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
+        elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
+            # This was only supported with fallback by Blocks (?)
+            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
+        elseif MacroTools.@capture(expr, theme(scene_, key_))
+            return :(Makie.Inherit($(default_key_expr(key)), NoFallback()))
+
+        elseif MacroTools.@capture(expr, @inherit key_ fallback_)
+            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
+        elseif MacroTools.@capture(expr, @inherit key_)
+            return :(Makie.Inherit($(default_key_expr(key)), NoFallback()))
+
+        elseif MacroTools.@capture(expr, @attributes attrblock_)
+            error()
+        else
+            return esc(expr)
+        end
     end
 end
 
