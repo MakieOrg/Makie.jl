@@ -2,9 +2,6 @@
 ### Block Macro
 ################################################################################
 
-function is_attribute end
-function default_attribute_values end
-function attribute_types end
 function attribute_default_expressions end
 function _attribute_docs end
 function has_forwarded_layout end
@@ -226,12 +223,6 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     # append remaining fields
     append!(fields_vector, body.args)
 
-    attr_type_writes = Expr(
-        :block, map(attrs) do a
-            :(types[$(QuoteNode(a.symbol))] = $(a.type))
-        end...
-    )
-
     constructor = quote
         function $name($(basefields...))
             return new($(basefields...))
@@ -259,6 +250,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     end
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
+    attr_placeholder = Symbol("#__", name, "_attr_placeholder")
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -279,47 +271,13 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
             "No docstring defined.\n"
         end
 
-        $structdef
+        $(esc(structdef))
 
         export $name
         $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
-        function $(Makie).is_attribute(::Type{$(name)}, sym::Symbol)
-            return sym in ($((attrs !== nothing ? [QuoteNode(a.symbol) for a in attrs] : [])...),)
-        end
 
-        function $(Makie).default_attribute_values(::Type{$(name)}, scene::Union{Scene, Nothing})
-            sceneattrs = scene === nothing ? Attributes() : theme(scene)
-            curdeftheme = $(Makie).fast_deepcopy($(Makie).CURRENT_DEFAULT_THEME)
-            $(make_attr_dict_expr(attrs, :sceneattrs, :curdeftheme))
-        end
-
-        function $(Makie).attribute_types(::Type{$(name)})
-            types = Dict{Symbol, Any}()
-            $attr_type_writes
-            return types
-        end
-
-        function $(Makie).attribute_default_expressions(::Type{$name})
-            $(
-                if attrs === nothing
-                    Dict{Symbol, String}()
-                else
-                    Dict{Symbol, String}([a.symbol => _defaultstring(a.default) for a in attrs])
-                end
-            )
-        end
-
-        function $(Makie)._attribute_docs(::Type{$(name)})
-            return Dict(
-                $(
-                    (
-                        attrs !== nothing ?
-                            [Expr(:call, :(=>), QuoteNode(a.symbol), a.docs) for a in attrs] :
-                            []
-                    )...
-                )
-            )
-        end
+        const $attr_placeholder = $attrs
+        $(Makie).documented_attributes(::Type{$name}) = $attr_placeholder
 
         $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
 
@@ -330,15 +288,11 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         export $name
     end
 
-    return esc(q)
+    return q
 end
 
 _defaultstring(x) = string(MacroTools.striplines(x))
 _defaultstring(x::String) = repr(x)
-
-function make_attr_dict_expr(::Nothing, sceneattrsym, curthemesym)
-    return :(Dict())
-end
 
 function make_block_docstring(T::Type{<:Block}, docstring)
     return """
@@ -350,72 +304,14 @@ function make_block_docstring(T::Type{<:Block}, docstring)
 
     (type `?$T.x` in the REPL for more information about attribute `x`)
 
-    $(_attribute_list(T))
+    $(get_attribute_docs(T))
     """
 end
 
-function _attribute_list(T)
-    ks = sort(collect(keys(_attribute_docs(T))))
-    return join(("`$k`" for k in ks), ", ")
-end
+attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
 
-function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
-
-    exprs = map(attrs) do a
-
-        d = a.default
-        if d isa Expr && d.head === :macrocall && d.args[1] == Symbol("@inherit")
-            if length(d.args) != 4
-                error("@inherit works with exactly 2 arguments, expression was $d")
-            end
-            if !(d.args[3] isa QuoteNode)
-                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
-            end
-            key, default = d.args[3:4]
-            # first check scene theme
-            # then current_default_theme
-            # then default value
-            d = quote
-                if haskey($sceneattrsym, $key)
-                    to_value($sceneattrsym[$key]) # only use value of theme entry
-                elseif haskey($curthemesym, $key)
-                    to_value($curthemesym[$key]) # only use value of theme entry
-                else
-                    $default
-                end
-            end
-        end
-
-        :(d[$(QuoteNode(a.symbol))] = $d)
-    end
-
-    return quote
-        d = Dict{Symbol, Any}()
-        $(exprs...)
-        d
-    end
-end
-
-function extract_attributes!(body)
-    i = findfirst(
-        (
-            x -> x isa Expr && x.head === :macrocall && x.args[1] == Symbol("@attributes") &&
-                x.args[3] isa Expr && x.args[3].head === :block
-        ),
-        body.args
-    )
-
-    if i === nothing
-        attrs = Vector{Any}()
-    else
-        macroexpr = splice!(body.args, i)
-        attrs_block = macroexpr.args[3]
-        args = filter(x -> !(x isa LineNumberNode), attrs_block.args)
-        attrs::Vector{Any} = map(extract_attribute_metadata, args)
-    end
-
-
-    layout_related_attribute_block = quote
+function mixin_block_layout_attributes()
+    @DocumentedAttributes begin
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
         "The vertical alignment of the block in its suggested bounding box."
@@ -431,21 +327,33 @@ function extract_attributes!(body)
         "The align mode of the block in its parent GridLayout."
         alignmode = Inside()
     end
-    layout_related_attributes = filter(
-        x -> !(x isa LineNumberNode),
-        layout_related_attribute_block.args
+end
+
+function extract_attributes!(body)
+    i = findfirst(
+        expr -> MacroTools.@capture(expr, @attributes blockexpr_),
+        body.args
     )
 
-    lras = map(extract_attribute_metadata, layout_related_attributes)
-
-    for lra in lras
-        i = findfirst(x -> x.symbol == lra.symbol, attrs)
-        if i === nothing
-            push!(attrs, lra)
-        end
+    attr_input_expr = if i === nothing
+        Expr(:block)
+    else
+        macroexpr = splice!(body.args, i)
+        MacroTools.@capture(macroexpr, @attributes blockexpr_)
+        blockexpr
     end
 
-    return attrs
+    # Make sure layout inputs exist by adding a mixin for them.
+    # Only do this if the mixin doesn't already exist, since mixins error if
+    # any of their entries already exists. Also add it as the first thing to
+    # avoid this error.
+    # Note that later entries can still overwrite the metadata of mixin entries
+    # so custom defaults can still be set
+    if !MacroTools.@capture(attr_input_expr, mixin_block_layout_attributes()...)
+        pushfirst!(attr_input_expr.args, :(mixin_block_layout_attributes()...))
+    end
+
+    return build_documented_attributes(attr_input_expr)
 end
 
 
@@ -490,6 +398,28 @@ function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
     return FigureBlock(figure, b)
 end
 
+# TODO: Delete this once Legends doesn't need it anymore
+function default_attribute_values(::Type{T}, scene) where {T}
+    attr = documented_attributes(T)
+    scene_theme = theme(scene)
+    return default_attribute_values(scene_theme, attr)
+end
+
+function default_attribute_values(scene_theme, attr::DocumentedAttributes)
+    output = Dict{Symbol, Any}()
+    for (k, v) in attr
+        v = meta.default_value
+        if v isa DocumentedAttributes
+            output[k] = default_attribute_values(scene_theme, attr)
+        elseif v isa Inherit
+            output[k] = resolve_inherit(scene_theme, v)
+        else
+            output[k] = v
+        end
+    end
+    return output
+end
+
 function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
     return block_defaults(getfield(Makie, blockname), attribute_kwargs, scene)
 end
@@ -523,19 +453,18 @@ function InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <:
     return InvalidAttributeError(BT, "block", attributes)
 end
 
-function attribute_names(::Type{T}) where {T <: Block}
-    attrs = _attribute_docs(T)
-    # Some blocks have keyword arguments that are not attributes.
-    # TODO: Refactor initialize_block! to just not use kwargs?
-    (T <: Axis || T <: PolarAxis) && (attrs[:palette] = "")
-    T <: Legend && (attrs[:entrygroups] = "")
-    T <: Menu && (attrs[:default] = "")
-    T <: LScene && (attrs[:scenekw] = "")
-    return keys(attrs)
+
+function block_kwargs(::Type{T}) where {T <: Block}
+    (T <: Axis || T <: PolarAxis) && return Set([:palette])
+    T <: Legend && return Set([:entrygroups])
+    T <: Menu && return Set([:default])
+    T <: LScene && return Set([:scenekw])
+    return Set{Symbol}()
 end
 
+# TODO: Should probably run recursively
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
-    badnames = setdiff(keys(kwdict), attribute_names(T))
+    badnames = setdiff(keys(kwdict), attribute_names(T), block_kwargs(T))
     if !isempty(badnames)
         throw(InvalidAttributeError(T, badnames))
     end
@@ -628,16 +557,143 @@ convert_for_attribute(::Type{T}, x) where {T <: Number} = convert(T, x)
 convert_for_attribute(::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(::Type{FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
-function add_attributes!(T::Type{<:Block}, graph, attributes)
-    return _add_attributes!(T, graph, attributes)
+"""
+    get_attribute_init_info(block_defaults, default_theme, global_overwrite_theme, overwrite_theme, user_attributes, keys...)
+
+Returns the type and initial value of an attribute identified by one or more
+`keys...`. Multiple keys are treated as nested access here, with the left most
+key indexing the root level and right most the leaf attribute.
+
+This considers (with `T` being the block or plot type):
+- `block_defaults = documented_attributes(T)`: The attribute types and default values
+    defined by a `@recipe` or `@Block`. (Lowest priority)
+- `default_theme = scene.theme`: The parent scenes theme from which attributes may inherit
+    using `@inherit name` in `@recipe` or `@Block`.
+- `global_overwrite_theme = theme(T)`: Theme based overwrites for the attributes set by
+    `@recipe` or `@Block` from the global default theme. (Medium low priority)
+- `overwrite_theme = scene.theme[T]`: Theme based overwrites for the attributes set by
+    `@recipe` or `@Block` from the current theme. (Medium high priority)
+- `user_attributes`: The explicit attribute overwrites passed by a user as keyword
+    arguments to the plot or block constructor. (Highest Priority)
+
+Besides the `block_defaults` each of these inputs can be incomplete or even empty
+as long as a collection indexable by `get(collection, key::Symbol, default)` is given.
+"""
+function get_attribute_init_info(
+        block_defaults::DocumentedAttributes,
+        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
+        keys::Symbol...
+    )
+    _get_attribute_init_info(
+        block_defaults, default_theme, global_overwrite_theme, overwrite_theme,
+        user_attributes, keys, keys...
+    )
 end
 
-function _add_attributes!(T::Type{<:Block}, graph::AbstractComputeGraph, attributes)
-    typedict = attribute_types(T)
-    for (key, attrib) in attributes
-        type = get(typedict, key, Any)
-        add_input!(x -> convert_for_attribute(type, x), graph, key, attrib)
-        ComputePipeline.set_type!(graph[key], type)
+function _get_attribute_init_info(
+        block_defaults::DocumentedAttributes,
+        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
+        trace::Tuple, key::Symbol, keys::Symbol...
+    )
+    _get_attribute_init_info(
+        block_defaults[key],
+        default_theme,
+        get(global_overwrite_theme, key, NamedTuple()),
+        get(overwrite_theme, key, NamedTuple()),
+        get(user_attributes, key, NamedTuple()),
+        trace, keys...
+    )
+end
+
+function _get_attribute_init_info(
+        block_defaults::DocumentedAttributes,
+        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
+        trace::Tuple, key::Symbol
+    )
+    block_default = block_defaults[key]
+    T = block_default.type
+
+    if is_nested(block_default)
+        s = join(trace, '.')
+        error("$s is not a leaf Attribute")
+    elseif haskey(user_attributes, key)
+        return T, pop!(user_attributes, key)
+    elseif haskey(overwrite_theme, key)
+        return T, overwrite_theme[key]
+    elseif haskey(global_overwrite_theme, key)
+        return T, global_overwrite_theme[key]
+    elseif block_default.default_value isa Inherit
+        val = resolve_inherit(default_theme, block_default.default_value)
+        if val isa NoFallback()
+            s = join(trace, '.')
+            error("Current theme does not include a default for $s and the attribute does not provide a fallback.")
+        end
+        return T, val
+    else
+        return T, block_default.default_value
+    end
+end
+
+
+"""
+    add_attributes(::Type{<:Block}, compute_graph, sources...)
+
+This method may provide custom initialization of compute graph inputs (attributes)
+of a block. This may be useful if the default conversions are inappropriate for
+some inputs, i.e. if a different input callback is needed for a specific type
+(including `Any` from entries without type annotations).
+
+A custom implementation should use `Makie.get_attribute_init_info(sources..., keys...)`
+to get recipe defined type and more importantly the user, theme or recipe based initial
+value of each attribute it initializes.
+
+After this, the default initialization will run to make sure that every attribute
+defined by `@Block` has an input and is removed from the keyword arguments that
+get passed on to `initialize_block!(...)`.
+
+Example:
+```
+function Makie.add_attributes!(::Type{MyBlock}, graph, scources...)
+    _, default = Makie.get_attribute_init_info(sources..., :colorname)
+    Makie.add_input!(to_colorname, graph, :colorname, default)
+
+    _, default = Makie.get_attribute_init_info(sources..., :nested, :attribute)
+    Makie.add_input!(foo, graph, :nested, :attribute, default)
+    Makie.ComputePipeline.set_type!(graph.nested.attribute, Any)
+
+    return
+end
+```
+"""
+add_attributes!(::Type{<:Block}, graph, sources...) = nothing
+
+function add_remaining_block_attributes!(
+        graph::AbstractComputeGraph,
+        block_defaults::DocumentedAttributes,
+        sources...
+    )
+    for (key, meta) in block_defaults
+        if is_nested(meta)
+            add_remaining_block_attributes!(
+                ComputeGraphView(graph, key),
+                meta.default_value,
+                get.(sources, key, Ref(NamedTuple()))...
+            )
+
+            user_attributes = last(sources)
+            if haskey(user_attributes, key) && isempty(user_attributes[key])
+                pop!(user_attributes, key)
+            end
+        else
+            trace = if graph isa ComputeGraphView
+                (ComputePipeline.merged_key(graph), key)
+            else
+                (key,)
+            end
+            T, default = _get_attribute_init_info(block_defaults, sources..., trace, key)
+            add_input!(x -> convert_for_attribute(T, x), graph, key, default)
+            ComputePipeline.set_type!(graph[key], T)
+        end
     end
     return
 end
@@ -647,27 +703,30 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     # first sort out all user kwargs that correspond to block attributes
     check_textsize_deprecation(kwdict)
 
-    attribute_kwargs = Dict{Symbol, Any}()
-    for (key, value) in kwdict
-        if is_attribute(T, key)
-            attribute_kwargs[key] = pop!(kwdict, key)
-        end
-    end
+    graph = ComputeGraph()
+
+    topscene = get_topscene(fig_or_scene)
+    blockname = nameof(T)
+    block_defaults = documented_attributes(T)
+    default_theme = theme(topscene)
+    global_overwrite_theme = theme(blockname, default = NamedTuple())
+    overwrite_theme = get(theme(topscene), blockname, NamedTuple())
+
+    # User overwrites
+    add_attributes!(
+        T, graph,
+        block_defaults, default_theme, global_overwrite_theme, overwrite_theme, kwdict
+    )
+
+    # Add all attributes and filter any attributes from kwargs
+    add_remaining_block_attributes!(
+        graph,
+        block_defaults, default_theme, global_overwrite_theme, overwrite_theme, kwdict
+    )
+
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
     _check_remaining_kwargs(T, non_attribute_kwargs)
-
-    topscene = get_topscene(fig_or_scene)
-    # retrieve the default attributes for this block given the scene theme
-    # and also the `Block = (...` style attributes from scene and global theme
-    if kwdict_complete
-        attributes = attribute_kwargs
-    else
-        attributes = block_defaults(T, attribute_kwargs, topscene)
-    end
-
-    graph = ComputeGraph()
-    add_attributes!(T, graph, attributes)
 
     # create basic layout observables and connect attribute observables further down
     # after creating the block with its observable fields

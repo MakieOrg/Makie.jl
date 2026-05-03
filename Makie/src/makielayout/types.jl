@@ -158,6 +158,8 @@ struct IntervalsBetween
 end
 IntervalsBetween(n) = IntervalsBetween(n, true)
 
+include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 
 mutable struct LineAxis
     parent::Scene

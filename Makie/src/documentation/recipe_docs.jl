@@ -334,10 +334,10 @@ be skipped. If every attribute does not exist, the group will not be printed.
 """
 attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
 
-function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
+function get_attribute_docs(::Type{T}; full = false) where {T}
     # Build attributes section
-    attrs = documented_attributes(PT)
-    attr_names = attribute_names(PT)
+    attrs = documented_attributes(T)
+    attr_names = attribute_names(T)
     # Show detailed attribute documentation
     if isnothing(attr_names) || isempty(attr_names)
         return Markdown.parse("## Attributes\n\nNo attributes available.")
@@ -345,14 +345,15 @@ function get_attribute_docs(::Type{PT}; full = false) where {PT <: Plot}
         io = IOBuffer()
         println(io, "## Attributes\n")
         sorted_names = sort!(collect(attr_names))
-        write_attribute_docs!(io, PT, attrs, sorted_names, full)
+        write_attribute_docs!(io, T, attrs, sorted_names, full)
         return Markdown.parse(String(take!(io)))
     end
 end
 
 function write_attribute_docs!(io, PT, attrs, sorted_names, full)
     # Print groups first (assume attributes in each group are sorted)
-    for (groupname, attribute_names) in attribute_groups(PT)
+    groups = attribute_groups(PT)
+    for (groupname, attribute_names) in groups
         if any(name -> name in sorted_names, attribute_names)
             # Try to order attributes to minimize scrolling:
             # full docs: unique attributes closer to the top of the page
@@ -392,7 +393,10 @@ function write_attribute_docs!(io, PT, attrs, sorted_names, full)
                 write_full_single_attribute_docs!(io, attrs, examples, attr)
             end
         else
-            print(io, "**Plot Attributes**: ")
+            if !isempty(groups)
+                kind = PT <: Plot ? "Plot" : "Block"
+                print(io, "**$kind Attributes**: ")
+            end
             has_prev = false
             for name in sorted_names
                 has_prev && print(io, ", ")

@@ -623,15 +623,15 @@ end
 
 is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
 
-function is_attribute(T::Type{<:Plot}, sym::Symbol)
+function is_attribute(T::Type, sym::Symbol)
     return sym in attribute_names(T)
 end
 
-function attribute_default_expressions(T::Type{<:Plot})
+function attribute_default_expressions(::Type{T}) where {T}
     return Dict(k => v.default_expr for (k, v) in documented_attributes(T))
 end
 
-function _attribute_docs(T::Type{<:Plot})
+function _attribute_docs(::Type{T}) where {T}
     return Dict(k => v.docstring for (k, v) in documented_attributes(T))
 end
 
