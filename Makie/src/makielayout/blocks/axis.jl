@@ -531,11 +531,10 @@ end
 ################################################################################
 # Limits
 
-function add_attributes!(T::Type{<:Axis}, graph, attributes)
-    limits = pop!(attributes, :limits)
-    add_input!(convert_limit_attribute, graph, :limits, limits)
+function add_attributes!(::Type{<:Axis}, graph, sources...)
+    _, default = Makie.get_attribute_init_info(sources..., :limits)
+    add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
-    _add_attributes!(T, graph, attributes)
     return
 end
 

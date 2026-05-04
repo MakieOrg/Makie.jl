@@ -349,8 +349,8 @@ function extract_attributes!(body)
     # avoid this error.
     # Note that later entries can still overwrite the metadata of mixin entries
     # so custom defaults can still be set
-    if !MacroTools.@capture(attr_input_expr, mixin_block_layout_attributes()...)
-        pushfirst!(attr_input_expr.args, :(mixin_block_layout_attributes()...))
+    if !MacroTools.@capture(attr_input_expr, Makie.mixin_block_layout_attributes()...)
+        pushfirst!(attr_input_expr.args, :(Makie.mixin_block_layout_attributes()...))
     end
 
     return build_documented_attributes(attr_input_expr)
@@ -407,7 +407,7 @@ end
 
 function default_attribute_values(scene_theme, attr::DocumentedAttributes)
     output = Dict{Symbol, Any}()
-    for (k, v) in attr
+    for (k, meta) in attr
         v = meta.default_value
         if v isa DocumentedAttributes
             output[k] = default_attribute_values(scene_theme, attr)
@@ -624,7 +624,7 @@ function _get_attribute_init_info(
         return T, global_overwrite_theme[key]
     elseif block_default.default_value isa Inherit
         val = resolve_inherit(default_theme, block_default.default_value)
-        if val isa NoFallback()
+        if val === NoFallback()
             s = join(trace, '.')
             error("Current theme does not include a default for $s and the attribute does not provide a fallback.")
         end
@@ -684,7 +684,7 @@ function add_remaining_block_attributes!(
             if haskey(user_attributes, key) && isempty(user_attributes[key])
                 pop!(user_attributes, key)
             end
-        else
+        elseif !haskey(graph, key)
             trace = if graph isa ComputeGraphView
                 (ComputePipeline.merged_key(graph), key)
             else

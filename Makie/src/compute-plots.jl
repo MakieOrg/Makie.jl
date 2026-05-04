@@ -848,9 +848,9 @@ function resolve_inherit(scene_theme, inherit::Inherit)
         result = resolve_inherit(global_theme, inherit.fallback, inherit.keys...)
     end
     if result isa Inherit
-        return resolve(scene_theme, result)
+        return resolve_inherit(scene_theme, result)
     end
-    return inherit.callback(result)
+    return inherit.callback(to_value(result))
 end
 
 function resolve_inherit(theme, fallback, key::Symbol, keys::Symbol...)

@@ -17,7 +17,7 @@ function DocumenterVitepress.render(io::IO, mime::MIME"text/plain", node::Markdo
 end
 
 function attrs_examples_docs_defaults(type::Type{<:Makie.Block})
-    attrkeys = sort(collect(keys(Makie.default_attribute_values(type, nothing))))
+    attrkeys = sort(collect(keys(Makie.documented_attributes(type))))
 
     all_examples = Makie.attribute_examples(type)
     all_docs = Makie._attribute_docs(type)

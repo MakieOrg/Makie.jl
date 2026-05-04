@@ -448,15 +448,11 @@ Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
 function lookup_default(meta::AttributeMetadata, theme)
     default = meta.default_value
     if default isa Inherit
-        if haskey(theme, default.key)
-            to_value(theme[default.key]) # only use value of theme entry
-        else
-            if default.fallback === NoFallback()
-                error("Inherited key $(default.key) not found in theme with no fallback given.")
-            else
-                return default.fallback
-            end
+        result = resolve_inherit(theme, meta.default_value)
+        if result === NoFallback()
+            error("Inherited key $(default.key) not found in theme with no fallback given.")
         end
+        return to_value(result)
     else
         return default
     end
@@ -677,7 +673,7 @@ function types_for_plot_arguments end
 documented_attributes(_) = nothing
 filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
 
-function attribute_names(T::Type{<:Plot})
+function attribute_names(::Type{T}) where {T}
     attr = documented_attributes(T)
     isnothing(attr) && return nothing
     return keys(attr)
