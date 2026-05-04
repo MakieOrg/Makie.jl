@@ -481,7 +481,10 @@ function default_key_expr(expr::Expr)
     if !(expr.head == :tuple && all(x -> x isa QuoteNode, expr.args))
         error("$expr is not a valid inheritance key")
     end
-    return :(($expr,))
+    for i in eachindex(expr.args)
+        expr.args[i] = ifelse(expr.args[i] isa Symbol, QuoteNode(expr.args[i]), expr.args[i])
+    end
+    return expr
 end
 
 function get_default_expr(default)
@@ -489,7 +492,7 @@ function get_default_expr(default)
         return build_documented_attributes(attrblock)
     else
         try
-            return get_default_expr_no_nesting(attrblock)
+            return get_default_expr_no_nesting(default)
         catch e
             error("Failed to transform $default into `Inherit`.")
         end
