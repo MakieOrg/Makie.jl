@@ -352,13 +352,13 @@ function convert_old_attributes_expr(func_expr)
 
     expr = MacroTools.postwalk(ex) do x
         if MacroTools.@capture(x, theme(scene_, key_))
-            return :(Inherit(($key,)))
+            return :(Makie.Inherit(($key,)))
         elseif MacroTools.@capture(x, key_ = lift(f_, theme(scene_, key_)))
-            return :(Inherit($f, ($key,)))
+            return :(Makie.Inherit($f, ($key,)))
         elseif MacroTools.@capture(x, key_ = map(f_, theme(scene_, key_)))
-            return :(Inherit($f, ($key,)))
+            return :(Makie.Inherit($f, ($key,)))
         elseif MacroTools.@capture(x, Attributes(args__))
-            dict_call = :(Dict{Symbol, AttributeMetadata}())
+            dict_call = :(Dict{Symbol, Makie.AttributeMetadata}())
             for arg in args
                 # Need to be careful to not match normal Code with this, e.g.
                 # value = sin(1) # don't make this value => AttributeMetadata(nothing, sin(1), "sin(1)")
@@ -366,13 +366,13 @@ function convert_old_attributes_expr(func_expr)
                 # return Attributes(a = value) # only here
                 if MacroTools.@capture(arg, key_ = val_)
                     str = Makie.default_expr_string(val)
-                    element_expr = :($(QuoteNode(key)) => AttributeMetadata(nothing, $val, $str, Any))
+                    element_expr = :($(QuoteNode(key)) => Makie.AttributeMetadata(nothing, $val, $str, Any))
                     push!(dict_call.args, element_expr)
                 else
                     error("Failed to match $arg")
                 end
             end
-            return :(DocumentedAttributes($dict_call))
+            return :(Makie.DocumentedAttributes($dict_call))
         elseif MacroTools.@capture(x, return arg_)
             return :($arg)
         end
@@ -562,13 +562,13 @@ function build_documented_attributes(expr::Expr, attribute_path = tuple())
             qsym = QuoteNode(sym)
             metadata = quote
                 default_value = $(get_default_expr(default, (attribute_path..., sym)))
-                am = AttributeMetadata(;
+                am = Makie.AttributeMetadata(;
                     docstring = $docs,
                     default_value = default_value,
                     default_expr = $(default_expr_string(default)),
                     type = $type
                 )
-                set_metadata!(d, $qsym, am)
+                Makie.set_metadata!(d, $qsym, am)
             end
             push!(metadata_exprs, metadata)
         elseif is_mixin_line
@@ -603,11 +603,11 @@ function build_documented_attributes(expr::Expr, attribute_path = tuple())
     # to the same DocumentedAttributes (which can create recursive references)
     return quote
         let
-            mixins = Dict{Int, DocumentedAttributes}()
+            mixins = Dict{Int, Makie.DocumentedAttributes}()
             $(mixin_exprs...)
-            local d = Dict{Symbol, AttributeMetadata}()
+            local d = Dict{Symbol, Makie.AttributeMetadata}()
             $(metadata_exprs...)
-            DocumentedAttributes(d)
+            Makie.DocumentedAttributes(d)
         end
     end
 end

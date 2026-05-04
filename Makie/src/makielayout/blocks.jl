@@ -242,7 +242,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         end
         names = map(x -> x isa Symbol ? x : x.args[1], args.args)
         types = map(x -> x isa Symbol ? :Any : x.args[2], args.args)
-        argument_names_expr = :($(Makie).argument_names(::Type{$name}) = $names)
+        argument_names_expr = esc(:($(Makie).argument_names(::Type{$name}) = $names))
         # TODO: This is broken but also not used
         # argument_types_expr = quote
         #     $(Makie).block_argument_types(::Type{$name}) = tuple( $(esc.(types)...) )
@@ -251,6 +251,8 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
     attr_placeholder = Symbol("#__", name, "_attr_placeholder")
+
+    BlockType = esc(name)
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -261,7 +263,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         # of the @recipe invocation. From there, it can then be retrieved, modified, and later
         # attached to plotting function by using @doc again. We also delete the binding to the
         # temporary variable so no unnecessary docstrings stay in place.
-        Core.@__doc__ $(docs_placeholder) = nothing
+        Core.@__doc__ $(esc(docs_placeholder)) = nothing
         binding = Docs.Binding(@__MODULE__, $(QuoteNode(docs_placeholder)))
         user_docstring = if haskey(Docs.meta(@__MODULE__), binding)
             _docstring = @doc($docs_placeholder)
@@ -273,19 +275,18 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
         $(esc(structdef))
 
-        export $name
-        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $name
+        export $BlockType
+        $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $BlockType
 
         const $attr_placeholder = $attrs
-        $(Makie).documented_attributes(::Type{$name}) = $attr_placeholder
+        $(Makie).documented_attributes(::Type{$BlockType}) = $attr_placeholder
 
-        $(Makie).has_forwarded_layout(::Type{$name}) = $has_forwarded_layout
+        $(Makie).has_forwarded_layout(::Type{$BlockType}) = $has_forwarded_layout
 
         $argument_names_expr
 
-        docstring_modified = Makie.make_block_docstring($name, user_docstring)
+        docstring_modified = Makie.make_block_docstring($BlockType, user_docstring)
         @doc docstring_modified $name
-        export $name
     end
 
     return q
@@ -880,9 +881,10 @@ function initialize_block_arguments!(
 
     if length(converted_names) != length(attr.converted[])
         error(
-            "Failed to construct Block: Number of arguments returned by \
-            `convert_arguments` ($(length(attr.converted[]))) does not match the \
-            number of expected arguments ($(length(converted_names)))."
+            "Failed to construct Block: Expected $(length(converted_names)) converted \
+            argument(s) to map to `$converted_names` but got $(length(attr.converted[])): \
+            $(attr.converted[]). This means that `$T` did not correctly convert the given \
+            arguments."
         )
     end
 
