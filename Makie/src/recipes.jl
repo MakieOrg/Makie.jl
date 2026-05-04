@@ -350,22 +350,13 @@ function convert_old_attributes_expr(func_expr)
     # remove the function header and just work on the body
     ex = func_expr.args[2]
 
-    error_keys = Symbol[]
-
-    # This replaces:
-    # - `theme(scene, name)` -> `Inherit(name, NoFallback())`
-    # - `name = val` -> `name => AttributeMetadata(nothing, val, expr_string)`
-    # - `Attributes(...)` -> `DocumentedAttributes(Dict{Symbol, AttributeMetadata}(...))`
-    # and also checks for `lift(f, ...)` which is incompatible with DocumentedAttributes
     expr = MacroTools.postwalk(ex) do x
         if MacroTools.@capture(x, theme(scene_, key_))
-            return :(Inherit(($key,), NoFallback()))
-        elseif MacroTools.@capture(x, key_ = lift(f_, args__))
-            push!(error_keys, key)
-        elseif MacroTools.@capture(x, key_ = map(f_, args__))
-            if any(expr -> Makie.eval(expr) isa Union{Observable, Inherit}, args)
-                push!(error_keys, key)
-            end
+            return :(Inherit(($key,)))
+        elseif MacroTools.@capture(x, key_ = lift(f_, theme(scene_, key_)))
+            return :(Inherit($f, ($key,)))
+        elseif MacroTools.@capture(x, key_ = map(f_, theme(scene_, key_)))
+            return :(Inherit($f, ($key,)))
         elseif MacroTools.@capture(x, Attributes(args__))
             dict_call = :(Dict{Symbol, AttributeMetadata}())
             for arg in args
@@ -388,16 +379,7 @@ function convert_old_attributes_expr(func_expr)
         return x
     end
 
-    if !isempty(error_keys)
-        error(
-            "Calling `lift` or `Observables.map` on attributes inside \
-            `@recipe ... do scene ... end` is no longer allowed. Apply these \
-            transformations in `plot!()` instead. Found in attributes: $error_keys.
-            "
-        )
-    end
-
-    # let to not let any enclosed variable spill out
+    # let to not allow any enclosed variables to spill out
     return :(let; $expr end)
 end
 
@@ -453,10 +435,15 @@ function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude
 end
 
 struct Inherit{N}
+    callback::Any
     keys::NTuple{N, Symbol}
     fallback::Any
 end
 struct NoFallback end
+
+Inherit(keys::Tuple{Vararg{Symbol}}) = Inherit(identity, keys, NoFallback())
+Inherit(keys::Tuple{Vararg{Symbol}}, fallback) = Inherit(identity, keys, fallback)
+Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
 
 function lookup_default(meta::AttributeMetadata, theme)
     default = meta.default_value
@@ -499,28 +486,33 @@ function get_default_expr(default)
     end
 end
 
-function get_default_expr_no_nesting(default)
+function get_default_expr_no_nesting(expr)
     # This is split off to allow Inherit(key, Inherit(...)) in some capacity
-    MacroTools.postwalk(default) do expr
-        if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
-            # This was only supported with fallback by Blocks
-            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
-        elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
-            # This was only supported with fallback by Blocks (?)
-            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
-        elseif MacroTools.@capture(expr, theme(scene_, key_))
-            return :(Makie.Inherit($(default_key_expr(key)), NoFallback()))
+    if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
+        # This was only supported with fallback by Blocks
+        fb = get_default_expr_no_nesting(fallback)
+        return :(Makie.Inherit($(default_key_expr(key)), $fb))
+    elseif MacroTools.@capture(expr, map(f_, inherit(scene_, key_, fallback_)))
+        # This was only supported with fallback by Blocks
+        fb = get_default_expr_no_nesting(fallback)
+        return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
+    elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
+        # This was only supported with fallback by Blocks (?)
+        fb = get_default_expr_no_nesting(fallback)
+        return :(Makie.Inherit($(default_key_expr(key)), $fb))
+    elseif MacroTools.@capture(expr, theme(scene_, key_))
+        return :(Makie.Inherit($(default_key_expr(key))))
 
-        elseif MacroTools.@capture(expr, @inherit key_ fallback_)
-            return :(Makie.Inherit($(default_key_expr(key)), $fallback))
-        elseif MacroTools.@capture(expr, @inherit key_)
-            return :(Makie.Inherit($(default_key_expr(key)), NoFallback()))
+    elseif MacroTools.@capture(expr, @inherit key_ fallback_)
+        fb = get_default_expr_no_nesting(fallback)
+        return :(Makie.Inherit($(default_key_expr(key)), $fb))
+    elseif MacroTools.@capture(expr, @inherit key_)
+        return :(Makie.Inherit($(default_key_expr(key))))
 
-        elseif MacroTools.@capture(expr, @attributes attrblock_)
-            error()
-        else
-            return esc(expr)
-        end
+    elseif MacroTools.@capture(expr, @attributes attrblock_)
+        error()
+    else
+        return esc(expr)
     end
 end
 
@@ -553,7 +545,7 @@ function build_documented_attributes(expr::Expr)
         is_attr_line = attr isa Expr && attr.head === :(=) && length(attr.args) == 2
         is_mixin_line = attr isa Expr && attr.head === :(...) && length(attr.args) == 1
         if !(is_attr_line || is_mixin_line)
-            error("$attr is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
+            error("Failed to parse Attributes: \"$attr\" is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
         end
 
         if is_attr_line
