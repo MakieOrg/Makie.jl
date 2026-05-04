@@ -13,7 +13,7 @@ Creates a pie chart from the given `values`.
 * `[xs, ys], values` Alternatively, the origins of pie sectors can be specified per dimension with
     `xs, ys` (each a `Real` or `AbstractVector{<:Real}`).
 """
-@recipe Pie (xs::Vector{<:Union{Float32, Float64}}, ys::Vector{<:Union{Float32, Float64}}, values::Vector{<:Union{Float32, Float64}}) begin
+@recipe Pie (xs::AbstractVector{<:Union{Float32, Float64}}, ys::AbstractVector{<:Union{Float32, Float64}}, values::AbstractVector{<:Union{Float32, Float64}}) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
     normalize = true
     color = :gray
