@@ -196,7 +196,8 @@ end
 
     li = lines!(
         1:10,
-        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+        linecap = :round,
+        label = "Line" => (; linewidth = 8, color = :gray60, linestyle = :dot),
     )
     sc = scatter!(
         1:10,
@@ -209,16 +210,16 @@ end
             label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
         ]
     )
-    Legend(f[1, 2], ax)
+    Legend(f[1, 2], ax, patchsize = (60, 30))
     Legend(
         f[1, 3],
         [
             sc => (; markersize = 30, alpha = 0.3),
-            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
-            [li, sc] => Dict(:color => :cyan),
+            [li => (; color = :red, alpha = 0.3, linewidth = 8), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan, :linecap => :butt),
         ],
         ["Scatter", "Line and Scatter", "Another"],
-        patchsize = (40, 20)
+        patchsize = (60, 30)
     )
     f
 end
