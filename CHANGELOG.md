@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
