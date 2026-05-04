@@ -553,6 +553,27 @@ end
     @test leg.entrygroups[][][2][1].elements[2].plots[] == l2a
 end
 
+@testset "Legend linecap and joinstyle" begin
+    # The value stored on the LineElement may already be converted by the plot's
+    # compute graph (Int32) or kept as the original Symbol (override path), so
+    # we compare against both possible forms.
+    matches(stored, sym, key) = stored == sym || stored == Makie.convert_attribute(sym, Makie.Key{key}())
+
+    f = Figure()
+    ax = Axis(f[1, 1])
+    lines!(ax, 1:10, label = "a", linecap = :round, joinstyle = :round)
+    linesegments!(ax, [Point2f(0, 0), Point2f(1, 1)], label = "b", linecap = :square)
+    lines!(ax, 1:10, label = "c" => (; linecap = :square, joinstyle = :bevel))
+    leg = Legend(f[1, 2], ax)
+
+    entries = leg.entrygroups[][][2]
+    @test matches(entries[1].elements[1].attributes[:linecap][], :round, :linecap)
+    @test matches(entries[1].elements[1].attributes[:joinstyle][], :round, :joinstyle)
+    @test matches(entries[2].elements[1].attributes[:linecap][], :square, :linecap)
+    @test matches(entries[3].elements[1].attributes[:linecap][], :square, :linecap)
+    @test matches(entries[3].elements[1].attributes[:joinstyle][], :bevel, :joinstyle)
+end
+
 @testset "ReversibleScale" begin
     @test ReversibleScale(identity).inverse === identity
     @test ReversibleScale(log).inverse === exp
