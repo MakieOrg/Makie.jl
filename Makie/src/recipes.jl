@@ -474,43 +474,47 @@ function default_key_expr(expr::Expr)
     return expr
 end
 
-function get_default_expr(default)
+function get_default_expr(default, attribute_path)
     if MacroTools.@capture(default, @attributes attrblock_)
-        return build_documented_attributes(attrblock)
+        return build_documented_attributes(attrblock, attribute_path)
     else
-        try
-            return get_default_expr_no_nesting(default)
-        catch e
-            error("Failed to transform $default into `Inherit`.")
-        end
+        return get_default_expr_no_nesting(default, attribute_path, default)
     end
 end
 
-function get_default_expr_no_nesting(expr)
+function get_default_expr_no_nesting(expr, attribute_path, full_expr)
     # This is split off to allow Inherit(key, Inherit(...)) in some capacity
     if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, map(f_, inherit(scene_, key_, fallback_)))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
         return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
         # This was only supported with fallback by Blocks (?)
-        fb = get_default_expr_no_nesting(fallback)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, theme(scene_, key_))
         return :(Makie.Inherit($(default_key_expr(key))))
 
     elseif MacroTools.@capture(expr, @inherit key_ fallback_)
-        fb = get_default_expr_no_nesting(fallback)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit key_)
         return :(Makie.Inherit($(default_key_expr(key))))
 
     elseif MacroTools.@capture(expr, @attributes attrblock_)
-        error()
+        path = join(attribute_path, " -> ")
+        error("`@attributes` cannot be used with an @inherit (or similar) block. Used in $path = $full_expr.")
+    elseif MacroTools.@capture(expr, Makie.defaultfont())
+        path = join(attribute_path, " -> ")
+        @warn """
+            Using `Makie.defaultfont()` as an attribute default in `@recipe` or `@Block` causes segfaults due to invalid font pointers from caching.
+            Replacing it with `\"default\"` in `$path = $full_expr`"
+            """
+        return :("default")
     else
         return esc(expr)
     end
@@ -520,7 +524,7 @@ macro DocumentedAttributes(expr::Expr)
     return build_documented_attributes(expr)
 end
 
-function build_documented_attributes(expr::Expr)
+function build_documented_attributes(expr::Expr, attribute_path = tuple())
     if !(expr isa Expr && expr.head === :block)
         throw(ArgumentError("Argument is not a begin end block"))
     end
@@ -561,7 +565,7 @@ function build_documented_attributes(expr::Expr)
             end
             qsym = QuoteNode(sym)
             metadata = quote
-                default_value = $(get_default_expr(default))
+                default_value = $(get_default_expr(default, (attribute_path..., sym)))
                 am = AttributeMetadata(;
                     docstring = $docs,
                     default_value = default_value,
