@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points, by splitting `GL_LINE_STRIP_ADJACENCY` draw calls into chunks of 2M indices on macOS. Each chunk stays below the threshold at which Apple's OpenGL geometry-shader emulation emits the spurious primitive; consecutive chunks overlap by 3 indices to preserve the strip's adjacency context. No buffers change and non-Apple platforms are unaffected. [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
 
 ## [0.24.10] - 2026-04-27
