@@ -13,7 +13,7 @@ Creates a pie chart from the given `values`.
 * `[xs, ys], values` Alternatively, the origins of pie sectors can be specified per dimension with
     `xs, ys` (each a `Real` or `AbstractVector{<:Real}`).
 """
-@recipe Pie (xs, ys, values) begin
+@recipe Pie (xs::Vector{<:Union{Float32, Float64}}, ys::Vector{<:Union{Float32, Float64}}, values::Vector{<:Union{Float32, Float64}}) begin
     "If `true`, the sum of all values is normalized to 2π (a full circle)."
     normalize = true
     color = :gray
@@ -32,7 +32,9 @@ Creates a pie chart from the given `values`.
     mixin_generic_plot_attributes()...
 end
 
-argument_dims(::Type{<:Pie}, args...) = nothing
+argument_dims(::Type{<:Pie}, x, y, z) = (1, 2)
+argument_dims(::Type{<:Pie}, xy, z) = ((1, 2),)
+argument_dims(::Type{<:Pie}, z) = tuple()
 
 convert_arguments(PT::Type{<:Pie}, values::RealVector) = convert_arguments(PT, 0.0, 0.0, values)
 convert_arguments(PT::Type{<:Pie}, point::VecTypes{2}, values::RealVector) = convert_arguments(PT, point[1], point[2], values)
@@ -45,7 +47,6 @@ function convert_arguments(::Type{<:Pie}, xs::Union{Real, RealVector}, ys::Union
 end
 
 function plot!(plot::Pie)
-
     map!(plot, [:xs, :ys, :values, :vertex_per_deg, :radius, :inner_radius, :offset_radius, :offset, :normalize], :polys) do xs, ys, vals, vertex_per_deg, radius, inner_radius, offset_radius, offset, normalize
         radius = length(radius) == 1 ? fill(only(radius), length(vals)) : radius
         inner_radius = length(inner_radius) == 1 ? fill(only(inner_radius), length(vals)) : inner_radius
