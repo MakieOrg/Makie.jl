@@ -1522,6 +1522,10 @@ const EntryGroup = Tuple{Any, Vector{LegendEntry}}
         linecolorrange = automatic
         "The default line style used for LineElements"
         linestyle = :solid
+        "The default line cap used for LineElements"
+        linecap = theme(scene, :linecap)
+        "The default join style used for LineElements"
+        joinstyle = theme(scene, :joinstyle)
 
         "The default marker color for MarkerElements"
         markercolor = theme(scene, :markercolor)
