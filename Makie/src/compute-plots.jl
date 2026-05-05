@@ -996,6 +996,37 @@ function argument_error(PTrait, P, attr, user_kw, converted)
     )
 end
 
+function collect_applicable_attributes(
+        target_attr::DocumentedAttributes,
+        user_attributes::Union{Dict, NamedTuple},
+        parent_attributes::Union{AbstractComputeGraph, NamedTuple};
+        exclude = tuple()
+    )
+    output = Dict{Symbol, Any}()
+    for (k, meta) in target_attr
+        k in exclude && continue
+        if haskey(user_attributes, k) || haskey(parent_attributes, k)
+            if is_nested(meta)
+                output[k] = collect_applicable_attributes(
+                    meta.default_value,
+                    get(user_attributes, k, NamedTuple()),
+                    get(parent_attributes, k, NamedTuple())
+                )
+            elseif haskey(user_attributes, k)
+                output[k] = user_attributes[k]
+            else
+                output[k] = parent_attributes[k]
+            end
+        end
+    end
+    # The remaining user_attributes are not part of the attributes list, so they
+    # won't get mutated. We can just directly copy them
+    for (k, v) in user_attributes
+        get!(output, k, v)
+    end
+    return output
+end
+
 function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
 
@@ -1011,27 +1042,10 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
 
     # And also plot!(plot, ::ComputeGraph, args...)
     if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
-        # shallow copy user_attributes to isolate user Dict from changes
-        merged_attr = copy(user_attributes)
-
-        # Add all keys that are valid for this plot.
-        # Iterating through passthrough_attr is inconvenient with nested attributes,
-        # as those are saved with keys like `Symbol("outer.inner")`. These would
-        # need to be split and checked against valid_keys. Going the other way
-        # and checking if a key from valid_keys is in passthrough_attr doesn't
-        # require this
-        valid_keys = keys(plot_attributes(nothing, P))
-        passthrough_attr = first(user_args)
-        for key in valid_keys
-            # existing attributes (from kwargs) take priority
-            if haskey(passthrough_attr, key) && !haskey(merged_attr, key)
-                merged_attr[key] = passthrough_attr[key]
-            end
-        end
-
-        # these are handled by Transformations()
-        filter!(kv -> !in(kv[1], [:model, :transform_func]), merged_attr)
-
+        merged_attr = collect_applicable_attributes(
+            documented_attributes(P), user_attributes, user_args[1],
+            exclude = [:model, :transform_func]
+        )
         return Plot{Func}(Base.tail(user_args), merged_attr)
     end
 
