@@ -93,8 +93,6 @@ include("gl_backend.jl")
 load_all_shaders(SHADER_DIR)
 WARN_ON_LOAD[] = true
 
-const MAKIE_ICON_PATH = normpath(joinpath(@__DIR__, "..", "assets", "icon.png"))
-
 function __init__()
     activate!()
     macos_set_dock_visible(false)
@@ -116,7 +114,7 @@ function macos_set_dock_visible(visible::Bool)
         @ccall objc_msgSend(nsapp::Ptr{Cvoid}, set_policy_sel::Ptr{Cvoid}, val::Clong)::Ptr{Cvoid}
 
         if visible
-            macos_set_dock_icon(MAKIE_ICON_PATH)
+            macos_set_dock_icon(Makie.assetpath("icon_transparent.png"))
         end
     catch e
         @warn "Failed to set dock visibility" e
