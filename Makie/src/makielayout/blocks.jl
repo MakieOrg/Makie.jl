@@ -421,39 +421,9 @@ function default_attribute_values(scene_theme, attr::DocumentedAttributes)
     return output
 end
 
-function block_defaults(blockname::Symbol, attribute_kwargs::Dict, scene::Union{Nothing, Scene})
-    return block_defaults(getfield(Makie, blockname), attribute_kwargs, scene)
-end
-function block_defaults(::Type{B}, attribute_kwargs::Dict, scene::Union{Nothing, Scene}) where {B <: Block}
-    default_attrs = default_attribute_values(B, scene)
-    blockname = nameof(B)
-    typekey_scene_attrs = get(theme(scene), blockname, Attributes())
-    typekey_attrs = theme(blockname; default = Attributes())::Attributes
-    attributes = Dict{Symbol, Any}()
-    # make a final attribute dictionary using different priorities
-    # for the different themes
-    for (key, val) in default_attrs
-        # give kwargs priority
-        if haskey(attribute_kwargs, key)
-            attributes[key] = attribute_kwargs[key]
-            # otherwise scene theme
-        elseif haskey(typekey_scene_attrs, key)
-            attributes[key] = typekey_scene_attrs[key]
-            # otherwise global theme
-        elseif haskey(typekey_attrs, key)
-            attributes[key] = typekey_attrs[key]
-            # otherwise its the value from the type default theme
-        else
-            attributes[key] = val
-        end
-    end
-    return attributes
-end
-
 function InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
     return InvalidAttributeError(BT, "block", attributes)
 end
-
 
 function block_kwargs(::Type{T}) where {T <: Block}
     (T <: Axis || T <: PolarAxis) && return Set([:palette])

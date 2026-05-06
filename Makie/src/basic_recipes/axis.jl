@@ -28,12 +28,7 @@ to_2tuple(x) = ntuple(i -> x, Val(2))
 to_2tuple(x::NTuple{2, Any}) = x
 
 """
-    $(SIGNATURES)
-
 Plots a 3-dimensional OldAxis.
-
-## Attributes
-$(ATTRIBUTES)
 """
 @recipe(Axis3D) do scene
 
