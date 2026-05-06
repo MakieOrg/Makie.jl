@@ -472,7 +472,7 @@ end
 function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
     mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
-    lims = map(scene, bbox, attr.limits) do bb, lims
+    lims = map(scene, bbox, attr.imagelimits) do bb, lims
         x0, y0 = minimum(bb)
         w, h = widths(bb)
         xl0, xl1 = extrema(lims[1])
@@ -481,7 +481,7 @@ function legendelement_plots!(scene, element::ImageElement, bbox::Observable{Rec
     end
     plt = image!(
         scene, map(first, scene, lims), map(last, scene, lims),
-        attr.data, colormap = attr.colormap, colorrange = attr.colorrange,
+        attr.data, colormap = attr.colormap, colorrange = attr.imagecolorrange,
         inspectable = false, alpha = attr.alpha, interpolate = attr.interpolate
     )
 
@@ -492,10 +492,12 @@ function legendelement_plots!(scene, element::MeshScatterElement, bbox::Observab
     mergeleft!(element.attributes, defaultattrs)
     attr = element.attributes
     plt = meshscatter!(
-        scene, attr.position,
-        marker = attr.marker, markersize = attr.markersize, rotation = attr.rotation,
-        colormap = attr.colormap, colorrange = attr.colorrange,
-        color = attr.color, alpha = attr.alpha,
+        scene, attr.meshscatterpoints,
+        marker = attr.meshscattermarker, markersize = attr.meshscattersize,
+        rotation = attr.meshscatterrotation,
+        colormap = attr.colormap, # Why did you not get renamed?
+        colorrange = attr.meshscattercolorrange,
+        color = attr.meshscattercolor, alpha = attr.alpha,
         inspectable = false
     )
 
@@ -519,8 +521,8 @@ function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect
     attr = element.attributes
     plt = mesh!(
         scene, attr.mesh,
-        colormap = attr.colormap, colorrange = attr.colorrange,
-        color = attr.color, alpha = attr.alpha,
+        colormap = attr.meshcolormap, colorrange = attr.meshcolorrange,
+        color = attr.meshcolor, alpha = attr.alpha,
         inspectable = false, uv_transform = attr.uv_transform
     )
 
@@ -537,6 +539,14 @@ function legendelement_plots!(scene, element::MeshElement, bbox::Observable{Rect
     end
 
     return [plt]
+end
+
+function legendelement_plots!(scene, element::SurfaceElement, bbox::Observable{Rect2f}, defaultattrs::Attributes)
+    attr = copy(element.attributes)
+    attr[:meshcolor] = pop!(attr, :color)
+    attr[:meshcolormap] = pop!(attr, :surfacecolormap)
+    attr[:meshcolorrange] = pop!(attr, :surfacecolorrange)
+    return legendelement_plots!(scene, MeshElement(attr), bbox, defaultattrs)
 end
 
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
@@ -701,6 +711,7 @@ PolyElement(; kwargs...) = _legendelement(PolyElement, Attributes(kwargs))
 ImageElement(; kwargs...) = _legendelement(ImageElement, Attributes(kwargs))
 MeshScatterElement(; kwargs...) = _legendelement(MeshScatterElement, Attributes(kwargs))
 MeshElement(; kwargs...) = _legendelement(MeshElement, Attributes(kwargs))
+SurfaceElement(; kwargs...) = _legendelement(SurfaceElement, Attributes(kwargs))
 
 function _legendelement(T::Type{<:LegendElement}, attr::Attributes)
     _rename_attributes!(T, attr)
@@ -729,9 +740,29 @@ _renaming_mapping(::Type{PolyElement}) = Dict(
     :colormap => :polycolormap,
     :colorrange => :polycolorrange,
 )
-_renaming_mapping(::Type{MeshElement}) = Dict()
-_renaming_mapping(::Type{ImageElement}) = Dict()
-_renaming_mapping(::Type{MeshScatterElement}) = Dict()
+_renaming_mapping(::Type{MeshElement}) = Dict(
+    :color => :meshcolor,
+    :colormap => :meshcolormap,
+    :colorrange => :meshcolorrange,
+)
+_renaming_mapping(::Type{ImageElement}) = Dict(
+    :limits => :imagelimits,
+    :values => :imagevalues,
+    :colorrange => :imagecolorrange,
+)
+_renaming_mapping(::Type{MeshScatterElement}) = Dict(
+    :color => :meshscattercolor,
+    :colormap => :meshscattercolormap,
+    :colorrange => :meshscattercolorrange,
+    :marker => :meshscattermarker,
+    :position => :meshscatterpoints,
+    :markersize => :meshscattersize,
+    :rotation => :meshscatterrotation,
+)
+_renaming_mapping(::Type{SurfaceElement}) = Dict(
+    :colormap => :surfacecolormap,
+    :colorrange => :surfacecolorrange,
+)
 
 function _rename_attributes!(T, a)
     m = _renaming_mapping(T)
@@ -852,10 +883,10 @@ function legendelements(plot::Surface, legend)
     data = to_value(legend.surfacedata)
     xyzs = convert_arguments(Surface, data...)
     mesh = surface2mesh(xyzs...)
-    vals = legend.surfacevalues
+    vals = to_value(legend.surfacevalues)
     color = vals === automatic ? xyzs[end] : vals
     return LegendElement[
-        MeshElement(
+        SurfaceElement(
             mesh = mesh,
             color = color,
             colormap = plot.colormap,

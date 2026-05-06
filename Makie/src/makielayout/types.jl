@@ -1428,6 +1428,10 @@ struct MeshScatterElement <: LegendElement
     attributes::Attributes
 end
 
+struct SurfaceElement <: LegendElement
+    attributes::Attributes
+end
+
 struct LegendEntry
     plots::Vector{AbstractPlot}
     elements::Vector{LegendElement}
