@@ -96,6 +96,19 @@ show_dim_convert_in_axis_label(dc::AbstractDimConversion, ::Automatic) = show_di
 show_dim_convert_in_axis_label(::AbstractDimConversion) = true
 show_dim_convert_in_axis_label(::Union{AbstractDimConversion, Nothing}, option::Bool) = option
 
+"""
+    reattach_unit(dc::AbstractDimConversion, value)
+
+Inverse of `convert_dim_value`: takes a unitless `value` that was produced by `dc`
+(i.e. it is "in `dc`'s unit") and reattaches the unit so it becomes a quantity
+again. The default returns `value` unchanged.
+
+Combined with `convert_dim_value(to, reattach_unit(from, value))` this lets
+`Colorbar` rescale a unitless colorrange to a different unit when the user
+overrides the plot's dim_convert.
+"""
+reattach_unit(::AbstractDimConversion, value) = value
+
 # Recursively gets the dim convert from the plot
 # This needs to be recursive to allow recipes to use dim convert
 # TODO, should a recipe always set the dim convert to it's parent?
@@ -177,7 +190,8 @@ end
 needs_tick_update_observable(x) = nothing
 
 function needs_tick_update_observable(conversion::ComputePipeline.Computed)
-    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion))
+    # use_deepcopy = true blows up for Unitful, but seems fine for DynamicQuantities
+    return needs_tick_update_observable(ComputePipeline.get_observable!(conversion; use_deepcopy = false))
 end
 
 function needs_tick_update_observable(conversion::Observable)

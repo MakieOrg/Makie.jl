@@ -138,10 +138,52 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
         )
     end
 
+    plot_dc = extract_value_dim_convert(plot)
+    user_dc = get(values(kwargs), :dim_convert, plot_dc)
+
+    # If the user supplied a dim_convert that differs from the plot's, the colorbar's
+    # tick values are still in the plot's source unit. Rebuild the colormapping with a
+    # rescaled colorrange so the ticks display in the user's target unit.
+    if !isnothing(plot_dc) && !isnothing(user_dc) && plot_dc !== user_dc
+        cmap = rescaled_colormapping(cmap, plot_dc, user_dc)
+    end
+
     return Colorbar(
         fig_or_scene;
         colormap = cmap,
-        kwargs...
+        merge((; dim_convert = user_dc), values(kwargs))...,
+    )
+end
+
+"""
+    extract_value_dim_convert(plot)
+
+Returns the `AbstractDimConversion` associated with a plot's color values (typically
+the third dimension), or `nothing` if no such conversion exists. This is used by
+`Colorbar(fig, plot)` to display units on the colorbar axis.
+"""
+function extract_value_dim_convert(@nospecialize(plot::AbstractPlot))
+    conversions = get_conversions(plot)
+    isnothing(conversions) && return nothing
+    dc = conversions[3]
+    return dc isa Union{Nothing, NoDimConversion} ? nothing : dc
+end
+
+# Build a copy of `cmap` whose colorrange has been rescaled from `from_dc`'s unit
+# to `to_dc`'s unit (e.g. m → km). Reuses the existing axis machinery: re-attach
+# `from_dc`'s unit to make a quantity, then convert via `to_dc`. Other fields are
+# shared with the original cmap.
+function rescaled_colormapping(cmap::ColorMapping, from_dc, to_dc)
+    rescale(value) = convert_dim_value(to_dc, reattach_unit(from_dc, value))
+    new_colorrange = lift(r -> Vec{2, Float64}(rescale(r[1]), rescale(r[2])), cmap.colorrange)
+    new_colorrange_scaled = lift(new_colorrange, cmap.scale) do range, scale
+        return Vec2f(extrema(apply_scale(scale, range)))
+    end
+    return typeof(cmap)(
+        cmap.color, cmap.colormap, cmap.raw_colormap, cmap.scale, cmap.mapping,
+        new_colorrange,
+        cmap.lowclip, cmap.highclip, cmap.nan_color, cmap.color_mapping_type,
+        new_colorrange_scaled, cmap.color_scaled,
     )
 end
 
@@ -417,7 +459,7 @@ function initialize_block!(cb::Colorbar)
         labelpadding = cb.labelpadding, labelvisible = cb.labelvisible, labelsize = cb.labelsize,
         labelcolor = cb.labelcolor, labelrotation = cb.labelrotation,
         labelfont = cb.labelfont, ticklabelfont = cb.ticklabelfont,
-        dim_convert = nothing, # TODO, we should also have a dim convert for Colorbar
+        dim_convert = cb.dim_convert,
         ticks = ticks, tickformat = cb.tickformat,
         ticklabelsize = cb.ticklabelsize, ticklabelsvisible = cb.ticklabelsvisible, ticksize = cb.ticksize,
         ticksvisible = cb.ticksvisible, ticklabelpad = cb.ticklabelpad, tickalign = cb.tickalign,
@@ -427,7 +469,9 @@ function initialize_block!(cb::Colorbar)
         spinecolor = :transparent, spinevisible = false, flip_vertical_label = cb.flip_vertical_label,
         minorticksvisible = cb.minorticksvisible, minortickalign = cb.minortickalign,
         minorticksize = cb.minorticksize, minortickwidth = cb.minortickwidth,
-        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale
+        minortickcolor = cb.minortickcolor, minorticks = cb.minorticks, scale = cmap.scale,
+        unit_in_ticklabel = cb.unit_in_ticklabel, unit_in_label = cb.unit_in_label,
+        suffix_formatter = cb.label_suffix, use_short_unit = cb.use_short_unit,
     )
 
     cb.axis = axis

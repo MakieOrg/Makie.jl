@@ -918,6 +918,26 @@ Colorbar(fig_or_scene, contourf::Makie.Contourf; kwargs...)
         minorticks = IntervalsBetween(5)
         "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
         size = 12
+
+        """
+        Dimension conversion for the colorbar values, e.g. an `UnitfulConversion` or
+        `DQConversion`. When constructing a `Colorbar` from a plot it defaults to the
+        plot's dimension 3 conversion.
+        """
+        dim_convert = nothing
+        "Controls whether the dim_convert is shown in ticklabels."
+        unit_in_ticklabel::Union{Bool, Automatic} = automatic
+        "Controls whether the dim_convert is shown in the colorbar label."
+        unit_in_label::Union{Bool, Automatic} = automatic
+        """
+        Formatter for the colorbar label suffix generated from `dim_convert`. Can be a
+        Format.jl format string or a callback function acting on the string or rich
+        text generated from the dim convert. Can also be a plain String replacing an
+        active dim_convert label.
+        """
+        label_suffix = "[{}]"
+        "Switches between short and long units, e.g. \"s\" vs \"Second\""
+        use_short_unit::Bool = true
     end
 end
 

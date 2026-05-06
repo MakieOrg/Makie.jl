@@ -5,6 +5,10 @@ using Unitful: Quantity, LogScaled, @u_str, uconvert, ustrip
 const SupportedUnits = Union{Period, Unitful.Quantity, Unitful.LogScaled, Unitful.Units}
 
 expand_dimensions(::PointBased, y::AbstractVector{<:SupportedUnits}) = (keys(y), y)
+function expand_dimensions(::Union{ImageLike, GridBased}, data::AbstractMatrix{<:SupportedUnits})
+    x, y = map(s -> (1.0f0, Float32(s)), size(data))
+    return (x, y, data)
+end
 create_dim_conversion(::Type{<:SupportedUnits}) = UnitfulConversion()
 
 base_unit(q::Quantity) = base_unit(typeof(q))
@@ -165,4 +169,9 @@ end
 
 function convert_dim_value(conversion::UnitfulConversion, value::SupportedUnits)
     return unit_convert(conversion.unit[], value)
+end
+
+function reattach_unit(conversion::UnitfulConversion, value)
+    unit = conversion.unit[]
+    return unit isa Automatic ? value : value * unit
 end

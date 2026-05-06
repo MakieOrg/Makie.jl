@@ -88,9 +88,9 @@ function _argument_dims(args; direction::Symbol = :y, orientation::Symbol = :ver
 end
 
 
-argument_dims(::ImageLike, x, y, z) = (1, 2)
-argument_dims(::VertexGrid, x, y, z) = (1, 2) # contour, contourf
-argument_dims(::CellGrid, x, y, z) = (1, 2)
+argument_dims(::ImageLike, x, y, z) = (1, 2, 3)
+argument_dims(::VertexGrid, x, y, z) = (1, 2, 3) # contour, contourf
+argument_dims(::CellGrid, x, y, z) = (1, 2, 3)
 argument_dims(::VolumeLike, x, y, z, volume) = (1, 2, 3)
 
 argument_dims(::Type{<:Mesh}, ps::VecTypesVector{N}, faces) where {N} = (1:N,)
