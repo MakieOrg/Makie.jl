@@ -63,13 +63,24 @@ end
 
 
 struct BlockSpec
-    type::Symbol # Type as :Scatter, :BarPlot
+    type::Symbol
+    args::Vector{Any}
     kwargs::Dict{Symbol, Any}
     plots::Vector{PlotSpec}
     then_funcs::Set{Function}
     then_observers::Set{ObserverFunction}
-    function BlockSpec(type::Symbol, kwargs::Dict{Symbol, Any}, plots::Vector{PlotSpec} = PlotSpec[])
-        return new(type, kwargs, plots, Set{Function}(), Set{ObserverFunction}())
+
+    function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
+        attr = Dict{Symbol, Any}(kw)
+        if typ == :Colorbar && !isempty(args)
+            if length(args) == 1 && args[1] isa PlotSpec
+                attr[:plotspec] = args[1]
+                args = ()
+            else
+                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
+            end
+        end
+        return new(typ, Any[args...], attr, plots, Set{Function}(), Set{ObserverFunction}())
     end
 end
 
@@ -203,36 +214,10 @@ function Base.getproperty(p::BlockSpec, k::Symbol)
 end
 Base.propertynames(p::BlockSpec) = Tuple(keys(p.kwargs))
 
-
-function BlockSpec(typ::Symbol, args...; plots::Vector{PlotSpec} = PlotSpec[], kw...)
-    attr = Dict{Symbol, Any}(kw)
-    if typ == :Legend
-        # TODO, this is hacky and works around the fact,
-        # that legend gets its legend elements from the positional arguments
-        # But we can only update them via legend.entrygroups
-        defaults = block_defaults(:Legend, attr, nothing)
-        entrygroups = to_entry_group(Attributes(defaults), args...)
-        attr[:entrygroups] = entrygroups
-        return BlockSpec(typ, attr, plots)
-    else
-        if typ == :Colorbar && !isempty(args)
-            if length(args) == 1 && args[1] isa PlotSpec
-                attr[:plotspec] = args[1]
-                args = ()
-            else
-                error("Only one argument `arg::PlotSpec` is supported for S.Colorbar. Found: $(args)")
-            end
-        end
-        if !isempty(args)
-            error("BlockSpecs, with an exception for Legend and Colorbar, don't support positional arguments yet.")
-        end
-        return BlockSpec(typ, attr, plots)
-    end
-end
-
 function Base.show(io::IO, ::MIME"text/plain", spec::BlockSpec)
+    args = join(map(x -> string("::", typeof(x)), spec.args), ", ")
     kws = join([string(k, "::", typeof(v)) for (k, v) in spec.kwargs], ", ")
-    print(io, "S.", spec.type, "(; $kws)")
+    print(io, "S.", spec.type, "($args; $kws)")
     return
 end
 
@@ -334,6 +319,9 @@ function distance_score(a::BlockSpec, b::BlockSpec, scores_dict; maxscore = Inf)
     (a.type !== b.type) && return 100.0 # Can't update when types dont match
     return get!(scores_dict, (a, b)) do
         hypot(
+            # TODO: Does this work for Legend?
+            # args are cheap to change for complex recipe style blocks
+            distance_score(a.args, b.args, scores_dict; maxscore = maxscore / 0.1) * 0.1,
             # keyword arguments are cheap to change
             distance_score(a.kwargs, b.kwargs, scores_dict; maxscore = maxscore / 0.1) * 0.1,
             # Creating plots in a new axis is expensive, so we rather move the axis around
@@ -483,44 +471,103 @@ function Base.getproperty(::_SpecApi, field::Symbol)
     end
 end
 
-function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
-    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
-    # Update args in plot `input_args` list
-    updates = Dict{Symbol, Any}()
-    for i in eachindex(spec.args)
+function batch_update!(target, old_spec, new_spec)
+    updates = Pair{Tuple{Vararg{Symbol}}, Any}[]
+    batch_update_arguments!(updates, old_spec.args, new_spec.args)
+    batch_update_attributes!(updates, target, old_spec.kwargs, new_spec.kwargs)
+    update!(target.attributes, updates)
+    return
+end
+
+function batch_update_arguments!(updates, old_args, new_args)
+    for (i, prev_val, new_val) in zip(eachindex(new_args), old_args, new_args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
-        prev_val = oldspec.args[i]
-        if is_different(prev_val, spec.args[i]) # only update if different
-            updates[Symbol(:arg, i)] = spec.args[i]
+        if is_different(prev_val, new_val) # only update if different
+            push!(updates, (Symbol(:arg, i),) => new_val)
         end
     end
-    scene = parent_scene(plot)
-    # Update attributes
-    for (attribute, new_value) in spec.kwargs
-        old_attr = plot[attribute]
-        # only update if different
-        if is_different(old_attr[], new_value)
-            updates[attribute] = new_value
-        end
-    end
+    return
+end
 
-    reset_to_default = setdiff(keys(oldspec.kwargs), keys(spec.kwargs))
-    filter!(x -> x != :cycle, reset_to_default) # dont reset cycle
-    if !isempty(reset_to_default)
-        for k in reset_to_default
-            old_attr = plot[k][]
-            new_value = lookup_default(typeof(plot), parent_scene(plot), k)
-            # In case of e.g. dim_conversions
-            isnothing(new_value) && continue
-            # only update if different
-            if is_different(old_attr, new_value)
-                updates[k] = new_value
+function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
+    scene = parent_scene(target)
+    name = T isa Block ? nameof(T) : plotsym(T)
+
+    d_attr = documented_attributes(T) # Set by @recipe / @Block
+    scene_theme = theme(scene) # source for @inherit-ed attributes
+    overwrite_theme = get(theme(scene), name, NamedTuple()) # overwrite from scene.theme[Plot/Block]
+    global_overwrite_theme = theme(name, default = NamedTuple()) # same but global theme
+
+    collect_updates_rec!(
+        updates, target.attributes, tuple(), old_kwargs, new_kwargs,
+        d_attr, scene_theme, global_overwrite_theme, overwrite_theme
+    )
+    return
+end
+
+function collect_updates_rec!(
+        updates, graph, path, old_kwargs, new_kwargs,
+        d_attr, scene_theme, global_overwrite_theme, overwrite_theme,
+    )
+    # updates old/default -> new
+    for (k, new_value) in new_kwargs
+        current_path = (path..., k)
+        current_value = graph[k]
+        if current_value isa ComputeGraphView
+            # both nest
+            collect_updates_rec!(
+                updates, current_value, current_path,
+                get(old_kwargs, k, NamedTuple()),
+                get(new_kwargs, k, NamedTuple()),
+                d_attr[k],
+                get(scene_theme, k, NamedTuple()),
+                get(global_overwrite_theme, k, NamedTuple()),
+                get(overwrite_theme, k, NamedTuple()),
+            )
+        else
+            if is_different(current_value[], new_value)
+                push!(updates, current_path => new_value)
             end
         end
     end
-    update!(plot, updates)
+
+    # updates old -> default
+    for k in setdiff(keys(old_kwargs), keys(new_kwargs))
+        # TODO: Should this check that k is a valid attribute or just fail down the line?
+        is_valid = !in(k, (:cycle, :dim_converts))
+        is_valid || continue
+
+        current_path = (path..., k)
+        current_value = graph[k]
+
+        if current_value isa ComputeGraphView
+            collect_updates_rec!(
+                updates, current_value, current_path,
+                get(old_kwargs, k, NamedTuple()),
+                get(new_kwargs, k, NamedTuple()),
+                d_attr[k],
+                get(scene_theme, k, NamedTuple()),
+                get(global_overwrite_theme, k, NamedTuple()),
+                get(overwrite_theme, k, NamedTuple()),
+            )
+        else
+            _, default = get_attribute_init_info(
+                d_attr, scene_theme, global_overwrite_theme, overwrite_theme, NamedTuple(), k
+            )
+            if is_different(current_value[], default)
+                push!(updates, current_path => default)
+            end
+        end
+    end
+
     return updates
+end
+
+function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
+    oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
+    batch_update!(plot, oldspec, spec)
+    return
 end
 
 
@@ -799,9 +846,9 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::BlockSpec)
         # This means, we dont support a separate theme per scene
         # Which I think has been bitrotting anyways.
         kw = extract_colorbar_kw(spec, root(get_scene(fig)))
-        BType(fig; kw...)
+        BType(fig, spec.args...; kw...)
     else
-        BType(fig; spec.kwargs...)
+        BType(fig, spec.args...; spec.kwargs...)
     end
     parent[position...] = block
     for func in spec.then_funcs
@@ -830,6 +877,7 @@ function to_layoutable(parent, position::GridLayoutPosition, spec::GridLayoutSpe
 end
 
 function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::BlockSpec) where {T <: Block}
+    # Without this we could just call batch_update!(block, old_spec, new_spec) directly...
     if spec.type === :Colorbar
         # To get plot defaults for Colorbar(specapi), we need a theme / scene
         # So we have to look up the kwargs here instead of the BlockSpec constructor.
@@ -839,25 +887,12 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         old_kw = old_spec.kwargs
         new_kw = spec.kwargs
     end
-    old_attr = keys(old_kw)
-    new_attr = keys(new_kw)
-    # attributes that have been set previously and need to get unset now
-    reset_to_defaults = setdiff(old_attr, new_attr)
-    if !isempty(reset_to_defaults)
-        default_attrs = default_attribute_values(T, block.blockscene)
-        for attr in reset_to_defaults
-            setproperty!(block, attr, default_attrs[attr])
-        end
-    end
-    # Attributes needing an update
-    to_update = setdiff(new_attr, reset_to_defaults)
-    for key in to_update
-        val = new_kw[key]
-        prev_val = to_value(getproperty(block, key))
-        if is_different(val, prev_val)
-            setproperty!(block, key, val)
-        end
-    end
+
+    updates = Pair{Tuple{Vararg{Symbol}}, Any}[]
+    batch_update_arguments!(updates, old_spec.args, spec.args)
+    batch_update_attributes!(updates, block, old_kw, new_kw)
+    update!(block.attributes, updates)
+
     if T <: AbstractAxis
         plot_obs[] = spec.plots
         score = distance_score(old_spec.plots, spec.plots, Dict())
@@ -878,7 +913,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         add_observer!(spec, observers)
     end
     unhide!(block) # in case we hid it before
-    return to_update, reset_to_defaults
+    return
 end
 
 function to_gl_key(key::Symbol)
