@@ -399,39 +399,18 @@ function _block(T::Type{<:Block}, args...; bbox = nothing, kwargs...)
     return FigureBlock(figure, b)
 end
 
-# TODO: Delete this once Legends doesn't need it anymore
-function default_attribute_values(::Type{T}, scene) where {T}
-    attr = documented_attributes(T)
-    scene_theme = theme(scene)
-    return default_attribute_values(scene_theme, attr)
-end
-
-function default_attribute_values(scene_theme, attr::DocumentedAttributes)
-    output = Dict{Symbol, Any}()
-    for (k, meta) in attr
-        v = meta.default_value
-        if v isa DocumentedAttributes
-            output[k] = default_attribute_values(scene_theme, attr)
-        elseif v isa Inherit
-            output[k] = lookup_default(v, scene_theme)
-        else
-            output[k] = v
-        end
-    end
-    return output
-end
-
 function InvalidAttributeError(::Type{BT}, attributes::Set{Symbol}) where {BT <: Block}
     return InvalidAttributeError(BT, "block", attributes)
 end
 
-function block_kwargs(::Type{T}) where {T <: Block}
-    (T <: Axis || T <: PolarAxis) && return Set([:palette])
-    T <: Legend && return Set([:merge, :unique])
-    T <: Menu && return Set([:default])
-    T <: LScene && return Set([:scenekw])
-    return Set{Symbol}()
-end
+"""
+    block_kwargs(BlockType)
+
+Returns a set of kwargs used by `BlockType <: Block`. Any kwargs given to the
+constructor that are not listed here or in the blocks attributes will trigger
+`InvalidAttributeError`s.
+"""
+block_kwargs(::Type{<:Block}) = Set{Symbol}()
 
 # TODO: Should probably run recursively
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
@@ -529,84 +508,6 @@ convert_for_attribute(::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(::Type{FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 """
-    get_attribute_init_info(block_defaults, default_theme, global_overwrite_theme, overwrite_theme, user_attributes, keys...)
-
-Returns the type and initial value of an attribute identified by one or more
-`keys...`. Multiple keys are treated as nested access here, with the left most
-key indexing the root level and right most the leaf attribute.
-
-This considers (with `T` being the block or plot type):
-- `block_defaults = documented_attributes(T)`: The attribute types and default values
-    defined by a `@recipe` or `@Block`. (Lowest priority)
-- `default_theme = scene.theme`: The parent scenes theme from which attributes may inherit
-    using `@inherit name` in `@recipe` or `@Block`.
-- `global_overwrite_theme = theme(T)`: Theme based overwrites for the attributes set by
-    `@recipe` or `@Block` from the global default theme. (Medium low priority)
-- `overwrite_theme = scene.theme[T]`: Theme based overwrites for the attributes set by
-    `@recipe` or `@Block` from the current theme. (Medium high priority)
-- `user_attributes`: The explicit attribute overwrites passed by a user as keyword
-    arguments to the plot or block constructor. (Highest Priority)
-
-Besides the `block_defaults` each of these inputs can be incomplete or even empty
-as long as a collection indexable by `get(collection, key::Symbol, default)` is given.
-"""
-function get_attribute_init_info(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        keys::Symbol...
-    )
-    _get_attribute_init_info(
-        block_defaults, default_theme, global_overwrite_theme, overwrite_theme,
-        user_attributes, keys, keys...
-    )
-end
-
-function _get_attribute_init_info(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        trace::Tuple, key::Symbol, keys::Symbol...
-    )
-    _get_attribute_init_info(
-        block_defaults[key],
-        default_theme,
-        get(global_overwrite_theme, key, NamedTuple()),
-        get(overwrite_theme, key, NamedTuple()),
-        get(user_attributes, key, NamedTuple()),
-        trace, keys...
-    )
-end
-
-function _get_attribute_init_info(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        trace::Tuple, key::Symbol
-    )
-    block_default = block_defaults[key]
-    T = block_default.type
-
-    if is_nested(block_default)
-        s = join(trace, '.')
-        error("$s is not a leaf Attribute")
-    elseif haskey(user_attributes, key)
-        return T, pop!(user_attributes, key)
-    elseif haskey(overwrite_theme, key)
-        return T, overwrite_theme[key]
-    elseif haskey(global_overwrite_theme, key)
-        return T, global_overwrite_theme[key]
-    elseif block_default.default_value isa Inherit
-        val = lookup_default(block_default.default_value, default_theme)
-        if val === NoFallback()
-            s = join(trace, '.')
-            error("Current theme does not include a default for $s and the attribute does not provide a fallback.")
-        end
-        return T, val
-    else
-        return T, block_default.default_value
-    end
-end
-
-
-"""
     add_attributes(::Type{<:Block}, compute_graph, sources...)
 
 This method may provide custom initialization of compute graph inputs (attributes)
@@ -614,7 +515,7 @@ of a block. This may be useful if the default conversions are inappropriate for
 some inputs, i.e. if a different input callback is needed for a specific type
 (including `Any` from entries without type annotations).
 
-A custom implementation should use `Makie.get_attribute_init_info(sources..., keys...)`
+A custom implementation should use `Makie.lookup_default_typed(sources..., keys...)`
 to get recipe defined type and more importantly the user, theme or recipe based initial
 value of each attribute it initializes.
 
@@ -625,10 +526,10 @@ get passed on to `initialize_block!(...)`.
 Example:
 ```
 function Makie.add_attributes!(::Type{MyBlock}, graph, scources...)
-    _, default = Makie.get_attribute_init_info(sources..., :colorname)
+    _, default = Makie.lookup_default_typed(sources..., :colorname)
     Makie.add_input!(to_colorname, graph, :colorname, default)
 
-    _, default = Makie.get_attribute_init_info(sources..., :nested, :attribute)
+    _, default = Makie.lookup_default_typed(sources..., :nested, :attribute)
     Makie.add_input!(foo, graph, :nested, :attribute, default)
     Makie.ComputePipeline.set_type!(graph.nested.attribute, Any)
 
@@ -637,37 +538,6 @@ end
 ```
 """
 add_attributes!(::Type{<:Block}, graph, sources...) = nothing
-
-function add_remaining_block_attributes!(
-        graph::AbstractComputeGraph,
-        block_defaults::DocumentedAttributes,
-        sources...
-    )
-    for (key, meta) in block_defaults
-        if is_nested(meta)
-            add_remaining_block_attributes!(
-                ComputeGraphView(graph, key),
-                meta.default_value,
-                get.(sources, key, Ref(NamedTuple()))...
-            )
-
-            user_attributes = last(sources)
-            if haskey(user_attributes, key) && isempty(user_attributes[key])
-                pop!(user_attributes, key)
-            end
-        elseif !haskey(graph, key)
-            trace = if graph isa ComputeGraphView
-                (ComputePipeline.merged_key(graph), key)
-            else
-                (key,)
-            end
-            T, default = _get_attribute_init_info(block_defaults, sources..., trace, key)
-            add_input!(x -> convert_for_attribute(T, x), graph, key, default)
-            ComputePipeline.set_type!(graph[key], T)
-        end
-    end
-    return
-end
 
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
@@ -690,10 +560,13 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
     )
 
     # Add all attributes and filter any attributes from kwargs
-    add_remaining_block_attributes!(
-        graph,
-        block_defaults, default_theme, global_overwrite_theme, overwrite_theme, kwdict
-    )
+    apply_attribute_defaults!(T, topscene; kwdict, delete_used_kwargs = true) do keys, type, value
+        if !haskey(graph, keys)
+            error_on_no_fallback(T, keys, value)
+            add_input!(x -> convert_for_attribute(type, x), graph, keys, value)
+            ComputePipeline.set_type!(graph[keys], type)
+        end
+    end
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict

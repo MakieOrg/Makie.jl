@@ -43,6 +43,7 @@ function _mouse_up(butt, was_pressed)
     return false
 end
 
+block_kwargs(::Type{Menu}) = Set([:default])
 function initialize_block!(m::Menu; default = 1)
     blockscene = m.blockscene
 

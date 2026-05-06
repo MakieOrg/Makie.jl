@@ -185,59 +185,18 @@ T is Float32 or Float64.
 
 ### Attributes
 
-Plot Attributes are defined within a `begin ... end` block. The block is mandatory
-but can be empty. Note that even if it is empty, Makie will add some mandatory
-inputs to `plot.attributes`.
+Plot Attributes are defined within a `begin ... end` block. The block is
+mandatory but can be empty. Note that even if it is empty, Makie will add some
+mandatory inputs to `plot.attributes`.
 
-To define an attribute, at least its name and default value need to be given:
+The syntax for attributes is the same as in `@DocumentedAttributes`. Check
+`?@DocumentedAttributes` for more information.
 
-    attribute_name = default_value
-
-Optionally, an attribute may include a docstring in the preceding line:
-
-    "documentation for attribute
-    attribute = 1
-
-An attribute can inherit values from the theme of its parent scene, which in
-turn inherits from the global theme. For this the `@inherit` macro is used.
-Since themes may not always define a default for a given attribute, a fallback
-can be given with `@inherit`:
-
-    colormap = @inherit colormap
-    color = @inherit color :red
-
-Attributes can also be nested. For this an attribute name should point to an
-`@attributes` block:
-
-    outer = @attributes begin
-        inner1 = 1
-        inner2 = 2
-    end
-
-This will define `plot.outer.inner1` and `plot.outer.inner2`. Docstrings can be
-added to `outer`, `inner1` and `inner2` as usual. The realized inner attributes
-may also use `@inherit`.
-
-Finally, attributes may also included from functions with
-
-    Makie.mixin_colormap_attributes()...
-
-These functions should return `DocumentedAttributes` from the
-`@DocumentedAttributes` macro. Within the macro, the same rules as described
-above apply. An example implementation may look like this:
-
-    function mixin_my_attributes()
-        return @DocumentedAttributes begin
-            color = :red
-            colormap = @inherit colormap
-        end
-    end
-
-All of the attributes defined in the attribute block of `@recipe` is processed
-into one `DocumentedAttributes` object which can fetched by
-`Makie.documented_attributes`. From there it is used to generate documentation,
-validate user given keyword arguments and generate default plot attributes,
-among other things.
+After evaluating `@recipe` the attributes are saved as `DocumentedAttributes` in
+`Makie.documented_attributes(MyPlot)`. When constructing the plot they will be
+merged with parent scenes theme, the global theme, `theme[:MyPlot]` (if it
+exists) and the keyword arguments passed to the plot. They are also be used to
+validate keyword arguments and to generate attribute docs.
 
 ### `@recipe` documentation
 
@@ -323,308 +282,6 @@ function documented_attributes end # this can be used for inheriting from other 
 
 attribute_names(_) = nothing
 
-Base.@kwdef struct AttributeMetadata
-    docstring::Union{Nothing, String}
-    default_value::Any
-    default_expr::String # stringified expression, just needed for docs purposes
-    type::Type
-end
-
-update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
-    am2.docstring === nothing ? am1.docstring : am2.docstring,
-    am2.default_value,
-    am2.default_expr, # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
-    am2.type
-)
-function set_metadata!(d, key, am)
-    d[key] = haskey(d, key) ? update_metadata(d[key], am) : am
-    return
-end
-
-struct DocumentedAttributes
-    d::Dict{Symbol, AttributeMetadata}
-end
-
-# This is only meant for compat with old style recipes
-function convert_old_attributes_expr(func_expr)
-    # remove the function header and just work on the body
-    ex = func_expr.args[2]
-
-    expr = MacroTools.postwalk(ex) do x
-        if MacroTools.@capture(x, theme(scene_, key_))
-            return :(Makie.Inherit(($key,)))
-        elseif MacroTools.@capture(x, key_ = lift(f_, theme(scene_, key_)))
-            return :(Makie.Inherit($f, ($key,)))
-        elseif MacroTools.@capture(x, key_ = map(f_, theme(scene_, key_)))
-            return :(Makie.Inherit($f, ($key,)))
-        elseif MacroTools.@capture(x, Attributes(args__))
-            dict_call = :(Dict{Symbol, Makie.AttributeMetadata}())
-            for arg in args
-                # Need to be careful to not match normal Code with this, e.g.
-                # value = sin(1) # don't make this value => AttributeMetadata(nothing, sin(1), "sin(1)")
-                # ...
-                # return Attributes(a = value) # only here
-                if MacroTools.@capture(arg, key_ = val_)
-                    str = Makie.default_expr_string(val)
-                    element_expr = :($(QuoteNode(key)) => Makie.AttributeMetadata(nothing, $val, $str, Any))
-                    push!(dict_call.args, element_expr)
-                else
-                    error("Failed to match $arg")
-                end
-            end
-            return :(Makie.DocumentedAttributes($dict_call))
-        elseif MacroTools.@capture(x, return arg_)
-            return :($arg)
-        end
-        return x
-    end
-
-    # let to not allow any enclosed variables to spill out
-    return :(let; $expr end)
-end
-
-Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
-Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
-Base.getindex(d::DocumentedAttributes, key::Symbol) = d.d[key]
-Base.keys(d::DocumentedAttributes) = keys(d.d)
-Base.iterate(d::DocumentedAttributes) = iterate(d.d)
-Base.iterate(d::DocumentedAttributes, state) = iterate(d.d, state)
-Base.length(d::DocumentedAttributes) = length(d.d)
-Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
-Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
-
-function Base.show(io::IO, a::DocumentedAttributes)
-    return print_documented_attributes(io, a, 1)
-end
-
-function print_documented_attributes(io, a::DocumentedAttributes, tab)
-    maxlength = 100
-    print(io, "DocumentedAttributes(")
-    for (k, v) in a
-        if !isnothing(v.docstring)
-            docs = if length(v.docstring) > maxlength
-                v.docstring[1:maxlength] * "..."
-            else
-                v.docstring
-            end
-            print(io, "\n", "   "^tab, '"', docs, '"')
-        end
-        Tstr = v.type === Any ? "" : "::$(v.type)"
-        print(io, "\n", "   "^tab, k, Tstr, " = ")
-        print_documented_attributes(io, v, tab)
-    end
-    print(io, "\n", "   "^(tab-1), ")")
-    return io
-end
-
-function print_documented_attributes(io, m::AttributeMetadata, tab)
-    if m.default_value isa DocumentedAttributes
-        print_documented_attributes(io, m.default_value, tab+1)
-    else
-        print(io, m.default_expr)
-    end
-end
-
-function filter_attributes(attr::DocumentedAttributes; kwargs...)
-    return filter_attributes!(copy(attr); kwargs...)
-end
-function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
-    !isempty(allow) && filter!(p -> p[1] in allow, attr)
-    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr)
-    return attr
-end
-
-struct Inherit{N}
-    callback::Any
-    keys::NTuple{N, Symbol}
-    fallback::Any
-end
-struct NoFallback end
-
-Inherit(keys::Tuple{Vararg{Symbol}}) = Inherit(identity, keys, NoFallback())
-Inherit(keys::Tuple{Vararg{Symbol}}, fallback) = Inherit(identity, keys, fallback)
-Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
-
-function lookup_default(meta::AttributeMetadata, theme)
-    result = lookup_default(meta.default_value, theme)
-    if result === NoFallback()
-        error("Inherited key $(default.key) not found in theme with no fallback given.")
-    end
-    return result
-end
-
-lookup_default(result, theme) = result
-
-function lookup_default(inherit::Inherit, scene_theme)
-    result = lookup_default(scene_theme, inherit.fallback, inherit.keys...)
-    if result === NoFallback()
-        global_theme = theme(nothing)
-        result = lookup_default(global_theme, inherit.fallback, inherit.keys...)
-    end
-    if result isa Inherit
-        return lookup_default(result, scene_theme)
-    end
-    return inherit.callback(to_value(result))
-end
-
-function lookup_default(theme, fallback, key::Symbol, keys::Symbol...)
-    return haskey(theme, key) ? lookup_default(theme[key], fallback, keys...) : fallback
-end
-lookup_default(theme, fallback, key::Symbol) = get(theme, key, fallback)
-
-default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
-default_key_expr(x::QuoteNode) = :(($x,))
-function default_key_expr(expr::Expr)
-    if !(expr.head == :tuple && all(x -> x isa QuoteNode, expr.args))
-        error("$expr is not a valid inheritance key")
-    end
-    for i in eachindex(expr.args)
-        expr.args[i] = ifelse(expr.args[i] isa Symbol, QuoteNode(expr.args[i]), expr.args[i])
-    end
-    return expr
-end
-
-function get_default_expr(default, attribute_path)
-    if MacroTools.@capture(default, @attributes attrblock_)
-        return build_documented_attributes(attrblock, attribute_path)
-    else
-        return get_default_expr_no_nesting(default, attribute_path, default)
-    end
-end
-
-function get_default_expr_no_nesting(expr, attribute_path, full_expr)
-    # This is split off to allow Inherit(key, Inherit(...)) in some capacity
-    if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
-        # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
-        return :(Makie.Inherit($(default_key_expr(key)), $fb))
-    elseif MacroTools.@capture(expr, map(f_, inherit(scene_, key_, fallback_)))
-        # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
-        return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
-    elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
-        # This was only supported with fallback by Blocks (?)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
-        return :(Makie.Inherit($(default_key_expr(key)), $fb))
-    elseif MacroTools.@capture(expr, theme(scene_, key_))
-        return :(Makie.Inherit($(default_key_expr(key))))
-
-    elseif MacroTools.@capture(expr, @inherit key_ fallback_)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
-        return :(Makie.Inherit($(default_key_expr(key)), $fb))
-    elseif MacroTools.@capture(expr, @inherit key_)
-        return :(Makie.Inherit($(default_key_expr(key))))
-
-    elseif MacroTools.@capture(expr, @attributes attrblock_)
-        path = join(attribute_path, " -> ")
-        error("`@attributes` cannot be used with an @inherit (or similar) block. Used in $path = $full_expr.")
-    elseif MacroTools.@capture(expr, Makie.defaultfont())
-        path = join(attribute_path, " -> ")
-        @warn """
-            Using `Makie.defaultfont()` as an attribute default in `@recipe` or `@Block` causes segfaults due to invalid font pointers from caching.
-            Replacing it with `\"default\"` in `$path = $full_expr`"
-            """
-        return :("default")
-    else
-        return esc(expr)
-    end
-end
-
-macro DocumentedAttributes(expr::Expr)
-    return build_documented_attributes(expr)
-end
-
-function build_documented_attributes(expr::Expr, attribute_path = tuple())
-    if !(expr isa Expr && expr.head === :block)
-        throw(ArgumentError("Argument is not a begin end block"))
-    end
-
-    metadata_exprs = []
-    mixin_exprs = Expr[]
-
-    mixin_idx = 0
-    for arg in expr.args
-        arg isa LineNumberNode && continue
-
-        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
-
-        if has_docs
-            docs = arg.args[3]
-            attr = arg.args[4]
-        else
-            docs = nothing
-            attr = arg
-        end
-
-        is_attr_line = attr isa Expr && attr.head === :(=) && length(attr.args) == 2
-        is_mixin_line = attr isa Expr && attr.head === :(...) && length(attr.args) == 1
-        if !(is_attr_line || is_mixin_line)
-            error("Failed to parse Attributes: \"$attr\" is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
-        end
-
-        if is_attr_line
-            if MacroTools.@capture(attr, sym_::type_ = default_)
-                # capture spawns all variables we need
-            elseif MacroTools.@capture(attr, sym_ = default_)
-                type = :Any
-            else
-                error("Could not parse attribute expr $expr")
-            end
-            if !(sym isa Symbol)
-                error("$sym should be a symbol")
-            end
-            qsym = QuoteNode(sym)
-            metadata = quote
-                default_value = $(get_default_expr(default, (attribute_path..., sym)))
-                am = Makie.AttributeMetadata(;
-                    docstring = $docs,
-                    default_value = default_value,
-                    default_expr = $(default_expr_string(default)),
-                    type = $type
-                )
-                Makie.set_metadata!(d, $qsym, am)
-            end
-            push!(metadata_exprs, metadata)
-        elseif is_mixin_line
-            mixin_idx += 1
-            mixin = only(attr.args)
-            push!(
-                mixin_exprs, quote
-                    mixins[$mixin_idx] = $(esc(mixin))
-                    if !(mixins[$mixin_idx] isa DocumentedAttributes)
-                        error("Mixin was not a DocumentedAttributes but $(mixins[$mixin_idx])")
-                    end
-                end
-            )
-
-            # docstrings and default expressions of the mixed in
-            # DocumentedAttributes are inserted
-            metadata_exp = quote
-                for (key, value) in mixins[$mixin_idx]
-                    if haskey(d, key)
-                        error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
-                    end
-                    d[key] = value
-                end
-            end
-            push!(metadata_exprs, metadata_exp)
-        else
-            error("Unreachable")
-        end
-    end
-
-    # Both `let` and `local` are need to prevent nested attributes from writing
-    # to the same DocumentedAttributes (which can create recursive references)
-    return quote
-        let
-            mixins = Dict{Int, Makie.DocumentedAttributes}()
-            $(mixin_exprs...)
-            local d = Dict{Symbol, Makie.AttributeMetadata}()
-            $(metadata_exprs...)
-            Makie.DocumentedAttributes(d)
-        end
-    end
-end
 
 is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
 
@@ -684,8 +341,7 @@ end
 
 function types_for_plot_arguments end
 
-documented_attributes(_) = nothing
-filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
+documented_attributes(_) = DocumentedAttributes()
 
 function attribute_names(::Type{T}) where {T}
     attr = documented_attributes(T)
@@ -701,35 +357,6 @@ function plot_attributes(scene, T)
     else
         return plot_attr
     end
-end
-
-function lookup_default(::Type{T}, scene, attribute::Symbol) where {T <: Plot}
-    thm = theme(scene)
-    metas = plot_attributes(scene, T)
-    psym = plotsym(T)
-    if haskey(thm, psym)
-        overwrite = thm[psym]
-        if haskey(overwrite, attribute)
-            return to_value(overwrite[attribute])
-        end
-    end
-    if haskey(metas, attribute)
-        return lookup_default(metas[attribute], thm)
-    else
-        return nothing
-    end
-end
-
-function default_theme(scene, T::Type{<:Plot})
-    metas = documented_attributes(T)
-    attr = Attributes()
-    isnothing(metas) && return attr
-    thm = theme(scene)
-    _attr = attr.attributes
-    for (k, meta) in metas
-        _attr[k] = lookup_default(meta, thm)
-    end
-    return attr
 end
 
 function extract_docstring(str)
@@ -874,50 +501,6 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
     end
 
     return q
-end
-
-# from MacroTools
-isline(ex) = (ex isa Expr && ex.head === :line) || isa(ex, LineNumberNode)
-rmlines(x) = x
-function rmlines(x::Expr)
-    # Do not strip the first argument to a macrocall, which is
-    # required.
-    return if x.head === :macrocall && length(x.args) >= 2
-        Expr(x.head, x.args[1], nothing, filter(x -> !isline(x), x.args[3:end])...)
-    else
-        Expr(x.head, filter(x -> !isline(x), x.args)...)
-    end
-end
-
-function default_expr_string(default)
-    is_macrocall = default isa Expr && default.head === :macrocall
-    if is_macrocall && default.args[1] === Symbol("@attributes")
-        return "Attributes(...)"
-    else
-        return string(rmlines(default))
-    end
-end
-
-default_expr_string(x::String) = repr(x)
-
-function expand_mixins(attrblock::Expr)
-    return Expr(:block, mapreduce(expand_mixin, vcat, attrblock.args)...)
-end
-
-expand_mixin(x) = x
-function expand_mixin(e::Expr)
-    if e.head === :macrocall && e.args[1] === Symbol("@mixin")
-        if length(e.args) != 3 && e.args[2] isa LineNumberNode && e.args[3] isa Symbol
-            error("Invalid mixin, needs to be of the format `@mixin some_mixin`, got $e")
-        end
-        mixin_ex = getproperty(Makie, e.args[3])()::Expr
-        if (mixin_ex.head !== :block)
-            error("Expected mixin to be a block expression (such as generated by `quote`)")
-        end
-        return mixin_ex.args
-    else
-        e
-    end
 end
 
 """

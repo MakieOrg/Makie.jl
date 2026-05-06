@@ -807,6 +807,10 @@ function Base.getproperty(attr::ComputeGraphView, key::Symbol)
     return getindex(attr, key)
 end
 
+function Base.getindex(attr::AbstractComputeGraph, keys::Tuple{Vararg{Symbol}})
+    return getindex(attr, keys...)
+end
+
 function Base.getindex(attr::AbstractComputeGraph, key1::Symbol, key2::Symbol, keys::Symbol...)
     return getindex(getindex(attr, key1), key2, keys...)
 end

@@ -5,6 +5,7 @@ function reset_limits!(lscene::LScene)
 end
 tightlimits!(::LScene) = nothing # TODO implement!?
 
+block_kwargs(::Type{LScene}) = Set([:scenekw])
 function initialize_block!(ls::LScene; scenekw = NamedTuple())
     blockscene = ls.blockscene
     # pick a camera and draw axis.

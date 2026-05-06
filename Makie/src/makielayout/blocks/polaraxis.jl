@@ -17,6 +17,7 @@ end
 ### Main Block Initialization
 ################################################################################
 
+block_kwargs(::Type{PolarAxis}) = Set([:palette])
 function initialize_block!(po::PolarAxis; palette = nothing)
     # Setup Scenes
     cb = po.layoutobservables.computedbbox

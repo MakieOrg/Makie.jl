@@ -552,8 +552,11 @@ function collect_updates_rec!(
                 get(overwrite_theme, k, NamedTuple()),
             )
         else
-            _, default = get_attribute_init_info(
-                d_attr, scene_theme, global_overwrite_theme, overwrite_theme, NamedTuple(), k
+            default = lookup_default(
+                d_attr, k;
+                default_theme = scene_theme,
+                global_overwrite_theme,
+                overwrite_theme,
             )
             if is_different(current_value[], default)
                 push!(updates, current_path => default)

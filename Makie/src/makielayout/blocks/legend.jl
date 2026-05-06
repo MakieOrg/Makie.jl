@@ -59,6 +59,7 @@ function initialize_block!(
     return initialize_block!(leg, entry_groups)
 end
 
+block_kwargs(::Type{Legend}) = Set([:merge, :unique])
 function initialize_block!(
         leg::Legend,
         axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},

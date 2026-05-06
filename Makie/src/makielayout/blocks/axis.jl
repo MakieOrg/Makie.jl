@@ -121,6 +121,7 @@ function compute_protrusions(
     return GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
 end
 
+block_kwargs(::Type{Axis}) = Set([:palette])
 function initialize_block!(ax::Axis; palette = nothing)
     blockscene = ax.blockscene
     elements = Dict{Symbol, Any}()
@@ -532,7 +533,7 @@ end
 # Limits
 
 function add_attributes!(::Type{<:Axis}, graph, sources...)
-    _, default = Makie.get_attribute_init_info(sources..., :limits)
+    _, default = Makie.lookup_default_typed(sources..., :limits)
     add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
     return
