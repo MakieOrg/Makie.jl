@@ -446,17 +446,31 @@ Inherit(keys::Tuple{Vararg{Symbol}}, fallback) = Inherit(identity, keys, fallbac
 Inherit(f, keys::Tuple{Vararg{Symbol}}) = Inherit(f, keys, NoFallback())
 
 function lookup_default(meta::AttributeMetadata, theme)
-    default = meta.default_value
-    if default isa Inherit
-        result = resolve_inherit(theme, meta.default_value)
-        if result === NoFallback()
-            error("Inherited key $(default.key) not found in theme with no fallback given.")
-        end
-        return to_value(result)
-    else
-        return default
+    result = lookup_default(meta.default_value, theme)
+    if result === NoFallback()
+        error("Inherited key $(default.key) not found in theme with no fallback given.")
     end
+    return result
 end
+
+lookup_default(result, theme) = result
+
+function lookup_default(inherit::Inherit, scene_theme)
+    result = lookup_default(scene_theme, inherit.fallback, inherit.keys...)
+    if result === NoFallback()
+        global_theme = theme(nothing)
+        result = lookup_default(global_theme, inherit.fallback, inherit.keys...)
+    end
+    if result isa Inherit
+        return lookup_default(result, scene_theme)
+    end
+    return inherit.callback(to_value(result))
+end
+
+function lookup_default(theme, fallback, key::Symbol, keys::Symbol...)
+    return haskey(theme, key) ? lookup_default(theme[key], fallback, keys...) : fallback
+end
+lookup_default(theme, fallback, key::Symbol) = get(theme, key, fallback)
 
 default_key_expr(x::Symbol) = :(($(QuoteNode(x)),))
 default_key_expr(x::QuoteNode) = :(($x,))

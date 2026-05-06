@@ -413,7 +413,7 @@ function default_attribute_values(scene_theme, attr::DocumentedAttributes)
         if v isa DocumentedAttributes
             output[k] = default_attribute_values(scene_theme, attr)
         elseif v isa Inherit
-            output[k] = resolve_inherit(scene_theme, v)
+            output[k] = lookup_default(v, scene_theme)
         else
             output[k] = v
         end
@@ -624,7 +624,7 @@ function _get_attribute_init_info(
     elseif haskey(global_overwrite_theme, key)
         return T, global_overwrite_theme[key]
     elseif block_default.default_value isa Inherit
-        val = resolve_inherit(default_theme, block_default.default_value)
+        val = lookup_default(block_default.default_value, default_theme)
         if val === NoFallback()
             s = join(trace, '.')
             error("Current theme does not include a default for $s and the attribute does not provide a fallback.")

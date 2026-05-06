@@ -841,23 +841,6 @@ end
 get_nested_path(::ComputeGraph, k) = k
 get_nested_path(g::ComputeGraphView, k) = ComputePipeline.merged_key(ComputePipeline.merged_key(g), k)
 
-function resolve_inherit(scene_theme, inherit::Inherit)
-    result = resolve_inherit(scene_theme, inherit.fallback, inherit.keys...)
-    if result == NoFallback()
-        global_theme = theme(nothing)
-        result = resolve_inherit(global_theme, inherit.fallback, inherit.keys...)
-    end
-    if result isa Inherit
-        return resolve_inherit(scene_theme, result)
-    end
-    return inherit.callback(to_value(result))
-end
-
-function resolve_inherit(theme, fallback, key::Symbol, keys::Symbol...)
-    return haskey(theme, key) ? resolve_inherit(theme[key], fallback, keys...) : fallback
-end
-resolve_inherit(theme, fallback, key::Symbol) = get(theme, key, fallback)
-
 function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plotsym, exclude = tuple())
     for (k, meta) in plot_attr
         haskey(graph, k) || continue
@@ -871,7 +854,7 @@ function inherit_theme_from_scene!(graph, plot_attr, user_kw, scene_theme, plots
             inherit_theme_from_scene!(subgraph, v, subkw, subtheme, plotsym)
 
         elseif v isa Inherit
-            inherited = to_value(resolve_inherit(scene_theme, v))
+            inherited = lookup_default(v, scene_theme)
 
             if !haskey(user_kw, k)
                 # No user given kwarg, Inherit must resolve here
