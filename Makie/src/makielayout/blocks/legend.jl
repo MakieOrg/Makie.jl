@@ -397,16 +397,11 @@ function initialize_block!(leg::Legend; entrygroups)
     return
 end
 
-struct LegendOverride
-    overrides::Attributes
-    LegendOverride(attrs::Attributes) = new(attrs)
-    LegendOverride(l::LegendOverride) = l
-    LegendOverride(attrs) = new(Attributes(attrs))
-end
+function connect_block_layoutobservables!(
+        leg::Legend, layout_width, layout_height, layout_tellwidth, layout_tellheight,
+        layout_halign, layout_valign, layout_alignmode
+    )
 
-LegendOverride(; kwargs...) = LegendOverride(Attributes(; kwargs...))
-
-function connect_block_layoutobservables!(leg::Legend, layout_width, layout_height, layout_tellwidth, layout_tellheight, layout_halign, layout_valign, layout_alignmode)
     connect!(layout_width, leg.width)
     connect!(layout_height, leg.height)
     # Legend has special logic for automatic tellwidth and tellheight
@@ -569,12 +564,18 @@ function Base.propertynames(lentry::LegendEntry)
     return (fieldnames(LegendEntry)..., keys(lentry.attributes)...)
 end
 
+# legend refers to the defaults from the Legend Block here
 legendelements(le::LegendElement, legend) = LegendElement[le]
 legendelements(les::AbstractArray{<:LegendElement}, legend) = LegendElement[les...]
+legendelements(xs::AbstractArray, legend) = vcat(legendelements.(xs, Ref(legend))...)
 
-legendelements(p::Pair, legend) = legendelements(p[1], legend, LegendOverride(p[2]))
+legendelements(p::Pair, legend) = legendelements(p[1], legend, p[2])
+legendelements(p::Pair{<:Plot, <:LegendElement}, legend) = legendelements(p[2], legend)
+function legendelements(p::Pair{<:AbstractArray}, legend)
+    return mapreduce(plot -> legendelements(plot => p[2], legend), vcat, p[1])
+end
 
-function legendelements(any, legend, override::LegendOverride)
+function legendelements(any, legend, override)
     les = legendelements(any, legend)
     for le in les
         apply_legend_override!(le, override)
@@ -582,49 +583,22 @@ function legendelements(any, legend, override::LegendOverride)
     return les
 end
 
-function apply_legend_override!(le::MarkerElement, override::LegendOverride)
-    renamed_attrs = _rename_attributes!(MarkerElement, copy(override.overrides))
-    for sym in (:markerpoints, :markersize, :markercolor, :markerstrokewidth, :markerstrokecolor, :markercolormap, :markercolorrange, :alpha)
-        if haskey(renamed_attrs, sym)
-            le.attributes[sym] = renamed_attrs[sym]
+# TODO: Any reason to not just add convert(Observable, computed) to ComputePipeline?
+to_observable(o::Observable) = o
+to_observable(c::Computed) = ComputePipeline.get_observable!(c)
+to_observable(x) = convert(Observable, x)
+
+function apply_legend_override!(le::T, override) where {T <: LegendElement}
+    mapping = _renaming_mapping(T)
+    for (source_key, target_key) in mapping
+        if haskey(override, source_key)
+            le.attributes[target_key] = to_observable(override[source_key])
         end
     end
-    return
-end
 
-function apply_legend_override!(le::LineElement, override::LegendOverride)
-    renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
-    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :linecap, :joinstyle, :alpha)
-        if haskey(renamed_attrs, sym)
-            le.attributes[sym] = renamed_attrs[sym]
-        end
-    end
-    return
-end
-
-function apply_legend_override!(le::PolyElement, override::LegendOverride)
-    renamed_attrs = _rename_attributes!(PolyElement, copy(override.overrides))
-    for sym in (:polypoints, :polycolor, :polystrokewidth, :polystrokecolor, :polycolormap, :polycolorrange, :polystrokestyle, :alpha)
-        if haskey(renamed_attrs, sym)
-            le.attributes[sym] = renamed_attrs[sym]
-        end
-    end
-    return
-end
-
-function apply_legend_override!(le::T, override::LegendOverride) where {T <: LegendElement}
-    old2new = _renaming_mapping(T)
-
-    for (k, v) in override.overrides
-        if haskey(old2new, k)
-            key = old2new[k]
-            @assert !haskey(override.overrides, key) "Key $key with alias $k doubly defined."
-        else
-            key = k
-        end
-
-        if haskey(le.attributes, key)
-            le.attributes[key] = v
+    for key in keys(le.attributes)
+        if haskey(override, key) # do we need to filter renamed here?
+            le.attributes[key] = to_observable(override[key])
         end
     end
     return
@@ -640,8 +614,7 @@ function LegendEntry(label, contentelement, override::Attributes, legend; kwargs
     return LegendEntry(elems, attrs)
 end
 
-
-function LegendEntry(label, content, legend; kwargs...)
+function LegendEntry(label, content, legend_defaults; kwargs...)
     attrs = mergeleft!(Attributes(label = label), Attributes(kwargs))
 
     function get_plots(x)
@@ -670,29 +643,7 @@ function LegendEntry(label, content, legend; kwargs...)
     end
 
     plots = get_plots(content)
-
-    PlotTypes = Union{AbstractPlot, AbstractArray{<:AbstractPlot}}
-    LegendElementTypes = Union{LegendElement, AbstractArray{<:LegendElement}}
-
-    # Allow `plots => LegendElement(...)` and `(plots, LegendElement(...))`
-    if content isa Union{
-            Tuple{<:PlotTypes, <:LegendElementTypes},
-            Pair{<:PlotTypes, <:LegendElementTypes},
-        }
-        content = content[2]
-    end
-
-    if content isa AbstractArray
-        elems = vcat(legendelements.(content, Ref(legend))...)
-    elseif content isa Pair
-        if content[1] isa AbstractArray
-            elems = vcat(legendelements.(content[1] .=> Ref(content[2]), Ref(legend))...)
-        else
-            elems = legendelements(content, legend)
-        end
-    else
-        elems = legendelements(content, legend)
-    end
+    elems = legendelements(content, legend_defaults)
 
     for elem in elems
         if haskey(elem.attributes, :plots)
@@ -1128,7 +1079,7 @@ function get_labeled_plots(ax; merge::Bool, unique::Bool)
 
     lplots_with_overrides = map(lplots_merged, labels_merged) do plots, label
         if label isa Pair
-            plots => LegendOverride(label[2])
+            plots => label[2]
         else
             plots
         end
