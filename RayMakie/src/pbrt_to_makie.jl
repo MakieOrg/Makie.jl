@@ -77,8 +77,14 @@ function pbrt_to_makie(filename::AbstractString)
     # --- Build Hikari textures and materials from pbrt data ---
     hikari_textures = Hikari.build_pbrt_textures(pbrt)
     mat_cache = Dict{String, Hikari.Material}()
-    for (name, entity) in pbrt.named_materials
-        mat_cache[name] = Hikari.build_pbrt_material(entity, pbrt, hikari_textures)
+    # Two passes: non-mix materials first so mix materials can find their dependencies
+    for pass in (false, true)
+        for (name, entity) in pbrt.named_materials
+            is_mix = lowercase(entity.type) == "mix"
+            is_mix == pass || continue
+            haskey(mat_cache, name) && continue
+            mat_cache[name] = Hikari.build_pbrt_material(entity, pbrt, hikari_textures, mat_cache)
+        end
     end
 
     media_cache = Dict{String, Hikari.Medium}()
@@ -197,7 +203,7 @@ function pbrt_shape_to_makie!(scene, srec::Hikari.PBRTShapeRecord, pbrt,
     # Area light: wrap in MediumInterface with Emissive using keyword constructor
     # (applies photometric normalization like a user would)
     if srec.area_light !== nothing
-        Le = Hikari.pbrt_get_rgb(srec.area_light, "L", (1.0, 1.0, 1.0))
+        Le = Hikari.pbrt_get_emissive_le(srec.area_light, (1.0, 1.0, 1.0))
         al_scale = Float32(Hikari.pbrt_get_float(srec.area_light, "scale", 1.0))
         two_sided = Hikari.pbrt_get_bool(srec.area_light, "twosided", false)
         emissive = Hikari.Emissive(Le=Le, scale=al_scale, two_sided=two_sided)
