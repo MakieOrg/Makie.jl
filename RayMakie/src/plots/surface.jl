@@ -41,7 +41,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
             mat = extract_material(plot, color_tex)
             handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
+            return ((handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel)),)
         end
 
         robj = last.trace_renderobject
@@ -51,7 +51,7 @@ function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Surface)
             mat = extract_material(plot, color_tex)
             handle = push!(hikari_scene, gb_mesh, mat; transform=transform)
             state.needs_film_clear = true
-            return ((handle=handle, material=mat, instance_idx=length(hikari_scene.accel.instances)),)
+            return ((handle=handle, material=mat, instance_idx=Raycore.n_instances(hikari_scene.accel)),)
         end
 
         if changed.trace_color_tex

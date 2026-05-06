@@ -1,130 +1,190 @@
 # =============================================================================
 # draw_atomic for Makie.Mesh
 # =============================================================================
+#
+# A Mesh has two render paths chosen per-frame by `should_raytrace(scene, plot)`:
+#
+#   - Trace path:   push to Hikari scene, BLAS/TLAS-traced.
+#                   Returns NamedTuple (handle, mat_idx, material, instance_idx).
+#   - Overlay path: rasterized on top of the rendered film via Lava graphics
+#                   pipeline. Returns a LavaRenderObject.
+#
+# A single :trace_renderobject node delegates to:
+#
+#   mesh_trace_create!  / mesh_trace_update!     (trace path)
+#   mesh_overlay_create! / mesh_overlay_update!  (overlay path)
+#
+# `last.trace_renderobject` carries enough information (LavaRenderObject vs
+# NamedTuple with :handle) to detect a path switch and force a re-create.
 
 function draw_atomic(screen::Screen, scene::Scene, plot::Makie.Mesh)
     attr = plot.attributes
-    hikari_scene = screen.state.hikari_scene
     state = screen.state
+    hikari_scene = state.hikari_scene
 
-    # 1. Color → texture
     register_computation!(attr, [:color], [:trace_color_tex]) do args, changed, last
         return (color_to_texture(args.color, plot),)
     end
 
-    # 2. Everything → push to scene via Hikari (or overlay for 2D in overlay-only mode)
-    # `:material` is an input so that `Makie.update!(mesh; material=new)` cascades
-    # here: if only material changed, we swap it in-place on the existing scene
-    # handle via `Hikari.update_material!` (mirrors volume.jl's pattern) instead
-    # of rebuilding the BLAS/TLAS. Without this, live material updates leak GPU
-    # buffers and crash the ray traversal a few frames later.
-    register_computation!(attr, [:mesh, :positions_transformed_f32c, :faces, :normals,
-                                  :texturecoordinates, :trace_color_tex, :model_f32c, :material],
-                          [:trace_renderobject]) do args, changed, last
-        color_tex = args.trace_color_tex
-        transform = Mat4f(args.model_f32c)
+    register_computation!(attr,
+        [:mesh, :positions_transformed_f32c, :faces, :normals,
+         :texturecoordinates, :trace_color_tex, :model_f32c, :material],
+        [:trace_renderobject]) do args, changed, last
 
-        # Render as overlay if the scene/plot shouldn't be raytraced (2D cameras, 2D meshes)
+        last_robj = isnothing(last) ? nothing : last.trace_renderobject
+
         if !should_raytrace(scene, plot) || isnothing(hikari_scene)
-            positions_3f = Vec3f[Makie.to_ndim(Point3f, p, 0f0) for p in args.positions_transformed_f32c]
-            faces_val = args.faces
-            pv = Mat4f(scene.camera.projectionview[])
-            model_mat = Mat4f(args.model_f32c)
-
-            # Flatten indexed mesh to per-vertex for non-indexed draw
-            flat_positions = Vec3f[positions_3f[f[j]] for f in faces_val for j in 1:3]
-
-            # Resolve per-vertex colors
-            raw_color = to_value(plot.color)
-            n_verts = length(positions_3f)
-            n_faces = length(faces_val)
-            flat_colors = if raw_color isa AbstractVector{<:Colorant}
-                if length(raw_color) == n_verts
-                    # Per-vertex colors — index by vertex
-                    Vec4f[let c = RGBA{Float32}(raw_color[f[j]])
-                        Vec4f(c.r, c.g, c.b, c.alpha)
-                    end for f in faces_val for j in 1:3]
-                else
-                    # Per-face/per-group colors — distribute across faces
-                    nc = length(raw_color)
-                    faces_per_color = max(1, n_faces ÷ nc)
-                    Vec4f[let ci = min(div(fi - 1, faces_per_color) + 1, nc)
-                        c = RGBA{Float32}(raw_color[ci])
-                        Vec4f(c.r, c.g, c.b, c.alpha)
-                    end for (fi, f) in enumerate(faces_val) for j in 1:3]
-                end
-            elseif raw_color isa Colorant
-                c = RGBA{Float32}(raw_color)
-                fill(Vec4f(c.r, c.g, c.b, c.alpha), length(flat_positions))
-            else
-                # Fallback: try mesh_overlay_color
-                c = mesh_overlay_color(plot, color_tex)
-                fill(Vec4f(c.r, c.g, c.b, c.alpha), length(flat_positions))
-            end
-
-            if !isnothing(last) && last.trace_renderobject isa LavaRenderObject
-                robj = last.trace_renderobject
-                update_buffer!(robj, :positions, flat_positions)
-                update_buffer!(robj, :colors, flat_colors)
-                robj.uniforms[:projectionview] = pv
-                robj.uniforms[:model] = model_mat
-                robj.vertex_count = length(flat_positions)
-                robj.visible = true
-                return (robj,)
-            end
-
-            pipeline = get_mesh_pipeline!(screen)
-            robj = LavaRenderObject(pipeline;
-                arg_names = (:positions, :colors, :projectionview, :model),
-                buffers = Dict{Symbol, Lava.LavaArray}(
-                    :positions => Lava.LavaArray(flat_positions),
-                    :colors => Lava.LavaArray(flat_colors),
-                ),
-                uniforms = Dict{Symbol, Any}(
-                    :projectionview => pv,
-                    :model => model_mat,
-                ),
-                vertex_count = length(flat_positions),
-                instances = 1,
-            )
-            return (robj,)
+            return (mesh_overlay_dispatch!(screen, scene, plot, args, last_robj),)
         end
 
-        if isnothing(last) || isnothing(last.trace_renderobject) ||
-           changed.mesh || changed.positions_transformed_f32c || changed.faces ||
-           changed.normals || changed.texturecoordinates || changed.trace_color_tex
-            # Pick up the previous material slot before we drop the old handle;
-            # reusing it avoids an unbounded leak of MultiTypeSet texture slots
-            # on per-frame mesh rebuilds (streamplot tubes, etc.).
-            reuse_mat_idx = reusable_material_idx(last)
-
-            !isnothing(last) && !isnothing(last.trace_renderobject) &&
-                delete_trace_handles!(hikari_scene, last.trace_renderobject)
-
-            robj = push_to_scene(args.mesh, hikari_scene, plot, color_tex,
-                                  args.positions_transformed_f32c, args.faces,
-                                  args.normals, args.texturecoordinates, transform,
-                                  reuse_mat_idx)
-            state.needs_film_clear = true
-            return (robj,)
-        end
-
-        robj = last.trace_renderobject
-        if changed.model_f32c
-            update_trace_transform!(hikari_scene, state, robj, transform)
-        end
-        if changed.material
-            # Pass args.material raw (NOT through extract_material again).
-            # extract_material can wrap Kr/Kt/index into `Texture{...}` when
-            # Makie has since populated plot.color with a default, but the
-            # initial push stored the material unwrapped. MultiTypeSet.update!
-            # requires matching concrete types, so we must preserve whatever
-            # structure the user passed.
-            update_trace_material!(hikari_scene, state, robj, args.material)
-        end
-        return (robj,)
+        return (mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj),)
     end
 end
+
+# -----------------------------------------------------------------------------
+# Trace path
+# -----------------------------------------------------------------------------
+
+# Returns true if `robj` was produced by the trace path (has a Hikari handle).
+is_trace_robj(robj) = robj !== nothing && hasproperty(robj, :handle)
+
+function mesh_trace_dispatch!(hikari_scene, state, plot, args, changed, last, last_robj)
+    needs_rebuild = !is_trace_robj(last_robj) ||
+                    changed.mesh || changed.positions_transformed_f32c ||
+                    changed.faces || changed.normals ||
+                    changed.texturecoordinates || changed.trace_color_tex
+
+    if needs_rebuild
+        # Drop the previous trace handle (if any) before rebuilding so
+        # scene.materials / scene.media_interfaces stay bounded.
+        is_trace_robj(last_robj) && delete_trace_handles!(hikari_scene, last_robj)
+        reuse_mat_idx = reusable_material_idx(last)
+        return mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
+    end
+
+    return mesh_trace_update!(hikari_scene, state, last_robj, args, changed)
+end
+
+function mesh_trace_create!(hikari_scene, state, plot, args, reuse_mat_idx)
+    transform = Mat4f(args.model_f32c)
+    robj = push_to_scene(args.mesh, hikari_scene, plot, args.trace_color_tex,
+                         args.positions_transformed_f32c, args.faces,
+                         args.normals, args.texturecoordinates, transform,
+                         reuse_mat_idx)
+    state.needs_film_clear = true
+    return robj
+end
+
+function mesh_trace_update!(hikari_scene, state, robj, args, changed)
+    if changed.model_f32c
+        update_trace_transform!(hikari_scene, state, robj, Mat4f(args.model_f32c))
+    end
+    if changed.material
+        # Pass args.material raw (NOT through extract_material again).
+        # extract_material can wrap Kr/Kt/index into `Texture{...}` when
+        # Makie has since populated plot.color with a default, but the
+        # initial push stored the material unwrapped.  MultiTypeSet.update!
+        # requires matching concrete types, so we must preserve whatever
+        # structure the user passed.
+        update_trace_material!(hikari_scene, state, robj, args.material)
+    end
+    return robj
+end
+
+# -----------------------------------------------------------------------------
+# Overlay path (2D mesh, rasterized via graphics pipeline)
+# -----------------------------------------------------------------------------
+
+function mesh_overlay_dispatch!(screen, scene, plot, args, last_robj)
+    flat_positions, flat_colors = mesh_overlay_flat_arrays(plot, args)
+    pv = Mat4f(scene.camera.projectionview[])
+    model_mat = Mat4f(args.model_f32c)
+
+    if last_robj isa LavaRenderObject
+        return mesh_overlay_update!(last_robj, flat_positions, flat_colors, pv, model_mat)
+    end
+    return mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
+end
+
+# Build per-vertex (flat) position and color arrays for graphics pipeline.
+# Faces are expanded into 3 vertices each so the pipeline can use a
+# non-indexed draw.  Colors track the user's `plot.color` semantics:
+# per-vertex, per-face/per-group, scalar Colorant, or a fallback.
+function mesh_overlay_flat_arrays(plot, args)
+    positions_3f = map(p -> Makie.to_ndim(Point3f, p, 0f0), args.positions_transformed_f32c)
+    faces_val = args.faces
+    n_verts = length(positions_3f)
+    n_faces = length(faces_val)
+
+    flat_positions = Vector{Vec3f}(undef, 3 * n_faces)
+    @inbounds for (fi, f) in enumerate(faces_val), j in 1:3
+        flat_positions[3 * (fi - 1) + j] = positions_3f[f[j]]
+    end
+
+    raw_color = to_value(plot.color)
+    flat_colors = if raw_color isa AbstractVector{<:Colorant} && length(raw_color) == n_verts
+        # Per-vertex
+        out = Vector{Vec4f}(undef, 3 * n_faces)
+        @inbounds for (fi, f) in enumerate(faces_val), j in 1:3
+            c = RGBA{Float32}(raw_color[f[j]])
+            out[3 * (fi - 1) + j] = Vec4f(c.r, c.g, c.b, c.alpha)
+        end
+        out
+    elseif raw_color isa AbstractVector{<:Colorant} && !isempty(raw_color)
+        # Per-face / per-group: distribute uniformly across faces
+        nc = length(raw_color)
+        faces_per_color = max(1, n_faces ÷ nc)
+        out = Vector{Vec4f}(undef, 3 * n_faces)
+        @inbounds for (fi, _) in enumerate(faces_val)
+            ci = min(div(fi - 1, faces_per_color) + 1, nc)
+            c = RGBA{Float32}(raw_color[ci])
+            v = Vec4f(c.r, c.g, c.b, c.alpha)
+            out[3 * (fi - 1) + 1] = v
+            out[3 * (fi - 1) + 2] = v
+            out[3 * (fi - 1) + 3] = v
+        end
+        out
+    elseif raw_color isa Colorant
+        c = RGBA{Float32}(raw_color)
+        fill(Vec4f(c.r, c.g, c.b, c.alpha), 3 * n_faces)
+    else
+        c = mesh_overlay_color(plot, args.trace_color_tex)
+        fill(Vec4f(c.r, c.g, c.b, c.alpha), 3 * n_faces)
+    end
+
+    return flat_positions, flat_colors
+end
+
+function mesh_overlay_create!(screen, flat_positions, flat_colors, pv, model_mat)
+    pipeline = get_mesh_pipeline!(screen)
+    return LavaRenderObject(pipeline;
+        arg_names = (:positions, :colors, :projectionview, :model),
+        buffers = Dict{Symbol, Lava.LavaArray}(
+            :positions => Lava.LavaArray(flat_positions),
+            :colors => Lava.LavaArray(flat_colors),
+        ),
+        uniforms = Dict{Symbol, Any}(
+            :projectionview => pv,
+            :model => model_mat,
+        ),
+        vertex_count = length(flat_positions),
+        instances = 1,
+    )
+end
+
+function mesh_overlay_update!(robj::LavaRenderObject, flat_positions, flat_colors, pv, model_mat)
+    update_buffer!(robj, :positions, flat_positions)
+    update_buffer!(robj, :colors, flat_colors)
+    robj.uniforms[:projectionview] = pv
+    robj.uniforms[:model] = model_mat
+    robj.vertex_count = length(flat_positions)
+    robj.visible = true
+    return robj
+end
+
+# =============================================================================
+# Material helpers — in-place swap on existing handle
+# =============================================================================
 
 """
 Swap the material of an existing mesh scene handle in place — no BLAS/TLAS
@@ -148,7 +208,7 @@ function update_trace_material!(hikari_scene, state, robj, new_material)
 end
 
 # =============================================================================
-# Dispatch-based push_to_scene
+# push_to_scene dispatch
 # =============================================================================
 
 # Extract diffuse texture from a GLTF material dict
@@ -187,7 +247,6 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
                                      reuse_mat_idx)
     end
 
-    # Check if user explicitly provided a material template
     user_material = haskey(plot, :material) && !isnothing(to_value(plot.material)) ?
         to_value(plot.material) : nothing
 
@@ -198,7 +257,6 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
     gb_faces = GeometryBasics.faces(inner)
     n_faces = length(gb_faces)
 
-    # Resolve per-face materials
     per_face_materials = Vector{Hikari.Material}(undef, n_faces)
     mat_cache = Dict{String, Hikari.Material}()
     for (view_range, name) in zip(views, mat_names)
@@ -206,10 +264,8 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
             if haskey(materials_dict, name)
                 mat_entry = materials_dict[name]
                 if mat_entry isa Hikari.Material
-                    # Direct Hikari material (e.g. from user-constructed MetaMesh)
                     mat_entry
                 elseif !isnothing(user_material)
-                    # Merge GLTF diffuse texture into user's material type
                     tex = extract_glb_diffuse_texture(mat_entry)
                     merge_color_with_material(tex, user_material)
                 else
@@ -230,7 +286,7 @@ function push_to_scene(mesh_val::GeometryBasics.MetaMesh, hikari_scene, plot, co
     end
 
     handle = push!(hikari_scene, inner, per_face_materials; transform=transform)
-    return (handle=handle, instance_idx=length(hikari_scene.accel.instances))
+    return (handle=handle, instance_idx=Raycore.n_instances(hikari_scene.accel))
 end
 
 # Plain mesh: single material
@@ -251,11 +307,9 @@ end
 function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform,
                                reuse_mat_idx::Union{Nothing, UInt32};
                                positions=nothing, faces=nothing, normals=nothing, uv=nothing)
-    # If mesh_val is already a GB.Mesh, use it directly; otherwise build from decomposed
     gb_mesh = if mesh_val isa GeometryBasics.Mesh
         mesh_val
     else
-        # Build from decomposed arrays
         kwargs = Dict{Symbol, Any}()
         !isnothing(normals) && (kwargs[:normal] = Vec3f.(normals))
         !isnothing(uv) && (kwargs[:uv] = Vec2f.(uv))
@@ -263,7 +317,6 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
         isnothing(normals) ? GeometryBasics.normal_mesh(m) : m
     end
 
-    # Convert per-vertex colors to VertexColorTexture
     if color_tex isa AbstractVector{<:Colorant}
         color_tex = build_vertex_color_texture(color_tex, gb_mesh)
     end
@@ -275,7 +328,7 @@ function push_to_scene_simple(mesh_val, hikari_scene, plot, color_tex, transform
         Hikari.update_material!(hikari_scene, reuse_mat_idx, mat)
         push!(hikari_scene, gb_mesh, reuse_mat_idx, mat; transform=transform)
     end
-    state_instance_idx = length(hikari_scene.accel.instances)
+    state_instance_idx = Raycore.n_instances(hikari_scene.accel)
     return (handle=handle, mat_idx=handle.interface, material=mat, instance_idx=state_instance_idx)
 end
 
@@ -292,7 +345,6 @@ function delete_trace_handles!(hikari_scene, robj)
         end
     elseif hasproperty(robj, :handle)
         h = robj.handle
-        # SceneHandle wraps a TLASHandle in .geometry
         actual_handle = h isa Hikari.SceneHandle ? h.geometry : h
         delete!(tlas, actual_handle)
     end
@@ -319,7 +371,7 @@ function update_trace_transform!(hikari_scene, state, robj, transform)
 end
 
 # =============================================================================
-# 2D mesh overlay color extraction
+# 2D mesh overlay color extraction (fallback when plot.color is unrecognized)
 # =============================================================================
 
 function mesh_overlay_color(plot, color_tex)

@@ -341,11 +341,10 @@ function render!(screen::Screen)
     Raycore.sync!(tlas)
 
     # Skip ray tracing if TLAS has no geometry (e.g. scene with only overlay plots)
-    if isempty(tlas.instances)
+    if Raycore.n_instances(tlas) == 0
         return state.film
     end
-
-    Raycore.refit_tlas!(tlas)
+    # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
 
     # Load per-scene integrator state (each scene accumulates independently)
     if integrator isa Hikari.VolPath
@@ -406,15 +405,12 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState; ne
     # Skipped when need_aux_buffers=false (no overlays, no denoising).
     if need_aux_buffers
         tlas = scene_state.hikari_scene.accel
-        if !isempty(tlas.instances)
+        if Raycore.n_instances(tlas) > 0
             lights = scene_state.hikari_scene.lights
             has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
-            # Use cached adapted scene from VolPath integrator (avoids re-uploading ~30 MiB per render)
-            integrator = config.integrator
-            backend = KernelAbstractions.get_backend(film.framebuffer)
-            adapted_scene = integrator isa Hikari.VolPath ?
-                Hikari.get_or_adapt_scene!(integrator, backend, scene_state.hikari_scene) :
-                Adapt.adapt(config.device, scene_state.hikari_scene)
+            # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.
+            # Must re-adapt per render so mesh mutations are visible.
+            adapted_scene = Adapt.adapt(config.device, scene_state.hikari_scene)
             Hikari.fill_aux_buffers!(film, adapted_scene, camera; has_infinite_lights=has_inf)
         else
             fill!(film.depth, Float32(1e30))  # all overlays pass depth test
