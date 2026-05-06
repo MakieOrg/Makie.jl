@@ -39,7 +39,37 @@ function _toggle_all_legend_visibilities_synchronized!(entry_groups)
     return
 end
 
-function initialize_block!(leg::Legend; entrygroups)
+function initialize_block!(
+        leg::Legend,
+        contents::AbstractVector,
+        labels::AbstractVector,
+        title = nothing
+    )
+    entry_groups = to_entry_group(leg.attributes, contents, labels, title)
+    return initialize_block!(leg, entry_groups)
+end
+
+function initialize_block!(
+        leg::Legend,
+        contentgroups::AbstractVector{<:AbstractVector},
+        labelgroups::AbstractVector{<:AbstractVector},
+        titles::AbstractVector
+    )
+    entry_groups = to_entry_group(leg.attributes, contentgroups, labelgroups, titles)
+    return initialize_block!(leg, entry_groups)
+end
+
+function initialize_block!(
+        leg::Legend,
+        axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},
+        title = nothing; merge = false, unique = false
+    )
+    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
+    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
+    return initialize_block!(leg, plots, labels, title)
+end
+
+function initialize_block!(leg::Legend, entrygroups)
     entry_groups = convert(Observable{Vector{Tuple{Any, Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
 
@@ -943,7 +973,7 @@ function to_entry_group(
     return [(t, en) for (t, en) in zip(titles, entries)]
 end
 
-"""
+@doc """
     Legend(
         fig_or_scene,
         contents::AbstractArray,
@@ -956,25 +986,15 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function Legend(
-        fig_or_scene,
-        contents::AbstractVector,
-        labels::AbstractVector,
-        title = nothing;
-        bbox = nothing, kwargs...
-    )
+Legend(
+    fig_or_scene,
+    contents::AbstractArray,
+    labels::AbstractArray,
+    title = nothing;
+    kwargs...
+)
 
-    scene = get_topscene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
-    entry_groups = to_entry_group(Attributes(legend_defaults), contents, labels, title)
-    entrygroups = Observable(entry_groups)
-    legend_defaults[:entrygroups] = entrygroups
-    # Use low-level constructor to not calculate legend_defaults a second time
-    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete = true)
-end
-
-
-"""
+@doc """
     Legend(
         fig_or_scene,
         contentgroups::AbstractVector{<:AbstractVector},
@@ -990,24 +1010,15 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function Legend(
-        fig_or_scene,
-        contentgroups::AbstractVector{<:AbstractVector},
-        labelgroups::AbstractVector{<:AbstractVector},
-        titles::AbstractVector;
-        bbox = nothing, kwargs...
-    )
+Legend(
+    fig_or_scene,
+    contentgroups::AbstractVector{<:AbstractVector},
+    labelgroups::AbstractVector{<:AbstractVector},
+    titles::AbstractVector;
+    kwargs...
+)
 
-    scene = get_scene(fig_or_scene)
-    legend_defaults = block_defaults(:Legend, Dict{Symbol, Any}(kwargs), scene)
-    entry_groups = to_entry_group(legend_defaults, contentgroups, labelgroups, titles)
-    entrygroups = Observable(entry_groups)
-    legend_defaults[:entrygroups] = entrygroups
-    return _block(Legend, fig_or_scene, (), legend_defaults, bbox; kwdict_complete = true)
-end
-
-
-"""
+@doc """
     Legend(fig_or_scene, axis, title = nothing; merge = false, unique = false, kwargs...)
 
 Create a single-group legend with all plots from `axis` that have the attribute
@@ -1019,15 +1030,7 @@ If `unique` is `true`, all plot objects with the same plot type and label will b
 
 To create a joint legend for multiple axes it is also possible to pass a `Vector` of axis objects.
 """
-function Legend(
-        fig_or_scene,
-        axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},
-        title = nothing; merge = false, unique = false, kwargs...
-    )
-    plots, labels = get_labeled_plots(axis, merge = merge, unique = unique)
-    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
-    return Legend(fig_or_scene, plots, labels, title; kwargs...)
-end
+Legend(fig_or_scene, axis, title = nothing; merge = false, unique = false, kwargs...)
 
 function get_labeled_plots(ax; merge::Bool, unique::Bool)
     lplots_init = filter(reduce(vcat, get_plots.(ax), init = AbstractPlot[])) do plot

@@ -457,7 +457,7 @@ end
 
 function block_kwargs(::Type{T}) where {T <: Block}
     (T <: Axis || T <: PolarAxis) && return Set([:palette])
-    T <: Legend && return Set([:entrygroups])
+    T <: Legend && return Set([:merge, :unique])
     T <: Menu && return Set([:default])
     T <: LScene && return Set([:scenekw])
     return Set{Symbol}()
