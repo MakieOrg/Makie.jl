@@ -341,7 +341,7 @@ function render!(screen::Screen)
     Raycore.sync!(tlas)
 
     # Skip ray tracing if TLAS has no geometry (e.g. scene with only overlay plots)
-    if isempty(tlas.instances)
+    if Raycore.n_instances(tlas) == 0
         return state.film
     end
     # (sync!(tlas) above already runs refit_tlas! when transforms are dirty.)
@@ -405,7 +405,7 @@ function postprocess_scene_state!(screen::Screen, scene_state::RayMakieState; ne
     # Skipped when need_aux_buffers=false (no overlays, no denoising).
     if need_aux_buffers
         tlas = scene_state.hikari_scene.accel
-        if !isempty(tlas.instances)
+        if Raycore.n_instances(tlas) > 0
             lights = scene_state.hikari_scene.lights
             has_inf = any(T -> Hikari.is_infinite_light(T), lights.data_order)
             # Adapt is cheap: reads scene.accel.static_tlas after a no-op sync!.

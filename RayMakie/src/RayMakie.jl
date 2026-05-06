@@ -29,6 +29,9 @@ import Lava.Vulkan
 using Adapt
 using Makie.ComputePipeline: register_computation!
 
+# LavaArray overloads for Makie's conversion + bounds path
+include("lava_arrays.jl")
+
 # Overlay rasterization (included directly, no submodule)
 include("overlay/Overlay.jl")
 
