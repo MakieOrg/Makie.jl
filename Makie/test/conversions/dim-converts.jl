@@ -203,8 +203,8 @@ end
 
     # TODO: Primitives
     @testset "Primitives" begin
-        test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2))
-        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10))
+        test_plot(heatmap, (1:5) .* u"s", Categorical(["A", "B"]), rand(5, 2), dims = (1, 2, 3))
+        test_plot(image, 0u"m" .. 1u"m", 0 .. 1, rand(10, 10), dims = (1, 2, 3))
         test_plot(
             surface, (1:5) .* u"m", (1:5) .* u"cm", rand(5, 5) .* u"W",
             dims = (1, 2, 3)
@@ -257,8 +257,8 @@ end
             bracket, 1u"m", 0u"s", 1u"m", 2u"s",
             dims = (1, 2, 1, 2)
         )
-        test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
-        test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10))
+        test_plot(contourf, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10), dims = (1, 2, 3))
+        test_plot(contour, (1:10) .* u"m", (1:10) .* u"s", rand(10, 10), dims = (1, 2, 3))
         test_plot(
             contour, 0u"m" .. 1u"m", 0u"s" .. 1u"s", 0 .. 1, rand(10, 10, 10),
             dims = (1, 2, 3)
