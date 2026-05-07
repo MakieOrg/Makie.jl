@@ -495,11 +495,12 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     kwarg_names = argument_dim_kwargs(P)
 
     # initialize the necessary attributes early
-    defaults = default_theme(nothing, P)
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
-            add_input!(attr, key, pop!(user_kw, key, defaults[key]))
+            default = lookup_default(P, nothing, key, kwdict = user_kw)
+            error_on_no_fallback(P, (key,), default)
+            # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
+            add_input!(attr, key, pop!(user_kw, key, default))
         end
     end
 
@@ -728,8 +729,9 @@ function to_recipe_attribute(value::NamedTuple)
 end
 
 function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    name = plotkey(T)
+    name = plotkey(T)::Symbol
     is_primitive = T <: PrimitivePlotTypes
+    documented_attr = documented_attributes(T)::DocumentedAttributes
 
     if !haskey(attr.inputs, :cycle)
         _cycle = to_value(lookup_default(T, nothing, :cycle, kwdict = kwargs))
@@ -772,9 +774,8 @@ function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
 
     # Add remaining attributes with initial values from plot kwargs (user given)
     # or defaults set by plot_attributes()
-    documented_attr = documented_attributes(T)
     exclude = (:transformation,)
-    apply_attribute_defaults!(documented_attr; kwdict = kwargs, exclude) do keys, type, value
+    apply_attribute_defaults!(documented_attr; kwdict = kwargs, exclude) do keys, @nospecialize(type), value
         if !haskey(attr, keys)
             error_on_no_fallback(T, keys, value)
             if is_primitive
@@ -806,7 +807,7 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     conv_attributes = used_attributes(T, graph.args[]...)
     union!(exclude, conv_attributes)
 
-    apply_attribute_defaults!(T, scene; kwdict = user_kw, exclude) do keys, type, value
+    apply_attribute_defaults!(T, scene; kwdict = user_kw, exclude) do keys, @nospecialize(type), value
         # If the user passed a compute node or an Observable to plot, we should
         # not update the value of the input here.
         input = graph[keys].parent
@@ -931,6 +932,8 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     if got_converted(P, PTrait, converted) == false
         argument_error(PTrait, P, attr, user_attributes, converted)
     end
+
+    # compiler can't infer this, but FinalPlotFunc may differ (e.g. qqnorm -> qqplot)
     ArgTyp = typeof(converted)
     FinalPlotFunc = plotfunc(plottype(P, converted...))
 
@@ -1004,7 +1007,7 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot!(plot)
 
     # Used to add things like `label` for Legend
-    documented_attr = plot_attributes(scene, Plot{Func})
+    documented_attr = documented_attributes(Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)
             if haskey(documented_attr, k)

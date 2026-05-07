@@ -687,15 +687,6 @@ function apply_attribute_defaults!(
     end
 end
 
-# TODO: I'm still unsure what to do for fonts...
-# They must remain something Dict-like because we look up what names mean there.
-# They should merge the default theme with the user provided Dict/Attributes/NamedTuple,
-# otherwise
-merge_kw_with_default(default, kw) = kw
-function merge_kw_with_default(default::Attributes, kw::Union{Attributes, Dict, NamedTuple})
-    return merge(default, kw)
-end
-
 function lookup_default_typed(
         doc_attr::DocumentedAttributes,
         default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
@@ -717,14 +708,20 @@ function lookup_default_typed(
     )
 
     if haskey(user_attributes, key)
+        # Note: merging a Dict-like theme_default with dict-like kw hurts runtime
+        # performance here (with dispatch and with isa checks)
         kw = delete_kw ? pop!(user_attributes, key) : user_attributes[key]
-        return T, merge_kw_with_default(theme_default, kw)
+        return T, kw
     else
+
         return T, theme_default
     end
 end
 
-function _lookup_default_from_themes(default, default_theme, global_overwrite_theme, overwrite_theme, key)
+# Note: @nospecialize() helps runtime performance quite a bit here
+function _lookup_default_from_themes(
+        @nospecialize(default), default_theme, global_overwrite_theme, overwrite_theme, key
+    )
     # These to_value() calls are important for `add_theme!(plot)`
     if haskey(overwrite_theme, key)
         return to_value(overwrite_theme[key])
