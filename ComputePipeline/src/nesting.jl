@@ -44,9 +44,8 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to = -1)
         elseif isempty(tail)
             error("The given nested path (...).$key_to_insert already exists.")
         else
-            add_key!(tree, next_level, tail)
+            return add_key!(tree, next_level, tail)
         end
-        return
     else
 
         @assert length(tree.keytables) >= level - 1
@@ -57,18 +56,18 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to = -1)
         if isempty(tail)
             if points_to < 0
                 tree.keytables[level][key_to_insert] = points_to
+                return level
             else
                 next_level = length(tree.keytables) + 1
                 @assert length(tree.keytables) == next_level - 1
                 tree.keytables[level][key_to_insert] = next_level
                 push!(tree.keytables, Dict{Symbol, Int}())
+                return length(tree.keytables)
             end
-            return
         else
             next_level = length(tree.keytables) + 1
             tree.keytables[level][key_to_insert] = next_level
-            add_key!(tree, next_level, tail)
-            return
+            return add_key!(tree, next_level, tail)
         end
     end
 end

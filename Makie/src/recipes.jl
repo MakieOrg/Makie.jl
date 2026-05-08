@@ -253,6 +253,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname_sym)
     doc_attr_expr = esc(convert_old_attributes_expr(theme_func))
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
+    meta_attr_placeholder = Symbol("#__", funcname_sym, "_meta_attr_placeholder")
 
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
@@ -260,8 +261,12 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
+
         const $attr_placeholder = $doc_attr_expr
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
+
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
     end
@@ -415,6 +420,7 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
 
     docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
+    meta_attr_placeholder = Symbol("#__", funcname_sym, "_meta_attr_placeholder")
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -444,6 +450,9 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
 
         const $attr_placeholder = $(build_documented_attributes(attrblock))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
+
+        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType

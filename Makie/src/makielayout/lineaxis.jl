@@ -202,8 +202,8 @@ function _extract_computed(graph::ComputePipeline.AbstractComputeGraph, dictlike
     elseif entry isa Union{Attributes, ComputePipeline.AbstractComputeGraph}
         error("$name::$(typeof(entry)) is not supported in @extract_computed")
     else
-        # to_recipe_attribute does Ref{Any} wrapping (in case types can change)
-        add_input!(to_recipe_attribute, graph, name, entry)
+        add_input!(graph, name, entry)
+        ComputePipeline.set_type!(graph[name], Any)
         return graph[name]
     end
 end

@@ -712,85 +712,17 @@ function Base.map!(f, p::Plot, inputs::Union{Vector, ComputePipeline.InputNodeTy
     return map!(f, p.attributes, inputs, outputs)
 end
 
-struct AttributeConvert{Key, Plot} end
+struct AttributeConvert{Key, Plot} <: Function end
 @inline AttributeConvert(key, plot) = AttributeConvert{key, plot}()
 Base.nameof(::AttributeConvert{Key, Plot}) where {Key, Plot} = "AttributeConvert{$(Key), $(Plot)}"
 function (::AttributeConvert{key, plot})(value) where {key, plot}
     return convert_attribute(value, Key{key}(), Key{plot}())
 end
+function (::AttributeConvert{key, plot})(value, @nospecialize(changed), @nospecialize(cached)) where {key, plot}
+    return (convert_attribute(value[1], Key{key}(), Key{plot}()),)
+end
 function ComputePipeline.get_callback_info(::AttributeConvert{key, plot}, value) where {key, plot}
     return ComputePipeline.get_callback_info(convert_attribute, value, Key{key}(), Key{plot}())
-end
-
-to_recipe_attribute(x) = Ref{Any}(x) # Make sure it can change type
-to_recipe_attribute(attr::Attributes) = attr
-function to_recipe_attribute(value::NamedTuple)
-    return Attributes(value)
-end
-
-function add_attributes!(::Type{T}, attr, kwargs) where {T <: Plot}
-    name = plotkey(T)::Symbol
-    is_primitive = T <: PrimitivePlotTypes
-    documented_attr = documented_attributes(T)::DocumentedAttributes
-
-    if !haskey(attr.inputs, :cycle)
-        _cycle = to_value(lookup_default(T, nothing, :cycle, kwdict = kwargs))
-        _cycle = _cycle === NoFallback() ? nothing : _cycle
-        add_input!(AttributeConvert(:cycle, name), attr, :cycle, _cycle)
-    end
-    # Cycle attributes are get set to plot, and then set in connect_plot!
-    add_input!(attr, :cycle_index, 0)
-    add_input!(attr, :palettes, nothing)
-
-    cycle = attr.cycle[]
-    if !isnothing(cycle)
-        asc = attrsyms(cycle)
-        ps = palettesyms(cycle)
-        # flatten to attribute -> palette
-        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
-        add_input!(attr, :palette_lookup, lookup)
-        for (k, p) in lookup
-            # If user explicitly passes values, we should not do anything
-            let plotcycle = cycle
-                add_input!(attr, k, get(kwargs, k, nothing)) do value
-                    palettes = attr.palettes[]
-                    if value isa Cycled
-                        value = get_cycle_attribute(palettes, k, value.i, plotcycle)
-                    end
-                    if !isnothing(value)
-                        if is_primitive
-                            return convert_attribute(value, Key{k}(), Key{name}())
-                        else
-                            return to_recipe_attribute(value)
-                        end
-                    end
-                    pos = attr.cycle_index[]
-                    cyc = get_cycle_attribute(palettes, k, pos, plotcycle)
-                    return convert_attribute(cyc, Key{k}(), Key{name}())
-                end
-            end
-        end
-    end
-
-    # Add remaining attributes with initial values from plot kwargs (user given)
-    # or defaults set by plot_attributes()
-    exclude = (:transformation,)
-    apply_attribute_defaults!(documented_attr; kwdict = kwargs, exclude) do keys, @nospecialize(type), value
-        if !haskey(attr, keys)
-            error_on_no_fallback(T, keys, value)
-            if is_primitive
-                add_input!(Makie.AttributeConvert(last(keys), name), attr, keys, value)
-            else
-                add_input!(attr, keys, value)
-                ComputePipeline.set_type!(attr[keys], Any)
-            end
-        end
-    end
-
-    if !haskey(attr, :model)
-        add_input!(attr, :model, Mat4d(I))
-    end
-    return
 end
 
 function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where {T <: Plot}
@@ -807,17 +739,8 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     conv_attributes = used_attributes(T, graph.args[]...)
     union!(exclude, conv_attributes)
 
-    apply_attribute_defaults!(T, scene; kwdict = user_kw, exclude) do keys, @nospecialize(type), value
-        # If the user passed a compute node or an Observable to plot, we should
-        # not update the value of the input here.
-        input = graph[keys].parent
-        if !(value isa Union{Observable, Computed}) &&
-            !ComputePipeline.is_same((input::ComputePipeline.Input).value, value)
-
-            error_on_no_fallback(T, keys, value)
-            input[] = value
-        end
-    end
+    meta = meta_attributes(T)
+    add_theme!(graph, meta, T, scene, exclude, user_kw)
 
     return
 end
@@ -902,8 +825,23 @@ function collect_applicable_attributes(
     return output
 end
 
-function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
+function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
+
+    P = Plot{Func}
+
+    if first(user_args) isa Attributes
+        # This should keep user_args[1] unchanged, in case they get reused.
+        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
+        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
+        return build_plot(P, nothing, Base.tail(user_args), user_attributes)
+    elseif first(user_args) isa AbstractComputeGraph
+        return build_plot(P, user_args[1], Base.tail(user_args), user_attributes)
+    else
+        return build_plot(P, nothing, user_args, user_attributes)
+    end
+
+    ############################################################################
 
     # Handle plot!(plot, attributes::Attributes, args...) here
     if !isempty(user_args) && first(user_args) isa Attributes
@@ -940,6 +878,131 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
 
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
+end
+
+struct AttributeCallbackBuilder{T}
+    lookup::Dict{Symbol, Symbol}
+    cycle::T
+    graph::ComputeGraph
+    is_primitive::Bool
+    plotsym::Symbol
+end
+
+struct CycleConvert{F, T} <: Function
+    callback::F
+    cycle::T
+    graph::ComputeGraph
+    key::Symbol
+end
+
+(cc::CycleConvert)(val, @nospecialize(changed), @nospecialize(cached)) = (cc(val[1]),)
+function (cc::CycleConvert)(value)
+    palettes = cc.graph.palettes[]
+    if value isa Cycled
+        value = get_cycle_attribute(palettes, cc.key, value.i, cc.cycle)
+    end
+    isnothing(value) || return cc.callback(value)
+    pos = cc.graph.cycle_index[]
+    cyc = get_cycle_attribute(palettes, cc.key, pos, cc.cycle)
+    return cc.callback(cyc)
+end
+
+function (b::AttributeCallbackBuilder)(key::Symbol)
+    inner = if b.is_primitive
+        AttributeConvert(key, b.plotsym)
+    else
+        ComputePipeline.compute_identity
+    end
+
+    if haskey(b.lookup, key)
+        return CycleConvert(inner, b.cycle, b.graph, key)
+    else
+        return inner
+    end
+end
+
+function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent)
+    exclude = (:transformation, :transform_func)
+    prepare_graph_for_attributes!(graph, meta, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, meta, kwargs, exclude)
+    if !isnothing(parent)
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        connect_parent!(build_callback, graph, parent, meta, exclude_from_parent)
+    end
+    add_remaining_inputs!(build_callback, graph, meta, exclude)
+    return
+end
+
+function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, lookup)
+    exclude = (:transformation, :transform_func)
+    prepare_graph_for_attributes!(graph, meta, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, meta, kwargs, exclude)
+    if !isnothing(parent)
+        exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
+        connect_parent!(build_callback, graph, parent, meta, exclude_from_parent)
+    end
+    # cycled attributes don't inherit defaults from theme, they are initialized
+    # with cycling instead
+    for (key, p) in lookup
+        if haskey(graph.outputs, key) && !isconnected(graph, key)
+            output = graph[key]
+            add_prepared_input!(build_callback(key), graph, key, nothing, output)
+        end
+    end
+    add_remaining_inputs!(build_callback, graph, meta, exclude)
+    return
+end
+
+function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
+  meta = meta_attributes(P)
+    name = Makie.plotkey(P)
+    is_primitive = P <: PrimitivePlotTypes
+
+    _cycle = get(kwargs, :cycle, haskey(meta, :cycle) ? meta[:cycle] : NoFallback())
+    _cycle = to_value(_cycle) === NoFallback() ? nothing : to_value(_cycle)
+    add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
+
+    # Cycle attributes are get set to plot, and then set in connect_plot!
+    add_input!(graph, :cycle_index, 0)
+    add_input!(graph, :palettes, nothing)
+
+    cycle = graph.cycle[]
+    if !isnothing(cycle)
+        asc = attrsyms(cycle)
+        ps = palettesyms(cycle)
+        # flatten to attribute -> palette
+        lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
+        add_input!(graph, :palette_lookup, lookup)
+        build_callback = AttributeCallbackBuilder(lookup, cycle, graph, is_primitive, name)
+        init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, lookup)
+    elseif is_primitive
+        init_graph!(key -> AttributeConvert(key, name), graph, meta, true, kwargs, parent)
+    else
+        init_graph!(key -> compute_identity, graph, meta, false, kwargs, parent)
+    end
+
+    if !haskey(graph, :model)
+        add_input!(graph, :model, Mat4d(I))
+    end
+end
+
+function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}
+    graph = ComputeGraph()
+
+    register_arguments!(P, graph, user_attributes, user_args)
+    converted = graph.converted[]
+    PTrait = conversion_trait(P, graph.args[]...)
+    if got_converted(P, PTrait, converted) == false
+        argument_error(PTrait, P, graph, user_attributes, converted)
+    end
+
+    # compiler can't infer this, but FinalPlotFunc may differ (e.g. qqnorm -> qqplot)
+    ArgTyp = typeof(converted)
+    FinalPlotFunc = plotfunc(plottype(P, converted...))
+
+    add_attributes!(Plot{FinalPlotFunc}, graph, parent, user_attributes)
+
+    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, graph)
 end
 
 # Count cycling position of `plot` among the top-level plots in `plot_iter`.

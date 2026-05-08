@@ -251,6 +251,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
     attr_placeholder = Symbol("#__", name, "_attr_placeholder")
+    meta_attr_placeholder = Symbol("#__", name, "_meta_attr_placeholder")
 
     BlockType = esc(name)
 
@@ -280,6 +281,9 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
         const $attr_placeholder = $attrs
         $(Makie).documented_attributes(::Type{$BlockType}) = $attr_placeholder
+
+        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        $(Makie).meta_attributes(::Type{<:$(BlockType)}) = $meta_attr_placeholder
 
         $(Makie).has_forwarded_layout(::Type{$BlockType}) = $has_forwarded_layout
 
@@ -539,12 +543,19 @@ end
 """
 add_attributes!(::Type{<:Block}, graph, sources...) = nothing
 
+struct BlockAttributeConvert{T} <: Function end
+(::BlockAttributeConvert{T})(x) where {T} = convert_for_attribute(T, x)
+function (::BlockAttributeConvert{T})(x, @nospecialize(changed), @nospecialize(cached)) where {T}
+    return (convert_for_attribute(T, x[1]),)
+end
+
 function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdict::Dict, bbox; kwdict_complete = false)
 
     # first sort out all user kwargs that correspond to block attributes
     check_textsize_deprecation(kwdict)
 
     graph = ComputeGraph()
+
 
     topscene = get_topscene(fig_or_scene)
     blockname = nameof(T)
@@ -559,14 +570,9 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
         block_defaults, default_theme, global_overwrite_theme, overwrite_theme, kwdict
     )
 
-    # Add all attributes and filter any attributes from kwargs
-    apply_attribute_defaults!(T, topscene; kwdict, delete_used_kwargs = true) do keys, type, value
-        if !haskey(graph, keys)
-            error_on_no_fallback(T, keys, value)
-            add_input!(x -> convert_for_attribute(type, x), graph, keys, value)
-            ComputePipeline.set_type!(graph[keys], type)
-        end
-    end
+    meta = meta_attributes(T)
+    prepare_graph_for_attributes!(graph, meta, is_block = true)
+    add_remaining_block_inputs!(graph, meta, T, topscene, kwdict)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
