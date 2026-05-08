@@ -602,9 +602,8 @@ end
 inverse_transform(F::Tuple) = map(inverse_transform, F)
 inverse_transform(s::ReversibleScale) = s.inverse
 
-function is_identity_transform(t)
-    return t === identity || t isa Tuple && all(x -> x === identity, t)
-end
+is_identity_transform(t) = t === identity
+is_identity_transform(t::Tuple) = all(is_identity_transform, t)
 
 
 ################################################################################
