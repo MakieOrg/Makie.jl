@@ -696,36 +696,30 @@ function _decade_auto_tickvalues(vmin, vmax, n_ideal; kmin_pos = 0, kmin_neg = 0
     return ticks
 end
 
-# Zero-anchored: ticks at `0, ±10^s, ±10^(2s), …` for stride `s`. `s` must divide each
-# present side's `kmax_*` so the outermost decade lands exactly on the stride. `s ≥ kmin_*`
-# keeps every tick out of any linear region. Pick the stride whose total tick count is
-# closest to `n_ideal` (denser on ties).
+# Zero-anchored: ticks at `0, ±10^s, ±10^(2s), …` for stride `s ≥ kmin_*`. The outermost
+# tick on each side is the largest stride-multiple that still fits inside `kmax_*`; it
+# may stop short of `kmax_*` if no nicer stride lands exactly on the extreme. Pick the
+# stride whose total tick count is closest to `n_ideal`, tiebreaking on larger reach
+# (closer to the data extreme), then denser.
 function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
     has_pos = kmax_pos >= kmin_pos
     has_neg = kmax_neg >= kmin_neg
     has_pos || has_neg || return nothing
-
-    s_constraint = if has_pos && has_neg
-        gcd(kmax_pos, kmax_neg)
-    elseif has_pos
-        kmax_pos
-    else
-        kmax_neg
-    end
     smin = max(has_pos ? kmin_pos : 1, has_neg ? kmin_neg : 1)
-    smin > s_constraint && return nothing
-
     max_extreme = max(kmax_pos, kmax_neg)
-    best_s, best_count, best_dist = 0, -1, typemax(Int)
-    for s in smin:s_constraint
-        s_constraint % s == 0 || continue
-        count = 1
+
+    best_s, best_count, best_reach, best_dist = 0, -1, -1, typemax(Int)
+    for s in smin:max_extreme
+        count, reach = 1, 0
         for k in s:s:max_extreme
-            count += (k <= kmax_pos) + (k <= kmax_neg)
+            (k <= kmax_pos) && (count += 1; reach = max(reach, k))
+            (k <= kmax_neg) && (count += 1; reach = max(reach, k))
         end
         d = abs(count - n_ideal)
-        if d < best_dist || (d == best_dist && count > best_count)
-            best_s, best_count, best_dist = s, count, d
+        if d < best_dist ||
+                (d == best_dist && reach > best_reach) ||
+                (d == best_dist && reach == best_reach && count > best_count)
+            best_s, best_count, best_reach, best_dist = s, count, reach, d
         end
     end
     best_s == 0 && return nothing
@@ -739,22 +733,25 @@ function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kma
     return ticks
 end
 
-# Single-sided: ticks at `sign_factor * 10^(kmin + i*s)` for i = 0, 1, …, span/s. `s` must
-# divide `span = kmax - kmin` so both endpoints land on the stride. Caller passes magnitudes
-# (vmin ≤ vmax, both > 0) and the desired output sign.
+# Single-sided: ticks at `sign_factor * 10^(kmin + i*s)` for `i = 0, 1, …` while
+# `kmin + i*s ≤ kmax`. The outermost tick may stop short of `kmax` if `s` doesn't divide
+# `span = kmax - kmin` exactly. Caller passes magnitudes (`vmin ≤ vmax`, both > 0) and the
+# desired output sign.
 function _decade_select_single_sided(vmin, vmax, n_ideal, kmin_side, kmax_side, sign_factor)
     kmin = max(kmin_side, ceil(Int, log10(vmin)))
     kmax = min(kmax_side, floor(Int, log10(vmax)))
     span = kmax - kmin
     span < 1 && return nothing
 
-    best_s, best_count, best_dist = 1, span + 1, abs(span + 1 - n_ideal)
+    best_s, best_count, best_reach, best_dist = 1, span + 1, kmax, abs(span + 1 - n_ideal)
     for s in 2:span
-        span % s == 0 || continue
         count = span ÷ s + 1
+        reach = kmin + s * (count - 1)
         d = abs(count - n_ideal)
-        if d < best_dist || (d == best_dist && count > best_count)
-            best_s, best_count, best_dist = s, count, d
+        if d < best_dist ||
+                (d == best_dist && reach > best_reach) ||
+                (d == best_dist && reach == best_reach && count > best_count)
+            best_s, best_count, best_reach, best_dist = s, count, reach, d
         end
     end
 

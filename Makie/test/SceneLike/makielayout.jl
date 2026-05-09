@@ -256,6 +256,12 @@ end
                                  ["−100", "−90", "−80", "−70", "−60", "−50"]),
         (0.0, 99.0)          => ([0.0, 20.0, 40.0, 60.0, 80.0],
                                  ["0", "20", "40", "60", "80"]),
+        # Prime kmax = 7: stride 3 doesn't divide 7 but reaches k = 6 cleanly with 5 ticks,
+        # better than the divisor-only options (s=1 → 15 ticks, s=7 → 3 ticks).
+        (-1.0e7, 1.0e7)      => ([-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+                                 ["−106", "−103", "0", "103", "106"]),
+        (10.0, 1.0e8)        => ([10.0, 1000.0, 100000.0, 1.0e7],
+                                 ["101", "103", "105", "107"]),
     ]
     for ((lo, hi), (expected_ticks, expected_labels)) in cases
         ticks, labels = Makie.get_ticks(automatic, Makie.pseudolog10, automatic, lo, hi)
