@@ -1128,7 +1128,7 @@ function axislegend(ax, args...; position = :rt, kwargs...)
     return Legend(
         ax.parent, args...;
         bbox = ax.scene.viewport,
-        margin = (6, 6, 6, 6),
+        margin = something(theme(:Legend), (; margin = (6, 6, 6, 6))).margin,
         legend_position_to_aligns(position)...,
         kwargs...
     )
