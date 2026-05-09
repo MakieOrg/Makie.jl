@@ -663,6 +663,131 @@ _logticks_error_message(name) = "`LogTicks` is only valid with strictly log scal
     "(`log10`, `log2`, `log`). For `$name`, omit `yticks`/`xticks` to use the automatic " *
     "decade picker, or pass explicit numeric tick values."
 
+get_ticks(::Automatic, scale::typeof(pseudolog10), formatter, vmin, vmax) =
+    get_ticks(PseudologTicks(), scale, formatter, vmin, vmax)
+
+function get_ticks(t::PseudologTicks, scale::typeof(pseudolog10), formatter, vmin, vmax)
+    ticks = _decade_auto_tickvalues(vmin, vmax, t.n_ideal)
+    ticks === nothing && return get_ticks(automatic, identity, formatter, vmin, vmax)
+    labels = formatter isa Automatic ?
+        [_decade_label(t) for t in ticks] :
+        get_ticklabels(formatter, ticks)
+    return ticks, labels
+end
+
+# `kmin_pos` / `kmin_neg` are the smallest |k| considered a meaningful decade per side —
+# 0 for pseudolog10, `ceil(log10(U))` / `ceil(log10(|L|))` for Symlog10 (so its linear
+# region doesn't get decade ticks).
+function _decade_auto_tickvalues(vmin, vmax, n_ideal; kmin_pos = 0, kmin_neg = 0)
+    kmax_pos = vmax >= 10.0^kmin_pos ? floor(Int, log10(vmax)) : -1
+    kmax_neg = vmin <= -10.0^kmin_neg ? floor(Int, log10(-vmin)) : -1
+    zero_in = vmin <= 0 <= vmax
+
+    ticks = if zero_in
+        _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    else
+        _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    end
+    ticks === nothing && return nothing
+    count(!iszero, ticks) < 2 && return nothing
+    return ticks
+end
+
+# Pick a uniform stride `s` along the |k| axis (ks at 0, s, 2s, …) so that ticks land at
+# `s * i` and the count is as close to `n_ideal` as possible. `s` must divide both extremes
+# (their gcd in the asymmetric case) so each side's outermost decade lands on the stride;
+# `s ≥ max(kmin_*)` keeps every tick out of any linear region.
+function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    kmin_eff_pos = max(kmin_pos, 1)
+    kmin_eff_neg = max(kmin_neg, 1)
+    has_pos = kmax_pos >= kmin_eff_pos
+    has_neg = kmax_neg >= kmin_eff_neg
+    has_pos || has_neg || return nothing
+
+    s_constraint = if has_pos && has_neg
+        gcd(kmax_pos, kmax_neg)
+    elseif has_pos
+        kmax_pos
+    else
+        kmax_neg
+    end
+    smin = max(has_pos ? kmin_eff_pos : 1, has_neg ? kmin_eff_neg : 1)
+
+    best_s, best_count, best_dist = 0, -1, typemax(Int)
+    max_extreme = max(kmax_pos, kmax_neg)
+    for s in smin:s_constraint
+        s_constraint % s == 0 || continue
+        count = 1
+        for k in s:s:max_extreme
+            count += (k <= kmax_pos) + (k <= kmax_neg)
+        end
+        d = abs(count - n_ideal)
+        # Prefer denser tick set on ties.
+        if d < best_dist || (d == best_dist && count > best_count)
+            best_s, best_count, best_dist = s, count, d
+        end
+    end
+    best_s == 0 && return nothing
+
+    ticks = Float64[0.0]
+    for k in best_s:best_s:max_extreme
+        k <= kmax_pos && push!(ticks, 10.0^k)
+        k <= kmax_neg && push!(ticks, -10.0^k)
+    end
+    sort!(ticks)
+    return ticks
+end
+
+function _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    sign_factor, kmin_scale, kmax = vmin > 0 ?
+        (1, kmin_pos, kmax_pos) : (-1, kmin_neg, kmax_neg)
+
+    a, b = minmax(abs(vmin), abs(vmax))
+    kmin = max(kmin_scale, ceil(Int, log10(a)))
+    kmax_local = min(kmax, floor(Int, log10(b)))
+    range = kmax_local - kmin
+    range < 1 && return nothing
+
+    best_s, best_count, best_dist = 1, range + 1, abs(range + 1 - n_ideal)
+    for s in 2:range
+        range % s == 0 || continue
+        count = range ÷ s + 1
+        d = abs(count - n_ideal)
+        if d < best_dist || (d == best_dist && count > best_count)
+            best_s, best_count, best_dist = s, count, d
+        end
+    end
+
+    ks = collect(kmin:best_s:kmax_local)
+    return sort!(sign_factor .* exp10.(ks))
+end
+
+function _decade_label(t)
+    iszero(t) && return rich("0")
+    k = round(Int, log10(abs(t)))
+    prefix = t < 0 ? MINUS_SIGN : ""
+    return rich(prefix, "10", superscript(string(k), offset = Vec2f(0.1f0, 0.0f0)))
+end
+
+get_ticks(::Automatic, scale::Symlog10, formatter, vmin, vmax) =
+    get_ticks(SymlogTicks(), scale, formatter, vmin, vmax)
+
+function get_ticks(t::SymlogTicks, scale::Symlog10, formatter, vmin, vmax)
+    L, U = scale.lower, scale.upper
+    if L <= vmin && vmax <= U
+        return get_ticks(automatic, identity, formatter, vmin, vmax)
+    end
+
+    kmin_pos = max(0, ceil(Int, log10(U)))
+    kmin_neg = max(0, ceil(Int, log10(-L)))
+    ticks = _decade_auto_tickvalues(vmin, vmax, t.n_ideal; kmin_pos = kmin_pos, kmin_neg = kmin_neg)
+    ticks === nothing && return get_ticks(automatic, identity, formatter, vmin, vmax)
+    labels = formatter isa Automatic ?
+        [_decade_label(t) for t in ticks] :
+        get_ticklabels(formatter, ticks)
+    return ticks, labels
+end
+
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)
 

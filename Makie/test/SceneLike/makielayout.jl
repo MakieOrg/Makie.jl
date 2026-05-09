@@ -221,15 +221,123 @@ end
     end
 end
 
-@testset "LogTicks rejects pseudolog10/Symlog10" begin
-    @test_throws "only valid with strictly log scales" Makie.get_ticks(
-        LogTicks(-2:2), Makie.pseudolog10, Makie.automatic, -100.0, 100.0)
-    @test_throws "pseudolog10" Makie.get_ticks(
-        LogTicks(-2:2), Makie.pseudolog10, Makie.automatic, -100.0, 100.0)
-    @test_throws "only valid with strictly log scales" Makie.get_ticks(
-        LogTicks(-2:2), Makie.Symlog10(10.0), Makie.automatic, -100.0, 100.0)
-    @test_throws "Symlog10" Makie.get_ticks(
-        LogTicks(-2:2), Makie.Symlog10(10.0), Makie.automatic, -100.0, 100.0)
+@testset "Automatic ticks for pseudolog10" begin
+    automatic = Makie.automatic
+    cases = [
+        (-10.0, 10.0)        => ([-10.0, 0.0, 10.0],
+                                 ["−101", "0", "101"]),
+        (-100.0, 100.0)      => ([-100.0, -10.0, 0.0, 10.0, 100.0],
+                                 ["−102", "−101", "0", "101", "102"]),
+        (-1000.0, 1000.0)    => ([-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0],
+                                 ["−103", "−102", "−101", "0", "101", "102", "103"]),
+        (-1.0e6, 1.0e6)      => ([-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+                                 ["−106", "−103", "0", "103", "106"]),
+        (0.0, 100.0)         => ([0.0, 10.0, 100.0],
+                                 ["0", "101", "102"]),
+        (0.0, 10000.0)       => ([0.0, 10.0, 100.0, 1000.0, 10000.0],
+                                 ["0", "101", "102", "103", "104"]),
+        (-10.0, 1000.0)      => ([-10.0, 0.0, 10.0, 100.0, 1000.0],
+                                 ["−101", "0", "101", "102", "103"]),
+        (-100.0, 1.0e6)      => ([-100.0, 0.0, 100.0, 10000.0, 1.0e6],
+                                 ["−102", "0", "102", "104", "106"]),
+        (1.0, 1000.0)        => ([1.0, 10.0, 100.0, 1000.0],
+                                 ["100", "101", "102", "103"]),
+        (10.0, 1.0e6)        => ([10.0, 100.0, 1000.0, 10000.0, 100000.0, 1.0e6],
+                                 ["101", "102", "103", "104", "105", "106"]),
+        (-1000.0, -10.0)     => ([-1000.0, -100.0, -10.0],
+                                 ["−103", "−102", "−101"]),
+        (-1.0e6, -10.0)      => ([-1.0e6, -100000.0, -10000.0, -1000.0, -100.0, -10.0],
+                                 ["−106", "−105", "−104", "−103", "−102", "−101"]),
+        (0.0, 0.01)          => ([0.0, 0.005, 0.01],
+                                 ["0.000", "0.005", "0.010"]),
+        (-0.5, 0.5)          => ([-0.5, 0.0, 0.5],
+                                 ["−0.5", "0.0", "0.5"]),
+        (-100.0, -50.0)      => ([-100.0, -90.0, -80.0, -70.0, -60.0, -50.0],
+                                 ["−100", "−90", "−80", "−70", "−60", "−50"]),
+        (0.0, 99.0)          => ([0.0, 20.0, 40.0, 60.0, 80.0],
+                                 ["0", "20", "40", "60", "80"]),
+    ]
+    for ((lo, hi), (expected_ticks, expected_labels)) in cases
+        ticks, labels = Makie.get_ticks(automatic, Makie.pseudolog10, automatic, lo, hi)
+        @test ticks == expected_ticks
+        @test string.(labels) == expected_labels
+    end
+end
+
+@testset "Automatic ticks for Symlog10" begin
+    automatic = Makie.automatic
+    s10 = Makie.Symlog10(10.0)
+    s100 = Makie.Symlog10(100.0)
+    s5 = Makie.Symlog10(5.0)
+    s_asym = Makie.Symlog10(-5.0, 50.0)
+    s10_ls2 = Makie.Symlog10(-10.0, 10.0; linscale = 2.0)
+
+    cases = [
+        (s10, -100.0, 100.0)        => ([-100.0, -10.0, 0.0, 10.0, 100.0],
+                                        ["−102", "−101", "0", "101", "102"]),
+        (s10, -1000.0, 1000.0)      => ([-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0],
+                                        ["−103", "−102", "−101", "0", "101", "102", "103"]),
+        (s10, -1.0e6, 1.0e6)        => ([-1.0e6, -1000.0, 0.0, 1000.0, 1.0e6],
+                                        ["−106", "−103", "0", "103", "106"]),
+        (s10, 0.0, 1000.0)          => ([0.0, 10.0, 100.0, 1000.0],
+                                        ["0", "101", "102", "103"]),
+        (s10, -10.0, 10.0)          => ([-10.0, -5.0, 0.0, 5.0, 10.0],
+                                        ["−10", "−5", "0", "5", "10"]),
+        (s10, 10.0, 1000.0)         => ([10.0, 100.0, 1000.0],
+                                        ["101", "102", "103"]),
+        (s10, -1000.0, -10.0)       => ([-1000.0, -100.0, -10.0],
+                                        ["−103", "−102", "−101"]),
+        (s100, -1000.0, 1000.0)     => ([-1000.0, 0.0, 1000.0],
+                                        ["−103", "0", "103"]),
+        (s5, -100.0, 100.0)         => ([-100.0, -10.0, 0.0, 10.0, 100.0],
+                                        ["−102", "−101", "0", "101", "102"]),
+        (s_asym, -50.0, 500.0)      => ([0.0, 200.0, 400.0],
+                                        ["0", "200", "400"]),
+        (s10_ls2, -100.0, 100.0)    => ([-100.0, -10.0, 0.0, 10.0, 100.0],
+                                        ["−102", "−101", "0", "101", "102"]),
+        (s10, -50.0, 50.0)          => ([-10.0, 0.0, 10.0],
+                                        ["−101", "0", "101"]),
+    ]
+    for ((scale, lo, hi), (expected_ticks, expected_labels)) in cases
+        ticks, labels = Makie.get_ticks(automatic, scale, automatic, lo, hi)
+        @test ticks == expected_ticks
+        @test string.(labels) == expected_labels
+    end
+end
+
+@testset "PseudologTicks/SymlogTicks n_ideal parameter" begin
+    automatic = Makie.automatic
+
+    auto_t, auto_l = Makie.get_ticks(automatic, Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    explicit_t, explicit_l = Makie.get_ticks(PseudologTicks(), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test auto_t == explicit_t
+    @test string.(auto_l) == string.(explicit_l)
+
+    sparse_t, _ = Makie.get_ticks(PseudologTicks(3), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test length(sparse_t) <= length(auto_t)
+    @test 0.0 in sparse_t
+
+    dense_t, _ = Makie.get_ticks(PseudologTicks(15), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
+    @test length(dense_t) >= length(auto_t)
+    @test dense_t == [-1.0e6, -100000.0, -10000.0, -1000.0, -100.0, -10.0,
+                      0.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1.0e6]
+
+    sym_auto, _ = Makie.get_ticks(automatic, Makie.Symlog10(10.0), automatic, -1.0e6, 1.0e6)
+    sym_explicit, _ = Makie.get_ticks(SymlogTicks(), Makie.Symlog10(10.0), automatic, -1.0e6, 1.0e6)
+    @test sym_auto == sym_explicit
+end
+
+@testset "Custom formatter applied to pseudolog10/Symlog10 ticks" begin
+    automatic = Makie.automatic
+    formatter = vs -> [string(Int(v)) for v in vs]
+
+    ticks, labels = Makie.get_ticks(automatic, Makie.pseudolog10, formatter, -1000.0, 1000.0)
+    @test ticks == [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0]
+    @test labels == ["-1000", "-100", "-10", "0", "10", "100", "1000"]
+
+    ticks, labels = Makie.get_ticks(automatic, Makie.Symlog10(10.0), formatter, -1000.0, 1000.0)
+    @test ticks == [-1000.0, -100.0, -10.0, 0.0, 10.0, 100.0, 1000.0]
+    @test labels == ["-1000", "-100", "-10", "0", "10", "100", "1000"]
 end
 
 @testset "Minor tick skip" begin
