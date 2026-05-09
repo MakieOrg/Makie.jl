@@ -681,27 +681,28 @@ end
 function _decade_auto_tickvalues(vmin, vmax, n_ideal; kmin_pos = 0, kmin_neg = 0)
     kmax_pos = vmax >= 10.0^kmin_pos ? floor(Int, log10(vmax)) : -1
     kmax_neg = vmin <= -10.0^kmin_neg ? floor(Int, log10(-vmin)) : -1
-    zero_in = vmin <= 0 <= vmax
 
-    ticks = if zero_in
-        _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    ticks = if vmin <= 0 <= vmax
+        # Zero is the inner-most tick. ±1 (|k| = 0) would crowd it visually for pseudolog10,
+        # so the smallest decade we ever consider in a zero-anchored window is |k| = 1.
+        _decade_select_anchored_zero(n_ideal, max(kmin_pos, 1), max(kmin_neg, 1), kmax_pos, kmax_neg)
+    elseif vmin > 0
+        _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmax_pos, +1)
     else
-        _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+        _decade_select_single_sided(-vmax, -vmin, n_ideal, kmin_neg, kmax_neg, -1)
     end
     ticks === nothing && return nothing
     count(!iszero, ticks) < 2 && return nothing
     return ticks
 end
 
-# Pick a uniform stride `s` along the |k| axis (ks at 0, s, 2s, …) so that ticks land at
-# `s * i` and the count is as close to `n_ideal` as possible. `s` must divide both extremes
-# (their gcd in the asymmetric case) so each side's outermost decade lands on the stride;
-# `s ≥ max(kmin_*)` keeps every tick out of any linear region.
+# Zero-anchored: ticks at `0, ±10^s, ±10^(2s), …` for stride `s`. `s` must divide each
+# present side's `kmax_*` so the outermost decade lands exactly on the stride. `s ≥ kmin_*`
+# keeps every tick out of any linear region. Pick the stride whose total tick count is
+# closest to `n_ideal` (denser on ties).
 function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
-    kmin_eff_pos = max(kmin_pos, 1)
-    kmin_eff_neg = max(kmin_neg, 1)
-    has_pos = kmax_pos >= kmin_eff_pos
-    has_neg = kmax_neg >= kmin_eff_neg
+    has_pos = kmax_pos >= kmin_pos
+    has_neg = kmax_neg >= kmin_neg
     has_pos || has_neg || return nothing
 
     s_constraint = if has_pos && has_neg
@@ -711,10 +712,11 @@ function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kma
     else
         kmax_neg
     end
-    smin = max(has_pos ? kmin_eff_pos : 1, has_neg ? kmin_eff_neg : 1)
+    smin = max(has_pos ? kmin_pos : 1, has_neg ? kmin_neg : 1)
+    smin > s_constraint && return nothing
 
-    best_s, best_count, best_dist = 0, -1, typemax(Int)
     max_extreme = max(kmax_pos, kmax_neg)
+    best_s, best_count, best_dist = 0, -1, typemax(Int)
     for s in smin:s_constraint
         s_constraint % s == 0 || continue
         count = 1
@@ -722,7 +724,6 @@ function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kma
             count += (k <= kmax_pos) + (k <= kmax_neg)
         end
         d = abs(count - n_ideal)
-        # Prefer denser tick set on ties.
         if d < best_dist || (d == best_dist && count > best_count)
             best_s, best_count, best_dist = s, count, d
         end
@@ -738,27 +739,26 @@ function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kma
     return ticks
 end
 
-function _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
-    sign_factor, kmin_scale, kmax = vmin > 0 ?
-        (1, kmin_pos, kmax_pos) : (-1, kmin_neg, kmax_neg)
+# Single-sided: ticks at `sign_factor * 10^(kmin + i*s)` for i = 0, 1, …, span/s. `s` must
+# divide `span = kmax - kmin` so both endpoints land on the stride. Caller passes magnitudes
+# (vmin ≤ vmax, both > 0) and the desired output sign.
+function _decade_select_single_sided(vmin, vmax, n_ideal, kmin_side, kmax_side, sign_factor)
+    kmin = max(kmin_side, ceil(Int, log10(vmin)))
+    kmax = min(kmax_side, floor(Int, log10(vmax)))
+    span = kmax - kmin
+    span < 1 && return nothing
 
-    a, b = minmax(abs(vmin), abs(vmax))
-    kmin = max(kmin_scale, ceil(Int, log10(a)))
-    kmax_local = min(kmax, floor(Int, log10(b)))
-    range = kmax_local - kmin
-    range < 1 && return nothing
-
-    best_s, best_count, best_dist = 1, range + 1, abs(range + 1 - n_ideal)
-    for s in 2:range
-        range % s == 0 || continue
-        count = range ÷ s + 1
+    best_s, best_count, best_dist = 1, span + 1, abs(span + 1 - n_ideal)
+    for s in 2:span
+        span % s == 0 || continue
+        count = span ÷ s + 1
         d = abs(count - n_ideal)
         if d < best_dist || (d == best_dist && count > best_count)
             best_s, best_count, best_dist = s, count, d
         end
     end
 
-    ks = collect(kmin:best_s:kmax_local)
+    ks = collect(kmin:best_s:kmax)
     return sort!(sign_factor .* exp10.(ks))
 end
 
