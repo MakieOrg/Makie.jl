@@ -320,11 +320,9 @@ end
     @test string.(auto_l) == string.(explicit_l)
 
     sparse_t, _ = Makie.get_ticks(PseudologTicks(3), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
-    @test length(sparse_t) <= length(auto_t)
-    @test 0.0 in sparse_t
+    @test sparse_t == [-1.0e6, 0.0, 1.0e6]
 
     dense_t, _ = Makie.get_ticks(PseudologTicks(15), Makie.pseudolog10, automatic, -1.0e6, 1.0e6)
-    @test length(dense_t) >= length(auto_t)
     @test dense_t == [-1.0e6, -100000.0, -10000.0, -1000.0, -100.0, -10.0,
                       0.0, 10.0, 100.0, 1000.0, 10000.0, 100000.0, 1.0e6]
 
