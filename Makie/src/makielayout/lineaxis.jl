@@ -640,23 +640,28 @@ function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{LogFunctions, typeof(pseudolog10)}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
-
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
-
     labels_scaled = get_ticklabels(
         # avoid unicode superscripts in ticks, as the ticks are converted
         # to superscripts in the next step
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
-
-    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # only useful for pseudolog10
-    labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
-
+    labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
     return ticks, labels
 end
+
+function get_ticks(::LogTicks, scale::typeof(pseudolog10), ::Automatic, vmin, vmax)
+    throw(ArgumentError(_logticks_error_message("pseudolog10")))
+end
+function get_ticks(::LogTicks, scale::Symlog10, ::Automatic, vmin, vmax)
+    throw(ArgumentError(_logticks_error_message("Symlog10")))
+end
+_logticks_error_message(name) = "`LogTicks` is only valid with strictly log scales " *
+    "(`log10`, `log2`, `log`). For `$name`, omit `yticks`/`xticks` to use the automatic " *
+    "decade picker, or pass explicit numeric tick values."
 
 logit_10(x) = Makie.logit(x) / log(10)
 expit_10(x) = Makie.logistic(log(10) * x)

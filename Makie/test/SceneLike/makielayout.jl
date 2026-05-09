@@ -221,6 +221,17 @@ end
     end
 end
 
+@testset "LogTicks rejects pseudolog10/Symlog10" begin
+    @test_throws "only valid with strictly log scales" Makie.get_ticks(
+        LogTicks(-2:2), Makie.pseudolog10, Makie.automatic, -100.0, 100.0)
+    @test_throws "pseudolog10" Makie.get_ticks(
+        LogTicks(-2:2), Makie.pseudolog10, Makie.automatic, -100.0, 100.0)
+    @test_throws "only valid with strictly log scales" Makie.get_ticks(
+        LogTicks(-2:2), Makie.Symlog10(10.0), Makie.automatic, -100.0, 100.0)
+    @test_throws "Symlog10" Makie.get_ticks(
+        LogTicks(-2:2), Makie.Symlog10(10.0), Makie.automatic, -100.0, 100.0)
+end
+
 @testset "Minor tick skip" begin
     # Verify that minor ticks aren't calculated if they are not needed
     f, a, _ = scatter(1:10, axis = (xticksmirrored = true,))
