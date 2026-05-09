@@ -45,8 +45,8 @@ function MetaAttributes()
     return MetaAttributes(
         NestedSearchTree(),
         Symbol[], Any[], # per leaf keys, defaults
-        String[], String[], # per leaf expr, docstrings
-        String[""], # nested docstrings
+        String[], Union{Nothing, String}[], # per leaf expr, docstrings
+        Union{Nothing, String}[nothing], # nested docstrings
         Int[], Type[], Vector{Int}[], # types
         Int[] # inherit
     )

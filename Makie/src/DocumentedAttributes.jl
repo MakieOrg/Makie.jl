@@ -130,25 +130,19 @@ function set_metadata!(d, key, am)
     return
 end
 
-# from MacroTools
-isline(ex) = (ex isa Expr && ex.head === :line) || isa(ex, LineNumberNode)
-rmlines(x) = x
-function rmlines(x::Expr)
-    # Do not strip the first argument to a macrocall, which is
-    # required.
-    return if x.head === :macrocall && length(x.args) >= 2
-        Expr(x.head, x.args[1], nothing, filter(x -> !isline(x), x.args[3:end])...)
-    else
-        Expr(x.head, filter(x -> !isline(x), x.args)...)
-    end
-end
-
 function default_expr_string(default)
     is_macrocall = default isa Expr && default.head === :macrocall
     if is_macrocall && default.args[1] === Symbol("@attributes")
+        # for normal recipes
+        return "Attributes(...)"
+    elseif MacroTools.@capture(default, Attributes(args__))
+        # for old recipes
+        return "Attributes(...)"
+    elseif MacroTools.@capture(default, Makie.DocumentedAttributes(args__))
+        # for old recipes, maybe also better to have in general?
         return "Attributes(...)"
     else
-        return string(rmlines(default))
+        return string(MacroTools.prewalk(MacroTools.rmlines, default))
     end
 end
 
@@ -167,6 +161,9 @@ struct DocumentedAttributes
 end
 
 DocumentedAttributes() = DocumentedAttributes(Dict{Symbol, AttributeMetadata}())
+function DocumentedAttributes(args::Pair{Symbol, AttributeMetadata}...)
+    return DocumentedAttributes(Dict{Symbol, AttributeMetadata}(args...))
+end
 
 """
     @DocumentedAttributes begin ... end
@@ -400,12 +397,12 @@ function convert_old_attributes_expr(func_expr)
     expr = MacroTools.postwalk(expr) do x
         if MacroTools.@capture(x, theme(scene_, key_))
             return :(Makie.Inherit(($key,)))
-        elseif MacroTools.@capture(x, key_ = lift(f_, theme(scene_, key_)))
-            return :(Makie.Inherit($f, ($key,)))
-        elseif MacroTools.@capture(x, key_ = map(f_, theme(scene_, key_)))
-            return :(Makie.Inherit($f, ($key,)))
+        elseif MacroTools.@capture(x, lift(f_, Makie.Inherit(key_tuple_)))
+            return :(Makie.Inherit($f, $key_tuple))
+        elseif MacroTools.@capture(x, map(f_, Makie.Inherit(key_tuple_)))
+            return :(Makie.Inherit($f, $key_tuple))
         elseif MacroTools.@capture(x, Attributes(args__))
-            dict_call = :(Dict{Symbol, Makie.AttributeMetadata}())
+            dict_call = :(Makie.DocumentedAttributes())
             for arg in args
                 # Need to be careful to not match normal Code with this, e.g.
                 # value = sin(1) # don't make this value => AttributeMetadata(nothing, sin(1), "sin(1)")
@@ -419,7 +416,7 @@ function convert_old_attributes_expr(func_expr)
                     error("Failed to match $arg")
                 end
             end
-            return :(Makie.DocumentedAttributes($dict_call))
+            return dict_call
         elseif MacroTools.@capture(x, return arg_)
             return :($arg)
         end
@@ -457,6 +454,25 @@ Base.iterate(d::DocumentedAttributes, state) = iterate(d.d, state)
 Base.length(d::DocumentedAttributes) = length(d.d)
 Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
 Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
+
+# for testing
+function Base.:(==)(a::DocumentedAttributes, b::DocumentedAttributes)
+    issetequal(keys(a), keys(b)) || return false
+    for key in keys(a)
+        x = a[key] == b[key]
+        x || return false
+    end
+    return true
+end
+function Base.:(==)(a::AttributeMetadata, b::AttributeMetadata)
+    return (a.docstring == b.docstring) &&
+        (a.default_expr == b.default_expr) &&
+        (a.type == b.type) &&
+        (a.default_value == b.default_value)
+end
+function Base.:(==)(a::Inherit, b::Inherit)
+    return (a.keys == b.keys) && (a.callback == b.callback) && (a.fallback == b.fallback)
+end
 
 function Base.show(io::IO, a::DocumentedAttributes)
     return print_documented_attributes(io, a, 1)
