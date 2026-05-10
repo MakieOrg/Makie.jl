@@ -3,8 +3,10 @@
 ## Unreleased
 
 - Added decade-aware automatic ticks for `pseudolog10` and `Symlog10` axes via new `PseudologTicks` and `SymlogTicks` types. `LogTicks` is no longer accepted with these scales (it placed ticks at wrong positions). `Symlog10` is now a callable struct exposing its `lower`/`upper`/`linscale` parameters. Closes [#5270](https://github.com/MakieOrg/Makie.jl/issues/5270) [#5625](https://github.com/MakieOrg/Makie.jl/pull/5625)
+- Fixed `lines` rendering a phantom segment between the first and last point on macOS for line plots above ~2.4M points [#5622](https://github.com/MakieOrg/Makie.jl/pull/5622)
 - Fixed `Legend` not reflecting `linecap` and `joinstyle` set on `lines!`/`linesegments!` plots [#5621](https://github.com/MakieOrg/Makie.jl/pull/5621)
 - Fixed memory-aliased arrays not propagating in ComputePipeline [#5605](https://github.com/MakieOrg/Makie.jl/pull/5605)
+- GLMakie no longer shows a dock icon on macOS when only used for file export; the icon appears with the Makie logo when an interactive window is opened [#5223](https://github.com/MakieOrg/Makie.jl/pull/5223)
 
 ## [0.24.10] - 2026-04-27
 
@@ -19,6 +21,7 @@
 - CairoMakie now batches glyphs from the same text string into a single PDF/SVG text object, so that text can be selected and edited as a unit in vector editors like Inkscape and Illustrator [#5561](https://github.com/MakieOrg/Makie.jl/pull/5561)
 - Fixed `annotation` not showing lines/arrows when `text` is blank [#5560](https://github.com/MakieOrg/Makie.jl/pull/5560)
 - Fixed error/nan offsets in `annotation!()` when an annotation is perfectly centered [#5568](https://github.com/MakieOrg/Makie.jl/pull/5568)
+- Added `preferred_axis_attributes(AxisType, [plot], [args...])` as an interface function for specifying default axis attributes when creating an axis with the non-mutating `plot()` functions. Also refactored `preferred_axis_type()` to have a clear hierarchy of methods. [#5375](https://github.com/MakieOrg/Makie.jl/pull/5375)
 
 ## [0.24.9] - 2026-03-04
 
