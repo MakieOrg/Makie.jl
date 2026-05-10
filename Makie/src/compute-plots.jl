@@ -954,7 +954,7 @@ function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, 
 end
 
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
-  meta = meta_attributes(P)
+    meta = meta_attributes(P)
     name = Makie.plotkey(P)
     is_primitive = P <: PrimitivePlotTypes
 
