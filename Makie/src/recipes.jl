@@ -282,26 +282,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-function attribute_names end
 function documented_attributes end # this can be used for inheriting from other recipes
-
-attribute_names(_) = nothing
-
-
-is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
-
-function is_attribute(T::Type, sym::Symbol)
-    return sym in attribute_names(T)
-end
-
-function attribute_default_expressions(::Type{T}) where {T}
-    return Dict(k => v.default_expr for (k, v) in documented_attributes(T))
-end
-
-function _attribute_docs(::Type{T}) where {T}
-    return Dict(k => v.docstring for (k, v) in documented_attributes(T))
-end
-
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -347,22 +328,6 @@ end
 function types_for_plot_arguments end
 
 documented_attributes(_) = DocumentedAttributes()
-
-function attribute_names(::Type{T}) where {T}
-    attr = documented_attributes(T)
-    isnothing(attr) && return nothing
-    return keys(attr)
-end
-
-
-function plot_attributes(scene, T)
-    plot_attr = Makie.documented_attributes(T)
-    if isnothing(plot_attr)
-        return mergeleft!(default_theme(scene, T), default_theme(T))
-    else
-        return plot_attr
-    end
-end
 
 function extract_docstring(str)
     if VERSION >= v"1.11" && str isa Base.Docs.DocStr
@@ -800,11 +765,10 @@ function attribute_name_allowlist()
 end
 
 function validate_attribute_keys(plot::P) where {P <: Plot}
-    attribute_names(P) === nothing && return
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
     kw = plot.kw
-    defaults = documented_attributes(P)
+    meta = meta_attributes(P)
 
     invalid_names = Symbol[]
     for (k, v) in kw
@@ -812,12 +776,12 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
             continue
         end
 
-        if !(k in keys(defaults))
+        # TODO: maybe worht flattening kwargs early and just setdiff here?
+        if !(k in root_keys(meta))
             push!(invalid_names, k)
             continue
         end
-
-        collect_invalid_nested_attributes!(invalid_names, (k,), v, defaults[k].default_value)
+        collect_invalid_nested_attributes!(invalid_names, meta, (k,), v)
     end
 
     if !isempty(invalid_names)
@@ -837,31 +801,27 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     return
 end
 
-function collect_invalid_nested_attributes!(invalid_names, keys, val::Union{Attributes, NamedTuple}, defaults::DocumentedAttributes)
-    for (k, v) in pairs(val)
-        if haskey(defaults, k)
-            collect_invalid_nested_attributes!(invalid_names, (keys..., k), v, defaults[k].default_value)
-        else
-            push!(invalid_names, ComputePipeline.merged_key(keys..., k))
-        end
+function collect_invalid_nested_attributes!(invalid_names, meta, keys, local_kwargs, idx = 1)
+    # keys is the path to local_kwargs
+    # mark as error if last(keys) does not exist in nesting
+    key = last(keys)
+    if !haskey(meta.nesting.keytables[idx], key)
+        push!(invalid_names, ComputePipeline.merged_key(keys...))
+        return
     end
-    return
-end
 
-function collect_invalid_nested_attributes!(invalid_names, keys, val::Union{Attributes, NamedTuple}, defaults)
-    # defaults can't be indexed anymore
-    push!(invalid_names, ComputePipeline.merged_key(keys))
-    return
-end
-
-function collect_invalid_nested_attributes!(invalid_names, keys, val, defaults::DocumentedAttributes)
-    last(keys) === :fonts && return
-    # did not reach an endpoint, should have more nesting
-    push!(invalid_names, ComputePipeline.merged_key(keys))
-    return
-end
-
-function collect_invalid_nested_attributes!(invalid_names, keys, val, defaults)
-    # reached value kwarg at endpoint
-    return
+    # This will be the next layer we look at
+    idx = meta.nesting.keytables[idx][key]
+    if idx < 0
+        # addresses a leaf attribute which accepts Attrbutes, Dict, etc too
+        return
+    elseif idx > 0 && applicable(getindex, local_kwargs, key)
+        # addresses a nesting layer and local_kwargs can nest, go deeper
+        for (k, v) in pairs(local_kwargs)
+            collect_invalid_nested_attributes!(invalid_names, meta, (keys..., k), v, idx)
+        end
+    else
+        # addresses a nesting layer that's not present in local_kwargs, mark for error
+        push!(invalid_names, ComputePipeline.merged_key(keys...))
+    end
 end

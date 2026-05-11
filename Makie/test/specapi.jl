@@ -153,7 +153,7 @@ function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs..
     return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
 end
 
-Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.attribute_names(T)...,)
+Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.flattened_keys(T)...,)
 
 @testset "Forward all attribute without error" begin
     f, ax, pl = lines(ForwardAllAttributes(); color = :red)

@@ -1,15 +1,15 @@
-function add_attributes!(T::Type{<:PolarAxis}, graph, attributes)
-    rlimits = pop!(attributes, :rlimits)
+function add_attributes!(T::Type{<:PolarAxis}, graph, flattened_defaults)
+    meta = meta_attributes(PolarAxis)
+
+    _, rlimits = get_typed_default(meta, flattened_defaults, :rlimits)
     add_input!(graph, :rlimits, rlimits)
     ComputePipeline.set_type!(graph.rlimits, Any)
     graph.inputs[:rlimits].force_update = true
 
-    thetalimits = pop!(attributes, :thetalimits)
+    _, thetalimits = get_typed_default(meta, flattened_defaults, :thetalimits)
     add_input!(graph, :thetalimits, thetalimits)
     ComputePipeline.set_type!(graph.thetalimits, Any)
     graph.inputs[:thetalimits].force_update = true
-
-    _add_attributes!(T, graph, attributes)
     return
 end
 

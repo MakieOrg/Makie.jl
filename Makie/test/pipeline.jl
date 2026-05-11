@@ -151,7 +151,6 @@ end
 import Makie:
     InvalidAttributeError,
     attribute_names
-import Makie: _attribute_docs
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -204,7 +203,7 @@ end
 
     err = InvalidAttributeError(Axis, Set{Symbol}())
     @test err.object_name == "block"
-    @test attribute_names(Axis3) == keys(_attribute_docs(Axis3))
+    @test attribute_names(Axis3) == keys(Makie.root_keys(Makie.meta_attributes(Axis3)))
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)

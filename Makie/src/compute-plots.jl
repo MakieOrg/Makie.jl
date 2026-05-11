@@ -471,14 +471,22 @@ end
 function add_convert_kwargs!(attr, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
     conv_attr_input = Symbol[]
+    meta = meta_attributes(P)
     for key in conv_attributes
         if !haskey(attr.inputs, key)
             # TODO: Should this delete from kwargs already? That means
             # add_theme!() has to avoid updating used_attributes to not overwrite
             # what the user passed through kwargs
-            default = lookup_default(P, nothing, key, kwdict = user_kw, delete_used_kwargs = true)
+            if haskey(user_kw, key)
+                default = pop!(user_kw, key)
+            elseif has_nested_key(meta, key)
+                default = get_flat_default(meta, key)
+            else
+                # convert_arguments() can also default a kwarg
+                continue
+            end
+            default isa Inherit && error("$key must be initialized without `@inherit` to be used as a conversion kwarg.")
             # default = key === :space ? :data : nothing
-            error_on_no_fallback(plotsym(P), (key,), default)
             add_input!(attr, key, default)
             ComputePipeline.set_type!(attr[key], Any)
             push!(conv_attr_input, key)
@@ -493,12 +501,13 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # Get dim of each argument. This needs to be reactive if we allow dynamic
     # attributes that change dim-mapping, e.g. direction
     kwarg_names = argument_dim_kwargs(P)
+    meta = meta_attributes(P)
 
     # initialize the necessary attributes early
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            default = lookup_default(P, nothing, key, kwdict = user_kw)
-            error_on_no_fallback(P, (key,), default)
+            default = get(user_kw, key, get_flat_default(meta, key))
+            default isa Inherit && error("$key must be initialized without `@inherit` to be used as a argument_dims kwarg.")
             # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
             add_input!(attr, key, pop!(user_kw, key, default))
         end
@@ -628,13 +637,12 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
     force_dimconverts = pop!(user_kw, :force_dimconverts)
-    doc_attr = documented_attributes(P)
-    space = if haskey(user_kw, :space)
+    meta_attr = meta_attributes(P)
+    space::Symbol = if haskey(user_kw, :space)
         to_value(user_kw[:space])
-    elseif haskey(doc_attr, :space) && !(doc_attr[:space].default_value isa Inherit)
-        doc_attr[:space].default_value
     else
-        :data
+        default = get_flat_default(meta_attr, :space, :data)
+        default isa Symbol ? default : :data
     end
 
     if !is_data_space(space)
@@ -767,8 +775,7 @@ function argument_error(PTrait, P, attr, user_kw, converted)
         prevent early conversions.
         """
     else
-        defaults = default_theme(nothing, P)
-        space = to_value(get(user_kw, :space, get(defaults, :space, :data)))
+        space = haskey(attr, :space) ? attr[:space][] : :data
         """
         (Dim converts were not applied. This happens if `space = $space` \
         is not in data space or if the target type of the conversion is reachable \
@@ -794,37 +801,6 @@ function argument_error(PTrait, P, attr, user_kw, converted)
     )
 end
 
-function collect_applicable_attributes(
-        target_attr::DocumentedAttributes,
-        user_attributes::Union{Dict, NamedTuple},
-        parent_attributes::Union{AbstractComputeGraph, NamedTuple};
-        exclude = tuple()
-    )
-    output = Dict{Symbol, Any}()
-    for (k, meta) in target_attr
-        k in exclude && continue
-        if haskey(user_attributes, k) || haskey(parent_attributes, k)
-            if is_nested(meta)
-                output[k] = collect_applicable_attributes(
-                    meta.default_value,
-                    get(user_attributes, k, NamedTuple()),
-                    get(parent_attributes, k, NamedTuple())
-                )
-            elseif haskey(user_attributes, k)
-                output[k] = user_attributes[k]
-            else
-                output[k] = parent_attributes[k]
-            end
-        end
-    end
-    # The remaining user_attributes are not part of the attributes list, so they
-    # won't get mutated. We can just directly copy them
-    for (k, v) in user_attributes
-        get!(output, k, v)
-    end
-    return output
-end
-
 function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) where {Func}
     isempty(user_args) && throw(ArgumentError("Failed to construct plot: No plot arguments given."))
 
@@ -840,44 +816,6 @@ function Plot{Func}(user_args::Tuple, user_attributes::Union{Dict, NamedTuple}) 
     else
         return build_plot(P, nothing, user_args, user_attributes)
     end
-
-    ############################################################################
-
-    # Handle plot!(plot, attributes::Attributes, args...) here
-    if !isempty(user_args) && first(user_args) isa Attributes
-        # This should keep user_args[1] unchanged, in case they get reused.
-        attr = convert(Dict{Symbol, Any}, attributes(first(user_args)))
-        foreach(p -> get!(user_attributes, p[1], p[2]), pairs(attr))
-        return Plot{Func}(Base.tail(user_args), user_attributes)
-    end
-
-    P = Plot{Func}
-
-    # And also plot!(plot, ::ComputeGraph, args...)
-    if !isempty(user_args) && first(user_args) isa ComputePipeline.AbstractComputeGraph
-        merged_attr = collect_applicable_attributes(
-            documented_attributes(P), user_attributes, user_args[1],
-            exclude = [:model, :transform_func]
-        )
-        return Plot{Func}(Base.tail(user_args), merged_attr)
-    end
-
-    attr = ComputeGraph()
-
-    register_arguments!(P, attr, user_attributes, user_args)
-    converted = attr.converted[]
-    PTrait = conversion_trait(P, attr.args[]...)
-    if got_converted(P, PTrait, converted) == false
-        argument_error(PTrait, P, attr, user_attributes, converted)
-    end
-
-    # compiler can't infer this, but FinalPlotFunc may differ (e.g. qqnorm -> qqplot)
-    ArgTyp = typeof(converted)
-    FinalPlotFunc = plotfunc(plottype(P, converted...))
-
-    add_attributes!(Plot{FinalPlotFunc}, attr, user_attributes)
-
-    return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
 struct AttributeCallbackBuilder{T}
@@ -1070,14 +1008,9 @@ function connect_plot!(parent::SceneLike, plot::Plot{Func}) where {Func}
     plot!(plot)
 
     # Used to add things like `label` for Legend
-    documented_attr = documented_attributes(Plot{Func})
     for (k, v) in plot.kw
         if !haskey(plot.attributes, k)
-            if haskey(documented_attr, k)
-                error("User Attribute $k did not get registered.")
-            else
-                add_input!(plot.attributes, k, v)
-            end
+            add_input!(plot.attributes, k, v)
         end
     end
 

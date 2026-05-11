@@ -10,6 +10,8 @@ struct MetaAttributes
     # lists of leaf attribute information
     nesting::NestedSearchTree
 
+    merged_key_to_index::Dict{Symbol, Int}
+
     # indexed by leaf indices
     merged_keys::Vector{Symbol}
     defaults::Vector{Any}
@@ -17,7 +19,7 @@ struct MetaAttributes
     leaf_docstring::Vector{Union{Nothing, String}}
 
     # indexed by positive indices in nesting, i.e. non leaf node indices
-    nested_docstrings::Vector{Union{Nothing, String}}
+    nested_docstring::Vector{Union{Nothing, String}}
 
     # 1 per leaf node, indexes into types
     type_index::Vector{Int}
@@ -30,20 +32,175 @@ struct MetaAttributes
     inherit::Vector{Int}
 end
 
+################################################################################
+# Utilities
+
+function is_attribute(T::Type, name::Symbol)
+    meta = meta_attributes(T)
+    return has_flat_key(meta, name) || has_nested_key(meta, name)
+end
+
+function attribute_names(::Type{T}) where {T}
+    return flattened_keys(meta_attributes(T))
+end
+
+########################################
+
+# TODO: We should probably differentiate flattened, nested and root level access
+# Used in cycle init
 function Base.getindex(attr::MetaAttributes, key::Symbol)
-    idx = attr.nesting.keytables[1][key]
-    if idx < 0
-        return attr.defaults[-idx]
-    else
-        error("Nonfinal key $key")
-    end
+    return attr.defaults[attr.merged_key_to_index[key]]
 end
 Base.haskey(attr::MetaAttributes, key::Symbol) = haskey(attr.nesting.keytables[1], key)
+Base.isempty(attr::MetaAttributes) = isempty(attr.nesting.keytables[1])
 
+has_root_key(attr::MetaAttributes, key::Symbol) = haskey(attr.nesting.keytables[1], key)
+has_nested_key(attr::MetaAttributes, keys::Tuple) = has_nested_key(attr, keys...)
+function has_nested_key(attr::MetaAttributes, keys::Symbol...)
+    idx = 1
+    for key in keys
+        if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
+            return false
+        end
+        idx = attr.nesting.keytables[idx]
+    end
+    return true
+end
+
+root_keys(attr::MetaAttributes) = keys(attr.nesting.keytables[1])
+flattened_keys(attr::MetaAttributes) = attr.merged_keys
+
+function has_flat_key(attr::MetaAttributes, key::Symbol)
+    return haskey(attr.merged_key_to_index, key)
+end
+
+for (name, field) in (:default => :defaults, :expr => :default_expr, :docstring => :leaf_docstring)
+    @eval function $(Symbol(:get_flat_, name))(attr::MetaAttributes, key::Symbol)
+        return attr.$field[attr.merged_key_to_index[key]]
+    end
+
+    @eval function $(Symbol(:get_flat_, name))(attr::MetaAttributes, key::Symbol, default)
+        source = attr.$field
+        return has_flat_key(attr, key) ? source[attr.merged_key_to_index[key]] : default
+    end
+end
+
+function get_flat_type(attr::MetaAttributes, key::Symbol)
+    return attr.types[attr.type_index[attr.merged_key_to_index[key]]]
+end
+
+function unchecked_nested_key_to_index(meta::MetaAttributes, keys::Symbol...)
+    return unchecked_nested_key_to_index(meta, keys)
+end
+function unchecked_nested_key_to_index(meta::MetaAttributes, keys::Tuple)
+    idx = 1
+    for (i, key) in enumerate(keys)
+        if idx < 0 || !haskey(meta.nesting.keytables[idx], key)
+            idx < 0 && error("Nested keys $keys could not be resolved because $(keys[i-1]) is not nested.")
+            error("Nested keys $keys could not be resolved because $key does not exist in parent.")
+        end
+        idx = meta.nesting.keytables[idx][key]
+    end
+    return idx
+end
+
+function nested_key_to_index(meta::MetaAttributes, keys::Symbol...)
+    idx = unchecked_nested_key_to_index(meta, keys)
+    idx > 0 && error("Nested keys $keys point to another nesting layer instead of a value.")
+    return -idx
+end
+
+for (name, field) in (:default => :defaults, :expr => :default_expr, :docstring => :leaf_docstring)
+    @eval function $(Symbol(:get_nested_, name))(attr::MetaAttributes, keys::Symbol...)
+        return getfield(attr, $field)[nested_key_to_index(attr, key)]
+    end
+end
+
+function get_nested_type(attr::MetaAttributes, keys::Symbol...)
+    idx = nested_key_to_index(attr, key)
+    idx > 0 && error("Nested keys $keys point to another nesting layer instead of a value.")
+    return attr.types[attr.type_index[idx]]
+end
+
+# If possible use the the methods that do this in bulk, for all attributes
+function resolve_single_default(::Type{T}, scene, keys::Symbol...) where {T}
+    return resolve_single_default(T, scene, NamedTuple(), keys...)
+end
+
+function resolve_single_default(::Type{T}, scene, kwargs, keys::Symbol...) where {T}
+    return resolve_single_default(meta_attributes(T), scene, plotsym(T), kwargs, keys...)
+end
+
+function resolve_single_default(attr::MetaAttributes, scene, name, kwargs, keys::Symbol...)
+    got, result1 = get_nested_value(kwargs, keys...)
+    got && return result1
+    default_theme = theme(scene)
+    if haskey(default_theme, name)
+        got, result2 = get_nested_value(default_theme[name], keys...)
+        got && return result2
+    end
+    if haskey(theme(nothing), name)
+        got, result2 = get_nested_value(default_theme[name], keys...)
+        got && return result2
+    end
+
+    # Probably better to avoid type checking Inherit
+    idx = nested_key_to_index(attr, keys...)
+    if idx in attr.inherit
+        return inherit_default(attr.defaults[idx]::Inherit, default_theme)
+    else
+        return attr.defaults[idx]
+    end
+end
+
+function get_nested_value(dictlike, key, keys...)
+    if haskey(dictlike, key)
+        return get_nested_value(dictlike[key], keys...)
+    else
+        return (false, nothing)
+    end
+end
+
+function get_nested_value(dictlike, key)
+    if haskey(dictlike, key)
+        return (true, dictlike[key])
+    else
+        return (false, nothing)
+    end
+end
+
+function get_typed_default(meta::MetaAttributes, flattened::Vector, keys::Symbol...)
+    idx = nested_key_to_index(meta, keys...)
+    T = meta.types[meta.type_index[idx]]
+    return T, flattened[idx]
+end
+function nested_indices(attr::MetaAttributes, keys::Symbol...)
+    return nested_indices!(Int[], attr, keys)
+end
+
+nested_indices!(indices::Vector{<:Integer}, attr, keys::Symbol...) = nested_indices!(indices, attr, keys)
+function nested_indices!(indices, attr, keys::Tuple)
+    idx = unchecked_nested_key_to_index(attr, keys)
+    nested_indices!(indices, attr, idx)
+    return indices
+end
+
+function nested_indices!(indices::Vector{<:Integer}, attr, idx::Int)
+    if idx > 0
+        for i in values(attr.nesting.keytables[idx])
+            nested_indices!(indices, attr, i)
+        end
+    else
+        push!(indices, -idx)
+    end
+    return indices
+end
+
+################################################################################
 
 function MetaAttributes()
     return MetaAttributes(
-        NestedSearchTree(),
+        NestedSearchTree(), Dict{Symbol, Int}(),
         Symbol[], Any[], # per leaf keys, defaults
         String[], Union{Nothing, String}[], # per leaf expr, docstrings
         Union{Nothing, String}[nothing], # nested docstrings
@@ -61,12 +218,13 @@ function convert_attributes!(attr::MetaAttributes, doc_attr::DocumentedAttribute
         trace = (_trace..., key)
         if is_nested(meta)
             next_level = add_key!(attr.nesting, level, (key,), false)
-            push!(attr.nested_docstrings, meta.docstring)
+            push!(attr.nested_docstring, meta.docstring)
             convert_attributes!(attr, meta.default_value::DocumentedAttributes, next_level, trace)
         else
             leaf_idx = length(attr.merged_keys) + 1
             add_key!(attr.nesting, level, (key,), -leaf_idx)
             name = ComputePipeline.merged_key(trace)
+            attr.merged_key_to_index[name] = leaf_idx
 
             push!(attr.merged_keys, name)
             push!(attr.defaults, meta.default_value)
@@ -188,6 +346,18 @@ end
 function add_from_kwargs!(
         get_callback,
         graph::ComputeGraph, attr::MetaAttributes, kwdict,
+        exclude = tuple()
+    )
+    # User passes kwargs[Symbol("outer.inner")] = val, e.g. through shared_attributes
+    add_from_flattened_kwargs!(get_callback, graph, attr, kwdict, exclude)
+    # user passes kwargs[:outer] = (inner = val, ...)
+    add_from_nested_kwargs!(get_callback, graph, attr, kwdict, exclude)
+    return
+end
+
+function add_from_nested_kwargs!(
+        get_callback,
+        graph::ComputeGraph, attr::MetaAttributes, kwdict,
         exclude = tuple(), level = 1
     )
     for (key, val) in pairs(kwdict)
@@ -196,7 +366,7 @@ function add_from_kwargs!(
 
         idx = attr.nesting.keytables[level][key]
         if idx > 0
-            add_from_kwargs!(get_callback, graph, attr, val, exclude, idx)
+            add_from_nested_kwargs!(get_callback, graph, attr, val, exclude, idx)
         else
             idx = -idx
             fullkey = attr.merged_keys[idx]
@@ -204,6 +374,20 @@ function add_from_kwargs!(
 
             output = graph.outputs[fullkey]
             add_or_connect_value!(get_callback(key), graph, fullkey, val, output)
+        end
+    end
+    return
+end
+
+function add_from_flattened_kwargs!(
+        get_callback,
+        graph::ComputeGraph, attr::MetaAttributes, kwdict,
+        exclude = tuple()
+    )
+    for key in attr.merged_keys
+        if haskey(kwdict, key) && !isconnected(graph, key) && !in(key, exclude)
+            output = graph.outputs[key]
+            add_or_connect_value!(get_callback(key), graph, key, kwdict[key], output)
         end
     end
     return
@@ -284,6 +468,7 @@ function resolve_defaults(attr, scene, name::Symbol, kwargs, skip = tuple(), rem
     return flattened
 end
 
+# kwargs, theme(scene/nothing)[:Plot/:Block]
 function resolve_overwrites!(flattened, attr, kwargs, skip, remove = false, level = 1)
     for (key, val) in pairs(kwargs)
         # kwargs/overwrites may not all be attributes
@@ -315,9 +500,7 @@ function resolve_defaults!(flattened, attr, theme, skip)
     return
 end
 
-function add_remaining_block_inputs!(graph, attr, BT, scene, kwargs)
-    name = nameof(BT)
-    flattened = resolve_defaults(attr, scene, name, kwargs, tuple(), true)
+function add_remaining_block_inputs!(graph, attr, flattened)
     for (indices, type) in zip(attr.type_indices, attr.types)
         add_remaining_block_inputs!(graph, attr, indices, type, flattened)
     end

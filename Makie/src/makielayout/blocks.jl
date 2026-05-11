@@ -2,8 +2,6 @@
 ### Block Macro
 ################################################################################
 
-function attribute_default_expressions end
-function _attribute_docs end
 function has_forwarded_layout end
 
 symbol_to_block(symbol::Symbol) = symbol_to_block(Val(symbol))
@@ -512,28 +510,30 @@ convert_for_attribute(::Type{RGBAf}, x) = to_color(x)::RGBAf
 convert_for_attribute(::Type{FreeTypeAbstraction.FTFont}, x) = to_font(x)
 
 """
-    add_attributes(::Type{<:Block}, compute_graph, sources...)
+    add_attributes(::Type{<:Block}, compute_graph, flattened_defaults)
 
 This method may provide custom initialization of compute graph inputs (attributes)
 of a block. This may be useful if the default conversions are inappropriate for
 some inputs, i.e. if a different input callback is needed for a specific type
 (including `Any` from entries without type annotations).
 
-A custom implementation should use `Makie.lookup_default_typed(sources..., keys...)`
-to get recipe defined type and more importantly the user, theme or recipe based initial
-value of each attribute it initializes.
+A custom implementation should use
+`Makie.get_typed_default(Makie.meta_attributes(BlockType), flattened_defaults, keys...)`
+to get the type defined in `@Block` as well as the initial value derived from
+user kwargs, themes and the `@Block` definition. These should then be used to
+initialize the input/attribute. (This is not enforced.)
 
 After this, the default initialization will run to make sure that every attribute
-defined by `@Block` has an input and is removed from the keyword arguments that
-get passed on to `initialize_block!(...)`.
+defined by `@Block` has an input.
 
 Example:
 ```
-function Makie.add_attributes!(::Type{MyBlock}, graph, scources...)
-    _, default = Makie.lookup_default_typed(sources..., :colorname)
+function Makie.add_attributes!(::Type{MyBlock}, graph, flattened_defaults)
+    meta = Makie.meta_attributes(MyBlock)
+    _, default = Makie.get_typed_default(meta, flattened_defaults, :colorname)
     Makie.add_input!(to_colorname, graph, :colorname, default)
 
-    _, default = Makie.lookup_default_typed(sources..., :nested, :attribute)
+    _, default = Makie.get_typed_default(meta, flattened_defaults, :nested, :attribute)
     Makie.add_input!(foo, graph, :nested, :attribute, default)
     Makie.ComputePipeline.set_type!(graph.nested.attribute, Any)
 
@@ -541,7 +541,7 @@ function Makie.add_attributes!(::Type{MyBlock}, graph, scources...)
 end
 ```
 """
-add_attributes!(::Type{<:Block}, graph, sources...) = nothing
+add_attributes!(::Type{<:Block}, graph, flattened_defaults...) = nothing
 
 struct BlockAttributeConvert{T} <: Function end
 (::BlockAttributeConvert{T})(x) where {T} = convert_for_attribute(T, x)
@@ -556,23 +556,17 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
 
     graph = ComputeGraph()
 
-
     topscene = get_topscene(fig_or_scene)
     blockname = nameof(T)
-    block_defaults = documented_attributes(T)
-    default_theme = theme(topscene)
-    global_overwrite_theme = theme(blockname, default = NamedTuple())
-    overwrite_theme = get(theme(topscene), blockname, NamedTuple())
+    meta = meta_attributes(T)
+    flattened_defaults = resolve_defaults(meta, topscene, blockname, kwdict, tuple(), true)
 
     # User overwrites
-    add_attributes!(
-        T, graph,
-        block_defaults, default_theme, global_overwrite_theme, overwrite_theme, kwdict
-    )
+    add_attributes!(T, graph, flattened_defaults)
 
-    meta = meta_attributes(T)
+    # prepare after user overwrites so users can use `add_input!()`
     prepare_graph_for_attributes!(graph, meta, is_block = true)
-    add_remaining_block_inputs!(graph, meta, T, topscene, kwdict)
+    add_remaining_block_inputs!(graph, meta, flattened_defaults)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
@@ -777,7 +771,7 @@ function Base.getproperty(block::T, name::Symbol) where {T <: Block}
 end
 
 function Base.propertynames(::T) where {T <: Block}
-    return (fieldnames(T)..., :blocks, attribute_names(T)...)
+    return (fieldnames(T)..., :blocks, root_keys(meta_attributes(T))...)
 end
 function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
     return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
@@ -1002,33 +996,6 @@ function Base.show(io::IO, example::Example)
     return nothing
 end
 
-function repl_docstring(type::Symbol, attr::Symbol, docs::Union{Nothing, String}, examples::Vector{Example}, default_str)
-    io = IOBuffer()
-
-    println(io, "Default value: `$default_str`")
-    println(io)
-
-    if docs === nothing
-        println(io, "No docstring defined for `$attr`.")
-    else
-        println(io, docs)
-    end
-    println(io)
-
-    for (i, example) in enumerate(examples)
-        println(io, "**Example $i**")
-        println(io, "```julia")
-        # println(io)
-        # println(io, "# run in the REPL via Makie.example($type, :$attr, $i)")
-        # println(io)
-        println(io, example.code)
-        println(io, "```")
-        println(io)
-    end
-
-    return Markdown.parse(String(take!(io)))
-end
-
 # Fallback for Block types (not yet moved to markdown)
 function attribute_examples(::Type{BT}) where {BT <: Block}
     return Dict{Symbol, Vector{Example}}()
@@ -1036,20 +1003,9 @@ end
 
 attribute_examples(::Type{T}, attr::Symbol) where {T <: Union{Block, Plot}} = get(attribute_examples(T), attr, Example[])
 
-# overrides `?Axis.xticks` and similar lookups in the REPL
-function REPL.fielddoc(t::Type{<:Block}, s::Symbol)
-    if !is_attribute(t, s)
-        return Markdown.parse("`$s` is not an attribute of type `$t`. Type `?$t` in the REPL to see the list of available attributes.")
-    end
-    docs = get(_attribute_docs(t), s, nothing)
-    examples = get(attribute_examples(t), s, Example[])
-    default_str = Makie.attribute_default_expressions(t)[s]
-    return repl_docstring(nameof(t), s, docs, examples, default_str)
-end
-
 # collect() doesn't seem to be necessary but the propertynames docstring says
 # "tuple or vector" so lets not return a KeySet
-Base.propertynames(::Type{T}) where {T <: Block} = collect(keys(_attribute_docs(T)))
+Base.propertynames(::Type{T}) where {T <: Block} = collect(root_keys(meta_attributes(T)))
 
 function ComputePipeline.register_computation!(f, b::Block, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, b.attributes, inputs, outputs)

@@ -8,6 +8,7 @@ abstract type Transformable end
 abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
+abstract type Block end
 
 
 """

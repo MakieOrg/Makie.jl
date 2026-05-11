@@ -656,6 +656,7 @@ Base.haskey(graph::ComputeGraph, key::Symbol, keys::Symbol...) = haskey(graph.ne
 Base.haskey(graph::ComputeGraph, keys::Tuple{Vararg{Symbol}}) = haskey(graph, keys...)
 
 has_nested_key(graph::ComputeGraph, key::Symbol) = haskey(graph.nesting, key)
+has_leaf_key(graph::ComputeGraph, key::Symbol) = haskey(graph.outputs, key)
 
 Base.get(attr::ComputeGraph, key::Symbol, default) = get(attr.outputs, key, default)
 Base.keys(graph::ComputeGraph) = keys(graph.outputs)
@@ -760,6 +761,8 @@ merged_key(view::ComputeGraphView) = merged_key(view.nested_trace)
 
 Base.haskey(view::ComputeGraphView, keys::Symbol...) = haskey(view.nested_trace, keys...)
 Base.haskey(view::ComputeGraphView, keys::Tuple{Vararg{Symbol}}) = haskey(view.nested_trace, keys...)
+
+has_leaf_key(view::ComputeGraphView, key::Symbol) = isfinal(view.nested_trace[key])
 
 # Generates pairs for `foo(; kwargs...)`
 function Base.iterate(view::ComputeGraphView)

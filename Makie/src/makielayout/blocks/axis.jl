@@ -532,8 +532,9 @@ end
 ################################################################################
 # Limits
 
-function add_attributes!(::Type{<:Axis}, graph, sources...)
-    _, default = Makie.lookup_default_typed(sources..., :limits)
+function add_attributes!(::Type{<:Axis}, graph, flattened_defaults)
+    meta = meta_attributes(Axis)
+    _, default = get_typed_default(meta, flattened_defaults, :limits)
     add_input!(convert_limit_attribute, graph, :limits, default)
     ComputePipeline.set_type!(graph.limits, Any)
     return

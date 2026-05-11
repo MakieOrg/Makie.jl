@@ -533,7 +533,7 @@ Returns an array of all available plotting functions.
 """
 function available_plotting_methods()
     meths = []
-    for m1 in methods(Makie.default_theme)
+    for m1 in methods(plotsym)
         params = m1.sig.parameters
         if length(params) == 3 && params[3] isa UnionAll
             push!(meths, Makie.plotfunc(params[3].var.ub))
@@ -611,44 +611,34 @@ function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
         drop = (model = nothing, drop...)
     end
 
-    return shared_attributes(plot.attributes, documented_attributes(target), drop)
+    return shared_attributes!(Attributes(), plot.attributes, meta_attributes(target), drop)
 end
 
-function shared_attributes(
-        graph::ComputePipeline.AbstractComputeGraph, allowed::DocumentedAttributes,
-        excluded::Union{Vector{Symbol}, Set{Symbol}}
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::MetaAttributes, exclude::Union{Vector{Symbol}, Set{Symbol}}
     )
-    output = Attributes()
-    for (k, meta) in allowed
-        haskey(graph, k) || continue
-        k in excluded && continue
-        v = meta.default_value
-        maybe_subgraph = graph[k]
-        if v isa DocumentedAttributes && maybe_subgraph isa ComputeGraphView
-            output[k] = shared_attributes(maybe_subgraph, v, NamedTuple())
-        elseif !(v isa DocumentedAttributes) && maybe_subgraph isa Computed
-            output[k] = maybe_subgraph
+    for k in allowed.merged_keys
+        if ComputePipeline.has_leaf_key(graph, k) && !in(k, exclude)
+            output[k] = graph[k]
         end
     end
     return output
 end
 
-function shared_attributes(
-        graph::ComputePipeline.AbstractComputeGraph, allowed::DocumentedAttributes,
-        excluded::Union{Dict, NamedTuple}
+function shared_attributes!(
+        output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
+        allowed::MetaAttributes, exclude::Union{Dict, NamedTuple}, layer = 1
     )
-    output = Attributes()
-    for (k, meta) in allowed
-        haskey(graph, k) || continue
-        if haskey(excluded, k) && !(excluded[k] isa Union{Dict, NamedTuple})
-            continue
-        end
-        v = meta.default_value
-        maybe_subgraph = graph[k]
-        if v isa DocumentedAttributes && maybe_subgraph isa ComputeGraphView
-            output[k] = shared_attributes(maybe_subgraph, v, get(excluded, k, NamedTuple()))
-        elseif !(v isa DocumentedAttributes) && maybe_subgraph isa Computed
-            output[k] = maybe_subgraph
+    for (key, idx) in allowed.nesting.keytables[layer]
+        is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})
+        if haskey(graph, key) && !is_excluded
+            if idx > 0
+                shared_attributes!(output, graph[key], allowed, get(exclude, key, NamedTuple()), idx)
+            elseif ComputePipeline.has_leaf_key(graph, key)
+                fullkey = allowed.merged_keys[-idx]
+                output[fullkey] = graph[fullkey]
+            end
         end
     end
     return output

@@ -490,26 +490,21 @@ function batch_update_arguments!(updates, old_args, new_args)
     return
 end
 
+# TODO: This could probably be improved by keeping flattened kwargs lists/dicts.
 function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
     scene = parent_scene(target)
     name = T isa Block ? nameof(T) : plotsym(T)
-
-    d_attr = documented_attributes(T) # Set by @recipe / @Block
-    scene_theme = theme(scene) # source for @inherit-ed attributes
-    overwrite_theme = get(theme(scene), name, NamedTuple()) # overwrite from scene.theme[Plot/Block]
-    global_overwrite_theme = theme(name, default = NamedTuple()) # same but global theme
+    meta = meta_attributes(T)
 
     collect_updates_rec!(
         updates, target.attributes, tuple(), old_kwargs, new_kwargs,
-        d_attr, scene_theme, global_overwrite_theme, overwrite_theme
+        meta, scene, name
     )
+
     return
 end
 
-function collect_updates_rec!(
-        updates, graph, path, old_kwargs, new_kwargs,
-        d_attr, scene_theme, global_overwrite_theme, overwrite_theme,
-    )
+function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, meta, scene, name)
     # updates old/default -> new
     for (k, new_value) in new_kwargs
         current_path = (path..., k)
@@ -520,10 +515,7 @@ function collect_updates_rec!(
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                d_attr[k],
-                get(scene_theme, k, NamedTuple()),
-                get(global_overwrite_theme, k, NamedTuple()),
-                get(overwrite_theme, k, NamedTuple()),
+                meta, scene, name
             )
         else
             if is_different(current_value[], new_value)
@@ -546,18 +538,10 @@ function collect_updates_rec!(
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                d_attr[k],
-                get(scene_theme, k, NamedTuple()),
-                get(global_overwrite_theme, k, NamedTuple()),
-                get(overwrite_theme, k, NamedTuple()),
+                meta, scene, name
             )
         else
-            default = lookup_default(
-                d_attr, k;
-                default_theme = scene_theme,
-                global_overwrite_theme,
-                overwrite_theme,
-            )
+            default = resolve_single_default(meta, scene, name, NamedTuple(), current_path...)
             if is_different(current_value[], default)
                 push!(updates, current_path => default)
             end
@@ -830,7 +814,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
                         return nan_extrema(color)
                     end
                 else
-                    lookup_default(pt, scene, k)
+                    return resolve_single_default(pt, scene, k)
                 end
             end
         end

@@ -455,6 +455,8 @@ Base.length(d::DocumentedAttributes) = length(d.d)
 Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
 Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
 
+is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
+
 # for testing
 function Base.:(==)(a::DocumentedAttributes, b::DocumentedAttributes)
     issetequal(keys(a), keys(b)) || return false
