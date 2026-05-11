@@ -305,16 +305,16 @@ function LineAxis(parent::Scene, attrs::Attributes)
     )
 
     ticklabel_annotation_obs = Observable(Tuple{Any, Point2f}[]; ignore_equal_values = true)
-    ticklabels = nothing # this gets overwritten later to be used in the below
+    ticklabels_ref = Ref{Any}(nothing) # this gets overwritten later to be used in the below
     ticklabel_ideal_space = Observable(0.0f0; ignore_equal_values = true)
 
     map!(parent, ticklabel_ideal_space, ticklabel_annotation_obs, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
             # height
-            ticklabelsvisible[] ? (ticklabels === nothing ? 0.0f0 : height(Rect2f(boundingbox(ticklabels, :data)))) : 0.0f0
+            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : height(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
         else
             # width
-            ticklabelsvisible[] ? (ticklabels === nothing ? 0.0f0 : width(Rect2f(boundingbox(ticklabels, :data)))) : 0.0f0
+            ticklabelsvisible[] ? (ticklabels_ref[] === nothing ? 0.0f0 : width(Rect2f(boundingbox(ticklabels_ref[], :data)))) : 0.0f0
         end
         # in case there is no string in the annotations and the boundingbox comes back all NaN
         if !isfinite(maxwidth)
@@ -521,7 +521,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
 
     # in order to dispatch to the correct text recipe later (normal text, latex, etc.)
     # we need to have the ticklabel_annotation_obs populated once before adding the annotations
-    ticklabels = text!(
+    ticklabels_ref[] = text!(
         parent,
         ticklabel_annotation_obs,
         align = realticklabelalign,
@@ -534,7 +534,7 @@ function LineAxis(parent::Scene, attrs::Attributes)
         inspectable = false
     )
 
-    decorations[:ticklabels] = ticklabels
+    decorations[:ticklabels] = ticklabels_ref[]
 
     # HACKY: the ticklabels in the string need to be updated
     # before other stuff is triggered by them, which accesses the
@@ -640,21 +640,148 @@ function get_ticks(::Automatic, scale::LogFunctions, any_formatter, vmin, vmax)
 end
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels
-function get_ticks(l::LogTicks, scale::Union{LogFunctions, typeof(pseudolog10)}, ::Automatic, vmin, vmax)
+function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
-
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
-
     labels_scaled = get_ticklabels(
         # avoid unicode superscripts in ticks, as the ticks are converted
         # to superscripts in the next step
         xs -> Showoff.showoff(xs, :plain),
         ticks_scaled
     )
+    labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+    return ticks, labels
+end
 
-    prefix = ifelse.(ticks .< 0, MINUS_SIGN, "") # only useful for pseudolog10
-    labels = rich.(prefix, _logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+function get_ticks(::LogTicks, scale::typeof(pseudolog10), ::Automatic, vmin, vmax)
+    throw(ArgumentError(_logticks_error_message("pseudolog10")))
+end
+function get_ticks(::LogTicks, scale::Symlog10, ::Automatic, vmin, vmax)
+    throw(ArgumentError(_logticks_error_message("Symlog10")))
+end
+_logticks_error_message(name) = "`LogTicks` is only valid with strictly log scales " *
+    "(`log10`, `log2`, `log`). For `$name`, omit `yticks`/`xticks` to use the automatic " *
+    "decade picker, or pass explicit numeric tick values."
 
+get_ticks(::Automatic, scale::typeof(pseudolog10), formatter, vmin, vmax) =
+    get_ticks(PseudologTicks(), scale, formatter, vmin, vmax)
+
+function get_ticks(t::PseudologTicks, scale::typeof(pseudolog10), formatter, vmin, vmax)
+    ticks = _decade_auto_tickvalues(vmin, vmax, t.n_ideal)
+    ticks === nothing && return get_ticks(automatic, identity, formatter, vmin, vmax)
+    labels = formatter isa Automatic ?
+        [_decade_label(t) for t in ticks] :
+        get_ticklabels(formatter, ticks)
+    return ticks, labels
+end
+
+# `kmin_pos` / `kmin_neg` are the smallest |k| considered a meaningful decade per side —
+# 0 for pseudolog10, `ceil(log10(U))` / `ceil(log10(|L|))` for Symlog10 (so its linear
+# region doesn't get decade ticks).
+function _decade_auto_tickvalues(vmin, vmax, n_ideal; kmin_pos = 0, kmin_neg = 0)
+    kmax_pos = vmax >= 10.0^kmin_pos ? floor(Int, log10(vmax)) : -1
+    kmax_neg = vmin <= -10.0^kmin_neg ? floor(Int, log10(-vmin)) : -1
+
+    ticks = if vmin <= 0 <= vmax
+        # Zero is the inner-most tick. ±1 (|k| = 0) would crowd it visually for pseudolog10,
+        # so the smallest decade we ever consider in a zero-anchored window is |k| = 1.
+        _decade_select_anchored_zero(n_ideal, max(kmin_pos, 1), max(kmin_neg, 1), kmax_pos, kmax_neg)
+    elseif vmin > 0
+        _decade_select_single_sided(vmin, vmax, n_ideal, kmin_pos, kmax_pos, +1)
+    else
+        _decade_select_single_sided(-vmax, -vmin, n_ideal, kmin_neg, kmax_neg, -1)
+    end
+    ticks === nothing && return nothing
+    count(!iszero, ticks) < 2 && return nothing
+    return ticks
+end
+
+# Zero-anchored: ticks at `0, ±10^s, ±10^(2s), …` for stride `s ≥ kmin_*`. The outermost
+# tick on each side is the largest stride-multiple that still fits inside `kmax_*`; it
+# may stop short of `kmax_*` if no nicer stride lands exactly on the extreme. Pick the
+# stride whose total tick count is closest to `n_ideal`, tiebreaking on larger reach
+# (closer to the data extreme), then denser.
+function _decade_select_anchored_zero(n_ideal, kmin_pos, kmin_neg, kmax_pos, kmax_neg)
+    has_pos = kmax_pos >= kmin_pos
+    has_neg = kmax_neg >= kmin_neg
+    has_pos || has_neg || return nothing
+    smin = max(has_pos ? kmin_pos : 1, has_neg ? kmin_neg : 1)
+    max_extreme = max(kmax_pos, kmax_neg)
+
+    best_s, best_count, best_reach, best_dist = 0, -1, -1, typemax(Int)
+    for s in smin:max_extreme
+        count, reach = 1, 0
+        for k in s:s:max_extreme
+            (k <= kmax_pos) && (count += 1; reach = max(reach, k))
+            (k <= kmax_neg) && (count += 1; reach = max(reach, k))
+        end
+        d = abs(count - n_ideal)
+        if d < best_dist ||
+                (d == best_dist && reach > best_reach) ||
+                (d == best_dist && reach == best_reach && count > best_count)
+            best_s, best_count, best_reach, best_dist = s, count, reach, d
+        end
+    end
+    best_s == 0 && return nothing
+
+    ticks = Float64[0.0]
+    for k in best_s:best_s:max_extreme
+        k <= kmax_pos && push!(ticks, 10.0^k)
+        k <= kmax_neg && push!(ticks, -10.0^k)
+    end
+    sort!(ticks)
+    return ticks
+end
+
+# Single-sided: ticks at `sign_factor * 10^(kmin + i*s)` for `i = 0, 1, …` while
+# `kmin + i*s ≤ kmax`. The outermost tick may stop short of `kmax` if `s` doesn't divide
+# `span = kmax - kmin` exactly. Caller passes magnitudes (`vmin ≤ vmax`, both > 0) and the
+# desired output sign.
+function _decade_select_single_sided(vmin, vmax, n_ideal, kmin_side, kmax_side, sign_factor)
+    kmin = max(kmin_side, ceil(Int, log10(vmin)))
+    kmax = min(kmax_side, floor(Int, log10(vmax)))
+    span = kmax - kmin
+    span < 1 && return nothing
+
+    best_s, best_count, best_reach, best_dist = 1, span + 1, kmax, abs(span + 1 - n_ideal)
+    for s in 2:span
+        count = span ÷ s + 1
+        reach = kmin + s * (count - 1)
+        d = abs(count - n_ideal)
+        if d < best_dist ||
+                (d == best_dist && reach > best_reach) ||
+                (d == best_dist && reach == best_reach && count > best_count)
+            best_s, best_count, best_reach, best_dist = s, count, reach, d
+        end
+    end
+
+    ks = collect(kmin:best_s:kmax)
+    return sort!(sign_factor .* exp10.(ks))
+end
+
+function _decade_label(t)
+    iszero(t) && return rich("0")
+    k = round(Int, log10(abs(t)))
+    prefix = t < 0 ? MINUS_SIGN : ""
+    return rich(prefix, "10", superscript(string(k), offset = Vec2f(0.1f0, 0.0f0)))
+end
+
+get_ticks(::Automatic, scale::Symlog10, formatter, vmin, vmax) =
+    get_ticks(SymlogTicks(), scale, formatter, vmin, vmax)
+
+function get_ticks(t::SymlogTicks, scale::Symlog10, formatter, vmin, vmax)
+    L, U = scale.lower, scale.upper
+    if L <= vmin && vmax <= U
+        return get_ticks(automatic, identity, formatter, vmin, vmax)
+    end
+
+    kmin_pos = max(0, ceil(Int, log10(U)))
+    kmin_neg = max(0, ceil(Int, log10(-L)))
+    ticks = _decade_auto_tickvalues(vmin, vmax, t.n_ideal; kmin_pos = kmin_pos, kmin_neg = kmin_neg)
+    ticks === nothing && return get_ticks(automatic, identity, formatter, vmin, vmax)
+    labels = formatter isa Automatic ?
+        [_decade_label(t) for t in ticks] :
+        get_ticklabels(formatter, ticks)
     return ticks, labels
 end
 

@@ -97,6 +97,7 @@ pages = [
                 "linesegments.md",
                 "mesh.md",
                 "meshscatter.md",
+                "pathtext.md",
                 "pie.md",
                 "poly.md",
                 "qqnorm.md",

@@ -41,6 +41,7 @@ end
         include("plots/generic_attributes.jl")
         include("plots/text.jl")
         include("plots/barplot.jl")
+        include("plots/bracket.jl")
         include("plots/hist.jl")
         include("plots/poly.jl")
         include("plots/voronoiplot.jl")

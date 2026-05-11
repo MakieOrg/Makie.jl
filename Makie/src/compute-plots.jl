@@ -99,18 +99,6 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-# temp fix axis selection
-args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
-function args_preferred_axis(::Type{<:Surface}, attr::ComputeGraph)
-    lims = attr[:data_limits][]
-    return widths(lims)[3] == 0 ? Axis : LScene
-end
-function args_preferred_axis(::Type{PT}, attr::ComputeGraph) where {PT <: Plot}
-    result = args_preferred_axis(PT, attr[:positions][])
-    isnothing(result) && return Axis
-    return result
-end
-
 # This is data_limits(), not boundingbox()
 # TODO: Should data_limits() be simplified to be purely based on converted arguments?
 function scatter_limits(positions, space::Symbol, markerspace::Symbol, scale, offset, rotation, marker_offset)
@@ -243,6 +231,10 @@ function register_colormapping!(attr::ComputeGraph, colorname = :color)
             return nothing
         elseif colorrange === automatic
             return autorange
+        elseif first(colorrange) == automatic
+            return Vec2f((first(autorange), last(colorrange)))
+        elseif last(colorrange) == automatic
+            return Vec2f((first(colorrange), last(autorange)))
         else
             return Vec2f(apply_scale(colorscale, colorrange))
         end
@@ -522,9 +514,9 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     #  backwards compatibility for plot.converted (and not only compatibility, but it's just convenient to have)
 
     map!(attr, [:dim_converted, :convert_kwargs], :converted) do dim_converted, convert_kwargs
-        x = convert_arguments(P, dim_converted...; convert_kwargs...)
-        result_type = error_check_convert_arguments(P, dim_converted, convert_kwargs, x)
-        return result_type === :Tuple ? x : (x,)
+        val = convert_arguments(P, dim_converted...; convert_kwargs...)
+        rtype = error_check_convert_arguments(P, dim_converted, convert_kwargs, val)
+        return rtype === :Tuple ? val : (val,)
     end
 
     # If dim converts didn't do anything we can use the previous result of
@@ -786,24 +778,33 @@ function Plot{Func}(user_args::Tuple, user_attributes::Dict) where {Func}
     return Plot{FinalPlotFunc, ArgTyp}(user_attributes, attr)
 end
 
-function plot_cycle_index(scene::Scene, plot::Plot)
+# Count cycling position of `plot` among the top-level plots in `plot_iter`.
+# PlotList entries are expanded into their children so they participate in cycling.
+function _cycle_position(plot::Plot, plot_iter)
     cycle = plot.cycle[]
     isnothing(cycle) && return 0
     syms = [s for ps in attrsyms(cycle) for s in ps]
     pos = 1
-    for p in scene.plots
-        p === plot && return pos
-        if haskey(p, :cycle) && !isnothing(p.cycle[]) && plotfunc(p) === plotfunc(plot)
-            is_cycling = any(syms) do x
-                return haskey(p.attributes.inputs, x) && isnothing(p.attributes.inputs[x].value)
-            end
-            if is_cycling
-                pos += 1
+    for p in plot_iter
+        children = p isa PlotList ? p.plots : (p,)
+        for cp in children
+            cp === plot && return pos
+            if haskey(cp, :cycle) && !isnothing(cp.cycle[]) && plotfunc(cp) === plotfunc(plot)
+                is_cycling = any(syms) do x
+                    return haskey(cp.attributes.inputs, x) && isnothing(cp.attributes.inputs[x].value)
+                end
+                if is_cycling
+                    pos += 1
+                end
             end
         end
     end
     # not inserted yet
     return pos
+end
+
+function plot_cycle_index(scene::Scene, plot::Plot)
+    return _cycle_position(plot, scene.plots)
 end
 
 # For recipes we use the recipes position?
@@ -1061,6 +1062,10 @@ function get_colormapping(plot, attr::ComputePipeline.ComputeGraph)
     map!(attr, [:colorrange, :raw_color], :unscaled_colorrange) do colorrange, color
         if colorrange === automatic
             return isempty(color) ? Vec2f(0, 10) : Vec2f(distinct_extrema_nan(color))
+        elseif first(colorrange) == automatic
+            return Vec2f(first(distinct_extrema_nan(color)), last(colorrange))
+        elseif last(colorrange) == automatic
+            return Vec2f(first(colorrange), last(distinct_extrema_nan(color)))
         else
             return Vec2f(colorrange)
         end

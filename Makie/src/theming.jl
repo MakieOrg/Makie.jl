@@ -209,9 +209,9 @@ as keyword arguments.
 function set_theme!(new_theme = Attributes(); kwargs...)
     lock(THEME_LOCK) do
         empty!(CURRENT_DEFAULT_THEME)
-        new_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
-        new_theme = merge!(Theme(kwargs), new_theme)
-        merge!(CURRENT_DEFAULT_THEME, new_theme)
+        resolved_theme = merge_without_obs!(fast_deepcopy(new_theme), MAKIE_DEFAULT_THEME)
+        resolved_theme = merge!(Theme(kwargs), resolved_theme)
+        merge!(CURRENT_DEFAULT_THEME, resolved_theme)
     end
     return
 end

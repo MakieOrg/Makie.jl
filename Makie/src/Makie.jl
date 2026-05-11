@@ -49,7 +49,7 @@ using ComputePipeline
 
 import Unitful
 import UnicodeFun
-import RelocatableFolders
+using RelocatableFolders: @path
 import StatsBase
 import Distributions
 import KernelDensity
@@ -115,6 +115,7 @@ include("basic_plots.jl")
 include("conversion.jl")
 include("bezier.jl")
 include("types.jl")
+include("richtext.jl")
 include("utilities/Plane.jl")
 include("utilities/timing.jl")
 include("utilities/texture_atlas.jl")
@@ -416,6 +417,7 @@ include("makielayout/MakieLayout.jl")
 include("figureplotting.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/text.jl")
+include("basic_recipes/pathtext.jl")
 include("basic_recipes/raincloud.jl")
 include("deprecated.jl")
 
@@ -449,6 +451,8 @@ function cleanup_globals()
 end
 
 export cleanup_globals
+
+const SHARED_PRECOMPILE_PATH = @path joinpath(@__DIR__, "..", "precompile", "shared-precompile.jl")
 
 include("precompiles.jl")
 
