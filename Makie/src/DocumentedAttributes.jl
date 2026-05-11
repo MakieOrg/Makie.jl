@@ -765,10 +765,7 @@ if it is `NoFallback()`. (No error checking here)
 """
 function inherit_default(inherit::Inherit, scene_theme)
     result = inherit_default(scene_theme, inherit.fallback, inherit.keys...)
-    if result === NoFallback()
-        global_theme = theme(nothing)
-        result = inherit_default(global_theme, inherit.fallback, inherit.keys...)
-    elseif result isa Inherit
+    if result isa Inherit # nested inherit
         return inherit_default(result, scene_theme)
     end
     return inherit.callback(to_value(result))

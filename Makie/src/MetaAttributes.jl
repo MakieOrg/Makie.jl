@@ -461,9 +461,6 @@ function resolve_defaults(attr, scene, name::Symbol, kwargs, skip = tuple(), rem
     if haskey(default_theme, name)
         resolve_overwrites!(flattened, attr, default_theme[name], skip)
     end
-    if haskey(theme(nothing), name)
-        resolve_overwrites!(flattened, attr, theme(name), skip)
-    end
     resolve_defaults!(flattened, attr, default_theme, skip)
     return flattened
 end
