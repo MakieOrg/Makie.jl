@@ -10,7 +10,7 @@ end
 
 function _hold(f, events, mod)
     push!(events.keyboardstate, mod)
-    try
+    return try
         f()
     finally
         delete!(events.keyboardstate, mod)

@@ -631,22 +631,26 @@ function Makie.plot!(plot::EditableText)
     cursor_visible_obs = Observable(true; ignore_equal_values = true)
 
     parent = Makie.parent_scene(plot)
-    push!(plot.deregister_callbacks, on(events(parent).tick) do tick
-        cursor_visible_obs[] = if !plot.focused[]
-            false
-        else
-            period = plot.blink_period[]
-            elapsed = tick.time - last_edit_time[]
-            isinf(period) || mod(elapsed, period) < period / 2
+    push!(
+        plot.deregister_callbacks, on(events(parent).tick) do tick
+            cursor_visible_obs[] = if !plot.focused[]
+                false
+            else
+                period = plot.blink_period[]
+                elapsed = tick.time - last_edit_time[]
+                isinf(period) || mod(elapsed, period) < period / 2
+            end
+            return nothing
         end
-        return nothing
-    end)
-    push!(plot.deregister_callbacks, on(plot.focused) do f
-        if f
-            last_edit_time[] = events(parent).tick[].time
+    )
+    push!(
+        plot.deregister_callbacks, on(plot.focused) do f
+            if f
+                last_edit_time[] = events(parent).tick[].time
+            end
+            return nothing
         end
-        return nothing
-    end)
+    )
 
     linesegments!(
         plot, cursor_segments_obs;
@@ -707,231 +711,239 @@ function attach_editabletext_events!(
         return offset_from_pixel_point(local_pt, anchors, line_idx)
     end
 
-    push!(plot.deregister_callbacks, on(events(parent).mousebutton, priority = 60) do event
-        event.button == Mouse.left || return Consume(false)
+    push!(
+        plot.deregister_callbacks, on(events(parent).mousebutton, priority = 60) do event
+            event.button == Mouse.left || return Consume(false)
 
-        if event.action == Mouse.press
-            mpos = Makie.mouseposition_px(parent)
-            if plot.manage_focus[]
-                # Auto-focus on clicks within the text bbox; auto-defocus
-                # on clicks outside.
-                if !is_click_inside_text(text_plot, plot, mpos)
-                    if plot.focused[]
-                        plot.focused[] = false
+            if event.action == Mouse.press
+                mpos = Makie.mouseposition_px(parent)
+                if plot.manage_focus[]
+                    # Auto-focus on clicks within the text bbox; auto-defocus
+                    # on clicks outside.
+                    if !is_click_inside_text(text_plot, plot, mpos)
+                        if plot.focused[]
+                            plot.focused[] = false
+                        end
+                        return Consume(false)
                     end
-                    return Consume(false)
+                else
+                    # Parent owns focus. Only place a cursor if we're actually
+                    # focused right now; otherwise leave the click for the parent.
+                    plot.focused[] || return Consume(false)
                 end
-            else
-                # Parent owns focus. Only place a cursor if we're actually
-                # focused right now; otherwise leave the click for the parent.
-                plot.focused[] || return Consume(false)
+
+                offset = _mouse_to_offset(Point2f(mpos))
+
+                # Multi-click handling
+                now = events(parent).tick[].time
+                ctrl_or_cmd = ispressed(parent, Keyboard.left_super | Keyboard.right_super) ||
+                    ispressed(parent, Keyboard.left_control | Keyboard.right_control)
+
+                prev = click_state[]
+                same_spot = norm(Point2f(mpos) - prev.pos) < 4
+                within_time = (now - prev.time) < 0.4
+                new_count = (same_spot && within_time) ? prev.count + 1 : 1
+                click_state[] = (count = new_count, time = now, pos = Point2f(mpos))
+
+                chars = chars_obs[]
+                plot.focused[] = true
+
+                # `new_selection` is what this click would produce on its own;
+                # `ctrl_or_cmd` then decides whether it replaces the existing
+                # cursors or extends them (multi-cursor / multi-selection).
+                new_selection = if new_count == 3
+                    lo, hi = line_at_offset(chars, offset)
+                    EditCursor(lo, hi)
+                elseif new_count == 2
+                    lo, hi = word_at_offset(chars, offset)
+                    EditCursor(lo, hi)
+                else
+                    EditCursor(offset)
+                end
+                cursors = ctrl_or_cmd ? vcat(plot.cursors[], [new_selection]) : EditCursor[new_selection]
+                plot.cursors[] = merge_cursors(cursors)
+
+                # On single click we set up a drag anchor so subsequent motion
+                # extends the selection.
+                drag_anchor[] = new_count == 1 ? offset : nothing
+                _bump_edit_time!(parent, last_edit_time)
+                # Consume only when *we* own focus management — that's the case
+                # where there's no parent waiting to react to the click. When the
+                # parent owns focus (Textbox), we must not consume so other
+                # widgets at the same priority (e.g. another EditableText that
+                # wants to defocus itself) still see the press.
+                return plot.manage_focus[] ? Consume(true) : Consume(false)
+
+            elseif event.action == Mouse.release
+                drag_anchor[] = nothing
+                return Consume(false)
             end
-
-            offset = _mouse_to_offset(Point2f(mpos))
-
-            # Multi-click handling
-            now = events(parent).tick[].time
-            ctrl_or_cmd = ispressed(parent, Keyboard.left_super | Keyboard.right_super) ||
-                          ispressed(parent, Keyboard.left_control | Keyboard.right_control)
-
-            prev = click_state[]
-            same_spot = norm(Point2f(mpos) - prev.pos) < 4
-            within_time = (now - prev.time) < 0.4
-            new_count = (same_spot && within_time) ? prev.count + 1 : 1
-            click_state[] = (count = new_count, time = now, pos = Point2f(mpos))
-
-            chars = chars_obs[]
-            plot.focused[] = true
-
-            # `new_selection` is what this click would produce on its own;
-            # `ctrl_or_cmd` then decides whether it replaces the existing
-            # cursors or extends them (multi-cursor / multi-selection).
-            new_selection = if new_count == 3
-                lo, hi = line_at_offset(chars, offset)
-                EditCursor(lo, hi)
-            elseif new_count == 2
-                lo, hi = word_at_offset(chars, offset)
-                EditCursor(lo, hi)
-            else
-                EditCursor(offset)
-            end
-            cursors = ctrl_or_cmd ? vcat(plot.cursors[], [new_selection]) : EditCursor[new_selection]
-            plot.cursors[] = merge_cursors(cursors)
-
-            # On single click we set up a drag anchor so subsequent motion
-            # extends the selection.
-            drag_anchor[] = new_count == 1 ? offset : nothing
-            _bump_edit_time!(parent, last_edit_time)
-            # Consume only when *we* own focus management — that's the case
-            # where there's no parent waiting to react to the click. When the
-            # parent owns focus (Textbox), we must not consume so other
-            # widgets at the same priority (e.g. another EditableText that
-            # wants to defocus itself) still see the press.
-            return plot.manage_focus[] ? Consume(true) : Consume(false)
-
-        elseif event.action == Mouse.release
-            drag_anchor[] = nothing
             return Consume(false)
         end
-        return Consume(false)
-    end)
+    )
 
-    push!(plot.deregister_callbacks, on(events(parent).mouseposition, priority = 60) do _
-        anchor = drag_anchor[]
-        anchor === nothing && return Consume(false)
-        Mouse.left in events(parent).mousebuttonstate || return Consume(false)
-        mpos = Makie.mouseposition_px(parent)
-        head = _mouse_to_offset(Point2f(mpos))
-        cursors = plot.cursors[]
-        # Only rewrite the last cursor (the one created by the press) so prior
-        # multi-cursors stay intact. Skip if its head hasn't moved — mouseposition
-        # fires per pixel of motion so this saves a lot of redundant lift work.
-        last_cursor = cursors[end]
-        last_cursor.anchor == anchor && last_cursor.head == head && return Consume(true)
-        new_cursors = merge_cursors(vcat(cursors[1:(end - 1)], [EditCursor(anchor, head)]))
-        plot.cursors[] = new_cursors
-        _bump_edit_time!(parent, last_edit_time)
-        return Consume(true)
-    end)
+    push!(
+        plot.deregister_callbacks, on(events(parent).mouseposition, priority = 60) do _
+            anchor = drag_anchor[]
+            anchor === nothing && return Consume(false)
+            Mouse.left in events(parent).mousebuttonstate || return Consume(false)
+            mpos = Makie.mouseposition_px(parent)
+            head = _mouse_to_offset(Point2f(mpos))
+            cursors = plot.cursors[]
+            # Only rewrite the last cursor (the one created by the press) so prior
+            # multi-cursors stay intact. Skip if its head hasn't moved — mouseposition
+            # fires per pixel of motion so this saves a lot of redundant lift work.
+            last_cursor = cursors[end]
+            last_cursor.anchor == anchor && last_cursor.head == head && return Consume(true)
+            new_cursors = merge_cursors(vcat(cursors[1:(end - 1)], [EditCursor(anchor, head)]))
+            plot.cursors[] = new_cursors
+            _bump_edit_time!(parent, last_edit_time)
+            return Consume(true)
+        end
+    )
 
     # Unicode character input — type a character.
-    push!(plot.deregister_callbacks, on(events(parent).unicode_input, priority = 60) do char
-        plot.focused[] || return Consume(false)
-        char == '\0' && return Consume(false)
-        plot.input_filter[](char) || return Consume(true)  # filtered out, but consume so other listeners don't double-handle
-        new_text, new_cursors = apply_edits(plot.text[], plot.cursors[], c -> _replace_op(c, string(char)))
-        _commit_edit!(plot, new_text, new_cursors, parent, last_edit_time)
-        return Consume(true)
-    end)
+    push!(
+        plot.deregister_callbacks, on(events(parent).unicode_input, priority = 60) do char
+            plot.focused[] || return Consume(false)
+            char == '\0' && return Consume(false)
+            plot.input_filter[](char) || return Consume(true)  # filtered out, but consume so other listeners don't double-handle
+            new_text, new_cursors = apply_edits(plot.text[], plot.cursors[], c -> _replace_op(c, string(char)))
+            _commit_edit!(plot, new_text, new_cursors, parent, last_edit_time)
+            return Consume(true)
+        end
+    )
 
     # Keyboard.
-    push!(plot.deregister_callbacks, on(events(parent).keyboardbutton, priority = 60) do event
-        plot.focused[] || return Consume(false)
-        event.action == Keyboard.release && return Consume(false)
+    push!(
+        plot.deregister_callbacks, on(events(parent).keyboardbutton, priority = 60) do event
+            plot.focused[] || return Consume(false)
+            event.action == Keyboard.release && return Consume(false)
 
-        key = event.key
-        kbstate = events(parent).keyboardstate
-        shift = (Keyboard.left_shift in kbstate) || (Keyboard.right_shift in kbstate)
-        alt = (Keyboard.left_alt in kbstate) || (Keyboard.right_alt in kbstate)
-        cmd = (Keyboard.left_super in kbstate) || (Keyboard.right_super in kbstate) ||
-              (Keyboard.left_control in kbstate) || (Keyboard.right_control in kbstate)
+            key = event.key
+            kbstate = events(parent).keyboardstate
+            shift = (Keyboard.left_shift in kbstate) || (Keyboard.right_shift in kbstate)
+            alt = (Keyboard.left_alt in kbstate) || (Keyboard.right_alt in kbstate)
+            cmd = (Keyboard.left_super in kbstate) || (Keyboard.right_super in kbstate) ||
+                (Keyboard.left_control in kbstate) || (Keyboard.right_control in kbstate)
 
-        chars = chars_obs[]
-        text = plot.text[]
-        cursors = plot.cursors[]
+            chars = chars_obs[]
+            text = plot.text[]
+            cursors = plot.cursors[]
 
-        # Run an EditOp builder against `text` / `cursors`, push the result.
-        commit_op!(op_for) = begin
-            new_text, new_cursors = apply_edits(text, cursors, c -> op_for(chars, c))
-            _commit_edit!(plot, new_text, new_cursors, parent, last_edit_time)
-        end
-        # Move every cursor through `move` and store the result.
-        commit_move!(move) = begin
-            plot.cursors[] = merge_cursors([move(c) for c in cursors])
-            _bump_edit_time!(parent, last_edit_time)
-        end
-
-        if key == Keyboard.escape
-            plot.focused[] = false
-            return Consume(true)
-
-        elseif key == Keyboard.left
-            commit_move!(c -> move_cursor(c, chars, -1; word = alt, extend = shift))
-            return Consume(true)
-
-        elseif key == Keyboard.right
-            commit_move!(c -> move_cursor(c, chars, +1; word = alt, extend = shift))
-            return Consume(true)
-
-        elseif key == Keyboard.up || key == Keyboard.down
-            anchors = anchors_obs[].anchors
-            li = line_idx_obs[]
-            n_lines = n_lines_obs[]
-            dir = key == Keyboard.up ? -1 : +1
-            commit_move!(c -> move_cursor_vertical(c, dir; anchors = anchors, line_idx = li, n_lines = n_lines, extend = shift))
-            return Consume(true)
-
-        elseif key == Keyboard.backspace
-            commit_op!(cmd ? _line_back_op : alt ? _word_back_op : _backspace_op)
-            return Consume(true)
-
-        elseif key == Keyboard.delete
-            commit_op!(cmd ? _line_forward_op : alt ? _word_forward_op : _delete_op)
-            return Consume(true)
-
-        elseif key == Keyboard.enter || key == Keyboard.kp_enter
-            multiline = plot.multiline[]
-            do_newline = multiline ? !cmd : shift
-            do_submit = multiline ? cmd : !shift
-            do_newline && commit_op!((_, c) -> _replace_op(c, "\n"))
-            if do_submit
-                cb = plot.on_submit[]
-                cb === nothing || cb(plot.text[])
+            # Run an EditOp builder against `text` / `cursors`, push the result.
+            commit_op!(op_for) = begin
+                new_text, new_cursors = apply_edits(text, cursors, c -> op_for(chars, c))
+                _commit_edit!(plot, new_text, new_cursors, parent, last_edit_time)
             end
-            return Consume(true)
+            # Move every cursor through `move` and store the result.
+            commit_move!(move) = begin
+                plot.cursors[] = merge_cursors([move(c) for c in cursors])
+                _bump_edit_time!(parent, last_edit_time)
+            end
 
-        elseif key == Keyboard.a && cmd
-            # Select-all
-            n = length(chars)
-            plot.cursors[] = [EditCursor(0, n)]
-            _bump_edit_time!(parent, last_edit_time)
-            return Consume(true)
-
-        elseif key == Keyboard.c && cmd
-            content = _selection_text(chars, cursors)
-            isempty(content) || clipboard(content)
-            return Consume(true)
-
-        elseif key == Keyboard.x && cmd
-            content = _selection_text(chars, cursors)
-            isempty(content) && return Consume(true)
-            clipboard(content)
-            commit_op!((_, c) -> _replace_op(c, ""))
-            return Consume(true)
-
-        elseif key == Keyboard.v && cmd
-            content = try
-                String(clipboard())
-            catch err
-                @warn "Accessing the clipboard failed: $err"
+            if key == Keyboard.escape
+                plot.focused[] = false
                 return Consume(true)
-            end
-            # Run the same per-char filter as typed input so e.g. a single-line
-            # textbox strips newlines from a multi-line paste.
-            filtered = String(filter(plot.input_filter[], collect(content)))
-            isempty(filtered) && return Consume(true)
-            commit_op!((_, c) -> _replace_op(c, filtered))
-            return Consume(true)
 
-        elseif key == Keyboard.d && cmd
-            # Cmd+D: select next occurrence of the most recent cursor's text;
-            # Cmd+Shift+D: select previous. If the most recent cursor has no
-            # selection, the first press expands it to the word at the caret
-            # (matching the common "select word, then keep adding next match"
-            # pattern from VS Code / Sublime).
-            last_c = isempty(cursors) ? EditCursor(0) : cursors[end]
-            if !is_selection(last_c)
-                lo, hi = word_at_offset(chars, last_c.head)
-                lo == hi && return Consume(true)
-                plot.cursors[] = merge_cursors(vcat(cursors[1:(end - 1)], [EditCursor(lo, hi)]))
+            elseif key == Keyboard.left
+                commit_move!(c -> move_cursor(c, chars, -1; word = alt, extend = shift))
+                return Consume(true)
+
+            elseif key == Keyboard.right
+                commit_move!(c -> move_cursor(c, chars, +1; word = alt, extend = shift))
+                return Consume(true)
+
+            elseif key == Keyboard.up || key == Keyboard.down
+                anchors = anchors_obs[].anchors
+                li = line_idx_obs[]
+                n_lines = n_lines_obs[]
+                dir = key == Keyboard.up ? -1 : +1
+                commit_move!(c -> move_cursor_vertical(c, dir; anchors = anchors, line_idx = li, n_lines = n_lines, extend = shift))
+                return Consume(true)
+
+            elseif key == Keyboard.backspace
+                commit_op!(cmd ? _line_back_op : alt ? _word_back_op : _backspace_op)
+                return Consume(true)
+
+            elseif key == Keyboard.delete
+                commit_op!(cmd ? _line_forward_op : alt ? _word_forward_op : _delete_op)
+                return Consume(true)
+
+            elseif key == Keyboard.enter || key == Keyboard.kp_enter
+                multiline = plot.multiline[]
+                do_newline = multiline ? !cmd : shift
+                do_submit = multiline ? cmd : !shift
+                do_newline && commit_op!((_, c) -> _replace_op(c, "\n"))
+                if do_submit
+                    cb = plot.on_submit[]
+                    cb === nothing || cb(plot.text[])
+                end
+                return Consume(true)
+
+            elseif key == Keyboard.a && cmd
+                # Select-all
+                n = length(chars)
+                plot.cursors[] = [EditCursor(0, n)]
+                _bump_edit_time!(parent, last_edit_time)
+                return Consume(true)
+
+            elseif key == Keyboard.c && cmd
+                content = _selection_text(chars, cursors)
+                isempty(content) || clipboard(content)
+                return Consume(true)
+
+            elseif key == Keyboard.x && cmd
+                content = _selection_text(chars, cursors)
+                isempty(content) && return Consume(true)
+                clipboard(content)
+                commit_op!((_, c) -> _replace_op(c, ""))
+                return Consume(true)
+
+            elseif key == Keyboard.v && cmd
+                content = try
+                    String(clipboard())
+                catch err
+                    @warn "Accessing the clipboard failed: $err"
+                    return Consume(true)
+                end
+                # Run the same per-char filter as typed input so e.g. a single-line
+                # textbox strips newlines from a multi-line paste.
+                filtered = String(filter(plot.input_filter[], collect(content)))
+                isempty(filtered) && return Consume(true)
+                commit_op!((_, c) -> _replace_op(c, filtered))
+                return Consume(true)
+
+            elseif key == Keyboard.d && cmd
+                # Cmd+D: select next occurrence of the most recent cursor's text;
+                # Cmd+Shift+D: select previous. If the most recent cursor has no
+                # selection, the first press expands it to the word at the caret
+                # (matching the common "select word, then keep adding next match"
+                # pattern from VS Code / Sublime).
+                last_c = isempty(cursors) ? EditCursor(0) : cursors[end]
+                if !is_selection(last_c)
+                    lo, hi = word_at_offset(chars, last_c.head)
+                    lo == hi && return Consume(true)
+                    plot.cursors[] = merge_cursors(vcat(cursors[1:(end - 1)], [EditCursor(lo, hi)]))
+                    _bump_edit_time!(parent, last_edit_time)
+                    return Consume(true)
+                end
+                pattern = chars[(sel_lo(last_c) + 1):sel_hi(last_c)]
+                found = if shift
+                    _find_prev_match(chars, pattern, sel_lo(cursors[1]))
+                else
+                    _find_next_match(chars, pattern, sel_hi(cursors[end]))
+                end
+                found === nothing && return Consume(true)
+                lo, hi = found
+                plot.cursors[] = merge_cursors(vcat(cursors, [EditCursor(lo, hi)]))
                 _bump_edit_time!(parent, last_edit_time)
                 return Consume(true)
             end
-            pattern = chars[(sel_lo(last_c) + 1):sel_hi(last_c)]
-            found = if shift
-                _find_prev_match(chars, pattern, sel_lo(cursors[1]))
-            else
-                _find_next_match(chars, pattern, sel_hi(cursors[end]))
-            end
-            found === nothing && return Consume(true)
-            lo, hi = found
-            plot.cursors[] = merge_cursors(vcat(cursors, [EditCursor(lo, hi)]))
-            _bump_edit_time!(parent, last_edit_time)
-            return Consume(true)
-        end
 
-        return Consume(false)
-    end)
+            return Consume(false)
+        end
+    )
     return
 end
 
