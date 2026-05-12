@@ -2,29 +2,13 @@
 
 The `Textbox` provides an editable text field with optional validation.
 
-```@figure
-
-f = Figure()
-Textbox(f[1, 1], placeholder = "Enter a string...")
-Textbox(f[2, 1], width = 300)
-
-f
-```
-
-## Editing
-
-```@example textbox
+```@setup textbox
 using GLMakie
-GLMakie.activate!() # hide
+GLMakie.activate!()
+using ..FakeInteraction
 
 fig = Figure(size = (600, 200))
 tb = Textbox(fig[1, 1], width = 400, height = 60, fontsize = 20, placeholder = "Click to edit...")
-fig
-nothing # hide
-```
-
-```@setup textbox
-using ..FakeInteraction
 
 evts = [
     MouseTo(Point2f(550, 20), 0.0),
@@ -98,6 +82,8 @@ interaction_record(fig, "textbox_example.mp4", evts)
 ```@raw html
 <video autoplay loop muted playsinline src="./textbox_example.mp4" width="600"/>
 ```
+
+## Editing
 
 - Drag to select; double-click for the word at the cursor; triple-click for the line.
 - Hold ⌘ (or Ctrl) while clicking to add an extra cursor. ⌘+double-click and ⌘+triple-click add a word or line selection.
