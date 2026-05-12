@@ -26,9 +26,9 @@ function unit_convert(quantity::DQ.UnionAbstractQuantity, value)
     return float(conv)
 end
 
-needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
-show_dim_convert_in_ticklabel(::M.DQConversion) = false
-show_dim_convert_in_axis_label(::M.DQConversion) = true
+M.needs_tick_update_observable(conversion::M.DQConversion) = conversion.quantity
+M.show_dim_convert_in_ticklabel(::M.DQConversion) = false
+M.show_dim_convert_in_axis_label(::M.DQConversion) = true
 
 function M.get_ticks(conversion::M.DQConversion, ticks, scale, formatter, vmin, vmax, show_in_label)
     quantity = conversion.quantity[]
