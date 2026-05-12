@@ -35,6 +35,46 @@ end
 ################################################################################
 # Utilities
 
+function Base.show(io::IO, attr::MetaAttributes)
+    println(io, "@DocumentedAttributes begin")
+    show_meta_attributes(io, attr)
+    print(io, "end")
+    return
+end
+
+# This is just for here, you may be looking for functions in documentation/recipe_docs.jl
+_print_attribute_docstring(io, ::Nothing, tabstr) = nothing
+function _print_attribute_docstring(io, docstring, tabstr)
+    docstring = chomp(docstring)
+    if contains(docstring, '\n')
+        docstring = "\"\"\"\n" * docstring * "\n\"\"\""
+        indented = replace(docstring, "\n" => "\n" * tabstr)
+        println(io, tabstr, indented)
+    else
+        println(io, tabstr, "\"$docstring\"")
+    end
+    return
+end
+
+function show_meta_attributes(io, attr, layer = 1, tab = 1)
+    tabstr = "    "^tab
+    for (key, idx) in attr.nesting.keytables[layer]
+        if idx > 0 # nest
+            _print_attribute_docstring(io, attr.nested_docstring[idx], tabstr)
+            println(io, tabstr, "$key = @attributes begin")
+            show_meta_attributes(io, attr, idx, tab+1)
+            println(io, tabstr, "end")
+        else
+            idx = -idx
+            _print_attribute_docstring(io, attr.leaf_docstring[idx], tabstr)
+            T = attr.types[attr.type_index[idx]]
+            Tstr = T === Any ? "" : "::$T"
+            println(io, tabstr, "$key$Tstr = $(attr.default_expr[idx])")
+        end
+    end
+    return
+end
+
 function is_attribute(T::Type, name::Symbol)
     meta = meta_attributes(T)
     return has_flat_key(meta, name) || has_nested_key(meta, name)
