@@ -46,16 +46,19 @@ end
 
 _replace_leading_hyphen(s::AbstractString) = startswith(s, '-') ? MINUS_SIGN * SubString(s, 2) : String(s)
 
-_format_plain_label(x::AbstractFloat, precision::Integer) = _replace_leading_hyphen(Base.Ryu.writefixed(x, precision))
+function _format_plain_label(x::AbstractFloat, precision::Integer; minus_sign::Bool = true)
+    s = Base.Ryu.writefixed(x, precision)
+    return minus_sign ? _replace_leading_hyphen(s) : s
+end
 
 # Format `xs` as plain decimal strings with a uniform precision.
-function format_ticks_plain(xs::AbstractArray{<:AbstractFloat})
+function format_ticks_plain(xs::AbstractArray{<:AbstractFloat}; minus_sign::Bool = true)
     precision = _plain_label_precision(xs)
-    return [_format_plain_label(x, precision) for x in xs]
+    return [_format_plain_label(x, precision; minus_sign) for x in xs]
 end
 
 # Fallback for non-float inputs (e.g. integer tick ranges): just stringify.
-format_ticks_plain(xs::AbstractArray) = string.(xs)
+format_ticks_plain(xs::AbstractArray; minus_sign::Bool = true) = string.(xs)
 
 # Split a Ryu scientific string like "1.500e-05" into (base, exponent), with
 # the leading hyphen normalized to MINUS_SIGN. The fractional zeros that Ryu

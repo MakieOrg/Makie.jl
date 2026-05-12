@@ -5,7 +5,7 @@ module Formatters
 
     function plain(ticks::AbstractVector)
         return try
-            format_ticks_plain(ticks)
+            format_ticks_plain(ticks; minus_sign = false)
         catch e
             bt = Base.catch_backtrace()
             Base.showerror(stderr, e)

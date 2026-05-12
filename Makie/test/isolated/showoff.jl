@@ -73,10 +73,11 @@
     @testset "Formatters (Axis3D backward-compat)" begin
         # The public `Formatters` submodule used to wrap `Showoff.showoff`;
         # it still returns `Vector{String}` so Axis3D's `TextBuffer` keeps
-        # working. The strings now use our typography rules but otherwise
-        # mirror the old Showoff output.
+        # working. The strings mirror the old Showoff output, including the
+        # ASCII hyphen on negative numbers.
         @test Makie.Formatters.plain([1.0, 2.0, 3.0]) == ["1", "2", "3"]
         @test Makie.Formatters.plain([1.0, 1.5, 2.0]) == ["1.0", "1.5", "2.0"]
+        @test Makie.Formatters.plain([-10.0, 0.0, 10.0]) == ["-10", "0", "10"]
 
         # Scientific keeps the unicode-superscript string form Showoff
         # produced (TextBuffer can't consume RichText). The `.0` padding
