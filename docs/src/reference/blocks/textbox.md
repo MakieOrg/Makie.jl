@@ -1,6 +1,6 @@
 # Textbox
 
-The `Textbox` supports entry of a simple, single-line string, with optional validation logic.
+The `Textbox` provides an editable text field with optional validation.
 
 ```@figure
 
@@ -10,6 +10,102 @@ Textbox(f[2, 1], width = 300)
 
 f
 ```
+
+## Editing
+
+```@example textbox
+using GLMakie
+GLMakie.activate!() # hide
+
+fig = Figure(size = (600, 200))
+tb = Textbox(fig[1, 1], width = 400, height = 60, fontsize = 20, placeholder = "Click to edit...")
+fig
+nothing # hide
+```
+
+```@setup textbox
+using ..FakeInteraction
+
+evts = [
+    MouseTo(Point2f(550, 20), 0.0),
+    Wait(0.4),
+    Lazy(_ -> MouseTo(relative_pos(tb, (0.4, 0.5)))),
+    Wait(0.4),
+    LeftClick(),
+    Wait(0.3),
+    TypeText("the quick brown fox", char_duration = 0.07),
+    Wait(0.7),
+
+    # Click after "brown" → backspace to "the quick fox"
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 15))),
+    Wait(0.3),
+    LeftClick(),
+    Wait(0.3),
+    KeyPress(Keyboard.backspace), KeyPress(Keyboard.backspace), KeyPress(Keyboard.backspace),
+    KeyPress(Keyboard.backspace), KeyPress(Keyboard.backspace), KeyPress(Keyboard.backspace),
+    Wait(0.7),
+
+    # Drag-select "quick" → replace with "slow"
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 4))),
+    Wait(0.3),
+    LeftDown(),
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 9), 0.5)),
+    LeftUp(),
+    Wait(0.5),
+    TypeText("slow", char_duration = 0.07),
+    Wait(0.8),
+
+    # Triple-click → select line
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 4))),
+    Wait(0.3),
+    LeftClick(),
+    LeftClick(),
+    LeftClick(),
+    Wait(0.7),
+
+    # Click at end → Shift+Enter for newline → type second line
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 12))),
+    Wait(0.3),
+    LeftClick(),
+    Wait(0.4),
+    KeyDown(Keyboard.left_shift),
+    KeyPress(Keyboard.enter),
+    KeyUp(Keyboard.left_shift),
+    Wait(0.3),
+    TypeText("the smart dog", char_duration = 0.07),
+    Wait(0.7),
+
+    # Click before "fox" → cmd+click before "dog" to add a second cursor
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 9))),
+    Wait(0.3),
+    LeftClick(),
+    Wait(0.4),
+    Lazy(_ -> MouseTo(textbox_offset_pos(tb, 23))),
+    Wait(0.3),
+    KeyDown(Keyboard.left_super),
+    LeftClick(),
+    KeyUp(Keyboard.left_super),
+    Wait(0.5),
+
+    # Type at both cursors simultaneously
+    TypeText("happy ", char_duration = 0.07),
+    Wait(1.4),
+]
+
+interaction_record(fig, "textbox_example.mp4", evts)
+```
+
+```@raw html
+<video autoplay loop muted playsinline src="./textbox_example.mp4" width="600"/>
+```
+
+- Drag to select; double-click for the word at the cursor; triple-click for the line.
+- Hold ⌘ (or Ctrl) while clicking to add an extra cursor. ⌘+double-click and ⌘+triple-click add a word or line selection.
+- Arrow keys move the caret; Shift extends the selection; ⌥ (Alt) moves by whole words.
+- ⌥+Backspace / ⌘+Backspace delete the previous word / line; ⌥+Delete / ⌘+Delete are the forward equivalents.
+- ⌘+A selects all. ⌘+C / ⌘+X / ⌘+V copy / cut / paste; paste is filtered through `restriction`.
+- ⌘+D selects the next occurrence of the current selection; ⌘+Shift+D the previous one.
+- Enter submits (subject to `validator`); Shift+Enter forces a newline; Escape defocuses.
 
 ## Validation
 
