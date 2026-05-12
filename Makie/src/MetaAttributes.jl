@@ -174,6 +174,7 @@ function get_typed_default(meta::MetaAttributes, flattened::Vector, keys::Symbol
     T = meta.types[meta.type_index[idx]]
     return T, flattened[idx]
 end
+
 function nested_indices(attr::MetaAttributes, keys::Symbol...)
     return nested_indices!(Int[], attr, keys)
 end
@@ -248,6 +249,341 @@ function convert_attributes!(attr::MetaAttributes, doc_attr::DocumentedAttribute
     end
     return attr
 end
+
+# Underscoring these to make them less visible
+# state = layer, keys
+# layers: stack of the current nesting indices, starting with 1
+# keys: stack of current nesting keys, starting with the first key in layer 1 (i.e. one less)
+function _begin_nesting_layer!(attr::MetaAttributes, state, key::Symbol, docstring = nothing)
+    layers, keys = state
+    current_layer = last(layers)
+    keytable = attr.nesting.keytables[current_layer]
+    if haskey(keytable, key)
+        next_layer = keytable[key]
+        if next_layer < 0
+            error("$key in $(join(keys, '.')) can not nest because it already has a value.")
+        end
+        attr.nested_docstring[next_layer] = docstring
+    else
+        push!(attr.nesting.keytables, Dict{Symbol, Int}())
+        next_layer = length(attr.nesting.keytables)
+        keytable[key] = next_layer
+        push!(attr.nested_docstring, docstring)
+    end
+    push!(layers, next_layer)
+    push!(keys, key)
+    return
+end
+
+function _end_nesting_layer!(state)
+    pop!.(state)
+    return
+end
+
+function _add_attribute!(
+        attr::MetaAttributes, state, key::Symbol,
+        @nospecialize(type), default_value, default_expr, docstring;
+        allow_edit = true
+    )
+    layers, keys = state
+    current_layer = last(layers)
+    keytable = attr.nesting.keytables[current_layer]
+
+    if haskey(keytable, key) # existing value
+
+        leaf_idx = -keytable[key]
+        name = ComputePipeline.merged_key(keys..., key)
+        if leaf_idx < 0
+            error("Could not insert attribute :$name because it is already defined as a nesting layer.")
+        end
+        allow_edit || return false
+
+        # add or remove tracking of leaf_idx as inherited
+        was_inherit = insorted(leaf_idx, attr.inherit)
+        is_inherit = default_value isa Inherit
+        if was_inherit && !is_inherit
+            inherit_idx = searchsortedfirst(attr.inherit, leaf_idx)
+            deleteat!(attr.inherit, inherit_idx)
+        elseif !was_inherit && is_inherit
+            inherit_idx = searchsortedfirst(attr.inherit, leaf_idx)
+            insert!(attr.inherit, inherit_idx, leaf_idx)
+        end
+
+        # update leaf data
+        attr.merged_keys[leaf_idx] = name
+        attr.defaults[leaf_idx] = default_value
+        attr.default_expr[leaf_idx] = default_expr
+        if !isnothing(docstring)
+            attr.leaf_docstring[leaf_idx] = docstring
+        end
+
+        # update leaf type
+        type_idx = attr.type_index[leaf_idx]
+        old_type = attr.types[type_idx]
+        if old_type != type
+            # type_indices are sorted
+            indices = attr.type_indices[type_idx]
+            idx = searchsortedfirst(indices, leaf_idx)
+            deleteat!(indices, idx)
+
+            type_idx = findfirst(==(type), attr.types)
+            if isnothing(type_idx)
+                push!(attr.types, type)
+                push!(attr.type_indices, Int[])
+                type_idx = length(attr.types)
+            end
+            push!(attr.type_index, type_idx)
+            # keep it sorted
+            indices = attr.type_indices[type_idx]
+            idx = searchsortedfirst(indices, leaf_idx)
+            insert!(indices, idx, leaf_idx)
+        end
+
+    else # new value
+
+        leaf_idx = length(attr.merged_keys) + 1
+        add_key!(attr.nesting, current_layer, (key,), -leaf_idx)
+
+        name = ComputePipeline.merged_key(keys..., key)
+        attr.merged_key_to_index[name] = leaf_idx
+
+        push!(attr.merged_keys, name)
+        push!(attr.defaults, default_value)
+        push!(attr.default_expr, default_expr)
+        push!(attr.leaf_docstring, docstring)
+
+        # leaf_idx only increases here so index lists will remain sorted
+        type_idx = findfirst(==(type), attr.types)
+        if isnothing(type_idx)
+            push!(attr.types, type)
+            push!(attr.type_indices, Int[])
+            type_idx = length(attr.types)
+        end
+        push!(attr.type_index, type_idx)
+        push!(attr.type_indices[type_idx], leaf_idx)
+
+        if default_value isa Inherit
+            push!(attr.inherit, leaf_idx)
+        end
+    end
+
+    return true
+end
+
+# temporary
+function _merge_attributes!(target::MetaAttributes, state, source::DocumentedAttributes)
+    _merge_attributes_rec!(target, state, MetaAttributes(source), tuple(), 1)
+    return
+end
+
+function _merge_attributes!(target::MetaAttributes, state, source::MetaAttributes)
+    _merge_attributes_rec!(target, state, source, tuple(), 1)
+    return
+end
+
+function _merge_attributes_rec!(target, state, source, _trace, current_layer)
+    keytables = source.nesting.keytables
+    for (key, layer_idx) in keytables[current_layer]
+        if layer_idx > 0
+            trace = (_trace..., key)
+            _begin_nesting_layer!(target, state, key, source.nested_docstring[layer_idx])
+            _merge_attributes_rec!(target, state, source, trace, layer_idx)
+            _end_nesting_layer!(state)
+        else
+            idx = -layer_idx
+            type = source.types[source.type_index[idx]]
+            got_added = _add_attribute!(
+                target, state, key, type, source.defaults[idx],
+                source.default_expr[idx], source.leaf_docstring[idx],
+                allow_edit = false
+            )
+            if !got_added
+                target_path = join(state[2], '.') * '.' * string(key)
+                source_path = join(_trace, '.') * '.' * string(key)
+                error("Could not add :$target_path from :$source_path because :$target_path already exists.")
+            end
+        end
+    end
+    return
+end
+
+function build_meta_attributes(expr::Expr, local_vars = tuple())
+    block_expr = Expr(:block)
+    build_meta_attributes!(block_expr.args, expr, local_vars)
+
+    final_expr = quote
+        let;
+            attr = Makie.MetaAttributes()
+            state = (Int[1], Symbol[])
+            $block_expr
+            @assert isempty(state[2]) "Failed to build documented attributes: Nesting did not resolve correctly, leaving behind $state."
+            attr
+        end
+    end
+    # display(final_expr)
+    return final_expr
+end
+
+function build_meta_attributes!(output::Vector, expr::Expr, local_vars)
+    if !(expr.head === :block)
+        throw(ArgumentError("Argument is not a begin end block"))
+    end
+
+    for line in expr.args
+        line isa LineNumberNode && continue
+
+        # TODO: How do you capture the docstring with MacroTools?
+        has_docs = line isa Expr && line.head === :macrocall && line.args[1] isa GlobalRef
+
+        if has_docs
+            docs = line.args[3]
+            attr = line.args[4]
+        else
+            docs = nothing
+            attr = line
+        end
+
+        if MacroTools.@capture(attr, key_ = @attributes block_)
+            if !isa(key, Symbol)
+                error("Attribute name $(repr(key)) must be a Symbol. (Plain variable name in macro closure.)")
+            end
+            push!(output, :(Makie._begin_nesting_layer!(attr, state, $(QuoteNode(key)), $docs)))
+            try
+                build_meta_attributes!(output, block, local_vars)
+            catch e
+                @info "While building nested attributes for $key:"
+                rethrow(e)
+            end
+            push!(output, :(Makie._end_nesting_layer!(state)))
+
+        elseif MacroTools.@capture(attr, key_type_ = val_)
+            # ^ this also matches `name::type = val`
+            if !MacroTools.@capture(key_type, key_::type_)
+                key = key_type
+                type = :Any
+            end
+            if !isa(key, Symbol)
+                error("Attribute name $(repr(key)) must be a Symbol. (Plain variable name in macro closure.)")
+            end
+
+            # TODO: allow Inherit here?
+            attribute = quote
+                Makie._add_attribute!(
+                    attr, state, $(QuoteNode(key)), $type,
+                    $(get_default_expr_no_nesting(val, key, val, local_vars)),
+                    $(default_expr_string(val)), $docs
+                )
+            end
+            push!(output, attribute)
+
+        elseif MacroTools.@capture(attr, mixin_...)
+            mixin_expr = quote
+                mixin = $mixin
+                prev_state = last(state[1])
+                Makie._merge_attributes!(attr, state, mixin)
+                @assert last(state[1]) == prev_state "Mixin must return to the previous state when finished"
+            end
+            push!(output, mixin_expr)
+
+        else
+            error("Could not parse line:\n $line")
+        end
+    end
+
+    return
+end
+
+function convert_old_attributes_expr_to_meta(func_expr::Expr)
+    # remove the function header and just work on the body
+    ex = func_expr.args[2]
+
+    # preserve :fonts
+    # convert theme(scene, key) -> @inherit
+    expr = MacroTools.postwalk(ex) do x
+        if MacroTools.@capture(x, key_ = Attributes(args__))
+            key === :fonts ? :($key = Dict($args)) : x
+        elseif MacroTools.@capture(x, theme(scene_, key_))
+            return :(Makie.Inherit(($key,)))
+        elseif MacroTools.@capture(x, lift(f_, Makie.Inherit(key_tuple_)))
+            return :(Makie.Inherit($f, $key_tuple))
+        elseif MacroTools.@capture(x, map(f_, Makie.Inherit(key_tuple_)))
+            return :(Makie.Inherit($f, $key_tuple))
+        end
+        return x
+    end
+
+    # replace all top level `Attribute` calls with `MetaAttributes` generation code
+    local_vars = Set{Symbol}()
+    attr_sources = Set{Symbol}()
+    for (i, line) in enumerate(expr.args)
+        if MacroTools.@capture(line, var_ = Attributes(entries__))
+            new_line = line_to_documented_attributes(entries, local_vars, attr_sources)
+            expr.args[i] = :($var = $new_line)
+            push!(local_vars, var)
+            push!(attr_sources, var)
+        elseif MacroTools.@capture(line, return Attributes(entries__))
+            new_line = line_to_documented_attributes(entries, local_vars, attr_sources)
+            expr.args[i] = new_line
+        elseif MacroTools.@capture(line, var_ = val_)
+            push!(local_vars, var)
+        end
+    end
+
+    full_expr = :(let; $expr end)
+    # display(full_expr)
+    return full_expr
+end
+
+function line_to_documented_attributes(entries, local_vars, attr_sources)
+    # build @DocumentedAttributes style expression
+    block_expr = attribute_args_to_block_expr(entries, attr_sources)
+
+    # restore fonts
+    block_expr = MacroTools.postwalk(block_expr) do x
+        if MacroTools.@capture(x, key_ = Dict(args__))
+            key === :fonts ? :($key = Attributes($args)) : x
+        end
+        return x
+    end
+
+    # convert as @DocumentedAttributes
+    return build_meta_attributes(block_expr, local_vars)
+end
+
+function attribute_args_to_block_expr(entries, attr_sources)
+    block_expr = Expr(:block)
+    for entry in entries
+        if MacroTools.@capture(entry, key_ => val_)
+            expr = convert_old_attributes_expr_to_meta_inner(val, attr_sources)
+        elseif MacroTools.@capture(entry, key_ = val_)
+            expr = convert_old_attributes_expr_to_meta_inner(val, attr_sources)
+        else
+            error("Failed to parse input of `Attributes(...)`:\n$entry")
+        end
+        push!(block_expr.args, :($key = $expr))
+    end
+    return block_expr
+end
+
+function convert_old_attributes_expr_to_meta_inner(entry_value_expr, attr_sources)
+    if MacroTools.@capture(entry_value_expr, Attributes(entries__))
+        block_expr = attribute_args_to_block_expr(entries, attr_sources)
+        return :(@attributes $block_expr)
+    elseif entry_value_expr isa Symbol && entry_value_expr in attr_sources
+        # Doing
+        #   a = Attributes(...)
+        #   b = Attributes(a = a)
+        # is like
+        #   a = @DocumentedAttributes begin ... end
+        #   b = @DocumentedAttributes begin
+        #       a = @attributes begin a... end
+        #   end
+        return :(@attributes begin $(entry_value_expr)... end)
+    end
+    return entry_value_expr
+end
+
+################################################################################
 
 meta_attributes(::Type) = MetaAttributes()
 

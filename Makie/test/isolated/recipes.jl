@@ -68,7 +68,7 @@ end
             @test i in ma.inherit
         end
     end
-    @test ma.nested_docstrings == Union{Nothing, String}[nothing for _ in 1:5]
+    @test ma.nested_docstring == Union{Nothing, String}[nothing for _ in 1:5]
 end
 
 """
@@ -158,7 +158,7 @@ end
             @test i in ma.inherit
         end
     end
-    @test ma.nested_docstrings == [nothing, "a doc", nothing]
+    @test ma.nested_docstring == [nothing, "a doc", nothing]
 end
 
 # same as NewRecipe, just types added
@@ -266,5 +266,5 @@ end
             @test i in ma.inherit
         end
     end
-    @test ma.nested_docstrings == [nothing, "a doc", nothing]
+    @test ma.nested_docstring == [nothing, "a doc", nothing]
 end

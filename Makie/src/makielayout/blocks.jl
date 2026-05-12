@@ -205,7 +205,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     push!(fields_vector, :(blockscene::Scene))
     push!(fields_vector, :(layout::Union{Nothing, GridLayout}))
 
-    attrs = extract_attributes!(body)
+    doc_attrs, meta_attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
         x -> x isa Expr && x.head === :macrocall &&
@@ -277,10 +277,10 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         export $BlockType
         $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $BlockType
 
-        const $attr_placeholder = $attrs
+        const $attr_placeholder = $doc_attrs
         $(Makie).documented_attributes(::Type{$BlockType}) = $attr_placeholder
 
-        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        const $meta_attr_placeholder = $meta_attrs
         $(Makie).meta_attributes(::Type{<:$(BlockType)}) = $meta_attr_placeholder
 
         $(Makie).has_forwarded_layout(::Type{$BlockType}) = $has_forwarded_layout
@@ -356,7 +356,7 @@ function extract_attributes!(body)
         pushfirst!(attr_input_expr.args, :(Makie.mixin_block_layout_attributes()...))
     end
 
-    return build_documented_attributes(attr_input_expr)
+    return build_documented_attributes(attr_input_expr), build_meta_attributes(attr_input_expr)
 end
 
 

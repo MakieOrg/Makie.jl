@@ -252,6 +252,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
     doc_attr_expr = esc(convert_old_attributes_expr(theme_func))
+    meta_attr_expr = convert_old_attributes_expr_to_meta(theme_func) # why does this one not want to esc?
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
     meta_attr_placeholder = Symbol("#__", funcname_sym, "_meta_attr_placeholder")
 
@@ -264,7 +265,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
 
         const $attr_placeholder = $doc_attr_expr
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
-        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        const $meta_attr_placeholder = $meta_attr_expr
         $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
 
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
@@ -416,7 +417,7 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
         const $attr_placeholder = $(build_documented_attributes(attrblock))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
 
-        const $meta_attr_placeholder = MetaAttributes($attr_placeholder)
+        const $meta_attr_placeholder = $(build_meta_attributes(attrblock))
         $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))

@@ -49,34 +49,34 @@ function get_default_expr(default, attribute_path)
     if MacroTools.@capture(default, @attributes attrblock_)
         return build_documented_attributes(attrblock, attribute_path)
     else
-        return get_default_expr_no_nesting(default, attribute_path, default)
+        return get_default_expr_no_nesting(default, attribute_path, default, tuple())
     end
 end
 
 # Parses specifically `@inherit ...`  and its compat forms
-function get_default_expr_no_nesting(expr, attribute_path, full_expr)
+function get_default_expr_no_nesting(expr, attribute_path, full_expr, local_vars)
     # This is split off to allow Inherit(key, Inherit(...)) in some capacity
     if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, map(f_, inherit(scene_, key_, fallback_)))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
         # This was only supported with fallback by Blocks (?)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, theme(scene_, key_))
         return :(Makie.Inherit($(default_key_expr(key))))
 
     elseif MacroTools.@capture(expr, @inherit callback_ key_ fallback_)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($callback, $(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit key_ fallback_)
         # TODO: How do we figure out if this is @inherit callback key instead?
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr)
+        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit key_)
         return :(Makie.Inherit($(default_key_expr(key))))
@@ -92,7 +92,12 @@ function get_default_expr_no_nesting(expr, attribute_path, full_expr)
             """
         return :("default")
     else
-        return esc(expr)
+        return MacroTools.postwalk(expr) do x
+            if x isa Symbol && !in(x, local_vars)
+                return esc(x)
+            end
+            return x
+        end
     end
 end
 
