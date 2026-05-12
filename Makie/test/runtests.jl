@@ -77,6 +77,7 @@ end
         include("interactivity/Axis.jl")
         include("interactivity/Axis3.jl")
         include("interactivity/DataInspector.jl")
+        include("interactivity/EditableText.jl")
     end
 
     include("boundingboxes.jl")
