@@ -34,6 +34,7 @@ end
         include("isolated/Plane.jl")
         include("isolated/texture_atlas.jl")
         include("isolated/datetime_ticks.jl")
+        include("isolated/showoff.jl")
     end
 
     @testset "Plots" begin

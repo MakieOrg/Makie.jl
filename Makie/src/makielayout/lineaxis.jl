@@ -1,8 +1,3 @@
-# the hyphen which is usually used to store negative number strings
-# is shorter than the dedicated minus in most fonts, the minus glyph
-# looks more balanced with numbers, especially in superscripts or subscripts
-const MINUS_SIGN = "−" # == "\u2212" (Unicode minus)
-
 function LineAxis(parent::Scene; @nospecialize(kwargs...))
     attrs = merge!(Attributes(kwargs), generic_plot_attributes(LineAxis))
     return LineAxis(parent, attrs)
@@ -643,13 +638,10 @@ end
 function get_ticks(l::LogTicks, scale::LogFunctions, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
     ticks = Makie.inverse_transform(scale).(ticks_scaled)
-    labels_scaled = get_ticklabels(
-        # avoid unicode superscripts in ticks, as the ticks are converted
-        # to superscripts in the next step
-        xs -> Showoff.showoff(xs, :plain),
-        ticks_scaled
-    )
-    labels = rich.(_logbase(scale), superscript.(replace.(labels_scaled, "-" => MINUS_SIGN), offset = Vec2f(0.1f0, 0.0f0)))
+    # plain (not auto) formatting so the exponent stays as a digit string we
+    # can wrap in a RichText superscript span below.
+    labels_scaled = get_ticklabels(format_ticks_plain, ticks_scaled)
+    labels = rich.(_logbase(scale), superscript.(labels_scaled, offset = Vec2f(0.1f0, 0.0f0)))
     return ticks, labels
 end
 
@@ -818,9 +810,11 @@ end
 """
     get_ticklabels(::Automatic, values)
 
-Gets tick labels by applying `showoff_minus` to `values`.
+Gets tick labels by applying `format_ticks_auto` to `values`. Labels render as
+plain strings when the value range is moderate and as `RichText` with a
+superscript span when the range warrants scientific notation.
 """
-get_ticklabels(::Automatic, values) = showoff_minus(values)
+get_ticklabels(::Automatic, values) = format_ticks_auto(values)
 
 """
     get_ticklabels(formatfunction::Function, values)
@@ -842,7 +836,7 @@ function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     multiples = Makie.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
     locs = multiples .* m.multiple
-    labs = showoff_minus(multiples) .* m.suffix
+    labs = format_ticks_plain(multiples) .* m.suffix
     if m.strip_zero
         labs = map(((x, lab),) -> x != 0 ? lab : "0", zip(multiples, labs))
     end
@@ -875,17 +869,11 @@ function get_ticks(m::AngularTicks, any_scale, ::Automatic, vmin, vmax)
         multiples = Makie.get_tickvalues(LinearTicks(3), s * dvmin, s * dvmax) ./ s
     end
 
-    # We need to round this to avoid showoff giving us 179 for 179.99999999999997
+    # We need to round this to avoid the formatter giving us 179 for 179.99999999999997
     # We also need to be careful that we don't remove significant digits
     sigdigits = ceil(Int, log10(1000 * max(abs(vmin), abs(vmax)) / delta))
 
-    return multiples, showoff_minus(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
-end
-
-# Replaces hyphens in negative numbers with the unicode MINUS_SIGN
-function showoff_minus(x::AbstractVector)
-    # TODO: don't use the `replace` workaround
-    return replace.(Showoff.showoff(x), r"-(?=\d)" => MINUS_SIGN)
+    return multiples, format_ticks_plain(round.(multiples .* m.label_factor, sigdigits = sigdigits)) .* m.suffix
 end
 
 # identity or unsupported scales
