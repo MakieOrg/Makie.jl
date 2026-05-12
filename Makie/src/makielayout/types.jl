@@ -1694,8 +1694,9 @@ end
 end
 
 @Block Textbox begin
-    cursorindex::Observable{Int}
-    cursoranimtask
+    # `editor` exposes the embedded `EditableText` recipe so tests / advanced
+    # consumers can drive cursor and selection state directly. Internal.
+    editor::Any
     @attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -1760,7 +1761,7 @@ end
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
         "The color of the cursor."
-        cursorcolor = :transparent
+        cursorcolor = COLOR_ACCENT[]
     end
 end
 

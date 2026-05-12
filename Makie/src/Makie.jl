@@ -185,6 +185,7 @@ include("basic_recipes/voxels.jl")
 include("basic_recipes/waterfall.jl")
 include("basic_recipes/wireframe.jl")
 include("basic_recipes/textlabel.jl")
+include("basic_recipes/editabletext.jl")
 include("basic_recipes/tooltip.jl")
 
 include("basic_recipes/makiecore_examples/scatter.jl")
