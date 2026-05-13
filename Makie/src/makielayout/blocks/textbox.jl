@@ -392,10 +392,11 @@ function focus!(tb::Textbox)
     if !tb.focused[]
         tb.focused = true
 
+        cursorbase = tb.bordercolor_focused[]
         cursoranim = Animations.Loop(
             Animations.Animation(
                 [0, 1.0],
-                [Colors.alphacolor(COLOR_ACCENT[], 0), Colors.alphacolor(COLOR_ACCENT[], 1)],
+                [Colors.alphacolor(cursorbase, 0), Colors.alphacolor(cursorbase, 1)],
                 Animations.sineio(n = 2, yoyo = true, postwait = 0.2)
             ),
             0.0, 0.0, 1000

@@ -359,6 +359,30 @@ function _attribute_list(T)
     return join(("`$k`" for k in ks), ", ")
 end
 
+"""
+    _inherit_nested(scene_attrs, current_theme, keys_path::NTuple, default)
+
+Walks `scene_attrs` and then `current_theme` along `keys_path` to find the
+attribute at the end of the path. Used by `@inherit((:a, :b), default)` to
+support reading values out of nested theme dicts (e.g. the `colors` block).
+"""
+function _inherit_nested(scene_attrs, current_theme, keys_path::Tuple, default)
+    for dict in (scene_attrs, current_theme)
+        cur = dict
+        ok = true
+        for k in keys_path
+            if cur isa Union{Attributes, AbstractDict} && haskey(cur, k)
+                cur = cur[k]
+            else
+                ok = false
+                break
+            end
+        end
+        ok && return to_value(cur)
+    end
+    return default
+end
+
 function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
 
     exprs = map(attrs) do a
@@ -368,21 +392,28 @@ function make_attr_dict_expr(attrs, sceneattrsym, curthemesym)
             if length(d.args) != 4
                 error("@inherit works with exactly 2 arguments, expression was $d")
             end
-            if !(d.args[3] isa QuoteNode)
-                error("Argument 1 of @inherit must be a :symbol, got $(d.args[3])")
-            end
-            key, default = d.args[3:4]
-            # first check scene theme
-            # then current_default_theme
-            # then default value
-            d = quote
-                if haskey($sceneattrsym, $key)
-                    to_value($sceneattrsym[$key]) # only use value of theme entry
-                elseif haskey($curthemesym, $key)
-                    to_value($curthemesym[$key]) # only use value of theme entry
-                else
-                    $default
+            keyarg, default = d.args[3:4]
+            # Accept either a single `:symbol` or a tuple of symbols `(:a, :b)`
+            # to walk nested theme dicts (e.g. `@inherit((:colors, :accent), ...)`).
+            if keyarg isa QuoteNode
+                key = keyarg
+                d = quote
+                    if haskey($sceneattrsym, $key)
+                        to_value($sceneattrsym[$key])
+                    elseif haskey($curthemesym, $key)
+                        to_value($curthemesym[$key])
+                    else
+                        $default
+                    end
                 end
+            elseif keyarg isa Expr && keyarg.head === :tuple &&
+                    all(a -> a isa QuoteNode, keyarg.args)
+                keys_tuple = Expr(:tuple, keyarg.args...)
+                d = quote
+                    _inherit_nested($sceneattrsym, $curthemesym, $keys_tuple, $default)
+                end
+            else
+                error("Argument 1 of @inherit must be a :symbol or a tuple of symbols, got $keyarg")
             end
         end
 
