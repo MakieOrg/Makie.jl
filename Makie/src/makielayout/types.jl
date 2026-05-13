@@ -1379,7 +1379,7 @@ end
         "Selection cell color when inactive"
         selection_cell_color_inactive = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
         "Color of the dropdown arrow"
-        dropdown_arrow_color = @inherit(:textcolor, :black)
+        dropdown_arrow_color = @inherit((:colors, :text_muted), RGBf(0.5, 0.5, 0.5))
         "Size of the dropdown arrow"
         dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."

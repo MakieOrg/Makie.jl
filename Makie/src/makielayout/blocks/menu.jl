@@ -224,6 +224,12 @@ function initialize_block!(m::Menu; default = 1)
         is_over_button = false
 
         if Makie.is_mouseinside(menuscene) # the whole scene containing all options
+            # We entered the dropdown — the button cleanup below is short-circuited
+            # by the early return, so reset the button's hover indicator here.
+            if was_inside_button[]
+                was_inside_button[] = false
+                color_selector[] = SELECT_INACTIVE_COLOR
+            end
             # Is inside the expanded menu selection (the polys cover the whole
             # selectable area and are in pixel space relative to menuscene)
             if any(r -> mp in r, optionpolys[1][])
