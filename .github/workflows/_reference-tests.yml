@@ -1,0 +1,94 @@
+name: Reference tests
+on:
+  workflow_call:
+
+jobs:
+  cairomakie:
+    uses: ./.github/workflows/_cairomakie.yml
+
+  glmakie:
+    uses: ./.github/workflows/_glmakie.yml
+
+  wglmakie:
+    uses: ./.github/workflows/_wglmakie.yml
+
+  consolidation:
+    name: Merge artifacts
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [cairomakie, glmakie, wglmakie]
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages_WGLMakie_1
+          path: ./ReferenceImages/WGLMakie
+      - uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages_CairoMakie_1
+          path: ./ReferenceImages/CairoMakie
+      - uses: actions/download-artifact@v8
+        with:
+          name: ReferenceImages_GLMakie_1
+          path: ./ReferenceImages/GLMakie
+      - name: Consolidate reference image folders
+        run: |
+          baseDir="./ReferenceImages"
+
+          # Create new top-level directory for combined files
+          mkdir -p "./ReferenceImagesCombined"
+
+          # Copy the reference folder from GLMakie, it's the same for all backends
+          cp -r "${baseDir}/GLMakie/reference/." "./ReferenceImagesCombined/reference/"
+
+          # Initialize empty files for concatenation
+          > "./ReferenceImagesCombined/scores.tsv"
+          > "./ReferenceImagesCombined/new_files.txt"
+
+          # Loop through the directories and concatenate the files, and copy recorded folders
+          for dir in WGLMakie CairoMakie GLMakie; do
+              # Concatenate scores.tsv, new_files.txt and missing_files.txt
+              cat "${baseDir}/${dir}/scores.tsv" >> "./ReferenceImagesCombined/scores.tsv"
+              cat "${baseDir}/${dir}/new_files.txt" >> "./ReferenceImagesCombined/new_files.txt"
+              cat "${baseDir}/${dir}/missing_files.txt" >> "./ReferenceImagesCombined/missing_files.txt"
+
+              # Copy recorded folder
+              mkdir -p "./ReferenceImagesCombined/recorded/${dir}/"
+              cp -r "${baseDir}/${dir}/recorded/${dir}/." "./ReferenceImagesCombined/recorded/${dir}/"
+          done
+
+          echo "Files and folders have been successfully combined into ReferenceImagesCombined."
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ReferenceImages
+          path: ./ReferenceImagesCombined/
+      - name: Save number of missing refimages to file
+        env:
+          COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: |
+          mkdir -p ./n_missing
+          N_MISSING=$(wc -l < ./ReferenceImagesCombined/new_files.txt)
+          echo $N_MISSING > ./n_missing/n_missing_refimages
+          echo $COMMIT_SHA >> ./n_missing/n_missing_refimages
+      - name: Upload artifact with number of missing refimages
+        uses: actions/upload-artifact@v7
+        with:
+          name: n_missing_refimages
+          path: n_missing/
+
+  refimage-status:
+    name: Reference image status
+    runs-on: ubuntu-latest
+    needs: [consolidation]
+    if: always() && needs.consolidation.result == 'success'
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: n_missing_refimages
+      - name: Check for missing reference images
+        run: |
+          N_MISSING=$(head -1 n_missing_refimages)
+          echo "$N_MISSING missing reference image(s)"
+          if [ "$N_MISSING" -ne 0 ]; then
+            echo "::error::$N_MISSING missing reference image(s) must be uploaded"
+            exit 1
+          fi

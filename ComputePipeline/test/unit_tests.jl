@@ -1104,3 +1104,16 @@ end
         @test_throws ErrorException ComputePipeline.unsafe_init!(graph.xy, 0)
     end
 end
+
+@testset "Array memory aliasing" begin
+    M = fill(0, 2, 2)
+    graph = ComputeGraph()
+    add_input!(graph, :mat, M)
+    map!(vec, graph, :mat, :vec)
+    map!(v -> Float32.(v), graph, :vec, :vecf)
+    v = graph.vec[]
+    M .= 1
+    graph.mat = M
+    @assert pointer(v) == pointer(graph.vec[]) "this is expected to be memory aliased, but isn't"
+    @test graph.vecf[] == [1, 1, 1, 1]
+end

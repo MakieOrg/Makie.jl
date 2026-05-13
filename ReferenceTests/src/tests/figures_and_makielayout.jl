@@ -196,7 +196,8 @@ end
 
     li = lines!(
         1:10,
-        label = "Line" => (; linewidth = 4, color = :gray60, linestyle = :dot),
+        linecap = :round,
+        label = "Line" => (; linewidth = 8, color = :gray60, linestyle = :dot),
     )
     sc = scatter!(
         1:10,
@@ -209,16 +210,16 @@ end
             label => (; markersize = 30, color = i) for (i, label) in enumerate(["blue", "green", "yellow"])
         ]
     )
-    Legend(f[1, 2], ax)
+    Legend(f[1, 2], ax, patchsize = (60, 30))
     Legend(
         f[1, 3],
         [
             sc => (; markersize = 30, alpha = 0.3),
-            [li => (; color = :red, alpha = 0.3, linewidth = 4), sc => (; color = :cyan)],
-            [li, sc] => Dict(:color => :cyan),
+            [li => (; color = :red, alpha = 0.3, linewidth = 8), sc => (; color = :cyan)],
+            [li, sc] => Dict(:color => :cyan, :linecap => :butt),
         ],
         ["Scatter", "Line and Scatter", "Another"],
-        patchsize = (40, 20)
+        patchsize = (60, 30)
     )
     f
 end
@@ -734,14 +735,14 @@ end
 
     tb2 = Makie.Textbox(f[2, 1], width = 100)
     Makie.set!(tb2, "1234567890qwertyuiop")
-    tb2.cursorindex[] = 20
+    tb2.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb2)
     send(e, Keyboard.backspace)
     Makie.defocus!(tb2)
 
     tb3 = Makie.Textbox(f[3, 1], width = 100)
     Makie.set!(tb3, "1234567890qwertyuiop")
-    tb3.cursorindex[] = 20
+    tb3.editor.cursors[] = [Makie.EditCursor(20)]
     Makie.focus!(tb3)
     click(e, 259, 173) # between 7 and 8
     send(e, Keyboard.left)
@@ -750,8 +751,8 @@ end
 
     tb4 = Makie.Textbox(f[4, 1], width = 100)
     Makie.set!(tb4, "1234567890qwertyuiop")
-    tb4.cursorindex[] = 20
-    tb4.cursorindex[] = 10
+    tb4.editor.cursors[] = [Makie.EditCursor(20)]
+    tb4.editor.cursors[] = [Makie.EditCursor(10)]
     Makie.focus!(tb4)
     for _ in 1:8
         send(e, Keyboard.backspace)

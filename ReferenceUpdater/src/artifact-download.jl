@@ -31,7 +31,7 @@ function download_artifacts(; commit = nothing, pr = nothing)
         name = checkrun["name"]
         id = checkrun["id"]
 
-        if name == "Merge artifacts"
+        if name == "reference-tests / Merge artifacts"
             job = JSON3.read(authget("https://api.github.com/repos/MakieOrg/Makie.jl/actions/jobs/$(id)").body)
             run = JSON3.read(authget(job["run_url"]).body)
             if run["status"] != "completed"
@@ -46,7 +46,7 @@ function download_artifacts(; commit = nothing, pr = nothing)
     end
 
     if isempty(checkruns)
-        error("\"Merge artifacts\" run is not available.")
+        error("\"reference-tests / Merge artifacts\" run is not available.")
     end
     if length(checkruns) > 1
         datetimes = map(checkruns) do checkrun

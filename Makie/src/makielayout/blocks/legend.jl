@@ -440,7 +440,8 @@ function legendelement_plots!(scene, element::LineElement, bbox::Observable{Rect
     lin = lines!(
         scene, points, linewidth = attrs.linewidth, color = attrs.linecolor,
         colormap = attrs.linecolormap, colorrange = attrs.linecolorrange,
-        linestyle = attrs.linestyle, inspectable = false, alpha = attrs.alpha
+        linestyle = attrs.linestyle, linecap = attrs.linecap, joinstyle = attrs.joinstyle,
+        inspectable = false, alpha = attrs.alpha
     )
 
     return [lin]
@@ -576,7 +577,7 @@ end
 
 function apply_legend_override!(le::LineElement, override::LegendOverride)
     renamed_attrs = _rename_attributes!(LineElement, copy(override.overrides))
-    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :alpha)
+    for sym in (:linepoints, :linewidth, :linecolor, :linecolormap, :linecolorrange, :linestyle, :linecap, :joinstyle, :alpha)
         if haskey(renamed_attrs, sym)
             le.attributes[sym] = renamed_attrs[sym]
         end
@@ -727,6 +728,8 @@ function legendelements(plot::Union{Lines, LineSegments}, legend)
             color = extract_color(plot, legend[:linecolor]),
             linestyle = choose_scalar(ls isa Vector ? Linestyle(ls) : ls, legend[:linestyle]),
             linewidth = choose_scalar(plot.linewidth, legend[:linewidth]),
+            linecap = choose_scalar(plot.linecap, legend[:linecap]),
+            joinstyle = choose_scalar(get(plot, :joinstyle, legend[:joinstyle]), legend[:joinstyle]),
             colormap = plot.colormap,
             colorrange = plot.colorrange,
             alpha = plot.alpha

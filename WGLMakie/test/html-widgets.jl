@@ -257,15 +257,17 @@ using ElectronCall, WGLMakie, Bonito, Test
                 return {
                     exists: node !== null,
                     type: node ? node.type : "",
-                    value: node ? node.value : ""
+                    value: node ? node.value : "",
+                    placeholder: node ? node.placeholder : ""
                 }
             })()"""
         )
 
         @test textbox_props["exists"] == true
         @test textbox_props["type"] == "text"
-        # Initial value is the placeholder text
-        @test textbox_props["value"] == "Enter text..."
+        # Empty input shows the placeholder via the native HTML attribute
+        @test textbox_props["value"] == ""
+        @test textbox_props["placeholder"] == "Enter text..."
 
         # Test entering text
         evaljs_value(

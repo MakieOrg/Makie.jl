@@ -76,6 +76,16 @@ function create_lineinfos(charinfos, word_wrap_width)
         end
     end
 
+    # If the input ends with '\n' (or word-wrap newlines), the loop pushes a new
+    # empty `Float32[]` to `xs` but never the matching empty view to `lineinfos`,
+    # so a trailing newline contributes no vertical space. Append empty views so
+    # lengths match — the trailing empty line then takes part in alignment and
+    # bounding box computations.
+    while length(lineinfos) < length(xs)
+        n = length(charinfos)
+        push!(lineinfos, view(charinfos, (n + 1):n))
+    end
+
     return lineinfos, xs
 end
 
@@ -121,9 +131,15 @@ function glyph_collection(
     # split the character info vector into lines after every \n
     lineinfos, xs = create_lineinfos(charinfos, word_wrap_width)
 
+    # For an empty trailing line (caused by a terminating '\n'), borrow metrics
+    # from the '\n' that ended the previous line so it still occupies vertical
+    # space and contributes to alignment / bounding boxes.
+    metric_char(i) = isempty(lineinfos[i]) ? last(lineinfos[i - 1]) : last(lineinfos[i])
+
     # calculate linewidths as the last origin plus hadvance for each line
     linewidths = map(lineinfos, xs) do line, xx
         nchars = length(line)
+        nchars == 0 && return 0.0f0  # empty trailing line (after a final '\n')
         # if the last and not the only character is \n, take the previous one
         # to compute the width
         i = (nchars > 1 && line[end].char == '\n') ? nchars - 1 : nchars
@@ -145,9 +161,10 @@ function glyph_collection(
     end
 
     # each character carries a "lineheight" metric given its font and scale and a lineheight scaling factor
-    # make each line's height the maximum of these values in the line
-    lineheights = map(lineinfos) do line
-        maximum(l -> l.lineheight, line)
+    # make each line's height the maximum of these values in the line.
+    lineheights = map(eachindex(lineinfos)) do i
+        line = lineinfos[i]
+        isempty(line) ? metric_char(i).lineheight : maximum(l -> l.lineheight, line)
     end
 
     # compute y values by adding up lineheights in negative y direction
@@ -163,8 +180,13 @@ function glyph_collection(
         last(l.scale) * l.extent.ascender
     end
 
-    last_line_descender = minimum(lineinfos[end]) do l
-        last(l.scale) * l.extent.descender
+    last_line_descender = if isempty(lineinfos[end])
+        c = metric_char(length(lineinfos))
+        last(c.scale) * c.extent.descender
+    else
+        minimum(lineinfos[end]) do l
+            last(l.scale) * l.extent.descender
+        end
     end
 
     # compute the height of all lines together

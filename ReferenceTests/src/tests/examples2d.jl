@@ -2466,6 +2466,16 @@ end
         ax, 0, -100, 10, sin(10),
         style = Ann.Styles.LineArrow(),
     )
+    ylims!(ax, -1.5, 1.8)
+    annotation!(
+        ax, pi / 2, 1.0, 5pi / 2, 1.0,
+        text = "", style = Ann.Styles.WithText(
+            Ann.Styles.LineArrow();
+            text = "one period", fontsize = 12
+        ),
+        path = Ann.Paths.Arc(0.3), labelspace = :data,
+        color = :purple, shrink = (5.0, 5.0),
+    )
 
     f
 end

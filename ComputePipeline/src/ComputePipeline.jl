@@ -613,6 +613,12 @@ function is_same(a::T, b::T) where {T}
         return same_object ? false : isequal(a, b)
     end
 end
+function is_same(old::Array, new::Array)
+    # same pointer means memory aliased (which does not require old === new)
+    # and same memory means we can't compare before and after => assume not same
+    is_distinct = pointer(old) !== pointer(new)
+    return is_distinct && isequal(old, new)
+end
 
 # do we want this type stable?
 # This is how we could get a type stable callback body for resolve

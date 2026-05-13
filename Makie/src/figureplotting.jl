@@ -42,57 +42,165 @@ function _disallow_keyword(kw, attributes)
     end
 end
 
-# For plots that dont require an axis,
+# Axis type picking dispatch function
+
+function _preferred_axis_type(plot::Plot{F}) where {F}
+    # useful for more fine grained control
+    input_args = plot.args[]
+    result = preferred_axis_type(plot, input_args...)
+    isnothing(result) || return result
+
+    # compat for args_preferred_axis which relied on the plot type alone
+    plot_type = Plot{F}
+    result = preferred_axis_type(plot_type, input_args...)
+    isnothing(result) || return result
+
+    # still fine grained, but more generic after argument conversions
+    conv_args = plot.converted[]
+    result = preferred_axis_type(plot, conv_args...)
+    isnothing(result) || return result
+
+    result = preferred_axis_type(plot_type, conv_args...)
+    isnothing(result) || return result
+
+    # Just a plot is probably still more specific than just a set of args/converted args
+    result = preferred_axis_type(plot)
+    isnothing(result) || return result
+
+    # This also existed for args_preferred_axis()
+    result = preferred_axis_type(plot_type)
+    isnothing(result) || return result
+
+    # plot generic choices
+    result = preferred_axis_type(input_args...)
+    isnothing(result) || return result
+
+    result = preferred_axis_type(conv_args...)
+    isnothing(result) || return result
+
+    # Single argument choices can make sense when one argument contains the
+    # dimensionality and the others contain auxiliary information. E.g. mesh
+    # with vertices and connectivity
+    # Also existed for args_preferred_axis()
+    for arg in input_args
+        result = preferred_axis_type(arg)
+        isnothing(result) || return result
+    end
+
+    for arg in conv_args
+        result = preferred_axis_type(arg)
+        isnothing(result) || return result
+    end
+
+    # Fallback to Axis if nothing found
+    return Axis
+end
+
+"""
+    preferred_axis_type(...)
+
+Extendable function for providing the preferred axis type of a plot.
+
+This function should return a valid axis type (e.g. `Axis`, `Axis3`, `LScene`,
+`PolarAxis`). To extend it, one of the following methods should be implemented.
+These are ordered by priority, meaning that the first implemented method which
+does not return `nothing` will pick the axis type.
+
+1. `preferred_axis_type(::Union{Plot, Type{<:Plot}}, args...)`
+2. `preferred_axis_type(::Union{Plot, Type{<:Plot}}, converted...)`
+3. `preferred_axis_type(::Union{Plot, Type{<:Plot}})`
+4. `preferred_axis_type(args...)`
+5. `preferred_axis_type(converted...)`
+6. `preferred_axis_type(arg[i])` (try each argument)
+7. `preferred_axis_type(converted[i])` (try each converted argument)
+
+Methods with a plot will preferred over a plot type. `args` refer to the raw user
+provided arguments. `converted` refers to the convert arguments, i.e. after
+`expand_dimensions()`, trait and plot based `convert_arguments` and dim converts
+have been applied.
+
+For compatibility, each of these methods will fall back on `args_preferred_axis()`
+with the same arguments.
+
+See also: [`preferred_axis_attributes`](@ref)
+"""
+function preferred_axis_type(args...)
+    result = args_preferred_axis(args...)
+    # if !isnothing(result)
+    #     Base.depwarn(
+    #         "`args_preferred_axis(...)` has been deprecated in favor of `preferred_axis_type(...)`.",
+    #         :preferred_axis_type, force = true
+    #     )
+    # end
+    return result
+end
+
+args_preferred_axis(args...) = nothing
+
+# implementations
+
+preferred_axis_type(::Volume) = LScene
+preferred_axis_type(::Union{Image, Heatmap}) = Axis
+
+# For plots that don't require an axis,
 # E.g. BlockSpec
 struct FigureOnly end
 
-
-function args_preferred_axis(
-        ::Type{<:Union{Wireframe, Surface, Contour3d}}, x::AbstractArray, y::AbstractArray,
+function preferred_axis_type(
+        ::Union{Wireframe, Surface, Contour3d}, x::AbstractArray, y::AbstractArray,
         z::AbstractArray
     )
     return all(x -> z[1] ≈ x, z) ? Axis : LScene
 end
 
-args_preferred_axis(x) = nothing
+preferred_axis_type(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
+preferred_axis_type(::AbstractArray{T, 3}) where {T} = LScene
 
-function args_preferred_axis(@nospecialize(args...))
-    # Fallback: check each single arg if they have a favorite axis type
-    for arg in args
-        r = args_preferred_axis(arg)
-        isnothing(r) || return r
-    end
-    return nothing
-end
-
-args_preferred_axis(::AbstractVector, ::AbstractVector, ::AbstractVector, ::Function) = LScene
-args_preferred_axis(::AbstractArray{T, 3}) where {T} = LScene
-
-function args_preferred_axis(::AbstractVector{<:Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}}) where {DIM}
+function preferred_axis_type(::AbstractVector{<:Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 
-function args_preferred_axis(::Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}) where {DIM}
+function preferred_axis_type(::Union{AbstractGeometry{DIM}, GeometryBasics.Mesh{DIM}}) where {DIM}
     return DIM === 2 ? Axis : LScene
 end
 
-args_preferred_axis(::AbstractVector{<:Point3}) = LScene
-args_preferred_axis(::AbstractVector{<:Point2}) = Axis
+preferred_axis_type(::AbstractVector{<:Point3}) = LScene
+preferred_axis_type(::AbstractVector{<:Point2}) = Axis
 
+# axis attributes
 
-preferred_axis_type(::Volume) = LScene
-preferred_axis_type(::Union{Image, Heatmap}) = Axis
+function _preferred_axis_attributes(::Type{Block}, plot::Plot) where {Block}
+    args = plot.args[]
+    result1 = preferred_axis_attributes(Block, plot, args...)
+    isempty(result1) || return result1
 
-function preferred_axis_type(p::Plot{F}) where {F}
-    # Otherwise, we check the arguments
-    input_args = p.args[]
-    result = args_preferred_axis(Plot{F}, input_args...)
-    isnothing(result) || return result
-    conv_args = p.converted[]
-    result = args_preferred_axis(Plot{F}, conv_args...)
-    isnothing(result) && return Axis # Fallback to Axis if nothing found
-    return result
+    result2 = preferred_axis_attributes(Block, plot)
+    isempty(result2) || return result2
+
+    result3 = preferred_axis_attributes(Block, args...)
+    return result3
 end
+
+"""
+    preferred_axis_attributes(AxisType::Type, [plot::Plot], [args...])
+
+Sets the default axis attributes when a plot creates an axis. The type of axis
+is chosen automatically by `preferred_axis_type()` or manually by passing
+`axis = (type = axistype, ...)` to the plot.
+
+Recipe authors can extend this function to provide defaults for their plot type
+and/or argument types. The method should return a key-value collection
+(something that implements `pairs`, e.g. NamedTuple, Dict, Attributes). Methods
+are called in the following order, where first method returning a non-empty
+collection will set the axis defaults.
+
+1. `preferred_axis_attributes(AxisType, plot, args...)`
+2. `preferred_axis_attributes(AxisType, plot)`
+3. `preferred_axis_attributes(AxisType, args...)`
+
+See also: [`preferred_axis_type`](@ref)
+"""
+preferred_axis_attributes(args...) = NamedTuple()
 
 to_dict(dict::Dict) = convert(Dict{Symbol, Any}, dict)
 to_dict(nt::NamedTuple) = Dict{Symbol, Any}(pairs(nt))
@@ -109,13 +217,25 @@ function create_axis_for_plot(figure::Figure, plot::AbstractPlot, attributes::Di
     AxType = if haskey(axis_kw, :type)
         pop!(axis_kw, :type)
     else
-        preferred_axis_type(plot)
+        _preferred_axis_type(plot)
     end
+
     if AxType == FigureOnly # For FigureSpec, which creates Axes dynamically
         return nothing
     end
+
     bbox = pop!(axis_kw, :bbox, nothing)
     set_axis_attributes!(AxType, axis_kw, plot)
+
+    # Add defaults generated based on the plot creating the axis
+    if to_value(pop!(attributes, :use_axis_hints, true))
+        preferred_attr = _preferred_axis_attributes(AxType, plot)
+        attr = something(preferred_attr, NamedTuple())
+        for (k, v) in pairs(attr)
+            get!(axis_kw, k, v)
+        end
+    end
+
     return _block(AxType, figure, [], axis_kw, bbox)
 end
 
@@ -308,6 +428,9 @@ function fig_keywords!(kws)
     if haskey(kws, :figure)
         figkws[:figure] = pop!(kws, :figure)
     end
+    if haskey(kws, :use_axis_hints)
+        figkws[:use_axis_hints] = pop!(kws, :use_axis_hints)
+    end
     return figkws
 end
 
@@ -404,6 +527,18 @@ get_conversions(fig::Figure) = get_conversions(fig.scene)
     if ax isa Figure && !(plot isa PlotSpecPlot)
         error("You cannot plot into a figure without an axis. Use `plot(fig[1, 1], ...)` instead.")
     end
+
+    # Late axis hints for mutating plot calls. Non-mutating plot() calls remove
+    # the attribute earlier, if it is explicitly given
+    if to_value(pop!(figkws, :use_axis_hints, false))
+        preferred_attr = _preferred_axis_attributes(typeof(ax), plot)
+        if !isnothing(preferred_attr)
+            for (k, v) in pairs(preferred_attr)
+                setproperty!(ax, k, v)
+            end
+        end
+    end
+
     plot!(ax, plot)
     return figurelike_return!(ax, plot)
 end
