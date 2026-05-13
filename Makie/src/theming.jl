@@ -30,9 +30,22 @@ const DEFAULT_PALETTES = generate_default_palette()
 
 const DEFAULT_ACCENT_COLOR = RGBf((79, 122, 214) ./ 255...)
 
-# sRGB-weighted relative luminance, used to decide light vs. dark behavior
-# without pulling in a perceptual color space.
+# sRGB-weighted relative luminance, used to decide light vs. dark behavior.
 _relative_luminance(c) = 0.2126f0 * red(c) + 0.7152f0 * green(c) + 0.0722f0 * blue(c)
+
+# Perceptually-uniform mix in Oklab so that equal weights produce equal
+# perceived steps between the two poles, even when one of them is a saturated
+# accent or a non-neutral gray.
+function _mix_oklab(c1::RGBf, c2::RGBf, t::Real)
+    l1 = convert(Colors.Oklab, c1)
+    l2 = convert(Colors.Oklab, c2)
+    m = Colors.Oklab(
+        (1 - t) * l1.l + t * l2.l,
+        (1 - t) * l1.a + t * l2.a,
+        (1 - t) * l1.b + t * l2.b,
+    )
+    return RGBf(convert(Colors.RGB, m))
+end
 
 """
     derive_colors(; accent = Makie.DEFAULT_ACCENT_COLOR,
@@ -57,9 +70,10 @@ Returns roles: `background`, `surface`, `surface_subtle`, `border`, `text`,
 across Blocks: idle uses `surface`, hover uses `accent_subtle`, and
 active/checked/focused uses `accent`.
 
-The mix weights are chosen so the default inputs reproduce Makie's
-pre-existing block defaults (`RGBf(0.94, 0.94, 0.94)` surface, `:black` text,
-etc.) within rounding.
+Mixing happens in Oklab so equal weights between `background` and `gray`/
+`accent` give perceptually-even steps. The weights are picked to give a
+familiar light-mode appearance (≈92% surface, ≈74% border, ≈50% muted text)
+while remaining well-balanced when `gray` or `background` is tinted.
 """
 function derive_colors(;
         accent = DEFAULT_ACCENT_COLOR,
@@ -74,8 +88,6 @@ function derive_colors(;
         RGBf(to_color(gray))
     end
 
-    mix(c1, c2, t) = RGBf(lerp(c1, c2, Float32(t)))
-
     # Text drawn on top of an accent fill needs to contrast with the accent
     # itself, not with the page background; pick black or white by accent
     # luminance regardless of the chosen gray pole.
@@ -83,14 +95,14 @@ function derive_colors(;
 
     return (
         background = bg,
-        surface = mix(bg, g, 0.06),
-        surface_subtle = mix(bg, g, 0.03),
-        border = mix(bg, g, 0.2),
+        surface = _mix_oklab(bg, g, 0.06),
+        surface_subtle = _mix_oklab(bg, g, 0.03),
+        border = _mix_oklab(bg, g, 0.2),
         text = g,
-        text_muted = mix(bg, g, 0.5),
+        text_muted = _mix_oklab(bg, g, 0.4),
         text_on_accent = text_on_accent,
         accent = a,
-        accent_subtle = mix(bg, a, 0.45),
+        accent_subtle = _mix_oklab(bg, a, 0.45),
     )
 end
 
