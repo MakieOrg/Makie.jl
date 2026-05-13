@@ -28,6 +28,74 @@ end
 
 const DEFAULT_PALETTES = generate_default_palette()
 
+const DEFAULT_ACCENT_COLOR = RGBf((79, 122, 214) ./ 255...)
+
+# sRGB-weighted relative luminance, used to decide light vs. dark behavior
+# without pulling in a perceptual color space.
+_relative_luminance(c) = 0.2126f0 * red(c) + 0.7152f0 * green(c) + 0.0722f0 * blue(c)
+
+"""
+    derive_colors(; accent = Makie.DEFAULT_ACCENT_COLOR,
+                    gray = automatic,
+                    background = :white)
+
+Derive a complete set of UI role colors from a small set of user inputs. The
+result is a `NamedTuple` of nine `RGBf` values that Block defaults can pull
+from via the theme's nested `colors` block.
+
+Inputs:
+- `accent`: primary accent color used for active, checked, and focused states.
+- `gray`: the "contrast pole" mixed with `background` to produce neutrals.
+  `automatic` picks pure black for light backgrounds and pure white for dark
+  ones. Pass a tinted color (e.g. a slightly warm dark) to bias all neutrals
+  toward that hue.
+- `background`: the canvas background. Its luminance also selects the default
+  contrast pole when `gray = automatic`.
+
+Returns roles: `background`, `surface`, `surface_subtle`, `border`, `text`,
+`text_muted`, `text_on_accent`, `accent`, `accent_subtle`. State conventions
+across Blocks: idle uses `surface`, hover uses `accent_subtle`, and
+active/checked/focused uses `accent`.
+
+The mix weights are chosen so the default inputs reproduce Makie's
+pre-existing block defaults (`RGBf(0.94, 0.94, 0.94)` surface, `:black` text,
+etc.) within rounding.
+"""
+function derive_colors(;
+        accent = DEFAULT_ACCENT_COLOR,
+        gray = automatic,
+        background = :white,
+    )
+    bg = RGBf(to_color(background))
+    a = RGBf(to_color(accent))
+    g = if gray === automatic
+        _relative_luminance(bg) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+    else
+        RGBf(to_color(gray))
+    end
+
+    mix(c1, c2, t) = RGBf(lerp(c1, c2, Float32(t)))
+
+    # Text drawn on top of an accent fill needs to contrast with the accent
+    # itself, not with the page background; pick black or white by accent
+    # luminance regardless of the chosen gray pole.
+    text_on_accent = _relative_luminance(a) >= 0.5f0 ? RGBf(0, 0, 0) : RGBf(1, 1, 1)
+
+    return (
+        background = bg,
+        surface = mix(bg, g, 0.06),
+        surface_subtle = mix(bg, g, 0.03),
+        border = mix(bg, g, 0.2),
+        text = g,
+        text_muted = mix(bg, g, 0.5),
+        text_on_accent = text_on_accent,
+        accent = a,
+        accent_subtle = mix(bg, a, 0.45),
+    )
+end
+
+const DEFAULT_COLORS = derive_colors()
+
 const MAKIE_DEFAULT_THEME = Attributes(
     palette = DEFAULT_PALETTES,
     font = :regular,
@@ -37,6 +105,7 @@ const MAKIE_DEFAULT_THEME = Attributes(
         italic = "TeX Gyre Heros Makie Italic",
         bold_italic = "TeX Gyre Heros Makie Bold Italic",
     ),
+    colors = Attributes(pairs(DEFAULT_COLORS)...),
     fontsize = 14,
     textcolor = :black,
     padding = Vec3f(0.05),
