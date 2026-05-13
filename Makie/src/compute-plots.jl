@@ -468,45 +468,46 @@ function _filter(f, xs::NamedTuple)
     return NamedTuple{fkeys}(map(k -> xs[k], fkeys))
 end
 
-function add_convert_kwargs!(attr, user_kw, P, args)
+function add_convert_kwargs!(graph, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
     conv_attr_input = Symbol[]
-    meta = meta_attributes(P)
+    attr = documented_attributes(P)
     for key in conv_attributes
-        if !haskey(attr.inputs, key)
+        if !haskey(graph.inputs, key)
             # TODO: Should this delete from kwargs already? That means
             # add_theme!() has to avoid updating used_attributes to not overwrite
             # what the user passed through kwargs
             if haskey(user_kw, key)
                 default = pop!(user_kw, key)
-            elseif has_nested_key(meta, key)
-                default = get_flat_default(meta, key)
+            elseif has_nested_key(attr, key)
+                default = get_flat_default(attr, key)
             else
                 # convert_arguments() can also default a kwarg
                 continue
             end
             default isa Inherit && error("$key must be initialized without `@inherit` to be used as a conversion kwarg.")
             # default = key === :space ? :data : nothing
-            add_input!(attr, key, default)
-            ComputePipeline.set_type!(attr[key], Any)
+            add_input!(graph, key, default)
+            ComputePipeline.set_type!(graph[key], Any)
             push!(conv_attr_input, key)
         end
     end
-    return register_computation!(attr, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
+    register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
         return (_filter(!isnothing, inputs),)
     end
+    return
 end
 
 function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, args_converted, user_kw) where {P}
     # Get dim of each argument. This needs to be reactive if we allow dynamic
     # attributes that change dim-mapping, e.g. direction
     kwarg_names = argument_dim_kwargs(P)
-    meta = meta_attributes(P)
+    doc_attr = documented_attributes(P)
 
     # initialize the necessary attributes early
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            default = get(user_kw, key, get_flat_default(meta, key))
+            default = get(user_kw, key, get_flat_default(doc_attr, key))
             default isa Inherit && error("$key must be initialized without `@inherit` to be used as a argument_dims kwarg.")
             # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
             add_input!(attr, key, pop!(user_kw, key, default))
@@ -637,11 +638,11 @@ function _register_argument_conversions!(::Type{P}, attr::ComputeGraph, user_kw)
     # use plain data in a dim_convert scene. Typically true for plots to scenes
     # and false for plots to other plots
     force_dimconverts = pop!(user_kw, :force_dimconverts)
-    meta_attr = meta_attributes(P)
+    doc_attr = documented_attributes(P)
     space::Symbol = if haskey(user_kw, :space)
         to_value(user_kw[:space])
     else
-        default = get_flat_default(meta_attr, :space, :data)
+        default = get_flat_default(doc_attr, :space, :data)
         default isa Symbol ? default : :data
     end
 
@@ -747,8 +748,8 @@ function add_theme!(::Type{T}, user_kw, graph::ComputeGraph, scene::Scene) where
     conv_attributes = used_attributes(T, graph.args[]...)
     union!(exclude, conv_attributes)
 
-    meta = meta_attributes(T)
-    add_theme!(graph, meta, T, scene, exclude, user_kw)
+    attr = documented_attributes(T)
+    add_theme!(graph, attr, T, scene, exclude, user_kw)
 
     return
 end
@@ -859,25 +860,25 @@ function (b::AttributeCallbackBuilder)(key::Symbol)
     end
 end
 
-function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent)
+function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent)
     exclude = (:transformation, :transform_func)
-    prepare_graph_for_attributes!(graph, meta, exclude, is_primitive = is_primitive)
-    add_from_kwargs!(build_callback, graph, meta, kwargs, exclude)
+    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
     if !isnothing(parent)
         exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
-        connect_parent!(build_callback, graph, parent, meta, exclude_from_parent)
+        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
     end
-    add_remaining_inputs!(build_callback, graph, meta, exclude)
+    add_remaining_inputs!(build_callback, graph, attr, exclude)
     return
 end
 
-function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, lookup)
+function init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
     exclude = (:transformation, :transform_func)
-    prepare_graph_for_attributes!(graph, meta, exclude, is_primitive = is_primitive)
-    add_from_kwargs!(build_callback, graph, meta, kwargs, exclude)
+    prepare_graph_for_attributes!(graph, attr, exclude, is_primitive = is_primitive)
+    add_from_kwargs!(build_callback, graph, attr, kwargs, exclude)
     if !isnothing(parent)
         exclude_from_parent = (:model, :transformation, :transform_func, :model_f32c)
-        connect_parent!(build_callback, graph, parent, meta, exclude_from_parent)
+        connect_parent!(build_callback, graph, parent, attr, exclude_from_parent)
     end
     # cycled attributes don't inherit defaults from theme, they are initialized
     # with cycling instead
@@ -887,16 +888,16 @@ function init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, 
             add_prepared_input!(build_callback(key), graph, key, nothing, output)
         end
     end
-    add_remaining_inputs!(build_callback, graph, meta, exclude)
+    add_remaining_inputs!(build_callback, graph, attr, exclude)
     return
 end
 
 function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
-    meta = meta_attributes(P)
+    attr = documented_attributes(P)
     name = Makie.plotkey(P)
     is_primitive = P <: PrimitivePlotTypes
 
-    _cycle = get(kwargs, :cycle, haskey(meta, :cycle) ? meta[:cycle] : NoFallback())
+    _cycle = get(kwargs, :cycle, has_flat_key(attr, :cycle) ? get_flat_default(attr, :cycle) : NoFallback())
     _cycle = to_value(_cycle) === NoFallback() ? nothing : to_value(_cycle)
     add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
 
@@ -912,16 +913,18 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
         lookup = Dict([sym => p for (syms, p) in zip(asc, ps) for sym in syms])
         add_input!(graph, :palette_lookup, lookup)
         build_callback = AttributeCallbackBuilder(lookup, cycle, graph, is_primitive, name)
-        init_graph!(build_callback, graph, meta, is_primitive, kwargs, parent, lookup)
+        init_graph!(build_callback, graph, attr, is_primitive, kwargs, parent, lookup)
     elseif is_primitive
-        init_graph!(key -> AttributeConvert(key, name), graph, meta, true, kwargs, parent)
+        init_graph!(key -> AttributeConvert(key, name), graph, attr, true, kwargs, parent)
     else
-        init_graph!(key -> compute_identity, graph, meta, false, kwargs, parent)
+        init_graph!(key -> compute_identity, graph, attr, false, kwargs, parent)
     end
 
     if !haskey(graph, :model)
         add_input!(graph, :model, Mat4d(I))
     end
+
+    return
 end
 
 function build_plot(::Type{P}, parent, user_args, user_attributes) where {P}

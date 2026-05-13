@@ -207,7 +207,7 @@ end
 end
 ```
 
-All the attributes defined in `@recipe` are eventually collected in `meta_attributes(::Type{<:MyPlot})`.
+All the attributes defined in `@recipe` are eventually collected in `documented_attributes(::Type{<:MyPlot})`.
 The function resolves the inherited attributes and returns the final set of default attributes.
 
 #### Axis Utilities

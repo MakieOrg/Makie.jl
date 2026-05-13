@@ -2,6 +2,8 @@
 ### DocumentedAttributes definition & generation
 ################################################################################
 
+using ComputePipeline: NestedSearchTree, Computed, compute_identity, add_key!
+
 """
     Inherit([callback = identity], keys, [fallback = NoFallback()])
 
@@ -42,41 +44,30 @@ function default_key_expr(expr::Expr)
     return expr
 end
 
-# parse `name = <this part>`
-# which may be `@attributes begin ... end`
-# or some form of `@inherit ...`
-function get_default_expr(default, attribute_path)
-    if MacroTools.@capture(default, @attributes attrblock_)
-        return build_documented_attributes(attrblock, attribute_path)
-    else
-        return get_default_expr_no_nesting(default, attribute_path, default, tuple())
-    end
-end
-
 # Parses specifically `@inherit ...`  and its compat forms
-function get_default_expr_no_nesting(expr, attribute_path, full_expr, local_vars)
+function get_default_expr(expr, attribute_path, full_expr, local_vars)
     # This is split off to allow Inherit(key, Inherit(...)) in some capacity
     if MacroTools.@capture(expr, inherit(scene_, key_, fallback_))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
+        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, map(f_, inherit(scene_, key_, fallback_)))
         # This was only supported with fallback by Blocks
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
+        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
         # This was only supported with fallback by Blocks (?)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
+        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, theme(scene_, key_))
         return :(Makie.Inherit($(default_key_expr(key))))
 
     elseif MacroTools.@capture(expr, @inherit callback_ key_ fallback_)
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
+        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($callback, $(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit key_ fallback_)
         # TODO: How do we figure out if this is @inherit callback key instead?
-        fb = get_default_expr_no_nesting(fallback, attribute_path, full_expr, local_vars)
+        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, @inherit key_)
         return :(Makie.Inherit($(default_key_expr(key))))
@@ -101,40 +92,6 @@ function get_default_expr_no_nesting(expr, attribute_path, full_expr, local_vars
     end
 end
 
-"""
-    AttributeMetadata(docstring, default_value, default_expr, type)
-
-Encapsulates information given for attributes in `@DocumentedAttributes`,
-`@recipe` or `@Block`.
-
-Arguments:
-- `docstring` docstring defined for an attribute within the parent macro call.
-    Defaults to `nothing` if no docstring is defined.
-- `default_value` is the value given to the attribute in the parent macro. Can
-    be `DocumentedAttributes` for nested attributes, a literal or a `Inherit`
-    for values inherited from a theme.
-- `default_expr` is a String of the expression used to generate the default value.
-    For `DocumentedAttributes` this is shortened to `Attributes(...)`
-- `type` is a type annotation optionally given to an attribute. Defaults to `Any`.
-"""
-Base.@kwdef struct AttributeMetadata
-    docstring::Union{Nothing, String}
-    default_value::Any
-    default_expr::String # stringified expression, just needed for docs purposes
-    type::Type
-end
-
-update_metadata(am1::AttributeMetadata, am2::AttributeMetadata) = AttributeMetadata(
-    am2.docstring === nothing ? am1.docstring : am2.docstring,
-    am2.default_value,
-    am2.default_expr, # TODO: should it be possible to overwrite only a docstring by not giving a default expr?
-    am2.type
-)
-function set_metadata!(d, key, am)
-    d[key] = haskey(d, key) ? update_metadata(d[key], am) : am
-    return
-end
-
 function default_expr_string(default)
     is_macrocall = default isa Expr && default.head === :macrocall
     if is_macrocall && default.args[1] === Symbol("@attributes")
@@ -153,22 +110,81 @@ end
 
 default_expr_string(x::String) = repr(x)
 
+# TODO: Move/update docs
 """
-    DocumentedAttributes(dict)
+    DocumentedAttributes
 
 Encapsulates attributes with metadata generated by `@DocumentedAttributes`,
-`@recipe`, `@Block` macros or by the `@attributes` identifier within the former.
+`@recipe` and `@Block` macros. See `?@DocumentedAttributes` for information
+on creating `DocumentedAttributes.
 
-See `?@DocumentedAttributes`
+## Related Functions
+
+TODO: Somewhat user focused ones
+
+# Extended help
+
+## Struct Content
+
+The `DocumentedAttributes` struct is designed for fast Plot and Block creation,
+which includes fast population of the involved compute graphs. This makes it
+somewhat more complex.
+
+TODO: Attribute nesting -> `NestedSearchTree`
+
+TODO: per leaf fields
+
+TODO: types
+
+TODO: utils
+
+## Related Functions
+
+TODO: internal ones
 """
 struct DocumentedAttributes
-    d::Dict{Symbol, AttributeMetadata}
+    # This contains a collection of Dicts that trace nesting paths:
+    # nesting.keytables[1][key1] = idx1
+    # nesting.keytables[idx1][key2] = idx2
+    # ...
+    # where (key1, key2, ...) traces a nesting path
+    # The final key will return an index < 0 which we reuse here to index into
+    # lists of leaf attribute information
+    nesting::NestedSearchTree
+
+    merged_key_to_index::Dict{Symbol, Int}
+
+    # indexed by leaf indices
+    merged_keys::Vector{Symbol}
+    defaults::Vector{Any}
+    default_expr::Vector{String}
+    leaf_docstring::Vector{Union{Nothing, String}}
+
+    # indexed by positive indices in nesting, i.e. non leaf node indices
+    nested_docstring::Vector{Union{Nothing, String}}
+
+    # 1 per leaf node, indexes into types
+    type_index::Vector{Int}
+
+    # synchronized, type_indices contains leaf node indices
+    types::Vector{Type}
+    type_indices::Vector{Vector{Int}}
+
+    # leaf node indices of every inherited attribute
+    inherit::Vector{Int}
 end
 
-DocumentedAttributes() = DocumentedAttributes(Dict{Symbol, AttributeMetadata}())
-function DocumentedAttributes(args::Pair{Symbol, AttributeMetadata}...)
-    return DocumentedAttributes(Dict{Symbol, AttributeMetadata}(args...))
+function DocumentedAttributes()
+    return DocumentedAttributes(
+        NestedSearchTree(), Dict{Symbol, Int}(),
+        Symbol[], Any[], # per leaf keys, defaults
+        String[], Union{Nothing, String}[], # per leaf expr, docstrings
+        Union{Nothing, String}[nothing], # nested docstrings
+        Int[], Type[], Vector{Int}[], # types
+        Int[] # inherit
+    )
 end
+
 
 """
     @DocumentedAttributes begin ... end
@@ -266,258 +282,635 @@ In `@Block` the outer most `@attributes begin ... end` block is treated as an
 
 ## Theming
 
-When documented are used in a plot or block, they are merged with various themes
-as well as values given by the user through keyword arguments. From highest to
-lowest priority the following sources are merged:
+When documented attributes are used in a plot or block, they are merged with
+various themes as well as values given by the user through keyword arguments.
+From highest to lowest priority the following sources are merged:
 
 1. User passed values, e.g. `myplot(..., attribute = 1)`
 2. Attributes defined in `theme(scene)[:MyPlot]` (if it exists)
-3. Attributes defined in the global `theme(nothing)[:MyPlot]` (if it exists)
-4. The default values defined with `@DocumentedAttributes/@recipe/@Block`
-5. If an attribute inherits, the default set in `theme(scene)`
-6. If an attribute inherits, the default set in the global `theme(nothing)`
-7. The `fallback` of an inherited attribute
+3. The default values defined with `@DocumentedAttributes/@recipe/@Block`
+4. If an attribute inherits, the default set in `theme(scene)`
+5. The `fallback` of an inherited attribute
 
-Note that for 5 and 6, the names looked up in the respective themes are not the
+Note that for 4, the names looked up in the respective themes are not the
 name of the attribute but the name set in `@inherit name`.
 
-Note that `@inherit` can be nested, so the fallback may loop through steps 5-7
-again with different names to look up.
+Note that `@inherit` can be nested (i.e. `fallback` can be `@inherit`), so step
+4 can be repeated with different names.
 """
 macro DocumentedAttributes(expr::Expr)
     return build_documented_attributes(expr)
 end
 
-function build_documented_attributes(expr::Expr, attribute_path = tuple())
-    if !(expr isa Expr && expr.head === :block)
+#=
+Within @recipe and @Block `build_documented_attributes(expr)` is called directly
+and the output is evaluated in a global constant. The Code generated here
+therefore only runs once per `@recipe` and `@Block` call.
+`@DocumentedAttributes` in mixins are not cached, but also only used to populate
+`@recipe` and `@Block`.
+=#
+function build_documented_attributes(expr::Expr, local_vars = tuple())
+    block_expr = Expr(:block)
+    build_documented_attributes!(block_expr.args, expr, local_vars)
+
+    # state contains two stacks which track the nesting state:
+    #   state[1] tracks the `attr.nesting` layers of the current nesting path
+    #   state[2] tracks the keys of the current nesting path
+    # This allows us to progressively step back out of nesting paths
+    final_expr = quote
+        let;
+            attr = Makie.DocumentedAttributes()
+            state = (Int[1], Symbol[])
+            $block_expr
+            @assert isempty(state[2]) "Failed to build documented attributes: Nesting did not resolve correctly, leaving behind $state."
+            attr
+        end
+    end
+    # display(final_expr)
+    return final_expr
+end
+
+function build_documented_attributes!(output::Vector, expr::Expr, local_vars)
+    if !(expr.head === :block)
         throw(ArgumentError("Argument is not a begin end block"))
     end
 
-    metadata_exprs = []
-    mixin_exprs = Expr[]
+    for line in expr.args
+        line isa LineNumberNode && continue
 
-    mixin_idx = 0
-    for arg in expr.args
-        arg isa LineNumberNode && continue
-
-        has_docs = arg isa Expr && arg.head === :macrocall && arg.args[1] isa GlobalRef
-
+        # Strip docstring from line if it exists
+        # TODO: How do you capture the docstring with MacroTools?
+        has_docs = line isa Expr && line.head === :macrocall && line.args[1] isa GlobalRef
         if has_docs
-            docs = arg.args[3]
-            attr = arg.args[4]
+            docs = line.args[3]
+            attr = line.args[4]
         else
             docs = nothing
-            attr = arg
+            attr = line
         end
 
-        is_attr_line = attr isa Expr && attr.head === :(=) && length(attr.args) == 2
-        is_mixin_line = attr isa Expr && attr.head === :(...) && length(attr.args) == 1
-        if !(is_attr_line || is_mixin_line)
-            error("Failed to parse Attributes: \"$attr\" is neither a valid attribute line like `x = default_value` nor a mixin line like `some_mixin...`")
-        end
+        if MacroTools.@capture(attr, key_ = @attributes block_)
+            # Hit `key = @attributes ...` which nests
+            # Step into nesting layer with _begin_nesting_layer!(...)
+            # Process content of nesting layer with `build_documented_attributes(block)`
+            # Step back out of nesting layer with _end_nesting_layer(...)
 
-        if is_attr_line
-            if MacroTools.@capture(attr, sym_::type_ = default_)
-                # capture spawns all variables we need
-            elseif MacroTools.@capture(attr, sym_ = default_)
+            if !isa(key, Symbol)
+                error("Attribute name $(repr(key)) must be a Symbol. (Plain variable name in macro closure.)")
+            end
+            push!(output, :(Makie._begin_nesting_layer!(attr, state, $(QuoteNode(key)), $docs)))
+            try
+                build_documented_attributes!(output, block, local_vars)
+            catch e
+                @info "While building nested attributes for $key:"
+                rethrow(e)
+            end
+            push!(output, :(Makie._end_nesting_layer!(state)))
+
+        elseif MacroTools.@capture(attr, key_type_ = val_)
+            # Any other `key = val` line, including `key::Type = val`
+            # We recognize these as leaf attribute definitions, from which we
+            # extract a type, if available, and then call
+            #   _add_attribute(...)
+            # to add the attribute in the current nesting layer
+
+            if !MacroTools.@capture(key_type, key_::type_)
+                key = key_type
                 type = :Any
-            else
-                error("Could not parse attribute expr $expr")
             end
-            if !(sym isa Symbol)
-                error("$sym should be a symbol")
+            if !isa(key, Symbol)
+                error("Attribute name $(repr(key)) must be a Symbol. (Plain variable name in macro closure.)")
             end
-            qsym = QuoteNode(sym)
-            metadata = quote
-                default_value = $(get_default_expr(default, (attribute_path..., sym)))
-                am = Makie.AttributeMetadata(;
-                    docstring = $docs,
-                    default_value = default_value,
-                    default_expr = $(default_expr_string(default)),
-                    type = $type
+
+            attribute = quote
+                Makie._add_attribute!(
+                    attr, state, $(QuoteNode(key)), $type,
+                    $(get_default_expr(val, key, val, local_vars)),
+                    $(default_expr_string(val)), $docs
                 )
-                Makie.set_metadata!(d, $qsym, am)
             end
-            push!(metadata_exprs, metadata)
-        elseif is_mixin_line
-            mixin_idx += 1
-            mixin = only(attr.args)
-            push!(
-                mixin_exprs, quote
-                    mixins[$mixin_idx] = $(esc(mixin))
-                    if !(mixins[$mixin_idx] isa DocumentedAttributes)
-                        error("Mixin was not a DocumentedAttributes but $(mixins[$mixin_idx])")
-                    end
-                end
-            )
+            push!(output, attribute)
 
-            # docstrings and default expressions of the mixed in
-            # DocumentedAttributes are inserted
-            metadata_exp = quote
-                for (key, value) in mixins[$mixin_idx]
-                    if haskey(d, key)
-                        error("Mixin `$($(QuoteNode(mixin)))` had the key :$key which already existed. It's not allowed for mixins to overwrite keys to avoid accidental overwrites. Drop those keys from the mixin first.")
-                    end
-                    d[key] = value
-                end
+        elseif MacroTools.@capture(attr, mixin_...)
+            # Recognize any line ending in `...` as a mixin expression. This
+            # can match `foo()...` and also `var...` which is used for old
+            # recipe compat. Mixin lines translate to
+            #   _merge_attributes(...)
+            # which adds all content defined in the mixin to the current nesting
+            # layer. If the mixin contains nesting, that nesting will nest from
+            # the current nesting layer.
+            mixin_expr = quote
+                mixin = $mixin
+                prev_state = last(state[1])
+                Makie._merge_attributes!(attr, state, mixin)
+                @assert last(state[1]) == prev_state "Mixin must return to the previous state when finished"
             end
-            push!(metadata_exprs, metadata_exp)
+            push!(output, mixin_expr)
+
         else
-            error("Unreachable")
+            error("Could not parse line:\n $line")
         end
     end
 
-    # Both `let` and `local` are need to prevent nested attributes from writing
-    # to the same DocumentedAttributes (which can create recursive references)
-    return quote
-        let
-            mixins = Dict{Int, Makie.DocumentedAttributes}()
-            $(mixin_exprs...)
-            local d = Dict{Symbol, Makie.AttributeMetadata}()
-            $(metadata_exprs...)
-            Makie.DocumentedAttributes(d)
-        end
-    end
+    return
 end
 
-# This is only meant for compat with old style recipes
-function convert_old_attributes_expr(func_expr)
+# Underscoring these to make them less visible
+function _begin_nesting_layer!(attr::DocumentedAttributes, state, key::Symbol, docstring = nothing)
+    layers, keys = state
+    current_layer = last(layers)
+    keytable = attr.nesting.keytables[current_layer]
+    if haskey(keytable, key)
+        next_layer = keytable[key]
+        if next_layer < 0
+            error("$key in $(join(keys, '.')) can not nest because it already has a value.")
+        end
+        attr.nested_docstring[next_layer] = docstring
+    else
+        push!(attr.nesting.keytables, Dict{Symbol, Int}())
+        next_layer = length(attr.nesting.keytables)
+        keytable[key] = next_layer
+        push!(attr.nested_docstring, docstring)
+    end
+    push!(layers, next_layer)
+    push!(keys, key)
+    return
+end
+
+function _end_nesting_layer!(state)
+    pop!.(state)
+    return
+end
+
+function _add_attribute!(
+        attr::DocumentedAttributes, state, key::Symbol,
+        @nospecialize(type), default_value, default_expr, docstring;
+        allow_edit = true
+    )
+    layers, keys = state
+    current_layer = last(layers)
+    keytable = attr.nesting.keytables[current_layer]
+
+    if haskey(keytable, key) # existing value
+
+        leaf_idx = -keytable[key]
+        name = ComputePipeline.merged_key(keys..., key)
+        if leaf_idx < 0
+            error("Could not insert attribute :$name because it is already defined as a nesting layer.")
+        end
+        allow_edit || return false
+
+        # add or remove tracking of leaf_idx as inherited
+        was_inherit = insorted(leaf_idx, attr.inherit)
+        is_inherit = default_value isa Inherit
+        if was_inherit && !is_inherit
+            inherit_idx = searchsortedfirst(attr.inherit, leaf_idx)
+            deleteat!(attr.inherit, inherit_idx)
+        elseif !was_inherit && is_inherit
+            inherit_idx = searchsortedfirst(attr.inherit, leaf_idx)
+            insert!(attr.inherit, inherit_idx, leaf_idx)
+        end
+
+        # update leaf data
+        attr.merged_keys[leaf_idx] = name
+        attr.defaults[leaf_idx] = default_value
+        attr.default_expr[leaf_idx] = default_expr
+        if !isnothing(docstring)
+            attr.leaf_docstring[leaf_idx] = docstring
+        end
+
+        # update leaf type
+        type_idx = attr.type_index[leaf_idx]
+        old_type = attr.types[type_idx]
+        if old_type != type
+            # type_indices are sorted
+            indices = attr.type_indices[type_idx]
+            idx = searchsortedfirst(indices, leaf_idx)
+            deleteat!(indices, idx)
+
+            type_idx = findfirst(==(type), attr.types)
+            if isnothing(type_idx)
+                push!(attr.types, type)
+                push!(attr.type_indices, Int[])
+                type_idx = length(attr.types)
+            end
+            push!(attr.type_index, type_idx)
+            # keep it sorted
+            indices = attr.type_indices[type_idx]
+            idx = searchsortedfirst(indices, leaf_idx)
+            insert!(indices, idx, leaf_idx)
+        end
+
+    else # new value
+
+        leaf_idx = length(attr.merged_keys) + 1
+        add_key!(attr.nesting, current_layer, (key,), -leaf_idx)
+
+        name = ComputePipeline.merged_key(keys..., key)
+        attr.merged_key_to_index[name] = leaf_idx
+
+        push!(attr.merged_keys, name)
+        push!(attr.defaults, default_value)
+        push!(attr.default_expr, default_expr)
+        push!(attr.leaf_docstring, docstring)
+
+        # leaf_idx only increases here so index lists will remain sorted
+        type_idx = findfirst(==(type), attr.types)
+        if isnothing(type_idx)
+            push!(attr.types, type)
+            push!(attr.type_indices, Int[])
+            type_idx = length(attr.types)
+        end
+        push!(attr.type_index, type_idx)
+        push!(attr.type_indices[type_idx], leaf_idx)
+
+        if default_value isa Inherit
+            push!(attr.inherit, leaf_idx)
+        end
+    end
+
+    return true
+end
+
+function _merge_attributes!(target::DocumentedAttributes, state, source::DocumentedAttributes)
+    _merge_attributes_rec!(target, state, source, tuple(), 1)
+    return
+end
+
+function _merge_attributes_rec!(target, state, source, _trace, current_layer)
+    keytables = source.nesting.keytables
+    for (key, layer_idx) in keytables[current_layer]
+        if layer_idx > 0
+            trace = (_trace..., key)
+            _begin_nesting_layer!(target, state, key, source.nested_docstring[layer_idx])
+            _merge_attributes_rec!(target, state, source, trace, layer_idx)
+            _end_nesting_layer!(state)
+        else
+            idx = -layer_idx
+            type = source.types[source.type_index[idx]]
+            got_added = _add_attribute!(
+                target, state, key, type, source.defaults[idx],
+                source.default_expr[idx], source.leaf_docstring[idx],
+                allow_edit = false
+            )
+            if !got_added
+                target_path = join(state[2], '.') * '.' * string(key)
+                source_path = join(_trace, '.') * '.' * string(key)
+                error("Could not add :$target_path from :$source_path because :$target_path already exists.")
+            end
+        end
+    end
+    return
+end
+
+########################################
+# Old @recipe compat
+########################################
+
+#=
+This basically translates the `do scene ... end` part of the old `@recipe` to
+the new `begin ... end` block syntax and passes it to `build_documented_attributes`.
+For this:
+- `get_theme(scene, key)` gets translated to `Makie.Inherit(key)`
+- `map/lift(f, get_theme(...))` gets translated to `Makie.Inherit(f, ...)`
+- `Attributes` within `Attributes` get translated to `@attributes` blocks
+    - this also includes translating args/kwargs to `key = val` expressions
+    - `:font` gets excluded here
+- top level `Attributes` get translated as `@DocumentedAttributes` blocks, i.e.
+    by `build_documented_attributes`
+
+Since this syntax allows things like:
+    a = 1
+    Attributes(a = a)
+which break if the `a = a` expression escapes, we track each set variable in
+`local_vars` which gets passed to `get_default_expr`.
+If the local variable defines `Attributes()` it additionally gets tracked in
+`attr_sources` which causes the variable to be inserted as a nested mixin.
+=#
+function convert_old_attributes_expr(func_expr::Expr)
     # remove the function header and just work on the body
     ex = func_expr.args[2]
 
     # preserve :fonts
-    expr = MacroTools.prewalk(ex) do x
+    # convert theme(scene, key) -> @inherit
+    expr = MacroTools.postwalk(ex) do x
         if MacroTools.@capture(x, key_ = Attributes(args__))
-            if key === :fonts
-                return :($key = Dict($args))
-            else
-                return x
-            end
-        else
-            return x
-        end
-    end
-
-    # Process old syntax to DocumentedAttributes syntax
-    expr = MacroTools.postwalk(expr) do x
-        if MacroTools.@capture(x, theme(scene_, key_))
+            key === :fonts ? :($key = Dict($args)) : x
+        elseif MacroTools.@capture(x, theme(scene_, key_))
             return :(Makie.Inherit(($key,)))
         elseif MacroTools.@capture(x, lift(f_, Makie.Inherit(key_tuple_)))
             return :(Makie.Inherit($f, $key_tuple))
         elseif MacroTools.@capture(x, map(f_, Makie.Inherit(key_tuple_)))
             return :(Makie.Inherit($f, $key_tuple))
-        elseif MacroTools.@capture(x, Attributes(args__))
-            dict_call = :(Makie.DocumentedAttributes())
-            for arg in args
-                # Need to be careful to not match normal Code with this, e.g.
-                # value = sin(1) # don't make this value => AttributeMetadata(nothing, sin(1), "sin(1)")
-                # ...
-                # return Attributes(a = value) # only here
-                if MacroTools.@capture(arg, key_ = val_)
-                    str = Makie.default_expr_string(val)
-                    element_expr = :($(QuoteNode(key)) => Makie.AttributeMetadata(nothing, $val, $str, Any))
-                    push!(dict_call.args, element_expr)
-                else
-                    error("Failed to match $arg")
-                end
-            end
-            return dict_call
-        elseif MacroTools.@capture(x, return arg_)
-            return :($arg)
         end
         return x
     end
 
-    # revert :fonts to Attributes
-    expr = MacroTools.prewalk(expr) do x
-        if MacroTools.@capture(x, key_ = Dict(args__))
-            if key === :fonts
-                return :($key = Attributes($args))
-            else
-                return x
-            end
-        else
-            return x
+    # replace all top level `Attribute` calls with `DocumentedAttributes` generation code
+    local_vars = Set{Symbol}()
+    attr_sources = Set{Symbol}()
+    for (i, line) in enumerate(expr.args)
+        if MacroTools.@capture(line, var_ = Attributes(entries__))
+            new_line = line_to_documented_attributes(entries, local_vars, attr_sources)
+            expr.args[i] = :($var = $new_line)
+            push!(local_vars, var)
+            push!(attr_sources, var)
+        elseif MacroTools.@capture(line, return Attributes(entries__))
+            new_line = line_to_documented_attributes(entries, local_vars, attr_sources)
+            expr.args[i] = new_line
+        elseif MacroTools.@capture(line, var_ = val_)
+            push!(local_vars, var)
         end
     end
 
-    # let to not allow any enclosed variables to spill out
-    return :(let; $expr end)
+    full_expr = :(let; $expr end)
+    # display(full_expr)
+    return full_expr
+end
+
+function line_to_documented_attributes(entries, local_vars, attr_sources)
+    # build @DocumentedAttributes style expression
+    block_expr = attribute_args_to_block_expr(entries, attr_sources)
+
+    # restore fonts
+    block_expr = MacroTools.postwalk(block_expr) do x
+        if MacroTools.@capture(x, key_ = Dict(args__))
+            key === :fonts ? :($key = Attributes($args)) : x
+        end
+        return x
+    end
+
+    # convert as @DocumentedAttributes
+    return build_documented_attributes(block_expr, local_vars)
+end
+
+function attribute_args_to_block_expr(entries, attr_sources)
+    block_expr = Expr(:block)
+    for entry in entries
+        if MacroTools.@capture(entry, key_ => val_)
+            expr = convert_old_attributes_expr_inner(val, attr_sources)
+        elseif MacroTools.@capture(entry, key_ = val_)
+            expr = convert_old_attributes_expr_inner(val, attr_sources)
+        else
+            error("Failed to parse input of `Attributes(...)`:\n$entry")
+        end
+        push!(block_expr.args, :($key = $expr))
+    end
+    return block_expr
+end
+
+function convert_old_attributes_expr_inner(entry_value_expr, attr_sources)
+    if MacroTools.@capture(entry_value_expr, Attributes(entries__))
+        block_expr = attribute_args_to_block_expr(entries, attr_sources)
+        return :(@attributes $block_expr)
+    elseif entry_value_expr isa Symbol && entry_value_expr in attr_sources
+        # Doing
+        #   a = Attributes(...)
+        #   b = Attributes(a = a)
+        # is like
+        #   a = @DocumentedAttributes begin ... end
+        #   b = @DocumentedAttributes begin
+        #       a = @attributes begin a... end
+        #   end
+        return :(@attributes begin $(entry_value_expr)... end)
+    end
+    return entry_value_expr
 end
 
 ################################################################################
 ### Utilities
 ################################################################################
 
-Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
-Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
-Base.getindex(d::DocumentedAttributes, key::Symbol) = d.d[key]
-Base.get(d::DocumentedAttributes, key::Symbol, default) = get(d.d, key, default)
-Base.keys(d::DocumentedAttributes) = keys(d.d)
-Base.iterate(d::DocumentedAttributes) = iterate(d.d)
-Base.iterate(d::DocumentedAttributes, state) = iterate(d.d, state)
-Base.length(d::DocumentedAttributes) = length(d.d)
-Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
-Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
+function Base.show(io::IO, attr::DocumentedAttributes)
+    println(io, "@DocumentedAttributes begin")
+    show_documented_attributes(io, attr)
+    print(io, "end")
+    return
+end
 
-is_nested(a::AttributeMetadata) = a.default_value isa DocumentedAttributes
+# This is just for here, you may be looking for functions in documentation/recipe_docs.jl
+_print_attribute_docstring(io, ::Nothing, tabstr) = nothing
+function _print_attribute_docstring(io, docstring, tabstr)
+    docstring = chomp(docstring)
+    if contains(docstring, '\n')
+        docstring = "\"\"\"\n" * docstring * "\n\"\"\""
+        indented = replace(docstring, "\n" => "\n" * tabstr)
+        println(io, tabstr, indented)
+    else
+        println(io, tabstr, "\"$docstring\"")
+    end
+    return
+end
 
-# for testing
-function Base.:(==)(a::DocumentedAttributes, b::DocumentedAttributes)
-    issetequal(keys(a), keys(b)) || return false
-    for key in keys(a)
-        x = a[key] == b[key]
-        x || return false
+function show_documented_attributes(io, attr, layer = 1, tab = 1)
+    tabstr = "    "^tab
+    for (key, idx) in attr.nesting.keytables[layer]
+        if idx > 0 # nest
+            _print_attribute_docstring(io, attr.nested_docstring[idx], tabstr)
+            println(io, tabstr, "$key = @attributes begin")
+            show_documented_attributes(io, attr, idx, tab+1)
+            println(io, tabstr, "end")
+        else
+            idx = -idx
+            _print_attribute_docstring(io, attr.leaf_docstring[idx], tabstr)
+            T = attr.types[attr.type_index[idx]]
+            Tstr = T === Any ? "" : "::$T"
+            println(io, tabstr, "$key$Tstr = $(attr.default_expr[idx])")
+        end
+    end
+    return
+end
+
+########################################
+# Required/Used in Makie
+########################################
+
+function is_attribute(T::Type, name::Symbol)
+    attr = documented_attributes(T)
+    return has_flat_key(attr, name) || has_nested_key(attr, name)
+end
+
+has_nested_key(attr::DocumentedAttributes, keys::Tuple) = has_nested_key(attr, keys...)
+function has_nested_key(attr::DocumentedAttributes, keys::Symbol...)
+    idx = 1
+    for key in keys
+        if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
+            return false
+        end
+        idx = attr.nesting.keytables[idx]
     end
     return true
 end
-function Base.:(==)(a::AttributeMetadata, b::AttributeMetadata)
-    return (a.docstring == b.docstring) &&
-        (a.default_expr == b.default_expr) &&
-        (a.type == b.type) &&
-        (a.default_value == b.default_value)
-end
-function Base.:(==)(a::Inherit, b::Inherit)
-    return (a.keys == b.keys) && (a.callback == b.callback) && (a.fallback == b.fallback)
+
+root_keys(attr::DocumentedAttributes) = keys(attr.nesting.keytables[1])
+flattened_keys(attr::DocumentedAttributes) = attr.merged_keys
+
+function has_flat_key(attr::DocumentedAttributes, key::Symbol)
+    return haskey(attr.merged_key_to_index, key)
 end
 
-function Base.show(io::IO, a::DocumentedAttributes)
-    return print_documented_attributes(io, a, 1)
+# empty keytables[1] implies no nesting, no attributes
+Base.isempty(attr::DocumentedAttributes) = isempty(attr.nesting.keytables[1])
+
+# only using get_flat_default() variants
+for (name, field) in (:default => :defaults, :expr => :default_expr, :docstring => :leaf_docstring)
+    @eval function $(Symbol(:get_flat_, name))(attr::DocumentedAttributes, key::Symbol)
+        return attr.$field[attr.merged_key_to_index[key]]
+    end
+
+    @eval function $(Symbol(:get_flat_, name))(attr::DocumentedAttributes, key::Symbol, default)
+        source = attr.$field
+        return has_flat_key(attr, key) ? source[attr.merged_key_to_index[key]] : default
+    end
 end
 
-function print_documented_attributes(io, a::DocumentedAttributes, tab)
-    maxlength = 100
-    print(io, "DocumentedAttributes(")
-    for (k, v) in a
-        if !isnothing(v.docstring)
-            docs = if length(v.docstring) > maxlength
-                v.docstring[1:maxlength] * "..."
-            else
-                v.docstring
-            end
-            print(io, "\n", "   "^tab, '"', docs, '"')
+"""
+    unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...)
+    unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
+
+Looks up the index associated with a nested attribute path `keys`. The result
+may be a positive integer associated with further nesting or a negative integer
+associated with an attribute.
+"""
+function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...)
+    return unchecked_nested_key_to_index(attr, keys)
+end
+function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
+    idx = 1
+    for (i, key) in enumerate(keys)
+        if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
+            idx < 0 && error("Nested keys $keys could not be resolved because $(keys[i-1]) is not nested.")
+            error("Nested keys $keys could not be resolved because $key does not exist in parent.")
         end
-        Tstr = v.type === Any ? "" : "::$(v.type)"
-        print(io, "\n", "   "^tab, k, Tstr, " = ")
-        print_documented_attributes(io, v, tab)
+        idx = attr.nesting.keytables[idx][key]
     end
-    print(io, "\n", "   "^(tab-1), ")")
-    return io
+    return idx
 end
 
-function print_documented_attributes(io, m::AttributeMetadata, tab)
-    if m.default_value isa DocumentedAttributes
-        print_documented_attributes(io, m.default_value, tab+1)
-    else
-        print(io, m.default_expr)
+"""
+    nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...)
+    nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
+
+Returns the flattened index of a single, potentially nested attribute defined by
+`keys`. This function requires `keys` to point to an attribute, i.e. have no
+further nesting.
+"""
+nested_key_to_index(attr::DocumentedAttributes, keys::Symbol...) = nested_key_to_index(attr, keys)
+function nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
+    idx = unchecked_nested_key_to_index(attr, keys)
+    idx > 0 && error("Nested keys $keys point to another nesting layer instead of a value.")
+    return -idx
+end
+
+# TODO: rename to lookup_default?
+# If possible use the the methods that do this in bulk, for all attributes
+"""
+    lookup_default(type, scene, [kwargs], keys...)
+
+Looks up the default value of a single attribute identified by `keys` for the
+given plot or block `type` with the themes defined in `scene`. Multiple keys
+are used to refer to nested attributes.
+
+Keyword arguments can optionally be given with the `kwargs` argument.
+"""
+function lookup_default(::Type{T}, scene, keys::Symbol...) where {T}
+    return lookup_default(T, scene, NamedTuple(), keys...)
+end
+
+function lookup_default(::Type{T}, scene, kwargs, keys::Symbol...) where {T}
+    return lookup_default(documented_attributes(T), scene, plotsym(T), kwargs, keys...)
+end
+
+"""
+    lookup_default(attr::DocumentedAttributes, scene, name, kwargs, keys...)
+
+Looks up the default value of a single attribute identified by `keys` in `attr`
+using the themes defined in `scene`. `name` identifies the overwrite theme, e.g.
+`theme[:Scatter]` or `theme[:Axis]`.
+"""
+function lookup_default(attr::DocumentedAttributes, scene, name, kwargs, keys::Symbol...)
+    got, result1 = get_nested_value(kwargs, keys...)
+    got && return result1
+    default_theme = theme(scene)
+    if haskey(default_theme, name)
+        got, result2 = get_nested_value(default_theme[name], keys...)
+        got && return result2
     end
+
+    # Probably better to avoid type checking Inherit
+    idx = nested_key_to_index(attr, keys...)
+    if idx in attr.inherit
+        return inherit_default(attr.defaults[idx]::Inherit, default_theme)
+    else
+        return attr.defaults[idx]
+    end
+end
+
+function get_nested_value(dictlike, key, keys...)
+    if haskey(dictlike, key)
+        return get_nested_value(dictlike[key], keys...)
+    else
+        return (false, nothing)
+    end
+end
+
+function get_nested_value(dictlike, key)
+    if haskey(dictlike, key)
+        return (true, dictlike[key])
+    else
+        return (false, nothing)
+    end
+end
+
+"""
+    get_typed_default(attr::DocumentedAttributes, defaults, keys::Symbol...)
+
+Returns the type and default value of a single attribute defined by a potentially
+nested set of `keys`, using the resolved `defaults` generated by
+`resolve_defaults()`.
+
+In the context of blocks `defaults` are generated beforehand add passed to
+`add_attributes!()`. From there they should be passed on to this function.
+"""
+function get_typed_default(attr::DocumentedAttributes, flattened::Vector, keys::Symbol...)
+    idx = nested_key_to_index(attr, keys...)
+    T = attr.types[attr.type_index[idx]]
+    return T, flattened[idx]
+end
+
+"""
+    nested_indices(attr::DocumentedAttributes, keys...)
+
+Returns a vector of indices correspondering to all attributes in the nested path
+define by keys. This include attributes that are more deeply nested.
+"""
+function nested_indices(attr::DocumentedAttributes, keys::Symbol...)
+    return nested_indices!(Int[], attr, keys)
+end
+
+nested_indices!(indices::Vector{<:Integer}, attr, keys::Symbol...) = nested_indices!(indices, attr, keys)
+function nested_indices!(indices, attr, keys::Tuple)
+    idx = unchecked_nested_key_to_index(attr, keys)
+    nested_indices!(indices, attr, idx)
+    return indices
+end
+
+function nested_indices!(indices::Vector{<:Integer}, attr, idx::Int)
+    if idx > 0
+        for i in values(attr.nesting.keytables[idx])
+            nested_indices!(indices, attr, i)
+        end
+    else
+        push!(indices, -idx)
+    end
+    return indices
 end
 
 """
     filtered_attributes(Type[; allow, exclude])
 
-Filters the top level attributes returned by `documented_attributes(Type)`.
-If `allow` is given, only the attribute with names in `allow` are kept.
+Filters the attributes returned by `documented_attributes(Type)` based on their
+(merged) names. If `allow` is given, only attributes with names in `allow` are kept.
 If `exclude` is given, all attribute names in `exclude` are removed.
 
 This creates a copy of the documented attributes, i.e. won't modify them directly.
@@ -525,47 +918,165 @@ This creates a copy of the documented attributes, i.e. won't modify them directl
 filtered_attributes(T; kwargs...) = filter_attributes(documented_attributes(T); kwargs...)
 
 """
-    filtered_attributes(attributes[; allow, exclude])
+    filtered_attributes(attributes::DocumentedAttributes[; allow, exclude])
 
-Creates a filtered copy of the given `attributes`.
+Creates a filtered copy of the given `attributes` based on their (merged) names.
 If `allow` is given, only the attribute with names in `allow` are kept.
 If `exclude` is given, all attribute names in `exclude` are removed.
-
-Note that this only acts on top level attributes.
 """
-function filter_attributes(attr; kwargs...)
-    return filter_attributes!(copy(attr); kwargs...)
+function filter_attributes(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
+    # This is a good chunk slower than creating them using allow/exclude, but
+    # this is only expected to run during @recipe/@Block eval, not at runtime,
+    # so not performance critical...
+    return filter_attributes!(deepcopy(attr); allow, exclude)
 end
 
-function filter_attributes!(attr; allow = tuple(), exclude = tuple())
-    !isempty(allow) && filter!(p -> p[1] in allow, attr)
-    !isempty(exclude) && filter!(p -> !(p[1] in exclude), attr)
+"""
+    filtered_attributes(attributes::DocumentedAttributes[; allow, exclude])
+
+Filters `attributes` in place. If `allow` is given, only the attribute with
+names in `allow` are kept. If `exclude` is given, all attribute names in
+`exclude` are removed.
+
+This should never be used on `documented_attribtes(Plot/Block)`. Only use this
+with documented attributes generated at run time, from
+
+    attributes = @DocumentedAttributes begin ... end
+
+If you are unsure, use `filter_attributes(attributes[; allow, exclude])`
+"""
+function filter_attributes!(attr::DocumentedAttributes; allow = tuple(), exclude = tuple())
+    keep = filter_to_indices(attr, allow, exclude)
+    apply_filtered_indices!(attr, keep)
     return attr
 end
 
-function error_on_no_fallback(keys, val)
-    if val === NoFallback()
-        s = join(keys, '.')
-        error("Current theme does not include a default for $s and the attribute does not provide a fallback.")
+# This is pretty involved, maybe overcomlicated...?
+
+# Make a list for each (leaf) attribute containing its new index or -1 if it is dropped
+function filter_to_indices(attr, allow, exclude)
+    keep = Vector{Int}(undef, length(attr.merged_keys))
+    counter = 1
+    for (i, merged_key) in enumerate(attr.merged_keys)
+        allowed = isempty(allow) || in(merged_key, allow)
+        not_excluded = isempty(exclude) || !in(merged_key, exclude)
+        if allowed && not_excluded
+            keep[i] = counter
+            counter += 1
+        else
+            keep[i] = -1
+        end
     end
+    return keep
+end
+
+function apply_filtered_indices!(attr::DocumentedAttributes, keep::Vector{Int})
+    # remove flagged leaf indices and empty branches from attr.nesting
+    # create another keep-list for nested_attributes
+    nested_keep = apply_filtered_indices!(attr.nesting, keep)
+
+    # remove flagged nested_docstrings (from removed nesting branches)
+    N = 0
+    for (from, to) in enumerate(nested_keep)
+        to == -1 && continue
+        attr.nested_docstring[to] = attr.nested_docstring[from]
+        N += 1
+    end
+    resize!(attr.nested_docstring, N)
+
+    # remove flagged attribute information
+    for field in (:merged_keys, :defaults, :default_expr, :leaf_docstring, :type_index)
+        data = getfield(attr, field)
+        N = 0
+        for (from, to) in enumerate(keep)
+            to == -1 && continue
+            data[to] = data[from]
+            N += 1
+        end
+        resize!(data, N)
+    end
+
+    empty!(attr.merged_key_to_index)
+    foreach(ik -> attr.merged_key_to_index[ik[2]] = ik[1], enumerate(attr.merged_keys))
+
+    # remove flagged indices from type-sorted lists and cleanup orphaned types
+    for indices in attr.type_indices
+        # (this is a list of leaf attribute indices)
+        filter!(idx -> keep[idx] > 0, indices)
+    end
+    drop = map(isempty, attr.type_indices)
+    deleteat!(attr.types, drop)
+    deleteat!(attr.type_indices, drop)
+
+    # remove flagged indices from inherit to (this is a list of leaf attribute indices)
+    filter!(idx -> keep[idx] > 0, attr.inherit)
+
     return
 end
 
-function error_on_no_fallback(type, keys, val)
-    if val === NoFallback()
-        s = join(keys, '.')
-        error("Current theme does not include a default for $type.$s and the attribute does not provide a fallback.")
+function apply_filtered_indices!(nesting::NestedSearchTree, keep)
+    nested_keep = collect(eachindex(nesting.keytables))
+    for i in reverse(eachindex(nesting.keytables))
+        # remove all flagged attributes based on keep
+        # and all empty branches based on nested_keep
+        keytable = nesting.keytables[i]
+        filter!(keytable) do (key, idx)
+            return (idx > 0 && nested_keep[idx] > 0) || (idx < 0 && keep[-idx] > 0)
+        end
+
+        if isempty(keytable)
+            # This branch is now empty, delete it, mark it & update indices.
+            # Note that we don't need to update any key => idx pairs in later
+            # keytables because keytables[i] only refers to indices > i.
+            # (And indices < 0 which point to attributes, which are irrelevant here.)
+            nested_keep[i] = -1
+            nested_keep[i+1 : end] .-= 1
+            deleteat!(nesting.keytables, i)
+        else
+            # This keytable is not empty so update the indices it points
+            for (key, idx) in keytable
+                if idx > 0
+                    # points to another keytable that may have moved
+                    shifted = nested_keep[idx]
+                    @assert shifted > 0 "Nesting got reassigned to point to a deleted layer"
+                    keytable[key] = shifted
+                else
+                    # points to an attribute that may have moved
+                    shifted = keep[-idx]
+                    @assert shifted > 0 "Nesting got reassigned to point to a deleted attribute"
+                    keytable[key] = -shifted
+                end
+            end
+        end
     end
-    return
+
+    return nested_keep
 end
 
-function set_nested!(a::Attributes, value, key::Symbol, keys::Symbol...)
-    return set_nested!(get!(a, key, Attributes()), value, keys...)
-end
-set_nested!(a::Attributes, value, key::Symbol) = a[key] = value
+########################################
+# Convenience
+########################################
 
-# This is more complete than before, also including overwrites from theme[Plot/Block]
-# and trying global themes before using fallbacks
+documented_attributes(::Type) = DocumentedAttributes()
+
+has_root_key(attr::DocumentedAttributes, key::Symbol) = haskey(attr.nesting.keytables[1], key)
+
+function get_flat_type(attr::DocumentedAttributes, key::Symbol)
+    return attr.types[attr.type_index[attr.merged_key_to_index[key]]]
+end
+
+for (name, field) in (:default => :defaults, :expr => :default_expr, :docstring => :leaf_docstring)
+    @eval function $(Symbol(:get_nested_, name))(attr::DocumentedAttributes, keys::Symbol...)
+        return getfield(attr, $field)[nested_key_to_index(attr, key)]
+    end
+end
+
+function get_nested_type(attr::DocumentedAttributes, keys::Symbol...)
+    idx = nested_key_to_index(attr, key)
+    idx > 0 && error("Nested keys $keys point to another nesting layer instead of a value.")
+    return attr.types[attr.type_index[idx]]
+end
+
 """
     default_theme(scene, type)
 
@@ -575,194 +1086,395 @@ global theme are used.
 
 For the raw theme of a plot or block type, see `Makie.documented_attributes(type)`.
 For looking up a specific value, see `Makie.lookup_default(type, scene, keys...)`.
-For updating another data structure, see `Makie.apply_attribute_defaults!(callback, type, scene)`.
 """
 function default_theme(scene, T::Type)
+    attr = documented_attributes(T)
+    name = T isa Plot ? plotsym(T) : nameof(T)
+    flattened = resolve_defaults(attr, scene, name, NamedTuple())
+    # I guess this should still be nested Attributes()?
     output = Attributes()
-    apply_attribute_defaults!(T, scene) do keys, type, value
-        set_nested!(output, value, keys...)
+    fill_theme!(output, attr, flattened)
+    return output
+end
+
+function fill_theme!(output, attr, flattened, layer = 1)
+    for (key, idx) in attr.nesting.keytables[layer]
+        if idx > 0
+            output[key] = fill_theme!(Attributes(), attr, flattened, idx)
+        else
+            output[key] = flattened[-idx]
+        end
     end
     return output
 end
 
+# TODO: Consider keeping some of these?
+# Base.copy(d::DocumentedAttributes) = DocumentedAttributes(copy(d.d))
+# Base.pop!(d::DocumentedAttributes, key::Symbol) = pop!(d.d, key)
+# Base.getindex(d::DocumentedAttributes, key::Symbol) = d.d[key]
+# Base.get(d::DocumentedAttributes, key::Symbol, default) = get(d.d, key, default)
+# Base.keys(d::DocumentedAttributes) = keys(d.d)
+# Base.iterate(d::DocumentedAttributes) = iterate(d.d)
+# Base.iterate(d::DocumentedAttributes, state) = iterate(d.d, state)
+# Base.length(d::DocumentedAttributes) = length(d.d)
+# Base.haskey(d::DocumentedAttributes, key::Symbol) = haskey(d.d, key)
+# Base.filter!(f, d::DocumentedAttributes) = filter!(f, d.d)
+
+
 ################################################################################
-### Attribute Defaulting
+### Defaulting Infrastructure
 ################################################################################
 
-"""
-    apply_attribute_defaults!(callback, type, scene[; kwargs...])
 
-Recursively traverses the `documented_attributes(type)` and calls
-`callback(keys, attribute_type, attribute_value)` for each leaf attribute. Any
-themes needed to derive attribute values are pulled from `theme(scene)`.
-
-## Callback
-
-- `keys` are a tuple of symbols corresponding to the keys leading to the leaf
-    attribute. They always include at least one symbol (unnested case).
-- `attribute_type` is the type annotation given to the attribute in the documented
-    attributes. This defaults to `Any` if no types are given and is generally only
-    used for blocks.
-- `attribute_value` is the value returned by `lookup_default_typed`, i.e. the
-    fully resolved value of the attribute after inheriting from the themes as well
-    as the optionally given `kwdict`.
-
-Note that `attribute_value` may be a `NoFallback()`. To error check this
-`Makie.error_on_no_fallback(keys, x)` can be used.
-
-## Keyword Arguments
-
-- `kwdict` is the highest priority "theme" from which overwrites any other
-    defaults set for an attribute. In practice the `kwdict` is usually the
-    keyword arguments passed to a plot or block constructor.
-- `delete_used_kwargs = false` removes any used attributes from `kwdict`. Used
-    for validation in blocks.
-- `exclude` is an optional set of excluded keys. It currently only applies to
-    top level attributes.
-"""
-function apply_attribute_defaults!(
-        f, type::Type, scene;
-        kwdict = NamedTuple(), delete_used_kwargs = false, exclude = tuple()
-    )
-    name = type <: Block ? nameof(type) : plotsym(type)
-
-    doc_attr = documented_attributes(type)
-    default_theme = theme(scene)
-    global_overwrite_theme = theme(name, default = NamedTuple())
-    overwrite_theme = get(theme(scene), name, NamedTuple())
-
-    return apply_attribute_defaults!(
-        f, tuple(),
-        doc_attr, default_theme, global_overwrite_theme, overwrite_theme, kwdict;
-        delete_used_kwargs, exclude
-    )
-end
-
-"""
-    apply_attribute_defaults!(callback, documented_attributes[; kwargs...]),)
-
-Alternative call signature with directly passed `documented_attributes`. Themes
-are included with additional, optional keyword arguments:
-
-- `overwrite_theme`: The `theme(scene)[name]` of the parent scene where `name`
-    is the plot or blocks name. This acts as an overwrite for attributes derived
-    from `documented_attributes` (including `@inherit`)
-- `global_overwrite_theme`: The `theme(nothing)[name]` where `name` is the plot or
-    block name. This acts as an overwrite for attribute defaults if
-    `overwrite_theme` does not contain the current attribute name.
-- `default_theme`: The parent scenes `theme(scene)`, used for resolving `@inherit`
-"""
-function apply_attribute_defaults!(
-        f, doc_attr;
-        delete_used_kwargs = false,
-        exclude = tuple(),
-        default_theme = NamedTuple(),
-        global_overwrite_theme = NamedTuple(),
-        overwrite_theme = NamedTuple(),
-        kwdict = NamedTuple()
-    )
-    return apply_attribute_defaults!(
-        f, tuple(),
-        doc_attr, default_theme, global_overwrite_theme, overwrite_theme, kwdict;
-        delete_used_kwargs, exclude
-    )
-end
-
-function apply_attribute_defaults!(
-        f, trace, doc_attr, theme, gtheme, otheme, kwdict;
-        delete_used_kwargs = false, exclude = tuple()
-    )
-    return apply_attribute_defaults!(
-        f, trace, exclude, delete_used_kwargs,
-        doc_attr, theme, gtheme, otheme, kwdict
-    )
-end
-
-function apply_attribute_defaults!(
-        f, _trace, exclude, delete_kw, doc_attr,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes
-    )
-    for (key, meta) in doc_attr
-        key in exclude && continue
+function collect_nested_paths!(output, nesting, level = 1, _trace = tuple())
+    for (key, next_level) in nesting.keytables[level]
         trace = (_trace..., key)
-
-        if is_nested(meta)
-            apply_attribute_defaults!(
-                f, trace, tuple(), delete_kw,
-                meta.default_value,
-                default_theme,
-                get(global_overwrite_theme, key, NamedTuple()),
-                get(overwrite_theme, key, NamedTuple()),
-                get(user_attributes, key, NamedTuple())
-            )
-            if delete_kw
-                if haskey(user_attributes, key) && isempty(user_attributes[key])
-                    pop!(user_attributes, key)
-                end
-            end
+        if next_level > 0
+            collect_nested_paths!(output, nesting, next_level, trace)
         else
-            T, default = lookup_default_typed(
-                doc_attr, default_theme, global_overwrite_theme, overwrite_theme,
-                user_attributes, trace, delete_kw, key
-            )
-            f(trace, T, default)
+            push!(output, trace)
+        end
+    end
+    return output
+end
+
+"""
+    prepare_graph_for_attributes!(
+        graph::ComputeGraph, attr::DocumentedAttributes, exclude = tuple();
+        is_block = false, is_primitive = false
+    )
+
+Merges the nesting information of `attr` with the given compute graph and adds
+compute nodes for each attribute in `attr`.
+
+Note that this breaks the state of the compute graph to a degree. Using
+`add_input!()` for any node defined in `attr` is expected to fail after this,
+until `add_remaining_inputs!()` or `add_remaining_block_inputs!()` is called.
+
+`exclude` can be used to skip over top level attributes defined in `attr`. Note
+that this currently only works for top level attributes, not nested attributes.
+
+If `is_block = true`, compute nodes are initialized with the types saved in
+`attr`. Otherwise they are set to `Any` if `is_primitive = false` or left blank
+if `is_primitive = true`.
+"""
+function prepare_graph_for_attributes!(
+        graph::ComputeGraph, attr::DocumentedAttributes, exclude = tuple();
+        is_block = false, is_primitive = false
+    )
+
+    # copy nesting information from attr and re-add existing nesting if there
+    # was any
+    old_paths = collect_nested_paths!(Tuple[], graph.nesting)
+    empty!(graph.nesting.keytables)
+
+    for table in attr.nesting.keytables
+        push!(graph.nesting.keytables, copy(table))
+    end
+
+    for path in old_paths
+        ComputePipeline.add_key!(graph.nesting, path)
+    end
+
+    # Since exclude is only used for top level attributes we just filter that level.
+    # Might as well filter out unnested attributes
+    filter!(kv -> !in(kv[1], exclude) && (kv[2] > 0), graph.nesting.keytables[1])
+
+    if is_block
+        for (indices, type) in zip(attr.type_indices, attr.types)
+            add_typed_nodes!(graph, attr, indices, type, exclude)
+        end
+    else
+        for key in attr.merged_keys
+            if !haskey(graph.outputs, key) && !in(key, exclude)
+                node = Computed(key)
+                node.parent_idx = 1
+                is_primitive || ComputePipeline.set_type!(node, Any)
+                graph.outputs[key] = node
+            end
+        end
+    end
+
+    return graph
+end
+
+# Function barrier to infer `type` once for all related attributes
+function add_typed_nodes!(graph, attr, indices, ::Type{T}, exclude) where {T}
+    for idx in indices
+        key = attr.merged_keys[idx]
+        if !haskey(graph.outputs, key) && !in(key, exclude)
+            node = Computed(key)
+            node.parent_idx = 1
+            ComputePipeline.set_type!(node, T)
+            graph.outputs[key] = node
         end
     end
 end
 
-function lookup_default_typed(
-        doc_attr::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        trace::Tuple, delete_kw::Bool, key::Symbol
-    )
-    # If this is called from apply_attribute_defaults!() the attribute is
-    # guaranteed to exist. If we call this from lookup_default(_typed) it may not.
-    meta = get(doc_attr, key, AttributeMetadata(nothing, Inherit(trace, NoFallback()), "", Any))
-    T = meta.type
-    default = meta.default_value
+########################################
+# Utils for connecting loose compute nodes
+########################################
 
-    if is_nested(meta)
-        s = join(trace, '.')
-        error("$s is not a leaf Attribute")
-    end
+function isconnected(graph, key)
+    return haskey(graph.outputs, key) && ComputePipeline.hasparent(graph.outputs[key])
+end
 
-    theme_default = _lookup_default_from_themes(
-        default, default_theme, global_overwrite_theme, overwrite_theme, key
-    )
+function connect_nodes!(callback, graph::ComputeGraph, source::Computed, target::Computed)
+    edge = ComputePipeline.ComputeEdge(callback, graph, source, target)
+    push!(source.parent.dependents, edge)
+    target.parent = edge
+    return
+end
 
-    if haskey(user_attributes, key)
-        # Note: merging a Dict-like theme_default with dict-like kw hurts runtime
-        # performance here (with dispatch and with isa checks)
-        kw = delete_kw ? pop!(user_attributes, key) : user_attributes[key]
-        return T, kw
+function add_prepared_input!(callback, graph::ComputeGraph, key::Symbol, @nospecialize(value), output::Computed)
+    input = ComputePipeline.Input(graph, key, value, callback, output)
+    output.parent = input
+    graph.inputs[key] = input
+    return
+end
+
+function add_or_connect_value!(callback, graph, fullkey, @nospecialize(val), output)
+    if val isa Computed
+        connect_nodes!(callback, graph, val, output)
+    elseif val isa Observable
+        add_prepared_input!(callback, graph, fullkey, val[], output)
+        of = on(val, priority = typemax(Int) - 1) do new_val
+            setproperty!(graph, fullkey, new_val)
+            return Consume(false)
+        end
+        push!(graph.observerfunctions, of)
     else
+        add_prepared_input!(callback, graph, fullkey, val, output)
+    end
+    return
+end
 
-        return T, theme_default
+########################################
+# Plot Infrastructure (split init)
+########################################
+
+"""
+    add_from_kwargs!(get_callback, graph::ComputeGraph, attr::DocumentedAttributes, kwdict[, exclude])
+
+Completes headless compute nodes generated by `prepare_graph_for_attributes!()`
+with entries from keyword arguments. This can process nested and flattened kw
+dicts and allows entries to be values, Observables or Compute nodes. (Nodes
+that already have a complete definition are skipped.)
+
+`get_callback(key)` is called for each edge added here, to define the callback
+of the edge. For nested attributes `key` is the key of the final nesting layer
+(e.g. `:inner` for `attr.outer.inner`)
+
+`exclude` works with flattened/merged keys (e.g. `Symbol("outer.inner")`).
+"""
+function add_from_kwargs!(
+        get_callback,
+        graph::ComputeGraph, attr::DocumentedAttributes, kwdict,
+        exclude = tuple()
+    )
+    # User passes kwargs[Symbol("outer.inner")] = val, e.g. through shared_attributes
+    add_from_flattened_kwargs!(get_callback, graph, attr, kwdict, exclude)
+    # user passes kwargs[:outer] = (inner = val, ...)
+    add_from_nested_kwargs!(get_callback, graph, attr, kwdict, exclude)
+    return
+end
+
+function add_from_nested_kwargs!(
+        get_callback,
+        graph::ComputeGraph, attr::DocumentedAttributes, kwdict,
+        exclude = tuple(), level = 1
+    )
+    for (key, val) in pairs(kwdict)
+        # kwargs may not all be attributes
+        ComputePipeline.has_key_in_level(attr.nesting, level, key) || continue
+
+        idx = attr.nesting.keytables[level][key]
+        if idx > 0
+            add_from_nested_kwargs!(get_callback, graph, attr, val, exclude, idx)
+        else
+            idx = -idx
+            fullkey = attr.merged_keys[idx]
+            (isconnected(graph, fullkey) || in(key, exclude)) && continue
+
+            output = graph.outputs[fullkey]
+            add_or_connect_value!(get_callback(key), graph, fullkey, val, output)
+        end
+    end
+    return
+end
+
+function add_from_flattened_kwargs!(
+        get_callback,
+        graph::ComputeGraph, attr::DocumentedAttributes, kwdict,
+        exclude = tuple()
+    )
+    for key in attr.merged_keys
+        if haskey(kwdict, key) && !isconnected(graph, key) && !in(key, exclude)
+            output = graph.outputs[key]
+            add_or_connect_value!(get_callback(key), graph, key, kwdict[key], output)
+        end
+    end
+    return
+end
+
+"""
+    connect_parent!(get_callback, child::ComputeGraph, parent::ComputeGraph, attr::DocumentedAttributes[, exclude])
+
+Connects headless compute nodes generated by `prepare_graph_for_attributes!()`
+from `child` to nodes with matching name in `parent`. (Nodes that already have
+a complete definition are skipped.)
+
+`get_callback(key)` is called for each edge added here, to define the callback
+of the edge. For nested attributes `key` is the key of the final nesting layer
+(e.g. `:inner` for `attr.outer.inner`)
+
+`exclude` works with flattened/merged keys (e.g. `Symbol("outer.inner")`).
+"""
+function connect_parent!(
+        get_callback, child::ComputeGraph, parent::ComputeGraph,
+        attr::DocumentedAttributes, exclude = tuple()
+    )
+    # TODO: key being a merged_key is probably bad for convert_attribute()
+    for key in attr.merged_keys
+        if haskey(parent, key) && !isconnected(child, key) && !in(key, exclude)
+            connect_nodes!(get_callback(key), child, parent[key], child.outputs[key])
+        end
     end
 end
 
-# Note: @nospecialize() helps runtime performance quite a bit here
-function _lookup_default_from_themes(
-        @nospecialize(default), default_theme, global_overwrite_theme, overwrite_theme, key
-    )
-    # These to_value() calls are important for `add_theme!(plot)`
-    if haskey(overwrite_theme, key)
-        return to_value(overwrite_theme[key])
-    elseif haskey(global_overwrite_theme, key)
-        return to_value(global_overwrite_theme[key])
-    elseif default isa Inherit
-        return inherit_default(default, default_theme)
-    else
-        return default
+"""
+    add_remaining_inputs!(get_callback, graph::ComputeGraph, attr::DocumentedAttributes[, exclude])
+
+Initializes all remaining headless compute nodes generated by
+`prepare_graph_for_attributes!()` with an `Input` node.
+
+Note that this does not do any theme resolution. This is done by `add_theme!()`.
+Pulling inputs added by this function may lock compute nodes to incorrect types.
+
+`get_callback(key)` is called for each edge added here, to define the callback
+of the edge. For nested attributes `key` is the key of the final nesting layer
+(e.g. `:inner` for `attr.outer.inner`)
+
+`exclude` works with flattened/merged keys (e.g. `Symbol("outer.inner")`).
+"""
+function add_remaining_inputs!(get_callback, graph, attr, exclude = tuple())
+    # TODO: key being a merged_key is probably bad for convert_attribute()
+    for (key, value) in zip(attr.merged_keys, attr.defaults)
+        if !isconnected(graph, key) && !in(key, exclude)
+            output = graph[key]
+            add_prepared_input!(get_callback(key), graph, key, value, output)
+        end
     end
+end
+
+"""
+    add_theme!(graph::ComputeGraph, attr::DocumentedAttributes, T, scene, exclude, kwargs)
+
+Resolves the theme (`theme(scene)[:Plot]` overwrites, inheritting from
+`theme(scene)` and fallbacks) for each attribute defined in `attributes` that
+is an `Input` not defined by `kwargs`. After this attributes are fully initialized.
+"""
+function add_theme!(graph, attr, T, scene, exclude, kwargs)
+    # add merged keys from kwargs to exclusion list
+    collect_merged_keys!(exclude, attr, kwargs)
+    # fill out an array with resolved defaults from theme + plot
+    defaults = resolve_defaults(attr, scene, plotsym(T), NamedTuple(), exclude)
+    # update anything that's an input and not excluded
+    for (i, key) in enumerate(attr.merged_keys)
+        if !(key in exclude) && haskey(graph.inputs, key)
+            val = to_value(defaults[i])
+            # Skipping setproperty/setindex from ComputePipeline to
+            # avoid type inference for val.
+            setfield!(graph.inputs[key], :value, val)
+            # This would usually only happen if `is_same()` returns false, but
+            # since this runs during plot init we don't lose much from
+            # setting everything dirty.
+            ComputePipeline.mark_dirty!(graph.inputs[key])
+        end
+    end
+    return
+end
+
+function collect_merged_keys!(output, attr, kwargs, level = 1)
+    for (key, val) in pairs(kwargs)
+        # kwargs/overwrites may not all be attributes
+        ComputePipeline.has_key_in_level(attr.nesting, level, key) || continue
+        idx = attr.nesting.keytables[level][key]
+        if idx > 0
+            collect_merged_keys!(output, attr, val, idx)
+        else
+            push!(output, attr.merged_keys[-idx])
+        end
+    end
+    return output
+end
+
+"""
+    resolve_defaults(attr::DocumentedAttributes, scene, name::Symbol, kwargs, skip = tuple(), remove_kw = false)
+
+Creates a `Vector` of default attribute values in the same order as
+`attr.merged_keys`, as derived from themes and `attr`. This follows the
+standard priorities of attribute inheritance:
+
+1. `kwargs`
+2. `theme(scene)[name]` overwrites
+3. `attr.defaults` (if it is a value)
+4. `theme(scene)` if `attr.defaults` inherits
+5. inherit fallback
+
+`skip` can be used to skip resolving attributes based on their merged name.
+
+`remove_kw` can be used to remove any kwarg that is used while generating the
+defaults vector.
+"""
+function resolve_defaults(attr, scene, name::Symbol, kwargs, skip = tuple(), remove_kw = false)
+    flattened = Vector{Any}(undef, length(attr.defaults))
+    resolve_overwrites!(flattened, attr, kwargs, skip, remove_kw)
+    default_theme = theme(scene)
+    if haskey(default_theme, name)
+        resolve_overwrites!(flattened, attr, default_theme[name], skip)
+    end
+    resolve_defaults!(flattened, attr, default_theme, skip)
+    return flattened
+end
+
+# kwargs, theme(scene/nothing)[:Plot/:Block]
+function resolve_overwrites!(flattened, attr, kwargs, skip, remove = false, level = 1)
+    for (key, val) in pairs(kwargs)
+        # kwargs/overwrites may not all be attributes
+        ComputePipeline.has_key_in_level(attr.nesting, level, key) || continue
+        idx = attr.nesting.keytables[level][key]
+        if idx > 0
+            resolve_overwrites!(flattened, attr, val, skip, idx)
+        elseif !isassigned(flattened, -idx) && !in(attr.merged_keys[-idx], skip)
+            flattened[-idx] = val
+        end
+    end
+    if remove
+        filter!(p -> !(p[1] in keys(attr.nesting.keytables[level])), kwargs)
+    end
+    return
+end
+
+function resolve_defaults!(flattened, attr, theme, skip)
+    for i in attr.inherit
+        if !isassigned(flattened, i) && !in(attr.merged_keys[i], skip)
+            flattened[i] = inherit_default(attr.defaults[i]::Makie.Inherit, theme)
+        end
+    end
+    for (i, val) in enumerate(attr.defaults)
+        if !isassigned(flattened, i) && !in(attr.merged_keys[i], skip)
+            flattened[i] = val
+        end
+    end
+    return
 end
 
 """
     inherit_default(inherit::Inherit, scene_theme)
 
-Resolves an inherited attribute by inheriting it from `scene_theme` or the global
-`theme(nothing)` as a backup. `inherit.callback` is applied to the result before
-returning.
+Resolves an inherited attribute by inheriting it from `scene_theme`.
+`inherit.callback` is applied to the result before returning.
 
 This function may act recursively if `fallback` is another `Inherit`. If no
 default could be inherited and the function will return `inherit.fallback` even
@@ -781,147 +1493,35 @@ function inherit_default(theme, fallback, key::Symbol, keys::Symbol...)
 end
 inherit_default(theme, fallback, key::Symbol) = get(theme, key, fallback)
 
-
-################################################################################
-### Attribute Defaulting for single attributes
-################################################################################
-
+########################################
+# Block Infrastructure (merged init)
+########################################
 
 """
-    lookup_default(type, scene, keys...[; kwargs...])
+    add_remaining_block_inputs!(graph::ComputeGraph, attr::DocumentedAttributes, flattened)
 
-Looks up the default value of a single attribute identified by `keys`
-for the given plot or block `type` with the themes defined in `scene`. Multiple
-keys are used to refer to nested attributes.
+Completely initializes all headless compute nodes generated by
+`prepare_graph_for_attributes!()` in `graph` using a vector of resolved default
+values `flattened` generated with `resolve_defaults()`.
 
-## Keyword Arguments
-
-- `kwdict` is the highest priority "theme" from which overwrites any other
-    defaults set for an attribute. In practice the `kwdict` is usually the
-    keyword arguments passed to a plot or block constructor.
-- `delete_used_kwargs = false` removes any used attributes from `kwdict`. Used
-    for validation in blocks.
-
-Note that this function does not error if `NoFallback()` is the return. (I.e if
-no valid default was found)
-
----
-
-    lookup_default(documented_attributes, keys...[; kwargs...]),)
-
-Alternative call signature with directly passed `documented_attributes`. Themes
-are included with additional, optional keyword arguments:
-
-- `overwrite_theme`: The `theme(scene)[name]` of the parent scene where `name`
-    is the plot or blocks name. This acts as an overwrite for attributes derived
-    from `documented_attributes` (including `@inherit`)
-- `global_overwrite_theme`: The `theme(nothing)[name]` where `name` is the plot or
-    block name. This acts as an overwrite for attribute defaults if
-    `overwrite_theme` does not contain the current attribute name.
-- `default_theme`: The parent scenes `theme(scene)`, used for resolving `@inherit`
+This always uses `BlockAttributeConvert{T}` where T is the attribute type
+defined in `attr` as the edge callback.
 """
-function lookup_default(args...; kwargs...)
-    T, val = lookup_default_typed(args...; kwargs...)
-    return val
+function add_remaining_block_inputs!(graph, attr, flattened)
+    for (indices, type) in zip(attr.type_indices, attr.types)
+        add_remaining_block_inputs!(graph, attr, indices, type, flattened)
+    end
+    return graph
 end
 
-"""
-    lookup_default_typed(type, scene, keys...[; kwargs...])
-
-Looks up the default value and type of a single attribute identified by (nested)
-`keys`. The lookup follows the same prioritization scheme as plot/block attributes,
-but does not require `keys` to exist as a plot/block attribute.
-
-
-## Keyword Arguments
-
-- `kwdict` is the highest priority "theme" from which overwrites any other
-    defaults set for an attribute. In practice the `kwdict` is usually the
-    keyword arguments passed to a plot or block constructor.
-- `delete_used_kwargs = false` removes any used attributes from `kwdict`. Used
-    for validation in blocks.
-
-Note that this function does not error if `NoFallback()` is the return. (I.e if
-no valid default was found)
-"""
-function lookup_default_typed(
-        ::Type{T}, scene, keys::Symbol...;
-        kwdict = NamedTuple(), delete_used_kwargs = false
-    ) where {T}
-    name = T isa Block ? nameof(type) : plotsym(T)
-    return lookup_default_typed(
-        documented_attributes(T),
-        theme(scene),
-        get(theme(nothing), name, NamedTuple()),
-        get(theme(scene), name, NamedTuple()),
-        kwdict, delete_used_kwargs, keys...
-    )
+function add_remaining_block_inputs!(graph, attr, indices, ::Type{T}, source) where {T}
+    for i in indices
+        key = attr.merged_keys[i]
+        if !isconnected(graph, key)
+            add_or_connect_value!(
+                BlockAttributeConvert{T}(), graph, key, source[i], graph[key]
+            )
+        end
+    end
+    return
 end
-
-"""
-    lookup_default_typed(documented_attributes, keys...[; kwargs...]),)
-
-Alternative call signature with directly passed `documented_attributes`. Themes
-are included with additional, optional keyword arguments:
-
-- `overwrite_theme`: The `theme(scene)[name]` of the parent scene where `name`
-    is the plot or blocks name. This acts as an overwrite for attributes derived
-    from `documented_attributes` (including `@inherit`)
-- `global_overwrite_theme`: The `theme(nothing)[name]` where `name` is the plot or
-    block name. This acts as an overwrite for attribute defaults if
-    `overwrite_theme` does not contain the current attribute name.
-- `default_theme`: The parent scenes `theme(scene)`, used for resolving `@inherit`
-"""
-function lookup_default_typed(
-        doc_attr, keys::Symbol...;
-        default_theme = NamedTuple(),
-        global_overwrite_theme = NamedTuple(),
-        overwrite_theme = NamedTuple(),
-        kwdict = NamedTuple(), delete_used_kwargs = false
-    )
-    return lookup_default_typed(
-        doc_attr, default_theme, global_overwrite_theme, overwrite_theme, kwdict,
-        delete_used_kwargs, keys...
-    )
-end
-
-function lookup_default_typed(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        delete_kw::Bool, keys::Symbol...
-    )
-    lookup_default_typed(
-        block_defaults, default_theme, global_overwrite_theme, overwrite_theme,
-        user_attributes, keys, delete_kw, keys...
-    )
-end
-
-function lookup_default_typed(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        keys::Symbol...
-    )
-    lookup_default_typed(
-        block_defaults, default_theme, global_overwrite_theme, overwrite_theme,
-        user_attributes, keys, false, keys...
-    )
-end
-
-function lookup_default_typed(
-        block_defaults::DocumentedAttributes,
-        default_theme, global_overwrite_theme, overwrite_theme, user_attributes,
-        trace::Tuple, delete_kw::Bool, key::Symbol, keys::Symbol...
-    )
-    lookup_default_typed(
-        get(block_defaults, key, NamedTuple()),
-        default_theme,
-        get(global_overwrite_theme, key, NamedTuple()),
-        get(overwrite_theme, key, NamedTuple()),
-        get(user_attributes, key, NamedTuple()),
-        trace, delete_kw, keys...
-    )
-end
-
-################################################################################
-### Compat / Deprecations
-################################################################################

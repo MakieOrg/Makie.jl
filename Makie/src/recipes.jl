@@ -251,10 +251,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname! = esc(Symbol("$(funcname_sym)!"))
     PlotType = esc(Tsym)
     funcname = esc(funcname_sym)
-    doc_attr_expr = esc(convert_old_attributes_expr(theme_func))
-    meta_attr_expr = convert_old_attributes_expr_to_meta(theme_func) # why does this one not want to esc?
+    attr_expr = convert_old_attributes_expr(theme_func) # why does this one not want to esc?
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
-    meta_attr_placeholder = Symbol("#__", funcname_sym, "_meta_attr_placeholder")
 
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
@@ -263,10 +261,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         Core.@__doc__ ($funcname)(args...; kw...) = _create_plot($funcname, Dict{Symbol, Any}(kw), args...)
         ($funcname!)(args...; kw...) = _create_plot!($funcname, Dict{Symbol, Any}(kw), args...)
 
-        const $attr_placeholder = $doc_attr_expr
+        const $attr_placeholder = $attr_expr
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
-        const $meta_attr_placeholder = $meta_attr_expr
-        $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
 
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
         export $PlotType, $funcname, $funcname!
@@ -283,7 +279,8 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     return expr
 end
 
-function documented_attributes end # this can be used for inheriting from other recipes
+# this can be used for inheriting from other recipes
+documented_attributes(::Any) = DocumentedAttributes()
 
 function create_args_type_expr(PlotType, args::Nothing)
     return [], :()
@@ -327,8 +324,6 @@ macro recipe(Tsym::Symbol, args, attrblock, _export)
 end
 
 function types_for_plot_arguments end
-
-documented_attributes(_) = DocumentedAttributes()
 
 function extract_docstring(str)
     if VERSION >= v"1.11" && str isa Base.Docs.DocStr
@@ -386,7 +381,6 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
 
     docs_placeholder = Symbol("#__", funcname_sym, "_docs_placeholder")
     attr_placeholder = Symbol("#__", funcname_sym, "_attr_placeholder")
-    meta_attr_placeholder = Symbol("#__", funcname_sym, "_meta_attr_placeholder")
 
     q = quote
         # This part is as far as I know the only way to modify the docstring on top of the
@@ -416,9 +410,6 @@ function create_recipe_expr(Tsym, args, attrblock, _export = true)
 
         const $attr_placeholder = $(build_documented_attributes(attrblock))
         $(Makie).documented_attributes(::Type{<:$(PlotType)}) = $attr_placeholder
-
-        const $meta_attr_placeholder = $(build_meta_attributes(attrblock))
-        $(Makie).meta_attributes(::Type{<:$(PlotType)}) = $meta_attr_placeholder
 
         $(Makie).plotsym(::Type{<:$(PlotType)}) = $(QuoteNode(Tsym))
         $(Makie).symbol_to_plot(::Val{$(QuoteNode(Tsym))}) = $PlotType
@@ -720,7 +711,7 @@ function Base.showerror(io::IO, err::InvalidAttributeError)
     print(io, " for $(err.object_name) type ")
     printstyled(io, err.type; color = :blue, bold = true)
     println(io, ".")
-    nameset = sort(string.(collect(attribute_names(err.type))))
+    nameset = sort(string.(flattened_keys(documented_attributes(err.type))))
     attrs = string.(collect(err.attributes))
     possible_cands, any_close = find_nearby_attributes(attrs, nameset)
     any_close && println(io)
@@ -769,7 +760,7 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     allowlist = attribute_name_allowlist()
     deprecations = deprecated_attributes(P)::Tuple{Vararg{NamedTuple{(:attribute, :message, :error), Tuple{Symbol, String, Bool}}}}
     kw = plot.kw
-    meta = meta_attributes(P)
+    attr = documented_attributes(P)
 
     invalid_names = Symbol[]
     for (k, v) in kw
@@ -778,11 +769,11 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
         end
 
         # TODO: maybe worht flattening kwargs early and just setdiff here?
-        if !(k in root_keys(meta))
+        if !(k in root_keys(attr))
             push!(invalid_names, k)
             continue
         end
-        collect_invalid_nested_attributes!(invalid_names, meta, (k,), v)
+        collect_invalid_nested_attributes!(invalid_names, attr, (k,), v)
     end
 
     if !isempty(invalid_names)
@@ -802,24 +793,24 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
     return
 end
 
-function collect_invalid_nested_attributes!(invalid_names, meta, keys, local_kwargs, idx = 1)
+function collect_invalid_nested_attributes!(invalid_names, attr, keys, local_kwargs, idx = 1)
     # keys is the path to local_kwargs
     # mark as error if last(keys) does not exist in nesting
     key = last(keys)
-    if !haskey(meta.nesting.keytables[idx], key)
+    if !haskey(attr.nesting.keytables[idx], key)
         push!(invalid_names, ComputePipeline.merged_key(keys...))
         return
     end
 
     # This will be the next layer we look at
-    idx = meta.nesting.keytables[idx][key]
+    idx = attr.nesting.keytables[idx][key]
     if idx < 0
         # addresses a leaf attribute which accepts Attrbutes, Dict, etc too
         return
     elseif idx > 0 && applicable(getindex, local_kwargs, key)
         # addresses a nesting layer and local_kwargs can nest, go deeper
         for (k, v) in pairs(local_kwargs)
-            collect_invalid_nested_attributes!(invalid_names, meta, (keys..., k), v, idx)
+            collect_invalid_nested_attributes!(invalid_names, attr, (keys..., k), v, idx)
         end
     else
         # addresses a nesting layer that's not present in local_kwargs, mark for error

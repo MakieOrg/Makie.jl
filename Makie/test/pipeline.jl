@@ -148,9 +148,7 @@ end
     @test all(x -> x isa Volume, plots)
 end
 
-import Makie:
-    InvalidAttributeError,
-    attribute_names
+import Makie: InvalidAttributeError
 
 @testset "validated attributes" begin
     @test_throws InvalidAttributeError heatmap(zeros(10, 10); does_not_exist = 123)
@@ -165,11 +163,11 @@ import Makie:
     @test_throws InvalidAttributeError mesh(rand(Point3f, 3); does_not_exist = 123)
 end
 
-import Makie: find_nearby_attributes, attribute_names, textdiff
+import Makie: find_nearby_attributes, flattened_keys, documented_attributes, textdiff
 
 @testset "attribute suggestions" begin
-    @test find_nearby_attributes(Set([:clr]), sort(string.(collect(attribute_names(Lines))))) == ([("color", true)], true)
-    triplot_attrs = sort(string.(collect(attribute_names(Triplot))))
+    @test find_nearby_attributes(Set([:clr]), sort(string.(flattened_keys(documented_attributes(Lines))))) == ([("color", true)], true)
+    triplot_attrs = sort(string.(flattened_keys(documented_attributes(Triplot))))
     attrs = [:recompute_centres, :clr, :strokecolour, :blahblahblahblahblah]
     suggestions = find_nearby_attributes(attrs, triplot_attrs)
     @test suggestions == ([("recompute_centers", 1), ("marker", 0), ("strokecolor", 1), ("convex_hull_color", 0)], true)
@@ -203,7 +201,6 @@ end
 
     err = InvalidAttributeError(Axis, Set{Symbol}())
     @test err.object_name == "block"
-    @test attribute_names(Axis3) == keys(Makie.root_keys(Makie.meta_attributes(Axis3)))
 
     fig = Figure()
     @test_throws InvalidAttributeError Axis(fig[1, 1], does_not_exist = 123)
@@ -227,10 +224,10 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test :palette in attribute_names(Axis)
-    @test :default in attribute_names(Menu)
-    @test :entrygroups in attribute_names(Legend)
-    @test :palette in attribute_names(PolarAxis)
+    @test :palette in Makie.flattened_keys(Axis)
+    @test :default in Makie.flattened_keys(Menu)
+    @test :entrygroups in Makie.flattened_keys(Legend)
+    @test :palette in Makie.flattened_keys(PolarAxis)
 end
 
 @testset "func2string" begin

@@ -17,7 +17,7 @@ function DocumenterVitepress.render(io::IO, mime::MIME"text/plain", node::Markdo
 end
 
 function attrs_examples_docs_defaults(type::Type{<:Union{Makie.Plot, Makie.Block}})
-    attr = Makie.meta_attributes(type)
+    attr = Makie.documented_attributes(type)
 
     attrkeys = sort(copy(attr.merged_keys))
     all_examples = Makie.attribute_examples(type)

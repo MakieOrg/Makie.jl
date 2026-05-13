@@ -1,8 +1,8 @@
 struct Axis3Camera <: AbstractCamera end
 
 function add_attributes!(T::Type{<:Axis3}, graph, flattened_defaults)
-    meta = meta_attributes(Axis3)
-    _, limits = get_typed_default(meta, flattened_defaults, :limits)
+    attr = documented_attributes(Axis3)
+    _, limits = get_typed_default(attr, flattened_defaults, :limits)
     add_input!(graph, :limits, limits)
     ComputePipeline.set_type!(graph.limits, Any)
     graph.inputs[:limits].force_update = true

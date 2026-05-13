@@ -611,12 +611,12 @@ function shared_attributes(plot::Plot, target::Type{<:Plot}; drop = Symbol[])
         drop = (model = nothing, drop...)
     end
 
-    return shared_attributes!(Attributes(), plot.attributes, meta_attributes(target), drop)
+    return shared_attributes!(Attributes(), plot.attributes, documented_attributes(target), drop)
 end
 
 function shared_attributes!(
         output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
-        allowed::MetaAttributes, exclude::Union{Vector{Symbol}, Set{Symbol}}
+        allowed::DocumentedAttributes, exclude::Union{Vector{Symbol}, Set{Symbol}}
     )
     for k in allowed.merged_keys
         if ComputePipeline.has_leaf_key(graph, k) && !in(k, exclude)
@@ -628,7 +628,7 @@ end
 
 function shared_attributes!(
         output::Attributes, graph::ComputePipeline.AbstractComputeGraph,
-        allowed::MetaAttributes, exclude::Union{Dict, NamedTuple}, layer = 1
+        allowed::DocumentedAttributes, exclude::Union{Dict, NamedTuple}, layer = 1
     )
     for (key, idx) in allowed.nesting.keytables[layer]
         is_excluded = haskey(exclude, key) && !isa(exclude[key], Union{Dict, NamedTuple})

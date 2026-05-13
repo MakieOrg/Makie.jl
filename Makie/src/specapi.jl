@@ -494,17 +494,17 @@ end
 function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) where {T}
     scene = parent_scene(target)
     name = T isa Block ? nameof(T) : plotsym(T)
-    meta = meta_attributes(T)
+    attr = documented_attributes(T)
 
     collect_updates_rec!(
         updates, target.attributes, tuple(), old_kwargs, new_kwargs,
-        meta, scene, name
+        attr, scene, name
     )
 
     return
 end
 
-function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, meta, scene, name)
+function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
     # updates old/default -> new
     for (k, new_value) in new_kwargs
         current_path = (path..., k)
@@ -515,7 +515,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, meta
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                meta, scene, name
+                attr, scene, name
             )
         else
             if is_different(current_value[], new_value)
@@ -538,10 +538,10 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, meta
                 updates, current_value, current_path,
                 get(old_kwargs, k, NamedTuple()),
                 get(new_kwargs, k, NamedTuple()),
-                meta, scene, name
+                attr, scene, name
             )
         else
-            default = resolve_single_default(meta, scene, name, NamedTuple(), current_path...)
+            default = lookup_default(attr, scene, name, NamedTuple(), current_path...)
             if is_different(current_value[], default)
                 push!(updates, current_path => default)
             end
@@ -814,7 +814,7 @@ function extract_colorbar_kw(legend::BlockSpec, scene::Scene)
                         return nan_extrema(color)
                     end
                 else
-                    return resolve_single_default(pt, scene, k)
+                    return lookup_default(pt, scene, k)
                 end
             end
         end

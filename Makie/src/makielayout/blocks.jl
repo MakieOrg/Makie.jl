@@ -205,7 +205,7 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
     push!(fields_vector, :(blockscene::Scene))
     push!(fields_vector, :(layout::Union{Nothing, GridLayout}))
 
-    doc_attrs, meta_attrs = extract_attributes!(body)
+    attrs = extract_attributes!(body)
 
     i_forwarded_layout = findfirst(
         x -> x isa Expr && x.head === :macrocall &&
@@ -249,7 +249,6 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
 
     docs_placeholder = Symbol("#__", name, "_docs_placeholder")
     attr_placeholder = Symbol("#__", name, "_attr_placeholder")
-    meta_attr_placeholder = Symbol("#__", name, "_meta_attr_placeholder")
 
     BlockType = esc(name)
 
@@ -277,11 +276,8 @@ function block_macro_internal(_name::Union{Expr, Symbol}, args, body::Expr = Exp
         export $BlockType
         $(Makie).symbol_to_block(::Val{$(QuoteNode(name))}) = $BlockType
 
-        const $attr_placeholder = $doc_attrs
-        $(Makie).documented_attributes(::Type{$BlockType}) = $attr_placeholder
-
-        const $meta_attr_placeholder = $meta_attrs
-        $(Makie).meta_attributes(::Type{<:$(BlockType)}) = $meta_attr_placeholder
+        const $attr_placeholder = $attrs
+        $(Makie).documented_attributes(::Type{<:$(BlockType)}) = $attr_placeholder
 
         $(Makie).has_forwarded_layout(::Type{$BlockType}) = $has_forwarded_layout
 
@@ -356,7 +352,7 @@ function extract_attributes!(body)
         pushfirst!(attr_input_expr.args, :(Makie.mixin_block_layout_attributes()...))
     end
 
-    return build_documented_attributes(attr_input_expr), build_meta_attributes(attr_input_expr)
+    return build_documented_attributes(attr_input_expr)
 end
 
 
@@ -416,7 +412,7 @@ block_kwargs(::Type{<:Block}) = Set{Symbol}()
 
 # TODO: Should probably run recursively
 function _check_remaining_kwargs(T::Type{<:Block}, kwdict::Dict)
-    badnames = setdiff(keys(kwdict), attribute_names(T), block_kwargs(T))
+    badnames = setdiff(keys(kwdict), block_kwargs(T))
     if !isempty(badnames)
         throw(InvalidAttributeError(T, badnames))
     end
@@ -518,7 +514,7 @@ some inputs, i.e. if a different input callback is needed for a specific type
 (including `Any` from entries without type annotations).
 
 A custom implementation should use
-`Makie.get_typed_default(Makie.meta_attributes(BlockType), flattened_defaults, keys...)`
+`Makie.get_typed_default(Makie.documented_attributes(BlockType), flattened_defaults, keys...)`
 to get the type defined in `@Block` as well as the initial value derived from
 user kwargs, themes and the `@Block` definition. These should then be used to
 initialize the input/attribute. (This is not enforced.)
@@ -529,11 +525,11 @@ defined by `@Block` has an input.
 Example:
 ```
 function Makie.add_attributes!(::Type{MyBlock}, graph, flattened_defaults)
-    meta = Makie.meta_attributes(MyBlock)
-    _, default = Makie.get_typed_default(meta, flattened_defaults, :colorname)
+    attr = Makie.documented_attributes(MyBlock)
+    _, default = Makie.get_typed_default(attr, flattened_defaults, :colorname)
     Makie.add_input!(to_colorname, graph, :colorname, default)
 
-    _, default = Makie.get_typed_default(meta, flattened_defaults, :nested, :attribute)
+    _, default = Makie.get_typed_default(attr, flattened_defaults, :nested, :attribute)
     Makie.add_input!(foo, graph, :nested, :attribute, default)
     Makie.ComputePipeline.set_type!(graph.nested.attribute, Any)
 
@@ -558,15 +554,15 @@ function _block(T::Type{<:Block}, fig_or_scene::Union{Figure, Scene}, args, kwdi
 
     topscene = get_topscene(fig_or_scene)
     blockname = nameof(T)
-    meta = meta_attributes(T)
-    flattened_defaults = resolve_defaults(meta, topscene, blockname, kwdict, tuple(), true)
+    attr = documented_attributes(T)
+    flattened_defaults = resolve_defaults(attr, topscene, blockname, kwdict, tuple(), true)
 
     # User overwrites
     add_attributes!(T, graph, flattened_defaults)
 
     # prepare after user overwrites so users can use `add_input!()`
-    prepare_graph_for_attributes!(graph, meta, is_block = true)
-    add_remaining_block_inputs!(graph, meta, flattened_defaults)
+    prepare_graph_for_attributes!(graph, attr, is_block = true)
+    add_remaining_block_inputs!(graph, attr, flattened_defaults)
 
     # the non-attribute kwargs will be passed to the block later
     non_attribute_kwargs = kwdict
@@ -771,7 +767,7 @@ function Base.getproperty(block::T, name::Symbol) where {T <: Block}
 end
 
 function Base.propertynames(::T) where {T <: Block}
-    return (fieldnames(T)..., :blocks, root_keys(meta_attributes(T))...)
+    return (fieldnames(T)..., :blocks, root_keys(documented_attributes(T))...)
 end
 function Base.hasproperty(block::T, name::Symbol) where {T <: Block}
     return hasfield(T, name) || (name === :block) || haskey(block.attributes, name)
@@ -1005,7 +1001,7 @@ attribute_examples(::Type{T}, attr::Symbol) where {T <: Union{Block, Plot}} = ge
 
 # collect() doesn't seem to be necessary but the propertynames docstring says
 # "tuple or vector" so lets not return a KeySet
-Base.propertynames(::Type{T}) where {T <: Block} = collect(root_keys(meta_attributes(T)))
+Base.propertynames(::Type{T}) where {T <: Block} = collect(root_keys(documented_attributes(T)))
 
 function ComputePipeline.register_computation!(f, b::Block, inputs::Vector, outputs::Vector{Symbol})
     return register_computation!(f, b.attributes, inputs, outputs)

@@ -249,12 +249,12 @@ end
 
 # Consider making a dedicated group for DataInspector?
 const DEFAULT_ATTRIBUTE_GROUPS = let
-    generic = collect(keys(Makie.mixin_generic_plot_attributes().d))
+    generic = copy(Makie.mixin_generic_plot_attributes().merged_keys)
     push!(generic, :cycle)
     inspector = [:inspectable, :inspector_label]
     filter!(name -> !in(name, inspector), generic)
-    colormapping = collect(keys(Makie.mixin_colormap_attributes().d))
-    shading = collect(keys(Makie.mixin_shading_attributes().d))
+    colormapping = copy(Makie.mixin_colormap_attributes().merged_keys)
+    shading = copy(Makie.mixin_shading_attributes().merged_keys)
 
     Pair{String, Vector{Symbol}}[
         "Generic Attributes" => sort!(generic),
@@ -280,7 +280,7 @@ the plot type.
 """
 function uncategorized_attributes(::Type{PT}) where {PT <: AbstractPlot}
     groups = attribute_groups(PT)
-    attr = meta_attributes(PT)
+    attr = documented_attributes(PT)
     keys_used = fill(false, length(attr.merged_keys))
     flag_grouped_attributes!(keys_used, attr)
     for (name, entrylist) in groups
@@ -318,7 +318,7 @@ attribute_groups(::Type{<:AbstractPlot}) = Makie.DEFAULT_ATTRIBUTE_GROUPS
 
 function get_attribute_docs(::Type{T}; full = false) where {T}
     # Build attributes section
-    attrs = meta_attributes(T)
+    attrs = documented_attributes(T)
     # Show detailed attribute documentation
     if isempty(attrs)
         return Markdown.parse("## Attributes\n\nNo attributes available.")
@@ -330,35 +330,35 @@ function get_attribute_docs(::Type{T}; full = false) where {T}
     end
 end
 
-function write_attribute_docs!(io, PT, meta, full::Bool)
+function write_attribute_docs!(io, PT, attr, full::Bool)
     groups = attribute_groups(PT)
-    keys_used = fill(false, length(meta.merged_keys))
+    keys_used = fill(false, length(attr.merged_keys))
     examples = attribute_examples(PT)
 
     current_indices = Int[]
 
     for (groupname, entries) in groups
-        if any(entry -> has_nested_key(meta, entry), entries)
+        if any(entry -> has_nested_key(attr, entry), entries)
             print(io, full ? "### $groupname\n\n" : "**$groupname**: ")
             has_prev = false
             for entry in entries
-                has_nested_key(meta, entry) || continue
+                has_nested_key(attr, entry) || continue
                 if full
                     # This currently skips over nested levels and just collects indices
                     # for leaf nodes. To treat intermediate keys we would need to
                     # map any idx > 0 found in nested_indices (after keys get resolved)
-                    # to `meta.nested_docstring` and any idx < 0 like we do here.
-                    nested_indices!(current_indices, meta, entry)
-                    sort!(current_indices, by = i -> meta.merged_keys[i])
+                    # to `attr.nested_docstring` and any idx < 0 like we do here.
+                    nested_indices!(current_indices, attr, entry)
+                    sort!(current_indices, by = i -> attr.merged_keys[i])
                     for idx in current_indices
                         keys_used[idx] && continue
-                        write_full_single_attribute_docs!(io, meta, examples, idx)
+                        write_full_single_attribute_docs!(io, attr, examples, idx)
                         keys_used[idx] = true
                     end
                     empty!(current_indices)
                 else
                     has_prev && print(io, ", ")
-                    write_short_nested_attribute_docs!(io, meta, entry, keys_used)
+                    write_short_nested_attribute_docs!(io, attr, entry, keys_used)
                     has_prev = true
                 end
             end
@@ -366,8 +366,8 @@ function write_attribute_docs!(io, PT, meta, full::Bool)
         end
     end
 
-    leftover_indices = eachindex(meta.merged_keys)[.!keys_used]
-    sort(leftover_indices, by = i -> meta.merged_keys[i])
+    leftover_indices = eachindex(attr.merged_keys)[.!keys_used]
+    sort(leftover_indices, by = i -> attr.merged_keys[i])
 
     # Print the rest as plot specific attributes
     if !isempty(leftover_indices)
@@ -377,10 +377,10 @@ function write_attribute_docs!(io, PT, meta, full::Bool)
         has_prev = false
         for idx in leftover_indices
             if full
-                write_full_single_attribute_docs!(io, meta, examples, idx)
+                write_full_single_attribute_docs!(io, attr, examples, idx)
             else
                 has_prev && print(io, ", ")
-                print(io, '`', meta.merged_keys[idx], '`')
+                print(io, '`', attr.merged_keys[idx], '`')
                 has_prev = true
             end
         end
@@ -431,21 +431,21 @@ function write_full_single_attribute_docs!(io, attrs, all_examples, idx::Int)
     return
 end
 
-function write_short_nested_attribute_docs!(io, meta, entry, keys_used)
+function write_short_nested_attribute_docs!(io, attr, entry, keys_used)
     # TODO: Maybe should add checks to skip repeated pre-leaf attributes?
     # I.e. not just check leaf nodes with keys_used, but also intermediate ones
-    layer = unchecked_nested_key_to_index(meta, entry)
+    layer = unchecked_nested_key_to_index(attr, entry)
     if layer > 0 # nested
         print(io, '`', ComputePipeline.merged_key(entry), '.', '`')
-        write_short_nested_attribute_docs!(io, meta, layer, keys_used)
+        write_short_nested_attribute_docs!(io, attr, layer, keys_used)
     else # leaf node
         print(io, '`', ComputePipeline.merged_key(entry), '`')
         keys_used[-layer] = true
     end
 end
 
-function write_short_nested_attribute_docs!(io, meta, layer::Int, keys_used)
-    keytable = meta.nesting.keytables[layer]
+function write_short_nested_attribute_docs!(io, attr, layer::Int, keys_used)
+    keytable = attr.nesting.keytables[layer]
     keys_sorted = sort(keys(keytable))
     print(io, '(')
     has_prev = false
@@ -455,7 +455,7 @@ function write_short_nested_attribute_docs!(io, meta, layer::Int, keys_used)
         print(io, '`', key, '`')
         if idx > 0 # nested
             print(io, '.')
-            write_short_nested_attribute_docs!(io, meta, idx, keys_used)
+            write_short_nested_attribute_docs!(io, attr, idx, keys_used)
         else # leaf
             keys_used[-idx] = true
         end
@@ -652,25 +652,25 @@ end
 
 
 function field_docs(::Type{T}, names::Symbol...) where {T <: Union{Plot, Block}}
-    return field_docs(T, meta_attributes(T), names...)
+    return field_docs(T, documented_attributes(T), names...)
 end
 
-function field_docs(::Type{T}, meta::MetaAttributes, names::Symbol...) where {T <: Union{Plot, Block}}
-    idx = unchecked_nested_key_to_index(meta, names)
+function field_docs(::Type{T}, attr::DocumentedAttributes, names::Symbol...) where {T <: Union{Plot, Block}}
+    idx = unchecked_nested_key_to_index(attr, names)
 
     if idx > 0 # more nesting
         merged_key = ComputePipeline.merged_key(names...)
         no_doc = "No documentation available for attribute `$merged_key` of plot type `$T`."
-        docstring = something(meta.nested_docstring[idx], no_doc)
+        docstring = something(attr.nested_docstring[idx], no_doc)
         default_expr = "@attributes begin ... end"
         # Probably won't have examples for intermediate nesting levels?
         # E.g. if a plot has `plot.scatter.markersize`, we probably won't have
         # attribute examples for plot.scatter?
     else # leaf attribute
-        merged_key = meta.merged_keys[-idx]
+        merged_key = attr.merged_keys[-idx]
         no_doc = "No documentation available for attribute `$merged_key` of plot type `$T`."
-        docstring = something(meta.leaf_docstring[-idx], no_doc)
-        default_expr = meta.default_expr[-idx]
+        docstring = something(attr.leaf_docstring[-idx], no_doc)
+        default_expr = attr.default_expr[-idx]
     end
 
     # Build documentation string
@@ -712,9 +712,9 @@ function field_docs(::Type{T}, meta::MetaAttributes, names::Symbol...) where {T 
 
     if idx > 0 # there is further nesting
         println(io, "\n Nested Attribute `$merged_key` contains:")
-        write_nested_attributes_docs!(io, meta, idx)
-        for k in keys(meta.nesting.keytables[idx])
-            write_nested_attributes_docs!(io, meta, idx, 0)
+        write_nested_attributes_docs!(io, attr, idx)
+        for k in keys(attr.nesting.keytables[idx])
+            write_nested_attributes_docs!(io, attr, idx, 0)
         end
 
         sym = plotsym(T)
@@ -753,5 +753,5 @@ end
 
 # autocomplete for `Scatter.attr...`
 function Base.propertynames(::Type{T}) where {T <: AbstractPlot}
-    return collect(root_keys(meta_attributes(T)))
+    return collect(root_keys(documented_attributes(T)))
 end
