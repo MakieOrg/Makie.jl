@@ -1019,11 +1019,11 @@ end
         "The width of the slider line"
         linewidth::Float32 = 10
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
@@ -1121,11 +1121,11 @@ end
         "The width of the slider line"
         linewidth::Float64 = 10.0
         "The color of the slider when the mouse hovers over it."
-        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        color_active_dimmed::RGBAf = @inherit((:colors, :accent_subtle))
         "The color of the slider when the mouse clicks and drags the slider."
-        color_active::RGBAf = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        color_active::RGBAf = @inherit((:colors, :accent))
         "The color of the slider when it is not interacted with."
-        color_inactive::RGBAf = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
+        color_inactive::RGBAf = @inherit((:colors, :surface))
         "Controls if the slider has a horizontal orientation or not."
         horizontal::Bool = true
         "The align mode of the slider in its parent GridLayout."
@@ -1166,17 +1166,17 @@ end
         "The color of the button border."
         strokecolor = :transparent
         "The color of the button."
-        buttoncolor = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
+        buttoncolor = @inherit((:colors, :surface))
         "The color of the label."
         labelcolor = @inherit(:textcolor, :black)
         "The color of the label when the mouse hovers over the button."
-        labelcolor_hover = @inherit((:colors, :text), :black)
+        labelcolor_hover = @inherit((:colors, :text))
         "The color of the label when the mouse clicks the button."
-        labelcolor_active = @inherit((:colors, :text_on_accent), :white)
+        labelcolor_active = @inherit((:colors, :text_on_accent))
         "The color of the button when the mouse clicks the button."
-        buttoncolor_active = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        buttoncolor_active = @inherit((:colors, :accent))
         "The color of the button when the mouse hovers over the button."
-        buttoncolor_hover = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        buttoncolor_hover = @inherit((:colors, :accent_subtle))
         "The number of clicks that have been registered by the button."
         clicks = 0
         "The align mode of the button in its parent GridLayout."
@@ -1217,17 +1217,17 @@ const CHECKMARK_BEZIER = scale(
         "The strokewidth of the checkbox poly."
         checkboxstrokewidth = 1.5
         "The color of the checkbox background when checked."
-        checkboxcolor_checked = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        checkboxcolor_checked = @inherit((:colors, :accent))
         "The color of the checkbox background when unchecked."
         checkboxcolor_unchecked = @inherit(:backgroundcolor, :white)
         "The strokecolor of the checkbox background when checked."
-        checkboxstrokecolor_checked = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        checkboxstrokecolor_checked = @inherit((:colors, :accent))
         "The strokecolor of the checkbox background when unchecked."
-        checkboxstrokecolor_unchecked = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        checkboxstrokecolor_unchecked = @inherit((:colors, :accent))
         "The color of the checkmark when unchecked."
         checkmarkcolor_unchecked = :transparent
         "The color of the checkmark when the mouse clicks the checkbox."
-        checkmarkcolor_checked = @inherit((:colors, :text_on_accent), :white)
+        checkmarkcolor_checked = @inherit((:colors, :text_on_accent))
         "The align mode of the checkbox in its parent GridLayout."
         alignmode = Inside()
         "If the checkbox is currently checked. This value should not be modified directly."
@@ -1277,12 +1277,12 @@ end
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
+        framecolor_inactive = @inherit((:colors, :surface))
         "The color of the border when the toggle is hovered."
-        framecolor_active = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        framecolor_active = @inherit((:colors, :accent_subtle))
         # buttoncolor = RGBf(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        buttoncolor = @inherit((:colors, :accent))
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
@@ -1369,17 +1369,17 @@ end
         "Is the menu showing the available options"
         is_open = false
         "Cell color when hovered"
-        cell_color_hover = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        cell_color_hover = @inherit((:colors, :accent_subtle))
         "Cell color when active"
-        cell_color_active = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        cell_color_active = @inherit((:colors, :accent))
         "Cell color when inactive even"
-        cell_color_inactive_even = @inherit((:colors, :surface_subtle), RGBf(0.97, 0.97, 0.97))
+        cell_color_inactive_even = @inherit((:colors, :surface_subtle))
         "Cell color when inactive odd"
-        cell_color_inactive_odd = @inherit((:colors, :surface_subtle), RGBf(0.97, 0.97, 0.97))
+        cell_color_inactive_odd = @inherit((:colors, :surface_subtle))
         "Selection cell color when inactive"
-        selection_cell_color_inactive = @inherit((:colors, :surface), RGBf(0.94, 0.94, 0.94))
+        selection_cell_color_inactive = @inherit((:colors, :surface))
         "Color of the dropdown arrow"
-        dropdown_arrow_color = @inherit((:colors, :text_muted), RGBf(0.5, 0.5, 0.5))
+        dropdown_arrow_color = @inherit((:colors, :text_muted))
         "Size of the dropdown arrow"
         dropdown_arrow_size = 10
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
@@ -1391,7 +1391,7 @@ end
         "Color of entry texts"
         textcolor = @inherit(:textcolor, :black)
         "Color of entry text in the currently selected row of the open dropdown."
-        textcolor_active = @inherit((:colors, :text_on_accent), :white)
+        textcolor_active = @inherit((:colors, :text_on_accent))
         "The opening direction of the menu (:up or :down)"
         direction = automatic
         "The default message prompting a selection when i == 0"
@@ -1709,7 +1709,7 @@ end
         "Text color."
         textcolor = @inherit(:textcolor, :black)
         "Text color for the placeholder."
-        textcolor_placeholder = @inherit((:colors, :text_muted), RGBf(0.5, 0.5, 0.5))
+        textcolor_placeholder = @inherit((:colors, :text_muted))
         "Font family."
         font = :regular
         "Color of the box."
@@ -1721,11 +1721,11 @@ end
         "Color of the box when hovered."
         boxcolor_hover = :transparent
         "Color of the box border."
-        bordercolor = @inherit((:colors, :border), RGBf(0.8, 0.8, 0.8))
+        bordercolor = @inherit((:colors, :border))
         "Color of the box border when hovered."
-        bordercolor_hover = @inherit((:colors, :accent_subtle), RGBf(0.68, 0.75, 0.9))
+        bordercolor_hover = @inherit((:colors, :accent_subtle))
         "Color of the box border when focused."
-        bordercolor_focused = @inherit((:colors, :accent), DEFAULT_ACCENT_COLOR)
+        bordercolor_focused = @inherit((:colors, :accent))
         "Color of the box border when focused and invalid."
         bordercolor_focused_invalid = RGBf(1, 0, 0)
         "Width of the box border."
