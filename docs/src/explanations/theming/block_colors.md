@@ -61,7 +61,7 @@ using CairoMakie
 CairoMakie.activate!(type = "svg") # hide
 
 function widget_showcase()
-    fig = Figure(size = (760, 580))
+    fig = Figure(figure_padding = 70)
     Label(fig[0, 1:3], "Block showcase", fontsize = 18, tellwidth = false)
 
     btn = Button(fig[1, 1], label = "Idle")
@@ -85,7 +85,7 @@ function widget_showcase()
     Textbox(fig[6, 2], placeholder = "type here")
     Textbox(fig[6, 3], stored_string = "with text")
 
-    rowsize!(fig.layout, 6, 36)
+    resize_to_layout!(fig)
     fig
 end
 
