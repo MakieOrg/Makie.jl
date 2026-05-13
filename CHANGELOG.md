@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added a unified color scheme for Block widgets. `MAKIE_DEFAULT_THEME` now contains a nested `colors` Attributes block with 9 role tokens (`background`, `surface`, `surface_subtle`, `border`, `text`, `text_muted`, `text_on_accent`, `accent`, `accent_subtle`) that every interactive Block (Button, Checkbox, Toggle, Slider, IntervalSlider, Menu, Textbox) reads its defaults from. A new helper `Makie.derive_colors(; accent, gray, background)` produces a full scheme from three inputs in the style of Radix UI's custom palette tool, so `set_theme!(colors = Makie.derive_colors(accent = :crimson))` recolors all widgets consistently. The `@inherit` macro inside `@Block` now accepts a tuple of symbols (`@inherit((:colors, :accent), default)`) to walk nested theme dicts. The internal `COLOR_ACCENT` and `COLOR_ACCENT_DIMMED` `Ref`s have been removed.
+
 ## Breaking
 
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
