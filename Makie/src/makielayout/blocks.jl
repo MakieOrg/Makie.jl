@@ -310,7 +310,7 @@ end
 attribute_groups(::Type{<:Block}) = Pair{String, Vector{Symbol}}[]
 
 function mixin_block_layout_attributes()
-    @DocumentedAttributes begin
+    return @DocumentedAttributes begin
         "The horizontal alignment of the block in its suggested bounding box."
         halign = :center
         "The vertical alignment of the block in its suggested bounding box."

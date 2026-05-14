@@ -55,10 +55,6 @@ function get_default_expr(expr, attribute_path, full_expr, local_vars)
         # This was only supported with fallback by Blocks
         fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
         return :(Makie.Inherit($f, $(default_key_expr(key)), $fb))
-    elseif MacroTools.@capture(expr, @inherit(key_, fallback_))
-        # This was only supported with fallback by Blocks (?)
-        fb = get_default_expr(fallback, attribute_path, full_expr, local_vars)
-        return :(Makie.Inherit($(default_key_expr(key)), $fb))
     elseif MacroTools.@capture(expr, theme(scene_, key_))
         return :(Makie.Inherit($(default_key_expr(key))))
 
@@ -78,9 +74,9 @@ function get_default_expr(expr, attribute_path, full_expr, local_vars)
     elseif MacroTools.@capture(expr, Makie.defaultfont())
         path = join(attribute_path, " -> ")
         @warn """
-            Using `Makie.defaultfont()` as an attribute default in `@recipe` or `@Block` causes segfaults due to invalid font pointers from caching.
-            Replacing it with `\"default\"` in `$path = $full_expr`"
-            """
+        Using `Makie.defaultfont()` as an attribute default in `@recipe` or `@Block` causes segfaults due to invalid font pointers from caching.
+        Replacing it with `\"default\"` in `$path = $full_expr`"
+        """
         return :("default")
     else
         return MacroTools.postwalk(expr) do x
@@ -227,13 +223,13 @@ using splatting (`...`). This is typically done with "mixin" functions,
 `Makie.filtered_attributes` or `Makie.documented_attribute`:
 
     Makie.mixin_colormap_attributes()...
-    Makie.filtered_attributes(Scatter, exclude = (:colormap, :colorscale, :colorrange, :lowclip, :highclip, :nan_color, :alpah))...
+    Makie.filtered_attributes(Scatter, exclude = (:colormap, :colorscale, :colorrange, :lowclip, :highclip, :nan_color, :alpha))...
 
 Note that these expressions will error if they include attributes that are already
 defined. This is meant to prevent accidental overwrites from mixins. Inversely, if
 an attribute added by a mixin is later also added explicitly, the later addition
 will overwrite the earlier entry. If the later addition does not include a
-docstring, the docstring from the ealier mixin will be preserved.
+docstring, the docstring from the earlier mixin will be preserved.
 
 Attributes can be marked with a type by annotating their name. This is controls
 the conversions in **Blocks** but is irrelevant to plots.
@@ -318,7 +314,7 @@ function build_documented_attributes(expr::Expr, local_vars = tuple())
     #   state[2] tracks the keys of the current nesting path
     # This allows us to progressively step back out of nesting paths
     final_expr = quote
-        let;
+        let
             attr = Makie.DocumentedAttributes()
             state = (Int[1], Symbol[])
             $block_expr
@@ -626,7 +622,11 @@ function convert_old_attributes_expr(func_expr::Expr)
         end
     end
 
-    full_expr = :(let; $expr end)
+    full_expr = :(
+        let
+            $expr
+        end
+    )
     # display(full_expr)
     return full_expr
 end
@@ -675,7 +675,11 @@ function convert_old_attributes_expr_inner(entry_value_expr, attr_sources)
         #   b = @DocumentedAttributes begin
         #       a = @attributes begin a... end
         #   end
-        return :(@attributes begin $(entry_value_expr)... end)
+        return :(
+            @attributes begin
+                $(entry_value_expr)...
+            end
+        )
     end
     return entry_value_expr
 end
@@ -711,7 +715,7 @@ function show_documented_attributes(io, attr, layer = 1, tab = 1)
         if idx > 0 # nest
             _print_attribute_docstring(io, attr.nested_docstring[idx], tabstr)
             println(io, tabstr, "$key = @attributes begin")
-            show_documented_attributes(io, attr, idx, tab+1)
+            show_documented_attributes(io, attr, idx, tab + 1)
             println(io, tabstr, "end")
         else
             idx = -idx
@@ -788,7 +792,7 @@ function unchecked_nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
     idx = 1
     for (i, key) in enumerate(keys)
         if idx < 0 || !haskey(attr.nesting.keytables[idx], key)
-            idx < 0 && error("Nested keys $keys could not be resolved because $(keys[i-1]) is not nested.")
+            idx < 0 && error("Nested keys $keys could not be resolved because $(keys[i - 1]) is not nested.")
             error("Nested keys $keys could not be resolved because $key does not exist in parent.")
         end
         idx = attr.nesting.keytables[idx][key]
@@ -1039,7 +1043,7 @@ function apply_filtered_indices!(nesting::NestedSearchTree, keep)
             # keytables because keytables[i] only refers to indices > i.
             # (And indices < 0 which point to attributes, which are irrelevant here.)
             nested_keep[i] = -1
-            nested_keep[i+1 : end] .-= 1
+            nested_keep[(i + 1):end] .-= 1
             deleteat!(nesting.keytables, i)
         else
             # This keytable is not empty so update the indices it points
@@ -1205,6 +1209,7 @@ function add_typed_nodes!(graph, attr, indices, ::Type{T}, exclude) where {T}
             graph.outputs[key] = node
         end
     end
+    return
 end
 
 ########################################
@@ -1330,7 +1335,7 @@ function connect_parent!(
         get_callback, child::ComputeGraph, parent::ComputeGraph,
         attr::DocumentedAttributes, exclude = tuple()
     )
-    # Note: If core/primtive plots become nested then using merged_keys as the
+    # Note: If core/primitive plots become nested then using merged_keys as the
     # keys passed to get_callback() may need to change. (This would build a
     # convert_arguments callback based on merged_key rather than a leaf key)
     for key in attr.merged_keys
@@ -1339,6 +1344,7 @@ function connect_parent!(
             connect_nodes!(get_callback(key), child, parent[key], child.outputs[key])
         end
     end
+    return
 end
 
 function connect_parent!(
@@ -1354,6 +1360,7 @@ function connect_parent!(
             connect_nodes!(get_callback(key), child, parent[parent_key], child.outputs[key])
         end
     end
+    return
 end
 
 """
@@ -1379,12 +1386,13 @@ function add_remaining_inputs!(get_callback, graph, attr, exclude = tuple())
             add_prepared_input!(get_callback(key), graph, key, value, output)
         end
     end
+    return
 end
 
 """
     add_theme!(graph::ComputeGraph, attr::DocumentedAttributes, T, scene, exclude, kwargs)
 
-Resolves the theme (`theme(scene)[:Plot]` overwrites, inheritting from
+Resolves the theme (`theme(scene)[:Plot]` overwrites, inheriting from
 `theme(scene)` and fallbacks) for each attribute defined in `attributes` that
 is an `Input` not defined by `kwargs`. After this attributes are fully initialized.
 """

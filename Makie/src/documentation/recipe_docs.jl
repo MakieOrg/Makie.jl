@@ -284,8 +284,10 @@ function uncategorized_attributes(::Type{PT}) where {PT <: AbstractPlot}
     keys_used = fill(false, length(attr.merged_keys))
     for (name, entrylist) in groups
         for entry in entrylist
-            for idx in nested_indices(attr, entry)
-                keys_used[idx] = true
+            if has_nested_key(attr, entry)
+                for idx in nested_indices(attr, entry)
+                    keys_used[idx] = true
+                end
             end
         end
     end
@@ -441,6 +443,7 @@ function write_short_nested_attribute_docs!(io, attr, entry, keys_used)
         print(io, '`', ComputePipeline.merged_key(entry), '`')
         keys_used[-layer] = true
     end
+    return
 end
 
 function write_short_nested_attribute_docs!(io, attr, layer::Int, keys_used)
@@ -712,12 +715,8 @@ function field_docs(::Type{T}, attr::DocumentedAttributes, names::Symbol...) whe
     if idx > 0 # there is further nesting
         println(io, "\n Nested Attribute `$merged_key` contains:")
         write_nested_attributes_docs!(io, attr, idx)
-        for k in keys(attr.nesting.keytables[idx])
-            write_nested_attributes_docs!(io, attr, idx, 0)
-        end
-
         sym = plotsym(T)
-        println(io, "See `help($sym, :$attr, :inner[, ...])` for detailed documentation on nested attributes.")
+        println(io, "See `help($sym, :outer, :inner[, ...])` for detailed documentation on nested attributes.")
     end
 
     return Markdown.parse(String(take!(io)))
@@ -726,16 +725,14 @@ end
 function write_nested_attributes_docs!(io, attr, layer, tab = 0)
     for (key, idx) in attr.nesting.keytables[layer]
         if idx > 0 # more nesting
-            print(io, "  "^tab, "- `.$key")
-            docstring = attr.nested_docstring[-idx]
-            write_nested_attributes_docs!(io, attr, idx, tab+1)
+            print(io, "  "^tab, "- `.$key = @attributes begin ... end`")
+            docstring = attr.nested_docstring[idx]
+            # write_nested_attributes_docs!(io, attr, idx, tab+1)
         else # leaf attribute
             print(io, "  "^tab, "- `.$key = $(attr.default_expr[-idx])`")
             docstring = attr.leaf_docstring[-idx]
         end
-        if !isnothing(docstring)
-            print(io, ": ", docstring)
-        end
+        print(io, ": ", something(docstring, "No docstring available"))
         println(io)
     end
     return

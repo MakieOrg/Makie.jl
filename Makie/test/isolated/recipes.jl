@@ -100,7 +100,7 @@ end
         :b => (
             docstring = nothing,
             default = Makie.Inherit((:z,), :red),
-            expr = "@inherit :z :red"
+            expr = "@inherit :z :red",
         )
     )
 
@@ -157,7 +157,7 @@ end
             docstring = "a.a.b inherit",
             default = Makie.Inherit((:x, :y), 2),
             expr = "@inherit (:x, :y) 2",
-            type = Int
+            type = Int,
         ),
         Symbol("a.a.c") => (docstring = nothing, default = 3, expr = "3", type = Any),
         Symbol("a.b") => (docstring = nothing, default = 5, expr = "5", type = Float32),
@@ -165,13 +165,13 @@ end
             docstring = "a.c nested inherit",
             default = Makie.Inherit(sin, (:q,), Makie.Inherit((:m, :n), 5)),
             expr = "@inherit sin :q @inherit((:m, :n), 5)",
-            type = Any
+            type = Any,
         ),
         :b => (
             docstring = nothing,
             default = Makie.Inherit((:z,), :red),
             expr = "@inherit :z :red",
-            type = RGBAf
+            type = RGBAf,
         ),
         # Added by default:
         :halign => (docstring = "The horizontal alignment of the block in its suggested bounding box.", default = :center, expr = ":center", type = Any),

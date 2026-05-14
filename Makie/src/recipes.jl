@@ -79,7 +79,7 @@ function default_theme end
 # Plot Recipes in `Makie`
 
 There are three types of recipes:
-- **Type recipes** which convert user given data to a useable format for an existing plot type.
+- **Type recipes** which convert user given data to a usable format for an existing plot type.
 - **Full recipes** which define custom plots consisting of other plots.
 - **Complex/Block recipes** which define a layout of blocks which may also include plots.
 
@@ -235,7 +235,7 @@ possible to add specializations based on the converted argument types here:
 
     function Makie.plot!(plot::MyVolume)
         # plot a volume with a colormap going from fully transparent to plot_color
-        map!(c -> [:tranparent, c], plot, :color, :vol_colormap)
+        map!(c -> [:transparent, c], plot, :color, :vol_colormap)
         volume!(plot, plot.volume, colormap = plot.vol_colormap)
         plot
     end
@@ -768,7 +768,7 @@ function validate_attribute_keys(plot::P) where {P <: Plot}
             continue
         end
 
-        # TODO: maybe worht flattening kwargs early and just setdiff here?
+        # TODO: maybe worth flattening kwargs early and just setdiff here?
         if !(k in root_keys(attr))
             push!(invalid_names, k)
             continue
@@ -805,7 +805,7 @@ function collect_invalid_nested_attributes!(invalid_names, attr, keys, local_kwa
     # This will be the next layer we look at
     idx = attr.nesting.keytables[idx][key]
     if idx < 0
-        # addresses a leaf attribute which accepts Attrbutes, Dict, etc too
+        # addresses a leaf attribute which accepts Attributes, Dict, etc too
         return
     elseif idx > 0 && applicable(getindex, local_kwargs, key)
         # addresses a nesting layer and local_kwargs can nest, go deeper

@@ -70,6 +70,8 @@ function add_key!(tree::NestedSearchTree, level, args::Tuple, points_to = -1)
             return add_key!(tree, next_level, tail)
         end
     end
+    error("Unreachable")
+    return -1
 end
 
 delete_key!(tree::NestedSearchTree, args...) = delete_key!(tree, args)
