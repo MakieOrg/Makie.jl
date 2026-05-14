@@ -6,6 +6,18 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     kwargs = N == 1 ? (; width = step(h.edges[1]), gap = 0, dodge_gap = 0) : NamedTuple()
     return to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
+function convert_arguments(P::Type{Stairs}, h::StatsBase.Histogram{<:Any, 1})
+    # Adding phantomedges, mapping 0 to eps() (for log-scale)
+    xs = Float64.(h.edges[1])
+    push!(xs, xs[end])
+    ys = map(h.weights) do y
+        y == 0 ? eps(Float64) : Float64(y)
+    end
+    pushfirst!(ys, eps())
+    push!(ys, eps())
+    kwargs = NamedTuple()
+    return to_plotspec(P, convert_arguments(P, xs, ys); kwargs...)
+end
 
 function _hist_center_weights(values, edges, normalization, scale_to, wgts)
     isempty(edges) && return Float64[], Float64[]
