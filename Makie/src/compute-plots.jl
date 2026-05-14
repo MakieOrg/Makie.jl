@@ -887,8 +887,14 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
 
     # Maybe added by convert_kwargs?
     if !haskey(graph, :cycle)
-        _cycle = get(kwargs, :cycle, has_flat_key(attr, :cycle) ? get_flat_default(attr, :cycle) : NoFallback())
-        _cycle = to_value(_cycle) === NoFallback() ? nothing : to_value(_cycle)
+        _cycle = if haskey(kwargs, :cycle)
+            kwargs[:cycle]
+        elseif has_flat_key(attr, :cycle)
+            lookup_default(P, nothing, :cycle)
+        else
+            nothing
+        end
+        _cycle = _cycle === NoFallback() ? nothing : _cycle # probably unnecessary
         add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
     end
 

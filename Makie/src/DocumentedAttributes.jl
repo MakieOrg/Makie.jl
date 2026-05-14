@@ -815,7 +815,6 @@ function nested_key_to_index(attr::DocumentedAttributes, keys::Tuple)
     return -idx
 end
 
-# TODO: rename to lookup_default?
 # If possible use the the methods that do this in bulk, for all attributes
 """
     lookup_default(type, scene, [kwargs], keys...)
