@@ -735,8 +735,7 @@ import SomePackage: someplot, someplot!
 
 Makie.convert_single_argument(v::SomeVector) = v.v
 
-@recipe(SomePlot) do scene
-    Theme()
+@recipe SomePlot begin
 end
 
 function Makie.plot!(p::SomePlot)

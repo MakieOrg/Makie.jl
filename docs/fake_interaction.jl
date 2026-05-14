@@ -14,18 +14,16 @@ export Lazy
 export Wait
 export relative_pos
 
-@recipe(Cursor) do scene
-    Theme(
-        color = :black,
-        strokecolor = :white,
-        strokewidth = 1,
-        width = 10,
-        notch = 2,
-        shaftwidth = 2.5,
-        shaftlength = 4,
-        headlength = 12,
-        multiplier = 1,
-    )
+@recipe Cursor begin
+    color = :black
+    strokecolor = :white
+    strokewidth = 1
+    width = 10
+    notch = 2
+    shaftwidth = 2.5
+    shaftlength = 4
+    headlength = 12
+    multiplier = 1
 end
 
 function Makie.plot!(p::Cursor)
