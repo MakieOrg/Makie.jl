@@ -281,8 +281,14 @@ end
         session_size = Base.summarysize(session) / 10^6
 
         @test length(session.session_objects) == 0
-        @testset "Session fields empty" for field in [:on_document_load, :stylesheets, :imports, :message_queue, :deregister_callbacks, :inbox]
-            @test isempty(getfield(session, field))
+        # Property access (not getfield) so the Bonito Session shim resolves
+        # fields that moved to RootSession (`inbox`). `imports` and
+        # `stylesheets` are intentionally NOT in this list: they hold the set
+        # of modules / CSS emitted into the page for cross-render dedup
+        # (test/basics.jl "dependency second include" pins that), so they
+        # legitimately persist for the page lifetime.
+        @testset "Session fields empty" for field in [:on_document_load, :message_queue, :deregister_callbacks, :inbox]
+            @test isempty(getproperty(session, field))
         end
         server = session.connection.server
         @test length(server.websocket_routes.table) == 1
