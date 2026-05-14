@@ -2,6 +2,7 @@
 
 ## Breaking
 
+- Added an `AbstractTextPrimitive` extension hook to the `text` recipe so downstream packages (e.g. MakieTeX) can plug arbitrary graphical primitives — like rendered LaTeX images — into a `text` plot alongside glyphs and MathTeX line segments. A built-in `ImageTextPrimitive` renders image markers via a child scatter plot. [#5632](https://github.com/MakieOrg/Makie.jl/pull/5632)
 - **breaking** Moved `FFMPEG_jll` from a hard dependency to a package extension to avoid pulling in GPL-licensed libraries (e.g. libx264). `record`, `VideoStream`, `convert_video`, and `extract_frames` now require `FFMPEG_jll` to be available in the active environment; Makie will load it automatically on first use. A custom ffmpeg binary can be configured via `Makie.ffmpeg_path!(path)` (or persistently via Preferences.jl). [#5588](https://github.com/MakieOrg/Makie.jl/pull/5588)
 - Expanded scope of dim converts [#5323](https://github.com/MakieOrg/Makie.jl/pull/5323)
   - **breaking** most plot recipes now set the target types for their conversions. This means `plot!(::PlotType{<:Tuple{<:MyArgType}})` requires introducing a conversion trait and extending `Makie.types_for_plot_arguments()`. See docs.

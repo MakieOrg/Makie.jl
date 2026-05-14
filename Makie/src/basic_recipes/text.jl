@@ -4,6 +4,61 @@ function check_textsize_deprecation(@nospecialize(dictlike))
     end
 end
 
+# Text primitives: pluggable graphical elements that a string layout can emit
+# alongside (or instead of) glyphs. Built-in: glyphs and MathTeX line segments
+# have dedicated channels for performance; arbitrary primitives go through
+# the `text_primitives` channel below and are dispatched to child plots via
+# `register_text_primitive_plot!`.
+
+"""
+    AbstractTextPrimitive
+
+Supertype for graphical elements that a `text` plot can render at the
+markerspace position of a text block. Built-in subtypes include
+[`ImageTextPrimitive`](@ref); downstream packages (e.g. MakieTeX) define
+their own to plug arbitrary content into `text`.
+
+A subtype `P` must implement:
+
+* `text_primitive_bbox(p::P)::Rect3d` — markerspace bounding box relative to
+  the text block origin (used by the text plot's bounding-box pipeline).
+* `register_text_primitive_plot!(plot::Plot, ::Type{P}, items::Vector{P}, block_indices::Vector{Int})`
+  — register a child plot that renders `items`, observing the text plot's
+  current markerspace block positions.
+
+Items are pushed by `convert_text_string!` overloads (one per input text type)
+into the `outputs.text_primitives` channel.
+"""
+abstract type AbstractTextPrimitive end
+
+function text_primitive_bbox end
+function register_text_primitive_plot! end
+
+"""
+    ImageTextPrimitive(image, marker_offset::Vec3f, size::Vec2f, rotation::Quaternionf)
+
+A text primitive that renders `image` as a single scatter marker at the
+text block's position. Used by e.g. MakieTeX to embed pre-rendered LaTeX
+into a Makie `text` plot.
+
+* `image`     — any marker accepted by `scatter` (typically a `Matrix{<:Colorant}`)
+* `marker_offset` — markerspace offset from the block origin to the marker's
+                    lower-left corner (after rotation has been applied)
+* `size`      — markerspace marker size
+* `rotation`  — applied to the marker by scatter
+"""
+struct ImageTextPrimitive{I} <: AbstractTextPrimitive
+    image::I
+    marker_offset::Vec3f
+    size::Vec2f
+    rotation::Quaternionf
+end
+
+function text_primitive_bbox(p::ImageTextPrimitive)
+    bb = Rect3d(to_ndim(Point3d, p.marker_offset, 0), Vec3d(p.size..., 0))
+    return rotate_bbox(bb, p.rotation)
+end
+
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
 conversion_trait(::Type{<:Text}, args...) = PointBased()
@@ -316,6 +371,7 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_color, :text_rotation, :text_scales,
         :text_strokewidth, :text_strokecolor,
         :linesegments, :linewidths, :linecolors, :lineindices,
+        :text_primitives, :text_primitive_block_indices,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, _inputs...), changed, cached
         _outputs = (
@@ -334,6 +390,8 @@ function compute_glyph_collections!(attr::ComputeGraph)
             linewidths = Float32[],
             linecolors = RGBAf[],
             lineindices = Pair{Int, Int}[],
+            text_primitives = AbstractTextPrimitive[],
+            text_primitive_block_indices = Int[],
         )
         # strokewidth = Float32[] # TODO: Skipped?
 
@@ -417,7 +475,73 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-    return tex_linesegments!(plot)
+    tex_linesegments!(plot)
+    return register_text_primitive_plot!(plot, ImageTextPrimitive)
+end
+
+"""
+    register_text_primitive_plot!(plot::Plot{text}, ::Type{P})
+
+Default-dispatch hook for plugging an `AbstractTextPrimitive` subtype into the
+`text` recipe. Called once per primitive type from `calculated_attributes!`.
+Built-in implementation handles [`ImageTextPrimitive`](@ref) by registering a
+child `scatter!` plot. Downstream packages can register their own primitive
+types by extending this method (and `text_primitive_bbox`).
+"""
+register_text_primitive_plot!(plot, ::Type{<:AbstractTextPrimitive}) = nothing
+
+# Filter the heterogeneous text_primitives channel for entries of a specific
+# concrete primitive type. Returns aligned vectors of items, block indices,
+# offsets, sizes, and rotations suitable for a child scatter plot.
+function _filter_text_primitives(primitives::Vector{AbstractTextPrimitive}, block_indices::Vector{Int}, ::Type{T}) where {T <: AbstractTextPrimitive}
+    items = T[]
+    idxs = Int[]
+    for (b, p) in zip(block_indices, primitives)
+        p isa T || continue
+        push!(items, p)
+        push!(idxs, b)
+    end
+    return items, idxs
+end
+
+function register_text_primitive_plot!(plot, ::Type{<:ImageTextPrimitive})
+    register_model_clip_planes!(plot.attributes)
+
+    map!(
+        plot.attributes,
+        [
+            :text_primitives, :text_primitive_block_indices,
+            :preprojection, :model_f32c, :positions_transformed_f32c,
+            :model_clip_planes, :space,
+        ],
+        [
+            :_image_primitive_positions, :_image_primitive_markers,
+            :_image_primitive_sizes, :_image_primitive_offsets,
+            :_image_primitive_rotations,
+        ]
+    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space
+        items, idxs = _filter_text_primitives(prims, indices, ImageTextPrimitive)
+        if isempty(items)
+            return (Point3f[], Any[], Vec2f[], Vec3f[], Quaternionf[])
+        end
+        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
+        out_pos = [markerspace_positions[idxs[i]] for i in eachindex(items)]
+        out_marker = Any[p.image for p in items]
+        out_size = [p.size for p in items]
+        out_offset = [p.marker_offset for p in items]
+        out_rot = [p.rotation for p in items]
+        return (out_pos, out_marker, out_size, out_offset, out_rot)
+    end
+
+    return scatter!(
+        plot, plot._image_primitive_positions;
+        marker = plot._image_primitive_markers,
+        markersize = plot._image_primitive_sizes,
+        marker_offset = plot._image_primitive_offsets,
+        rotation = plot._image_primitive_rotations,
+        space = plot.markerspace,
+        markerspace = plot.markerspace,
+    )
 end
 
 function tex_linesegments!(plot)
@@ -586,9 +710,9 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices, :text_primitives, :text_primitive_block_indices],
             :raw_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices, primitives, primitive_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -604,6 +728,10 @@ function register_raw_string_boundingboxes!(plot)
             for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
                 bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            for (block_idx, prim) in zip(primitive_block_indices, primitives)
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], text_primitive_bbox(prim))
             end
 
             return text_bbs
@@ -628,9 +756,9 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices, :text_primitives, :text_primitive_block_indices],
             :fast_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices
+        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices, primitives, primitive_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d(Point3d(NaN), Vec3d(0))
@@ -646,6 +774,10 @@ function register_fast_string_boundingboxes!(plot)
             for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
                 bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
                 text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
+            end
+
+            for (block_idx, prim) in zip(primitive_block_indices, primitives)
+                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], text_primitive_bbox(prim))
             end
 
             return text_bbs
