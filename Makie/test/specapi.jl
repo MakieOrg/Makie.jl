@@ -59,23 +59,23 @@ end
         newspec = S.Scatter(1:4; color = :red, cycle = [])
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test updated == Dict(:color => to_color(:red))
+        @test updated == [:color => to_color(:red)]
         @test s.plots[1].changed[] == Dict(:color => to_color(:red), :raw_color => to_color(:red), :scaled_color => to_color(:red))
         newspec = S.Scatter(1:4; color = :green, cycle = [])
         updated = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test updated == Dict(:color => to_color(:green))
+        @test updated == [:color => to_color(:green)]
         @test s.plots[1].changed[] == Dict(:color => to_color(:green), :raw_color => to_color(:green), :scaled_color => to_color(:green))
         newspec = S.Scatter(1:5; color = :green, cycle = [])
         updates = Makie.update_plot!(p, oldspec, newspec)
         oldspec = newspec
-        @test s.plots[1].args[][1] == updates[:arg1]
+        @test s.plots[1].args[][1] == Dict(updates)[:arg1]
         oldspec = S.Scatter(1:5; color = :green, marker = :rect, cycle = [])
         newspec = S.Scatter(1:4; color = :red, marker = :circle, cycle = [])
         p = Makie.to_plot_object(oldspec)
         s = Scene()
         plot!(s, p)
-        updates = Makie.update_plot!(p, oldspec, newspec)
+        updates = Dict(Makie.update_plot!(p, oldspec, newspec))
         @test updates[:arg1] == p.arg1[]
         @test updates[:color] == p.color[]
         @test Makie.to_spritemarker(updates[:marker]) == p.marker[]
@@ -153,7 +153,9 @@ function Makie.convert_arguments(::Type{Lines}, ::ForwardAllAttributes; kwargs..
     return S.Lines([1, 2, 3], [1, 2, 3]; kwargs...)
 end
 
-Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes) = (Makie.flattened_keys(T)...,)
+function Makie.used_attributes(T::Type{<:Plot}, ::ForwardAllAttributes)
+    return (Makie.flattened_keys(Makie.documented_attributes(T))...,)
+end
 
 @testset "Forward all attribute without error" begin
     f, ax, pl = lines(ForwardAllAttributes(); color = :red)

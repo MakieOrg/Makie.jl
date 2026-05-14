@@ -282,7 +282,6 @@ function uncategorized_attributes(::Type{PT}) where {PT <: AbstractPlot}
     groups = attribute_groups(PT)
     attr = documented_attributes(PT)
     keys_used = fill(false, length(attr.merged_keys))
-    flag_grouped_attributes!(keys_used, attr)
     for (name, entrylist) in groups
         for entry in entrylist
             for idx in nested_indices(attr, entry)

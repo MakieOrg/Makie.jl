@@ -39,14 +39,16 @@ function _toggle_all_legend_visibilities_synchronized!(entry_groups)
     return
 end
 
+block_kwargs(::Type{Legend}) = Set([:merge, :unique, :entrygroups])
+
 function initialize_block!(
         leg::Legend,
         contents::AbstractVector,
         labels::AbstractVector,
         title = nothing
     )
-    entry_groups = to_entry_group(leg.attributes, contents, labels, title)
-    return initialize_block!(leg, entry_groups)
+    entrygroups = to_entry_group(leg.attributes, contents, labels, title)
+    return initialize_block!(leg; entrygroups)
 end
 
 function initialize_block!(
@@ -55,11 +57,10 @@ function initialize_block!(
         labelgroups::AbstractVector{<:AbstractVector},
         titles::AbstractVector
     )
-    entry_groups = to_entry_group(leg.attributes, contentgroups, labelgroups, titles)
-    return initialize_block!(leg, entry_groups)
+    entrygroups = to_entry_group(leg.attributes, contentgroups, labelgroups, titles)
+    return initialize_block!(leg; entrygroups)
 end
 
-block_kwargs(::Type{Legend}) = Set([:merge, :unique])
 function initialize_block!(
         leg::Legend,
         axis::Union{AbstractAxis, AbstractScene, AbstractArray{<:Union{AbstractAxis, AbstractScene}}},
@@ -70,7 +71,7 @@ function initialize_block!(
     return initialize_block!(leg, plots, labels, title)
 end
 
-function initialize_block!(leg::Legend, entrygroups)
+function initialize_block!(leg::Legend; entrygroups)
     entry_groups = convert(Observable{Vector{Tuple{Any, Vector{LegendEntry}}}}, entrygroups)
     blockscene = leg.blockscene
 

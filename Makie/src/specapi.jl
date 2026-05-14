@@ -472,11 +472,11 @@ function Base.getproperty(::_SpecApi, field::Symbol)
 end
 
 function batch_update!(target, old_spec, new_spec)
-    updates = Pair{Tuple{Vararg{Symbol}}, Any}[]
+    updates = Pair{Symbol, Any}[]
     batch_update_arguments!(updates, old_spec.args, new_spec.args)
     batch_update_attributes!(updates, target, old_spec.kwargs, new_spec.kwargs)
     update!(target.attributes, updates)
-    return
+    return updates
 end
 
 function batch_update_arguments!(updates, old_args, new_args)
@@ -484,10 +484,10 @@ function batch_update_arguments!(updates, old_args, new_args)
         # we should only call update_plot!, if compare_spec(spec_plot_got_created_from, spec) == true,
         # Which should guarantee, that args + kwargs have the same length and types!
         if is_different(prev_val, new_val) # only update if different
-            push!(updates, (Symbol(:arg, i),) => new_val)
+            push!(updates, Symbol(:arg, i) => new_val)
         end
     end
-    return
+    return updates
 end
 
 # TODO: This could probably be improved by keeping flattened kwargs lists/dicts.
@@ -501,7 +501,7 @@ function batch_update_attributes!(updates, target::T, old_kwargs, new_kwargs) wh
         attr, scene, name
     )
 
-    return
+    return updates
 end
 
 function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr, scene, name)
@@ -519,7 +519,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
             )
         else
             if is_different(current_value[], new_value)
-                push!(updates, current_path => new_value)
+                push!(updates, get_merged_key(attr, current_path) => new_value)
             end
         end
     end
@@ -543,7 +543,7 @@ function collect_updates_rec!(updates, graph, path, old_kwargs, new_kwargs, attr
         else
             default = lookup_default(attr, scene, name, NamedTuple(), current_path...)
             if is_different(current_value[], default)
-                push!(updates, current_path => default)
+                push!(updates, get_merged_key(attr, current_path) => default)
             end
         end
     end
@@ -553,8 +553,7 @@ end
 
 function update_plot!(plot::AbstractPlot, oldspec::PlotSpec, spec::PlotSpec)
     oldspec.type === spec.type || error("PlotSpec type $(spec.type) does not match plot type $(plot.type).")
-    batch_update!(plot, oldspec, spec)
-    return
+    return batch_update!(plot, oldspec, spec)
 end
 
 
@@ -875,7 +874,7 @@ function update_layoutable!(block::T, plot_obs, old_spec::BlockSpec, spec::Block
         new_kw = spec.kwargs
     end
 
-    updates = Pair{Tuple{Vararg{Symbol}}, Any}[]
+    updates = Pair{Symbol, Any}[]
     batch_update_arguments!(updates, old_spec.args, spec.args)
     batch_update_attributes!(updates, block, old_kw, new_kw)
     update!(block.attributes, updates)

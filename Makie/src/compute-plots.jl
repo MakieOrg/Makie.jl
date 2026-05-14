@@ -471,22 +471,9 @@ end
 function add_convert_kwargs!(graph, user_kw, P, args)
     conv_attributes = used_attributes(P, args...)
     conv_attr_input = Symbol[]
-    attr = documented_attributes(P)
     for key in conv_attributes
         if !haskey(graph.inputs, key)
-            # TODO: Should this delete from kwargs already? That means
-            # add_theme!() has to avoid updating used_attributes to not overwrite
-            # what the user passed through kwargs
-            if haskey(user_kw, key)
-                default = pop!(user_kw, key)
-            elseif has_nested_key(attr, key)
-                default = get_flat_default(attr, key)
-            else
-                # convert_arguments() can also default a kwarg
-                continue
-            end
-            default isa Inherit && error("$key must be initialized without `@inherit` to be used as a conversion kwarg.")
-            # default = key === :space ? :data : nothing
+            default = pop!(user_kw, key, key === :space ? :data : nothing)
             add_input!(graph, key, default)
             ComputePipeline.set_type!(graph[key], Any)
             push!(conv_attr_input, key)
@@ -495,6 +482,7 @@ function add_convert_kwargs!(graph, user_kw, P, args)
     register_computation!(graph, conv_attr_input, [:convert_kwargs]) do inputs, changed, last
         return (_filter(!isnothing, inputs),)
     end
+    ComputePipeline.set_type!(graph[:convert_kwargs], Any)
     return
 end
 
@@ -507,10 +495,10 @@ function add_dim_converts!(::Type{P}, attr::ComputeGraph, dim_converts, args, ar
     # initialize the necessary attributes early
     for key in kwarg_names
         if !haskey(attr.inputs, key)
-            default = get(user_kw, key, get_flat_default(doc_attr, key))
+            default = lookup_default(P, nothing, user_kw, key)
             default isa Inherit && error("$key must be initialized without `@inherit` to be used as a argument_dims kwarg.")
             # haskey(defaults, key) || error("Cannot use `argument_dim_kwargs(::$P) = (:$key, ...)` as it is not a valid recipe Attribute.")
-            add_input!(attr, key, pop!(user_kw, key, default))
+            add_input!(attr, key, default)
         end
     end
 
@@ -897,9 +885,12 @@ function add_attributes!(::Type{P}, graph, parent, kwargs) where {P <: Plot}
     name = Makie.plotkey(P)
     is_primitive = P <: PrimitivePlotTypes
 
-    _cycle = get(kwargs, :cycle, has_flat_key(attr, :cycle) ? get_flat_default(attr, :cycle) : NoFallback())
-    _cycle = to_value(_cycle) === NoFallback() ? nothing : to_value(_cycle)
-    add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
+    # Maybe added by convert_kwargs?
+    if !haskey(graph, :cycle)
+        _cycle = get(kwargs, :cycle, has_flat_key(attr, :cycle) ? get_flat_default(attr, :cycle) : NoFallback())
+        _cycle = to_value(_cycle) === NoFallback() ? nothing : to_value(_cycle)
+        add_input!(AttributeConvert(:cycle, name), graph, :cycle, _cycle)
+    end
 
     # Cycle attributes are get set to plot, and then set in connect_plot!
     add_input!(graph, :cycle_index, 0)

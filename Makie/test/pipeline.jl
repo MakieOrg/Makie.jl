@@ -190,9 +190,9 @@ end
 
 @testset "recipe attribute checking" begin
     # TODO, this has become harder since attributes(p) contains now more than just the attributes
-    # And if p.colour isn't explicitly part of the attribute, it won't get passed
-    # @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
-    @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
+    # And if p.color isn't explicitly part of the attribute, it won't get passed
+    @test_throws InvalidAttributeError testrecipe(1:4, 1:4, colour=:red)
+    # @test testrecipe(1:4, 1:4, color = :red) isa Makie.FigureAxisPlot
 end
 
 @testset "validated attributes for blocks" begin
@@ -224,10 +224,10 @@ end
     @test Menu(fig[1, 2], default = nothing) isa Menu
     @test Legend(fig[1, 3], entrygroups = []) isa Legend
     @test PolarAxis(fig[1, 4], palette = nothing) isa PolarAxis
-    @test :palette in Makie.flattened_keys(Axis)
-    @test :default in Makie.flattened_keys(Menu)
-    @test :entrygroups in Makie.flattened_keys(Legend)
-    @test :palette in Makie.flattened_keys(PolarAxis)
+    @test :palette in Makie.block_kwargs(Axis)
+    @test :default in Makie.block_kwargs(Menu)
+    @test :entrygroups in Makie.block_kwargs(Legend)
+    @test :palette in Makie.block_kwargs(PolarAxis)
 end
 
 @testset "func2string" begin

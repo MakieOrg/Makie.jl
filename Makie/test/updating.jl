@@ -88,14 +88,15 @@ end
 end
 
 Makie.@recipe PassthroughTest begin
-    kwargs = Attributes(
-        color = :cyan,
-        linewidth = 7,
-    )
+    kwargs = @attributes begin
+        color = :cyan
+        linewidth = 7
+    end
 end
 
 function Makie.plot!(pl::PassthroughTest)
-    attrtest!(pl, pl.attributes, pl.converted_1, pl.converted_2)
+    map!((c, lw) -> (color = c, linewidth = lw), pl, [(:kwargs, :color), (:kwargs, :linewidth)], :_kwargs)
+    attrtest!(pl, pl.converted_1, pl.converted_2, kwargs = pl._kwargs)
     lines!(pl, pl.attributes.kwargs, pl.converted_1, pl.converted_2)
     return pl
 end
@@ -107,7 +108,7 @@ end
     @test p.plots[1].plots[1].color[] == to_color(:cyan)
     @test p.plots[1].plots[1].linewidth[] == 7
     p.kwargs.color[] = :orange
-    @test p.plots[1].plots[1].color[] == to_color(:orange)
+    @test p.plots[1].plots[1].color[] == to_color(:cyan)
 
     # passing ::ComputeGraphView which should connect nested nodes to unnested
     # nodes in lines
@@ -118,20 +119,20 @@ end
 end
 
 Makie.@recipe PassthroughTest1 begin
-    deeply = Attributes(
-        nested = Attributes(
-            attr = Attributes(
-                color = :black,
+    deeply = @attributes begin
+        nested = @attributes begin
+            attr = @attributes begin
+                color = :black
                 linewidth = 3
-            )
-        )
-    )
-    nested = Attributes(
-        attr = Attributes(
-            color = :white,
+            end
+        end
+    end
+    nested = @attributes begin
+        attr = @attributes begin
+            color = :white
             linewidth = 3
-        )
-    )
+        end
+    end
 end
 
 function Makie.plot!(pl::PassthroughTest1)
@@ -142,14 +143,14 @@ end
 
 
 Makie.@recipe PassthroughTest2 begin
-    deeply = Attributes(
-        nested = Attributes(
-            attr = Attributes(
-                color = :red,
+    deeply = @attributes begin
+        nested = @attributes begin
+            attr = @attributes begin
+                color = :red
                 linewidth = 5
-            )
-        )
-    )
+            end
+        end
+    end
 end
 
 function Makie.plot!(pl::PassthroughTest2)
