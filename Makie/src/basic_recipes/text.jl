@@ -78,6 +78,27 @@ function text_primitive_bbox(p::ImageTextPrimitive)
     return rotate_bbox(bb, p.rotation)
 end
 
+"""
+    LineSegmentTextPrimitive(p0::Point3f, p1::Point3f, width::Float32, color::RGBAf)
+
+A text primitive that renders a single line segment alongside glyphs in a
+text block. Used by the MathTeXEngine path for LaTeXStrings to draw fraction
+bars and `\\sqrt` rules. Endpoints are markerspace coordinates relative to
+the text block's position.
+"""
+struct LineSegmentTextPrimitive <: AbstractTextPrimitive
+    p0::Point3f
+    p1::Point3f
+    width::Float32
+    color::RGBAf
+end
+
+function text_primitive_bbox(p::LineSegmentTextPrimitive)
+    lo = min.(p.p0, p.p1) .- 0.5f0 * p.width
+    hi = max.(p.p0, p.p1) .+ 0.5f0 * p.width
+    return Rect3d(Point3d(lo), Vec3d(hi .- lo))
+end
+
 # We sort out position vs string(-like) vs mixed arguments before convert_arguments,
 # so that we only get positions here
 conversion_trait(::Type{<:Text}, args...) = PointBased()
@@ -352,7 +373,6 @@ function append_tex_linesegment_data!(
     )
 
     block_idx = length(outputs.text_blocks)
-    pos_idx = first(last(outputs.text_blocks))
 
     for (element, position, _) in tex_elements
         if element isa MathTeXEngine.HLine
@@ -360,10 +380,11 @@ function append_tex_linesegment_data!(
             x, y = position
             p0 = rotation * to_ndim(Point3f, fontsize .* Point2f(x, y) .- tex_offset, 0) .+ offset
             p1 = rotation * to_ndim(Point3f, fontsize .* Point2f(x + h.width, y) .- tex_offset, 0) .+ offset
-            push!(outputs.linesegments, p0, p1)
-            push!(outputs.linewidths, fontsize * h.thickness, fontsize * h.thickness)
-            push!(outputs.linecolors, color, color)
-            push!(outputs.lineindices, block_idx => pos_idx, block_idx => pos_idx)
+            push!(
+                outputs.text_primitives,
+                LineSegmentTextPrimitive(p0, p1, Float32(fontsize * h.thickness), color)
+            )
+            push!(outputs.text_primitive_block_indices, block_idx)
         end
     end
     return nothing
@@ -393,7 +414,6 @@ function compute_glyph_collections!(attr::ComputeGraph)
         :text_blocks,
         :text_color, :text_rotation, :text_scales,
         :text_strokewidth, :text_strokecolor,
-        :linesegments, :linewidths, :linecolors, :lineindices,
         :text_primitives, :text_primitive_block_indices,
     ]
     return register_computation!(attr, inputs, outputs) do (input_texts, latex_handler, _inputs...), changed, cached
@@ -409,10 +429,6 @@ function compute_glyph_collections!(attr::ComputeGraph)
             text_scales = Vec2f[],
             text_strokewidth = Float32[],
             text_strokecolor = RGBAf[],
-            linesegments = Point3f[],
-            linewidths = Float32[],
-            linecolors = RGBAf[],
-            lineindices = Pair{Int, Int}[],
             text_primitives = AbstractTextPrimitive[],
             text_primitive_block_indices = Int[],
         )
@@ -504,8 +520,23 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
 
     register_colormapping!(attr)
     register_text_computations!(attr)
-    tex_linesegments!(plot)
-    return register_text_primitive_plot!(plot, ImageTextPrimitive)
+
+    # Only register child plots for primitive types the input could actually
+    # produce. Saves a plain `text!("hello")` from ending up with empty
+    # `linesegments!` + `scatter!` children dangling off it.
+    eltyp = eltype(plot.input_text[])
+    has_latex = eltyp == Any || eltyp <: LaTeXString
+    handler = plot.latex_handler[]
+    if has_latex && handler === nothing
+        # MathTeXEngine path produces `HLine` elements (fraction rules,
+        # √ bars) — but only when it's the active LaTeX renderer.
+        register_text_primitive_plot!(plot, LineSegmentTextPrimitive)
+    end
+    if has_latex && handler !== nothing
+        # `MakieTeXLaTeX` and similar handlers push image markers.
+        register_text_primitive_plot!(plot, ImageTextPrimitive)
+    end
+    return
 end
 
 """
@@ -573,26 +604,41 @@ function register_text_primitive_plot!(plot, ::Type{<:ImageTextPrimitive})
     )
 end
 
-function tex_linesegments!(plot)
+function register_text_primitive_plot!(plot, ::Type{<:LineSegmentTextPrimitive})
     register_model_clip_planes!(plot.attributes)
 
-    # Don't user register_markerspace_positions() here so we skip calculating them
-    # if no linesegments are needed
     map!(
         plot.attributes,
-        [:linesegments, :lineindices, :preprojection, :model_f32c, :positions_transformed_f32c, :model_clip_planes, :space],
-        :linesgments_shifted
-    ) do linesegments, indices, preprojection, model_f32c, positions, clip_planes, space
-        isempty(linesegments) && return Point3f[]
-        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
-        return map(linesegments, indices) do seg, (block_idx, glyph_idx)
-            return seg + markerspace_positions[block_idx]
+        [
+            :text_primitives, :text_primitive_block_indices,
+            :preprojection, :model_f32c, :positions_transformed_f32c,
+            :model_clip_planes, :space,
+        ],
+        [:_lineseg_points, :_lineseg_widths, :_lineseg_colors]
+    ) do prims, indices, preprojection, model_f32c, positions, clip_planes, space
+        items, idxs = _filter_text_primitives(prims, indices, LineSegmentTextPrimitive)
+        if isempty(items)
+            return (Point3f[], Float32[], RGBAf[])
         end
+        markerspace_positions = _project(preprojection * model_f32c, positions, clip_planes, space)
+        # `linesegments!` expects a flat list of endpoint pairs.
+        pts = Point3f[]
+        widths = Float32[]
+        colors = RGBAf[]
+        for (item, block_idx) in zip(items, idxs)
+            shift = markerspace_positions[block_idx]
+            push!(pts, item.p0 + shift, item.p1 + shift)
+            push!(widths, item.width, item.width)
+            push!(colors, item.color, item.color)
+        end
+        return (pts, widths, colors)
     end
 
     return linesegments!(
-        plot, plot.linesgments_shifted; linewidth = plot.linewidths,
-        color = plot.linecolors, space = plot.markerspace
+        plot, plot._lineseg_points;
+        linewidth = plot._lineseg_widths,
+        color = plot._lineseg_colors,
+        space = plot.markerspace,
     )
 end
 
@@ -739,9 +785,9 @@ function register_raw_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :linesegments, :linewidths, :lineindices, :text_primitives, :text_primitive_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :glyph_origins, :text_rotation, :text_primitives, :text_primitive_block_indices],
             :raw_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices, primitives, primitive_block_indices
+        ) do blocks, bbs, origins, rotation, primitives, primitive_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d()
@@ -752,11 +798,6 @@ function register_raw_string_boundingboxes!(plot)
                     output = update_boundingbox(output, ms_bb)
                 end
                 return output
-            end
-
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
-                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
             for (block_idx, prim) in zip(primitive_block_indices, primitives)
@@ -785,9 +826,9 @@ function register_fast_string_boundingboxes!(plot)
         # To consider newlines (and word_wrap_width) we need to include origins.
         # To not include rotation we need to strip it from origins
         map!(
-            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :linesegments, :linewidths, :lineindices, :text_primitives, :text_primitive_block_indices],
+            plot.attributes, [:text_blocks, :raw_glyph_boundingboxes, :marker_offset, :text_rotation, :text_primitives, :text_primitive_block_indices],
             :fast_string_boundingboxes
-        ) do blocks, bbs, origins, rotation, segments, linewidths, lineindices, primitives, primitive_block_indices
+        ) do blocks, bbs, origins, rotation, primitives, primitive_block_indices
 
             text_bbs = map(blocks) do idxs
                 output = Rect3d(Point3d(NaN), Vec3d(0))
@@ -798,11 +839,6 @@ function register_fast_string_boundingboxes!(plot)
                     output = update_boundingbox(output, ms_bb)
                 end
                 return output
-            end
-
-            for (pos, lw, (block_idx, glyph_idx)) in zip(segments, linewidths, lineindices)
-                bb = Rect3d(to_ndim(Point3d, pos, 0) .- 0.5lw, Vec3d(lw))
-                text_bbs[block_idx] = update_boundingbox(text_bbs[block_idx], bb)
             end
 
             for (block_idx, prim) in zip(primitive_block_indices, primitives)
