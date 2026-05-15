@@ -35,6 +35,21 @@ function text_primitive_bbox end
 function register_text_primitive_plot! end
 
 """
+    text_primitive_types(latex_handler) -> Tuple{Vararg{Type{<:AbstractTextPrimitive}}}
+
+The set of primitive types a `latex_handler` may push into a text plot. The
+text recipe uses this at construction time to decide which child plots to
+register (so a handler that emits only image markers doesn't drag along an
+empty `linesegments!` plot, and vice versa).
+
+The default is conservative and registers child plots for both built-in
+primitive types. Downstream handlers should override:
+
+    Makie.text_primitive_types(::MyHandler) = (Makie.ImageTextPrimitive,)
+"""
+text_primitive_types(_handler) = (ImageTextPrimitive, LineSegmentTextPrimitive)
+
+"""
     is_text_input(::Type) -> Bool
 
 Trait that tells the `text` recipe "this type is one of my single-element
@@ -528,13 +543,17 @@ function calculated_attributes!(::Type{Text}, plot::Plot)
     has_latex = eltyp == Any || eltyp <: LaTeXString
     handler = plot.latex_handler[]
     if has_latex && handler === nothing
-        # MathTeXEngine path produces `HLine` elements (fraction rules,
-        # √ bars) — but only when it's the active LaTeX renderer.
+        # MathTeXEngine is built in and is the LaTeXString renderer when no
+        # `latex_handler` is set. It produces glyphs + `HLine`s (fraction
+        # rules, √ bars) → `LineSegmentTextPrimitive`.
         register_text_primitive_plot!(plot, LineSegmentTextPrimitive)
     end
     if has_latex && handler !== nothing
-        # `MakieTeXLaTeX` and similar handlers push image markers.
-        register_text_primitive_plot!(plot, ImageTextPrimitive)
+        # Ask the handler which primitive types it produces. Overrideable
+        # by handler authors via `Makie.text_primitive_types(h)`.
+        for T in text_primitive_types(handler)
+            register_text_primitive_plot!(plot, T)
+        end
     end
     return
 end
