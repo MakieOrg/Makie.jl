@@ -35,6 +35,24 @@ function text_primitive_bbox end
 function register_text_primitive_plot! end
 
 """
+    is_text_input(::Type) -> Bool
+
+Trait that tells the `text` recipe "this type is one of my single-element
+inputs, route it into the string dispatch path rather than treating it as
+position data." Default `false`; built-in `true` for `AbstractString` and
+`RichText`. Downstream packages opt their types in with one method:
+
+    Makie.is_text_input(::Type{TeXString}) = true
+
+No subtyping required — the package's `convert_text_string!` method on the
+concrete type still does the work; this trait just gets the value to it.
+"""
+is_text_input(::Type) = false
+is_text_input(::Type{<:AbstractString}) = true
+is_text_input(::Type{<:RichText}) = true
+is_text_input(x) = is_text_input(typeof(x))
+
+"""
     ImageTextPrimitive(image, marker_offset::Vec3f, size::Vec2f, rotation::Quaternionf)
 
 A text primitive that renders `image` as a single scatter marker at the
@@ -67,10 +85,11 @@ conversion_trait(::Type{<:Text}, args...) = PointBased()
 convert_attribute(o, ::key"offset", ::key"text") = to_3d_offset(o) # same as marker_offset in scatter
 convert_attribute(f, ::key"font", ::key"text") = f # later conversion with fonts
 
-# Positions are always vectors so text should be too
-convert_attribute(str::AbstractString, ::key"text", ::key"text") = Ref{Any}([str]) # don't fix string type
-convert_attribute(rt::RichText, ::key"text", ::key"text") = Ref{Any}([rt])
+# Positions are always vectors so text should be too. Anything not already
+# a vector is wrapped in one — that includes built-in string types and any
+# downstream payload that opted in via `is_text_input`.
 convert_attribute(x::AbstractVector, ::key"text", ::key"text") = Ref{Any}(vec(x))
+convert_attribute(x, ::key"text", ::key"text") = Ref{Any}([x])
 
 to_string_arr(text::AbstractVector) = text
 to_string_arr(text) = [text]
@@ -92,11 +111,13 @@ function register_arguments!(::Type{Text}, attr::ComputeGraph, user_kw, input_ar
     end
     register_computation!(attr, inputs, [:_positions, :input_text]) do inputs, changed, cached
         a_pos, a_text, args... = values(inputs)
-        # Note: Could add RichText
-        if args isa Tuple{<:AbstractString}
+        # A single arg that opts in to `is_text_input` (built-in for
+        # AbstractString/RichText) is the text; the position comes from the
+        # attr. A vector whose element type opts in is a vector of texts.
+        if length(args) == 1 && is_text_input(typeof(args[1]))
             # position data will always be wrapped in a Vector, so strings should too
             return ((a_pos,), Ref{Any}([args[1]]))
-        elseif args isa Tuple{<:AbstractVector{<:AbstractString}}
+        elseif length(args) == 1 && args[1] isa AbstractVector && is_text_input(eltype(args[1]))
             return ((a_pos,), Ref{Any}(args[1]))
         elseif args isa Tuple{<:AbstractVector{<:Tuple{<:Any, <:VecTypes}}}
             # [(text, pos), ...] argument
