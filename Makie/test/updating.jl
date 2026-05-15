@@ -116,6 +116,16 @@ end
     @test p.plots[2].linewidth[] == 7
     p.kwargs.linewidth[] = 3
     @test p.plots[2].linewidth[] == 3
+
+    p.kwargs = Attributes(color = :red)
+    @test p.plots[2].color[] == to_color(:red)
+    @test p.plots[2].linewidth[] == 3
+    p.kwargs = Attributes(linewidth = 5)
+    @test p.plots[2].color[] == to_color(:red)
+    @test p.plots[2].linewidth[] == 5
+    p.kwargs = Attributes(color = :blue, linewidth = 1)
+    @test p.plots[2].color[] == to_color(:blue)
+    @test p.plots[2].linewidth[] == 1
 end
 
 Makie.@recipe PassthroughTest1 begin

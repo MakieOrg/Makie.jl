@@ -103,36 +103,26 @@ function Base.setproperty!(plot::Plot, key::Symbol, val)
     return plot
 end
 
-function nested_update!(plot::Plot, key::Symbol, val::Union{NamedTuple, Attributes})
+function nested_update!(plot::P, key::Symbol, val) where {P}
+    doc_attr = documented_attributes(P)
     updates = Pair{Symbol, Any}[]
-    skipped = Tuple[]
-    prepare_nested_update!(updates, skipped, (key,), plot.attributes[key], val)
+    prepare_nested_update!(updates, doc_attr, doc_attr.nesting.keytables[1][key], val)
     update!(plot.attributes, updates)
-    if !isempty(skipped)
-        names = ComputePipeline.merged_key.(skipped)
-        throw(InvalidAttributeError(typeof(plot), "plot", Set(names)))
-    end
     return
 end
 
-function prepare_nested_update!(
-        updates, skipped, path,
-        view::ComputeGraphView, val::Union{NamedTuple, Attributes}
-    )
-    for (k, v) in val
-        if haskey(view, k)
-            prepare_nested_update!(updates, skipped, (path..., k), view[k], v)
+function prepare_nested_update!(updates, attr, layer, val)
+    @assert layer > 0 # Should be given since we check `has_nested_key` in setproperty
+    for (key, idx) in attr.nesting.keytables[layer]
+        haskey(val, key) || continue
+        if idx > 0
+            prepare_nested_update!(updates, attr, idx, to_value(val[key]))
         else
-            push!(skipped, (path..., k))
+            push!(updates, attr.merged_keys[-idx] => to_value(val[key]))
         end
     end
     return
 end
-
-# TODO: Should we disallow NamedTuple, Attributes here?
-nested_update!(updates, skipped, path, ::Computed, val) = push!(updates, path => val)
-nested_update!(updates, skipped, path, ::ComputeGraphView, val) = push!(skipped, path)
-
 
 # temp fix axis selection
 args_preferred_axis(::Type{<:Voxels}, attr::ComputeGraph) = LScene
