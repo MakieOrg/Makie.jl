@@ -43,7 +43,7 @@ into a Makie `text` plot.
 
 * `image`     — any marker accepted by `scatter` (typically a `Matrix{<:Colorant}`)
 * `marker_offset` — markerspace offset from the block origin to the marker's
-                    lower-left corner (after rotation has been applied)
+                    center (this matches `scatter`'s `marker_offset` semantics)
 * `size`      — markerspace marker size
 * `rotation`  — applied to the marker by scatter
 """
@@ -55,7 +55,8 @@ struct ImageTextPrimitive{I} <: AbstractTextPrimitive
 end
 
 function text_primitive_bbox(p::ImageTextPrimitive)
-    bb = Rect3d(to_ndim(Point3d, p.marker_offset, 0), Vec3d(p.size..., 0))
+    half = 0.5 .* Vec3d(p.size..., 0)
+    bb = Rect3d(to_ndim(Point3d, p.marker_offset, 0) .- half, Vec3d(p.size..., 0))
     return rotate_bbox(bb, p.rotation)
 end
 
