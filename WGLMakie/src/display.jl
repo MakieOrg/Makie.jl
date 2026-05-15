@@ -96,28 +96,38 @@ function scene_already_displayed(screen::Screen, scene = screen.scene)
         js_uuid(screen.scene) in screen.displayed_scenes
 end
 
-function poll_all_plots(scene)
-    return Makie.for_each_atomic_plot(scene) do p
-        pp = Makie.parent_scene(p)
-        pp.visible[] || return nothing # Skip invisible scenes
-        if haskey(p, :wgl_renderobject)
-            try
-                # Skip updating invisible renderobjects
-                # This is basically `if is_visible || was_visible`, which makes
-                # sure the robj updates on state change. (i.e. hides and redisplays)
-                computed = p[:wgl_renderobject]
-                if p.visible[] || computed.value[][:visible]
-                    computed[]
-                end
-            catch e
-                @error "Failed to update renderobject - skipping update" exception = (e, catch_backtrace())
-                # Mark the output as resolved so we don't repeatedly pull in errors
-                # TODO: Is there a better way to handle this? One that allows us to
-                # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
-                ComputePipeline.mark_resolved!(p.attributes[:wgl_renderobject])
-            end
+# `@nospecialize p`: the closure passed to `for_each_atomic_plot` was being
+# inferred once per concrete Plot type in the scene (7+ types in a typical
+# Figure). The body doesn't need per-type specialization: `parent_scene`,
+# `haskey`, `p.attributes[k]`, and `p.visible` all dispatch the same way.
+# Single-spec drops the polling work from ~155ms to ~45ms inference.
+function poll_one_plot(@nospecialize p)
+    pp = Makie.parent_scene(p)
+    pp.visible[] || return nothing # Skip invisible scenes
+    haskey(p, :wgl_renderobject) || return nothing
+    try
+        # Skip updating invisible renderobjects
+        # This is basically `if is_visible || was_visible`, which makes sure
+        # the robj updates on state change. (i.e. hides and redisplays).
+        # Go through `.attributes` directly: `p[key]` dispatches via
+        # `getproperty` which infers as a 6-element Union, while
+        # `p.attributes[key]` returns Computed directly. Same value.
+        computed = p.attributes[:wgl_renderobject]
+        if p.visible[] || computed.value[][:visible]
+            computed[]
         end
+    catch e
+        @error "Failed to update renderobject - skipping update" exception = (e, catch_backtrace())
+        # Mark the output as resolved so we don't repeatedly pull in errors.
+        # TODO: Is there a better way to handle this? One that allows us to
+        # shortcut mark_dirty!() (i.e. preserve parentdirty implying children dirty)
+        ComputePipeline.mark_resolved!(p.attributes[:wgl_renderobject])
     end
+    return nothing
+end
+
+function poll_all_plots(scene)
+    return Makie.for_each_atomic_plot(poll_one_plot, scene)
 end
 
 function start_polling_loop!(screen, scene)
